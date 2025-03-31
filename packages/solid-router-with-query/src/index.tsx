@@ -10,8 +10,16 @@ import type { AnyRouter } from '@tanstack/solid-router'
 import type {
   CreateQueryOptions,
   QueryClient,
+  QueryKey,
   QueryObserverResult,
 } from '@tanstack/solid-query'
+
+// Extended query options to include the properties used in this file
+interface ExtendedQueryOptions extends CreateQueryOptions {
+  queryKey: QueryKey;
+  queryKeyHashFn?: (queryKey: QueryKey) => string;
+  __skipInjection?: boolean;
+}
 
 type AdditionalOptions = {
   WrapProvider?: (props: { children: any }) => Solid.JSX.Element
@@ -48,26 +56,27 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
         // Call the original beforeQuery
         ;(ogClientOptions.queries as any)?._experimental_beforeQuery?.(options)
 
-        const hash = options.queryKeyHashFn || hashKey
+        const extOptions = options as ExtendedQueryOptions;
+        const hash = extOptions.queryKeyHashFn || hashKey
         // On the server, check if we've already seen the query before
         if (router.isServer) {
-          if (seenQueryKeys.has(hash(options.queryKey))) {
+          if (seenQueryKeys.has(hash(extOptions.queryKey))) {
             return
           }
 
-          seenQueryKeys.add(hash(options.queryKey))
+          seenQueryKeys.add(hash(extOptions.queryKey))
 
           // If we haven't seen the query and we have data for it,
           // That means it's going to get dehydrated with critical
           // data, so we can skip the injection
-          if (queryClient.getQueryData(options.queryKey) !== undefined) {
-            ;(options as any).__skipInjection = true
+          if (queryClient.getQueryData(extOptions.queryKey) !== undefined) {
+            extOptions.__skipInjection = true
             return
           }
         } else {
           // On the client, pick up the deferred data from the stream
           const dehydratedClient = router.clientSsr!.getStreamedValue<any>(
-            '__QueryClient__' + hash(options.queryKey),
+            '__QueryClient__' + hash(extOptions.queryKey),
           )
 
           // If we have data, hydrate it into the query client
@@ -83,21 +92,22 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
       ) => {
         // On the server (if we're not skipping injection)
         // send down the dehydrated query
-        const hash = options.queryKeyHashFn || hashKey
+        const extOptions = options as ExtendedQueryOptions;
+        const hash = extOptions.queryKeyHashFn || hashKey
         if (
           router.isServer &&
-          !(options as any).__skipInjection &&
-          queryClient.getQueryData(options.queryKey) !== undefined &&
-          !streamedQueryKeys.has(hash(options.queryKey))
+          !extOptions.__skipInjection &&
+          queryClient.getQueryData(extOptions.queryKey) !== undefined &&
+          !streamedQueryKeys.has(hash(extOptions.queryKey))
         ) {
-          streamedQueryKeys.add(hash(options.queryKey))
+          streamedQueryKeys.add(hash(extOptions.queryKey))
 
           router.serverSsr!.streamValue(
-            '__QueryClient__' + hash(options.queryKey),
+            '__QueryClient__' + hash(extOptions.queryKey),
             dehydrate(queryClient, {
               shouldDehydrateMutation: () => false,
               shouldDehydrateQuery: (query) =>
-                hash(query.queryKey) === hash(options.queryKey),
+                hash(query.queryKey) === hash(extOptions.queryKey),
             }),
           )
         }
@@ -176,11 +186,19 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     Wrap: ({ children }) => {
       const OuterWrapper = additionalOpts?.WrapProvider;
       return (
-        <OuterWrapper>
-          <QueryClientProvider client={queryClient}>
-            {ogOptions.Wrap ? <ogOptions.Wrap>{children}</ogOptions.Wrap> : children}
-          </QueryClientProvider>
-        </OuterWrapper>
+        <>
+          {OuterWrapper ? (
+            <OuterWrapper>
+              <QueryClientProvider client={queryClient}>
+                {ogOptions.Wrap ? <ogOptions.Wrap>{children}</ogOptions.Wrap> : children}
+              </QueryClientProvider>
+            </OuterWrapper>
+          ) : (
+            <QueryClientProvider client={queryClient}>
+              {ogOptions.Wrap ? <ogOptions.Wrap>{children}</ogOptions.Wrap> : children}
+            </QueryClientProvider>
+          )}
+        </>
       )
     },
   }
