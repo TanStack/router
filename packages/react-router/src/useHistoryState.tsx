@@ -1,4 +1,5 @@
 import { useMatch } from './useMatch'
+import { useRouterState } from './useRouterState'
 import type {
   AnyRouter,
   Constrain,
@@ -6,6 +7,8 @@ import type {
   RegisteredRouter,
   RouteById,
   RouteIds,
+  ThrowConstraint,
+  ThrowOrOptional,
   UseHistoryStateResult,
 } from '@tanstack/router-core'
 import type {
@@ -24,8 +27,9 @@ type ResolveUseHistoryState<
 
 export interface UseHistoryStateBaseOptions<
   TRouter extends AnyRouter,
-  TFrom extends string | undefined,
+  TFrom,
   TStrict extends boolean,
+  TThrow extends boolean,
   TSelected,
   TStructuralSharing extends boolean,
 > {
@@ -34,61 +38,76 @@ export interface UseHistoryStateBaseOptions<
   ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
   from?: Constrain<TFrom, RouteIds<TRouter['routeTree']>>
   strict?: TStrict
+  shouldThrow?: TThrow
 }
 
 export type UseHistoryStateOptions<
   TRouter extends AnyRouter,
   TFrom extends string | undefined,
   TStrict extends boolean,
+  TThrow extends boolean,
   TSelected,
   TStructuralSharing extends boolean,
 > = UseHistoryStateBaseOptions<
   TRouter,
   TFrom,
   TStrict,
+  TThrow,
   TSelected,
   TStructuralSharing
 > &
   StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
-
-export function useHistoryState<
-  TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string | undefined = undefined,
-  TStrict extends boolean = true,
-  TState = TStrict extends false
-    ? Expand<Partial<Record<string, unknown>>>
-    : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['stateSchema']>,
-  TSelected = TState,
-  TStructuralSharing extends boolean = boolean,
->(
-  opts?: UseHistoryStateOptions<
-    TRouter,
-    TFrom,
-    TStrict,
-    TSelected,
-    TStructuralSharing
-  >,
-): UseHistoryStateResult<TRouter, TFrom, TStrict, TSelected> {
-  return useMatch({
-  from: opts?.from,
-  strict: opts?.strict,
-  structuralSharing: opts?.structuralSharing,
-  select: (match: any) => {
-    // state property should be available on the match object
-    const state = match.state || {};
-    return opts?.select ? opts.select(state) : state;
-  },
-} as any) as unknown as UseHistoryStateResult<TRouter, TFrom, TStrict, TSelected>
-}
 
 export type UseHistoryStateRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = RouteById<TRouter['routeTree'], TFrom>['types']['stateSchema'],
   TStructuralSharing extends boolean = boolean,
 >(
-  opts?: {
-    select?: (
-      state: RouteById<TRouter['routeTree'], TFrom>['types']['stateSchema'],
-    ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
-  } & StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+  opts?: UseHistoryStateBaseOptions<
+    TRouter,
+    TFrom,
+    /* TStrict */ true,
+    /* TThrow */ true,
+    TSelected,
+    TStructuralSharing
+  > &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ) => UseHistoryStateResult<TRouter, TFrom, true, TSelected>
+
+export function useHistoryState<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends string | undefined = undefined,
+  TStrict extends boolean = true,
+  TThrow extends boolean = true,
+  TState = TStrict extends false
+    ? Expand<Partial<Record<string, unknown>>>
+    : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['stateSchema']>,
+  TSelected = TState,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts: UseHistoryStateOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    ThrowConstraint<TStrict, TThrow>,
+    TSelected,
+    TStructuralSharing
+  >,
+): ThrowOrOptional<
+  UseHistoryStateResult<TRouter, TFrom, TStrict, TSelected>,
+  TThrow
+> {
+  return useMatch({
+    from: opts.from,
+    strict: opts.strict,
+    shouldThrow: opts.shouldThrow,
+    structuralSharing: opts.structuralSharing,
+    select: () => {
+      const locationState = useRouterState({
+        select: (s) => s.location.state,
+      });
+      const typedState = locationState as unknown as ResolveUseHistoryState<TRouter, TFrom, TStrict>;
+      return opts.select ? opts.select(typedState) : typedState;
+    },
+  } as any) as any;
+}
