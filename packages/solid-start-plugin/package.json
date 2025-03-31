@@ -75,7 +75,7 @@
     "@tanstack/router-utils": "workspace:^",
     "babel-dead-code-elimination": "^1.0.9",
     "tiny-invariant": "^1.3.3",
-    "vite": "6.1.2"
+    "vite": "6.1.3"
   },
   "devDependencies": {
     "@types/babel__code-frame": "^7.0.6",
