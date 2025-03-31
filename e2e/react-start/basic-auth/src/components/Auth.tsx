@@ -22,7 +22,7 @@ export function Auth({
         >
           <div>
             <label htmlFor="email" className="block text-xs">
-              Username
+              Email
             </label>
             <input
               type="email"

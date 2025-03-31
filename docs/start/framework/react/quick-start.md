@@ -8,7 +8,7 @@ title: Quick Start
 If you're impatient, you can clone and run the [Basic](../examples/start-basic) example right away with the following commands:
 
 ```bash
-npx degit https://github.com/tanstack/router/examples/react/start-basic start-basic
+npx gitpick TanStack/router/tree/main/examples/react/start-basic start-basic
 cd start-basic
 npm install
 npm run dev
@@ -45,7 +45,7 @@ To quickly deploy an example, click the **Deploy to Netlify** button on an examp
 To manually clone and deploy the example to anywhere else you'd like, use the following commands replacing `EXAMPLE_SLUG` with the slug of the example you'd like to use from above:
 
 ```bash
-npx degit https://github.com/tanstack/router/examples/react/EXAMPLE_SLUG my-new-project
+npx gitpick TanStack/router/tree/main/examples/react/EXAMPLE_SLUG my-new-project
 cd my-new-project
 npm install
 npm run dev
@@ -58,19 +58,14 @@ Once you've clone or deployed an example, head back to the [Learn the Basics](..
 While not Start-specific examples, these may help you understand more about how TanStack Router works:
 
 - [Quickstart (file-based)](../examples/quickstart-file-based)
-- [Quickstart (code-based)](../examples/quickstart)
 - [Basic (file-based)](../examples/basic-file-based)
-- [Basic (code-based)](../examples/basic)
 - [Kitchen Sink (file-based)](../examples/kitchen-sink-file-based)
-- [Kitchen Sink (code-based)](../examples/kitchen-sink)
 - [Kitchen Sink + React Query (file-based)](../examples/kitchen-sink-react-query-file-based)
-- [Kitchen Sink + React Query (code-based)](../examples/kitchen-sink-react-query)
 - [Location Masking](../examples/location-masking)
 - [Authenticated Routes](../examples/authenticated-routes)
 - [Scroll Restoration](../examples/scroll-restoration)
 - [Deferred Data](../examples/deferred-data)
 - [Navigation Blocking](../examples/navigation-blocking)
+- [View Transitions](../examples/view-transitions)
 - [With tRPC](../examples/with-trpc)
 - [With tRPC + React Query](../examples/with-trpc-react-query)
-- [Monorepo basic](../examples/router-monorepo-simple)
-- [Monorepo with React Query](../examples/router-monorepo-react-query)

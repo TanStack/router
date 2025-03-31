@@ -11,18 +11,10 @@ File based route generation (through Vite, and other supported bundlers) is the 
 ### Scaffolding Your First TanStack Router Project
 
 ```sh
-npm create tsrouter-app@latest my-app --template file-router
-# or
-pnpm create tsrouter-app@latest my-app --template file-router
-# or
-yarn create tsrouter-app@latest my-app --template file-router
-# or
-bun create tsrouter-app@latest my-app --template file-router
-# or
-deno run -A npm:create-tsrouter-app@latest my-app --template file-router
+npx create-tsrouter-app@latest my-app --template file-router
 ```
 
-Follow the prompts to scaffold a full TanStack Router project.
+See [create-tsrouter-app](https://github.com/TanStack/create-tsrouter-app) for more options.
 
 ### Manual Setup
 

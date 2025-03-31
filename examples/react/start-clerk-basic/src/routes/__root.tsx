@@ -12,11 +12,11 @@ import {
   SignedIn,
   SignedOut,
   UserButton,
-} from '@clerk/tanstack-start'
+} from '@clerk/tanstack-react-start'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
-import { getAuth } from '@clerk/tanstack-start/server'
+import { getAuth } from '@clerk/tanstack-react-start/server'
 import { getWebRequest } from '@tanstack/react-start/server'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
