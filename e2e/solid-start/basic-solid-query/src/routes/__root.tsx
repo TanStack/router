@@ -6,13 +6,14 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import * as Solid from 'solid-js'
+import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
+import * as React from 'react'
 import type { QueryClient } from '@tanstack/solid-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
+import * as Solid from 'solid-js'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -67,7 +68,11 @@ export const Route = createRootRouteWithContext<{
 })
 
 function RootComponent() {
-  return <Outlet />
+  return (
+    <RootDocument>
+      <Outlet />
+    </RootDocument>
+  )
 }
 
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
@@ -101,12 +106,12 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
           Users
         </Link>{' '}
         <Link
-          to="/route-a"
+          to="/layout-a"
           activeProps={{
             class: 'font-bold',
           }}
         >
-          Pathless Layout
+          Layout
         </Link>{' '}
         <Link
           to="/deferred"
@@ -128,7 +133,7 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
       </div>
       <hr />
       {children}
-      <TanStackRouterDevtools position="bottom-right" />
+      <TanStackRouterDevtoolsInProd position="bottom-right" />
       <SolidQueryDevtools buttonPosition="bottom-left" />
       <Scripts />
     </>
