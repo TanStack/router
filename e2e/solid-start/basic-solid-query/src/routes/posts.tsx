@@ -12,7 +12,7 @@ export const Route = createFileRoute('/posts')({
 })
 
 function PostsComponent() {
-  const postsQuery = createQuery(()=>postsQueryOptions())
+  const postsQuery = createQuery(() => postsQueryOptions())
 
   return (
     <div class="p-2 flex gap-2">

@@ -22,14 +22,11 @@ export const Route = createFileRoute('/posts_/$postId/deep')({
 
 function PostDeepComponent() {
   const params = Route.useParams()
-  const postQuery = createQuery(()=>postQueryOptions(params().postId))
+  const postQuery = createQuery(() => postQueryOptions(params().postId))
 
   return (
     <div class="p-2 space-y-2">
-      <Link
-        to="/posts"
-        class="block py-1 text-blue-800 hover:text-blue-600"
-      >
+      <Link to="/posts" class="block py-1 text-blue-800 hover:text-blue-600">
         ← All Posts
       </Link>
       <h4 class="text-xl font-bold underline">{postQuery.data?.title}</h4>

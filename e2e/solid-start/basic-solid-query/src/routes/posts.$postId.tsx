@@ -31,7 +31,7 @@ export function PostErrorComponent({ error }: ErrorComponentProps) {
 
 function PostComponent() {
   const params = Route.useParams()
-  const postQuery = createQuery(()=>postQueryOptions(params().postId))
+  const postQuery = createQuery(() => postQueryOptions(params().postId))
 
   return (
     <div class="space-y-2">

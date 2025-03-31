@@ -5,7 +5,7 @@ import {
   hydrate,
 } from '@tanstack/solid-query'
 import { isRedirect } from '@tanstack/router-core'
-import type * as Solid from 'solid-js';
+import type * as Solid from 'solid-js'
 import type { AnyRouter } from '@tanstack/solid-router'
 import type {
   CreateQueryOptions,
@@ -16,9 +16,9 @@ import type {
 
 // Extended query options to include the properties used in this file
 interface ExtendedQueryOptions extends CreateQueryOptions {
-  queryKey: QueryKey;
-  queryKeyHashFn?: (queryKey: QueryKey) => string;
-  __skipInjection?: boolean;
+  queryKey: QueryKey
+  queryKeyHashFn?: (queryKey: QueryKey) => string
+  __skipInjection?: boolean
 }
 
 type AdditionalOptions = {
@@ -56,7 +56,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
         // Call the original beforeQuery
         ;(ogClientOptions.queries as any)?._experimental_beforeQuery?.(options)
 
-        const extOptions = options as ExtendedQueryOptions;
+        const extOptions = options as ExtendedQueryOptions
         const hash = extOptions.queryKeyHashFn || hashKey
         // On the server, check if we've already seen the query before
         if (router.isServer) {
@@ -92,7 +92,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
       ) => {
         // On the server (if we're not skipping injection)
         // send down the dehydrated query
-        const extOptions = options as ExtendedQueryOptions;
+        const extOptions = options as ExtendedQueryOptions
         const hash = extOptions.queryKeyHashFn || hashKey
         if (
           router.isServer &&
@@ -184,18 +184,26 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     },
     // Wrap the app in a QueryClientProvider
     Wrap: ({ children }) => {
-      const OuterWrapper = additionalOpts?.WrapProvider;
+      const OuterWrapper = additionalOpts?.WrapProvider
       return (
         <>
           {OuterWrapper ? (
             <OuterWrapper>
               <QueryClientProvider client={queryClient}>
-                {ogOptions.Wrap ? <ogOptions.Wrap>{children}</ogOptions.Wrap> : children}
+                {ogOptions.Wrap ? (
+                  <ogOptions.Wrap>{children}</ogOptions.Wrap>
+                ) : (
+                  children
+                )}
               </QueryClientProvider>
             </OuterWrapper>
           ) : (
             <QueryClientProvider client={queryClient}>
-              {ogOptions.Wrap ? <ogOptions.Wrap>{children}</ogOptions.Wrap> : children}
+              {ogOptions.Wrap ? (
+                <ogOptions.Wrap>{children}</ogOptions.Wrap>
+              ) : (
+                children
+              )}
             </QueryClientProvider>
           )}
         </>

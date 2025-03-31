@@ -11,7 +11,7 @@ export const Route = createFileRoute('/users')({
 })
 
 function UsersComponent() {
-  const usersQuery = createQuery(()=>usersQueryOptions())
+  const usersQuery = createQuery(() => usersQueryOptions())
 
   return (
     <div class="p-2 flex gap-2">

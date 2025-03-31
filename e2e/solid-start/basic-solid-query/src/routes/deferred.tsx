@@ -40,7 +40,7 @@ function Deferred() {
 }
 
 function DeferredQuery() {
-  const deferredQuery = createQuery(()=>deferredQueryOptions())
+  const deferredQuery = createQuery(() => deferredQueryOptions())
 
   return (
     <div>

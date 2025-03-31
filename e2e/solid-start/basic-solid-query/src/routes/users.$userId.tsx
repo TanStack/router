@@ -22,7 +22,7 @@ export function UserErrorComponent({ error }: ErrorComponentProps) {
 
 function UserComponent() {
   const params = Route.useParams()
-  const userQuery = createQuery(()=>userQueryOptions(params().userId))
+  const userQuery = createQuery(() => userQueryOptions(params().userId))
   const user = userQuery.data
 
   return (
