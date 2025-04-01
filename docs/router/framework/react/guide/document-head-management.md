@@ -83,7 +83,7 @@ export const Route = createRootRoute()({
 ```tsx
 import { HeadContent } from '@tanstack/react-router'
 
-const rootRoute = createRoute({
+const rootRoute = createRootRoute()({
   component: () => (
     <>
       <HeadContent />
