@@ -117,6 +117,18 @@ export function Transitioner() {
         status: 'idle',
         resolvedLocation: s.location,
       }))
+
+      if (typeof document !== 'undefined' && (document as any).querySelector) {
+        const hashScrollIntoViewOptions =
+          router.state.location.state.__hashScrollIntoViewOptions ?? true
+
+        if (hashScrollIntoViewOptions && router.state.location.hash !== '') {
+          const el = document.getElementById(router.state.location.hash)
+          if (el) {
+            el.scrollIntoView(hashScrollIntoViewOptions)
+          }
+        }
+      }
     }
   }, [isAnyPending, previousIsAnyPending, router])
 
