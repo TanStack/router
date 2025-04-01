@@ -206,6 +206,7 @@ export type {
   ControllablePromise,
   InjectedHtmlEntry,
   RouterErrorSerializer,
+  SerializerExtensions,
 } from '@tanstack/router-core'
 
 export {

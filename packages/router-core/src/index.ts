@@ -71,6 +71,7 @@ export type {
   SerializerParseBy,
   SerializerStringify,
   SerializerStringifyBy,
+  SerializerExtensions,
 } from './serializer'
 
 export type { ParsedLocation } from './location'
