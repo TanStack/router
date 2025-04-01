@@ -481,10 +481,7 @@ export const Route = createFileRoute('/shop/products')({
 const ProductList = () => {
   return (
     <div>
-      <Link
-        from={Route.fullPath}
-        search={(prev) => ({ page: prev.page + 1 })}
-      >
+      <Link from={Route.fullPath} search={(prev) => ({ page: prev.page + 1 })}>
         Next Page
       </Link>
     </div>
