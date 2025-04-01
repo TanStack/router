@@ -5,17 +5,23 @@ export interface StartSerializer {
   decode: <T>(value: T) => T
 }
 
+type JSONLiteral = string | boolean | null | number
+
 export type SerializerStringifyBy<T, TSerializable> = T extends TSerializable
   ? T
-  : T extends (...args: Array<any>) => any
-    ? 'Function is not serializable'
-    : { [K in keyof T]: SerializerStringifyBy<T[K], TSerializable> }
+  : T extends JSONLiteral
+    ? T
+    : T extends (...args: Array<any>) => any
+      ? 'Function is not serializable'
+      : { [K in keyof T]: SerializerStringifyBy<T[K], TSerializable> }
 
 export type SerializerParseBy<T, TSerializable> = T extends TSerializable
   ? T
-  : T extends React.JSX.Element
-    ? ReadableStream
-    : { [K in keyof T]: SerializerParseBy<T[K], TSerializable> }
+  : T extends JSONLiteral
+    ? T
+    : T extends React.JSX.Element
+      ? ReadableStream
+      : { [K in keyof T]: SerializerParseBy<T[K], TSerializable> }
 
 export type Serializable = Date | undefined | Error | FormData | bigint
 
