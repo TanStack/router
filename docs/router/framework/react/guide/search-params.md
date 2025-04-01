@@ -420,14 +420,15 @@ const ProductList = () => {
 You can access your route's validated search params anywhere in your app using the `useSearch` hook. By passing the `from` id/path of your origin route, you'll get even better type safety:
 
 ```tsx
-const Route = createRoute({
-  getParentRoute: () => shopRoute,
-  path: 'products',
+// /routes/shop.products.tsx
+export const Route = createFileRoute('/shop/products')({
   validateSearch: productSearchSchema,
+  // ...
 })
 
 // Somewhere else...
 
+// /components/product-list-sidebar.tsx
 const routeApi = getRouteApi('/shop/products')
 
 const ProductList = () => {
