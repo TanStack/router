@@ -1,0 +1,36 @@
+{
+  "name": "tanstack-solid-start-e2e-basic-solid-query",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev --port 3000",
+    "dev:e2e": "vinxi dev",
+    "build": "vinxi build && tsc --noEmit",
+    "start": "vinxi start",
+    "test:e2e": "playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@tanstack/solid-query": "^5.66.0",
+    "@tanstack/solid-query-devtools": "^5.66.0",
+    "@tanstack/solid-router": "workspace:^",
+    "@tanstack/solid-router-with-query": "workspace:^",
+    "@tanstack/solid-router-devtools": "workspace:^",
+    "@tanstack/solid-start": "workspace:^",
+    "solid-js": "^1.9.5",
+    "redaxios": "^0.5.1",
+    "tailwind-merge": "^2.6.0",
+    "vinxi": "0.5.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.1",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "@types/node": "^22.10.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "postcss": "^8.5.1",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

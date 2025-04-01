@@ -81,6 +81,8 @@
       "@tanstack/history": "workspace:*",
       "@tanstack/router-core": "workspace:*",
       "@tanstack/react-router": "workspace:*",
+      "@tanstack/solid-router": "workspace:*",
+      "@tanstack/solid-router-with-query": "workspace:*",
       "@tanstack/router-cli": "workspace:*",
       "@tanstack/router-devtools": "workspace:*",
       "@tanstack/router-devtools-core": "workspace:^",
