@@ -337,7 +337,6 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-
     render(<RouterProvider router={router} />)
 
     expect(await screen.findByText('Fly, you fools!')).toBeInTheDocument()
@@ -372,7 +371,6 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
@@ -403,7 +401,6 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
@@ -431,7 +428,6 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
@@ -462,7 +458,6 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
-
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
