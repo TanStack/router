@@ -6,10 +6,13 @@ import type {
   Middleware,
 } from './createMiddleware'
 import type {
+  AnyRouter,
   Assign,
   Constrain,
   Expand,
+  InferFileRouteTypes,
   IntersectAssign,
+  RegisteredRouter,
   ResolveParams,
   ResolveValidatorInput,
   RouteConstraints,
@@ -929,3 +932,41 @@ export type ServerRouteMethodClientHeadersInput<TInput> = TInput extends {
 export interface DefaultServerRouteMethodClientHeadersInput {
   headers?: Record<string, unknown>
 }
+
+export const getServerFileRouteApi: GetServerFileRouteApiFn = () => {
+  return undefined as TODO
+}
+
+export type GetServerFileRouteApiFn = <
+  TRouter extends RegisteredRouter,
+  TId extends keyof ServerRoutesById<TRouter>,
+>(
+  id: TId,
+) => ServerRouteApi<TRouter, TId>
+
+export type ServerRoutesById<TRouter extends AnyRouter> = InferFileRouteTypes<
+  TRouter['routeTree']
+>['serverFileRoutesById']
+
+export interface ServerRouteApi<
+  TRouter extends AnyRouter,
+  TId extends keyof ServerRoutesById<TRouter>,
+> {
+  client: ServerRouteApiClient<TRouter, TId>
+}
+
+export type ServerRouteApiClient<
+  TRouter extends AnyRouter,
+  TId extends keyof ServerRoutesById<TRouter>,
+  TRoute extends AnyServerRouteWithTypes = ServerRouteById<TRouter, TId>,
+> = ServerRouteMethodsClient<
+  TRoute['_types']['parentRoute'],
+  TRoute['_types']['middlewares'],
+  TRoute['_types']['fullPath'],
+  TRoute['_types']['methods']
+>
+
+export type ServerRouteById<
+  TRouter extends AnyRouter,
+  TId extends keyof ServerRoutesById<TRouter>,
+> = ServerRoutesById<TRouter>[TId]

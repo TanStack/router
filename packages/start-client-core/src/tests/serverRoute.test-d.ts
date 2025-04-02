@@ -1,7 +1,13 @@
 import { expectTypeOf, test } from 'vitest'
 import { json } from '../json'
 import { createMiddleware } from '../createMiddleware'
+import { getServerFileRouteApi } from '../serverRoute'
 import type { CreateServerFileRoute } from '../serverRoute'
+import type {
+  Route,
+  RouterCore,
+  TrailingSlashOption,
+} from '@tanstack/router-core'
 
 test('createServerFileRoute with methods with no middleware', () => {
   type Path = '$detailId'
@@ -1067,4 +1073,113 @@ test('createServerFileRoute with parent middleware headers', () => {
       },
     ]
   >()
+})
+
+test('getServerFileRouteApi', () => {
+  const createDetailsServerFileRoute: CreateServerFileRoute<
+    'details/$detailId',
+    any,
+    'details',
+    'details',
+    'details/$detailId'
+  > = undefined as any
+
+  const detailsServerRoute = createDetailsServerFileRoute().methods((api) => ({
+    GET: api
+      .validator(
+        (input: {
+          search: { queryA: string }
+          body: { inputA: string }
+          headers: { headerA: 'a' }
+        }) => input,
+      )
+      .handler(() => {
+        return {
+          a: 'data',
+        }
+      }),
+    POST: api
+      .validator(
+        (input: {
+          search: { queryB: string }
+          body: { inputB: string }
+          headers: { headerB: 'b' }
+        }) => input,
+      )
+      .handler(() => {
+        return {
+          b: 'data',
+        }
+      }),
+  }))
+
+  interface FileRoutesByFullPath {}
+
+  interface FileRoutesByTo {}
+
+  interface FileRoutesById {}
+
+  interface ServerFileRoutesById {
+    '/details/$detailId': typeof detailsServerRoute
+  }
+
+  interface FileRouteTypes {
+    fileRoutesByFullPath: FileRoutesByFullPath
+    fullPaths: never
+    fileRoutesByTo: FileRoutesByTo
+    to: never
+    id: never
+    fileRoutesById: FileRoutesById
+    serverFileRoutesById: ServerFileRoutesById
+  }
+
+  type AppRoute = Route<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    FileRouteTypes
+  >
+  type AppRouter = RouterCore<AppRoute, TrailingSlashOption, boolean>
+
+  const api = getServerFileRouteApi<AppRouter, '/details/$detailId'>(
+    '/details/$detailId',
+  )
+
+  expectTypeOf(api.client).toHaveProperty('get')
+
+  expectTypeOf(api.client.get).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search: { queryA: string }
+        body: { inputA: string }
+        headers: { headerA: 'a' }
+      },
+    ]
+  >()
+  expectTypeOf(api.client.get).returns.toEqualTypeOf<Promise<{ a: string }>>()
+
+  expectTypeOf(api.client).toHaveProperty('post')
+
+  expectTypeOf(api.client.post).parameters.toEqualTypeOf<
+    [
+      options: {
+        params: { detailId: string }
+        search: { queryB: string }
+        body: { inputB: string }
+        headers: { headerB: 'b' }
+      },
+    ]
+  >()
+  expectTypeOf(api.client.post).returns.toEqualTypeOf<Promise<{ b: string }>>()
 })
