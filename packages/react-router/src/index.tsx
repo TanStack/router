@@ -125,8 +125,11 @@ export type {
   FileRoutesByPath,
   RouteById,
   RootRouteOptions,
+  SerializerExtensions,
   CreateFileRoute,
 } from '@tanstack/router-core'
+
+export type * from './serializer'
 
 export {
   createHistory,
