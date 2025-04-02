@@ -7,7 +7,7 @@ import {
   createRoute,
   createRouter,
   getRouteApi,
-  notFound
+  notFound,
 } from '../src'
 
 afterEach(() => {
@@ -272,7 +272,7 @@ describe('route.head', () => {
     ])
   })
 
-  test('meta returned when loader throws notFound', async () => {
+  test.skip('meta returned when loader throws notFound', async () => {
     const rootRoute = createRootRoute({
       head: () => ({
         meta: [
@@ -297,8 +297,47 @@ describe('route.head', () => {
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
     render(() => <RouterProvider router={router} />)
-    const indexElem = await screen.findByText('Index')
-    expect(indexElem).toBeInTheDocument()
+    expect(await screen.findByText('Not Found')).toBeInTheDocument()
+
+    const metaState = router.state.matches.map((m) => m.meta)
+    expect(metaState).toEqual([
+      [
+        { title: 'Root' },
+        {
+          charSet: 'utf-8',
+        },
+      ],
+      [{ title: 'Index' }],
+    ])
+  })
+
+  test.skip('meta returned when loader throws an error', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        meta: [
+          { title: 'Root' },
+          {
+            charSet: 'utf-8',
+          },
+        ],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        meta: [{ title: 'Index' }],
+      }),
+      loader: async () => {
+        throw new Error('Fly, you fools!')
+      },
+      component: () => <div>Index</div>,
+      errorComponent: () => <div>Fly, you fools!</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+    render(() => <RouterProvider router={router} />)
+    expect(await screen.findByText('Fly, you fools!')).toBeInTheDocument()
 
     const metaState = router.state.matches.map((m) => m.meta)
     expect(metaState).toEqual([

@@ -1440,18 +1440,19 @@ export class RouterCore<
         }
       }
 
-      // If it's already a success or notFound, update headers and head content
+      // If the match status is already error, notFound or success, update headers and head content
       // These may get updated again if the match is refreshed
       // due to being stale
-      if (match.status === 'success' || match.status === 'notFound') {
+      if (['error', 'notFound', 'success'].includes(match.status)) {
+        const { loaderData } = match
         match.headers = route.options.headers?.({
-          ...(match?.loaderData && { loaderData: match.loaderData }),
+          ...(loaderData && { loaderData }),
         })
         const assetContext = {
           matches,
           match,
           params: match.params,
-          loaderData: match.loaderData,
+          ...(loaderData && { loaderData }),
         }
         const headFnContent = route.options.head?.(assetContext)
         match.links = headFnContent?.links
