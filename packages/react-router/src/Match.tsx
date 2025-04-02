@@ -113,10 +113,10 @@ export const Match = React.memo(function MatchImpl({
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
       </matchContext.Provider>
-      {parentRouteId === rootRouteId && router.options.scrollRestoration ? (
+      {parentRouteId === rootRouteId ? (
         <>
           <OnRendered />
-          <ScrollRestoration />
+          {router.options.scrollRestoration && <ScrollRestoration />}
         </>
       ) : null}
     </>
@@ -139,20 +139,19 @@ function OnRendered() {
 
   return (
     <script
-      key={router.state.resolvedLocation?.state.key}
+      key={router.latestLocation.state.key}
       suppressHydrationWarning
       ref={(el) => {
         if (
           el &&
           (prevLocationRef.current === undefined ||
-            prevLocationRef.current.href !==
-              router.state.resolvedLocation?.href)
+            prevLocationRef.current.href !== router.latestLocation.href)
         ) {
           router.emit({
             type: 'onRendered',
             ...getLocationChangeInfo(router.state),
           })
-          prevLocationRef.current = router.state.resolvedLocation
+          prevLocationRef.current = router.latestLocation
         }
       }}
     />
