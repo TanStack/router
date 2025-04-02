@@ -749,6 +749,7 @@ FileRoutesByPath['${routeNode.routePath}']['fullPath']
   to: ${routeNodes.length > 0 ? [...createRouteNodesByTo(routeNodes).keys()].map((to) => `'${to}'`).join('|') : 'never'}
   id: ${[`'__root__'`, ...[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`)].join('|')}
   fileRoutesById: FileRoutesById
+  ${ENABLED_SERVER_ROUTES ? `serverFileRoutesById: ServerFileRoutesById` : ''}
 }`,
           `export interface RootRouteChildren {
   ${routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
