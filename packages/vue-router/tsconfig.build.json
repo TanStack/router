@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "vue",
     "moduleResolution": "Bundler",
     "rootDir": "src",
     "outDir": "dist/source",
