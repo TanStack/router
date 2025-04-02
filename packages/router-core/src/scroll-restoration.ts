@@ -316,3 +316,17 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     }
   })
 }
+
+export function handleHashScroll(router: AnyRouter) {
+  if (typeof document !== 'undefined' && (document as any).querySelector) {
+    const hashScrollIntoViewOptions =
+      router.state.location.state.__hashScrollIntoViewOptions ?? true
+
+    if (hashScrollIntoViewOptions && router.state.location.hash !== '') {
+      const el = document.getElementById(router.state.location.hash)
+      if (el) {
+        el.scrollIntoView(hashScrollIntoViewOptions)
+      }
+    }
+  }
+}
