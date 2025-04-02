@@ -378,6 +378,7 @@ export class RootRoute<
     >,
   ) {
     super(options)
+    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   useMatch: UseMatchRoute<RootRouteId> = (opts) => {
