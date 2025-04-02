@@ -382,6 +382,7 @@ export {
   getCssSelector,
   scrollRestorationCache,
   setupScrollRestoration,
+  handleHashScroll,
 } from './scroll-restoration'
 
 export type {
