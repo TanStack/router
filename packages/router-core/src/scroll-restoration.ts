@@ -317,6 +317,14 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   })
 }
 
+/**
+ * @internal
+ * Handles hash-based scrolling after navigation completes.
+ * To be used in framework-specific <Transitioner> components during the onResolved event.
+ *
+ * Provides hash scrolling for programmatic navigation when default browser handling is prevented.
+ * @param router The router instance containing current location and state
+ */
 export function handleHashScroll(router: AnyRouter) {
   if (typeof document !== 'undefined' && (document as any).querySelector) {
     const hashScrollIntoViewOptions =
