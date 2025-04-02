@@ -272,7 +272,7 @@ describe('route.head', () => {
     ])
   })
 
-  test.skip('meta returned when loader throws notFound', async () => {
+  test('meta returned when loader throws notFound', async () => {
     const rootRoute = createRootRoute({
       head: () => ({
         meta: [
@@ -296,8 +296,11 @@ describe('route.head', () => {
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree })
+
     render(() => <RouterProvider router={router} />)
     expect(await screen.findByText('Not Found')).toBeInTheDocument()
+
+    await router.load()
 
     const metaState = router.state.matches.map((m) => m.meta)
     expect(metaState).toEqual([
@@ -311,7 +314,7 @@ describe('route.head', () => {
     ])
   })
 
-  test.skip('meta returned when loader throws an error', async () => {
+  test('meta returned when loader throws an error', async () => {
     const rootRoute = createRootRoute({
       head: () => ({
         meta: [
@@ -338,6 +341,8 @@ describe('route.head', () => {
     const router = createRouter({ routeTree })
     render(() => <RouterProvider router={router} />)
     expect(await screen.findByText('Fly, you fools!')).toBeInTheDocument()
+
+    await router.load()
 
     const metaState = router.state.matches.map((m) => m.meta)
     expect(metaState).toEqual([
