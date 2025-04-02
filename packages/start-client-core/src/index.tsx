@@ -83,7 +83,7 @@ export {
   flattenMiddlewares,
   serverFnStaticCache,
 } from './createServerFn'
-export { createServerFileRoute } from './serverRoute'
+export { createServerFileRoute, getServerFileRouteApi } from './serverRoute'
 export type {
   ServerRouteVerb,
   ServerRouteVerbs,
