@@ -98,4 +98,12 @@ describe('decode function', () => {
       key: 'value=',
     })
   })
+
+  it('should convert plus signs to spaces in decoded values', () => {
+    const queryString = 'name=John+Doe'
+    const decodedObj = decode(queryString)
+    expect(decodedObj).toEqual({
+      name: 'John Doe'
+    })
+  })
 })

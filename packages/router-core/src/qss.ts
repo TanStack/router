@@ -50,6 +50,7 @@ export function encode(obj: any, pfx?: string) {
  */
 function toValue(mix: any) {
   if (!mix) return ''
+  mix = mix.replace(/\+/g, ' ')
   const str = hasUriEncodedChars(mix)
     ? decodeURIComponent(mix)
     : decodeURIComponent(encodeURIComponent(mix))
