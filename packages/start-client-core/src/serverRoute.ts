@@ -12,6 +12,8 @@ import type {
   Expand,
   InferFileRouteTypes,
   IntersectAssign,
+  LooseAsyncReturnType,
+  LooseReturnType,
   RegisteredRouter,
   ResolveParams,
   ResolveValidatorInput,
@@ -787,9 +789,8 @@ export type ServerRouteMethodsClient<
   TFullPath extends string,
   TMethods,
 > = {
-  [TKey in keyof ResolveMethods<TMethods> as Lowercase<
-    TKey & string
-  >]: ServerRouteMethodClient<
+  [TKey in keyof ResolveMethods<TMethods> &
+    ServerRouteVerb as Lowercase<TKey>]: ServerRouteMethodClient<
     TParentRoute,
     TMiddlewares,
     TFullPath,
@@ -809,7 +810,7 @@ export interface ServerRouteMethodClient<
   TFullPath extends string,
   TMethod,
 > {
-  returns: ServerRouteMethodClientReturns<TMethod>
+  returns: ServerRouteMethodClientResult<TMethod>
   (
     ...args: ServerRouteMethodClientOptions<
       TParentRoute,
@@ -817,20 +818,23 @@ export interface ServerRouteMethodClient<
       TFullPath,
       TMethod
     >
-  ): Promise<ServerRouteMethodClientReturns<TMethod>>
+  ): ServerRouteMethodClientResult<TMethod>
 }
 
-export type ServerRouteMethodClientReturns<TMethod> =
+export type ServerRouteMethodClientResult<TMethod> =
+  ServerRouteMethodClientResponseJson<TMethod> extends Promise<any>
+    ? ServerRouteMethodClientResponseJson<TMethod>
+    : Promise<ServerRouteMethodClientResponseJson<TMethod>>
+
+export type ServerRouteMethodClientResponseJson<TMethod> =
   ServerRouteMethodClientResponse<TMethod> extends JsonResponse<any>
-    ? Awaited<ReturnType<ServerRouteMethodClientResponse<TMethod>['json']>>
-    : Awaited<ServerRouteMethodClientResponse<TMethod>>
+    ? LooseReturnType<ServerRouteMethodClientResponse<TMethod>['json']>
+    : ServerRouteMethodClientResponse<TMethod>
 
 export type ServerRouteMethodClientResponse<TMethod> =
   TMethod extends AnyRouteMethodsBuilder
-    ? TMethod['_types']['response']
-    : TMethod extends (...args: Array<any>) => infer TReturn
-      ? Awaited<TReturn>
-      : never
+    ? Awaited<TMethod['_types']['response']>
+    : LooseAsyncReturnType<TMethod>
 
 export type ServerRouteMethodClientOptions<
   TParentRoute extends AnyServerRouteWithTypes,

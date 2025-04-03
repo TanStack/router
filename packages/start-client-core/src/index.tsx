@@ -114,7 +114,7 @@ export type {
   ResolveMethods,
   ServerRouteMethodBuilderTypes,
   ServerRouteMethodClient,
-  ServerRouteMethodClientReturns,
+  ServerRouteMethodClientResult,
   ServerRouteMethodRecordValue,
   ServerRouteMethodsClient,
   ServerRouteMethodsOptions,

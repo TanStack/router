@@ -150,8 +150,6 @@ export type {
   StringifyParamsFn,
   ParamsOptions,
   UpdatableStaticRouteOption,
-  LooseReturnType,
-  LooseAsyncReturnType,
   ContextReturnType,
   ContextAsyncReturnType,
   ResolveRouteContext,
@@ -323,6 +321,8 @@ export type {
   MergeAll,
   ValidateJSON,
   StrictOrFrom,
+  LooseReturnType,
+  LooseAsyncReturnType,
 } from './utils'
 
 export type {
