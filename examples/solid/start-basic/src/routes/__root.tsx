@@ -76,22 +76,6 @@ function RootComponent() {
           Users
         </Link>{' '}
         <Link
-          to="/layout-a"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Layout
-        </Link>{' '}
-        <Link
-          to="/scripts"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Scripts
-        </Link>{' '}
-        <Link
           to="/deferred"
           activeProps={{
             class: 'font-bold',
