@@ -14,7 +14,7 @@ fs.readdir(packagesDir, { withFileTypes: true }, (err, entries) => {
       const packageJsonPath = path.join(packagesDir, entry.name, 'package.json')
       if (!fs.existsSync(packageJsonPath)) {
         const dirPath = path.join(packagesDir, entry.name)
-        fs.rmdir(dirPath, { recursive: true }, (err) => {
+        fs.rm(dirPath, { recursive: true }, (err) => {
           if (err) {
             console.error(`❌ Error deleting directory ${dirPath}:`, err)
           } else {
