@@ -44,5 +44,17 @@ export async function buildNitroEnvironment(
 
   await fsp.writeFile(buildInfoPath, JSON.stringify(buildInfo, null, 2))
 
+  const publicDir = nitro.options.output.publicDir
+
+  // As a part of the build process, the `.vite/` directory
+  // is copied over from `node_modules/.tanstack-start/client-dist/`
+  // to the `publicDir` (e.g. `.output/public/`).
+  // This directory (containing the vite manifest) should not be
+  // included in the final build, so we remove it here.
+  const viteDir = path.resolve(publicDir, '.vite')
+  if (await fsp.stat(viteDir).catch(() => false)) {
+    await fsp.rm(viteDir, { recursive: true, force: true })
+  }
+
   await nitro.close()
 }
