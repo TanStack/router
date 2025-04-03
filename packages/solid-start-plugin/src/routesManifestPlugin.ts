@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import type { PluginOption, ResolvedConfig } from 'vite'
-import type { Manifest } from '@tanstack/router-core'
+import { joinURL } from 'ufo'
+import type {
+  PluginOption,
+  ResolvedConfig,
+  Manifest as ViteManifest,
+  ManifestChunk as ViteManifestChunk,
+} from 'vite'
+import type { Manifest, RouterManagedTag } from '@tanstack/router-core'
 import type { TanStackStartOutputConfig } from './schema'
 
 export function startManifestPlugin(
@@ -41,15 +47,6 @@ export function startManifestPlugin(
           'node_modules/.tanstack-start/client-dist/.vite/manifest.json',
         )
 
-        type ViteManifest = Record<
-          string,
-          {
-            file: string
-            isEntry: boolean
-            imports?: Array<string>
-          }
-        >
-
         let manifest: ViteManifest
         try {
           manifest = JSON.parse(readFileSync(clientViteManifestPath, 'utf-8'))
@@ -83,12 +80,7 @@ export function startManifestPlugin(
 
         const routes = routerManifest.routes
 
-        let entryFile:
-          | {
-              file: string
-              imports?: Array<string>
-            }
-          | undefined
+        let entryFile: ViteManifestChunk | undefined
 
         const filesByRouteFilePath: ViteManifest = Object.fromEntries(
           Object.entries(manifest).map(([k, v]) => {
@@ -137,12 +129,28 @@ export function startManifestPlugin(
               path.join('/', manifest[d]!.file),
             ) || []),
           ]
+
+          // Gather all the CSS files from the entry file in
+          // the `css` key and add them to the __root__ route
+          const entryCssFiles = entryFile.css ?? []
+          const entryCssAssetsList: Array<RouterManagedTag> = entryCssFiles.map(
+            (cssFile) => ({
+              tag: 'link',
+              attrs: {
+                rel: 'stylesheet',
+                href: joinURL('/', cssFile),
+                type: 'text/css',
+              },
+            }),
+          )
+
           routes.__root__!.assets = [
             ...(routes.__root__!.assets || []),
+            ...entryCssAssetsList,
             {
               tag: 'script',
               attrs: {
-                src: path.join('/', entryFile.file),
+                src: joinURL('/', entryFile.file),
                 type: 'module',
               },
             },
