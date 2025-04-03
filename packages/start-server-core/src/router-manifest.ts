@@ -58,7 +58,7 @@ export function getStartManifest() {
   const manifest = {
     ...startManifest,
     routes: Object.fromEntries(
-      Object.entries(startManifest.routes).map(([k, v]: [string, any]) => {
+      Object.entries(startManifest.routes).map(([k, v]) => {
         const { preloads, assets } = v
         return [
           k,
