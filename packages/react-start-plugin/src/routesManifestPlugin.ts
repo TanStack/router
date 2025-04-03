@@ -118,8 +118,21 @@ export function startManifestPlugin(
               preloads.unshift(path.join('/', file.file))
             }
 
+            const cssFiles = file.css ?? []
+            const cssAssetsList: Array<RouterManagedTag> = cssFiles.map(
+              (cssFile) => ({
+                tag: 'link',
+                attrs: {
+                  rel: 'stylesheet',
+                  href: joinURL('/', cssFile),
+                  type: 'text/css',
+                },
+              }),
+            )
+
             routes[k] = {
               ...v,
+              assets: [...(v.assets || []), ...cssAssetsList],
               preloads,
             }
           }

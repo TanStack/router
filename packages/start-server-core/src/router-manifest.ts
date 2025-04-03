@@ -1,5 +1,6 @@
 // @ts-expect-error
 import tsrStartManifest from 'tsr:start-manifest'
+import { rootRouteId } from '@tanstack/router-core'
 import type { Manifest } from '@tanstack/router-core'
 
 /**
@@ -11,8 +12,8 @@ import type { Manifest } from '@tanstack/router-core'
 export function getStartManifest() {
   const startManifest = tsrStartManifest() as Manifest
 
-  const rootRoute = (startManifest.routes.__root__ =
-    startManifest.routes.__root__ || {})
+  const rootRoute = (startManifest.routes[rootRouteId] =
+    startManifest.routes[rootRouteId] || {})
 
   rootRoute.assets = rootRoute.assets || []
 
@@ -57,7 +58,7 @@ export function getStartManifest() {
   const manifest = {
     ...startManifest,
     routes: Object.fromEntries(
-      Object.entries(startManifest.routes).map(([k, v]: any) => {
+      Object.entries(startManifest.routes).map(([k, v]: [string, any]) => {
         const { preloads, assets } = v
         return [
           k,

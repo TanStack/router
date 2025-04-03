@@ -48,9 +48,11 @@ export function startManifestPlugin(
           'node_modules/.tanstack-start/client-dist/.vite/manifest.json',
         )
 
-        let manifest: ViteManifest
+        let viteManifest: ViteManifest
         try {
-          manifest = JSON.parse(readFileSync(clientViteManifestPath, 'utf-8'))
+          viteManifest = JSON.parse(
+            readFileSync(clientViteManifestPath, 'utf-8'),
+          )
         } catch (err) {
           console.error(err)
           throw new Error(
@@ -84,7 +86,7 @@ export function startManifestPlugin(
         let entryFile: ViteManifestChunk | undefined
 
         const filesByRouteFilePath: ViteManifest = Object.fromEntries(
-          Object.entries(manifest).map(([k, v]) => {
+          Object.entries(viteManifest).map(([k, v]) => {
             if (v.isEntry) {
               entryFile = v
             }
@@ -109,15 +111,28 @@ export function startManifestPlugin(
 
           if (file) {
             const preloads = (file.imports ?? []).map((d) =>
-              path.join('/', manifest[d]!.file),
+              path.join('/', viteManifest[d]!.file),
             )
 
             if (file.file) {
               preloads.unshift(path.join('/', file.file))
             }
 
+            const cssFiles = file.css ?? []
+            const cssAssetsList: Array<RouterManagedTag> = cssFiles.map(
+              (cssFile) => ({
+                tag: 'link',
+                attrs: {
+                  rel: 'stylesheet',
+                  href: joinURL('/', cssFile),
+                  type: 'text/css',
+                },
+              }),
+            )
+
             routes[k] = {
               ...v,
+              assets: [...(v.assets || []), ...cssAssetsList],
               preloads,
             }
           }
@@ -127,7 +142,7 @@ export function startManifestPlugin(
           routes[rootRouteId]!.preloads = [
             path.join('/', entryFile.file),
             ...(entryFile.imports?.map((d) =>
-              path.join('/', manifest[d]!.file),
+              path.join('/', viteManifest[d]!.file),
             ) || []),
           ]
 
