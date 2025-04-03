@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { joinURL } from 'ufo'
+import { rootRouteId } from '@tanstack/router-core'
 import type {
   PluginOption,
   ResolvedConfig,
@@ -123,7 +124,7 @@ export function startManifestPlugin(
         })
 
         if (entryFile) {
-          routes.__root__!.preloads = [
+          routes[rootRouteId]!.preloads = [
             path.join('/', entryFile.file),
             ...(entryFile.imports?.map((d) =>
               path.join('/', manifest[d]!.file),
@@ -131,7 +132,7 @@ export function startManifestPlugin(
           ]
 
           // Gather all the CSS files from the entry file in
-          // the `css` key and add them to the __root__ route
+          // the `css` key and add them to the root route
           const entryCssFiles = entryFile.css ?? []
           const entryCssAssetsList: Array<RouterManagedTag> = entryCssFiles.map(
             (cssFile) => ({
@@ -144,8 +145,8 @@ export function startManifestPlugin(
             }),
           )
 
-          routes.__root__!.assets = [
-            ...(routes.__root__!.assets || []),
+          routes[rootRouteId]!.assets = [
+            ...(routes[rootRouteId]!.assets || []),
             ...entryCssAssetsList,
             {
               tag: 'script',
@@ -181,7 +182,7 @@ export function startManifestPlugin(
         }
 
         // @ts-expect-error
-        recurseRoute(routes.__root__)
+        recurseRoute(routes[rootRouteId])
 
         const routesManifest = {
           routes,

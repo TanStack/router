@@ -22,6 +22,9 @@ import { fillTemplate, getTargetTemplate } from './template'
 import type { FsRouteType, GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
+// Maybe import this from `@tanstack/router-core` in the future???
+const rootRouteId = '__root__'
+
 let latestTask = 0
 const routeGroupPatternRegex = /\(.+\)/g
 const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
@@ -727,14 +730,14 @@ FileRoutesByPath['${routeNode.routePath}']['fullPath']
 }`
             : '',
           `export interface FileRoutesById {
-  '__root__': typeof rootRoute,
+  '${rootRouteId}': typeof rootRoute,
   ${[...createRouteNodesById(routeNodes).entries()].map(([id, routeNode]) => {
     return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
 }`,
           ENABLED_SERVER_ROUTES
             ? `export interface ServerFileRoutesById {
-  ${rootRouteNode.hasServerRoute ? `'__root__': typeof rootServerRoute,` : ''}
+  ${rootRouteNode.hasServerRoute ? `'${rootRouteId}': typeof rootServerRoute,` : ''}
   ${[...createRouteNodesById(routeNodes).entries()]
     .filter(([_, routeNode]) => routeNode.hasServerRoute)
     .map(([id, routeNode]) => {
@@ -747,7 +750,7 @@ FileRoutesByPath['${routeNode.routePath}']['fullPath']
   fullPaths: ${routeNodes.length > 0 ? [...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|') : 'never'}
   fileRoutesByTo: FileRoutesByTo
   to: ${routeNodes.length > 0 ? [...createRouteNodesByTo(routeNodes).keys()].map((to) => `'${to}'`).join('|') : 'never'}
-  id: ${[`'__root__'`, ...[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`)].join('|')}
+  id: ${[`'${rootRouteId}'`, ...[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`)].join('|')}
   fileRoutesById: FileRoutesById
   ${ENABLED_SERVER_ROUTES ? `serverFileRoutesById: ServerFileRoutesById` : ''}
 }`,
@@ -766,7 +769,7 @@ FileRoutesByPath['${routeNode.routePath}']['fullPath']
 
   const createRouteManifest = () => {
     const routesManifest = {
-      __root__: {
+      [rootRouteId]: {
         filePath: rootRouteNode.filePath,
         children: routeTree.map((d) => d.routePath),
       },
