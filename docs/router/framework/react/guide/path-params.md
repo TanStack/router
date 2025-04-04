@@ -111,7 +111,6 @@ function Component() {
 
 Notice that the function style is useful when you need to persist params that are already in the URL for other routes. This is because the function style will receive the current params as an argument, allowing you to modify them as needed and return the final params object.
 
-
 ## Validate Path Params
 
 You can ensure your route parameters are correctly formatted. This helps prevent invalid inputs and improves type safety.
@@ -141,8 +140,6 @@ function PostComponent() {
   return <div>Viewing post with ID: {postId}</div>
 }
 ```
-
-
 
 ## Allowed Characters
 
