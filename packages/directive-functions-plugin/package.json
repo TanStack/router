@@ -76,7 +76,7 @@
     "babel-dead-code-elimination": "^1.0.10",
     "dedent": "^1.5.3",
     "tiny-invariant": "^1.3.3",
-    "vite": "6.1.3"
+    "vite": "6.1.4"
   },
   "devDependencies": {
     "@types/babel__code-frame": "^7.0.6",
