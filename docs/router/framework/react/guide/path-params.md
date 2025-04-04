@@ -111,6 +111,39 @@ function Component() {
 
 Notice that the function style is useful when you need to persist params that are already in the URL for other routes. This is because the function style will receive the current params as an argument, allowing you to modify them as needed and return the final params object.
 
+
+## Validate Path Params
+
+You can ensure your route parameters are correctly formatted. This helps prevent invalid inputs and improves type safety.
+
+<ul>
+  <li>Why Validate Path Params?</li>
+    <ul>
+      <li>Prevents invalid route parameters before they reach your component</li>
+      <li>Ensures correct data types, reducing runtime errors</li>
+      <li>Improves maintainability, especially when working with APIs that expect specific formats</li>
+    </ul>
+  </li>
+</ul>
+
+Here's an example using the Zod library (but feel free to use any validation library you want) to both validate and type the search params in a single step:
+
+```tsx
+export const Route = createFileRoute('/posts/$postId')({
+  component: PostComponent,
+  params: z.object({
+    postId: z.string().uuid(), // Ensures postId is a valid UUID
+  }),
+})
+
+function PostComponent() {
+  const { postId } = Route.useParams()
+  return <div>Viewing post with ID: {postId}</div>
+}
+```
+
+
+
 ## Allowed Characters
 
 By default, path params are escaped with `encodeURIComponent`. If you want to allow other valid URI characters (e.g. `@` or `+`), you can specify that in your [RouterOptions](../api/router/RouterOptionsType.md#pathparamsallowedcharacters-property)
