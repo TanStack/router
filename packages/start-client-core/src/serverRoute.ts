@@ -101,10 +101,13 @@ export function createServerRoute<
                 upperPropKey as keyof typeof resolvedOpts.methods
               ] as ((...args: Array<any>) => any) | undefined
               if (method) {
-                return fetch(`${resolvedOpts.pathname}/${propKey}`, {
-                  method: upperPropKey,
-                  ...args[0],
-                })
+                return fetch(
+                  new URL(`${resolvedOpts.pathname}/${propKey}`, args[0].url),
+                  {
+                    method: upperPropKey,
+                    ...args[0],
+                  },
+                )
               }
             }
             throw new Error(`Method ${String(propKey)} not found`)

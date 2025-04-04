@@ -24,9 +24,7 @@ export const ServerRoute = createServerFileRoute().methods((api) => ({
 
 export const Route = createFileRoute({
   loader: () => {
-    return ServerRoute.client.get().catch(() => {
-      throw new Error('Failed to fetch users')
-    })
+    return ServerRoute.client.get()
   },
   component: UsersComponent,
 })
