@@ -98,4 +98,10 @@ describe('decode function', () => {
       key: 'value=',
     })
   })
+
+  it('should handle decoding a query with plus', () => {
+    const queryString = 'q=red%2Byellow+orange'
+    const decodedObj = decode(queryString)
+    expect(decodedObj).toEqual({ q: 'red+yellow orange' })
+  })
 })
