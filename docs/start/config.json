@@ -178,6 +178,10 @@
               "to": "framework/react/examples/start-supabase-basic"
             },
             {
+              "label": "Basic + Lingui i18n",
+              "to": "framework/react/examples/start-basic-i18n-lingui"
+            },
+            {
               "label": "Trellaux + Convex",
               "to": "framework/react/examples/start-convex-trellaux"
             },
