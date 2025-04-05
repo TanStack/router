@@ -21,13 +21,13 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.51.1",
     "@types/node": "^22.10.2",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "vite-plugin-solid": "^2.11.2",
+    "vite-plugin-solid": "^2.11.6",
     "combinate": "^1.1.11",
-    "postcss": "^8.5.1",
-    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "autoprefixer": "^10.4.21",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"
