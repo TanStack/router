@@ -5614,6 +5614,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -7011,6 +7014,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -7034,6 +7040,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
