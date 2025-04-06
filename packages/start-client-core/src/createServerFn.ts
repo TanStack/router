@@ -659,12 +659,42 @@ export function createServerFnStaticCache(
   return serverFnStaticCache
 }
 
+/**
+ * This is a simple hash function for generating a hash from a string to make the filenames shorter.
+ *
+ * It is not cryptographically secure (as its using SHA-1) and should not be used for any security purposes.
+ *
+ * It is only used to generate a hash for the static cache filenames.
+ *
+ * @param message - The input string to hash.
+ * @returns A promise that resolves to the SHA-1 hash of the input string in hexadecimal format.
+ *
+ * @example
+ * ```typescript
+ * const hash = await sha1Hash("hello");
+ * console.log(hash); // Outputs the SHA-1 hash of "hello" -> "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"
+ * ```
+ */
+async function sha1Hash(message: string): Promise<string> {
+  // Encode the string as UTF-8
+  const msgBuffer = new TextEncoder().encode(message)
+
+  // Hash the message
+  const hashBuffer = await crypto.subtle.digest('SHA-1', msgBuffer)
+
+  // Convert the ArrayBuffer to a string
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  return hashHex
+}
+
 setServerFnStaticCache(() => {
-  const getStaticCacheUrl = (
+  const getStaticCacheUrl = async (
     options: ServerFnMiddlewareResult,
     hash: string,
   ) => {
-    return `/__tsr/staticServerFnCache/${options.functionId}__${hash}.json`
+    const filename = await sha1Hash(`${options.functionId}__${hash}`)
+    return `/__tsr/staticServerFnCache/${filename}.json`
   }
 
   const jsonToFilenameSafeString = (json: any) => {
@@ -695,7 +725,7 @@ setServerFnStaticCache(() => {
     getItem: async (ctx) => {
       if (typeof document === 'undefined') {
         const hash = jsonToFilenameSafeString(ctx.data)
-        const url = getStaticCacheUrl(ctx, hash)
+        const url = await getStaticCacheUrl(ctx, hash)
         const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
 
         // Use fs instead of fetch to read from filesystem
@@ -728,7 +758,7 @@ setServerFnStaticCache(() => {
       const path = await import('node:path')
 
       const hash = jsonToFilenameSafeString(ctx.data)
-      const url = getStaticCacheUrl(ctx, hash)
+      const url = await getStaticCacheUrl(ctx, hash)
       const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
       const filePath = path.join(publicUrl, url)
 
@@ -740,7 +770,7 @@ setServerFnStaticCache(() => {
     },
     fetchItem: async (ctx) => {
       const hash = jsonToFilenameSafeString(ctx.data)
-      const url = getStaticCacheUrl(ctx, hash)
+      const url = await getStaticCacheUrl(ctx, hash)
 
       let result: any = staticClientCache?.get(url)
 
