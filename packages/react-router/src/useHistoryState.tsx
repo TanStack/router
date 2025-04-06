@@ -1,5 +1,5 @@
 import { useMatch } from './useMatch'
-import { useRouterState } from './useRouterState'
+import { useLocation } from './useLocation'
 import type {
   AnyRouter,
   Constrain,
@@ -16,7 +16,6 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 
-// Resolving HistoryState from our custom implementation
 type ResolveUseHistoryState<
   TRouter extends AnyRouter,
   TFrom,
@@ -76,7 +75,7 @@ export type UseHistoryStateRoute<out TFrom> = <
 
 export function useHistoryState<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends string | undefined = undefined,
+  const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TThrow extends boolean = true,
   TState = TStrict extends false
@@ -98,14 +97,12 @@ export function useHistoryState<
   TThrow
 > {
   return useMatch({
-    from: opts.from,
+    from: opts.from!,
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
     structuralSharing: opts.structuralSharing,
     select: () => {
-      const locationState = useRouterState({
-        select: (s) => s.location.state,
-      });
+      const locationState = useLocation().state
       const typedState = locationState as unknown as ResolveUseHistoryState<TRouter, TFrom, TStrict>;
       return opts.select ? opts.select(typedState) : typedState;
     },
