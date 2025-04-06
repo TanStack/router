@@ -4,7 +4,7 @@ import { hashPassword, prismaClient } from '~/utils/prisma'
 import { Login } from '~/components/Login'
 import { useAppSession } from '~/utils/session'
 
-export const loginFn = createServerFn()
+export const loginFn = createServerFn({ method: 'POST' })
   .validator((d) => d as { email: string; password: string })
   .handler(async ({ data }) => {
     // Find the user

@@ -3,7 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { Login } from '../components/Login'
 import { getSupabaseServerClient } from '../utils/supabase'
 
-export const loginFn = createServerFn()
+export const loginFn = createServerFn({ method: 'POST' })
   .validator((d) => d as { email: string; password: string })
   .handler(async ({ data }) => {
     const supabase = await getSupabaseServerClient()

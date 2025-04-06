@@ -4,7 +4,7 @@ import { useMutation } from '../hooks/useMutation'
 import { Auth } from '../components/Auth'
 import { getSupabaseServerClient } from '../utils/supabase'
 
-export const signupFn = createServerFn()
+export const signupFn = createServerFn({ method: 'POST' })
   .validator(
     (d: unknown) =>
       d as { email: string; password: string; redirectUrl?: string },
