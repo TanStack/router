@@ -4,6 +4,8 @@ title: Search Params
 
 Similar to how TanStack Query made handling server-state in your React and Solid applications a breeze, TanStack Router aims to unlock the power of URL search params in your applications.
 
+> 🧠 If you are on a really old browser, like IE11, you may need to use a polyfill for `URLSearchParams`.
+
 ## Why not just use `URLSearchParams`?
 
 We get it, you've been hearing a lot of "use the platform" lately and for the most part, we agree. However, we also believe it's important to recognize where the platform falls short for more advanced use-cases and we believe `URLSearchParams` is one of these circumstances.
