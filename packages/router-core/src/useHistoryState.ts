@@ -1,4 +1,4 @@
-import type { RouteById } from './routeInfo'
+import type { FullStateSchema, RouteById } from './routeInfo'
 import type { AnyRouter } from './router'
 import type { Expand } from './utils'
 
@@ -7,7 +7,7 @@ export type UseHistoryStateResult<
   TFrom,
   TStrict extends boolean,
   TSelected,
-> = TSelected extends never
+> = unknown extends TSelected
   ? ResolveUseHistoryState<TRouter, TFrom, TStrict>
   : TSelected
 
@@ -16,5 +16,5 @@ export type ResolveUseHistoryState<
   TFrom,
   TStrict extends boolean,
 > = TStrict extends false
-  ? Expand<Partial<Record<string, unknown>>>
+  ? FullStateSchema<TRouter['routeTree']>
   : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['fullStateSchema']>
