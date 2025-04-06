@@ -9,9 +9,9 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.114.33",
-    "@tanstack/solid-router-devtools": "^1.114.33",
-    "@tanstack/solid-start": "^1.114.34",
+    "@tanstack/solid-router": "^1.115.0",
+    "@tanstack/solid-router-devtools": "^1.115.0",
+    "@tanstack/solid-start": "^1.115.0",
     "solid-js": "^1.9.5",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
