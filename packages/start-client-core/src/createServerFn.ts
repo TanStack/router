@@ -652,8 +652,7 @@ export function createServerFnStaticCache(
 }
 
 /**
- * This is a simple hash function for generating a hash from a string to make
- * the filenames shorter.
+ * This is a simple hash function for generating a hash from a string to make the filenames shorter.
  *
  * It is not cryptographically secure (as its using SHA-1) and should not be used for any security purposes.
  *
