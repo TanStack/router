@@ -71,6 +71,7 @@ export type {
   SerializerParseBy,
   SerializerStringify,
   SerializerStringifyBy,
+  SerializerExtensions,
 } from './serializer'
 
 export type { ParsedLocation } from './location'
@@ -381,6 +382,7 @@ export {
   getCssSelector,
   scrollRestorationCache,
   setupScrollRestoration,
+  handleHashScroll,
 } from './scroll-restoration'
 
 export type {
