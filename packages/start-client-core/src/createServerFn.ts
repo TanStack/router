@@ -664,7 +664,7 @@ export function createServerFnStaticCache(
  * @example
  * ```typescript
  * const hash = await sha1Hash("hello");
- * console.log(hash); // Outputs the SHA-1 hash of "hello"
+ * console.log(hash); // Outputs the SHA-1 hash of "hello" -> "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"
  * ```
  */
 async function sha1Hash(message: string): Promise<string> {
