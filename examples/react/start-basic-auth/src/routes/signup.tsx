@@ -5,7 +5,7 @@ import { useMutation } from '~/hooks/useMutation'
 import { Auth } from '~/components/Auth'
 import { useAppSession } from '~/utils/session'
 
-export const signupFn = createServerFn()
+export const signupFn = createServerFn({ method: 'POST' })
   .validator(
     (d) =>
       d as {
