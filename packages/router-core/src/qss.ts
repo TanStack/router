@@ -1,3 +1,12 @@
+/**
+ * Program is a reimplementation of the `qss` package:
+ * Copyright (c) Luke Edwards luke.edwards05@gmail.com, MIT License
+ * https://github.com/lukeed/qss/blob/master/license.md
+ *
+ * This reimplementation uses modern browser APIs
+ * (namely URLSearchParams) and TypeScript while still
+ * maintaining the original functionality and interface.
+ */
 import { hasUriEncodedChars } from './utils'
 
 /**
