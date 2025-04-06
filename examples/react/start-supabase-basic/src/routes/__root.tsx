@@ -22,7 +22,9 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
     return null
   }
 
-  return data.user
+  return {
+    email: data.user.email,
+  }
 })
 
 export const Route = createRootRoute({

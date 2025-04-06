@@ -5,14 +5,9 @@ import { useMutation } from '~/hooks/useMutation'
 import { Auth } from '~/components/Auth'
 import { useAppSession } from '~/utils/session'
 
-export const signupFn = createServerFn()
+export const signupFn = createServerFn({ method: 'POST' })
   .validator(
-    (d) =>
-      d as {
-        email: string
-        password: string
-        redirectUrl?: string
-      },
+    (d: { email: string; password: string; redirectUrl?: string }) => d,
   )
   .handler(async ({ data }) => {
     // Check if the user already exists
