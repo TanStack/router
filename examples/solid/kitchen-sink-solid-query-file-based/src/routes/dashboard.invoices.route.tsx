@@ -1,4 +1,9 @@
-import { Link, MatchRoute, Outlet, createFileRoute } from '@tanstack/solid-router'
+import {
+  Link,
+  MatchRoute,
+  Outlet,
+  createFileRoute,
+} from '@tanstack/solid-router'
 import { useQuery } from '@tanstack/solid-query'
 import { Spinner } from '../components/Spinner'
 import { invoicesQueryOptions } from '../utils/queryOptions'
