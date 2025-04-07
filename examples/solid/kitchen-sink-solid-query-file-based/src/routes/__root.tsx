@@ -12,7 +12,7 @@ import type { Auth } from '../utils/auth'
 
 function RouterSpinner() {
   const isLoading = useRouterState({ select: (s) => s.status === 'pending' })
-  return <Spinner show={isLoading()} />
+  return <Spinner show={isLoading} />
 }
 
 export const Route = createRootRouteWithContext<{

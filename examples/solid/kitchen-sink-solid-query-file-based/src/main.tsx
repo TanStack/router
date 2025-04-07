@@ -19,7 +19,7 @@ const router = createRouter({
   routeTree,
   defaultPendingComponent: () => (
     <div class={`p-2 text-2xl`}>
-      <Spinner />
+      <Spinner show={() => true} />
     </div>
   ),
   defaultErrorComponent: ({ error }) => <ErrorComponent error={error} />,
