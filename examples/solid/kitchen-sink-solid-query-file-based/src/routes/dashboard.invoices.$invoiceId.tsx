@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { Link, useNavigate } from '@tanstack/solid-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/solid-router'
 import { useQuery } from '@tanstack/solid-query'
 import { z } from 'zod'
 import { InvoiceFields } from '../components/InvoiceFields'
@@ -8,7 +8,7 @@ import {
   useUpdateInvoiceMutation,
 } from '../utils/queryOptions'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/invoices/$invoiceId')({
   params: {
     parse: (params) => ({
       invoiceId: z.number().int().parse(Number(params.invoiceId)),
@@ -64,7 +64,7 @@ function InvoiceComponent() {
       class="p-2 space-y-2"
     >
       <InvoiceFields
-        invoice={invoice!}
+        invoice={invoice}
         disabled={updateInvoiceMutation.status === 'pending'}
       />
       <div>

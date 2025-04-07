@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/solid-query'
+import { createFileRoute } from '@tanstack/solid-router'
 import { invoicesQueryOptions } from '../utils/queryOptions'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/')({
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
   component: DashboardIndexComponent,

@@ -1,16 +1,16 @@
-import { Link, MatchRoute, Outlet } from '@tanstack/solid-router'
-import { createQuery } from '@tanstack/solid-query'
+import { Link, MatchRoute, Outlet, createFileRoute } from '@tanstack/solid-router'
+import { useQuery } from '@tanstack/solid-query'
 import { Spinner } from '../components/Spinner'
 import { invoicesQueryOptions } from '../utils/queryOptions'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/invoices')({
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
   component: InvoicesComponent,
 })
 
 function InvoicesComponent() {
-  const invoicesQuery = createQuery(() => invoicesQueryOptions())
+  const invoicesQuery = useQuery(() => invoicesQueryOptions())
   const invoices = invoicesQuery.data
 
   return (

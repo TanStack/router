@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/solid-query'
 import { z } from 'zod'
+import { createFileRoute } from '@tanstack/solid-router'
 import { userQueryOptions } from '../utils/queryOptions'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/users/user')({
   validateSearch: z.object({
     userId: z.number(),
   }),

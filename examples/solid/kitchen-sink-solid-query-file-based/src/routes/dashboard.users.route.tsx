@@ -4,17 +4,18 @@ import {
   Link,
   MatchRoute,
   Outlet,
+  createFileRoute,
   retainSearchParams,
   useNavigate,
 } from '@tanstack/solid-router'
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
 import { z } from 'zod'
 import { Spinner } from '../components/Spinner'
 import { usersQueryOptions } from '../utils/queryOptions'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/users')({
   validateSearch: z.object({
     usersView: z
       .object({
@@ -36,7 +37,7 @@ export const Route = createFileRoute({
 function UsersComponent() {
   const navigate = useNavigate({ from: Route.fullPath })
   const search = Route.useSearch()
-  const usersQuery = createQuery(() => usersQueryOptions(Route.useLoaderDeps()))
+  const usersQuery = useQuery(() => usersQueryOptions(Route.useLoaderDeps()))
   const users = usersQuery.data
   const sortBy = search().usersView?.sortBy ?? 'name'
   const filterBy = search().usersView?.filterBy

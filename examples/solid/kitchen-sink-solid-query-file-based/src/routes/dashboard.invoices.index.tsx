@@ -1,9 +1,10 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import { InvoiceFields } from '../components/InvoiceFields'
 import { Spinner } from '../components/Spinner'
 import { useCreateInvoiceMutation } from '../utils/queryOptions'
 import type { Invoice } from '../utils/mockTodos'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/invoices/')({
   component: InvoicesIndexComponent,
 })
 

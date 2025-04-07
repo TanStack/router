@@ -1,7 +1,7 @@
-import { redirect } from '@tanstack/solid-router'
+import { createFileRoute, redirect } from '@tanstack/solid-router'
 import { auth } from '../utils/auth'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/_auth')({
   // Before loading, authenticate the user via our auth context
   // This will also happen during prefetching (e.g. hovering over links, etc)
   beforeLoad: ({ context, location }) => {
