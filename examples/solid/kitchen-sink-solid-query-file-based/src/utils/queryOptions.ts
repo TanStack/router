@@ -1,4 +1,4 @@
-import { createMutation, queryOptions } from '@tanstack/solid-query'
+import { queryOptions, useMutation } from '@tanstack/solid-query'
 import { queryClient } from '../main'
 import {
   fetchInvoiceById,
@@ -37,14 +37,14 @@ export const userQueryOptions = (userId: number) =>
   })
 
 export const useCreateInvoiceMutation = () => {
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationFn: postInvoice,
     onSuccess: () => queryClient.invalidateQueries(),
   }))
 }
 
 export const useUpdateInvoiceMutation = (invoiceId: number) => {
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationFn: patchInvoice,
     onSuccess: () => queryClient.invalidateQueries(),
     gcTime: 1000 * 10,
