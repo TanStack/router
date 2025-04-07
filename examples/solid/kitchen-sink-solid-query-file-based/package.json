@@ -9,8 +9,8 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.71.0",
-    "@tanstack/solid-query-devtools": "^5.71.0",
+    "@tanstack/solid-query": "^5.72.0",
+    "@tanstack/solid-query-devtools": "^5.72.0",
     "@tanstack/solid-router": "^1.114.29",
     "@tanstack/solid-router-devtools": "^1.114.29",
     "@tanstack/router-plugin": "^1.114.29",

@@ -1,4 +1,4 @@
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
 import { invoicesQueryOptions } from '../utils/queryOptions'
 
 export const Route = createFileRoute({
@@ -8,7 +8,7 @@ export const Route = createFileRoute({
 })
 
 function DashboardIndexComponent() {
-  const invoicesQuery = createQuery(() => invoicesQueryOptions())
+  const invoicesQuery = useQuery(() => invoicesQueryOptions())
   const invoices = invoicesQuery.data
 
   return (

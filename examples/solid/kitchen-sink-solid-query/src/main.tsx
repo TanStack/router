@@ -22,9 +22,9 @@ import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import {
   QueryClient,
   QueryClientProvider,
-  createMutation,
-  createQuery,
   queryOptions,
+  useMutation,
+  useQuery,
 } from '@tanstack/solid-query'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import { z } from 'zod'
@@ -84,7 +84,7 @@ const userQueryOptions = (userId: number) =>
   })
 
 const useCreateInvoiceMutation = () => {
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ['invoices', 'create'],
     mutationFn: postInvoice,
     onSuccess: () => queryClient.invalidateQueries(),
@@ -92,7 +92,7 @@ const useCreateInvoiceMutation = () => {
 }
 
 const useUpdateInvoiceMutation = (invoiceId: number) => {
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ['invoices', 'update', invoiceId],
     mutationFn: patchInvoice,
     onSuccess: () => queryClient.invalidateQueries(),
@@ -257,7 +257,7 @@ const dashboardIndexRoute = createRoute({
 })
 
 function DashboardIndexComponent() {
-  const invoicesQuery = createQuery(() => invoicesQueryOptions())
+  const invoicesQuery = useQuery(() => invoicesQueryOptions())
   const invoices = invoicesQuery.data
 
   return (
@@ -279,7 +279,7 @@ const invoicesLayoutRoute = createRoute({
 })
 
 function InvoicesLayoutComponent() {
-  const invoicesQuery = createQuery(() => invoicesQueryOptions())
+  const invoicesQuery = useQuery(() => invoicesQueryOptions())
   const invoices = invoicesQuery.data
   // const updateInvoiceMutation = useUpdateInvoiceMutation()
   // const createInvoiceMutation = useCreateInvoiceMutation()
@@ -430,7 +430,7 @@ function InvoiceComponent() {
   const params = invoiceRoute.useParams()
   const search = invoiceRoute.useSearch()
   const navigate = useNavigate({ from: invoiceRoute.fullPath })
-  const invoiceQuery = createQuery(() =>
+  const invoiceQuery = useQuery(() =>
     invoiceQueryOptions(params().invoiceId),
   )
   const invoice = invoiceQuery.data
@@ -551,7 +551,7 @@ const usersLayoutRoute = createRoute({
 function UsersComponent() {
   const navigate = useNavigate({ from: usersLayoutRoute.fullPath })
   const search = usersLayoutRoute.useSearch()
-  const usersQuery = createQuery(() =>
+  const usersQuery = useQuery(() =>
     usersQueryOptions(usersLayoutRoute.useLoaderDeps()),
   )
   const users = usersQuery.data
@@ -718,7 +718,7 @@ const userRoute = createRoute({
 
 function UserComponent() {
   const search = userRoute.useSearch()
-  const userQuery = createQuery(() => userQueryOptions(search().userId))
+  const userQuery = useQuery(() => userQueryOptions(search().userId))
   const user = userQuery.data
 
   return (

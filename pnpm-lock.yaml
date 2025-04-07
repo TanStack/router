@@ -6701,11 +6701,11 @@ importers:
   examples/solid/kitchen-sink-solid-query:
     dependencies:
       '@tanstack/solid-query':
-        specifier: ^5.71.0
-        version: 5.71.0(solid-js@1.9.5)
+        specifier: ^5.72.0
+        version: 5.72.0(solid-js@1.9.5)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.71.0
-        version: 5.71.0(@tanstack/solid-query@5.71.0(solid-js@1.9.5))(solid-js@1.9.5)
+        specifier: ^5.72.0
+        version: 5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
         specifier: ^1.114.29
         version: link:../../../packages/solid-router
@@ -6732,17 +6732,17 @@ importers:
         version: 3.4.17
       zod:
         specifier: ^3.24.2
-        version: 3.24.2
+        version: 3.25.57
     devDependencies:
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 6.1.2
-        version: 6.1.2(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.6
-        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.2(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/kitchen-sink-solid-query-file-based:
     dependencies:
@@ -6750,11 +6750,11 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
-        specifier: ^5.71.0
-        version: 5.71.0(solid-js@1.9.5)
+        specifier: ^5.72.0
+        version: 5.72.0(solid-js@1.9.5)
       '@tanstack/solid-query-devtools':
-        specifier: ^5.71.0
-        version: 5.71.0(@tanstack/solid-query@5.71.0(solid-js@1.9.5))(solid-js@1.9.5)
+        specifier: ^5.72.0
+        version: 5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
         specifier: ^1.114.29
         version: link:../../../packages/solid-router
@@ -6781,17 +6781,17 @@ importers:
         version: 3.4.17
       zod:
         specifier: ^3.24.2
-        version: 3.24.2
+        version: 3.25.57
     devDependencies:
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 6.1.2
-        version: 6.1.2(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.6
-        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.2(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/quickstart-file-based:
     dependencies:
@@ -11641,13 +11641,13 @@ packages:
       '@tanstack/solid-query': ^5.72.2
       solid-js: ^1.6.0
 
-  '@tanstack/solid-query@5.72.2':
-    resolution: {integrity: sha512-ty4J5q+DIPEs7xB01TqkTfx0wYkcccJaofb378Nq/HfWoQ/0300A8TM7CU7YotJUmVWA3qwBHnJLChXlNzX4ow==}
+  '@tanstack/solid-query@5.72.0':
+    resolution: {integrity: sha512-zQ27dZEakN05hZB9C+qTKgtBU3N7Li3rx++nUOd4K5LtrTMjiIEp2FEbYoGe9B0Pn9tF5CIthc9fknl/qBVI5g==}
     peerDependencies:
       solid-js: ^1.6.0
 
-  '@tanstack/solid-query@5.71.0':
-    resolution: {integrity: sha512-Gz3MyZtOda9ppPnoPcaohEqwj3ovlU1Mg1IuOr0BSIe4EzkRW8Wpn47VqMi2I2wtryNStPZ2tIU/N98w8IfO/Q==}
+  '@tanstack/solid-query@5.72.2':
+    resolution: {integrity: sha512-ty4J5q+DIPEs7xB01TqkTfx0wYkcccJaofb378Nq/HfWoQ/0300A8TM7CU7YotJUmVWA3qwBHnJLChXlNzX4ow==}
     peerDependencies:
       solid-js: ^1.6.0
 
@@ -21059,20 +21059,26 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
+  '@tanstack/solid-query-devtools@5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.5))(solid-js@1.9.5)':
+    dependencies:
+      '@tanstack/query-devtools': 5.72.2
+      '@tanstack/solid-query': 5.72.0(solid-js@1.9.5)
+      solid-js: 1.9.5
+
   '@tanstack/solid-query-devtools@5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)':
     dependencies:
       '@tanstack/query-devtools': 5.72.2
       '@tanstack/solid-query': 5.72.2(solid-js@1.9.5)
       solid-js: 1.9.5
 
-  '@tanstack/solid-query@5.72.2(solid-js@1.9.5)':
+  '@tanstack/solid-query@5.72.0(solid-js@1.9.5)':
     dependencies:
       '@tanstack/query-core': 5.66.0
       solid-js: 1.9.5
 
-  '@tanstack/solid-query@5.71.0(solid-js@1.9.5)':
+  '@tanstack/solid-query@5.72.2(solid-js@1.9.5)':
     dependencies:
-      '@tanstack/query-core': 5.71.0
+      '@tanstack/query-core': 5.66.0
       solid-js: 1.9.5
 
   '@tanstack/solid-store@0.7.0(solid-js@1.9.5)':

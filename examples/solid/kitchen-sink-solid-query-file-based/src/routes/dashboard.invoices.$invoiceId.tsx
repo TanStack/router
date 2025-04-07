@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import { Link, useNavigate } from '@tanstack/solid-router'
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
 import { z } from 'zod'
 import { InvoiceFields } from '../components/InvoiceFields'
 import {
@@ -33,7 +33,7 @@ function InvoiceComponent() {
   const search = Route.useSearch()
   const params = Route.useParams()
   const navigate = useNavigate({ from: Route.fullPath })
-  const invoiceQuery = createQuery(() =>
+  const invoiceQuery = useQuery(() =>
     invoiceQueryOptions(params().invoiceId),
   )
   const invoice = invoiceQuery.data
