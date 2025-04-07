@@ -430,9 +430,7 @@ function InvoiceComponent() {
   const params = invoiceRoute.useParams()
   const search = invoiceRoute.useSearch()
   const navigate = useNavigate({ from: invoiceRoute.fullPath })
-  const invoiceQuery = useQuery(() =>
-    invoiceQueryOptions(params().invoiceId),
-  )
+  const invoiceQuery = useQuery(() => invoiceQueryOptions(params().invoiceId))
   const invoice = invoiceQuery.data
   const updateInvoiceMutation = useUpdateInvoiceMutation(params().invoiceId)
   const [notes, setNotes] = Solid.createSignal(search().notes ?? '')
