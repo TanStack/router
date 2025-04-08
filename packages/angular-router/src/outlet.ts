@@ -160,9 +160,7 @@ export class RouteMatch {
   )
   private match$ = this.matchState$.pipe(
     map(({ match }) => match),
-    distinctUntilChanged(
-      (a, b) => !!a && !!b && a.id === b.id && a.status === b.status,
-    ),
+    distinctUntilChanged((a, b) => a.id === b.id && a.status === b.status),
   )
   private matchLoad$ = this.match$.pipe(
     withLatestFrom(this.matchRoute$),
@@ -235,10 +233,8 @@ export class RouteMatch {
                 notFoundCmp = DefaultNotFound
               }
             } else {
-              notFoundCmp = route.options.notFoundComponent?.()
+              notFoundCmp = route.options.notFoundComponent()
             }
-
-            if (!notFoundCmp) return of(null)
 
             const injector = this.router.getRouteInjector(
               route.id + '-not-found',
@@ -302,38 +298,31 @@ export class RouteMatch {
             )
           }
 
-          if (match.status === 'success') {
-            const successComponent = route.options.component?.() || Outlet
+          const successComponent = route.options.component?.() || Outlet
 
-            if (this.cmp === successComponent) {
-              return of({ clearView: false } as const)
-            }
-
-            this.cmpRef = undefined
-            this.cmp = successComponent
-            const injector = this.router.getRouteInjector(
-              route.id,
-              this.injector,
-            )
-            const environmentInjector = this.router.getRouteEnvInjector(
-              route.id,
-              this.environmentInjector,
-              route.options.providers || [],
-              this.router,
-            )
-
-            return of({
-              component: successComponent,
-              injector: Injector.create({
-                providers: [{ provide: MATCH_ID, useValue: match.id }],
-                parent: injector,
-              }),
-              environmentInjector,
-              clearView: true,
-            } as const)
+          if (this.cmp === successComponent) {
+            return of({ clearView: false } as const)
           }
 
-          return of(null)
+          this.cmpRef = undefined
+          this.cmp = successComponent
+          const injector = this.router.getRouteInjector(route.id, this.injector)
+          const environmentInjector = this.router.getRouteEnvInjector(
+            route.id,
+            this.environmentInjector,
+            route.options.providers || [],
+            this.router,
+          )
+
+          return of({
+            component: successComponent,
+            injector: Injector.create({
+              providers: [{ provide: MATCH_ID, useValue: match.id }],
+              parent: injector,
+            }),
+            environmentInjector,
+            clearView: true,
+          } as const)
         }),
       )
     }),
@@ -471,10 +460,8 @@ export class Outlet {
                 notFoundCmp = DefaultNotFound
               }
             } else {
-              notFoundCmp = route.options.notFoundComponent?.()
+              notFoundCmp = route.options.notFoundComponent()
             }
-
-            if (!notFoundCmp) return null
 
             this.renderedId = route.id + '-not-found'
             const injector = this.router.getRouteInjector(

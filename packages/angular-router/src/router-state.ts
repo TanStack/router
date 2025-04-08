@@ -9,6 +9,8 @@ import { shallow } from '@tanstack/router-core'
 import { distinctUntilChanged, map } from 'rxjs'
 import { injectRouterState } from './router'
 
+import type { Observable } from 'rxjs'
+
 import type { Signal, ValueEqualityFn } from '@angular/core'
 import type {
   AnyRouter,
@@ -36,7 +38,9 @@ export function routerState$<
   select,
   injector,
   equal = shallow,
-}: RouterStateOptions<TRouter, TSelected>) {
+}: RouterStateOptions<TRouter, TSelected>): Observable<
+  RouterStateResult<TRouter, TSelected>
+> {
   !injector && assertInInjectionContext(routerState$)
 
   if (!injector) {
@@ -61,7 +65,9 @@ export function routerState<
   select,
   injector,
   equal = shallow,
-}: RouterStateOptions<TRouter, TSelected> = {}) {
+}: RouterStateOptions<TRouter, TSelected> = {}): Signal<
+  RouterStateResult<TRouter, TSelected>
+> {
   !injector && assertInInjectionContext(routerState)
 
   if (!injector) {

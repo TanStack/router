@@ -99,7 +99,7 @@ export class Link {
   private userPreloadDelay = computed(() => this.linkOptions()['preloadDelay'])
 
   private activeOptions = computed(
-    () => this.linkOptions().activeOptions || this.linkActiveOptions() || {},
+    () => this.linkOptions().activeOptions || this.linkActiveOptions(),
   )
   private exactActiveOptions = computed(() => this.activeOptions().exact)
   private includeHashActiveOptions = computed(

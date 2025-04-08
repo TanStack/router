@@ -15,6 +15,7 @@ import {
   distinctUntilChanged,
   map,
   pairwise,
+  startWith,
   tap,
 } from 'rxjs'
 import { injectRouter } from './router'
@@ -39,8 +40,9 @@ export class Transitioner implements OnInit {
     equal: () => false,
   })
   private previousIsLoading$ = this.isLoading$.pipe(
+    startWith(undefined),
     pairwise(),
-    map(([prev, curr]) => prev ?? curr),
+    map(([prev, curr]) => prev ?? !!curr),
   )
 
   private isTransitioning$ = new BehaviorSubject(false)
@@ -56,8 +58,9 @@ export class Transitioner implements OnInit {
     distinctUntilChanged(() => false),
   )
   private previousIsAnyPending$ = this.isAnyPending$.pipe(
+    startWith(undefined),
     pairwise(),
-    map(([prev, curr]) => prev ?? curr),
+    map(([prev, curr]) => prev ?? !!curr),
   )
 
   private isPagePending$ = combineLatest([
@@ -68,8 +71,9 @@ export class Transitioner implements OnInit {
     distinctUntilChanged(() => false),
   )
   private previousIsPagePending$ = this.isPagePending$.pipe(
+    startWith(undefined),
     pairwise(),
-    map(([prev, curr]) => prev ?? curr),
+    map(([prev, curr]) => prev ?? !!curr),
   )
 
   private mountLoadForRouter = { router: this.router, mounted: false }
