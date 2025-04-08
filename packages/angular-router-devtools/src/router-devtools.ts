@@ -11,18 +11,19 @@ import {
   untracked,
 } from '@angular/core'
 import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
-import { injectRouter } from './router'
+import { injectRouter, isDevMode } from '@tanstack/angular-router'
 
 @Directive({
-  selector: 'router-devtools,RouterDevtools',
+  selector: 'tanstack-router-devtools,TanstackRouterDevtools',
   host: { style: 'display: block;' },
 })
-export class RouterDevtools {
+export class TanstackRouterDevtools {
   private injectedRouter = injectRouter()
   private host = inject<ElementRef<HTMLDivElement>>(ElementRef)
   private ngZone = inject(NgZone)
 
   router = input(this.injectedRouter)
+  show = input(isDevMode(), { transform: booleanAttribute })
   initialIsOpen = input(undefined, { transform: booleanAttribute })
   panelOptions = input<Partial<HTMLDivElement>>({})
   closeButtonOptions = input<Partial<HTMLButtonElement>>({})
@@ -35,6 +36,9 @@ export class RouterDevtools {
 
   constructor() {
     afterNextRender(() => {
+      const show = this.show()
+      if (!show) return
+
       const router = untracked(this.router)
       const [
         initialIsOpen,
