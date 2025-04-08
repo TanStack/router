@@ -3,8 +3,8 @@ import {
   Component,
   inject,
   signal,
-} from '@angular/core';
-import { ERROR_COMPONENT_CONTEXT } from './route';
+} from '@angular/core'
+import { ERROR_COMPONENT_CONTEXT } from './route'
 
 @Component({
   selector: 'default-error,DefaultError',
@@ -41,6 +41,6 @@ import { ERROR_COMPONENT_CONTEXT } from './route';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DefaultError {
-  protected context = inject(ERROR_COMPONENT_CONTEXT);
-  protected show = signal(false);
+  protected context = inject(ERROR_COMPONENT_CONTEXT)
+  protected show = signal(false)
 }
