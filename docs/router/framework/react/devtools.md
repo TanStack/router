@@ -13,25 +13,25 @@ When you begin your TanStack Router journey, you'll want these devtools by your 
 The devtools are a separate package that you need to install:
 
 ```sh
-npm install -D @tanstack/react-router-devtools
+npm install @tanstack/react-router-devtools
 ```
 
 or
 
 ```sh
-pnpm add -D @tanstack/react-router-devtools
+pnpm add @tanstack/react-router-devtools
 ```
 
 or
 
 ```sh
-yarn add -D @tanstack/react-router-devtools
+yarn add @tanstack/react-router-devtools
 ```
 
 or
 
 ```sh
-bun add -D @tanstack/react-router-devtools
+bun add @tanstack/react-router-devtools
 ```
 
 ## Import the Devtools
