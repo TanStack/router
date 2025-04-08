@@ -2,10 +2,10 @@ import {
   DefaultNotFound,
   Link,
   Outlet,
-  RouterDevtools,
   createRootRoute,
 } from '@tanstack/angular-router'
 import { ChangeDetectionStrategy, Component } from '@angular/core'
+import { TanstackRouterDevtools } from '@tanstack/angular-router-devtools'
 
 export const rootRoute = createRootRoute({
   component: () => Root,
@@ -24,10 +24,10 @@ export const rootRoute = createRootRoute({
       </a>
     </div>
     <outlet />
-    <router-devtools position="bottom-right" />
+    <TanstackRouterDevtools position="bottom-right" />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Link, Outlet, RouterDevtools],
+  imports: [Link, Outlet, TanstackRouterDevtools],
 })
 export class Root {
   protected doesNotExist: any = '/this-route-does-not-exist'

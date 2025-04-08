@@ -11,6 +11,7 @@
     "@angular/platform-browser": "^19.2.0",
     "@angular/platform-browser-dynamic": "^19.2.0",
     "@tanstack/angular-router": "workspace:*",
+    "@tanstack/angular-router-devtools": "workspace:*",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-devtools-core": "workspace:*",
