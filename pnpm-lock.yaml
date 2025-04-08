@@ -2606,7 +2606,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.28.0)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.26.8)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -2653,10 +2653,14 @@ importers:
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
 <<<<<<< HEAD
+<<<<<<< HEAD
         version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
 =======
         version: 1.0.4(@babel/core@7.26.8)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
 >>>>>>> fba865de8 (feat: introduce @tanstack/angular-router package)
+=======
+        version: 1.0.4(@babel/core@7.28.0)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+>>>>>>> 837a36d73 (chore: use ng-packagr for the build)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -7659,7 +7663,13 @@ importers:
       ng-packagr:
         specifier: ^19.2.0
         version: 19.2.2(@angular/compiler-cli@19.2.14(@angular/compiler@19.2.14)(typescript@5.9.2))(tailwindcss@4.1.11)(tslib@2.8.1)(typescript@5.9.2)
+<<<<<<< HEAD
 >>>>>>> fba865de8 (feat: introduce @tanstack/angular-router package)
+=======
+      premove:
+        specifier: ^4.0.0
+        version: 4.0.0
+>>>>>>> 837a36d73 (chore: use ng-packagr for the build)
 
   packages/arktype-adapter:
     devDependencies:
@@ -18102,6 +18112,11 @@ packages:
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
+
+  premove@4.0.0:
+    resolution: {integrity: sha512-zim/Hr4+FVdCIM7zL9b9Z0Wfd5Ya3mnKtiuDv7L5lzYzanSq6cOcVJ7EFcgK4I0pt28l8H0jX/x3nyog380XgQ==}
+    engines: {node: '>=6'}
+    hasBin: true
 
   prettier@3.4.2:
     resolution: {integrity: sha512-e9MewbtFo+Fevyuxn/4rrcDAaq0IYxPGLvObpQjiZBMAzB9IGmzlnG9RZy3FFas+eBMu2vA0CszMeduow5dIuQ==}
@@ -30302,6 +30317,8 @@ snapshots:
       source-map-js: 1.2.1
 
   prelude-ls@1.2.1: {}
+
+  premove@4.0.0: {}
 
   prettier@3.4.2: {}
 
