@@ -25,7 +25,7 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint",
-    "build": "vite build",
+    "build": "ng-packagr -p ng-package.json -c tsconfig.lib.prod.json && premove ./dist/package.json",
     "test:unit": "vitest"
   },
   "peerDependencies": {
@@ -44,26 +44,27 @@
   "dependencies": {
     "tslib": "^2.3.0"
   },
-  "type": "module",
-  "types": "dist/fesm2022/esm/index.d.ts",
-  "module": "dist/fesm2022/esm/index.js",
   "files": [
     "src",
     "dist"
   ],
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/fesm2022/esm/index.d.ts",
-        "default": "./dist/fesm2022/esm/index.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },  
   "devDependencies": {
-    "ng-packagr": "^19.2.0",
     "@analogjs/vite-plugin-angular": "1.15.1-beta.3",
-    "@analogjs/vitest-angular": "1.15.1-beta.3"
+    "@analogjs/vitest-angular": "1.15.1-beta.3",
+    "ng-packagr": "^19.2.0",
+    "premove": "^4.0.0"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "module": "dist/fesm2022/tanstack-angular-store.mjs",  
+  "exports": {
+    "./package.json": {
+      "default": "./package.json"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/fesm2022/tanstack-angular-router.mjs"
+    }
+  }  
 }
