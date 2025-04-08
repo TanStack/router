@@ -8,6 +8,7 @@ import {
 import { ChangeDetectionStrategy, Component } from '@angular/core'
 
 export const rootRoute = createRootRoute({
+  component: () => Root,
   notFoundComponent: () => DefaultNotFound,
 })
 

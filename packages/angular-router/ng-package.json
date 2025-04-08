@@ -3,7 +3,15 @@
   "lib": {
     "entryFile": "src/index.ts"
   },
-  "allowedNonPeerDependencies": [],
+  "allowedNonPeerDependencies": [
+    "@tanstack/router-core",
+    "@tanstack/history",
+    "@tanstack/router-devtools-core",
+    "jsesc",
+    "solid-js",
+    "tiny-invariant",
+    "tiny-warning"
+  ],
   "dest": "dist",
   "deleteDestPath": false
 }

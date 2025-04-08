@@ -111,9 +111,10 @@
       "@tanstack/eslint-plugin-router": "workspace:*",
       "@tanstack/server-functions-plugin": "workspace:*",
       "@tanstack/directive-functions-plugin": "workspace:*",
-      "@tanstack/router-utils": "workspace:*",
-      "@tanstack/start-static-server-functions": "workspace:*",
-      "@tanstack/nitro-v2-vite-plugin": "workspace:*"
+      "@tanstack/router-utils": "workspace:*"
+    },
+    "patchedDependencies": {
+      "@angular/build": "patches/@angular__build.patch"
     }
   }
 }
