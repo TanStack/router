@@ -1,0 +1,80 @@
+{
+  "name": "angular-basic",
+  "projectType": "application",
+  "sourceRoot": "examples/angular/basic/src",
+  "prefix": "app",
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:application",
+      "options": {
+        "outputPath": "examples/angular/basic/dist/basic",
+        "index": "examples/angular/basic/src/index.html",
+        "browser": "examples/angular/basic/src/main.ts",
+        "polyfills": ["zone.js"],
+        "tsConfig": "examples/angular/basic/tsconfig.app.json",
+        "assets": [{ "glob": "**/*", "input": "public" }],
+        "styles": ["examples/angular/basic/src/styles.css"],
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kB",
+              "maximumError": "1MB"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kB",
+              "maximumError": "8kB"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "configurations": {
+        "production": {
+          "buildTarget": "angular-basic:build:production"
+        },
+        "development": {
+          "buildTarget": "angular-basic:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "extract-i18n": {
+      "executor": "@angular-devkit/build-angular:extract-i18n"
+    },
+    "test": {
+      "executor": "@angular-devkit/build-angular:karma",
+      "options": {
+        "polyfills": ["zone.js", "zone.js/testing"],
+        "tsConfig": "examples/angular/basic/tsconfig.spec.json",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "public"
+          }
+        ],
+        "styles": ["examples/angular/basic/src/styles.css"],
+        "scripts": []
+      }
+    }
+  },
+  "schematics": {
+    "@schematics/angular:component": {
+      "inlineTemplate": true,
+      "inlineStyle": true
+    }
+  }
+}

@@ -17,7 +17,12 @@
     "@angular/platform-browser": "^19.2.0",
     "@angular/platform-browser-dynamic": "^19.2.0",
     "@tanstack/angular-router": "workspace:*",
+    "@tanstack/history": "workspace:*",
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/router-devtools-core": "workspace:*",    "rxjs": "~7.8.0",
     "rxjs": "~7.8.0",
+    "tiny-invariant": "^1.3.3",
+    "tiny-warning": "^1.0.3",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
   },

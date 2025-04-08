@@ -2312,9 +2312,24 @@ importers:
       '@tanstack/angular-router':
         specifier: workspace:*
         version: link:../../../packages/angular-router
+      '@tanstack/history':
+        specifier: workspace:*
+        version: link:../../../packages/history
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../../../packages/router-core
+      '@tanstack/router-devtools-core':
+        specifier: workspace:^
+        version: link:../../../packages/router-devtools-core
       rxjs:
         specifier: ~7.8.0
         version: 7.8.1
+      tiny-invariant:
+        specifier: ^1.3.3
+        version: 1.3.3
+      tiny-warning:
+        specifier: ^1.0.3
+        version: 1.0.3
       tslib:
         specifier: ^2.3.0
         version: 2.8.1

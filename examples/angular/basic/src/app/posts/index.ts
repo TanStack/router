@@ -1,7 +1,7 @@
-import { Component } from "@angular/core"
+import { Component } from '@angular/core'
 import { createRoute } from '@tanstack/angular-router'
 
-import { postsLayoutRoute } from "./layout"
+import { postsLayoutRoute } from './layout'
 
 export const postsIndexRoute = createRoute({
   getParentRoute: () => postsLayoutRoute,
@@ -10,8 +10,6 @@ export const postsIndexRoute = createRoute({
 })
 
 @Component({
-  template: `
-    <div>Select a post.</div>
-  `
+  template: ` <div>Select a post.</div> `,
 })
 export class PostsIndex {}

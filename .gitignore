@@ -74,6 +74,8 @@ app.config.ts.timestamp_*
 .idea
 *.vitest-temp.json
 
+.angular
+
 # Handling VSCode settings
 /.vscode/
 !/examples/react/**/.vscode/settings.json

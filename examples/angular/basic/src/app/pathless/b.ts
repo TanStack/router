@@ -1,7 +1,7 @@
-import { Component } from "@angular/core"
+import { Component } from '@angular/core'
 import { createRoute } from '@tanstack/angular-router'
 
-import { nestedPathlessLayout2Route } from "./nested"
+import { nestedPathlessLayout2Route } from './nested'
 
 export const pathlessLayoutBRoute = createRoute({
   getParentRoute: () => nestedPathlessLayout2Route,
@@ -10,8 +10,6 @@ export const pathlessLayoutBRoute = createRoute({
 })
 
 @Component({
-  template: `
-    <div>I'm route B!</div>
-  `
+  template: ` <div>I'm route B!</div> `,
 })
 export class PathlessLayoutB {}
