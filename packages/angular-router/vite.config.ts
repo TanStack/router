@@ -10,14 +10,6 @@ const config = defineConfig({
   root: __dirname,
   plugins: [
     angular({ tsconfig: `${__dirname}/tsconfig.${isTest ? 'spec' : 'lib.prod' }.json`}),
-    { name: 't',
-      transform(code, id) {
-        if (id.includes('.test')) {
-          console.log(id, code);
-        }
-      }
-
-    }
   ] as UserConfig['plugins'],
   test: {
     globals: true,

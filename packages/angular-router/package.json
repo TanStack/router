@@ -45,8 +45,8 @@
     "tslib": "^2.3.0"
   },
   "type": "module",
-  "types": "dist/fesm2022/index.d.ts",
-  "module": "dist/fesm2022/index.js",  
+  "types": "dist/fesm2022/esm/index.d.ts",
+  "module": "dist/fesm2022/esm/index.js",
   "files": [
     "src",
     "dist"
@@ -54,8 +54,8 @@
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/fesm2022/index.d.ts",
-        "default": "./dist/fesm2022/index.js"
+        "types": "./dist/fesm2022/esm/index.d.ts",
+        "default": "./dist/fesm2022/esm/index.js"
       }
     },
     "./package.json": "./package.json"
