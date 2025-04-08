@@ -13,18 +13,14 @@ export const nestedPathlessLayout2Route = createRoute({
   template: `
     <div>
       <div>I'm a nested pathless layout</div>
-      <div className="flex gap-2 border-b">
-        <a [link]="{ to: '/route-a' }" linkActive="font-bold">
-          Go to Route A
-        </a>
-        <a [link]="{ to: '/route-b' }" linkActive="font-bold">
-          Go to Route B
-        </a>
+      <div class="flex gap-2 border-b">
+        <a link="/route-a" linkActive="font-bold"> Go to Route A </a>
+        <a link="/route-b" linkActive="font-bold"> Go to Route B </a>
       </div>
       <div>
         <outlet />
       </div>
-    </div>  
-  `
+    </div>
+  `,
 })
 export class PathlessLayout2 {}

@@ -13,15 +13,10 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
-    "moduleResolution": "bundler",
     "importHelpers": true,
-    "target": "ES2022",
-    "module": "ES2022",
-    "paths": {
-      "@tanstack/angular-router": [
-        "./node_modules/@tanstack/angular-router/src/index.ts"
-      ]
-    }
+    "target": "ESNext",
+    "moduleResolution": "Bundler",
+    "module": "ESNext"
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
