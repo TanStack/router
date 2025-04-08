@@ -1,0 +1,35 @@
+diff --git a/src/builders/dev-server/vite-server.js b/src/builders/dev-server/vite-server.js
+index 09f6e66145b640cec8d6a1adb7df48132109f2ba..73046f4fc748548fb0e3d9e17ba8a2e4a0d1af6a 100755
+--- a/src/builders/dev-server/vite-server.js
++++ b/src/builders/dev-server/vite-server.js
+@@ -543,11 +543,11 @@ function updateResultRecord(outputPath, file, normalizePath, htmlIndexPath, gene
+ }
+ // eslint-disable-next-line max-lines-per-function
+ async function setupServer(serverOptions, outputFiles, assets, preserveSymlinks, externalMetadata, ssrMode, prebundleTransformer, target, zoneless, componentStyles, templateUpdates, prebundleLoaderExtensions, define, extensionMiddleware, indexHtmlTransformer, thirdPartySourcemaps = false) {
+-    const proxy = await (0, utils_2.loadProxyConfiguration)(serverOptions.workspaceRoot, serverOptions.proxyConfig);
++    const proxy = await (0, utils_2.loadProxyConfiguration)(serverOptions.projectRoot, serverOptions.proxyConfig);
+     // dynamically import Vite for ESM compatibility
+     const { normalizePath } = await (0, load_esm_1.loadEsmModule)('vite');
+     // Path will not exist on disk and only used to provide separate path for Vite requests
+-    const virtualProjectRoot = normalizePath((0, node_path_1.join)(serverOptions.workspaceRoot, `.angular/vite-root`, serverOptions.buildTarget.project));
++    const virtualProjectRoot = normalizePath((0, node_path_1.join)(serverOptions.projectRoot, `.angular/vite-root`, serverOptions.buildTarget.project));
+     // Files used for SSR warmup.
+     let ssrFiles;
+     switch (ssrMode) {
+@@ -635,6 +635,7 @@ async function setupServer(serverOptions, outputFiles, assets, preserveSymlinks,
+                 allow: [
+                     cacheDir,
+                     (0, node_path_1.join)(serverOptions.workspaceRoot, 'node_modules'),
++                    (0, node_path_1.join)(serverOptions.projectRoot, 'node_modules'),
+                     ...[...assets.values()].map(({ source }) => source),
+                 ],
+             },
+@@ -673,7 +674,7 @@ async function setupServer(serverOptions, outputFiles, assets, preserveSymlinks,
+                 resetComponentUpdates: () => templateUpdates.clear(),
+             }),
+             (0, plugins_1.createRemoveIdPrefixPlugin)(externalMetadata.explicitBrowser),
+-            await (0, plugins_1.createAngularSsrTransformPlugin)(serverOptions.workspaceRoot),
++            await (0, plugins_1.createAngularSsrTransformPlugin)(serverOptions.projectRoot),
+             await (0, plugins_1.createAngularMemoryPlugin)({
+                 virtualProjectRoot,
+                 outputFiles,

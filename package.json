@@ -57,13 +57,14 @@
     "rimraf": "^6.0.1",
     "tinyglobby": "^0.2.12",
     "typescript": "^5.8.2",
-    "vite": "6.1.4",
-    "vitest": "^3.0.6",
     "typescript53": "npm:typescript@5.3",
     "typescript54": "npm:typescript@5.4",
     "typescript55": "npm:typescript@5.5",
     "typescript56": "npm:typescript@5.6",
-    "typescript57": "npm:typescript@5.7"
+    "typescript57": "npm:typescript@5.7",
+    "vite": "6.1.4",
+    "vitest": "^3.0.6",
+    "zone.js": "~0.15.0"
   },
   "resolutions": {
     "use-sync-external-store": "1.2.2"
@@ -118,6 +119,9 @@
       "@tanstack/server-functions-plugin": "workspace:*",
       "@tanstack/directive-functions-plugin": "workspace:*",
       "@tanstack/router-utils": "workspace:*"
+    },
+    "patchedDependencies": {
+      "@angular/build": "patches/@angular__build.patch"
     }
   }
 }
