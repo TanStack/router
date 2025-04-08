@@ -1,12 +1,14 @@
 import {
+  Injector,
   assertInInjectionContext,
   inject,
-  Injector,
   runInInjectionContext,
-  Signal,
-} from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import {
+} from '@angular/core'
+import { toSignal } from '@angular/core/rxjs-interop'
+import { match$ } from './match'
+
+import type { Signal } from '@angular/core'
+import type {
   AnyRouter,
   RegisteredRouter,
   ResolveUseParams,
@@ -14,9 +16,8 @@ import {
   ThrowConstraint,
   ThrowOrOptional,
   UseParamsResult,
-} from '@tanstack/router-core';
-import { Observable } from 'rxjs';
-import { match$ } from './match';
+} from '@tanstack/router-core'
+import type { Observable } from 'rxjs'
 
 export interface ParamsBaseOptions<
   TRouter extends AnyRouter,
@@ -25,9 +26,9 @@ export interface ParamsBaseOptions<
   TThrow extends boolean,
   TSelected,
 > {
-  select?: (params: ResolveUseParams<TRouter, TFrom, TStrict>) => TSelected;
-  shouldThrow?: TThrow;
-  injector?: Injector;
+  select?: (params: ResolveUseParams<TRouter, TFrom, TStrict>) => TSelected
+  shouldThrow?: TThrow
+  injector?: Injector
 }
 
 export type ParamsOptions<
@@ -37,7 +38,7 @@ export type ParamsOptions<
   TThrow extends boolean,
   TSelected,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  ParamsBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>;
+  ParamsBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
 
 export type ParamsRoute<TObservable extends boolean, out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
@@ -49,10 +50,10 @@ export type ParamsRoute<TObservable extends boolean, out TFrom> = <
     /* TStrict */ true,
     /* TThrow */ true,
     TSelected
-  >
+  >,
 ) => TObservable extends true
   ? Observable<UseParamsResult<TRouter, TFrom, true, TSelected>>
-  : Signal<UseParamsResult<TRouter, TFrom, true, TSelected>>;
+  : Signal<UseParamsResult<TRouter, TFrom, true, TSelected>>
 
 export function params$<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -72,10 +73,10 @@ export function params$<
 >): Observable<
   ThrowOrOptional<UseParamsResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  !injector && assertInInjectionContext(params);
+  !injector && assertInInjectionContext(params)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
@@ -84,10 +85,10 @@ export function params$<
       strict: opts.strict,
       shouldThrow: opts.shouldThrow,
       select: (match) => {
-        return opts.select ? opts.select(match.params) : match.params;
+        return opts.select ? opts.select(match.params) : match.params
       },
-    }) as any;
-  });
+    }) as any
+  })
 }
 
 export function params<
@@ -108,13 +109,13 @@ export function params<
 >): Signal<
   ThrowOrOptional<UseParamsResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  !injector && assertInInjectionContext(params);
+  !injector && assertInInjectionContext(params)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
-    return toSignal(params$({ injector, ...opts } as any)) as any;
-  });
+    return toSignal(params$({ injector, ...opts } as unknown as any)) as any
+  })
 }

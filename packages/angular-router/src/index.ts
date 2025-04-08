@@ -1,5 +1,5 @@
-export { default as invariant } from 'tiny-invariant';
-export { default as warning } from 'tiny-warning';
+export { default as invariant } from 'tiny-invariant'
+export { default as warning } from 'tiny-warning'
 
 export {
   TSR_DEFERRED_PROMISE,
@@ -35,7 +35,7 @@ export {
   trimPath,
   trimPathLeft,
   trimPathRight,
-} from '@tanstack/router-core';
+} from '@tanstack/router-core'
 
 export type {
   AbsoluteToPath,
@@ -206,14 +206,14 @@ export type {
   ValidatorAdapter,
   ValidatorFn,
   ValidatorObj,
-} from '@tanstack/router-core';
+} from '@tanstack/router-core'
 
 export {
   createBrowserHistory,
   createHashHistory,
   createHistory,
   createMemoryHistory,
-} from '@tanstack/history';
+} from '@tanstack/history'
 
 export type {
   BlockerFn,
@@ -221,11 +221,11 @@ export type {
   HistoryState,
   ParsedPath,
   RouterHistory,
-} from '@tanstack/history';
+} from '@tanstack/history'
 
-export { Link, linkOptions } from './link';
-export { MatchRoute, matchRoute, matchRoute$ } from './match-route';
-export type { MakeMatchRouteOptions, MatchRouteOptions } from './match-route';
+export { Link, linkOptions } from './link'
+export { MatchRoute, matchRoute, matchRoute$ } from './match-route'
+export type { MakeMatchRouteOptions, MatchRouteOptions } from './match-route'
 export {
   Matches,
   childMatches,
@@ -234,22 +234,22 @@ export {
   matches$,
   parentMatches,
   parentMatches$,
-} from './matches';
+} from './matches'
 
-export { OnRendered, Outlet, RouteMatch } from './outlet';
+export { OnRendered, Outlet, RouteMatch } from './outlet'
 
-export { loaderData, loaderData$ } from './loader-data';
-export { loaderDeps, loaderDeps$ } from './loader-deps';
-export { match, match$ } from './match';
+export { loaderData, loaderData$ } from './loader-data'
+export { loaderDeps, loaderDeps$ } from './loader-deps'
+export { match, match$ } from './match'
 
-export { isRedirect, redirect } from '@tanstack/router-core';
+export { isRedirect, redirect } from '@tanstack/router-core'
 
 export {
   LazyRoute,
   createFileRoute,
   createLazyFileRoute,
   createLazyRoute,
-} from './file-route';
+} from './file-route'
 export {
   ERROR_COMPONENT_CONTEXT,
   NOT_FOUND_COMPONENT_CONTEXT,
@@ -261,9 +261,9 @@ export {
   createRootRouteWithContext,
   createRoute,
   routeApi,
-} from './route';
+} from './route'
 
-export type { AnyRootRoute, RouteComponent } from './route';
+export type { AnyRootRoute, RouteComponent } from './route'
 
 export {
   NgRouter,
@@ -273,8 +273,8 @@ export {
   injectRouter,
   injectRouterState,
   provideRouter,
-} from './router';
-export * from './router-root';
+} from './router'
+export * from './router-root'
 
 export {
   PathParamError,
@@ -282,22 +282,22 @@ export {
   componentTypes,
   getInitialRouterState,
   lazyFn,
-} from '@tanstack/router-core';
+} from '@tanstack/router-core'
 
-export { params, params$ } from './params';
-export { search, search$ } from './search';
+export { params, params$ } from './params'
+export { search, search$ } from './search'
 
-export { canGoBack, canGoBack$ } from './can-go-back';
-export { location, location$ } from './location';
-export { routeContext, routeContext$ } from './route-context';
-export { routerState, routerState$ } from './router-state';
+export { canGoBack, canGoBack$ } from './can-go-back'
+export { location, location$ } from './location'
+export { routeContext, routeContext$ } from './route-context'
+export { routerState, routerState$ } from './router-state'
 
-export { isNotFound, notFound } from '@tanstack/router-core';
-export type { NotFoundError } from '@tanstack/router-core';
-export { DefaultError } from './default-error';
-export { DefaultNotFound } from './default-not-found';
+export { isNotFound, notFound } from '@tanstack/router-core'
+export type { NotFoundError } from '@tanstack/router-core'
+export { DefaultError } from './default-error'
+export { DefaultNotFound } from './default-not-found'
 
-export type { ValidateLinkOptions, ValidateLinkOptionsArray } from './link';
+export type { ValidateLinkOptions, ValidateLinkOptionsArray } from './link'
 
 export type {
   InferFrom,
@@ -318,7 +318,7 @@ export type {
   ValidateToPath,
   ValidateUseParamsResult,
   ValidateUseSearchResult,
-} from '@tanstack/router-core';
+} from '@tanstack/router-core'
 
-export * from './router-devtools';
-export * from './transitioner';
+export * from './router-devtools'
+export * from './transitioner'

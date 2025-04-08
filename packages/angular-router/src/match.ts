@@ -1,13 +1,18 @@
 import {
+  Injector,
   assertInInjectionContext,
   computed,
   inject,
-  Injector,
   runInInjectionContext,
-  Signal,
-} from '@angular/core';
-import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import {
+} from '@angular/core'
+import { toObservable, toSignal } from '@angular/core/rxjs-interop'
+import { combineLatest, map } from 'rxjs'
+import invariant from 'tiny-invariant'
+import { MATCH_ID } from './outlet'
+import { routerState$ } from './router-state'
+
+import type { Observable } from 'rxjs'
+import type {
   AnyRouter,
   MakeRouteMatch,
   MakeRouteMatchUnion,
@@ -15,11 +20,8 @@ import {
   StrictOrFrom,
   ThrowConstraint,
   ThrowOrOptional,
-} from '@tanstack/router-core';
-import { combineLatest, map, Observable } from 'rxjs';
-import invariant from 'tiny-invariant';
-import { MATCH_ID } from './outlet';
-import { routerState$ } from './router-state';
+} from '@tanstack/router-core'
+import type { Signal } from '@angular/core'
 
 export interface MatchBaseOptions<
   TRouter extends AnyRouter,
@@ -29,20 +31,20 @@ export interface MatchBaseOptions<
   TSelected,
 > {
   select?: (
-    match: MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
-  ) => TSelected;
-  shouldThrow?: TThrow;
-  injector?: Injector;
+    match: MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>,
+  ) => TSelected
+  shouldThrow?: TThrow
+  injector?: Injector
 }
 
 export type MatchRoute<TObservable extends boolean, out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
 >(
-  opts?: MatchBaseOptions<TRouter, TFrom, true, true, TSelected>
+  opts?: MatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
 ) => TObservable extends true
   ? Observable<MatchResult<TRouter, TFrom, true, TSelected>>
-  : Signal<MatchResult<TRouter, TFrom, true, TSelected>>;
+  : Signal<MatchResult<TRouter, TFrom, true, TSelected>>
 
 export type MatchOptions<
   TRouter extends AnyRouter,
@@ -51,7 +53,7 @@ export type MatchOptions<
   TThrow extends boolean,
   TSelected,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  MatchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>;
+  MatchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
 
 export type MatchResult<
   TRouter extends AnyRouter,
@@ -62,7 +64,7 @@ export type MatchResult<
   ? TStrict extends true
     ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
     : MakeRouteMatchUnion<TRouter>
-  : TSelected;
+  : TSelected
 
 export function match$<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -82,18 +84,18 @@ export function match$<
 >): Observable<
   ThrowOrOptional<MatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  !injector && assertInInjectionContext(match$);
+  !injector && assertInInjectionContext(match$)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
-    const closestMatchId = inject(MATCH_ID, { optional: true });
+    const closestMatchId = inject(MATCH_ID, { optional: true })
     const nearestMatchId = computed(() => {
-      if (opts.from) return null;
-      return closestMatchId;
-    });
+      if (opts.from) return null
+      return closestMatchId
+    })
 
     return combineLatest([
       routerState$({ select: (s) => s.matches, injector }),
@@ -101,20 +103,20 @@ export function match$<
     ]).pipe(
       map(([matches, matchId]) => {
         const match = matches.find((d) => {
-          return opts.from ? opts.from === d.routeId : d.id === matchId;
-        });
+          return opts.from ? opts.from === d.routeId : d.id === matchId
+        })
         invariant(
           !((opts.shouldThrow ?? true) && !match),
-          `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`
-        );
+          `Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        )
         if (match === undefined) {
-          return undefined;
+          return undefined
         }
 
-        return opts.select ? opts.select(match) : match;
-      })
-    ) as any;
-  });
+        return opts.select ? opts.select(match) : match
+      }),
+    ) as any
+  })
 }
 
 export function match<
@@ -135,13 +137,15 @@ export function match<
 >): Signal<
   ThrowOrOptional<MatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  !injector && assertInInjectionContext(match);
+  !injector && assertInInjectionContext(match)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
-    return toSignal(match$({ injector, ...opts } as any), { injector });
-  }) as any;
+    return toSignal(match$({ injector, ...opts } as unknown as any), {
+      injector,
+    })
+  }) as any
 }

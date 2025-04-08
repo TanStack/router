@@ -1,41 +1,41 @@
 import {
+  Directive,
+  ElementRef,
+  NgZone,
   afterNextRender,
   booleanAttribute,
-  Directive,
   effect,
-  ElementRef,
   inject,
   input,
-  NgZone,
   signal,
   untracked,
-} from '@angular/core';
-import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core';
-import { injectRouter } from './router';
+} from '@angular/core'
+import { TanStackRouterDevtoolsCore } from '@tanstack/router-devtools-core'
+import { injectRouter } from './router'
 
 @Directive({
   selector: 'router-devtools,RouterDevtools',
   host: { style: 'display: block;' },
 })
 export class RouterDevtools {
-  private injectedRouter = injectRouter();
-  private host = inject<ElementRef<HTMLDivElement>>(ElementRef);
-  private ngZone = inject(NgZone);
+  private injectedRouter = injectRouter()
+  private host = inject<ElementRef<HTMLDivElement>>(ElementRef)
+  private ngZone = inject(NgZone)
 
-  router = input(this.injectedRouter);
-  initialIsOpen = input(undefined, { transform: booleanAttribute });
-  panelOptions = input<Partial<HTMLDivElement>>({});
-  closeButtonOptions = input<Partial<HTMLButtonElement>>({});
-  toggleButtonOptions = input<Partial<HTMLButtonElement>>({});
-  shadowDOMTarget = input<ShadowRoot>();
-  containerElement = input<string | HTMLElement>();
-  position = input<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>();
+  router = input(this.injectedRouter)
+  initialIsOpen = input(undefined, { transform: booleanAttribute })
+  panelOptions = input<Partial<HTMLDivElement>>({})
+  closeButtonOptions = input<Partial<HTMLButtonElement>>({})
+  toggleButtonOptions = input<Partial<HTMLButtonElement>>({})
+  shadowDOMTarget = input<ShadowRoot>()
+  containerElement = input<string | HTMLElement>()
+  position = input<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>()
 
-  private devtools = signal<TanStackRouterDevtoolsCore | null>(null);
+  private devtools = signal<TanStackRouterDevtoolsCore | null>(null)
 
   constructor() {
     afterNextRender(() => {
-      const router = untracked(this.router);
+      const router = untracked(this.router)
       const [
         initialIsOpen,
         panelOptions,
@@ -54,7 +54,7 @@ export class RouterDevtools {
         untracked(this.containerElement),
         untracked(this.position),
         router.state,
-      ];
+      ]
 
       // initial devTools
       this.devtools.set(
@@ -68,32 +68,32 @@ export class RouterDevtools {
           toggleButtonProps: toggleButtonOptions,
           shadowDOMTarget,
           containerElement,
-        })
-      );
-    });
+        }),
+      )
+    })
 
     effect(() => {
-      const devtools = this.devtools();
-      if (!devtools) return;
-      this.ngZone.runOutsideAngular(() => devtools.setRouter(this.router()));
-    });
+      const devtools = this.devtools()
+      if (!devtools) return
+      this.ngZone.runOutsideAngular(() => devtools.setRouter(this.router()))
+    })
 
     effect((onCleanup) => {
-      const devtools = this.devtools();
-      if (!devtools) return;
+      const devtools = this.devtools()
+      if (!devtools) return
       this.ngZone.runOutsideAngular(() => {
         const unsub = untracked(this.router).__store.subscribe(
           ({ currentVal }) => {
-            devtools.setRouterState(currentVal);
-          }
-        );
-        onCleanup(() => unsub());
-      });
-    });
+            devtools.setRouterState(currentVal)
+          },
+        )
+        onCleanup(() => unsub())
+      })
+    })
 
     effect(() => {
-      const devtools = this.devtools();
-      if (!devtools) return;
+      const devtools = this.devtools()
+      if (!devtools) return
 
       this.ngZone.runOutsideAngular(() => {
         devtools.setOptions({
@@ -104,19 +104,19 @@ export class RouterDevtools {
           position: this.position(),
           containerElement: this.containerElement(),
           shadowDOMTarget: this.shadowDOMTarget(),
-        });
-      });
-    });
+        })
+      })
+    })
 
     effect((onCleanup) => {
-      const devtools = this.devtools();
-      if (!devtools) return;
+      const devtools = this.devtools()
+      if (!devtools) return
       this.ngZone.runOutsideAngular(() =>
-        devtools.mount(this.host.nativeElement)
-      );
+        devtools.mount(this.host.nativeElement),
+      )
       onCleanup(() => {
-        this.ngZone.runOutsideAngular(() => devtools.unmount());
-      });
-    });
+        this.ngZone.runOutsideAngular(() => devtools.unmount())
+      })
+    })
   }
 }

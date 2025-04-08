@@ -1,5 +1,5 @@
-import { distinctUntilChanged } from 'rxjs';
+import { distinctUntilChanged } from 'rxjs'
 
 export function distinctUntilRefChanged<T>() {
-  return distinctUntilChanged<T>(Object.is);
+  return distinctUntilChanged<T>(Object.is)
 }

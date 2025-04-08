@@ -1,19 +1,21 @@
 import {
   Directive,
-  effect,
   EnvironmentInjector,
+  effect,
   inject,
   input,
-  Provider,
-} from '@angular/core';
-import {
+} from '@angular/core'
+import { Matches } from './matches'
+import { injectRouter } from './router'
+
+import type { Provider } from '@angular/core'
+import type {
   AnyRoute,
-  type AnyRouter,
-  type RegisteredRouter,
-  type RouterOptions,
-} from '@tanstack/router-core';
-import { Matches } from './matches';
-import { injectRouter, NgRouter } from './router';
+  AnyRouter,
+  RegisteredRouter,
+  RouterOptions,
+} from '@tanstack/router-core'
+import type { NgRouter } from './router'
 
 export type RouterRootOptions<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -28,7 +30,7 @@ export type RouterRootOptions<
   >,
   'context'
 > & {
-  router: TRouter;
+  router: TRouter
   context?: Partial<
     RouterOptions<
       TRouter['routeTree'],
@@ -37,8 +39,8 @@ export type RouterRootOptions<
       TRouter['history'],
       TDehydrated
     >['context']
-  >;
-};
+  >
+}
 
 @Directive({
   selector: 'router-root,RouterRoot',
@@ -49,32 +51,32 @@ export class RouterRoot<
   TDehydrated extends Record<string, any> = Record<string, any>,
 > {
   router = input<RouterRootOptions<TRouter, TDehydrated>['router']>(
-    injectRouter() as unknown as TRouter
-  );
-  options = input<Omit<RouterRootOptions<TRouter, TDehydrated>, 'router'>>({});
+    injectRouter() as unknown as TRouter,
+  )
+  options = input<Omit<RouterRootOptions<TRouter, TDehydrated>, 'router'>>({})
 
   constructor() {
-    const environmentInjector = inject(EnvironmentInjector);
+    const environmentInjector = inject(EnvironmentInjector)
     effect(() => {
-      const [router, options] = [this.router(), this.options()];
+      const [router, options] = [this.router(), this.options()]
       router.update({
         ...router.options,
         ...options,
         context: {
           ...router.options.context,
           ...options.context,
-          getRouteInjector(routeId: string, providers: Provider[] = []) {
+          getRouteInjector(routeId: string, providers: Array<Provider> = []) {
             return (
               router as unknown as NgRouter<AnyRoute>
             ).getRouteEnvInjector(
               routeId,
               environmentInjector,
               providers,
-              router
-            );
+              router,
+            )
           },
         },
-      });
-    });
+      })
+    })
   }
 }

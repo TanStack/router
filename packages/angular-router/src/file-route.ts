@@ -1,4 +1,13 @@
-import {
+import warning from 'tiny-warning'
+import { loaderData, loaderData$ } from './loader-data'
+import { loaderDeps, loaderDeps$ } from './loader-deps'
+import { match, match$ } from './match'
+import { params, params$ } from './params'
+import { createRoute } from './route'
+import { routeContext, routeContext$ } from './route-context'
+import { search, search$ } from './search'
+
+import type {
   AnyContext,
   AnyRoute,
   AnyRouter,
@@ -14,19 +23,14 @@ import {
   RouteIds,
   RouteLoaderFn,
   UpdatableRouteOptions,
-} from '@tanstack/router-core';
-import warning from 'tiny-warning';
-import { loaderData, loaderData$, LoaderDataRoute } from './loader-data';
-import { loaderDeps, loaderDeps$, LoaderDepsRoute } from './loader-deps';
-import { match, match$, MatchRoute } from './match';
-import { params, params$, ParamsRoute } from './params';
-import { createRoute, Route } from './route';
-import {
-  routeContext,
-  routeContext$,
-  RouteContextRoute,
-} from './route-context';
-import { search, search$, SearchRoute } from './search';
+} from '@tanstack/router-core'
+import type { LoaderDataRoute } from './loader-data'
+import type { LoaderDepsRoute } from './loader-deps'
+import type { MatchRoute } from './match'
+import type { ParamsRoute } from './params'
+import type { Route } from './route'
+import type { RouteContextRoute } from './route-context'
+import type { SearchRoute } from './search'
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
@@ -36,11 +40,11 @@ export function createFileRoute<
   TFullPath extends
     RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
 >(
-  path: TFilePath
+  path: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
-  }).createRoute;
+  }).createRoute
 }
 
 /**
@@ -55,13 +59,13 @@ export class FileRoute<
   TFullPath extends
     RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
 > {
-  silent?: boolean;
+  silent?: boolean
 
   constructor(
     public path: TFilePath,
-    _opts?: { silent: boolean }
+    _opts?: { silent: boolean },
   ) {
-    this.silent = _opts?.silent;
+    this.silent = _opts?.silent
   }
 
   createRoute = <
@@ -96,7 +100,7 @@ export class FileRoute<
         AnyContext,
         TRouteContextFn,
         TBeforeLoadFn
-      >
+      >,
   ): Route<
     TParentRoute,
     TPath,
@@ -115,12 +119,12 @@ export class FileRoute<
   > => {
     warning(
       this.silent,
-      'FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.'
-    );
-    const route = createRoute(options as any);
-    (route as any).isRoot = false;
-    return route as any;
-  };
+      'FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
+    )
+    const route = createRoute(options as any)
+    ;(route as any).isRoot = false
+    return route as any
+  }
 }
 
 /**
@@ -132,7 +136,7 @@ export function FileRouteLoader<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
 >(
-  _path: TFilePath
+  _path: TFilePath,
 ): <TLoaderFn>(
   loaderFn: Constrain<
     TLoaderFn,
@@ -145,57 +149,57 @@ export function FileRouteLoader<
       TRoute['types']['routeContextFn'],
       TRoute['types']['beforeLoadFn']
     >
-  >
+  >,
 ) => TLoaderFn {
   warning(
     false,
-    `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`
-  );
-  return (loaderFn) => loaderFn as any;
+    `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
+  )
+  return (loaderFn) => loaderFn as any
 }
 
 export class LazyRoute<TRoute extends AnyRoute> {
   options: {
-    id: string;
-  } & LazyRouteOptions;
+    id: string
+  } & LazyRouteOptions
 
   constructor(
     opts: {
-      id: string;
-    } & LazyRouteOptions
+      id: string
+    } & LazyRouteOptions,
   ) {
-    this.options = opts;
+    this.options = opts
   }
 
   match$: MatchRoute<true, TRoute['id']> = (opts) =>
-    match$({ ...opts, from: this.options.id } as any) as any;
+    match$({ ...opts, from: this.options.id } as any) as any
   match: MatchRoute<false, TRoute['id']> = (opts) =>
-    match({ ...opts, from: this.options.id } as any) as any;
+    match({ ...opts, from: this.options.id } as any) as any
 
   routeContext$: RouteContextRoute<true, TRoute['id']> = (opts) =>
-    routeContext$({ ...opts, from: this.options.id } as any);
+    routeContext$({ ...opts, from: this.options.id } as unknown as any)
   routeContext: RouteContextRoute<false, TRoute['id']> = (opts) =>
-    routeContext({ ...opts, from: this.options.id } as any);
+    routeContext({ ...opts, from: this.options.id } as unknown as any)
 
   search$: SearchRoute<true, TRoute['id']> = (opts) =>
-    search$({ ...opts, from: this.options.id } as any) as any;
+    search$({ ...opts, from: this.options.id } as any) as any
   search: SearchRoute<false, TRoute['id']> = (opts) =>
-    search({ ...opts, from: this.options.id } as any) as any;
+    search({ ...opts, from: this.options.id } as any) as any
 
   params$: ParamsRoute<true, TRoute['id']> = (opts) =>
-    params$({ ...opts, from: this.options.id } as any) as any;
+    params$({ ...opts, from: this.options.id } as any) as any
   params: ParamsRoute<false, TRoute['id']> = (opts) =>
-    params({ ...opts, from: this.options.id } as any) as any;
+    params({ ...opts, from: this.options.id } as any) as any
 
   loaderDeps$: LoaderDepsRoute<true, TRoute['id']> = (opts) =>
-    loaderDeps$({ ...opts, from: this.options.id } as any);
+    loaderDeps$({ ...opts, from: this.options.id } as any)
   loaderDeps: LoaderDepsRoute<false, TRoute['id']> = (opts) =>
-    loaderDeps({ ...opts, from: this.options.id } as any);
+    loaderDeps({ ...opts, from: this.options.id } as any)
 
   loaderData$: LoaderDataRoute<true, TRoute['id']> = (opts) =>
-    loaderData$({ ...opts, from: this.options.id } as any);
+    loaderData$({ ...opts, from: this.options.id } as any)
   loaderData: LoaderDataRoute<false, TRoute['id']> = (opts) =>
-    loaderData({ ...opts, from: this.options.id } as any);
+    loaderData({ ...opts, from: this.options.id } as any)
 }
 
 export function createLazyRoute<
@@ -207,12 +211,12 @@ export function createLazyRoute<
     return new LazyRoute<TRoute>({
       id: id,
       ...opts,
-    });
-  };
+    })
+  }
 }
 export function createLazyFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
 >(id: TFilePath) {
-  return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts });
+  return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
 }

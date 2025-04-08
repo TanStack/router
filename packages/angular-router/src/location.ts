@@ -1,22 +1,23 @@
 import {
+  Injector,
   assertInInjectionContext,
   inject,
-  Injector,
   runInInjectionContext,
-  Signal,
-} from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import {
+} from '@angular/core'
+import { toSignal } from '@angular/core/rxjs-interop'
+import { routerState$ } from './router-state'
+
+import type { Signal } from '@angular/core'
+import type {
   AnyRouter,
   RegisteredRouter,
   RouterState,
-} from '@tanstack/router-core';
-import { Observable } from 'rxjs';
-import { routerState$ } from './router-state';
+} from '@tanstack/router-core'
+import type { Observable } from 'rxjs'
 
 export interface LocationBaseOptions<TRouter extends AnyRouter, TSelected> {
-  select?: (state: RouterState<TRouter['routeTree']>['location']) => TSelected;
-  injector?: Injector;
+  select?: (state: RouterState<TRouter['routeTree']>['location']) => TSelected
+  injector?: Injector
 }
 
 export type LocationResult<
@@ -24,7 +25,7 @@ export type LocationResult<
   TSelected,
 > = unknown extends TSelected
   ? RouterState<TRouter['routeTree']>['location']
-  : TSelected;
+  : TSelected
 
 export function location$<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -35,18 +36,18 @@ export function location$<
 }: LocationBaseOptions<TRouter, TSelected> = {}): Observable<
   LocationResult<TRouter, TSelected>
 > {
-  !injector && assertInInjectionContext(location$);
+  !injector && assertInInjectionContext(location$)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
     return routerState$({
       injector,
       select: (state) => (select ? select(state.location) : state.location),
-    }) as Observable<LocationResult<TRouter, TSelected>>;
-  });
+    }) as Observable<LocationResult<TRouter, TSelected>>
+  })
 }
 
 export function location<
@@ -55,15 +56,15 @@ export function location<
 >({ injector, select }: LocationBaseOptions<TRouter, TSelected> = {}): Signal<
   LocationResult<TRouter, TSelected>
 > {
-  !injector && assertInInjectionContext(location);
+  !injector && assertInInjectionContext(location)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
     return toSignal(location$({ injector, select })) as Signal<
       LocationResult<TRouter, TSelected>
-    >;
-  });
+    >
+  })
 }

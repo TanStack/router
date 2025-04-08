@@ -1,21 +1,22 @@
 import {
+  Injector,
   assertInInjectionContext,
   inject,
-  Injector,
   runInInjectionContext,
-  Signal,
-} from '@angular/core';
-import {
+} from '@angular/core'
+import { toSignal } from '@angular/core/rxjs-interop'
+import { match$ } from './match'
+
+import type { Signal } from '@angular/core'
+import type {
   AnyRouter,
   RegisteredRouter,
   ResolveUseLoaderData,
   StrictOrFrom,
   UseLoaderDataResult,
-} from '@tanstack/router-core';
+} from '@tanstack/router-core'
 
-import { toSignal } from '@angular/core/rxjs-interop';
-import { Observable } from 'rxjs';
-import { match$ } from './match';
+import type { Observable } from 'rxjs'
 
 export interface LoaderDataBaseOptions<
   TRouter extends AnyRouter,
@@ -23,8 +24,8 @@ export interface LoaderDataBaseOptions<
   TStrict extends boolean,
   TSelected,
 > {
-  select?: (match: ResolveUseLoaderData<TRouter, TFrom, TStrict>) => TSelected;
-  injector?: Injector;
+  select?: (match: ResolveUseLoaderData<TRouter, TFrom, TStrict>) => TSelected
+  injector?: Injector
 }
 
 export type LoaderDataOptions<
@@ -33,16 +34,16 @@ export type LoaderDataOptions<
   TStrict extends boolean,
   TSelected,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  LoaderDataBaseOptions<TRouter, TFrom, TStrict, TSelected>;
+  LoaderDataBaseOptions<TRouter, TFrom, TStrict, TSelected>
 
 export type LoaderDataRoute<TObservable extends boolean, out TId> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
 >(
-  opts?: LoaderDataBaseOptions<TRouter, TId, true, TSelected>
+  opts?: LoaderDataBaseOptions<TRouter, TId, true, TSelected>,
 ) => TObservable extends true
   ? Observable<UseLoaderDataResult<TRouter, TId, true, TSelected>>
-  : Signal<UseLoaderDataResult<TRouter, TId, true, TSelected>>;
+  : Signal<UseLoaderDataResult<TRouter, TId, true, TSelected>>
 
 export function loaderData$<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -55,10 +56,10 @@ export function loaderData$<
 }: LoaderDataOptions<TRouter, TFrom, TStrict, TSelected>): Observable<
   UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>
 > {
-  !injector && assertInInjectionContext(loaderData$);
+  !injector && assertInInjectionContext(loaderData$)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
@@ -67,8 +68,8 @@ export function loaderData$<
       from: opts.from,
       strict: opts.strict,
       select: (s) => (opts.select ? opts.select(s.loaderData) : s.loaderData),
-    }) as any;
-  });
+    }) as any
+  })
 }
 
 export function loaderData<
@@ -82,13 +83,15 @@ export function loaderData<
 }: LoaderDataOptions<TRouter, TFrom, TStrict, TSelected>): Signal<
   UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>
 > {
-  !injector && assertInInjectionContext(loaderData);
+  !injector && assertInInjectionContext(loaderData)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
-    return toSignal(loaderData$({ injector, ...opts } as any), { injector });
-  }) as any;
+    return toSignal(loaderData$({ injector, ...opts } as unknown as any), {
+      injector,
+    })
+  }) as any
 }

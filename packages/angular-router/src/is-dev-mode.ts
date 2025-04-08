@@ -1,21 +1,21 @@
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT } from '@angular/common'
 import {
+  Injector,
   assertInInjectionContext,
   inject,
-  Injector,
   runInInjectionContext,
-} from '@angular/core';
+} from '@angular/core'
 
 export function isDevMode({ injector }: { injector?: Injector } = {}) {
-  !injector && assertInInjectionContext(isDevMode);
+  !injector && assertInInjectionContext(isDevMode)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
-    const document = inject(DOCUMENT);
-    const window = document.defaultView;
-    return !!window && 'ng' in window;
-  });
+    const document = inject(DOCUMENT)
+    const window = document.defaultView
+    return !!window && 'ng' in window
+  })
 }

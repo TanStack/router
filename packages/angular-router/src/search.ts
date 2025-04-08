@@ -1,12 +1,14 @@
 import {
+  Injector,
   assertInInjectionContext,
   inject,
-  Injector,
   runInInjectionContext,
-  Signal,
-} from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import {
+} from '@angular/core'
+import { toSignal } from '@angular/core/rxjs-interop'
+import { match$ } from './match'
+
+import type { Signal } from '@angular/core'
+import type {
   AnyRouter,
   RegisteredRouter,
   ResolveUseSearch,
@@ -14,9 +16,8 @@ import {
   ThrowConstraint,
   ThrowOrOptional,
   UseSearchResult,
-} from '@tanstack/router-core';
-import { Observable } from 'rxjs';
-import { match$ } from './match';
+} from '@tanstack/router-core'
+import type { Observable } from 'rxjs'
 
 export interface SearchBaseOptions<
   TRouter extends AnyRouter,
@@ -25,9 +26,9 @@ export interface SearchBaseOptions<
   TThrow extends boolean,
   TSelected,
 > {
-  select?: (state: ResolveUseSearch<TRouter, TFrom, TStrict>) => TSelected;
-  shouldThrow?: TThrow;
-  injector?: Injector;
+  select?: (state: ResolveUseSearch<TRouter, TFrom, TStrict>) => TSelected
+  shouldThrow?: TThrow
+  injector?: Injector
 }
 
 export type SearchOptions<
@@ -37,7 +38,7 @@ export type SearchOptions<
   TThrow extends boolean,
   TSelected,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  SearchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>;
+  SearchBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
 
 export type SearchRoute<TObservable extends boolean, out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
@@ -49,10 +50,10 @@ export type SearchRoute<TObservable extends boolean, out TFrom> = <
     /* TStrict */ true,
     /* TThrow */ true,
     TSelected
-  >
+  >,
 ) => TObservable extends true
   ? Observable<UseSearchResult<TRouter, TFrom, true, TSelected>>
-  : Signal<UseSearchResult<TRouter, TFrom, true, TSelected>>;
+  : Signal<UseSearchResult<TRouter, TFrom, true, TSelected>>
 
 export function search$<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -72,10 +73,10 @@ export function search$<
 >): Observable<
   ThrowOrOptional<UseSearchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  !injector && assertInInjectionContext(search);
+  !injector && assertInInjectionContext(search)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
@@ -84,10 +85,10 @@ export function search$<
       strict: opts.strict,
       shouldThrow: opts.shouldThrow,
       select: (match) => {
-        return opts.select ? opts.select(match.search) : match.search;
+        return opts.select ? opts.select(match.search) : match.search
       },
-    }) as any;
-  });
+    }) as any
+  })
 }
 
 export function search<
@@ -108,13 +109,13 @@ export function search<
 >): Signal<
   ThrowOrOptional<UseSearchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  !injector && assertInInjectionContext(search);
+  !injector && assertInInjectionContext(search)
 
   if (!injector) {
-    injector = inject(Injector);
+    injector = inject(Injector)
   }
 
   return runInInjectionContext(injector, () => {
-    return toSignal(search$({ injector, ...opts } as any)) as any;
-  });
+    return toSignal(search$({ injector, ...opts } as unknown as any)) as any
+  })
 }
