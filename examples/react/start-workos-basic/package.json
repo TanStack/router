@@ -1,0 +1,36 @@
+{
+  "name": "tanstack-start-example-workos-basic",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start",
+    "format": "prettier --write ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@radix-ui/themes": "^3.2.1",
+    "@tanstack/react-router": "^1.115.2",
+    "@tanstack/react-start": "^1.115.2",
+    "@workos-inc/node": "^7.45.0",
+    "iron-session": "^8.0.4",
+    "jose": "^6.0.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "vinxi": "^0.5.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.0.12",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "prettier": "^3.5.3",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}
