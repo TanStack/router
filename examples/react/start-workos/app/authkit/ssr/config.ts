@@ -1,7 +1,6 @@
-import type { AuthKitConfig } from './interfaces.js';
 import { lazy } from './utils.js';
+import type { AuthKitConfig } from './interfaces.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ValueSource = Record<string, any> | ((key: string) => any);
 
 /**
@@ -9,7 +8,7 @@ type ValueSource = Record<string, any> | ((key: string) => any);
  */
 const defaultSource: ValueSource = (key: string): string | undefined => {
   try {
-    return typeof process !== 'undefined' && process.env ? process.env[key] : undefined;
+    return process.env[key];
   } catch {
     return undefined;
   }
@@ -34,7 +33,7 @@ export class Configuration {
 
   private valueSource: ValueSource = defaultSource;
 
-  private readonly requiredKeys: (keyof AuthKitConfig)[] = ['clientId', 'apiKey', 'redirectUri', 'cookiePassword'];
+  private readonly requiredKeys: Array<keyof AuthKitConfig> = ['clientId', 'apiKey', 'redirectUri', 'cookiePassword'];
 
   /**
    * Convert a camelCase string to an uppercase, underscore-separated environment variable name.
@@ -69,15 +68,15 @@ export class Configuration {
     }
   }
 
-  getValue<K extends keyof AuthKitConfig>(key: K): AuthKitConfig[K] {
+  getValue<T extends keyof AuthKitConfig>(key: T): AuthKitConfig[T] {
     // First check environment variables
     const envKey = this.getEnvironmentVariableName(key);
-    let envValue: AuthKitConfig[K] | undefined = undefined;
+    let envValue: AuthKitConfig[T] | undefined = undefined;
 
     const { valueSource, config } = this;
     if (typeof valueSource === 'function') {
       envValue = valueSource(envKey);
-    } else if (valueSource && envKey in valueSource) {
+    } else {
       envValue = valueSource[envKey];
     }
 
@@ -85,27 +84,27 @@ export class Configuration {
     if (envValue != null) {
       // Convert string values to appropriate types
       if (key === 'apiHttps' && typeof envValue === 'string') {
-        return (envValue === 'true') as AuthKitConfig[K];
+        return (envValue === 'true') as AuthKitConfig[T];
       }
 
       if ((key === 'apiPort' || key === 'cookieMaxAge') && typeof envValue === 'string') {
         const num = parseInt(envValue, 10);
-        return (isNaN(num) ? undefined : num) as AuthKitConfig[K];
+        return (isNaN(num) ? undefined : num) as AuthKitConfig[T];
       }
 
-      return envValue as AuthKitConfig[K];
+      return envValue as AuthKitConfig[T];
     }
 
     // Then check programmatically provided config
     if (key in config && config[key] != undefined) {
-      return config[key] as AuthKitConfig[K];
+      return config[key] as AuthKitConfig[T];
     }
 
     if (this.requiredKeys.includes(key)) {
       throw new Error(`Missing required configuration value for ${key} (${envKey}).`);
     }
 
-    return undefined as AuthKitConfig[K];
+    return undefined as AuthKitConfig[T];
   }
 }
 
@@ -157,7 +156,7 @@ export function configure(configOrSource: Partial<AuthKitConfig> | ValueSource, 
  * @param key The configuration key
  * @returns The configuration value
  */
-export function getConfig<K extends keyof AuthKitConfig>(key: K): AuthKitConfig[K] {
+export function getConfig<T extends keyof AuthKitConfig>(key: T): AuthKitConfig[T] {
   const config = getConfigurationInstance();
   return config.getValue(key);
 }

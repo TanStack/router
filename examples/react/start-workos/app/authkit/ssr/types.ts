@@ -1,4 +1,4 @@
-import { Impersonator, User } from '@workos-inc/node';
+import type { Impersonator, User } from '@workos-inc/node';
 
 export interface Session {
   accessToken: string;
@@ -11,8 +11,8 @@ export interface TokenClaims {
   sid: string;
   org_id?: string;
   role?: string;
-  permissions?: string[];
-  entitlements?: string[];
+  permissions?: Array<string>;
+  entitlements?: Array<string>;
 }
 
 export interface AuthConfig {
@@ -26,7 +26,7 @@ export interface AuthConfig {
 }
 
 export interface StorageAdapter {
-  getSessionData(request: unknown): Promise<string | null>;
-  createAuthenticatedResponse(responseData: unknown, sessionData?: string): unknown;
-  clearSession(request: unknown): Promise<unknown>;
+  getSessionData: (request: unknown) => Promise<string | null>;
+  createAuthenticatedResponse: (responseData: unknown, sessionData?: string) => unknown;
+  clearSession: (request: unknown) => Promise<unknown>;
 }

@@ -3,11 +3,11 @@ import { deleteCookie } from '@tanstack/react-start/server';
 import { getConfig } from './ssr/config';
 import { terminateSession, withAuth } from './ssr/session';
 import { getWorkOS } from './ssr/workos';
-import type { GetAuthURLOptions, UserInfo, NoUserInfo } from './ssr/interfaces';
+import type { GetAuthURLOptions, NoUserInfo, UserInfo } from './ssr/interfaces';
 
 export const getAuthorizationUrl = createServerFn({ method: 'GET' })
   .validator((options?: GetAuthURLOptions) => options)
-  .handler(async ({ data: options = {} }) => {
+  .handler(({ data: options = {} }) => {
     const { returnPathname, screenHint, redirectUri } = options;
 
     return getWorkOS().userManagement.getAuthorizationUrl({

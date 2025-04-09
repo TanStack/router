@@ -20,8 +20,8 @@ export interface UserInfo {
   sessionId: string;
   organizationId?: string;
   role?: string;
-  permissions?: string[];
-  entitlements?: string[];
+  permissions?: Array<string>;
+  entitlements?: Array<string>;
   impersonator?: Impersonator;
   accessToken: string;
 }

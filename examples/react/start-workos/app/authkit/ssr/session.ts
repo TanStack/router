@@ -1,17 +1,17 @@
+import { redirect } from '@tanstack/react-router';
 import { getCookie, setCookie } from '@tanstack/react-start/server';
-import { getConfig } from './config';
 import { sealData, unsealData } from 'iron-session';
-import type { AuthkitOptions, AuthkitResponse, CookieOptions, GetAuthURLOptions, Session } from './interfaces';
-import { AccessToken, AuthenticationResponse } from '@workos-inc/node';
 import { createRemoteJWKSet, decodeJwt, jwtVerify } from 'jose';
+import { getConfig } from './config';
 import { lazy } from './utils';
 import { getWorkOS } from './workos';
-import { redirect } from '@tanstack/react-router';
+import type { AccessToken, AuthenticationResponse } from '@workos-inc/node';
+import type { AuthkitOptions, AuthkitResponse, CookieOptions, GetAuthURLOptions, Session } from './interfaces';
 
 const sessionHeaderName = 'x-workos-session';
 const middlewareHeaderName = 'x-workos-middleware';
 
-export async function getAuthorizationUrl(options: GetAuthURLOptions = {}) {
+export function getAuthorizationUrl(options: GetAuthURLOptions = {}) {
   const { returnPathname, screenHint, redirectUri } = options;
 
   return getWorkOS().userManagement.getAuthorizationUrl({
@@ -26,20 +26,16 @@ export async function getAuthorizationUrl(options: GetAuthURLOptions = {}) {
 export function serializeCookie(name: string, value: string, options: Partial<CookieOptions> = {}): string {
   const {
     path = '/',
-    maxAge = getConfig('cookieMaxAge') ?? 60 * 60 * 24 * 400,
-    httpOnly = true,
-    secure = options.sameSite === 'none' ? true : getConfig('redirectUri')?.startsWith('https:'),
+    maxAge = getConfig('cookieMaxAge'),
+    secure = options.sameSite === 'none' ? true : getConfig('redirectUri').startsWith('https:'),
     sameSite = 'lax',
     domain = getConfig('cookieDomain'),
   } = options;
 
-  let cookie = `${name}=${encodeURIComponent(value)}`;
+  let cookie = `${name}=${encodeURIComponent(value)}; Path=${path}; sameSite=${sameSite}; HttpOnly`;
   cookie += `; Max-Age=${maxAge}`;
   if (!maxAge) cookie += `; Expires=${new Date(0).toUTCString()}`;
-  if (path) cookie += `; Path=${path}`;
-  if (httpOnly) cookie += '; HttpOnly';
   if (secure) cookie += '; Secure';
-  if (sameSite) cookie += `; SameSite=${sameSite}`;
   if (domain) cookie += `; Domain=${domain}`;
 
   return cookie;
@@ -150,7 +146,7 @@ export async function updateSession(
     return {
       session: { user: null },
       headers: newRequestHeaders,
-      authorizationUrl: await getAuthorizationUrl({
+      authorizationUrl: getAuthorizationUrl({
         returnPathname: getReturnPathname(request.url),
         redirectUri: options.redirectUri || getConfig('redirectUri'),
         screenHint: options.screenHint,
@@ -252,7 +248,7 @@ export async function updateSession(
     return {
       session: { user: null },
       headers: newRequestHeaders,
-      authorizationUrl: await getAuthorizationUrl({
+      authorizationUrl: getAuthorizationUrl({
         returnPathname: getReturnPathname(request.url),
       }),
     };

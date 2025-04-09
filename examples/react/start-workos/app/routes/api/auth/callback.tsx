@@ -4,7 +4,7 @@ import { saveSession } from '../../../authkit/ssr/session';
 import { getWorkOS } from '../../../authkit/ssr/workos';
 
 export const APIRoute = createAPIFileRoute('/api/auth/callback')({
-  GET: async ({ request, params }) => {
+  GET: async ({ request }) => {
     const url = new URL(request.url);
     const code = url.searchParams.get('code');
     const state = url.searchParams.get('state');
