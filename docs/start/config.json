@@ -188,7 +188,7 @@
             {
               "label": "WorkOS",
               "to": "framework/react/examples/start-workos"
-            }
+            },
             {
               "label": "Material UI",
               "to": "framework/react/examples/start-material-ui"
