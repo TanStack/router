@@ -1,10 +1,12 @@
 import { Box, Button, Card, Container, Flex, Theme } from '@radix-ui/themes';
 import '@radix-ui/themes/styles.css';
-import { createRootRoute, HeadContent, Link, Outlet, ReactNode, Scripts } from '@tanstack/react-router';
+import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { Suspense } from 'react';
 import { getAuth, getSignInUrl } from '../authkit/serverFunctions';
 import Footer from '../components/footer';
 import SignInButton from '../components/sign-in-button';
+import type { ReactNode } from 'react';
 
 export const Route = createRootRoute({
   head: () => ({
@@ -78,6 +80,7 @@ function RootComponent() {
           </Flex>
         </Container>
       </Theme>
+      <TanStackRouterDevtools position="bottom-right" />
     </RootDocument>
   );
 }
