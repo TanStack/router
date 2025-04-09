@@ -1,11 +1,23 @@
 import { render } from 'solid-js/web'
-import { RouterProvider, createRouter } from '@tanstack/solid-router'
+import {
+  RouterProvider,
+  createHashHistory,
+  createRouter,
+} from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
+import type { RouterHistory } from '@tanstack/solid-router'
 import './styles.css'
+
+let history: RouterHistory | undefined
+
+if (import.meta.env.VITE_APP_HISTORY === 'hash') {
+  history = createHashHistory()
+}
 
 // Set up a Router instance
 const router = createRouter({
   routeTree,
+  history,
   scrollRestoration: true,
 })
 

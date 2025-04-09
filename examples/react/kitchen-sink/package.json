@@ -9,8 +9,8 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.112.0",
-    "@tanstack/router-devtools": "^1.112.0",
+    "@tanstack/react-router": "^1.115.2",
+    "@tanstack/react-router-devtools": "^1.115.2",
     "immer": "^10.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -18,7 +18,7 @@
     "postcss": "^8.5.1",
     "autoprefixer": "^10.4.20",
     "tailwindcss": "^3.4.17",
-    "zod": "^3.24.1"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",

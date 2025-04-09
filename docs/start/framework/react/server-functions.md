@@ -8,7 +8,7 @@ title: Server Functions
 Server functions allow you to specify logic that can be invoked almost anywhere (even the client), but run **only** on the server. In fact, they are not so different from an API Route, but with a few key differences:
 
 - They do not have stable public URL (but you'll be able to do this very soon!)
-- They can be called from anywhere in your application, including loaders, hooks, components, etc.
+- They can be called from anywhere in your application, including loaders, hooks, components, etc., but cannot be called from API Routes.
 
 However, they are similar to regular API Routes in that:
 
@@ -38,7 +38,7 @@ Server functions can use middleware to share logic, context, common operations, 
 
 > We'd like to thank the [tRPC](https://trpc.io/) team for both the inspiration of TanStack Start's server function design and guidance while implementing it. We love (and recommend) using tRPC for API Routes so much that we insisted on server functions getting the same 1st class treatment and developer experience. Thank you!
 
-Server functions are defined with the `createServerFn` function, from the `@tanstack/react-start` package. This function takes an optional `options` argument for specifying the http verb, and allows you to chain off the result to define things like the body of the server function, input validation, middleware, etc. Here's a simple example:
+Server functions are defined with the `createServerFn` function, from the `@tanstack/react-start` package. This function takes an optional `options` argument for specifying configuration like the HTTP method and response type, and allows you to chain off the result to define things like the body of the server function, input validation, middleware, etc. Here's a simple example:
 
 ```tsx
 // getServerTime.ts
@@ -51,6 +51,45 @@ export const getServerTime = createServerFn().handler(async () => {
   return new Date().toISOString()
 })
 ```
+
+### Configuration Options
+
+When creating a server function, you can provide configuration options to customize its behavior:
+
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+
+export const getData = createServerFn({
+  method: 'GET', // HTTP method to use
+  response: 'data', // Response handling mode
+}).handler(async () => {
+  // Function implementation
+})
+```
+
+#### Available Options
+
+**`method`**
+
+Specifies the HTTP method for the server function request:
+
+```tsx
+method?: 'GET' | 'POST'
+```
+
+By default, server functions use `GET` if not specified.
+
+**`response`**
+
+Controls how responses are processed and returned:
+
+```tsx
+response?: 'data' | 'full' | 'raw'
+```
+
+- `'data'` (default): Automatically parses JSON responses and returns just the data
+- `'full'`: Returns a response object with result data, error information, and context
+- `'raw'`: Returns the raw Response object directly, enabling streaming responses and custom headers
 
 ## Where can I call server functions?
 
@@ -459,18 +498,83 @@ export const getServerTime = createServerFn({ method: 'GET' }).handler(
 
 ## Returning Raw Response objects
 
-To return a raw Response object, simply return a Response object from the server function:
+To return a raw Response object, return a Response object from the server function and set `response: 'raw'`:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
 
-export const getServerTime = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    // Read a file from s3
-    return fetch('https://example.com/time.txt')
-  },
-)
+export const getServerTime = createServerFn({
+  method: 'GET',
+  response: 'raw',
+}).handler(async () => {
+  // Read a file from s3
+  return fetch('https://example.com/time.txt')
+})
 ```
+
+The response: 'raw' option also allows for streaming responses among other things:
+
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+
+export const streamEvents = createServerFn({
+  method: 'GET',
+  response: 'raw',
+}).handler(async ({ signal }) => {
+  // Create a ReadableStream to send chunks of data
+  const stream = new ReadableStream({
+    async start(controller) {
+      // Send initial response immediately
+      controller.enqueue(new TextEncoder().encode('Connection established\n'))
+
+      let count = 0
+      const interval = setInterval(() => {
+        // Check if the client disconnected
+        if (signal.aborted) {
+          clearInterval(interval)
+          controller.close()
+          return
+        }
+
+        // Send a data chunk
+        controller.enqueue(
+          new TextEncoder().encode(
+            `Event ${++count}: ${new Date().toISOString()}\n`,
+          ),
+        )
+
+        // End after 10 events
+        if (count >= 10) {
+          clearInterval(interval)
+          controller.close()
+        }
+      }, 1000)
+
+      // Ensure we clean up if the request is aborted
+      signal.addEventListener('abort', () => {
+        clearInterval(interval)
+        controller.close()
+      })
+    },
+  })
+
+  // Return a streaming response
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  })
+})
+```
+
+The `response: 'raw'` option is particularly useful for:
+
+- Streaming APIs where data is sent incrementally
+- Server-sent events
+- Long-polling responses
+- Custom content types and binary data
 
 ## Throwing Errors
 
@@ -735,8 +839,8 @@ with [the HTML attribute `action`](https://developer.mozilla.org/en-US/docs/Web/
 > Notice that we mentioned the **HTML** attribute `action`. This attribute only accepts a string in HTML, just like all
 > other attributes.
 >
-> While React
-> 19 [added support for passing a function to `action`](https://react.dev/reference/react-dom/components/form#form),
+> While React 19
+> [added support for passing a function to `action`](https://react.dev/reference/react-dom/components/form#form),
 > it's
 > a React-specific feature and not part of the HTML standard.
 

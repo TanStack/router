@@ -4,9 +4,6 @@ title: File Naming Conventions
 
 File-based routing requires that you follow a few simple file naming conventions to ensure that your routes are generated correctly. The concepts these conventions enable are covered in detail in the [Route Trees & Nesting](./route-trees.md) guide.
 
-> [!IMPORTANT]
-> Routes starting with `/api` are reserved and cannot not be used for file-based routing. These routes are reserved for future use by the TanStack Start for API routes. If you need to use routes starting with `/api` when using TanStack Router with file-based routing, then you'll need to configure the `apiBase` option to a different value.
-
 | Feature                            | Description                                                                                                                                                                                                                                                                                                                                |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **`__root.tsx`**                   | The root route file must be named `__root.tsx` and must be placed in the root of the configured `routesDirectory`.                                                                                                                                                                                                                         |

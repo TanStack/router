@@ -1,20 +1,4 @@
 import * as Solid from 'solid-js'
-import type { AnyRouter } from './router'
-import type { ConstrainLiteral, RouteIds } from '@tanstack/router-core'
-
-export type StrictOrFrom<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean = true,
-> = TStrict extends false
-  ? {
-      from?: never
-      strict: TStrict
-    }
-  : {
-      from: ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
-      strict?: TStrict
-    }
 
 export const useLayoutEffect =
   typeof window !== 'undefined' ? Solid.createRenderEffect : Solid.createEffect

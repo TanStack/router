@@ -44,6 +44,10 @@
             {
               "label": "Decisions on DX",
               "to": "framework/react/decisions-on-dx"
+            },
+            {
+              "label": "Frequently Asked Questions",
+              "to": "framework/react/faq"
             }
           ]
         },
@@ -69,6 +73,10 @@
             {
               "label": "Decisions on DX",
               "to": "framework/solid/decisions-on-dx"
+            },
+            {
+              "label": "Frequently Asked Questions",
+              "to": "framework/solid/faq"
             }
           ]
         }
@@ -517,6 +525,10 @@
             {
               "label": "Navigation Blocking",
               "to": "framework/react/examples/navigation-blocking"
+            },
+            {
+              "label": "View Transitions",
+              "to": "framework/react/examples/view-transitions"
             },
             {
               "label": "With tRPC",

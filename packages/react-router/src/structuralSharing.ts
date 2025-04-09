@@ -1,9 +1,9 @@
 import type {
+  AnyRouter,
   Constrain,
   OptionalStructuralSharing,
   ValidateJSON,
 } from '@tanstack/router-core'
-import type { AnyRouter } from './router'
 
 export type DefaultStructuralSharingEnabled<TRouter extends AnyRouter> =
   boolean extends TRouter['options']['defaultStructuralSharing']

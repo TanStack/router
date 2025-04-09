@@ -3,7 +3,11 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRouter, RegisteredRouter, RouterState } from './router'
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  RouterState,
+} from '@tanstack/router-core'
 
 export interface UseLocationBaseOptions<
   TRouter extends AnyRouter,

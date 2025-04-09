@@ -60,6 +60,8 @@ export type {
   InferFileRouteTypes,
   FileRouteTypes,
   FileRoutesByPath,
+  LazyRoute,
+  LazyRouteOptions,
 } from './fileRoute'
 
 export type {
@@ -69,6 +71,7 @@ export type {
   SerializerParseBy,
   SerializerStringify,
   SerializerStringifyBy,
+  SerializerExtensions,
 } from './serializer'
 
 export type { ParsedLocation } from './location'
@@ -91,6 +94,7 @@ export type {
   MakeRouteMatch,
   AnyRouteMatch,
   MakeRouteMatchFromRoute,
+  MatchRouteOptions,
 } from './Matches'
 export {
   joinPaths,
@@ -112,6 +116,7 @@ export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
 
+export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
 export type {
   AnyPathParams,
   SearchSchemaInput,
@@ -166,7 +171,6 @@ export type {
   ResolveAllParamsFromParent,
   AnyRoute,
   Route,
-  RootRoute,
   RouteTypes,
   FullSearchSchemaOption,
   RemountDepsOptions,
@@ -180,15 +184,32 @@ export type {
   RouteLoaderFn,
   LoaderFnContext,
   RouteContextFn,
-  RouteContextOptions,
   BeforeLoadFn,
-  BeforeLoadContextOptions,
   ContextOptions,
+  RouteContextOptions,
+  BeforeLoadContextOptions,
   RootRouteOptions,
   UpdatableRouteOptionsExtensions,
+  RouteConstraints,
+  RouteTypesById,
+  RouteMask,
+  RouteExtensions,
+  RouteLazyFn,
+  RouteAddChildrenFn,
+  RouteAddFileChildrenFn,
+  RouteAddFileTypesFn,
 } from './route'
 
-export { defaultSerializeError, getLocationChangeInfo } from './router'
+export {
+  defaultSerializeError,
+  getLocationChangeInfo,
+  RouterCore,
+  componentTypes,
+  lazyFn,
+  SearchParamError,
+  PathParamError,
+  getInitialRouterState,
+} from './router'
 export type {
   ViewTransitionOptions,
   ExtractedBaseEntry,
@@ -201,6 +222,40 @@ export type {
   AnyRouter,
   AnyRouterWithContext,
   RegisteredRouter,
+  RouterState,
+  BuildNextOptions,
+  RouterListener,
+  RouterEvent,
+  ListenerFn,
+  RouterEvents,
+  MatchRoutesOpts,
+  RouterOptionsExtensions,
+  DefaultRemountDepsFn,
+  PreloadRouteFn,
+  MatchRouteFn,
+  RouterContextOptions,
+  RouterOptions,
+  RouterConstructorOptions,
+  UpdateFn,
+  ParseLocationFn,
+  InvalidateFn,
+  ControllablePromise,
+  InjectedHtmlEntry,
+  RouterErrorSerializer,
+  MatchedRoutesResult,
+  EmitFn,
+  LoadFn,
+  GetMatchFn,
+  SubscribeFn,
+  UpdateMatchFn,
+  CommitLocationFn,
+  GetMatchRoutesFn,
+  MatchRoutesFn,
+  StartTransitionFn,
+  LoadRouteChunkFn,
+  ServerSrr,
+  ClearCacheFn,
+  CreateRouterFn,
 } from './router'
 
 export type {
@@ -253,6 +308,7 @@ export type {
   NonNullableUpdater,
   StringLiteral,
   ThrowOrOptional,
+  ThrowConstraint,
   ControlledPromise,
   ExtractObjects,
   PartialMergeAllObject,
@@ -313,3 +369,44 @@ export type { UseLoaderDepsResult, ResolveUseLoaderDeps } from './useLoaderDeps'
 export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 
 export type { Redirect, ResolvedRedirect, AnyRedirect } from './redirect'
+
+export { redirect, isRedirect, isResolvedRedirect } from './redirect'
+
+export type { NotFoundError } from './not-found'
+export { isNotFound, notFound } from './not-found'
+
+export {
+  defaultGetScrollRestorationKey,
+  restoreScroll,
+  storageKey,
+  getCssSelector,
+  scrollRestorationCache,
+  setupScrollRestoration,
+  handleHashScroll,
+} from './scroll-restoration'
+
+export type {
+  ScrollRestorationOptions,
+  ScrollRestorationEntry,
+} from './scroll-restoration'
+
+export type {
+  ValidateFromPath,
+  ValidateToPath,
+  ValidateSearch,
+  ValidateParams,
+  InferFrom,
+  InferTo,
+  InferMaskTo,
+  InferMaskFrom,
+  ValidateNavigateOptions,
+  ValidateNavigateOptionsArray,
+  ValidateRedirectOptions,
+  ValidateRedirectOptionsArray,
+  ValidateId,
+  InferStrict,
+  InferShouldThrow,
+  InferSelected,
+  ValidateUseSearchResult,
+  ValidateUseParamsResult,
+} from './typePrimitives'

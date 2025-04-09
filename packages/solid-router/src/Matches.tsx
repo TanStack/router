@@ -8,18 +8,21 @@ import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
 import type {
+  AnyRouter,
   DeepPartial,
   MakeOptionalPathParams,
   MakeOptionalSearchParams,
   MakeRouteMatchUnion,
   MaskOptions,
+  MatchRouteOptions,
   NoInfer,
+  RegisteredRouter,
   ResolveRelativePath,
   ResolveRoute,
   RouteByPath,
+  RouterState,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
-import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
@@ -85,13 +88,6 @@ function MatchesInner() {
       </CatchBoundary>
     </matchContext.Provider>
   )
-}
-
-export interface MatchRouteOptions {
-  pending?: boolean
-  caseSensitive?: boolean
-  includeSearch?: boolean
-  fuzzy?: boolean
 }
 
 export type UseMatchRouteOptions<

@@ -7,9 +7,11 @@ import type { ViteUserConfig } from 'vitest/config'
 const config = defineConfig({
   plugins: [react()] as ViteUserConfig['plugins'],
   test: {
+    include: ['**/*.{test-d,test,spec}.?(c|m)[jt]s?(x)'],
     name: packageJson.name,
     watch: false,
     environment: 'jsdom',
+    setupFiles: ['./src/tests/setupTests.tsx'],
   },
 })
 

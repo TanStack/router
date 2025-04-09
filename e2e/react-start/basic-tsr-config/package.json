@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vinxi dev --port 3000",
     "dev:e2e": "vinxi dev",
-    "build": "vinxi build && tsc --noEmit",
+    "build": "rimraf ./count.txt && vinxi build && tsc --noEmit",
     "start": "vinxi start",
     "test:e2e": "playwright test --project=chromium"
   },

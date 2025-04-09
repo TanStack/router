@@ -14,7 +14,18 @@ function generateLabelerConfig() {
   fs.readdirSync(path.resolve('packages'))
     .filter((folder) => !ignored.includes(folder))
     .forEach((folder) => {
-      pairs.push([`package: ${folder}`, `packages/${folder}/**/*`])
+      // Check if package.json exists for the folder before adding it
+      if (
+        fs.existsSync(
+          path.resolve(path.join('packages', folder, 'package.json')),
+        )
+      ) {
+        pairs.push([`package: ${folder}`, `packages/${folder}/**/*`])
+      } else {
+        console.log(
+          `Skipping \`${folder}\` as it does not have a \`package.json\` file.`,
+        )
+      }
     })
 
   // Always add the docs folder

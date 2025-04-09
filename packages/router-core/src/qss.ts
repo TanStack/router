@@ -1,9 +1,12 @@
 /**
- * Program uses a modified version of the `qss` package:
+ * Program is a reimplementation of the `qss` package:
  * Copyright (c) Luke Edwards luke.edwards05@gmail.com, MIT License
  * https://github.com/lukeed/qss/blob/master/license.md
+ *
+ * This reimplementation uses modern browser APIs
+ * (namely URLSearchParams) and TypeScript while still
+ * maintaining the original functionality and interface.
  */
-
 import { hasUriEncodedChars } from './utils'
 
 /**
@@ -18,26 +21,17 @@ import { hasUriEncodedChars } from './utils'
  * ```
  */
 export function encode(obj: any, pfx?: string) {
-  let k,
-    i,
-    tmp,
-    str = ''
-
-  for (k in obj) {
-    if ((tmp = obj[k]) !== void 0) {
-      if (Array.isArray(tmp)) {
-        for (i = 0; i < tmp.length; i++) {
-          str && (str += '&')
-          str += encodeURIComponent(k) + '=' + encodeURIComponent(tmp[i])
-        }
-      } else {
-        str && (str += '&')
-        str += encodeURIComponent(k) + '=' + encodeURIComponent(tmp)
-      }
+  const normalizedObject = Object.entries(obj).flatMap(([key, value]) => {
+    if (Array.isArray(value)) {
+      return value.map((v) => [key, String(v)])
+    } else {
+      return [[key, String(value)]]
     }
-  }
+  })
 
-  return (pfx || '') + str
+  const searchParams = new URLSearchParams(normalizedObject)
+
+  return (pfx || '') + searchParams.toString()
 }
 
 /**
@@ -68,29 +62,22 @@ function toValue(mix: any) {
  * // Example input: decode("token=foo&key=value")
  * // Expected output: { "token": "foo", "key": "value" }
  */
-export function decode(str: any, pfx?: string) {
-  let tmp, k
-  const out: any = {},
-    arr = (pfx ? str.substr(pfx.length) : str).split('&')
+export function decode(str: any, pfx?: string): any {
+  const searchParamsPart = pfx ? str.slice(pfx.length) : str
+  const searchParams = new URLSearchParams(searchParamsPart)
 
-  while ((tmp = arr.shift())) {
-    const equalIndex = tmp.indexOf('=')
-    if (equalIndex !== -1) {
-      k = tmp.slice(0, equalIndex)
-      k = decodeURIComponent(k)
-      const value = tmp.slice(equalIndex + 1)
-      if (out[k] !== void 0) {
-        // @ts-expect-error
-        out[k] = [].concat(out[k], toValue(value))
-      } else {
-        out[k] = toValue(value)
-      }
+  const entries = [...searchParams.entries()]
+
+  return entries.reduce<Record<string, unknown>>((acc, [key, value]) => {
+    const previousValue = acc[key]
+    if (previousValue == null) {
+      acc[key] = toValue(value)
     } else {
-      k = tmp
-      k = decodeURIComponent(k)
-      out[k] = ''
+      acc[key] = Array.isArray(previousValue)
+        ? [...previousValue, toValue(value)]
+        : [previousValue, toValue(value)]
     }
-  }
 
-  return out
+    return acc
+  }, {})
 }

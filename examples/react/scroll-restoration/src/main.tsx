@@ -9,7 +9,7 @@ import {
   createRouter,
   useElementScrollRestoration,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import './styles.css'
 

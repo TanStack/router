@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import type { AnyRouter, Router } from './router'
+import type { AnyRouter } from '@tanstack/router-core'
 
 declare global {
   interface Window {
@@ -7,8 +7,8 @@ declare global {
   }
 }
 
-const routerContext = Solid.createContext<Router<any, any, any>>(
-  null as unknown as Router<any, any, any>,
+const routerContext = Solid.createContext<AnyRouter>(
+  null as unknown as AnyRouter,
 )
 
 export function getRouterContext() {

@@ -217,6 +217,7 @@ export async function defineConfig(
               ...tsrConfig,
               enableRouteGeneration: true,
               autoCodeSplitting: true,
+              __enableAPIRoutesGeneration: true,
               experimental: {
                 ...tsrConfig.experimental,
               },
@@ -280,6 +281,7 @@ export async function defineConfig(
               ...tsrConfig,
               enableRouteGeneration: false,
               autoCodeSplitting: true,
+              __enableAPIRoutesGeneration: true,
               experimental: {
                 ...tsrConfig.experimental,
               },
@@ -305,7 +307,7 @@ export async function defineConfig(
         // TODO: RSCS - enable this
         // worker: true,
         handler: importToProjectRelative(
-          '@tanstack/react-start-server-functions-handler',
+          '@tanstack/start-server-functions-handler',
         ),
         plugins: () => {
           const routerType = 'server'
@@ -346,6 +348,7 @@ export async function defineConfig(
               ...tsrConfig,
               enableRouteGeneration: false,
               autoCodeSplitting: true,
+              __enableAPIRoutesGeneration: true,
               experimental: {
                 ...tsrConfig.experimental,
               },
@@ -383,14 +386,14 @@ export async function defineConfig(
     '@tanstack/react-start/server',
     '@tanstack/react-start-client',
     '@tanstack/react-start-server',
-    '@tanstack/react-start-server-functions-fetcher',
-    '@tanstack/react-start-server-functions-handler',
-    '@tanstack/react-start-server-functions-client',
-    '@tanstack/react-start-server-functions-ssr',
+    '@tanstack/start-server-functions-fetcher',
+    '@tanstack/start-server-functions-handler',
+    '@tanstack/start-server-functions-client',
+    '@tanstack/start-server-functions-ssr',
     '@tanstack/start-server-functions-server',
     '@tanstack/react-start-router-manifest',
     '@tanstack/start-config',
-    '@tanstack/react-start-api-routes',
+    '@tanstack/start-api-routes',
     '@tanstack/server-functions-plugin',
     'tsr:routes-manifest',
     'tsr:server-fn-manifest',
@@ -439,6 +442,7 @@ export async function defineConfig(
             ...tsrConfig,
             enableRouteGeneration: false,
             autoCodeSplitting: true,
+            __enableAPIRoutesGeneration: true,
             experimental: {
               ...tsrConfig.experimental,
             },

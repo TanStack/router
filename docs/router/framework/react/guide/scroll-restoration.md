@@ -9,7 +9,7 @@ Out of the box, TanStack Router supports both **hash scrolling** and **top-of-pa
 
 ## Scroll-to-top & Nested Scrollable Areas
 
-By default, scroll-top-top mimics the behavior of the browser, which means only the `window` itself is scrolled to the top after successful navigation. For many apps however, it's common for the main scrollable area to be a nested div or similar because of advanced layouts. If you would like TanStack Router to also scroll these main scrollable areas for you, you can add selectors to target them using the `routerOptions.scrollToTopSelectors`:
+By default, scroll-to-top mimics the behavior of the browser, which means only the `window` itself is scrolled to the top after successful navigation. For many apps however, it's common for the main scrollable area to be a nested div or similar because of advanced layouts. If you would like TanStack Router to also scroll these main scrollable areas for you, you can add selectors to target them using the `routerOptions.scrollToTopSelectors`:
 
 ```tsx
 const router = createRouter({
@@ -101,7 +101,38 @@ When `resetScroll` is set to `false`, the scroll position for the next navigatio
 
 Most of the time, you won't need to do anything special to get scroll restoration to work. However, there are some cases where you may need to manually control scroll restoration. The most common example is **virtualized lists**.
 
-To manually control scroll restoration, you can use the `useElementScrollRestoration` hook and the `data-scroll-restoration-id` DOM attribute:
+To manually control scroll restoration for virtualized lists within the whole browser window:
+
+[//]: # 'VirtualizedWindowScrollRestorationExample'
+
+```tsx
+function Component() {
+  const scrollEntry = useElementScrollRestoration({
+    getElement: () => window,
+  })
+
+  // Let's use TanStack Virtual to virtualize some content!
+  const virtualizer = useWindowVirtualizer({
+    count: 10000,
+    estimateSize: () => 100,
+    // We pass the scrollY from the scroll restoration entry to the virtualizer
+    // as the initial offset
+    initialOffset: scrollEntry?.scrollY,
+  })
+
+  return (
+    <div>
+      {virtualizer.getVirtualItems().map(item => (
+        ...
+      ))}
+    </div>
+  )
+}
+```
+
+[//]: # 'VirtualizedWindowScrollRestorationExample'
+
+To manually control scroll restoration for a specific element, you can use the `useElementScrollRestoration` hook and the `data-scroll-restoration-id` DOM attribute:
 
 [//]: # 'ManualRestorationExample'
 

@@ -6,6 +6,7 @@ import {
   createLazyRoute,
   createLazyFileRoute,
   LazyRoute,
+  AnyRoute,
 } from '../src'
 
 describe('createFileRoute has the same hooks as getRouteApi', () => {
@@ -17,7 +18,7 @@ describe('createFileRoute has the same hooks as getRouteApi', () => {
   it.each(hookNames.map((name) => [name]))(
     'should have the "%s" hook defined',
     (hookName) => {
-      expect(route[hookName as keyof LazyRoute<any>]).toBeDefined()
+      expect(route[hookName as keyof typeof route]).toBeDefined()
     },
   )
 })

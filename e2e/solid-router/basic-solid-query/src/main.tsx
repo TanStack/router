@@ -1,6 +1,7 @@
 import { render } from 'solid-js/web'
 import {
   ErrorComponent,
+  HeadContent,
   Link,
   Outlet,
   RouterProvider,
@@ -9,17 +10,17 @@ import {
   createRouter,
   useRouter,
 } from '@tanstack/solid-router'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import {
   QueryClient,
   QueryClientProvider,
-  createQuery,
+  useQuery,
 } from '@tanstack/solid-query'
+import { createEffect, createMemo } from 'solid-js'
 import { NotFoundError, postQueryOptions, postsQueryOptions } from './posts'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 import './styles.css'
-import { createEffect, createMemo } from 'solid-js'
 
 const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -38,6 +39,7 @@ const rootRoute = createRootRouteWithContext<{
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <div class="p-2 flex gap-2 text-lg">
         <Link
           to="/"
@@ -77,7 +79,7 @@ function RootComponent() {
       <hr />
       <Outlet />
       <SolidQueryDevtools buttonPosition="top-right" />
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }
@@ -148,7 +150,7 @@ const postRoute = createRoute({
 
 function PostRouteComponent() {
   const params = postRoute.useParams()
-  const postQuery = createQuery(() => postQueryOptions(params().postId))
+  const postQuery = useQuery(() => postQueryOptions(params().postId))
   const post = createMemo(() => postQuery.data)
 
   return (

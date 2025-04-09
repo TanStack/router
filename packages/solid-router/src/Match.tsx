@@ -4,6 +4,8 @@ import warning from 'tiny-warning'
 import {
   createControlledPromise,
   getLocationChangeInfo,
+  isNotFound,
+  isRedirect,
   pick,
   rootRouteId,
 } from '@tanstack/router-core'
@@ -11,13 +13,12 @@ import { Dynamic } from 'solid-js/web'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { CatchNotFound, isNotFound } from './not-found'
-import { isRedirect } from './redirects'
+import { CatchNotFound } from './not-found'
 import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import type { AnyRoute } from './route'
+import type { AnyRoute } from '@tanstack/router-core'
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()

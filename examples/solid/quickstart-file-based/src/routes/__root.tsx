@@ -1,4 +1,10 @@
-import { Link, Outlet, createRootRoute } from '@tanstack/solid-router'
+import {
+  HeadContent,
+  Link,
+  Outlet,
+  createRootRoute,
+} from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -7,6 +13,7 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <div class="p-2 flex gap-2 text-lg">
         <Link
           to="/"
@@ -28,6 +35,7 @@ function RootComponent() {
       </div>
       <hr />
       <Outlet />
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }

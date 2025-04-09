@@ -47,7 +47,7 @@ type TargetTemplate = {
 export function getTargetTemplate(target: Config['target']): TargetTemplate {
   switch (target) {
     // TODO: Remove this disabled eslint rule when more target types are added.
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
     case 'react':
       return {
         fullPkg: '@tanstack/react-router',

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import type { AnyRouter, Router } from './router'
+import type { AnyRouter } from '@tanstack/router-core'
 
 declare global {
   interface Window {
@@ -7,7 +7,7 @@ declare global {
   }
 }
 
-const routerContext = React.createContext<Router<any, any, any>>(null!)
+const routerContext = React.createContext<AnyRouter>(null!)
 
 export function getRouterContext() {
   if (typeof document === 'undefined') {

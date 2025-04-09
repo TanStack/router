@@ -5,9 +5,12 @@ import type {
   HistoryAction,
   HistoryLocation,
 } from '@tanstack/history'
-import type { AnyRoute } from './route'
-import type { ParseRoute } from '@tanstack/router-core'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type {
+  AnyRoute,
+  AnyRouter,
+  ParseRoute,
+  RegisteredRouter,
+} from '@tanstack/router-core'
 
 interface ShouldBlockFnLocation<
   out TRouteId,

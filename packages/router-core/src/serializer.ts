@@ -13,9 +13,17 @@ export type SerializerStringifyBy<T, TSerializable> = T extends TSerializable
 
 export type SerializerParseBy<T, TSerializable> = T extends TSerializable
   ? T
-  : T extends React.JSX.Element
-    ? ReadableStream
-    : { [K in keyof T]: SerializerParseBy<T[K], TSerializable> }
+  : unknown extends SerializerExtensions['ReadableStream']
+    ? { [K in keyof T]: SerializerParseBy<T[K], TSerializable> }
+    : T extends SerializerExtensions['ReadableStream']
+      ? ReadableStream
+      : { [K in keyof T]: SerializerParseBy<T[K], TSerializable> }
+
+export interface DefaultSerializerExtensions {
+  ReadableStream: unknown
+}
+
+export interface SerializerExtensions extends DefaultSerializerExtensions {}
 
 export type Serializable = Date | undefined | Error | FormData | bigint
 

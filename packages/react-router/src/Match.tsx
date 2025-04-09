@@ -4,20 +4,20 @@ import warning from 'tiny-warning'
 import {
   createControlledPromise,
   getLocationChangeInfo,
+  isNotFound,
+  isRedirect,
   pick,
   rootRouteId,
 } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { CatchNotFound, isNotFound } from './not-found'
-import { isRedirect } from './redirects'
+import { CatchNotFound } from './not-found'
 import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import type { ParsedLocation } from '@tanstack/router-core'
-import type { AnyRoute } from './route'
+import type { AnyRoute, ParsedLocation } from '@tanstack/router-core'
 
 export const Match = React.memo(function MatchImpl({
   matchId,
@@ -139,16 +139,19 @@ function OnRendered() {
 
   return (
     <script
-      key={router.state.resolvedLocation?.state.key}
+      key={router.latestLocation.state.key}
       suppressHydrationWarning
       ref={(el) => {
-        if (el) {
+        if (
+          el &&
+          (prevLocationRef.current === undefined ||
+            prevLocationRef.current.href !== router.latestLocation.href)
+        ) {
           router.emit({
             type: 'onRendered',
             ...getLocationChangeInfo(router.state),
           })
-        } else {
-          prevLocationRef.current = router.state.resolvedLocation
+          prevLocationRef.current = router.latestLocation
         }
       }}
     />
