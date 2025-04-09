@@ -4974,7 +4974,7 @@ importers:
   examples/react/start-workos:
     dependencies:
       '@radix-ui/themes':
-        specifier: ^3.2.1
+        specifier: 3.2.1
         version: 3.2.1(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
@@ -4986,13 +4986,13 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-start
       '@workos-inc/node':
-        specifier: ^7.45.0
+        specifier: 7.45.0
         version: 7.45.0(express@4.21.2)
       iron-session:
-        specifier: ^8.0.4
+        specifier: 8.0.4
         version: 8.0.4
       jose:
-        specifier: ^6.0.10
+        specifier: 6.0.10
         version: 6.0.10
       react:
         specifier: ^19.0.0
@@ -5001,11 +5001,11 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       vinxi:
-        specifier: ^0.5.3
+        specifier: 0.5.3
         version: 0.5.3(@types/node@22.14.0)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0)
     devDependencies:
       '@types/node':
-        specifier: ^22.14.0
+        specifier: 22.14.0
         version: 22.14.0
       '@types/react':
         specifier: ^19.0.8
@@ -5014,13 +5014,13 @@ importers:
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
       '@vitejs/plugin-react':
-        specifier: ^4.3.4
+        specifier: 4.3.4
         version: 4.3.4(vite@6.1.4(@types/node@22.14.0)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       prettier:
-        specifier: ^3.5.3
+        specifier: 3.5.3
         version: 3.5.3
       vite-tsconfig-paths:
-        specifier: ^5.1.4
+        specifier: 5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@6.1.4(@types/node@22.14.0)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
   examples/react/view-transitions:
