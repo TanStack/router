@@ -1,6 +1,6 @@
 ---
-id: ClientOnly 
-title: ClientOnly type
+id: clientOnlyComponent 
+title: ClientOnly Component
 ---
 
 The `ClientOnly` component is used to render a components only in the client, without breaking the server-side rendering due to hydration errors. It accepts a `fallback` prop that will be rendered if the JS is not yet loaded in the client.
