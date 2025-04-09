@@ -49,8 +49,12 @@
   "devDependencies": {
     "@analogjs/vite-plugin-angular": "1.15.1-beta.3",
     "@analogjs/vitest-angular": "1.15.1-beta.3",
+    "@testing-library/angular": "^17.3.7",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
     "ng-packagr": "^19.2.0",
-    "premove": "^4.0.0"
+    "premove": "^4.0.0",
+    "zod": "^3.23.8"
   },
   "sideEffects": false,
   "type": "module",

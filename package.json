@@ -118,7 +118,9 @@
       "@tanstack/eslint-plugin-router": "workspace:*",
       "@tanstack/server-functions-plugin": "workspace:*",
       "@tanstack/directive-functions-plugin": "workspace:*",
-      "@tanstack/router-utils": "workspace:*"
+      "@tanstack/router-utils": "workspace:*",
+      "@tanstack/angular-router": "workspace:*",
+      "@tanstack/angular-router-devtools": "workspace:*"
     },
     "patchedDependencies": {
       "@angular/build": "patches/@angular__build.patch"

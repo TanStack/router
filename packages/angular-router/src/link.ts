@@ -14,9 +14,9 @@ import {
   exactPathTest,
   preloadWarning,
   removeTrailingSlash,
+  shallow,
 } from '@tanstack/router-core'
-import { combineLatest, map } from 'rxjs'
-import { distinctUntilRefChanged } from './distinct-until-ref-changed'
+import { combineLatest, distinctUntilChanged, map } from 'rxjs'
 import { matches$ } from './matches'
 import { injectRouter } from './router'
 import { routerState, routerState$ } from './router-state'
@@ -127,7 +127,7 @@ export class Link {
       matches$({ select: (matches) => matches[matches.length - 1]?.fullPath }),
     ]).pipe(
       map(([userFrom, from]) => userFrom ?? from),
-      distinctUntilRefChanged(),
+      distinctUntilChanged(shallow),
     ),
   )
 

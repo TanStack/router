@@ -5,6 +5,7 @@ import {
   Directive,
   afterNextRender,
   inject,
+  linkedSignal,
   untracked,
 } from '@angular/core'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
@@ -12,12 +13,11 @@ import {
   BehaviorSubject,
   Subscription,
   combineLatest,
-  distinctUntilChanged,
   map,
-  pairwise,
-  startWith,
   tap,
+  distinctUntilChanged,
 } from 'rxjs'
+import { toSignal } from '@angular/core/rxjs-interop'
 import { injectRouter } from './router'
 import { routerState$ } from './router-state'
 
@@ -33,17 +33,13 @@ export class Transitioner implements OnInit {
   private matches$ = routerState$({ select: (s) => s.matches })
   private hasPendingMatches$ = this.matches$.pipe(
     map((matches) => matches.some((d) => d.status === 'pending')),
-    distinctUntilChanged(() => false),
+    distinctUntilChanged(),
   )
-  private isLoading$ = routerState$({
-    select: (s) => s.isLoading,
-    equal: () => false,
+  private isLoading$ = routerState$({ select: (s) => s.isLoading })
+  private previousIsLoading = linkedSignal({
+    source: toSignal(this.isLoading$),
+    computation: (src, prev) => prev?.source ?? src,
   })
-  private previousIsLoading$ = this.isLoading$.pipe(
-    startWith(undefined),
-    pairwise(),
-    map(([prev, curr]) => prev ?? !!curr),
-  )
 
   private isTransitioning$ = new BehaviorSubject(false)
   private isAnyPending$ = combineLatest([
@@ -55,34 +51,31 @@ export class Transitioner implements OnInit {
       ([isLoading, isTransitioning, hasPendingMatches]) =>
         isLoading || isTransitioning || hasPendingMatches,
     ),
-    distinctUntilChanged(() => false),
+    distinctUntilChanged(),
   )
-  private previousIsAnyPending$ = this.isAnyPending$.pipe(
-    startWith(undefined),
-    pairwise(),
-    map(([prev, curr]) => prev ?? !!curr),
-  )
+
+  private previousIsAnyPending = linkedSignal({
+    source: toSignal(this.isAnyPending$),
+    computation: (src, prev) => prev?.source ?? src,
+  })
 
   private isPagePending$ = combineLatest([
     this.isLoading$,
     this.hasPendingMatches$,
   ]).pipe(
     map(([isLoading, hasPendingMatches]) => isLoading || hasPendingMatches),
-    distinctUntilChanged(() => false),
+    distinctUntilChanged(),
   )
-  private previousIsPagePending$ = this.isPagePending$.pipe(
-    startWith(undefined),
-    pairwise(),
-    map(([prev, curr]) => prev ?? !!curr),
-  )
+  private previousIsPagePending = linkedSignal({
+    source: toSignal(this.isPagePending$),
+    computation: (src, prev) => prev?.source ?? src,
+  })
 
   private mountLoadForRouter = { router: this.router, mounted: false }
 
-  private load$ = combineLatest([
-    this.previousIsLoading$,
-    this.isLoading$,
-  ]).pipe(
-    tap(([previousIsLoading, isLoading]) => {
+  private load$ = this.isLoading$.pipe(
+    tap((isLoading) => {
+      const previousIsLoading = untracked(this.previousIsLoading)
       if (previousIsLoading && !isLoading) {
         this.router.emit({
           type: 'onLoad',
@@ -92,11 +85,9 @@ export class Transitioner implements OnInit {
       }
     }),
   )
-  private pagePending$ = combineLatest([
-    this.previousIsPagePending$,
-    this.isPagePending$,
-  ]).pipe(
-    tap(([previousIsPagePending, isPagePending]) => {
+  private pagePending$ = this.isPagePending$.pipe(
+    tap((isPagePending) => {
+      const previousIsPagePending = untracked(this.previousIsPagePending)
       // emit onBeforeRouteMount
       if (previousIsPagePending && !isPagePending) {
         this.router.emit({
@@ -106,11 +97,9 @@ export class Transitioner implements OnInit {
       }
     }),
   )
-  private pending$ = combineLatest([
-    this.previousIsAnyPending$,
-    this.isAnyPending$,
-  ]).pipe(
-    tap(([previousIsAnyPending, isAnyPending]) => {
+  private pending$ = this.isAnyPending$.pipe(
+    tap((isAnyPending) => {
+      const previousIsAnyPending = untracked(this.previousIsAnyPending)
       // The router was pending and now it's not
       if (previousIsAnyPending && !isAnyPending) {
         this.router.emit({

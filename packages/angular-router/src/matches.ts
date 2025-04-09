@@ -9,22 +9,22 @@ import {
   runInInjectionContext,
 } from '@angular/core'
 import { toSignal } from '@angular/core/rxjs-interop'
-import { combineLatest, map, of, switchMap } from 'rxjs'
+import { combineLatest, distinctUntilChanged, map, of, switchMap } from 'rxjs'
+import { shallow } from '@tanstack/router-core'
 import { DefaultError } from './default-error'
-import { distinctUntilRefChanged } from './distinct-until-ref-changed'
 import { MATCH_ID, RouteMatch } from './outlet'
 import { ERROR_COMPONENT_CONTEXT } from './route'
 import { injectRouter } from './router'
 import { routerState$ } from './router-state'
 import { Transitioner } from './transitioner'
 
-import type { Observable, Subscription } from 'rxjs'
 import type {
   AnyRouter,
   MakeRouteMatchUnion,
   RegisteredRouter,
   RouterState,
 } from '@tanstack/router-core'
+import type { Observable, Subscription } from 'rxjs'
 import type { ComponentRef, Signal } from '@angular/core'
 
 @Directive({ hostDirectives: [Transitioner] })
@@ -212,7 +212,7 @@ export function parentMatches$<
           ? opts.select(sliced as Array<MakeRouteMatchUnion<TRouter>>)
           : sliced
       }),
-      distinctUntilRefChanged() as any,
+      distinctUntilChanged(shallow) as any,
     )
   })
 }
@@ -261,7 +261,7 @@ export function childMatches$<
           ? opts.select(sliced as Array<MakeRouteMatchUnion<TRouter>>)
           : sliced
       }),
-      distinctUntilRefChanged() as any,
+      distinctUntilChanged(shallow) as any,
     )
   })
 }
