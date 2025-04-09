@@ -10,6 +10,14 @@ export default defineConfig({
       tsConfigPaths({
         projects: ['./tsconfig.json'],
       }),
+      {
+        name: 'dont-watch-sqlite-file',
+        handleHotUpdate({ file }) {
+          if (file.endsWith('.db')) {
+            return []
+          }
+        },
+      },
     ],
   },
 })
