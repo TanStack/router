@@ -19,6 +19,7 @@ import {
   isRedirect,
   pick,
   rootRouteId,
+  shallow,
 } from '@tanstack/router-core'
 import {
   catchError,
@@ -36,7 +37,6 @@ import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import { DefaultError } from './default-error'
 import { DefaultNotFound } from './default-not-found'
-import { distinctUntilRefChanged } from './distinct-until-ref-changed'
 import { isDevMode } from './is-dev-mode'
 import { ERROR_COMPONENT_CONTEXT, NOT_FOUND_COMPONENT_CONTEXT } from './route'
 import { injectRouter } from './router'
@@ -58,14 +58,14 @@ export class OnRendered {
       ([matchId, matches]) =>
         matches.find((d) => d.id === matchId)?.routeId as string,
     ),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
   private location$ = routerState$({
     select: (s) => s.resolvedLocation?.state.key,
   })
 
   constructor() {
-    let subscription: Subscription
+    let subscription: Subscription | undefined = undefined
     afterNextRender(() => {
       subscription = combineLatest([
         this.parentRouteId$,
@@ -80,7 +80,7 @@ export class OnRendered {
     })
 
     inject(DestroyRef).onDestroy(() => {
-      subscription.unsubscribe()
+      subscription?.unsubscribe()
     })
   }
 }
@@ -113,12 +113,12 @@ export class RouteMatch {
       ([matchId, matches]) =>
         matches.find((d) => d.id === matchId)?.routeId as string,
     ),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
 
   private route$ = this.routeId$.pipe(
     map((routeId) => this.router.routesById[routeId]),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
   private pendingComponent$ = this.route$.pipe(
     map(
@@ -126,7 +126,7 @@ export class RouteMatch {
         route.options.pendingComponent ||
         this.router.options.defaultPendingComponent,
     ),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
   private errorComponent$ = this.route$.pipe(
     map(
@@ -134,16 +134,16 @@ export class RouteMatch {
         route.options.errorComponent ||
         this.router.options.defaultErrorComponent,
     ),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
   private onCatch$ = this.route$.pipe(
     map((route) => route.options.onCatch || this.router.options.defaultOnCatch),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
 
   private matchIndex$ = combineLatest([this.matchId$, this.matches$]).pipe(
     map(([matchId, matches]) => matches.findIndex((d) => d.id === matchId)),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
   private matchState$ = combineLatest([this.matchIndex$, this.matches$]).pipe(
     map(([matchIndex, matches]) => matches[matchIndex]),
@@ -156,7 +156,7 @@ export class RouteMatch {
 
   private matchRoute$ = this.matchState$.pipe(
     map(({ routeId }) => this.router.routesById[routeId]),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
   private match$ = this.matchState$.pipe(
     map(({ match }) => match),
@@ -203,7 +203,7 @@ export class RouteMatch {
 
       return loadPromise
     }),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
 
   private run$ = this.routeId$.pipe(
@@ -338,7 +338,7 @@ export class RouteMatch {
   private cmpRef?: ComponentRef<any>
 
   constructor() {
-    let subscription: Subscription
+    let subscription: Subscription | undefined = undefined
 
     afterNextRender(() => {
       subscription = this.run$.subscribe({
@@ -370,7 +370,7 @@ export class RouteMatch {
     })
 
     inject(DestroyRef).onDestroy(() => {
-      subscription.unsubscribe()
+      subscription?.unsubscribe()
       this.vcr.clear()
       this.cmp = undefined
       this.cmpRef = undefined
@@ -398,11 +398,11 @@ export class Outlet {
       (matches) =>
         matches.find((d) => d.id === this.matchId)?.routeId as string,
     ),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
   private route$ = this.routeId$.pipe(
     map((routeId) => this.router.routesById[routeId]),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
   private parentGlobalNotFound$ = this.matches$.pipe(
     map((matches) => {
@@ -424,7 +424,7 @@ export class Outlet {
       if (index === -1) return null
       return matches[index + 1]?.id
     }),
-    distinctUntilRefChanged(),
+    distinctUntilChanged(shallow),
   )
   private matchLoad$ = this.childMatchId$.pipe(
     switchMap((childMatchId) => {
@@ -512,7 +512,7 @@ export class Outlet {
   )
 
   constructor() {
-    let subscription: Subscription
+    let subscription: Subscription | undefined = undefined
     afterNextRender(() => {
       subscription = this.run$.subscribe({
         next: (runData) => {
@@ -539,7 +539,7 @@ export class Outlet {
     })
 
     inject(DestroyRef).onDestroy(() => {
-      subscription.unsubscribe()
+      subscription?.unsubscribe()
       this.vcr.clear()
       this.cmpRef = undefined
       this.renderedId = undefined

@@ -6,12 +6,12 @@ import {
   runInInjectionContext,
 } from '@angular/core'
 import { toObservable, toSignal } from '@angular/core/rxjs-interop'
-import { combineLatest, map } from 'rxjs'
+import { combineLatest, distinctUntilChanged, map } from 'rxjs'
 import invariant from 'tiny-invariant'
+import { shallow } from '@tanstack/router-core'
 import { MATCH_ID } from './outlet'
 import { routerState$ } from './router-state'
 
-import type { Observable } from 'rxjs'
 import type {
   AnyRouter,
   MakeRouteMatch,
@@ -21,6 +21,7 @@ import type {
   ThrowConstraint,
   ThrowOrOptional,
 } from '@tanstack/router-core'
+import type { Observable } from 'rxjs'
 import type { Signal } from '@angular/core'
 
 export interface MatchBaseOptions<
@@ -115,6 +116,7 @@ export function match$<
 
         return opts.select ? opts.select(match) : match
       }),
+      distinctUntilChanged(shallow),
     ) as any
   })
 }
