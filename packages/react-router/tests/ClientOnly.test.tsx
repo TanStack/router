@@ -1,11 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import {
-  cleanup,
-  render,
-  screen,
-} from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import {
   RouterProvider,
   createMemoryHistory,
@@ -22,7 +18,8 @@ afterEach(() => {
 })
 
 function createTestRouter(initialHistory?: RouterHistory) {
-  const history = initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
+  const history =
+    initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
 
   const rootRoute = createRootRoute({})
 
@@ -51,7 +48,7 @@ function createTestRouter(initialHistory?: RouterHistory) {
 describe('ClientOnly', () => {
   it('should render fallback during SSR', async () => {
     const { router } = createTestRouter()
-    await router.load();
+    await router.load()
 
     // Initial render (SSR)
     const html = ReactDOMServer.renderToString(
@@ -76,7 +73,7 @@ describe('ClientOnly', () => {
 
   it('should handle navigation with client-only content', async () => {
     const { router } = createTestRouter()
-    await router.load();
+    await router.load()
 
     // Simulate hydration
     vi.spyOn(React, 'useSyncExternalStore').mockImplementation(() => true)

@@ -19,7 +19,7 @@ export interface ClientOnlyProps {
  * Render a Chart component if JS loads, renders a simple FakeChart
  * component server-side or if there is no JS. The FakeChart can have only the
  * UI without the behavior or be a loading spinner or skeleton.
- * 
+ *
  * ```tsx
  * return (
  *   <ClientOnly fallback={<FakeChart />}>
@@ -59,10 +59,10 @@ function useHydrated(): boolean {
   return React.useSyncExternalStore(
     subscribe,
     () => true,
-    () => false
+    () => false,
   )
 }
 
 function subscribe() {
-  return () => { }
+  return () => {}
 }

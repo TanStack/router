@@ -80,7 +80,7 @@ export function lazyRouteComponent<
       // If it was a module loading error,
       // throw eternal suspense while we wait for window to reload
       window.location.reload()
-      throw new Promise(() => { })
+      throw new Promise(() => {})
     }
     if (error) {
       // Otherwise, just throw the error
@@ -101,7 +101,7 @@ export function lazyRouteComponent<
     return React.createElement(comp, props)
   }
 
-    ; (lazyComp as any).preload = load
+  ;(lazyComp as any).preload = load
 
   return lazyComp as any
 }

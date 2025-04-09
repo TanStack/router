@@ -1,5 +1,5 @@
 ---
-id: clientOnlyComponent 
+id: clientOnlyComponent
 title: ClientOnly Component
 ---
 
@@ -26,7 +26,10 @@ The component to render if the JS is loaded in the client.
 
 ```tsx
 import { ClientOnly, createRoute } from '@tanstack/react-router'
-import { Charts, FallbackCharts } from './charts-that-break-server-side-rendering'
+import {
+  Charts,
+  FallbackCharts,
+} from './charts-that-break-server-side-rendering'
 
 const Route = createRoute({
   // ... other route options
@@ -45,4 +48,3 @@ function Dashboard() {
   )
 }
 ```
-
