@@ -94,7 +94,7 @@ export function lazyRouteComponent<
     if (ssr?.() === false) {
       return (
         <ClientOnly fallback={<Outlet />}>
-          {() => React.createElement(comp, props)}
+          {React.createElement(comp, props)}
         </ClientOnly>
       )
     }
