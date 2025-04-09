@@ -486,3 +486,9 @@ test('createServerFn can be used as a mutation function', () => {
 
   useMutation(serverFn)
 })
+
+test('createServerFn validator infers unknown for default input type', () => {
+  createServerFn().validator((input) => {
+    expectTypeOf(input).toEqualTypeOf<unknown>()
+  })
+})

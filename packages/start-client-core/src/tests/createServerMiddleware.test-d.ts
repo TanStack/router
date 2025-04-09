@@ -609,3 +609,9 @@ test('createMiddleware can validate FormData', () => {
       >
     >()
 })
+
+test('createMiddleware validator infers unknown for default input type', () => {
+  createMiddleware().validator((input) => {
+    expectTypeOf(input).toEqualTypeOf<unknown>()
+  })
+})
