@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { Outlet } from './Match'
+import { ClientOnly } from './ClientOnly'
 import type { AsyncRouteComponent } from './route'
 
 // If the load fails due to module not found, it may mean a new version of
@@ -16,25 +17,6 @@ function isModuleNotFoundError(error: any): boolean {
     error.message.startsWith('Failed to fetch dynamically imported module') ||
     error.message.startsWith('error loading dynamically imported module') ||
     error.message.startsWith('Importing a module script failed')
-  )
-}
-
-export function ClientOnly({
-  children,
-  fallback = null,
-}: React.PropsWithChildren<{ fallback?: React.ReactNode }>) {
-  return useHydrated() ? <>{children}</> : <>{fallback}</>
-}
-
-function subscribe() {
-  return () => {}
-}
-
-export function useHydrated() {
-  return React.useSyncExternalStore(
-    subscribe,
-    () => true,
-    () => false,
   )
 }
 
@@ -98,7 +80,7 @@ export function lazyRouteComponent<
       // If it was a module loading error,
       // throw eternal suspense while we wait for window to reload
       window.location.reload()
-      throw new Promise(() => {})
+      throw new Promise(() => { })
     }
     if (error) {
       // Otherwise, just throw the error
@@ -112,14 +94,14 @@ export function lazyRouteComponent<
     if (ssr?.() === false) {
       return (
         <ClientOnly fallback={<Outlet />}>
-          {React.createElement(comp, props)}
+          {() => React.createElement(comp, props)}
         </ClientOnly>
       )
     }
     return React.createElement(comp, props)
   }
 
-  ;(lazyComp as any).preload = load
+    ; (lazyComp as any).preload = load
 
   return lazyComp as any
 }
