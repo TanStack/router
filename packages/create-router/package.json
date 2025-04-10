@@ -17,12 +17,7 @@
   "bin": {
     "create-router": "index.js"
   },
-  "scripts": {
-    "dev": "unbuild --stub",
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint ./src",
-    "build": "unbuild"
-  },
+  "scripts": {},
   "type": "module",
   "files": [
     "index.js",

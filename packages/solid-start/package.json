@@ -23,12 +23,7 @@
     "async router",
     "typescript"
   ],
-  "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test": "pnpm test:build",
-    "test:build": "exit 0; vitest",
-    "build": "vite build"
-  },
+  "scripts": {},
   "type": "module",
   "types": "dist/esm/client.d.ts",
   "exports": {
