@@ -177,6 +177,16 @@ function RouteComp({
   )
 }
 
+function filterInternalProps(state: Record<string, any>) {
+  const filteredState = { ...state }
+  Object.keys(filteredState).forEach(key => {
+    if (key.startsWith('__')) {
+      delete filteredState[key]
+    }
+  })
+  return filteredState
+}
+
 export const BaseTanStackRouterDevtoolsPanel =
   function BaseTanStackRouterDevtoolsPanel({
     ...props
@@ -227,8 +237,12 @@ export const BaseTanStackRouterDevtoolsPanel =
       () => Object.keys(routerState().location.search).length,
     )
 
+    const filteredState = createMemo(() =>
+      filterInternalProps(routerState().location.state)
+    )
+
     const hasState = createMemo(
-      () => Object.keys(routerState().location.state).length,
+      () => Object.keys(filteredState()).length
     )
 
     const explorerState = createMemo(() => {
@@ -276,7 +290,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     const activeMatchLoaderData = createMemo(() => activeMatch()?.loaderData)
     const activeMatchValue = createMemo(() => activeMatch())
     const locationSearchValue = createMemo(() => routerState().location.search)
-    const locationStateValue = createMemo(() => routerState().location.state)
+    const locationStateValue = createMemo(() => filteredState())
 
     return (
       <div
@@ -567,7 +581,7 @@ export const BaseTanStackRouterDevtoolsPanel =
               <Explorer
                 value={locationStateValue}
                 defaultExpanded={Object.keys(
-                  routerState().location.state,
+                  filteredState()
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj
