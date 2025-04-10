@@ -20,12 +20,12 @@ You will need a [WorkOS account](https://dashboard.workos.com/signup).
 
 4. Verify your `.env.local` file has the following variables filled.
 
-   ```bash
-   WORKOS_CLIENT_ID=<YOUR_CLIENT_ID>
-   WORKOS_API_KEY=<YOUR_API_SECRET_KEY>
-   WORKOS_COOKIE_PASSWORD=<YOUR_COOKIE_PASSWORD>
-   WORKOS_REDIRECT_URI=http://localhost:3000/callback
-   ```
+```bash
+WORKOS_CLIENT_ID=<YOUR_CLIENT_ID>
+WORKOS_API_KEY=<YOUR_API_SECRET_KEY>
+WORKOS_COOKIE_PASSWORD=<YOUR_COOKIE_PASSWORD>
+WORKOS_REDIRECT_URI=http://localhost:3000/callback
+```
 
 `WORKOS_COOKIE_PASSWORD` is the private key used to encrypt the session cookie. It has to be at least 32 characters long. You can use the [1Password generator](https://1password.com/password-generator/) or the `openssl` library to generate a strong password via the command line:
 
@@ -37,6 +37,6 @@ To use the `signOut` method, you'll need to set a default Logout URI in your Wor
 
 5. Run the following command and navigate to [http://localhost:3000](http://localhost:3000).
 
-   ```bash
-   pnpm dev
-   ```
+```bash
+pnpm dev
+```
