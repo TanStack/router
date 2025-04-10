@@ -157,8 +157,8 @@ await publish({
       packageDir: 'packages/start-server-functions-server',
     },
     {
-      name: '@tanstack/start',
-      packageDir: 'packages/start',
+      name: '@tanstack/start-plugin-core',
+      packageDir: 'packages/start-plugin-core',
     },
     {
       name: '@tanstack/router-utils',
