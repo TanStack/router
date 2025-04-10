@@ -187,7 +187,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
       parentRoute: typeof rootRoute
-      serverParentRoute: unknown
       serverRoute: typeof UsersServerRouteImport
     }
     '/_pathlessLayout/_nested-layout': {
@@ -210,7 +209,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/users/$userId'
       preLoaderRoute: typeof UsersUserIdRouteImport
       parentRoute: typeof UsersRouteImport
-      serverParentRoute: typeof UsersServerRouteImport
       serverRoute: typeof UsersUserIdServerRouteImport
     }
     '/posts/': {
@@ -263,7 +261,7 @@ declare module './routes/index' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/',
-    FileRoutesByPath['/']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/']['id'],
     FileRoutesByPath['/']['path'],
     FileRoutesByPath['/']['fullPath']
@@ -279,7 +277,7 @@ declare module './routes/_pathlessLayout' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/_pathlessLayout',
-    FileRoutesByPath['/_pathlessLayout']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/_pathlessLayout']['id'],
     FileRoutesByPath['/_pathlessLayout']['path'],
     FileRoutesByPath['/_pathlessLayout']['fullPath']
@@ -295,7 +293,7 @@ declare module './routes/deferred' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/deferred',
-    FileRoutesByPath['/deferred']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/deferred']['id'],
     FileRoutesByPath['/deferred']['path'],
     FileRoutesByPath['/deferred']['fullPath']
@@ -311,7 +309,7 @@ declare module './routes/posts' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/posts',
-    FileRoutesByPath['/posts']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/posts']['id'],
     FileRoutesByPath['/posts']['path'],
     FileRoutesByPath['/posts']['fullPath']
@@ -327,7 +325,7 @@ declare module './routes/redirect' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/redirect',
-    FileRoutesByPath['/redirect']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/redirect']['id'],
     FileRoutesByPath['/redirect']['path'],
     FileRoutesByPath['/redirect']['fullPath']
@@ -343,7 +341,7 @@ declare module './routes/users' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/users',
-    FileRoutesByPath['/users']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/users']['id'],
     FileRoutesByPath['/users']['path'],
     FileRoutesByPath['/users']['fullPath']
@@ -359,7 +357,7 @@ declare module './routes/_pathlessLayout/_nested-layout' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/_pathlessLayout/_nested-layout',
-    FileRoutesByPath['/_pathlessLayout/_nested-layout']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/_pathlessLayout/_nested-layout']['id'],
     FileRoutesByPath['/_pathlessLayout/_nested-layout']['path'],
     FileRoutesByPath['/_pathlessLayout/_nested-layout']['fullPath']
@@ -375,7 +373,7 @@ declare module './routes/posts.$postId' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/posts/$postId',
-    FileRoutesByPath['/posts/$postId']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/posts/$postId']['id'],
     FileRoutesByPath['/posts/$postId']['path'],
     FileRoutesByPath['/posts/$postId']['fullPath']
@@ -391,7 +389,7 @@ declare module './routes/users.$userId' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/users/$userId',
-    FileRoutesByPath['/users/$userId']['serverParentRoute'],
+    typeof UsersServerRouteImport,
     FileRoutesByPath['/users/$userId']['id'],
     FileRoutesByPath['/users/$userId']['path'],
     FileRoutesByPath['/users/$userId']['fullPath']
@@ -407,7 +405,7 @@ declare module './routes/posts.index' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/posts/',
-    FileRoutesByPath['/posts/']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/posts/']['id'],
     FileRoutesByPath['/posts/']['path'],
     FileRoutesByPath['/posts/']['fullPath']
@@ -423,7 +421,7 @@ declare module './routes/users.index' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/users/',
-    FileRoutesByPath['/users/']['serverParentRoute'],
+    typeof UsersServerRouteImport,
     FileRoutesByPath['/users/']['id'],
     FileRoutesByPath['/users/']['path'],
     FileRoutesByPath['/users/']['fullPath']
@@ -439,7 +437,7 @@ declare module './routes/_pathlessLayout/_nested-layout/route-a' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/_pathlessLayout/_nested-layout/route-a',
-    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['id'],
     FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['path'],
     FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['fullPath']
@@ -455,7 +453,7 @@ declare module './routes/_pathlessLayout/_nested-layout/route-b' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/_pathlessLayout/_nested-layout/route-b',
-    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['id'],
     FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['path'],
     FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['fullPath']
@@ -471,7 +469,7 @@ declare module './routes/posts_.$postId.deep' {
   >
   const createServerFileRoute: CreateServerFileRoute<
     '/posts_/$postId/deep',
-    FileRoutesByPath['/posts_/$postId/deep']['serverParentRoute'],
+    unknown,
     FileRoutesByPath['/posts_/$postId/deep']['id'],
     FileRoutesByPath['/posts_/$postId/deep']['path'],
     FileRoutesByPath['/posts_/$postId/deep']['fullPath']
@@ -642,6 +640,7 @@ export interface FileRouteTypes {
     | '/_pathlessLayout/_nested-layout/route-b'
     | '/posts_/$postId/deep'
   fileRoutesById: FileRoutesById
+  serverFileRoutesById: ServerFileRoutesById
 }
 
 export interface RootRouteChildren {

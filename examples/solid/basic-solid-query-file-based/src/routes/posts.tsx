@@ -1,5 +1,5 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
 import { postsQueryOptions } from '../postsQueryOptions'
 import { createMemo } from 'solid-js'
 
@@ -10,7 +10,7 @@ export const Route = createFileRoute('/posts')({
 })
 
 function PostsComponent() {
-  const postsQuery = createQuery(() => postsQueryOptions)
+  const postsQuery = useQuery(() => postsQueryOptions)
   const posts = createMemo(() => {
     if (postsQuery.data) {
       return postsQuery.data
