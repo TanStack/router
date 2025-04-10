@@ -16,7 +16,7 @@
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
-    "vite": "6.1.0"
+    "vite": "6.1.5"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
