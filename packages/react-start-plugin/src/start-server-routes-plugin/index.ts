@@ -320,12 +320,7 @@ async function generator(config: Config, root: string) {
     await handleNode(node)
   }
 
-  checkRouteFullPathUniqueness(
-    preRouteNodes.filter(
-      (d) => d.children === undefined && 'lazy' !== d._fsRouteType,
-    ),
-    config,
-  )
+  checkRouteFullPathUniqueness(routeNodes, config)
 
   function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {
     const children = nodes.map((node) => {
