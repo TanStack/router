@@ -38,7 +38,7 @@ openssl rand -base64 24
 
 To use the `signOut` method, you'll need to set a default Logout URI in your WorkOS dashboard settings under "Redirects".
 
-6. Run the following command and navigate to [http://localhost:3000](http://localhost:3000).
+5. Run the following command and navigate to [http://localhost:3000](http://localhost:3000).
 
 ```bash
 pnpm dev
