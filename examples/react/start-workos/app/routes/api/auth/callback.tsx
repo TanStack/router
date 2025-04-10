@@ -44,8 +44,6 @@ export const APIRoute = createAPIFileRoute('/api/auth/callback')({
           url.pathname = returnPathname;
         }
 
-        // Fall back to standard Response if NextResponse is not available.
-        // This is to support Next.js 13.
         const response = redirectWithFallback(url.toString());
 
         if (!accessToken || !refreshToken) throw new Error('response is missing tokens');

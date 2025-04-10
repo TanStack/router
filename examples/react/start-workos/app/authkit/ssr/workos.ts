@@ -2,8 +2,6 @@ import { WorkOS } from '@workos-inc/node';
 import { getConfig } from './config';
 import { lazy } from './utils';
 
-const VERSION = '0.0.1';
-
 /**
  * Create a WorkOS instance with the provided API key and optional settings.
  */
@@ -20,10 +18,6 @@ export function createWorkOSInstance() {
     apiHostname,
     https: apiHttps,
     port: apiPort,
-    appInfo: {
-      name: 'authkit-react-router',
-      version: VERSION,
-    },
   };
 
   // Initialize the WorkOS client with config values
