@@ -97,6 +97,8 @@ export async function saveSession(sessionOrResponse: Session | AuthenticationRes
   setCookie(cookieName, encryptedSession);
 }
 
+// JWKS call only happens once and the result is cached. The lazy function ensures that
+// the JWK set is only created when it's needed, and not before.
 const JWKS = lazy(() => createRemoteJWKSet(new URL(getWorkOS().userManagement.getJwksUrl(getConfig('clientId')))));
 
 async function verifyAccessToken(accessToken: string): Promise<boolean> {
