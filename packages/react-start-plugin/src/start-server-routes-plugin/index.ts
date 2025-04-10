@@ -1,24 +1,85 @@
-import path from 'node:path'
-import * as fs from 'node:fs'
-import * as fsp from 'node:fs/promises'
+import path, { isAbsolute, join, normalize } from 'node:path'
+import fs from 'node:fs'
+import fsp from 'node:fs/promises'
 import {
   format,
   logging,
   multiSortBy,
+  physicalGetRouteNodes,
   removeExt,
   removeUnderscores,
   replaceBackslash,
   resetRegex,
+  rootPathId,
   routePathToVariable,
   trimPathLeft,
+  virtualGetRouteNodes,
   writeIfDifferent,
-} from './utils'
-import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
-import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
-import { rootPathId } from './filesystem/physical/rootPathId'
+} from '@tanstack/router-generator'
 import { fillTemplate, getTargetTemplate } from './template'
-import type { FsRouteType, GetRouteNodesResult, RouteNode } from './types'
+import type { GetRouteNodesResult, RouteNode } from '@tanstack/router-generator'
 import type { Config } from './config'
+import type { Plugin } from 'vite'
+
+let lock = false
+const checkLock = () => lock
+const setLock = (bool: boolean) => {
+  lock = bool
+}
+
+export function TanStackStartServerRoutesVite(config: Config): Plugin {
+  let ROOT: string = process.cwd()
+
+  const getRoutesDirectoryPath = () => {
+    return isAbsolute(config.routesDirectory)
+      ? config.routesDirectory
+      : join(ROOT, config.routesDirectory)
+  }
+
+  const generate = async () => {
+    if (checkLock()) {
+      return
+    }
+
+    setLock(true)
+
+    try {
+      await generator(config, ROOT)
+    } catch (err) {
+      console.error(err)
+      console.info()
+    } finally {
+      setLock(false)
+    }
+  }
+
+  const handleFile = async (file: string) => {
+    const filePath = normalize(file)
+
+    const routesDirectoryPath = getRoutesDirectoryPath()
+    if (filePath.startsWith(routesDirectoryPath)) {
+      await generate()
+    }
+  }
+
+  return {
+    name: 'tanstack-start-server-routes-plugin',
+    configureServer(server) {
+      server.watcher.on('all', (event, path) => {
+        handleFile(path)
+      })
+    },
+    configResolved(config) {
+      ROOT = config.root
+    },
+    async buildStart() {
+      await generate()
+      // if (this.environment.name === 'server') {
+      // }
+    },
+    sharedDuringBuild: true,
+  }
+}
 
 // Maybe import this from `@tanstack/router-core` in the future???
 const rootRouteId = '__root__'
@@ -30,26 +91,21 @@ const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
 let isFirst = false
 let skipMessage = false
 
-type RouteSubNode = {
-  component?: RouteNode
-  errorComponent?: RouteNode
-  pendingComponent?: RouteNode
-  loader?: RouteNode
-  lazy?: RouteNode
-}
-
-export async function generator(config: Config, root: string) {
+async function generator(config: Config, root: string) {
+  const generatedRouteTreePath = path.resolve(
+    root,
+    'node_modules/.tanstack-start/server-routes/routeTree.gen.ts',
+  )
   const ROUTE_TEMPLATE = getTargetTemplate(config.target)
   const logger = logging({ disabled: config.disableLogging })
-  logger.log('')
 
   if (!isFirst) {
-    logger.log('♻️  Generating routes...')
+    // logger.log('♻️  Generating server routes...')
     isFirst = true
   } else if (skipMessage) {
     skipMessage = false
   } else {
-    logger.log('♻️  Regenerating routes...')
+    // logger.log('♻️  Regenerating server routes...')
   }
 
   const taskId = latestTask + 1
@@ -66,8 +122,6 @@ export async function generator(config: Config, root: string) {
 
   const start = Date.now()
 
-  const TYPES_DISABLED = config.disableTypes
-
   let getRouteNodesResult: GetRouteNodesResult
 
   if (config.virtualRouteConfig) {
@@ -80,7 +134,7 @@ export async function generator(config: Config, root: string) {
   if (rootRouteNode === undefined) {
     let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
     if (!config.virtualRouteConfig) {
-      errorMessage += `\nMake sure that you add a "${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}" file to your routes directory.\nAdd the file in: "${config.routesDirectory}/${rootPathId}.${config.disableTypes ? 'js' : 'tsx'}"`
+      errorMessage += `\nMake sure that you add a "${rootPathId}.tsx" file to your routes directory.\nAdd the file in: "${config.routesDirectory}/${rootPathId}.tsx"`
     }
     throw new Error(errorMessage)
   }
@@ -103,7 +157,6 @@ export async function generator(config: Config, root: string) {
   ]).filter((d) => ![`/${rootPathId}`].includes(d.routePath || ''))
 
   const routeTree: Array<RouteNode> = []
-  const routePiecesByPath: Record<string, RouteSubNode> = {}
 
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
@@ -137,7 +190,7 @@ export async function generator(config: Config, root: string) {
         replaced,
         {
           beforeWrite: () => {
-            logger.log(`🟡 Creating ${node.fullPath}`)
+            // logger.log(`🟡 Creating ${node.fullPath}`)
           },
         },
       )
@@ -184,175 +237,17 @@ export async function generator(config: Config, root: string) {
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
     )
 
+    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+
     // Ensure the boilerplate for the route exists, which can be skipped for virtual parent routes and virtual routes
     if (!node.isVirtualParentRoute && !node.isVirtual) {
-      const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
-
-      const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
-
-      let replaced = routeCode
-
-      const tRouteTemplate = ROUTE_TEMPLATE.route
-      const tLazyRouteTemplate = ROUTE_TEMPLATE.lazyRoute
-
-      if (!routeCode) {
-        // Creating a new lazy route file
-        if (node._fsRouteType === 'lazy') {
-          // Check by default check if the user has a specific lazy route template
-          // If not, check if the user has a route template and use that instead
-          replaced = await fillTemplate(
-            config,
-            (config.customScaffolding?.lazyRouteTemplate ||
-              config.customScaffolding?.routeTemplate) ??
-              tLazyRouteTemplate.template(),
-            {
-              tsrImports: tLazyRouteTemplate.imports.tsrImports(),
-              tsrPath: escapedRoutePath,
-              tsrExportStart:
-                tLazyRouteTemplate.imports.tsrExportStart(escapedRoutePath),
-              tsrExportEnd: tLazyRouteTemplate.imports.tsrExportEnd(),
-            },
-          )
-        } else if (
-          // Creating a new normal route file
-          (['layout', 'static'] satisfies Array<FsRouteType>).some(
-            (d) => d === node._fsRouteType,
-          ) ||
-          (
-            [
-              'component',
-              'pendingComponent',
-              'errorComponent',
-              'loader',
-            ] satisfies Array<FsRouteType>
-          ).every((d) => d !== node._fsRouteType)
-        ) {
-          replaced = await fillTemplate(
-            config,
-            config.customScaffolding?.routeTemplate ??
-              tRouteTemplate.template(),
-            {
-              tsrImports: tRouteTemplate.imports.tsrImports(),
-              tsrPath: escapedRoutePath,
-              tsrExportStart:
-                tRouteTemplate.imports.tsrExportStart(escapedRoutePath),
-              tsrExportEnd: tRouteTemplate.imports.tsrExportEnd(),
-            },
-          )
-        }
-      } else {
-        // Check if the route file has a Route export
-        const hasRouteExport = routeCode.includes('export const Route')
-
-        if (!hasRouteExport) {
-          return
-        }
-
-        // Update the existing route file
-        replaced = routeCode
-          .replace(
-            /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
-          )
-          .replace(
-            new RegExp(
-              `(import\\s*\\{)(.*)(create(Lazy)?FileRoute)(.*)(\\}\\s*from\\s*['"]@tanstack\\/${ROUTE_TEMPLATE.subPkg}['"])`,
-              'gs',
-            ),
-            (_, p1, p2, ___, ____, p5, p6) => {
-              const beforeCreateFileRoute = () => {
-                if (!p2) return ''
-
-                let trimmed = p2.trim()
-
-                if (trimmed.endsWith(',')) {
-                  trimmed = trimmed.slice(0, -1)
-                }
-
-                return trimmed
-              }
-
-              const afterCreateFileRoute = () => {
-                if (!p5) return ''
-
-                let trimmed = p5.trim()
-
-                if (trimmed.startsWith(',')) {
-                  trimmed = trimmed.slice(1)
-                }
-
-                return trimmed
-              }
-
-              const newImport = () => {
-                const before = beforeCreateFileRoute()
-                const after = afterCreateFileRoute()
-
-                if (!before) return after
-
-                if (!after) return before
-
-                return `${before},${after}`
-              }
-
-              const middle = newImport()
-
-              if (middle === '') return ''
-
-              return `${p1} ${newImport()} ${p6}`
-            },
-          )
-          .replace(
-            /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
-            (_, __, p2, ___, p4) =>
-              `${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}`,
-          )
-      }
-
-      await writeIfDifferent(node.fullPath, routeCode, replaced, {
-        beforeWrite: () => {
-          logger.log(`🟡 Updating ${node.fullPath}`)
-        },
-      })
-    }
-
-    if (
-      !node.isVirtual &&
-      (
-        [
-          'lazy',
-          'loader',
-          'component',
-          'pendingComponent',
-          'errorComponent',
-        ] satisfies Array<FsRouteType>
-      ).some((d) => d === node._fsRouteType)
-    ) {
-      routePiecesByPath[node.routePath!] =
-        routePiecesByPath[node.routePath!] || {}
-
-      routePiecesByPath[node.routePath!]![
-        node._fsRouteType === 'lazy'
-          ? 'lazy'
-          : node._fsRouteType === 'loader'
-            ? 'loader'
-            : node._fsRouteType === 'errorComponent'
-              ? 'errorComponent'
-              : node._fsRouteType === 'pendingComponent'
-                ? 'pendingComponent'
-                : 'component'
-      ] = node
-
-      const anchorRoute = routeNodes.find((d) => d.routePath === node.routePath)
-
-      if (!anchorRoute) {
-        await handleNode({
-          ...node,
-          isVirtual: true,
-          _fsRouteType: 'static',
-        })
-      }
-      return
+      // const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
+      // let replaced = routeCode
+      // await writeIfDifferent(node.fullPath, routeCode, replaced, {
+      //   beforeWrite: () => {
+      //     // logger.log(`🟡 Updating ${node.fullPath}`)
+      //   },
+      // })
     }
 
     const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
@@ -405,6 +300,10 @@ export async function generator(config: Config, root: string) {
       }
     }
 
+    if (!routeCode.includes('export const ServerRoute')) {
+      return
+    }
+
     if (node.parent) {
       if (!node.isVirtualParentRequired) {
         node.parent.children = node.parent.children ?? []
@@ -443,13 +342,11 @@ export async function generator(config: Config, root: string) {
       if (node.children?.length) {
         const childConfigs = buildRouteTreeConfig(node.children, depth + 1)
 
-        const childrenDeclaration = TYPES_DISABLED
-          ? ''
-          : `interface ${route}Children {
+        const childrenDeclaration = `interface ${route}Children {
   ${node.children.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
 }`
 
-        const children = `const ${route}Children${TYPES_DISABLED ? '' : `: ${route}Children`} = {
+        const children = `const ${route}Children: ${route}Children = {
   ${node.children.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
 }`
 
@@ -480,15 +377,6 @@ export async function generator(config: Config, root: string) {
 
   const imports = Object.entries({
     createFileRoute: sortedRouteNodes.some((d) => d.isVirtual),
-    lazyFn: sortedRouteNodes.some(
-      (node) => routePiecesByPath[node.routePath!]?.loader,
-    ),
-    lazyRouteComponent: sortedRouteNodes.some(
-      (node) =>
-        routePiecesByPath[node.routePath!]?.component ||
-        routePiecesByPath[node.routePath!]?.errorComponent ||
-        routePiecesByPath[node.routePath!]?.pendingComponent,
-    ),
   })
     .filter((d) => d[1])
     .map((d) => d[0])
@@ -499,10 +387,9 @@ export async function generator(config: Config, root: string) {
     return replaceBackslash(
       removeExt(
         path.relative(
-          path.dirname(config.generatedRouteTree),
+          path.dirname(generatedRouteTreePath),
           path.resolve(config.routesDirectory, node.filePath),
         ),
-        config.addExtensions,
       ),
     )
   }
@@ -517,11 +404,7 @@ export async function generator(config: Config, root: string) {
       : '',
     '// Import Routes',
     [
-      ...(TYPES_DISABLED
-        ? []
-        : [
-            `import type { FileRoutesByPath, CreateFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
-          ]),
+      `import type { FileRoutesByPath, CreateServerFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
       `import { Route as rootRoute } from './${getImportPath(rootRouteNode)}'`,
       ...sortedRouteNodes
         .filter((d) => !d.isVirtual)
@@ -541,15 +424,8 @@ export async function generator(config: Config, root: string) {
       .join('\n'),
     '// Create/Update Routes',
     sortedRouteNodes
-      .map((node) => {
-        const loaderNode = routePiecesByPath[node.routePath!]?.loader
-        const componentNode = routePiecesByPath[node.routePath!]?.component
-        const errorComponentNode =
-          routePiecesByPath[node.routePath!]?.errorComponent
-        const pendingComponentNode =
-          routePiecesByPath[node.routePath!]?.pendingComponent
-        const lazyComponentNode = routePiecesByPath[node.routePath!]?.lazy
 
+      .map((node) => {
         return [
           [
             `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
@@ -560,67 +436,15 @@ export async function generator(config: Config, root: string) {
           ]
             .filter(Boolean)
             .join(',')}
-        }${TYPES_DISABLED ? '' : 'as any'})`,
-            loaderNode
-              ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
-                  removeExt(
-                    path.relative(
-                      path.dirname(config.generatedRouteTree),
-                      path.resolve(config.routesDirectory, loaderNode.filePath),
-                    ),
-                    config.addExtensions,
-                  ),
-                )}'), 'loader') })`
-              : '',
-            componentNode || errorComponentNode || pendingComponentNode
-              ? `.update({
-              ${(
-                [
-                  ['component', componentNode],
-                  ['errorComponent', errorComponentNode],
-                  ['pendingComponent', pendingComponentNode],
-                ] as const
-              )
-                .filter((d) => d[1])
-                .map((d) => {
-                  return `${
-                    d[0]
-                  }: lazyRouteComponent(() => import('./${replaceBackslash(
-                    removeExt(
-                      path.relative(
-                        path.dirname(config.generatedRouteTree),
-                        path.resolve(config.routesDirectory, d[1]!.filePath),
-                      ),
-                      config.addExtensions,
-                    ),
-                  )}'), '${d[0]}')`
-                })
-                .join('\n,')}
-            })`
-              : '',
-            lazyComponentNode
-              ? `.lazy(() => import('./${replaceBackslash(
-                  removeExt(
-                    path.relative(
-                      path.dirname(config.generatedRouteTree),
-                      path.resolve(
-                        config.routesDirectory,
-                        lazyComponentNode.filePath,
-                      ),
-                    ),
-                    config.addExtensions,
-                  ),
-                )}').then((d) => d.Route))`
-              : '',
+        } as any)`,
           ].join(''),
         ].join('\n\n')
       })
       .join('\n\n'),
-    ...(TYPES_DISABLED
-      ? []
-      : [
-          '// Populate the FileRoutesByPath interface',
-          `declare module '${ROUTE_TEMPLATE.fullPkg}' {
+    '',
+
+    '// Populate the FileRoutesByPath interface',
+    `declare module '${ROUTE_TEMPLATE.fullPkg}' {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
@@ -643,15 +467,11 @@ export async function generator(config: Config, root: string) {
       .join('\n')}
   }
 }`,
-        ]),
-    ...(TYPES_DISABLED
-      ? []
-      : [
-          `// Add type-safety to the createFileRoute function across the route tree`,
-          routeNodes
-            .map((routeNode) => {
-              return `declare module './${getImportPath(routeNode)}' {
-const createFileRoute: CreateFileRoute<
+    `// Add type-safety to the createFileRoute function across the route tree`,
+    routeNodes
+      .map((routeNode) => {
+        return `declare module './${getImportPath(routeNode)}' {
+const createServerFileRoute: CreateServerFileRoute<
 '${routeNode.routePath}',
 FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
 FileRoutesByPath['${routeNode.routePath}']['id'],
@@ -659,33 +479,29 @@ FileRoutesByPath['${routeNode.routePath}']['path'],
 FileRoutesByPath['${routeNode.routePath}']['fullPath']
 >
 }`
-            })
-            .join('\n'),
-        ]),
+      })
+      .join('\n'),
     '// Create and export the route tree',
     routeConfigChildrenText,
-    ...(TYPES_DISABLED
-      ? []
-      : [
-          `export interface FileRoutesByFullPath {
+    `export interface FileRoutesByFullPath {
   ${[...createRouteNodesByFullPath(routeNodes).entries()].map(
     ([fullPath, routeNode]) => {
       return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
     },
   )}
 }`,
-          `export interface FileRoutesByTo {
+    `export interface FileRoutesByTo {
   ${[...createRouteNodesByTo(routeNodes).entries()].map(([to, routeNode]) => {
     return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
 }`,
-          `export interface FileRoutesById {
+    `export interface FileRoutesById {
   '${rootRouteId}': typeof rootRoute,
   ${[...createRouteNodesById(routeNodes).entries()].map(([id, routeNode]) => {
     return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
 }`,
-          `export interface FileRouteTypes {
+    `export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: ${routeNodes.length > 0 ? [...createRouteNodesByFullPath(routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|') : 'never'}
   fileRoutesByTo: FileRoutesByTo
@@ -693,23 +509,13 @@ FileRoutesByPath['${routeNode.routePath}']['fullPath']
   id: ${[`'${rootRouteId}'`, ...[...createRouteNodesById(routeNodes).keys()].map((id) => `'${id}'`)].join('|')}
   fileRoutesById: FileRoutesById
 }`,
-          `export interface RootRouteChildren {
+    `export interface RootRouteChildren {
   ${routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
 }`,
-        ]),
-    `const rootRouteChildren${TYPES_DISABLED ? '' : ': RootRouteChildren'} = {
+    `const rootRouteChildren: RootRouteChildren = {
   ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
 }`,
-    `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)${TYPES_DISABLED ? '' : '._addFileTypes<FileRouteTypes>()'}`,
-    `// @ts-ignore
-import type * as ServerTypes from '${path.relative(
-      path.dirname(config.generatedRouteTree),
-      path.resolve(
-        root,
-        'node_modules/.tanstack-start/server-routes/routeTree.gen.ts',
-      ),
-    )}'`,
-    ...config.routeTreeFileFooter,
+    `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()`,
   ]
     .filter(Boolean)
     .join('\n\n')
@@ -746,21 +552,20 @@ import type * as ServerTypes from '${path.relative(
   }
 
   const includeManifest = ['react', 'solid']
-  const routeConfigFileContent =
-    config.disableManifestGeneration || !includeManifest.includes(config.target)
-      ? routeImports
-      : [
-          routeImports,
-          '\n',
-          '/* ROUTE_MANIFEST_START',
-          createRouteManifest(),
-          'ROUTE_MANIFEST_END */',
-        ].join('\n')
+  const routeConfigFileContent = !includeManifest.includes(config.target)
+    ? routeImports
+    : [
+        routeImports,
+        '\n',
+        '/* ROUTE_MANIFEST_START',
+        createRouteManifest(),
+        'ROUTE_MANIFEST_END */',
+      ].join('\n')
 
   if (!checkLatest()) return
 
   const existingRouteTreeContent = await fsp
-    .readFile(path.resolve(config.generatedRouteTree), 'utf-8')
+    .readFile(path.resolve(generatedRouteTreePath), 'utf-8')
     .catch((err) => {
       if (err.code === 'ENOENT') {
         return ''
@@ -772,7 +577,7 @@ import type * as ServerTypes from '${path.relative(
   if (!checkLatest()) return
 
   // Ensure the directory exists
-  await fsp.mkdir(path.dirname(path.resolve(config.generatedRouteTree)), {
+  await fsp.mkdir(path.dirname(path.resolve(generatedRouteTreePath)), {
     recursive: true,
   })
 
@@ -780,16 +585,12 @@ import type * as ServerTypes from '${path.relative(
 
   // Write the route tree file, if it has changed
   const routeTreeWriteResult = await writeIfDifferent(
-    path.resolve(config.generatedRouteTree),
-    config.enableRouteTreeFormatting
-      ? await format(existingRouteTreeContent, config)
-      : existingRouteTreeContent,
-    config.enableRouteTreeFormatting
-      ? await format(routeConfigFileContent, config)
-      : routeConfigFileContent,
+    path.resolve(generatedRouteTreePath),
+    await format(existingRouteTreeContent, config),
+    await format(routeConfigFileContent, config),
     {
       beforeWrite: () => {
-        logger.log(`🟡 Updating ${config.generatedRouteTree}`)
+        // logger.log(`🟡 Updating ${generatedRouteTreePath}`)
       },
     },
   )
@@ -797,16 +598,12 @@ import type * as ServerTypes from '${path.relative(
     return
   }
 
-  logger.log(
-    `✅ Processed ${routeNodes.length === 1 ? 'route' : 'routes'} in ${
-      Date.now() - start
-    }ms`,
-  )
+  // logger.log(
+  //   `✅ Processed ${routeNodes.length === 1 ? 'server route' : 'server routes'} in ${
+  //     Date.now() - start
+  //   }ms`,
+  // )
 }
-
-// function removeTrailingUnderscores(s?: string) {
-//   return s?.replaceAll(/(_$)/gi, '').replaceAll(/(_\/)/gi, '/')
-// }
 
 function removeGroups(s: string) {
   return s.replace(possiblyNestedRouteGroupPatternRegex, '')

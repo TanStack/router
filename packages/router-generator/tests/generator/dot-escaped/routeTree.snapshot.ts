@@ -78,7 +78,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Add type-safety to the createFileRoute  function across the route tree
+// Add type-safety to the createFileRoute function across the route tree
 
 declare module './routes/nested[.]js' {
   const createFileRoute: CreateFileRoute<

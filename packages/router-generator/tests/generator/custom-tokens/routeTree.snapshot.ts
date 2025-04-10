@@ -134,7 +134,7 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Add type-safety to the createFileRoute  function across the route tree
+// Add type-safety to the createFileRoute function across the route tree
 
 declare module './routes/_1nd3x' {
   const createFileRoute: CreateFileRoute<

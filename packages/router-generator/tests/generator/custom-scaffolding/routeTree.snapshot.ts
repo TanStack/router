@@ -13,8 +13,6 @@ import { createFileRoute } from '@tanstack/react-router'
 // Import Routes
 
 import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
-import { serverOnly } from '@tanstack/react-start'
-import type { CreateServerFileRoute } from '@tanstack/react-start'
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiBarRouteImport } from './routes/api/bar'
@@ -71,19 +69,12 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Add type-safety to the createFileRoute & createServerFileRoute function across the route tree
+// Add type-safety to the createFileRoute function across the route tree
 
 declare module './routes/index' {
   const createFileRoute: CreateFileRoute<
     '/',
     FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/',
-    FileRoutesByPath['/']['serverParentRoute'],
     FileRoutesByPath['/']['id'],
     FileRoutesByPath['/']['path'],
     FileRoutesByPath['/']['fullPath']
@@ -97,25 +88,11 @@ declare module './routes/foo.lazy' {
     FileRoutesByPath['/foo']['path'],
     FileRoutesByPath['/foo']['fullPath']
   >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/foo',
-    FileRoutesByPath['/foo']['serverParentRoute'],
-    FileRoutesByPath['/foo']['id'],
-    FileRoutesByPath['/foo']['path'],
-    FileRoutesByPath['/foo']['fullPath']
-  >
 }
 declare module './routes/api/bar' {
   const createFileRoute: CreateFileRoute<
     '/api/bar',
     FileRoutesByPath['/api/bar']['parentRoute'],
-    FileRoutesByPath['/api/bar']['id'],
-    FileRoutesByPath['/api/bar']['path'],
-    FileRoutesByPath['/api/bar']['fullPath']
-  >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/api/bar',
-    FileRoutesByPath['/api/bar']['serverParentRoute'],
     FileRoutesByPath['/api/bar']['id'],
     FileRoutesByPath['/api/bar']['path'],
     FileRoutesByPath['/api/bar']['fullPath']
@@ -130,15 +107,11 @@ export interface FileRoutesByFullPath {
   '/api/bar': typeof ApiBarRoute
 }
 
-export interface ServerFileRoutesByFullPath {}
-
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/foo': typeof FooLazyRoute
   '/api/bar': typeof ApiBarRoute
 }
-
-export interface ServerFileRoutesByTo {}
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
@@ -146,8 +119,6 @@ export interface FileRoutesById {
   '/foo': typeof FooLazyRoute
   '/api/bar': typeof ApiBarRoute
 }
-
-export interface ServerFileRoutesById {}
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath

@@ -2,7 +2,6 @@ export type RouteNode = {
   filePath: string
   fullPath: string
   variableName: string
-  hasServerRoute?: boolean
   _fsRouteType: FsRouteType
   routePath?: string
   cleanedPath?: string

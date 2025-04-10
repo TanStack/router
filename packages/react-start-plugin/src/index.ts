@@ -7,6 +7,7 @@ import { getTanStackStartOptions } from './schema.js'
 import { nitroPlugin } from './nitro/nitro-plugin.js'
 import { startManifestPlugin } from './routesManifestPlugin.js'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
+import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/index.js'
 import type { PluginOption } from 'vite'
 import type { TanStackStartInputConfig, WithReactPlugin } from './schema.js'
 
@@ -16,13 +17,22 @@ export type {
   WithReactPlugin,
 } from './schema.js'
 
+declare global {
+  interface ImportMeta {
+    env: {
+      HOST: string
+    }
+  }
+}
+
 export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
 
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithReactPlugin,
 ): Array<PluginOption> {
-  type OptionsWithReact = ReturnType<typeof getTanStackStartOptions> & WithReactPlugin;
-  const options: OptionsWithReact = getTanStackStartOptions(opts);
+  type OptionsWithReact = ReturnType<typeof getTanStackStartOptions> &
+    WithReactPlugin
+  const options: OptionsWithReact = getTanStackStartOptions(opts)
 
   return [
     {
@@ -131,6 +141,25 @@ export default createStartHandler({
 
         return null
       },
+      // configureServer(server) {
+      //   server.httpServer?.on('listening', () => {
+      //     const address = (() => {
+      //       const address = server.httpServer?.address()
+
+      //       if (!address) {
+      //         throw new Error('No local address found!')
+      //       }
+
+      //       if (typeof address === 'string') {
+      //         return `http://localhost:${address}`
+      //       }
+
+      //       return `http://localhost:${address.port}`
+      //     })()
+
+      //     process.env.HOST = import.meta.env.HOST = `${address}`
+      //   })
+      // },
     },
     TanStackStartCompilerPlugin(),
     TanStackServerFnPluginEnv({
@@ -155,8 +184,10 @@ export default createStartHandler({
       ...options.tsr,
       target: 'react',
       enableRouteGeneration: true,
-      __enableAPIRoutesGeneration: true,
       autoCodeSplitting: true,
+    }),
+    TanStackStartServerRoutesVite({
+      ...options.tsr,
     }),
     viteReact(options.react),
     nitroPlugin(options),

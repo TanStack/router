@@ -3,23 +3,16 @@ import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 
-export const configSchema = z.object({
+export const baseConfigSchema = z.object({
   target: z.enum(['react', 'solid']).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
   routeFileIgnorePattern: z.string().optional(),
   routesDirectory: z.string().optional().default('./src/routes'),
-  generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   quoteStyle: z.enum(['single', 'double']).optional().default('single'),
   semicolons: z.boolean().optional().default(false),
-  disableTypes: z.boolean().optional().default(false),
-  addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
-  disableManifestGeneration: z.boolean().optional().default(false),
-  enableRouteTreeFormatting: z.boolean().optional().default(true),
-  __enableAPIRoutesGeneration: z.boolean().optional(), // Internal flag to be turned on for TanStack Start
-  apiBase: z.string().optional().default('/api'),
   routeTreeFileHeader: z
     .array(z.string())
     .optional()
@@ -28,18 +21,27 @@ export const configSchema = z.object({
       '// @ts-nocheck',
       '// noinspection JSUnusedGlobalSymbols',
     ]),
-  routeTreeFileFooter: z.array(z.string()).optional().default([]),
-  autoCodeSplitting: z.boolean().optional(),
   indexToken: z.string().optional().default('index'),
   routeToken: z.string().optional().default('route'),
   pathParamsAllowedCharacters: z
     .array(z.enum([';', ':', '@', '&', '=', '+', '$', ',']))
     .optional(),
+})
+
+export type BaseConfig = z.infer<typeof baseConfigSchema>
+
+export const configSchema = baseConfigSchema.extend({
+  generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
+  disableTypes: z.boolean().optional().default(false),
+  addExtensions: z.boolean().optional().default(false),
+  disableManifestGeneration: z.boolean().optional().default(false),
+  enableRouteTreeFormatting: z.boolean().optional().default(true),
+  routeTreeFileFooter: z.array(z.string()).optional().default([]),
+  autoCodeSplitting: z.boolean().optional(),
   customScaffolding: z
     .object({
       routeTemplate: z.string().optional(),
       lazyRouteTemplate: z.string().optional(),
-      apiTemplate: z.string().optional(),
     })
     .optional(),
   experimental: z

@@ -1,6 +1,5 @@
 import * as fs from 'node:fs'
 import * as prettier from 'prettier'
-import type { Config } from './config'
 
 export function multiSortBy<T>(
   arr: Array<T>,
@@ -158,7 +157,13 @@ export async function writeIfDifferent(
  * @param config The configuration object
  * @returns The formatted content
  */
-export async function format(source: string, config: Config): Promise<string> {
+export async function format(
+  source: string,
+  config: {
+    quoteStyle: 'single' | 'double'
+    semicolons: boolean
+  },
+): Promise<string> {
   const prettierOptions: prettier.Config = {
     semi: config.semicolons,
     singleQuote: config.quoteStyle === 'single',

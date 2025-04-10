@@ -21,7 +21,7 @@ declare module '@tanstack/react-router' {
   interface FileRoutesByPath {}
 }
 
-// Add type-safety to the createFileRoute  function across the route tree
+// Add type-safety to the createFileRoute function across the route tree
 
 // Create and export the route tree
 

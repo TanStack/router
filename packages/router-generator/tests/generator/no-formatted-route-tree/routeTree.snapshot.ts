@@ -40,8 +40,6 @@ declare module '@tanstack/react-router' {
           fullPath: '/'
           preLoaderRoute: typeof IndexRouteImport
           parentRoute: typeof rootRoute
-          
-          
         }
 '/nested/child': {
           id: '/nested/child'
@@ -49,8 +47,6 @@ declare module '@tanstack/react-router' {
           fullPath: '/nested/child'
           preLoaderRoute: typeof NestedChildRouteImport
           parentRoute: typeof rootRoute
-          
-          
         }
 '/nested/': {
           id: '/nested/'
@@ -58,13 +54,11 @@ declare module '@tanstack/react-router' {
           fullPath: '/nested'
           preLoaderRoute: typeof NestedIndexRouteImport
           parentRoute: typeof rootRoute
-          
-          
         }
   }
 }
 
-// Add type-safety to the createFileRoute  function across the route tree
+// Add type-safety to the createFileRoute function across the route tree
 
 declare module './routes/index' {
 const createFileRoute: CreateFileRoute<
@@ -74,7 +68,6 @@ FileRoutesByPath['/']['id'],
 FileRoutesByPath['/']['path'],
 FileRoutesByPath['/']['fullPath']
 >
-
 }
 declare module './routes/nested/child' {
 const createFileRoute: CreateFileRoute<
@@ -84,7 +77,6 @@ FileRoutesByPath['/nested/child']['id'],
 FileRoutesByPath['/nested/child']['path'],
 FileRoutesByPath['/nested/child']['fullPath']
 >
-
 }
 declare module './routes/nested/index' {
 const createFileRoute: CreateFileRoute<
@@ -94,7 +86,6 @@ FileRoutesByPath['/nested/']['id'],
 FileRoutesByPath['/nested/']['path'],
 FileRoutesByPath['/nested/']['fullPath']
 >
-
 }
 
 // Create and export the route tree

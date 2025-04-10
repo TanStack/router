@@ -83,7 +83,7 @@ export {
   flattenMiddlewares,
   serverFnStaticCache,
 } from './createServerFn'
-export { createServerFileRoute, getServerFileRouteApi } from './serverRoute'
+export { createServerFileRoute } from './serverRoute'
 export type {
   ServerRouteVerb,
   ServerRouteVerbs,
@@ -92,9 +92,7 @@ export type {
   ServerRouteAfterMiddleware,
   ServerRouteMethod,
   ServerRouteMethodBuilderAfterHandler,
-  ServerRouteMethodBuilderAfterValidator,
   ServerRouteMethodBuilderHandler,
-  ServerRouteMethodBuilderValidator,
   ServerRouteMethods,
   ServerRouteMethodHandlerCtx,
   ServerRouteMethodHandlerFn,
@@ -106,17 +104,14 @@ export type {
   AnyServerRouteWithTypes,
   AssignAllMethodContext,
   MergeMethodMiddlewares,
-  ResolveAllMethodValidatorOutputs,
   ServerRouteMethodBuilderAfterMiddleware,
   ServerRouteMethodBuilderWithTypes,
   ServerRouteMethodClientResponse,
   ResolveAllServerContext,
   ResolveMethods,
   ServerRouteMethodBuilderTypes,
-  ServerRouteMethodClient,
   ServerRouteMethodClientResult,
   ServerRouteMethodRecordValue,
-  ServerRouteMethodsClient,
   ServerRouteMethodsOptions,
   ServerRouteMethodsRecord,
   ServerRouteMiddleware,

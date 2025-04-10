@@ -21,8 +21,9 @@ export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithSolidPlugin,
 ): Array<PluginOption> {
-  type OptionsWithSolid = ReturnType<typeof getTanStackStartOptions> & WithSolidPlugin;
-  const options: OptionsWithSolid = getTanStackStartOptions(opts);
+  type OptionsWithSolid = ReturnType<typeof getTanStackStartOptions> &
+    WithSolidPlugin
+  const options: OptionsWithSolid = getTanStackStartOptions(opts)
 
   return [
     {
@@ -157,7 +158,6 @@ export default createStartHandler({
       ...options.tsr,
       target: 'solid',
       enableRouteGeneration: true,
-      __enableAPIRoutesGeneration: true,
       autoCodeSplitting: true,
     }),
     viteSolid({ ...options.solid, ssr: true }),

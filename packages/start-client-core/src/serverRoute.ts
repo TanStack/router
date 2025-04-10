@@ -1,8 +1,6 @@
 import type {
   AnyMiddleware,
   AssignAllServerContext,
-  IntersectAllValidatorInputs,
-  IntersectAllValidatorOutputs,
   Middleware,
 } from './createMiddleware'
 import type {
@@ -11,16 +9,12 @@ import type {
   Constrain,
   Expand,
   InferFileRouteTypes,
-  IntersectAssign,
   LooseAsyncReturnType,
   LooseReturnType,
-  RegisteredRouter,
   ResolveParams,
-  ResolveValidatorInput,
   RouteConstraints,
-  Validator,
 } from '@tanstack/router-core'
-import type { ConstrainValidator, JsonResponse } from './createServerFn'
+import type { JsonResponse } from './createServerFn'
 
 type TODO = any
 
@@ -48,7 +42,7 @@ export function createServerFileRoute<
 
 export type ServerRouteManifest = {
   middleware: boolean
-  methods: Record<string, { validator: boolean; middleware: boolean }>
+  methods: Record<string, { middleware: boolean }>
 }
 
 export function createServerRoute<
@@ -134,11 +128,6 @@ const createMethodBuilder = <
         ...__opts,
         middlewares,
       }) as TODO,
-    validator: (validator) =>
-      createMethodBuilder({
-        ...__opts,
-        validator,
-      }) as TODO,
     handler: (handler) =>
       createMethodBuilder({
         ...__opts,
@@ -197,8 +186,6 @@ export interface ServerRouteTypes<
   methods: TMethods
   parentRoute: TParentRoute
   allContext: ResolveAllServerContext<TParentRoute, TMiddlewares>
-  allOutput: ResolveAllValidatorOutput<TParentRoute, TMiddlewares>
-  allInput: ResolveAllValidatorInput<TParentRoute, TMiddlewares>
 }
 
 export type ResolveAllServerContext<
@@ -210,32 +197,6 @@ export type ResolveAllServerContext<
       TParentRoute['_types']['allContext'],
       AssignAllServerContext<TMiddlewares>
     >
-
-export type ResolveAllValidatorOutput<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TMiddlewares,
-  TValidator = undefined,
-> = unknown extends TParentRoute
-  ? IntersectAllValidatorOutputs<TMiddlewares, TValidator>
-  : IntersectAllValidatorOutputs<TMiddlewares, TValidator> extends undefined
-    ? TParentRoute['_types']['allOutput']
-    : IntersectAssign<
-        TParentRoute['_types']['allOutput'],
-        IntersectAllValidatorOutputs<TMiddlewares, TValidator>
-      >
-
-export type ResolveAllValidatorInput<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TMiddlewares,
-  TValidator = undefined,
-> = unknown extends TParentRoute
-  ? IntersectAllValidatorInputs<TMiddlewares, TValidator>
-  : IntersectAllValidatorInputs<TMiddlewares, TValidator> extends undefined
-    ? TParentRoute['_types']['allInput']
-    : IntersectAssign<
-        TParentRoute['_types']['allInput'],
-        IntersectAllValidatorInputs<TMiddlewares, TValidator>
-      >
 
 export interface ServerRoute<
   TParentRoute extends AnyServerRouteWithTypes,
@@ -379,7 +340,6 @@ export type ServerRouteMethodRecordValue<
       TVerb,
       TMiddlewares,
       undefined,
-      undefined,
       any
     >
   | AnyRouteMethodsBuilder
@@ -402,7 +362,6 @@ export type ServerRouteMethodHandlerFn<
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
-  TValidator,
   TResponse,
 > = (
   ctx: ServerRouteMethodHandlerCtx<
@@ -410,8 +369,7 @@ export type ServerRouteMethodHandlerFn<
     TFullPath,
     TVerb,
     TMiddlewares,
-    TMethodMiddlewares,
-    TValidator
+    TMethodMiddlewares
   >,
 ) => TResponse | Promise<TResponse>
 
@@ -421,16 +379,7 @@ export interface ServerRouteMethodHandlerCtx<
   in out TVerb extends ServerRouteVerb,
   in out TMiddlewares,
   in out TMethodMiddlewares,
-  in out TValidator,
 > {
-  data: Expand<
-    ResolveAllMethodValidatorOutputs<
-      TParentRoute,
-      TMiddlewares,
-      TMethodMiddlewares,
-      TValidator
-    >
-  >
   context: Expand<
     AssignAllMethodContext<TParentRoute, TMiddlewares, TMethodMiddlewares>
   >
@@ -438,17 +387,6 @@ export interface ServerRouteMethodHandlerCtx<
   params: ResolveParams<TFullPath>
   pathname: TFullPath
 }
-
-export type ResolveAllMethodValidatorOutputs<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TMiddlewares,
-  TMethodMiddlewares,
-  TValidator,
-> = ResolveAllValidatorOutput<
-  TParentRoute,
-  MergeMethodMiddlewares<TMiddlewares, TMethodMiddlewares>,
-  TValidator
->
 
 export type MergeMethodMiddlewares<TMiddlewares, TMethodMiddlewares> =
   TMiddlewares extends ReadonlyArray<any>
@@ -471,7 +409,6 @@ export type AnyRouteMethodsBuilder = ServerRouteMethodBuilderWithTypes<
   any,
   any,
   any,
-  any,
   any
 >
 
@@ -485,7 +422,6 @@ export interface ServerRouteMethodBuilder<
       TFullPath,
       TMiddlewares,
       undefined,
-      undefined,
       undefined
     >,
     ServerRouteMethodBuilderMiddleware<
@@ -494,19 +430,11 @@ export interface ServerRouteMethodBuilder<
       TVerb,
       TMiddlewares
     >,
-    ServerRouteMethodBuilderValidator<
-      TParentRoute,
-      TFullPath,
-      TVerb,
-      TMiddlewares,
-      undefined
-    >,
     ServerRouteMethodBuilderHandler<
       TParentRoute,
       TFullPath,
       TVerb,
       TMiddlewares,
-      undefined,
       undefined
     > {}
 
@@ -515,7 +443,6 @@ export interface ServerRouteMethodBuilderWithTypes<
   TFullPath extends string,
   TMiddlewares,
   TMethodMiddlewares,
-  TValidator,
   TResponse,
 > {
   _options: TODO
@@ -524,7 +451,6 @@ export interface ServerRouteMethodBuilderWithTypes<
     TFullPath,
     TMiddlewares,
     TMethodMiddlewares,
-    TValidator,
     TResponse
   >
 }
@@ -534,32 +460,13 @@ export interface ServerRouteMethodBuilderTypes<
   in out TFullPath extends string,
   in out TMiddlewares,
   in out TMethodMiddlewares,
-  in out TValidator,
   in out TResponse,
 > {
   middlewares: TMiddlewares
   methodMiddleware: TMethodMiddlewares
-  validator: TValidator
   fullPath: TFullPath
   response: TResponse
-  allInput: ResolveAllMethodValidatorInput<
-    TParentRoute,
-    TMiddlewares,
-    TMethodMiddlewares,
-    TValidator
-  >
 }
-
-export type ResolveAllMethodValidatorInput<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TMiddlewares,
-  TMethodMiddlewares,
-  TValidator,
-> = ResolveAllValidatorInput<
-  TParentRoute,
-  MergeMethodMiddlewares<TMiddlewares, TMethodMiddlewares>,
-  TValidator
->
 
 export interface ServerRouteMethodBuilderMiddleware<
   TParentRoute extends AnyServerRouteWithTypes,
@@ -589,82 +496,14 @@ export interface ServerRouteMethodBuilderAfterMiddleware<
       TFullPath,
       TMiddlewares,
       TMethodMiddlewares,
-      undefined,
       undefined
     >,
-    ServerRouteMethodBuilderValidator<
+    ServerRouteMethodBuilderHandler<
       TParentRoute,
       TFullPath,
       TVerb,
       TMiddlewares,
       TMethodMiddlewares
-    >,
-    ServerRouteMethodBuilderHandler<
-      TParentRoute,
-      TFullPath,
-      TVerb,
-      TMiddlewares,
-      TMethodMiddlewares,
-      undefined
-    > {}
-
-export interface ServerRouteMethodBuilderValidator<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TFullPath extends string,
-  TVerb extends ServerRouteVerb,
-  TMiddleware,
-  TMethodMiddlewares,
-> {
-  validator: <TValidator>(
-    validator: ValidateServerRouteValidator<TValidator, TFullPath>,
-  ) => ServerRouteMethodBuilderAfterValidator<
-    TParentRoute,
-    TFullPath,
-    TVerb,
-    TMiddleware,
-    TMethodMiddlewares,
-    TValidator
-  >
-}
-
-export type ValidateServerRouteValidator<
-  TValidator,
-  TFullPath extends string,
-> = unknown extends TValidator
-  ? TValidator
-  : ResolveValidatorInput<TValidator> extends ValidatorInput<TFullPath>
-    ? ConstrainValidator<TValidator>
-    : Validator<ValidatorInput<TFullPath>, any>
-
-export interface ValidatorInput<TFullPath extends string> {
-  params?: ResolveParams<TFullPath>
-  search?: Record<string, unknown>
-  headers?: Record<string, unknown>
-  body?: unknown
-}
-
-export interface ServerRouteMethodBuilderAfterValidator<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TFullPath extends string,
-  TVerb extends ServerRouteVerb,
-  TMiddlewares,
-  TMethodMiddlewares,
-  TValidator,
-> extends ServerRouteMethodBuilderWithTypes<
-      TParentRoute,
-      TFullPath,
-      TMiddlewares,
-      TMethodMiddlewares,
-      TValidator,
-      undefined
-    >,
-    ServerRouteMethodBuilderHandler<
-      TParentRoute,
-      TFullPath,
-      TVerb,
-      TMiddlewares,
-      TMethodMiddlewares,
-      TValidator
     > {}
 
 export interface ServerRouteMethodBuilderHandler<
@@ -673,7 +512,6 @@ export interface ServerRouteMethodBuilderHandler<
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
-  TValidator,
 > {
   handler: <TResponse>(
     handler: ServerRouteMethodHandlerFn<
@@ -682,7 +520,6 @@ export interface ServerRouteMethodBuilderHandler<
       TVerb,
       TMiddlewares,
       TMethodMiddlewares,
-      TValidator,
       TResponse
     >,
   ) => ServerRouteMethodBuilderAfterHandler<
@@ -691,7 +528,6 @@ export interface ServerRouteMethodBuilderHandler<
     TVerb,
     TMiddlewares,
     TMethodMiddlewares,
-    TValidator,
     TResponse
   >
 }
@@ -702,14 +538,12 @@ export interface ServerRouteMethodBuilderAfterHandler<
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
-  TValidator,
   TResponse,
 > extends ServerRouteMethodBuilderWithTypes<
     TParentRoute,
     TFullPath,
     TMiddlewares,
     TMethodMiddlewares,
-    TValidator,
     TResponse
   > {
   opts: ServerRouteMethod<
@@ -717,8 +551,7 @@ export interface ServerRouteMethodBuilderAfterHandler<
     TFullPath,
     TVerb,
     TMiddlewares,
-    TMethodMiddlewares,
-    TValidator
+    TMethodMiddlewares
   >
 }
 
@@ -728,17 +561,14 @@ export interface ServerRouteMethod<
   TVerb extends ServerRouteVerb,
   TMiddlewares,
   TMethodMiddlewares,
-  TValidator,
 > {
   middleware?: Constrain<TMiddlewares, Middleware<any>>
-  validator?: ConstrainValidator<TValidator>
   handler?: ServerRouteMethodHandlerFn<
     TParentRoute,
     TFullPath,
     TVerb,
     TMiddlewares,
     TMethodMiddlewares,
-    TValidator,
     undefined
   >
 }
@@ -759,12 +589,6 @@ export interface ServerRouteAfterMethods<
     TMethods
   > {
   options: ServerRouteOptions<TParentRoute, TId, TPath, TFullPath, TMiddlewares>
-  client: ServerRouteMethodsClient<
-    TParentRoute,
-    TMiddlewares,
-    TFullPath,
-    TMethods
-  >
 }
 
 export interface ServerRouteOptions<
@@ -786,43 +610,11 @@ export interface ServerRouteOptions<
   manifest?: ServerRouteManifest
 }
 
-export type ServerRouteMethodsClient<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TMiddlewares,
-  TFullPath extends string,
-  TMethods,
-> = {
-  [TKey in keyof ResolveMethods<TMethods> &
-    ServerRouteVerb as Lowercase<TKey>]: ServerRouteMethodClient<
-    TParentRoute,
-    TMiddlewares,
-    TFullPath,
-    ResolveMethods<TMethods>[TKey]
-  >
-}
-
 export type ResolveMethods<TMethods> = TMethods extends (
   ...args: Array<any>
 ) => infer TMethods
   ? TMethods
   : TMethods
-
-export interface ServerRouteMethodClient<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TMiddlewares,
-  TFullPath extends string,
-  TMethod,
-> {
-  returns: ServerRouteMethodClientResult<TMethod>
-  (
-    ...args: ServerRouteMethodClientOptions<
-      TParentRoute,
-      TMiddlewares,
-      TFullPath,
-      TMethod
-    >
-  ): ServerRouteMethodClientResult<TMethod>
-}
 
 export type ServerRouteMethodClientResult<TMethod> =
   ServerRouteMethodClientResponseJson<TMethod> extends Promise<any>
@@ -838,51 +630,6 @@ export type ServerRouteMethodClientResponse<TMethod> =
   TMethod extends AnyRouteMethodsBuilder
     ? Awaited<TMethod['_types']['response']>
     : LooseAsyncReturnType<TMethod>
-
-export type ServerRouteMethodClientOptions<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TMiddlewares,
-  TFullPath extends string,
-  TMethod,
-> =
-  {} extends ServerRouteMethodClientInput<
-    TParentRoute,
-    TMiddlewares,
-    TFullPath,
-    TMethod
-  >
-    ? [
-        options?: Expand<
-          ServerRouteMethodClientInput<
-            TParentRoute,
-            TMiddlewares,
-            TFullPath,
-            TMethod
-          >
-        >,
-      ]
-    : [
-        options: Expand<
-          ServerRouteMethodClientInput<
-            TParentRoute,
-            TMiddlewares,
-            TFullPath,
-            TMethod
-          >
-        >,
-      ]
-
-export type ServerRouteMethodClientInput<
-  TParentRoute extends AnyServerRouteWithTypes,
-  TMiddlewares,
-  TFullPath extends string,
-  TMethod,
-> = ServerRouteMethodClientInputBuilder<
-  TFullPath,
-  TMethod extends AnyRouteMethodsBuilder
-    ? TMethod['_types']['allInput']
-    : ResolveAllValidatorInput<TParentRoute, TMiddlewares>
->
 
 export type ServerRouteMethodClientInputBuilder<
   TFullPath extends string,
@@ -940,38 +687,9 @@ export interface DefaultServerRouteMethodClientHeadersInput {
   headers?: Record<string, unknown>
 }
 
-export const getServerFileRouteApi: GetServerFileRouteApiFn = () => {
-  return undefined as TODO
-}
-
-export type GetServerFileRouteApiFn = <
-  TRouter extends RegisteredRouter,
-  TId extends keyof ServerRoutesById<TRouter>,
->(
-  id: TId,
-) => ServerRouteApi<TRouter, TId>
-
 export type ServerRoutesById<TRouter extends AnyRouter> = InferFileRouteTypes<
   TRouter['routeTree']
 >['serverFileRoutesById']
-
-export interface ServerRouteApi<
-  TRouter extends AnyRouter,
-  TId extends keyof ServerRoutesById<TRouter>,
-> {
-  client: ServerRouteApiClient<TRouter, TId>
-}
-
-export type ServerRouteApiClient<
-  TRouter extends AnyRouter,
-  TId extends keyof ServerRoutesById<TRouter>,
-  TRoute extends AnyServerRouteWithTypes = ServerRouteById<TRouter, TId>,
-> = ServerRouteMethodsClient<
-  TRoute['_types']['parentRoute'],
-  TRoute['_types']['middlewares'],
-  TRoute['_types']['fullPath'],
-  TRoute['_types']['methods']
->
 
 export type ServerRouteById<
   TRouter extends AnyRouter,

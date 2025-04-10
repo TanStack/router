@@ -166,6 +166,14 @@ export interface RouterOptions<
    */
   defaultPreloadDelay?: number
   /**
+   * The default `preloadIntentProximity` a route should use if no preloadIntentProximity is provided.
+   *
+   * @default 0
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloadintentproximity-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading#preload-intent-proximity)
+   */
+  defaultPreloadIntentProximity?: number
+  /**
    * The default `pendingMs` a route should use if no pendingMs is provided.
    *
    * @default 1000
