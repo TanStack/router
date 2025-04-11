@@ -23,7 +23,7 @@ export interface ClientOnlyProps {
  * ```tsx
  * return (
  *   <ClientOnly fallback={<FakeChart />}>
- *     {<Chart />}
+ *     <Chart />
  *   </ClientOnly>
  * )
  * ```
