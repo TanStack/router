@@ -20,7 +20,6 @@ export function getStartResponseHeaders(opts: {
 }) {
   let headers = mergeHeaders(
     getResponseHeaders(opts.event),
-    (opts.event as any).___ssrRpcResponseHeaders,
     {
       'Content-Type': 'text/html; charset=UTF-8',
     },
