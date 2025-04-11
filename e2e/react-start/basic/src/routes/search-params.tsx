@@ -1,7 +1,7 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import {  redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
-export const Route = createFileRoute('/search-params')({
+export const Route = createFileRoute({
   component: () => {
     const search = Route.useSearch()
     return (

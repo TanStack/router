@@ -1,6 +1,6 @@
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import {  notFound } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/not-found/via-beforeLoad')({
+export const Route = createFileRoute({
   beforeLoad: () => {
     throw notFound()
   },

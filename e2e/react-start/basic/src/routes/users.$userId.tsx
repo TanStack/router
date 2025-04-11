@@ -1,4 +1,4 @@
-import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
+import { ErrorComponent,} from '@tanstack/react-router'
 import axios from 'redaxios'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
@@ -6,7 +6,7 @@ import type { User } from '~/utils/users'
 import { DEPLOY_URL } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
 
-export const Route = createFileRoute('/users/$userId')({
+export const Route = createFileRoute({
   loader: async ({ params: { userId } }) => {
     return await axios
       .get<User>(DEPLOY_URL + '/api/users/' + userId)
@@ -22,7 +22,7 @@ export const Route = createFileRoute('/users/$userId')({
   },
 })
 
-export function UserErrorComponent({ error }: ErrorComponentProps) {
+function UserErrorComponent({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />
 }
 

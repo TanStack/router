@@ -1,4 +1,4 @@
-import { Await, createFileRoute } from '@tanstack/react-router'
+import { Await } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { Suspense, useState } from 'react'
 
@@ -15,7 +15,7 @@ const slowServerFn = createServerFn({ method: 'GET' })
     return { name: data.name, randomNumber: Math.floor(Math.random() * 100) }
   })
 
-export const Route = createFileRoute('/deferred')({
+export const Route = createFileRoute({
   loader: async () => {
     return {
       deferredStuff: new Promise<string>((r) =>

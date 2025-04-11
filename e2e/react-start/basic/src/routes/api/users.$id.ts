@@ -4,6 +4,7 @@ import axios from 'redaxios'
 
 import type { User } from '~/utils/users'
 
+/*
 export const APIRoute = createAPIFileRoute('/api/users/$id')({
   GET: async ({ request, params }) => {
     console.info(`Fetching users by id=${params.id}... @`, request.url)
@@ -23,3 +24,4 @@ export const APIRoute = createAPIFileRoute('/api/users/$id')({
     }
   },
 })
+*/
