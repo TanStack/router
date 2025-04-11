@@ -75,6 +75,8 @@ export function TanStackStartVitePlugin(
               '@tanstack/server-functions-plugin',
               'tsr:start-manifest',
               'tsr:server-fn-manifest',
+              "nitropack",
+              '@tanstack/**',
             ],
           },
           /* prettier-ignore */
