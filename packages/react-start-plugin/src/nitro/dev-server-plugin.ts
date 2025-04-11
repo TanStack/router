@@ -43,9 +43,10 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
 
         viteDevServer.middlewares.use(async (req, res) => {
           const event = createEvent(req, res)
-          const serverEnv = viteDevServer.environments['server'] as Environment;
+          const serverEnv = viteDevServer.environments['server']
 
           try {
+            if (!serverEnv || !isRunnableDevEnvironment(serverEnv)) {
               throw new Error('Server environment not found')
             }
 
@@ -62,8 +63,7 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
             globalThis.TSS_INJECTED_HEAD_SCRIPTS_INFO = headScripts
 
             const serverEntry =
-              await (serverEnv as any).runner.import('/~start/ssr-entry')
-
+              await serverEnv.runner.import('/~start/ssr-entry')
             const response = await serverEntry['default'](event)
 
             sendWebResponse(event, response)
