@@ -350,7 +350,7 @@ export const handleClientOnlyCallExpression =
   buildEnvOnlyCallExpressionHandler('client')
 
 export type CompileOptions = ParseAstOptions & {
-  env: 'server' | 'client' | 'ssr'
+  env: 'server' | 'client'
   dce?: boolean
   filename: string
 }
@@ -494,7 +494,7 @@ export function handleCreateServerFnCallExpression(
   // as a second argument.
 
   if (t.isIdentifier(handlerFn)) {
-    if (opts.env === 'client' || opts.env === 'ssr') {
+    if (opts.env === 'client') {
       // Find the binding for the handler function
       const binding = handlerFnPath.scope.getBinding(handlerFn.name)
       // Remove it
@@ -575,8 +575,8 @@ export function handleCreateMiddlewareCallExpression(
       )
     }
 
-    // If we're on the client or ssr, remove the validator call expression
-    if (opts.env === 'client' || opts.env === 'ssr') {
+    // If we're on the client, remove the validator call expression
+    if (opts.env === 'client') {
       if (t.isMemberExpression(callExpressionPaths.validator.node.callee)) {
         callExpressionPaths.validator.replaceWith(
           callExpressionPaths.validator.node.callee.object,
@@ -592,7 +592,7 @@ export function handleCreateMiddlewareCallExpression(
   if (
     callExpressionPaths.server &&
     serverFnPath.node &&
-    (opts.env === 'client' || opts.env === 'ssr')
+    (opts.env === 'client')
   ) {
     // If we're on the client, remove the server call expression
     if (t.isMemberExpression(callExpressionPaths.server.node.callee)) {
@@ -614,7 +614,7 @@ function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
     const isEnvMatch =
       env === 'client'
         ? opts.env === 'client'
-        : opts.env === 'server' || opts.env === 'ssr'
+        : opts.env === 'server'
 
     if (isEnvMatch) {
       // extract the inner function from the call expression
@@ -701,9 +701,7 @@ export function handleCreateIsomorphicFnCallExpression(
     )
   }
 
-  const resolvedEnv = opts.env === 'ssr' ? 'server' : opts.env
-
-  const envCallExpression = callExpressionPaths[resolvedEnv]
+  const envCallExpression = callExpressionPaths[opts.env]
 
   if (!envCallExpression) {
     // if we don't have an implementation for this environment, default to a no-op
@@ -717,7 +715,7 @@ export function handleCreateIsomorphicFnCallExpression(
 
   if (!t.isExpression(innerInputExpression)) {
     throw new Error(
-      `createIsomorphicFn().${resolvedEnv}(func) must be called with a function!`,
+      `createIsomorphicFn().${opts.env}(func) must be called with a function!`,
     )
   }
 
