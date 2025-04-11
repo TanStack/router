@@ -49,17 +49,21 @@ export type UseParamsRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
+  TThrow extends boolean = true,
 >(
   opts?: UseParamsBaseOptions<
     TRouter,
     TFrom,
     /* TStrict */ true,
-    /* TThrow */ true,
+    TThrow,
     TSelected,
     TStructuralSharing
   > &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-) => UseParamsResult<TRouter, TFrom, true, TSelected>
+) => ThrowOrOptional<
+  UseParamsResult<TRouter, TFrom, /* TStrict */ true, TSelected>,
+  TThrow
+>
 
 export function useParams<
   TRouter extends AnyRouter = RegisteredRouter,
