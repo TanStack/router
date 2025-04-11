@@ -1,6 +1,17 @@
-/// <reference types="vinxi/types/client" />
-export { mergeHeaders } from '@tanstack/start-client-core'
-export { startSerializer } from '@tanstack/start-client-core'
+export {
+  mergeHeaders,
+  startSerializer,
+  createIsomorphicFn,
+  createServerFn,
+  createMiddleware,
+  registerGlobalMiddleware,
+  globalMiddleware,
+  serverOnly,
+  clientOnly,
+  createServerFileRoute,
+  getServerFileRouteApi,
+  json,
+} from '@tanstack/start-client-core'
 export {
   type DehydratedRouter,
   type ClientExtractedBaseEntry,
@@ -10,16 +21,10 @@ export {
   type ClientExtractedPromise,
   type ClientExtractedStream,
   type ResolvePromiseState,
-} from '@tanstack/start-client-core'
-export {
-  createIsomorphicFn,
   type IsomorphicFn,
   type ServerOnlyFn,
   type ClientOnlyFn,
   type IsomorphicFnBase,
-} from '@tanstack/start-client-core'
-export { createServerFn } from '@tanstack/start-client-core'
-export {
   type ServerFn as FetchFn,
   type ServerFnCtx as FetchFnCtx,
   type CompiledFetcherFnOptions,
@@ -31,10 +36,7 @@ export {
   type ServerFn,
   type ServerFnCtx,
   type ServerFnResponseType,
-} from '@tanstack/start-client-core'
-export { type JsonResponse } from '@tanstack/start-client-core'
-export {
-  createMiddleware,
+  type JsonResponse,
   type IntersectAllValidatorInputs,
   type IntersectAllValidatorOutputs,
   type MiddlewareServerFn,
@@ -44,7 +46,6 @@ export {
   type MiddlewareValidator,
   type MiddlewareServer,
   type MiddlewareAfterClient,
-  type MiddlewareAfterMiddleware,
   type MiddlewareAfterServer,
   type Middleware,
   type MiddlewareClientFnOptions,
@@ -61,13 +62,8 @@ export {
   type MiddlewareServerFnOptions,
   type MiddlewareServerNextFn,
   type ServerResultWithContext,
+  type CreateServerFileRoute,
 } from '@tanstack/start-client-core'
-export {
-  registerGlobalMiddleware,
-  globalMiddleware,
-} from '@tanstack/start-client-core'
-export { serverOnly, clientOnly } from '@tanstack/start-client-core'
-export { json } from '@tanstack/start-client-core'
 export { Meta } from './Meta'
 export { Scripts } from './Scripts'
 export { StartClient } from './StartClient'

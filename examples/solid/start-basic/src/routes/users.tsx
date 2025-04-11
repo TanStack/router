@@ -1,22 +1,56 @@
-import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
+import { Link, Outlet } from '@tanstack/solid-router'
 import axios from 'redaxios'
-import { DEPLOY_URL } from '../utils/users'
+import { json } from '@tanstack/solid-start'
 import type { User } from '../utils/users'
 
-export const Route = createFileRoute('/users')({
-  loader: async () => {
-    return await axios
-      .get<Array<User>>(DEPLOY_URL + '/api/users')
-      .then((r) => r.data)
-      .catch(() => {
-        throw new Error('Failed to fetch users')
-      })
+export const ServerRoute = createServerFileRoute().methods((api) => ({
+  GET: async ({ request }) => {
+    console.info('Fetching users... @', request.url)
+    const res = await axios.get<Array<User>>(
+      'https://jsonplaceholder.typicode.com/users',
+    )
+
+    const list = res.data.slice(0, 10)
+
+    return json(list.map((u) => ({ id: u.id, name: u.name, email: u.email })))
+  },
+  POST: api
+    .validator((input: { body: { name: string; email: string } }) => input)
+    .handler(async ({ data }) => {
+      console.info('Creating user...', data)
+      return json({ id: '1', name: data.body.name, email: data.body.email })
+    }),
+}))
+
+export const Route = createFileRoute({
+  loader: () => {
+    return ServerRoute.client.get().catch(() => {
+      throw new Error('Failed to fetch users')
+    })
   },
   component: UsersComponent,
 })
 
 function UsersComponent() {
   const users = Route.useLoaderData()
+
+  const addUser = (
+    <button
+      onClick={() => {
+        ServerRoute.client.post({
+          params: {
+            userId: '1',
+          },
+          body: {
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+          },
+        })
+      }}
+    >
+      Add User
+    </button>
+  )
 
   return (
     <div class="p-2 flex gap-2">

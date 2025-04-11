@@ -10,6 +10,7 @@
 
 // Import Routes
 
+import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/solid-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as AboutImport } from './routes/about'
 import { Route as IndexImport } from './routes/index'
@@ -47,6 +48,39 @@ declare module '@tanstack/solid-router' {
       parentRoute: typeof rootRoute
     }
   }
+}
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/',
+    ServerFileRoutesByPath['/']['parentRoute'],
+    ServerFileRoutesByPath['/']['id'],
+    ServerFileRoutesByPath['/']['path'],
+    ServerFileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/about' {
+  const createFileRoute: CreateFileRoute<
+    '/about',
+    FileRoutesByPath['/about']['parentRoute'],
+    FileRoutesByPath['/about']['id'],
+    FileRoutesByPath['/about']['path'],
+    FileRoutesByPath['/about']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/about',
+    ServerFileRoutesByPath['/about']['parentRoute'],
+    ServerFileRoutesByPath['/about']['id'],
+    ServerFileRoutesByPath['/about']['path'],
+    ServerFileRoutesByPath['/about']['fullPath']
+  >
 }
 
 // Create and export the route tree

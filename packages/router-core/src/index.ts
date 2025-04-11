@@ -60,6 +60,7 @@ export type {
   InferFileRouteTypes,
   FileRouteTypes,
   FileRoutesByPath,
+  CreateFileRoute,
   LazyRoute,
   LazyRouteOptions,
 } from './fileRoute'
@@ -149,8 +150,6 @@ export type {
   StringifyParamsFn,
   ParamsOptions,
   UpdatableStaticRouteOption,
-  LooseReturnType,
-  LooseAsyncReturnType,
   ContextReturnType,
   ContextAsyncReturnType,
   ResolveRouteContext,
@@ -322,6 +321,8 @@ export type {
   MergeAll,
   ValidateJSON,
   StrictOrFrom,
+  LooseReturnType,
+  LooseAsyncReturnType,
 } from './utils'
 
 export type {
@@ -410,3 +411,5 @@ export type {
   ValidateUseSearchResult,
   ValidateUseParamsResult,
 } from './typePrimitives'
+
+export { __internal_devHtmlUtils, type ExtractedHtmlTagInfo } from './dev-html'

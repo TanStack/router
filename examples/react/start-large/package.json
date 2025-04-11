@@ -4,23 +4,22 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start",
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start",
     "gen": "node ./src/createRoutes.mjs",
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.66.0",
-    "@tanstack/react-router": "^1.115.2",
-    "@tanstack/react-router-devtools": "^1.115.2",
-    "@tanstack/react-start": "^1.115.2",
+    "@tanstack/react-router": "^1.116.0",
+    "@tanstack/react-router-devtools": "^1.116.0",
+    "@tanstack/react-start": "^1.116.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
-    "valibot": "^1.0.0-beta.15",
-    "vinxi": "0.5.3"
+    "valibot": "^1.0.0-beta.15"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",

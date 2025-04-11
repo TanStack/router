@@ -10,61 +10,64 @@
 
 // Import Routes
 
+import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
+import { serverOnly } from '@tanstack/react-start'
+import type { CreateServerFileRoute } from '@tanstack/react-start'
 import { Route as rootRoute } from './routes/__root'
-import { Route as RelativeImport } from './routes/relative'
-import { Route as LinkPropsImport } from './routes/linkProps'
-import { Route as AbsoluteImport } from './routes/absolute'
-import { Route as SearchRouteImport } from './routes/search/route'
-import { Route as ParamsRouteImport } from './routes/params/route'
-import { Route as IndexImport } from './routes/index'
-import { Route as SearchSearchPlaceholderImport } from './routes/search/searchPlaceholder'
-import { Route as ParamsParamsPlaceholderImport } from './routes/params/$paramsPlaceholder'
+import { Route as RelativeRouteImport } from './routes/relative'
+import { Route as LinkPropsRouteImport } from './routes/linkProps'
+import { Route as AbsoluteRouteImport } from './routes/absolute'
+import { Route as SearchRouteRouteImport } from './routes/search/route'
+import { Route as ParamsRouteRouteImport } from './routes/params/route'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as SearchSearchPlaceholderRouteImport } from './routes/search/searchPlaceholder'
+import { Route as ParamsParamsPlaceholderRouteImport } from './routes/params/$paramsPlaceholder'
 
 // Create/Update Routes
 
-const RelativeRoute = RelativeImport.update({
+const RelativeRoute = RelativeRouteImport.update({
   id: '/relative',
   path: '/relative',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LinkPropsRoute = LinkPropsImport.update({
+const LinkPropsRoute = LinkPropsRouteImport.update({
   id: '/linkProps',
   path: '/linkProps',
   getParentRoute: () => rootRoute,
 } as any)
 
-const AbsoluteRoute = AbsoluteImport.update({
+const AbsoluteRoute = AbsoluteRouteImport.update({
   id: '/absolute',
   path: '/absolute',
   getParentRoute: () => rootRoute,
 } as any)
 
-const SearchRouteRoute = SearchRouteImport.update({
+const SearchRouteRoute = SearchRouteRouteImport.update({
   id: '/search',
   path: '/search',
   getParentRoute: () => rootRoute,
 } as any)
 
-const ParamsRouteRoute = ParamsRouteImport.update({
+const ParamsRouteRoute = ParamsRouteRouteImport.update({
   id: '/params',
   path: '/params',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const SearchSearchPlaceholderRoute = SearchSearchPlaceholderImport.update({
+const SearchSearchPlaceholderRoute = SearchSearchPlaceholderRouteImport.update({
   id: '/searchPlaceholder',
   path: '/searchPlaceholder',
   getParentRoute: () => SearchRouteRoute,
 } as any)
 
-const ParamsParamsPlaceholderRoute = ParamsParamsPlaceholderImport.update({
+const ParamsParamsPlaceholderRoute = ParamsParamsPlaceholderRouteImport.update({
   id: '/$paramsPlaceholder',
   path: '/$paramsPlaceholder',
   getParentRoute: () => ParamsRouteRoute,
@@ -78,59 +81,190 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/params': {
       id: '/params'
       path: '/params'
       fullPath: '/params'
-      preLoaderRoute: typeof ParamsRouteImport
+      preLoaderRoute: typeof ParamsRouteRouteImport
       parentRoute: typeof rootRoute
     }
     '/search': {
       id: '/search'
       path: '/search'
       fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
+      preLoaderRoute: typeof SearchRouteRouteImport
       parentRoute: typeof rootRoute
     }
     '/absolute': {
       id: '/absolute'
       path: '/absolute'
       fullPath: '/absolute'
-      preLoaderRoute: typeof AbsoluteImport
+      preLoaderRoute: typeof AbsoluteRouteImport
       parentRoute: typeof rootRoute
     }
     '/linkProps': {
       id: '/linkProps'
       path: '/linkProps'
       fullPath: '/linkProps'
-      preLoaderRoute: typeof LinkPropsImport
+      preLoaderRoute: typeof LinkPropsRouteImport
       parentRoute: typeof rootRoute
     }
     '/relative': {
       id: '/relative'
       path: '/relative'
       fullPath: '/relative'
-      preLoaderRoute: typeof RelativeImport
+      preLoaderRoute: typeof RelativeRouteImport
       parentRoute: typeof rootRoute
     }
     '/params/$paramsPlaceholder': {
       id: '/params/$paramsPlaceholder'
       path: '/$paramsPlaceholder'
       fullPath: '/params/$paramsPlaceholder'
-      preLoaderRoute: typeof ParamsParamsPlaceholderImport
-      parentRoute: typeof ParamsRouteImport
+      preLoaderRoute: typeof ParamsParamsPlaceholderRouteImport
+      parentRoute: typeof ParamsRouteRouteImport
     }
     '/search/searchPlaceholder': {
       id: '/search/searchPlaceholder'
       path: '/searchPlaceholder'
       fullPath: '/search/searchPlaceholder'
-      preLoaderRoute: typeof SearchSearchPlaceholderImport
-      parentRoute: typeof SearchRouteImport
+      preLoaderRoute: typeof SearchSearchPlaceholderRouteImport
+      parentRoute: typeof SearchRouteRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute & createServerFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/',
+    unknown,
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/params/route' {
+  const createFileRoute: CreateFileRoute<
+    '/params',
+    FileRoutesByPath['/params']['parentRoute'],
+    FileRoutesByPath['/params']['id'],
+    FileRoutesByPath['/params']['path'],
+    FileRoutesByPath['/params']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/params',
+    unknown,
+    FileRoutesByPath['/params']['id'],
+    FileRoutesByPath['/params']['path'],
+    FileRoutesByPath['/params']['fullPath']
+  >
+}
+declare module './routes/search/route' {
+  const createFileRoute: CreateFileRoute<
+    '/search',
+    FileRoutesByPath['/search']['parentRoute'],
+    FileRoutesByPath['/search']['id'],
+    FileRoutesByPath['/search']['path'],
+    FileRoutesByPath['/search']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/search',
+    unknown,
+    FileRoutesByPath['/search']['id'],
+    FileRoutesByPath['/search']['path'],
+    FileRoutesByPath['/search']['fullPath']
+  >
+}
+declare module './routes/absolute' {
+  const createFileRoute: CreateFileRoute<
+    '/absolute',
+    FileRoutesByPath['/absolute']['parentRoute'],
+    FileRoutesByPath['/absolute']['id'],
+    FileRoutesByPath['/absolute']['path'],
+    FileRoutesByPath['/absolute']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/absolute',
+    unknown,
+    FileRoutesByPath['/absolute']['id'],
+    FileRoutesByPath['/absolute']['path'],
+    FileRoutesByPath['/absolute']['fullPath']
+  >
+}
+declare module './routes/linkProps' {
+  const createFileRoute: CreateFileRoute<
+    '/linkProps',
+    FileRoutesByPath['/linkProps']['parentRoute'],
+    FileRoutesByPath['/linkProps']['id'],
+    FileRoutesByPath['/linkProps']['path'],
+    FileRoutesByPath['/linkProps']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/linkProps',
+    unknown,
+    FileRoutesByPath['/linkProps']['id'],
+    FileRoutesByPath['/linkProps']['path'],
+    FileRoutesByPath['/linkProps']['fullPath']
+  >
+}
+declare module './routes/relative' {
+  const createFileRoute: CreateFileRoute<
+    '/relative',
+    FileRoutesByPath['/relative']['parentRoute'],
+    FileRoutesByPath['/relative']['id'],
+    FileRoutesByPath['/relative']['path'],
+    FileRoutesByPath['/relative']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/relative',
+    unknown,
+    FileRoutesByPath['/relative']['id'],
+    FileRoutesByPath['/relative']['path'],
+    FileRoutesByPath['/relative']['fullPath']
+  >
+}
+declare module './routes/params/$paramsPlaceholder' {
+  const createFileRoute: CreateFileRoute<
+    '/params/$paramsPlaceholder',
+    FileRoutesByPath['/params/$paramsPlaceholder']['parentRoute'],
+    FileRoutesByPath['/params/$paramsPlaceholder']['id'],
+    FileRoutesByPath['/params/$paramsPlaceholder']['path'],
+    FileRoutesByPath['/params/$paramsPlaceholder']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/params/$paramsPlaceholder',
+    unknown,
+    FileRoutesByPath['/params/$paramsPlaceholder']['id'],
+    FileRoutesByPath['/params/$paramsPlaceholder']['path'],
+    FileRoutesByPath['/params/$paramsPlaceholder']['fullPath']
+  >
+}
+declare module './routes/search/searchPlaceholder' {
+  const createFileRoute: CreateFileRoute<
+    '/search/searchPlaceholder',
+    FileRoutesByPath['/search/searchPlaceholder']['parentRoute'],
+    FileRoutesByPath['/search/searchPlaceholder']['id'],
+    FileRoutesByPath['/search/searchPlaceholder']['path'],
+    FileRoutesByPath['/search/searchPlaceholder']['fullPath']
+  >
+  const createServerFileRoute: CreateServerFileRoute<
+    '/search/searchPlaceholder',
+    unknown,
+    FileRoutesByPath['/search/searchPlaceholder']['id'],
+    FileRoutesByPath['/search/searchPlaceholder']['path'],
+    FileRoutesByPath['/search/searchPlaceholder']['fullPath']
+  >
 }
 
 // Create and export the route tree
@@ -170,6 +304,8 @@ export interface FileRoutesByFullPath {
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
 }
 
+export interface ServerFileRoutesByFullPath {}
+
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/params': typeof ParamsRouteRouteWithChildren
@@ -180,6 +316,8 @@ export interface FileRoutesByTo {
   '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
 }
+
+export interface ServerFileRoutesByTo {}
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
@@ -192,6 +330,8 @@ export interface FileRoutesById {
   '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
 }
+
+export interface ServerFileRoutesById {}
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath

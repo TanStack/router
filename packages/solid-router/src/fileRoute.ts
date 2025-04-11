@@ -41,8 +41,13 @@ export function createFileRoute<
   TFullPath extends
     RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
 >(
-  path: TFilePath,
+    path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
+  if (typeof path === 'object') {
+    return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
+      silent: true,
+    }).createRoute(path) as any
+  }
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
   }).createRoute
@@ -63,7 +68,7 @@ export class FileRoute<
   silent?: boolean
 
   constructor(
-    public path: TFilePath,
+    public path?: TFilePath,
     _opts?: { silent: boolean },
   ) {
     this.silent = _opts?.silent

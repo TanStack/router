@@ -126,6 +126,7 @@ export type {
   RouteById,
   RootRouteOptions,
   SerializerExtensions,
+  CreateFileRoute,
 } from '@tanstack/router-core'
 
 export type * from './serializer'
@@ -360,6 +361,11 @@ export type {
   InferSelected,
   ValidateUseSearchResult,
   ValidateUseParamsResult,
+} from '@tanstack/router-core'
+
+export {
+  __internal_devHtmlUtils,
+  type ExtractedHtmlTagInfo,
 } from '@tanstack/router-core'
 
 export { ScriptOnce } from './ScriptOnce'

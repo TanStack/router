@@ -17,6 +17,7 @@ export function fillTemplate(
 
 type TargetTemplate = {
   fullPkg: string
+  startPkg: string
   subPkg: string
   rootRoute: {
     template: () => string
@@ -51,6 +52,7 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
     case 'react':
       return {
         fullPkg: '@tanstack/react-router',
+        startPkg: '@tanstack/react-start',
         subPkg: 'react-router',
         rootRoute: {
           template: () =>
@@ -77,10 +79,8 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
               'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
             ].join(''),
           imports: {
-            tsrImports: () =>
-              "import { createFileRoute } from '@tanstack/react-router';",
-            tsrExportStart: (routePath) =>
-              `export const Route = createFileRoute('${routePath}')(`,
+            tsrImports: () => '',
+            tsrExportStart: () => `export const Route = createFileRoute(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -104,6 +104,7 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
     case 'solid':
       return {
         fullPkg: '@tanstack/solid-router',
+        startPkg: '@tanstack/solid-start',
         subPkg: 'solid-router',
         rootRoute: {
           template: () =>
@@ -130,10 +131,8 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
               'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
             ].join(''),
           imports: {
-            tsrImports: () =>
-              "import { createFileRoute } from '@tanstack/solid-router';",
-            tsrExportStart: (routePath) =>
-              `export const Route = createFileRoute('${routePath}')(`,
+            tsrImports: () => '',
+            tsrExportStart: () => `export const Route = createFileRoute(`,
             tsrExportEnd: () => ');',
           },
         },

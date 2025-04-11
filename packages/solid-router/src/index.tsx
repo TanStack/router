@@ -207,6 +207,7 @@ export type {
   InjectedHtmlEntry,
   RouterErrorSerializer,
   SerializerExtensions,
+  CreateFileRoute,
 } from '@tanstack/router-core'
 
 export {
@@ -362,6 +363,11 @@ export type {
   InferSelected,
   ValidateUseSearchResult,
   ValidateUseParamsResult,
+} from '@tanstack/router-core'
+
+export {
+  __internal_devHtmlUtils,
+  type ExtractedHtmlTagInfo,
 } from '@tanstack/router-core'
 
 export { ScriptOnce } from './ScriptOnce'

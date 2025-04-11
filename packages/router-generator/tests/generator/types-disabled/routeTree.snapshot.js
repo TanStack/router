@@ -11,32 +11,32 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostsImport } from './routes/posts'
-import { Route as IndexImport } from './routes/index'
-import { Route as UsersUserIdImport } from './routes/users.$userId'
-import { Route as PostsPostIdImport } from './routes/posts/$postId'
+import { Route as PostsRouteImport } from './routes/posts'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
+import { Route as PostsPostIdRouteImport } from './routes/posts/$postId'
 
 // Create/Update Routes
 
-const PostsRoute = PostsImport.update({
+const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 })
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 })
 
-const UsersUserIdRoute = UsersUserIdImport.update({
+const UsersUserIdRoute = UsersUserIdRouteImport.update({
   id: '/users/$userId',
   path: '/users/$userId',
   getParentRoute: () => rootRoute,
 })
 
-const PostsPostIdRoute = PostsPostIdImport.update({
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,

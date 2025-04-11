@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/(foo)/asdf/(bar)/_layout/about')({
+
+export const Route = createFileRoute({
   component: () => <div>Hello /(foo)/asdf/(bar)/_layout/about!</div>,
 })

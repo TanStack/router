@@ -7,7 +7,6 @@
 pnpm-lock.yaml
 **/snapshots
 **/.vercel
-**/.vinxi
 **/.output
 **/node_modules
 node_modules

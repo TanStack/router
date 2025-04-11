@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/create-start",
-  "version": "1.115.2",
+  "version": "1.116.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tim O'Connell",
   "license": "MIT",
@@ -17,16 +17,7 @@
   "bin": {
     "create-start": "index.js"
   },
-  "scripts": {
-    "dev": "BUILD_ENV=development unbuild --stub --watch",
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint ./src",
-    "generate-templates": "node ./dist/generate-templates/index.mjs",
-    "build": "BUILD_ENV=production unbuild && node ./copyTemplates.mjs",
-    "test": "vitest run",
-    "test:watch": "vitest watch",
-    "test:coverage": "vitest run --coverage"
-  },
+  "scripts": {},
   "type": "module",
   "files": [
     "index.js",
@@ -70,7 +61,6 @@
     "@types/react-dom": "^19.0.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.1",
     "vite": "^6.0.3"
   },
   "peerDependenciesMeta": {
@@ -96,9 +86,6 @@
       "optional": true
     },
     "react-dom": {
-      "optional": true
-    },
-    "vinxi": {
       "optional": true
     },
     "vite": {

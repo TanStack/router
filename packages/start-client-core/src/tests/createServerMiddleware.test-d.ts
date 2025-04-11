@@ -609,3 +609,17 @@ test('createMiddleware can validate FormData', () => {
       >
     >()
 })
+
+test('createMiddleware merging from parent with undefined validator', () => {
+  const middleware1 = createMiddleware().validator(
+    (input: { test: string }) => input.test,
+  )
+
+  createMiddleware()
+    .middleware([middleware1])
+    .server((ctx) => {
+      expectTypeOf(ctx.data).toEqualTypeOf<string>()
+
+      return ctx.next()
+    })
+})

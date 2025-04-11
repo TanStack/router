@@ -874,7 +874,6 @@ export class RouterCore<
     }
 
     if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
@@ -893,7 +892,6 @@ export class RouterCore<
       this.buildRouteTree()
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
@@ -912,7 +910,6 @@ export class RouterCore<
     if (
       typeof window !== 'undefined' &&
       'CSS' in window &&
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       typeof window.CSS?.supports === 'function'
     ) {
       this.isViewTransitionTypesSupported = window.CSS.supports(
@@ -1972,9 +1969,29 @@ export class RouterCore<
 
   latestLoadPromise: undefined | Promise<void>
 
-  load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
+  beforeLoad = () => {
+    // Cancel any pending matches
+    this.cancelMatches()
     this.latestLocation = this.parseLocation(this.latestLocation)
 
+    // Match the routes
+    const pendingMatches = this.matchRoutes(this.latestLocation)
+
+    // Ingest the new matches
+    this.__store.setState((s) => ({
+      ...s,
+      status: 'pending',
+      isLoading: true,
+      location: this.latestLocation,
+      pendingMatches,
+      // If a cached moved to pendingMatches, remove it from cachedMatches
+      cachedMatches: s.cachedMatches.filter((d) => {
+        return !pendingMatches.find((e) => e.id === d.id)
+      }),
+    }))
+  }
+
+  load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
     let redirect: ResolvedRedirect | undefined
     let notFound: NotFoundError | undefined
 
@@ -1987,32 +2004,7 @@ export class RouterCore<
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
 
-          // Cancel any pending matches
-          this.cancelMatches()
-
-          let pendingMatches!: Array<AnyRouteMatch>
-
-          batch(() => {
-            // this call breaks a route context of destination route after a redirect
-            // we should be fine not eagerly calling this since we call it later
-            // this.clearExpiredCache()
-
-            // Match the routes
-            pendingMatches = this.matchRoutes(next)
-
-            // Ingest the new matches
-            this.__store.setState((s) => ({
-              ...s,
-              status: 'pending',
-              isLoading: true,
-              location: next,
-              pendingMatches,
-              // If a cached moved to pendingMatches, remove it from cachedMatches
-              cachedMatches: s.cachedMatches.filter((d) => {
-                return !pendingMatches.find((e) => e.id === d.id)
-              }),
-            }))
-          })
+          this.beforeLoad()
 
           if (!this.state.redirect) {
             this.emit({
@@ -2034,7 +2026,7 @@ export class RouterCore<
 
           await this.loadMatches({
             sync: opts?.sync,
-            matches: pendingMatches,
+            matches: this.state.pendingMatches as Array<AnyRouteMatch>,
             location: next,
             // eslint-disable-next-line @typescript-eslint/require-await
             onReady: async () => {

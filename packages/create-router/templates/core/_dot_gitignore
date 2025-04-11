@@ -5,9 +5,7 @@
 
 # Dist
 node_modules
-dist/
-.vinxi
-.output
+dist/.output
 .vercel
 .netlify
 .wrangler

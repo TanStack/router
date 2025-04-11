@@ -1,4 +1,5 @@
 import { RouterCore } from '@tanstack/router-core'
+import { createFileRoute } from './fileRoute'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -104,4 +105,10 @@ export class Router<
   ) {
     super(options)
   }
+}
+
+if (typeof globalThis !== 'undefined') {
+  ;(globalThis as any).createFileRoute = createFileRoute
+} else if (typeof window !== 'undefined') {
+  ;(window as any).createFileRoute = createFileRoute
 }

@@ -20,6 +20,8 @@ import type {
   Constrain,
   Expand,
   IntersectAssign,
+  LooseAsyncReturnType,
+  LooseReturnType,
   NoInfer,
 } from './utils'
 import type {
@@ -269,20 +271,6 @@ export type TrimPathRight<T extends string> = T extends '/'
   : T extends `${infer U}/`
     ? TrimPathRight<U>
     : T
-
-export type LooseReturnType<T> = T extends (
-  ...args: Array<any>
-) => infer TReturn
-  ? TReturn
-  : never
-
-export type LooseAsyncReturnType<T> = T extends (
-  ...args: Array<any>
-) => infer TReturn
-  ? TReturn extends Promise<infer TReturn>
-    ? TReturn
-    : TReturn
-  : never
 
 export type ContextReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn

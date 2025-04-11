@@ -2,7 +2,7 @@ import * as React from 'react'
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 import { fetchPosts } from '../posts'
 
-export const Route = createFileRoute('/posts')({
+export const Route = createFileRoute()({
   head: () => ({
     meta: [
       {

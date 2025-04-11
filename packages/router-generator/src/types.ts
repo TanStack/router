@@ -2,6 +2,7 @@ export type RouteNode = {
   filePath: string
   fullPath: string
   variableName: string
+  hasServerRoute?: boolean
   _fsRouteType: FsRouteType
   routePath?: string
   cleanedPath?: string
@@ -25,7 +26,6 @@ export type FsRouteType =
   | 'layout'
   | 'pathless_layout'
   | 'lazy'
-  | 'api'
   | 'loader' // @deprecated
   | 'component' // @deprecated
   | 'pendingComponent' // @deprecated

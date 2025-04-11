@@ -12,72 +12,73 @@ import { createFileRoute } from '@tanstack/react-router'
 
 // Import Routes
 
+import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
-import { Route as groupCLayoutCImport } from './routes/(group-c)/_layout-c'
-import { Route as groupBLayoutBImport } from './routes/(group-b)/_layout-b'
-import { Route as groupALayoutAImport } from './routes/(group-a)/_layout-a'
-import { Route as groupCLayoutCIndexImport } from './routes/(group-c)/_layout-c/index'
-import { Route as groupBLayoutBDashboardImport } from './routes/(group-b)/_layout-b/dashboard'
-import { Route as groupALayoutASignupImport } from './routes/(group-a)/_layout-a/signup'
-import { Route as groupALayoutALoginImport } from './routes/(group-a)/_layout-a/login'
+import { Route as groupCLayoutCRouteImport } from './routes/(group-c)/_layout-c'
+import { Route as groupBLayoutBRouteImport } from './routes/(group-b)/_layout-b'
+import { Route as groupALayoutARouteImport } from './routes/(group-a)/_layout-a'
+import { Route as groupCLayoutCIndexRouteImport } from './routes/(group-c)/_layout-c/index'
+import { Route as groupBLayoutBDashboardRouteImport } from './routes/(group-b)/_layout-b/dashboard'
+import { Route as groupALayoutASignupRouteImport } from './routes/(group-a)/_layout-a/signup'
+import { Route as groupALayoutALoginRouteImport } from './routes/(group-a)/_layout-a/login'
 
 // Create Virtual Routes
 
-const groupCImport = createFileRoute('/(group-c)')()
-const groupBImport = createFileRoute('/(group-b)')()
-const groupAImport = createFileRoute('/(group-a)')()
+const groupCRouteImport = createFileRoute('/(group-c)')()
+const groupBRouteImport = createFileRoute('/(group-b)')()
+const groupARouteImport = createFileRoute('/(group-a)')()
 
 // Create/Update Routes
 
-const groupCRoute = groupCImport.update({
+const groupCRoute = groupCRouteImport.update({
   id: '/(group-c)',
   getParentRoute: () => rootRoute,
 } as any)
 
-const groupBRoute = groupBImport.update({
+const groupBRoute = groupBRouteImport.update({
   id: '/(group-b)',
   getParentRoute: () => rootRoute,
 } as any)
 
-const groupARoute = groupAImport.update({
+const groupARoute = groupARouteImport.update({
   id: '/(group-a)',
   getParentRoute: () => rootRoute,
 } as any)
 
-const groupCLayoutCRoute = groupCLayoutCImport.update({
+const groupCLayoutCRoute = groupCLayoutCRouteImport.update({
   id: '/_layout-c',
   getParentRoute: () => groupCRoute,
 } as any)
 
-const groupBLayoutBRoute = groupBLayoutBImport.update({
+const groupBLayoutBRoute = groupBLayoutBRouteImport.update({
   id: '/_layout-b',
   getParentRoute: () => groupBRoute,
 } as any)
 
-const groupALayoutARoute = groupALayoutAImport.update({
+const groupALayoutARoute = groupALayoutARouteImport.update({
   id: '/_layout-a',
   getParentRoute: () => groupARoute,
 } as any)
 
-const groupCLayoutCIndexRoute = groupCLayoutCIndexImport.update({
+const groupCLayoutCIndexRoute = groupCLayoutCIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => groupCLayoutCRoute,
 } as any)
 
-const groupBLayoutBDashboardRoute = groupBLayoutBDashboardImport.update({
+const groupBLayoutBDashboardRoute = groupBLayoutBDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => groupBLayoutBRoute,
 } as any)
 
-const groupALayoutASignupRoute = groupALayoutASignupImport.update({
+const groupALayoutASignupRoute = groupALayoutASignupRouteImport.update({
   id: '/signup',
   path: '/signup',
   getParentRoute: () => groupALayoutARoute,
 } as any)
 
-const groupALayoutALoginRoute = groupALayoutALoginImport.update({
+const groupALayoutALoginRoute = groupALayoutALoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => groupALayoutARoute,
@@ -91,73 +92,166 @@ declare module '@tanstack/react-router' {
       id: '/(group-a)'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupAImport
+      preLoaderRoute: typeof groupARouteImport
       parentRoute: typeof rootRoute
     }
     '/(group-a)/_layout-a': {
       id: '/(group-a)/_layout-a'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupALayoutAImport
+      preLoaderRoute: typeof groupALayoutARouteImport
       parentRoute: typeof groupARoute
     }
     '/(group-b)': {
       id: '/(group-b)'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupBImport
+      preLoaderRoute: typeof groupBRouteImport
       parentRoute: typeof rootRoute
     }
     '/(group-b)/_layout-b': {
       id: '/(group-b)/_layout-b'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupBLayoutBImport
+      preLoaderRoute: typeof groupBLayoutBRouteImport
       parentRoute: typeof groupBRoute
     }
     '/(group-c)': {
       id: '/(group-c)'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupCImport
+      preLoaderRoute: typeof groupCRouteImport
       parentRoute: typeof rootRoute
     }
     '/(group-c)/_layout-c': {
       id: '/(group-c)/_layout-c'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupCLayoutCImport
+      preLoaderRoute: typeof groupCLayoutCRouteImport
       parentRoute: typeof groupCRoute
     }
     '/(group-a)/_layout-a/login': {
       id: '/(group-a)/_layout-a/login'
       path: '/login'
       fullPath: '/login'
-      preLoaderRoute: typeof groupALayoutALoginImport
-      parentRoute: typeof groupALayoutAImport
+      preLoaderRoute: typeof groupALayoutALoginRouteImport
+      parentRoute: typeof groupALayoutARouteImport
     }
     '/(group-a)/_layout-a/signup': {
       id: '/(group-a)/_layout-a/signup'
       path: '/signup'
       fullPath: '/signup'
-      preLoaderRoute: typeof groupALayoutASignupImport
-      parentRoute: typeof groupALayoutAImport
+      preLoaderRoute: typeof groupALayoutASignupRouteImport
+      parentRoute: typeof groupALayoutARouteImport
     }
     '/(group-b)/_layout-b/dashboard': {
       id: '/(group-b)/_layout-b/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
-      preLoaderRoute: typeof groupBLayoutBDashboardImport
-      parentRoute: typeof groupBLayoutBImport
+      preLoaderRoute: typeof groupBLayoutBDashboardRouteImport
+      parentRoute: typeof groupBLayoutBRouteImport
     }
     '/(group-c)/_layout-c/': {
       id: '/(group-c)/_layout-c/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupCLayoutCIndexImport
-      parentRoute: typeof groupCLayoutCImport
+      preLoaderRoute: typeof groupCLayoutCIndexRouteImport
+      parentRoute: typeof groupCLayoutCRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute  function across the route tree
+
+declare module './routes/(group-a)' {
+  const createFileRoute: CreateFileRoute<
+    '/(group-a)',
+    FileRoutesByPath['/(group-a)']['parentRoute'],
+    FileRoutesByPath['/(group-a)']['id'],
+    FileRoutesByPath['/(group-a)']['path'],
+    FileRoutesByPath['/(group-a)']['fullPath']
+  >
+}
+declare module './routes/(group-a)/_layout-a' {
+  const createFileRoute: CreateFileRoute<
+    '/(group-a)/_layout-a',
+    FileRoutesByPath['/(group-a)/_layout-a']['parentRoute'],
+    FileRoutesByPath['/(group-a)/_layout-a']['id'],
+    FileRoutesByPath['/(group-a)/_layout-a']['path'],
+    FileRoutesByPath['/(group-a)/_layout-a']['fullPath']
+  >
+}
+declare module './routes/(group-b)' {
+  const createFileRoute: CreateFileRoute<
+    '/(group-b)',
+    FileRoutesByPath['/(group-b)']['parentRoute'],
+    FileRoutesByPath['/(group-b)']['id'],
+    FileRoutesByPath['/(group-b)']['path'],
+    FileRoutesByPath['/(group-b)']['fullPath']
+  >
+}
+declare module './routes/(group-b)/_layout-b' {
+  const createFileRoute: CreateFileRoute<
+    '/(group-b)/_layout-b',
+    FileRoutesByPath['/(group-b)/_layout-b']['parentRoute'],
+    FileRoutesByPath['/(group-b)/_layout-b']['id'],
+    FileRoutesByPath['/(group-b)/_layout-b']['path'],
+    FileRoutesByPath['/(group-b)/_layout-b']['fullPath']
+  >
+}
+declare module './routes/(group-c)' {
+  const createFileRoute: CreateFileRoute<
+    '/(group-c)',
+    FileRoutesByPath['/(group-c)']['parentRoute'],
+    FileRoutesByPath['/(group-c)']['id'],
+    FileRoutesByPath['/(group-c)']['path'],
+    FileRoutesByPath['/(group-c)']['fullPath']
+  >
+}
+declare module './routes/(group-c)/_layout-c' {
+  const createFileRoute: CreateFileRoute<
+    '/(group-c)/_layout-c',
+    FileRoutesByPath['/(group-c)/_layout-c']['parentRoute'],
+    FileRoutesByPath['/(group-c)/_layout-c']['id'],
+    FileRoutesByPath['/(group-c)/_layout-c']['path'],
+    FileRoutesByPath['/(group-c)/_layout-c']['fullPath']
+  >
+}
+declare module './routes/(group-a)/_layout-a/login' {
+  const createFileRoute: CreateFileRoute<
+    '/(group-a)/_layout-a/login',
+    FileRoutesByPath['/(group-a)/_layout-a/login']['parentRoute'],
+    FileRoutesByPath['/(group-a)/_layout-a/login']['id'],
+    FileRoutesByPath['/(group-a)/_layout-a/login']['path'],
+    FileRoutesByPath['/(group-a)/_layout-a/login']['fullPath']
+  >
+}
+declare module './routes/(group-a)/_layout-a/signup' {
+  const createFileRoute: CreateFileRoute<
+    '/(group-a)/_layout-a/signup',
+    FileRoutesByPath['/(group-a)/_layout-a/signup']['parentRoute'],
+    FileRoutesByPath['/(group-a)/_layout-a/signup']['id'],
+    FileRoutesByPath['/(group-a)/_layout-a/signup']['path'],
+    FileRoutesByPath['/(group-a)/_layout-a/signup']['fullPath']
+  >
+}
+declare module './routes/(group-b)/_layout-b/dashboard' {
+  const createFileRoute: CreateFileRoute<
+    '/(group-b)/_layout-b/dashboard',
+    FileRoutesByPath['/(group-b)/_layout-b/dashboard']['parentRoute'],
+    FileRoutesByPath['/(group-b)/_layout-b/dashboard']['id'],
+    FileRoutesByPath['/(group-b)/_layout-b/dashboard']['path'],
+    FileRoutesByPath['/(group-b)/_layout-b/dashboard']['fullPath']
+  >
+}
+declare module './routes/(group-c)/_layout-c/index' {
+  const createFileRoute: CreateFileRoute<
+    '/(group-c)/_layout-c/',
+    FileRoutesByPath['/(group-c)/_layout-c/']['parentRoute'],
+    FileRoutesByPath['/(group-c)/_layout-c/']['id'],
+    FileRoutesByPath['/(group-c)/_layout-c/']['path'],
+    FileRoutesByPath['/(group-c)/_layout-c/']['fullPath']
+  >
 }
 
 // Create and export the route tree

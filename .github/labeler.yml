@@ -22,20 +22,14 @@
   - 'packages/start-api-routes/**/*'
 'package: react-start-client':
   - 'packages/react-start-client/**/*'
-'package: react-start-config':
-  - 'packages/react-start-config/**/*'
 'package: react-start-plugin':
   - 'packages/react-start-plugin/**/*'
-'package: react-start-router-manifest':
-  - 'packages/react-start-router-manifest/**/*'
 'package: react-start-server':
   - 'packages/react-start-server/**/*'
 'package: start-server-functions-client':
   - 'packages/start-server-functions-client/**/*'
 'package: start-server-functions-fetcher':
   - 'packages/start-server-functions-fetcher/**/*'
-'package: start-server-functions-handler':
-  - 'packages/start-server-functions-handler/**/*'
 'package: start-server-functions-ssr':
   - 'packages/start-server-functions-ssr/**/*'
 'package: router-cli':
@@ -74,8 +68,6 @@
   - 'packages/solid-start-server/**/*'
 'package: start':
   - 'packages/start/**/*'
-'package: start-config':
-  - 'packages/start-config/**/*'
 'package: start-server-functions-server':
   - 'packages/start-server-functions-server/**/*'
 'package: valibot-adapter':
