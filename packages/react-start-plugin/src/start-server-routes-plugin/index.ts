@@ -797,8 +797,9 @@ function checkRouteFullPathUniqueness(
     const errorMessage = `Conflicting configuration paths were found for the following route${conflictingFiles.length > 1 ? 's' : ''}: ${conflictingFiles
       .map((p) => `"${p.inferredFullPath}"`)
       .join(', ')}.
-Please ensure each route has a unique full path.
+Please ensure each Server Route has a unique full path.
 Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDirectory, d.filePath)).join('\n ')}\n`
-    throw new Error(errorMessage)
+    console.error(errorMessage)
+    process.exit(1)
   }
 }
