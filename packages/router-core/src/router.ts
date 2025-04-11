@@ -1440,19 +1440,17 @@ export class RouterCore<
         }
       }
 
-      // If it's already a success, update headers and head content
+      // If the match status is already error, notFound or success, update headers and head content
       // These may get updated again if the match is refreshed
       // due to being stale
-      if (match.status === 'success') {
-        match.headers = route.options.headers?.({
-          loaderData: match.loaderData,
-        })
+      if (['error', 'notFound', 'success'].includes(match.status)) {
         const assetContext = {
           matches,
           match,
           params: match.params,
           loaderData: match.loaderData,
         }
+        match.headers = route.options.headers?.(assetContext)
         const headFnContent = route.options.head?.(assetContext)
         match.links = headFnContent?.links
         match.headScripts = headFnContent?.scripts
@@ -2643,9 +2641,7 @@ export class RouterCore<
                           const headScripts = headFnContent?.scripts
 
                           const scripts = route.options.scripts?.(assetContext)
-                          const headers = route.options.headers?.({
-                            loaderData,
-                          })
+                          const headers = route.options.headers?.(assetContext)
 
                           updateMatch(matchId, (prev) => ({
                             ...prev,
