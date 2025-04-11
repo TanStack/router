@@ -25,16 +25,16 @@ The component to render if the JS is loaded in the client.
 ## Examples
 
 ```tsx
-import { ClientOnly, createRoute } from '@tanstack/react-router'
+// src/routes/dashboard.tsx
+import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import {
   Charts,
   FallbackCharts,
 } from './charts-that-break-server-side-rendering'
 
-const Route = createRoute({
-  // ... other route options
-  path: '/dashboard',
+export const Route = createFileRoute('/dashboard')({
   component: Dashboard,
+  // ... other route options
 })
 
 function Dashboard() {
