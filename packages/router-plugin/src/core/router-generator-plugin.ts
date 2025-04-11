@@ -2,7 +2,7 @@ import { isAbsolute, join, normalize, resolve } from 'node:path'
 import { generator, resolveConfigPath } from '@tanstack/router-generator'
 
 import { getConfig } from './config'
-import type { FSWatcher } from "chokidar";
+import type { FSWatcher } from 'chokidar'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 
@@ -118,7 +118,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     webpack(compiler) {
       userConfig = getConfig(options, ROOT)
 
-      let handle: FSWatcher | null = null;
+      let handle: FSWatcher | null = null
 
       compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
         await run(generate)
@@ -126,7 +126,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
 
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
         if (handle) {
-          return;
+          return
         }
 
         // webpack watcher doesn't register newly created files
@@ -138,17 +138,17 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
             await run(generate)
           })
 
-        await run(generate);
-      });
+        await run(generate)
+      })
 
       compiler.hooks.watchClose.tap(PLUGIN_NAME, async () => {
         if (handle) {
-          await handle.close();
+          await handle.close()
         }
       })
 
       compiler.hooks.done.tap(PLUGIN_NAME, () => {
-        console.info('✅ ' + PLUGIN_NAME + ': route-tree generation done');
+        console.info('✅ ' + PLUGIN_NAME + ': route-tree generation done')
       })
     },
   }
