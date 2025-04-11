@@ -14,9 +14,9 @@
   "license": "ISC",
   "dependencies": {
     "@radix-ui/themes": "^3.2.1",
-    "@tanstack/react-router": "^1.115.2",
-    "@tanstack/react-router-devtools": "^1.115.2",
-    "@tanstack/react-start": "^1.115.2",
+    "@tanstack/react-router": "^1.115.3",
+    "@tanstack/react-router-devtools": "^1.115.3",
+    "@tanstack/react-start": "^1.115.3",
     "@workos-inc/node": "^7.45.0",
     "iron-session": "^8.0.4",
     "jose": "^6.0.10",
