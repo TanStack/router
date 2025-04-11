@@ -66,7 +66,7 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
               await serverEnv.runner.import('/~start/ssr-entry')
             const response = await serverEntry['default'](event)
 
-            sendWebResponse(event, response)
+            return sendWebResponse(event, response)
           } catch (e) {
             console.error(e)
             viteDevServer.ssrFixStacktrace(e as Error)
@@ -98,7 +98,7 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
               )
             }
 
-            sendWebResponse(
+            return sendWebResponse(
               event,
               new Response(
                 `
