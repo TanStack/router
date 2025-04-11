@@ -149,10 +149,6 @@ await publish({
       packageDir: 'packages/start-server-functions-client',
     },
     {
-      name: '@tanstack/start-server-functions-ssr',
-      packageDir: 'packages/start-server-functions-ssr',
-    },
-    {
       name: '@tanstack/start-server-functions-server',
       packageDir: 'packages/start-server-functions-server',
     },

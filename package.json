@@ -109,7 +109,6 @@
       "@tanstack/start-api-routes": "workspace:*",
       "@tanstack/start-server-functions-fetcher": "workspace:*",
       "@tanstack/start-server-functions-client": "workspace:*",
-      "@tanstack/start-server-functions-ssr": "workspace:*",
       "@tanstack/start-server-functions-server": "workspace:*",
       "@tanstack/start-plugin-core": "workspace:*",
       "@tanstack/start-client-core": "workspace:*",

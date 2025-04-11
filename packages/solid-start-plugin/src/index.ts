@@ -70,7 +70,6 @@ export function TanStackStartVitePlugin(
               '@tanstack/start-server-core',
               '@tanstack/start-server-functions-fetcher',
               '@tanstack/start-server-functions-client',
-              '@tanstack/start-server-functions-ssr',
               '@tanstack/start-server-functions-server',
               '@tanstack/start-router-manifest',
               '@tanstack/start-config',

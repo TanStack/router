@@ -20,7 +20,6 @@ export default mergeConfig(
       './src/plugin.tsx',
       './src/server-functions-client.tsx',
       './src/server-functions-server.tsx',
-      './src/server-functions-ssr.tsx',
       './src/api.tsx',
     ],
     externalDeps: [
@@ -29,7 +28,6 @@ export default mergeConfig(
       '@tanstack/solid-start-plugin',
       '@tanstack/start-server-functions-client',
       '@tanstack/start-server-functions-server',
-      '@tanstack/start-server-functions-ssr',
       '@tanstack/start-api-routes',
     ],
   }),

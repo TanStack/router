@@ -112,16 +112,6 @@
         "default": "./dist/cjs/server-functions-handler.cjs"
       }
     },
-    "./server-functions-ssr": {
-      "import": {
-        "types": "./dist/esm/server-functions-ssr.d.ts",
-        "default": "./dist/esm/server-functions-ssr.js"
-      },
-      "require": {
-        "types": "./dist/cjs/server-functions-ssr.d.cts",
-        "default": "./dist/cjs/server-functions-ssr.cjs"
-      }
-    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -138,7 +128,6 @@
     "@tanstack/solid-start-plugin": "workspace:^",
     "@tanstack/start-server-functions-client": "workspace:^",
     "@tanstack/start-server-functions-server": "workspace:^",
-    "@tanstack/start-server-functions-ssr": "workspace:^",
     "@tanstack/start-api-routes": "workspace:^"
   },
   "peerDependencies": {

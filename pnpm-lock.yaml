@@ -44,7 +44,6 @@ overrides:
   '@tanstack/start-api-routes': workspace:*
   '@tanstack/start-server-functions-fetcher': workspace:*
   '@tanstack/start-server-functions-client': workspace:*
-  '@tanstack/start-server-functions-ssr': workspace:*
   '@tanstack/start-server-functions-server': workspace:*
   '@tanstack/start-plugin-core': workspace:*
   '@tanstack/start-client-core': workspace:*
@@ -5971,9 +5970,6 @@ importers:
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server
-      '@tanstack/start-server-functions-ssr':
-        specifier: workspace:*
-        version: link:../start-server-functions-ssr
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -6509,9 +6505,6 @@ importers:
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server
-      '@tanstack/start-server-functions-ssr':
-        specifier: workspace:*
-        version: link:../start-server-functions-ssr
       solid-js:
         specifier: '>=1.0.0'
         version: 1.9.5
@@ -6719,9 +6712,6 @@ importers:
       '@tanstack/start-server-functions-server':
         specifier: workspace:*
         version: link:../start-server-functions-server
-      '@tanstack/start-server-functions-ssr':
-        specifier: workspace:*
-        version: link:../start-server-functions-ssr
 
   packages/start-api-routes:
     dependencies:
@@ -6888,28 +6878,6 @@ importers:
       vite:
         specifier: 6.1.4
         version: 6.1.4(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-    devDependencies:
-      typescript:
-        specifier: ^5.7.2
-        version: 5.8.2
-
-  packages/start-server-functions-ssr:
-    dependencies:
-      '@tanstack/server-functions-plugin':
-        specifier: workspace:*
-        version: link:../server-functions-plugin
-      '@tanstack/start-client-core':
-        specifier: workspace:*
-        version: link:../start-client-core
-      '@tanstack/start-server-core':
-        specifier: workspace:*
-        version: link:../start-server-core
-      '@tanstack/start-server-functions-fetcher':
-        specifier: workspace:*
-        version: link:../start-server-functions-fetcher
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
     devDependencies:
       typescript:
         specifier: ^5.7.2

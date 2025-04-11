@@ -30,8 +30,6 @@
   - 'packages/start-server-functions-client/**/*'
 'package: start-server-functions-fetcher':
   - 'packages/start-server-functions-fetcher/**/*'
-'package: start-server-functions-ssr':
-  - 'packages/start-server-functions-ssr/**/*'
 'package: router-cli':
   - 'packages/router-cli/**/*'
 'package: router-core':
