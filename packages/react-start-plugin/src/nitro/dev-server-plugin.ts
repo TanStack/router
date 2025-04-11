@@ -47,7 +47,8 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
 
           try {
             if (!isRunnableDevEnvironment(serverEnv)) {
-              throw new Error('Server environment not found')
+              // This throw an error outside the monorepo, just log it for now
+              console.log('Server environment not found')
             }
 
             const templateHtml = `<html><head></head><body></body></html>`
