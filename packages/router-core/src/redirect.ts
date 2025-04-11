@@ -52,7 +52,7 @@ export type ResolvedRedirect<
 
 export function redirect<
   TRouter extends AnyRouter = RegisteredRouter,
-  const TTo extends string | undefined = string | undefined,
+  const TTo extends string | undefined = '.',
   const TFrom extends string = string,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
