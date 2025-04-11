@@ -46,9 +46,7 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
           const serverEnv = viteDevServer.environments['server'] as Environment;
 
           try {
-            if (!isRunnableDevEnvironment(serverEnv)) {
-              // This throw an error outside the monorepo, just log it for now
-              console.log('Server environment not found')
+              throw new Error('Server environment not found')
             }
 
             const templateHtml = `<html><head></head><body></body></html>`
