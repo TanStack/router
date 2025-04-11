@@ -938,9 +938,9 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
-      '@tanstack/start':
-        specifier: workspace:^
-        version: link:../../../packages/start
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -6691,27 +6691,6 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.2
         version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.1.4(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
-
-  packages/start:
-    dependencies:
-      '@tanstack/react-start-client':
-        specifier: workspace:*
-        version: link:../react-start-client
-      '@tanstack/react-start-plugin':
-        specifier: workspace:*
-        version: link:../react-start-plugin
-      '@tanstack/react-start-server':
-        specifier: workspace:*
-        version: link:../react-start-server
-      '@tanstack/start-api-routes':
-        specifier: workspace:*
-        version: link:../start-api-routes
-      '@tanstack/start-server-functions-client':
-        specifier: workspace:*
-        version: link:../start-server-functions-client
-      '@tanstack/start-server-functions-server':
-        specifier: workspace:*
-        version: link:../start-server-functions-server
 
   packages/start-api-routes:
     dependencies:

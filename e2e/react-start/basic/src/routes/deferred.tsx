@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/start'
+import { createServerFn } from '@tanstack/react-start'
 import { Suspense, useState } from 'react'
 
 const personServerFn = createServerFn({ method: 'GET' })

@@ -73,8 +73,6 @@ export function TanStackStartVitePlugin(
             noExternal: [
               "@tanstack/react-start",
               "@tanstack/react-start-server",
-              '@tanstack/start',
-              '@tanstack/start/server',
               '@tanstack/start-client',
               '@tanstack/start-client-core',
               '@tanstack/start-server',

@@ -62,8 +62,6 @@ export function TanStackStartVitePlugin(
           },
           resolve: {
             noExternal: [
-              '@tanstack/start',
-              '@tanstack/start/server',
               '@tanstack/start-client',
               '@tanstack/start-client-core',
               '@tanstack/start-server',
