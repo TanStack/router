@@ -90,6 +90,7 @@ export function TanStackStartVitePlugin(
               'tsr:start-manifest',
               'tsr:server-fn-manifest',
               "nitropack",
+              '@tanstack/**',
             ],
           },
           /* prettier-ignore */
