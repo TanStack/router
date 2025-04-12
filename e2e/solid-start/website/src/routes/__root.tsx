@@ -1,7 +1,7 @@
 import { Outlet, createRootRoute } from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { seo } from '~/utils/seo'
 
 export const Route = createRootRoute({
