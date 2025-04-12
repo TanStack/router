@@ -7,6 +7,7 @@ import { getTanStackStartOptions } from './schema.js'
 import { nitroPlugin } from './nitro/nitro-plugin.js'
 import { startManifestPlugin } from './routesManifestPlugin.js'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
+import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/index.js'
 import type { PluginOption } from 'vite'
 import type { TanStackStartInputConfig, WithSolidPlugin } from './schema.js'
 
@@ -15,6 +16,14 @@ export type {
   TanStackStartOutputConfig,
   WithSolidPlugin,
 } from './schema.js'
+
+declare global {
+  interface ImportMeta {
+    env: {
+      HOST: string
+    }
+  }
+}
 
 export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
 
@@ -62,6 +71,8 @@ export function TanStackStartVitePlugin(
           },
           resolve: {
             noExternal: [
+              "@tanstack/solid-start",
+              "@tanstack/solid-start-server",
               '@tanstack/start-client',
               '@tanstack/start-client-core',
               '@tanstack/start-server',
@@ -158,6 +169,9 @@ export default createStartHandler({
       target: 'solid',
       enableRouteGeneration: true,
       autoCodeSplitting: true,
+    }),
+    TanStackStartServerRoutesVite({
+      ...options.tsr,
     }),
     viteSolid({ ...options.solid, ssr: true }),
     nitroPlugin(options),

@@ -6582,6 +6582,9 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
+      '@tanstack/router-generator':
+        specifier: workspace:*
+        version: link:../router-generator
       '@tanstack/router-plugin':
         specifier: workspace:*
         version: link:../router-plugin
