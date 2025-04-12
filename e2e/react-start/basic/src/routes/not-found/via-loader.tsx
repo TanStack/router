@@ -1,4 +1,4 @@
-import {  notFound } from '@tanstack/react-router'
+import { notFound } from '@tanstack/react-router'
 
 export const Route = createFileRoute({
   loader: () => {

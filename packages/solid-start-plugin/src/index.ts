@@ -71,8 +71,8 @@ export function TanStackStartVitePlugin(
           },
           resolve: {
             noExternal: [
-              "@tanstack/solid-start",
-              "@tanstack/solid-start-server",
+              '@tanstack/solid-start',
+              '@tanstack/solid-start-server',
               '@tanstack/start-client',
               '@tanstack/start-client-core',
               '@tanstack/start-server',
@@ -86,7 +86,7 @@ export function TanStackStartVitePlugin(
               '@tanstack/server-functions-plugin',
               'tsr:start-manifest',
               'tsr:server-fn-manifest',
-              "nitropack",
+              'nitropack',
               '@tanstack/**',
             ],
           },

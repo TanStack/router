@@ -1,4 +1,4 @@
-import {  redirect } from '@tanstack/react-router'
+import { redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
 export const Route = createFileRoute({

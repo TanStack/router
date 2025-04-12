@@ -103,7 +103,6 @@ export class Router<
   }
 }
 
-
 if (typeof globalThis !== 'undefined') {
   ;(globalThis as any).createFileRoute = createFileRoute
 } else if (typeof window !== 'undefined') {

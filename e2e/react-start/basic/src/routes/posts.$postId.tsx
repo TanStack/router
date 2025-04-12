@@ -1,4 +1,4 @@
-import { ErrorComponent, Link,} from '@tanstack/react-router'
+import { ErrorComponent, Link } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
 import { fetchPost } from '~/utils/posts'

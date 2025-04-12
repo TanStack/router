@@ -1,4 +1,3 @@
-
 /// <reference types="vite/client" />
 
 const isProd = import.meta.env.PROD

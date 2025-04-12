@@ -51,9 +51,7 @@ export function nitroPlugin(
     {
       name: 'tanstack-vite-plugin-nitro',
       async configEnvironment(name) {
-
         if (name === 'server') {
-          
           if (!nitro && !nitroRollupOptions) {
             nitro = await createNitro(nitroConfig)
             nitroRollupOptions = getRollupConfig(nitro)

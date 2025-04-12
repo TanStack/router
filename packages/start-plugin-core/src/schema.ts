@@ -8,7 +8,9 @@ const tsrConfig = configSchema.partial().extend({
   srcDirectory: z.string().optional().default('src'),
 })
 
-export function createTanStackConfig<TFrameworkPlugin extends Record<string, unknown>>(frameworkPlugin: TFrameworkPlugin) {
+export function createTanStackConfig<
+  TFrameworkPlugin extends Record<string, unknown>,
+>(frameworkPlugin: TFrameworkPlugin) {
   const schema = createTanStackStartOptionsSchema(frameworkPlugin)
 
   return {
@@ -66,7 +68,9 @@ export function createTanStackConfig<TFrameworkPlugin extends Record<string, unk
   }
 }
 
-export function createTanStackStartOptionsSchema(frameworkPlugin: Record<string, unknown> = {}) {
+export function createTanStackStartOptionsSchema(
+  frameworkPlugin: Record<string, unknown> = {},
+) {
   return z
     .object({
       root: z.string().optional().default(process.cwd()),

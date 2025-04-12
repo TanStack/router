@@ -592,7 +592,7 @@ export function handleCreateMiddlewareCallExpression(
   if (
     callExpressionPaths.server &&
     serverFnPath.node &&
-    (opts.env === 'client')
+    opts.env === 'client'
   ) {
     // If we're on the client, remove the server call expression
     if (t.isMemberExpression(callExpressionPaths.server.node.callee)) {
@@ -612,9 +612,7 @@ function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
     //   console.info(`Handling ${env}Only call expression:`, path.toString())
 
     const isEnvMatch =
-      env === 'client'
-        ? opts.env === 'client'
-        : opts.env === 'server'
+      env === 'client' ? opts.env === 'client' : opts.env === 'server'
 
     if (isEnvMatch) {
       // extract the inner function from the call expression

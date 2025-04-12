@@ -1,7 +1,3 @@
-
-
-export const Route = createFileRoute(
-  {
-    component: () => <div>Hello /(foo)/asdf/(another-group)/_layout/baz!</div>,
-  },
-)
+export const Route = createFileRoute({
+  component: () => <div>Hello /(foo)/asdf/(another-group)/_layout/baz!</div>,
+})

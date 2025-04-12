@@ -1,4 +1,4 @@
-import {  retainSearchParams } from '@tanstack/react-router'
+import { retainSearchParams } from '@tanstack/react-router'
 import z from 'zod'
 
 export const Route = createFileRoute({

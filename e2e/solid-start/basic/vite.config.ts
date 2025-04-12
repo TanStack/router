@@ -1,4 +1,3 @@
-
 import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
 import { TanStackStartVitePlugin } from '@tanstack/solid-start/plugin'

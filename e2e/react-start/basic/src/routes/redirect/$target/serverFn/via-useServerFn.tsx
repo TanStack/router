@@ -1,4 +1,3 @@
-
 import { RedirectOnClick } from '~/components/RedirectOnClick'
 
 export const Route = createFileRoute({

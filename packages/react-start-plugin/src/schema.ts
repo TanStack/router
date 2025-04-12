@@ -1,5 +1,8 @@
 import { z } from 'zod'
-import { createTanStackConfig, createTanStackStartOptionsSchema } from '@tanstack/start-plugin-core'
+import {
+  createTanStackConfig,
+  createTanStackStartOptionsSchema,
+} from '@tanstack/start-plugin-core'
 import type { Options as ViteReactOptions } from '@vitejs/plugin-react'
 
 export type WithReactPlugin = {
@@ -7,11 +10,12 @@ export type WithReactPlugin = {
 }
 
 const frameworkPlugin = {
-  react: z.custom<ViteReactOptions>().optional()
+  react: z.custom<ViteReactOptions>().optional(),
 }
 
 // eslint-disable-next-line unused-imports/no-unused-vars
-const TanStackStartOptionsSchema = createTanStackStartOptionsSchema(frameworkPlugin)
+const TanStackStartOptionsSchema =
+  createTanStackStartOptionsSchema(frameworkPlugin)
 
 const defaultConfig = createTanStackConfig(frameworkPlugin)
 
@@ -25,4 +29,3 @@ export type TanStackStartInputConfig = z.input<
 export type TanStackStartOutputConfig = ReturnType<
   typeof getTanStackStartOptions
 >
-

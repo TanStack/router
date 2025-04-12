@@ -1,3 +1,3 @@
 import { compileStartOutputFactory } from '@tanstack/start-plugin-core'
 
-export const compileStartOutput = compileStartOutputFactory('solid');
+export const compileStartOutput = compileStartOutputFactory('solid')

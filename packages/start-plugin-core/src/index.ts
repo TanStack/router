@@ -7,9 +7,9 @@ export { buildNitroEnvironment } from './nitro/build-nitro'
 export type { PagesJson } from './nitro/build-sitemap'
 export { buildSitemap } from './nitro/build-sitemap'
 
-export { 
-  createTanStackConfig, 
-  createTanStackStartOptionsSchema, 
-  pageSchema
+export {
+  createTanStackConfig,
+  createTanStackStartOptionsSchema,
+  pageSchema,
 } from './schema'
 export type { Page } from './schema'

@@ -71,8 +71,8 @@ export function TanStackStartVitePlugin(
           },
           resolve: {
             noExternal: [
-              "@tanstack/react-start",
-              "@tanstack/react-start-server",
+              '@tanstack/react-start',
+              '@tanstack/react-start-server',
               '@tanstack/start-client',
               '@tanstack/start-client-core',
               '@tanstack/start-server',
@@ -86,7 +86,7 @@ export function TanStackStartVitePlugin(
               '@tanstack/server-functions-plugin',
               'tsr:start-manifest',
               'tsr:server-fn-manifest',
-              "nitropack",
+              'nitropack',
               '@tanstack/**',
             ],
           },

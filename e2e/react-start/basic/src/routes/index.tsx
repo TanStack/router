@@ -1,4 +1,3 @@
-
 import { CustomMessage } from '~/components/CustomMessage'
 
 export const Route = createFileRoute({
