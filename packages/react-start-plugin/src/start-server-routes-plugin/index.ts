@@ -320,6 +320,11 @@ async function generator(config: Config, root: string) {
     await handleNode(node)
   }
 
+  // This is run against the `routeNodes` array since it
+  // has the accumulated (intended) Server Route nodes
+  // Since TSR allows multiple way of defining a route,
+  // we need to ensure that a user hasn't defined the
+  // same route in multiple ways (i.e. `flat`, `nested`, `virtual`)
   checkRouteFullPathUniqueness(routeNodes, config)
 
   function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {

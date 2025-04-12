@@ -421,6 +421,11 @@ export async function generator(config: Config, root: string) {
     await handleNode(node)
   }
 
+  // This is run against the `preRouteNodes` array since it
+  // has the flattened Route nodes and not the full tree
+  // Since TSR allows multiple way of defining a route,
+  // we need to ensure that a user hasn't defined the
+  // same route in multiple ways (i.e. `flat`, `nested`, `virtual`)
   checkRouteFullPathUniqueness(
     preRouteNodes.filter(
       (d) => d.children === undefined && 'lazy' !== d._fsRouteType,
