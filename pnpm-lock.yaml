@@ -6822,6 +6822,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
+      vite:
+        specifier: 6.1.4
+        version: 6.1.4(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
 
   packages/start-server-functions-client:
     dependencies:
@@ -6848,6 +6851,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
+      vite:
+        specifier: 6.1.4
+        version: 6.1.4(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
 
   packages/start-server-functions-server:
     dependencies:
