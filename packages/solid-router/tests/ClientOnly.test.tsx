@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import * as Solid from 'solid-js'
-import { renderToStream, renderToString } from 'solid-js/web'
-import { cleanup, prettyDOM, render, screen } from '@solidjs/testing-library'
+import { renderToString } from 'solid-js/web'
+import { cleanup, render, screen } from '@solidjs/testing-library'
 import {
   RouterProvider,
   createMemoryHistory,
