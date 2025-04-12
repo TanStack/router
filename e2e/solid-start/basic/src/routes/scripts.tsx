@@ -1,6 +1,6 @@
 
 
-const isProd = import.meta.env.PROD
+const isProd = process.env.PROD
 
 export const Route = createFileRoute({
   head: () => ({
