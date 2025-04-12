@@ -1,8 +1,8 @@
 import * as Solid from 'solid-js'
-import { createFileRoute } from '@tanstack/solid-router'
+
 import { ScrollBlock } from '../-components/scroll-block'
 
-export const Route = createFileRoute('/(tests)/normal-page')({
+export const Route = createFileRoute({
   component: Component,
 })
 

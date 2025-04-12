@@ -1,18 +1,14 @@
-import * as Solid from 'solid-js'
 import {
   Link,
   Outlet,
   createRootRoute,
   linkOptions,
-  HeadContent,
-  Scripts,
 } from '@tanstack/solid-router'
-import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
+import { Dynamic } from 'solid-js/web'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
-import { Dynamic } from 'solid-js/web'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({

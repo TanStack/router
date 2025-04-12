@@ -1,8 +1,8 @@
-import { createFileRoute } from '@tanstack/solid-router'
+
 import * as Solid from 'solid-js'
 import { createServerFn } from '@tanstack/solid-start'
 
-export const Route = createFileRoute('/multipart')({
+export const Route = createFileRoute({
   component: MultipartServerFnCall,
 })
 

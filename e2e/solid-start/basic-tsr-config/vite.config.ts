@@ -10,6 +10,10 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    TanStackStartVitePlugin({}),
+    TanStackStartVitePlugin({
+      tsr: {
+        srcDirectory: './src/app',
+      },
+    }),
   ],
 })

@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/solid-router'
+
 import { clientOnly, createServerFn, serverOnly } from '@tanstack/solid-start'
 import { createSignal } from 'solid-js'
 
@@ -18,7 +18,7 @@ const testOnServer = createServerFn().handler(() => {
   return { serverOnServer, clientOnServer }
 })
 
-export const Route = createFileRoute('/env-only')({
+export const Route = createFileRoute({
   component: RouteComponent,
 })
 

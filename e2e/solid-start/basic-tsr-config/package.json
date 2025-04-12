@@ -4,10 +4,10 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3000",
-    "dev:e2e": "vinxi dev",
-    "build": "rimraf ./count.txt && vinxi build && tsc --noEmit",
-    "start": "vinxi start",
+    "dev": "vite dev --port 3000",
+    "dev:e2e": "vite dev",
+    "build": "rimraf ./count.txt && vite build && tsc --noEmit",
+    "start": "vite start",
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
@@ -20,6 +20,7 @@
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }
