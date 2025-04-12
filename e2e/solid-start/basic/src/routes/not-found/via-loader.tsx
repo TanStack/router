@@ -1,6 +1,6 @@
-import { createFileRoute, notFound } from '@tanstack/solid-router'
+import {  notFound } from '@tanstack/solid-router'
 
-export const Route = createFileRoute('/not-found/via-loader')({
+export const Route = createFileRoute({
   loader: () => {
     throw notFound()
   },

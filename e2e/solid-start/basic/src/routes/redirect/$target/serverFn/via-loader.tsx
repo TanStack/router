@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/solid-router'
+
 import { throwRedirect } from '~/components/throwRedirect'
 
-export const Route = createFileRoute('/redirect/$target/serverFn/via-loader')({
+export const Route = createFileRoute({
   loaderDeps: ({ search: { reloadDocument, externalHost } }) => ({
     reloadDocument,
     externalHost,
