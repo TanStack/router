@@ -7,7 +7,7 @@
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "vite start",
+    "start": "node .output/server/index.mjs",
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
