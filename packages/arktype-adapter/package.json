@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/arktype-adapter",
-  "version": "1.115.3",
+  "version": "1.116.0",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
