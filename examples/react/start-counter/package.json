@@ -11,7 +11,7 @@
   "dependencies": {
     "@tanstack/react-router": "^1.116.0",
     "@tanstack/react-router-devtools": "^1.116.0",
-    "@tanstack/react-start": "^1.116.0",
+    "@tanstack/react-start": "^1.116.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "vinxi": "0.5.3"

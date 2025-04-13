@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/create-start",
-  "version": "1.116.0",
+  "version": "1.116.1",
   "description": "Modern and scalable routing for React applications",
   "author": "Tim O'Connell",
   "license": "MIT",
