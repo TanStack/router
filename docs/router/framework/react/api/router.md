@@ -26,6 +26,7 @@ title: Router API
   - [`<Await>`](./router/awaitComponent.md)
   - [`<CatchBoundary>`](./router/catchBoundaryComponent.md)
   - [`<CatchNotFound>`](./router/catchNotFoundComponent.md)
+  - [`<ClientOnly>`](./router/clientOnlyComponent.md)
   - [`<DefaultGlobalNotFound>`](./router/defaultGlobalNotFoundComponent.md)
   - [`<ErrorComponent>`](./router/errorComponentComponent.md)
   - [`<Link>`](./router/linkComponent.md)
