@@ -371,7 +371,7 @@ There are many context functions available to you for things like:
 - Dealing with multi-part form data
 - Reading/Setting custom server context properties
 
-For a full list of available context functions, see all of the available [h3 Methods](https://h3.unjs.io/utils/request) or inspect the [@tanstack/react-start/server Source Code](https://github.com/tanstack/router/tree/main/packages/start/src/server/index.tsx).
+For a full list of available context functions, see all of the available [h3 Methods](https://h3.unjs.io/utils/request) or inspect the [@tanstack/start-server-core Source Code](https://github.com/TanStack/router/tree/main/packages/start-server-core/src).
 
 For starters, here are a few examples:
 
