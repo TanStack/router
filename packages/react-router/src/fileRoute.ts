@@ -6,6 +6,7 @@ import { useLoaderDeps } from './useLoaderDeps'
 import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
+import { useHistoryState } from './useHistoryState'
 import { useNavigate } from './useNavigate'
 import { useRouter } from './useRouter'
 import type { UseParamsRoute } from './useParams'
@@ -32,6 +33,7 @@ import type {
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseRouteContextRoute } from './useRouteContext'
+import type { UseHistoryStateRoute } from './useHistoryState'
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
@@ -195,6 +197,15 @@ export class LazyRoute<TRoute extends AnyRoute> {
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.options.id,
+    } as any) as any
+  }
+
+  useHistoryState: UseHistoryStateRoute<TRoute['id']> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    return useHistoryState({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.options.id,
