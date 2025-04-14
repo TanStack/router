@@ -289,11 +289,11 @@ export const updateUser = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const result = await db.users.update({
       where: {
-        id: data.id
+        id: data.id,
       },
       data: {
-        name: data.name
-      }
+        name: data.name,
+      },
     })
   })
 
@@ -304,29 +304,29 @@ import { useServerFunction } from '@tanstack/react-start'
 import { updateUser, type User } from '...'
 
 export function useUpdateUser() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const _updateUser = useServerFunction(updateUser);
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const _updateUser = useServerFunction(updateUser)
 
   return useCallback(
     async (user: User) => {
-      const result = await _updateUser({ data: user });
+      const result = await _updateUser({ data: user })
 
-      router.invalidate();
+      router.invalidate()
       queryClient.invalidateQueries({
-        queryKey: ['users', 'updateUser', user.id]
+        queryKey: ['users', 'updateUser', user.id],
       })
 
-      return result;
+      return result
     },
-    [router, queryClient, _updateUser]
-  );
+    [router, queryClient, _updateUser],
+  )
 }
 
 // Somewhere else in your application
 import { useUpdateUser } from '...'
 
-const updateUser = useUpdateUser();
+const updateUser = useUpdateUser()
 await updateUser({ id: '1', name: 'John' })
 ```
 
