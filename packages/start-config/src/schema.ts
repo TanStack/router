@@ -80,7 +80,9 @@ const testedDeploymentPresets: Array<DeploymentPreset> = [
   'node-server',
 ]
 
-export function checkDeploymentPresetInput(preset?: string): DeploymentPreset | undefined {
+export function checkDeploymentPresetInput(
+  preset?: string,
+): DeploymentPreset | undefined {
   if (preset) {
     if (!vinxiDeploymentPresets.includes(preset as any)) {
       console.warn(
