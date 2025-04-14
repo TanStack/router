@@ -282,7 +282,7 @@ const UserSchema = z.object({
   id: z.string(),
   name: z.string(),
 })
-type User = z.infer<typeof UserSchema>
+export type User = z.infer<typeof UserSchema>
 
 export const updateUser = createServerFn({ method: 'POST' })
   .validator(UserSchema)
@@ -301,7 +301,7 @@ export const updateUser = createServerFn({ method: 'POST' })
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { useServerFunction } from '@tanstack/react-start'
-import { updateUser } from '...'
+import { updateUser, type User } from '...'
 
 export function useUpdateUser() {
   const router = useRouter();
