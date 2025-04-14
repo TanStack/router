@@ -96,13 +96,13 @@ export function useHistoryState<
   UseHistoryStateResult<TRouter, TFrom, TStrict, TSelected>,
   TThrow
 > {
+  const locationState = useLocation().state
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
     structuralSharing: opts.structuralSharing,
     select: () => {
-      const locationState = useLocation().state
       const typedState = locationState as unknown as ResolveUseHistoryState<TRouter, TFrom, TStrict>;
       return opts.select ? opts.select(typedState) : typedState;
     },
