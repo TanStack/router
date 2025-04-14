@@ -327,7 +327,7 @@ export function useUpdateUser() {
 import { useUpdateUser } from '...'
 
 const updateUser = useUpdateUser();
-await updateUser({ data: { id: '1', name: 'John' } })
+await updateUser({ id: '1', name: 'John' })
 ```
 
 To learn more about mutations, check out the [mutations guide](../../../router/framework/react/guide/data-mutations).
