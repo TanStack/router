@@ -1,20 +1,24 @@
 import { json } from '@tanstack/react-start'
 import { createAPIFileRoute } from '@tanstack/react-start/api'
-import axios from 'redaxios'
 import type { User } from '../../utils/users'
 
 export const APIRoute = createAPIFileRoute('/api/users/$id')({
   GET: async ({ request, params }) => {
     console.info(`Fetching users by id=${params.id}... @`, request.url)
     try {
-      const res = await axios.get<User>(
+      const res = await fetch(
         'https://jsonplaceholder.typicode.com/users/' + params.id,
       )
+      if (!res.ok) {
+        throw new Error('Failed to fetch user')
+      }
+
+      const user = (await res.json()) as User
 
       return json({
-        id: res.data.id,
-        name: res.data.name,
-        email: res.data.email,
+        id: user.id,
+        name: user.name,
+        email: user.email,
       })
     } catch (e) {
       console.error(e)
