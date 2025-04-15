@@ -14,7 +14,6 @@ Feature/Capability Key:
 - 🟡 Partial Support (on a scale of 5)
 - 🔶 Possible, but requires custom code/implementation/casting
 - 🛑 Not officially supported
-- 
 
 |                                                | TanStack Router / Start                          | React Router DOM [_(Website)_][router]                | Next.JS [_(Website)_][nextjs]                         |
 | ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------- |
