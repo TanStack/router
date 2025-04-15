@@ -11,7 +11,9 @@ export const fetchPost = createServerFn({ method: 'GET' })
   .validator((d: string) => d)
   .handler(async ({ data }) => {
     console.info(`Fetching post with id ${data}...`)
-    const res = await fetch(`https://jsonplaceholder.typicode.com/posts/${data}`)
+    const res = await fetch(
+      `https://jsonplaceholder.typicode.com/posts/${data}`,
+    )
     if (!res.ok) {
       if (res.status === 404) {
         throw notFound()
@@ -20,7 +22,7 @@ export const fetchPost = createServerFn({ method: 'GET' })
       throw new Error('Failed to fetch post')
     }
 
-    const post = await res.json() as PostType
+    const post = (await res.json()) as PostType
 
     return post
   })
@@ -33,7 +35,7 @@ export const fetchPosts = createServerFn({ method: 'GET' }).handler(
       throw new Error('Failed to fetch posts')
     }
 
-    const posts = await res.json() as Array<PostType>
+    const posts = (await res.json()) as Array<PostType>
 
     return posts
   },

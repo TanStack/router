@@ -6,12 +6,14 @@ export const APIRoute = createAPIFileRoute('/api/users/$id')({
   GET: async ({ request, params }) => {
     console.info(`Fetching users by id=${params.id}... @`, request.url)
     try {
-      const res = await fetch('https://jsonplaceholder.typicode.com/users/' + params.id)
+      const res = await fetch(
+        'https://jsonplaceholder.typicode.com/users/' + params.id,
+      )
       if (!res.ok) {
         throw new Error('Failed to fetch user')
       }
 
-      const user = await res.json() as User
+      const user = (await res.json()) as User
 
       return json({
         id: user.id,

@@ -12,7 +12,7 @@ export const Route = createFileRoute('/users/$userId')({
         throw new Error('Unexpected status code')
       }
 
-      const data = await res.json() as User
+      const data = (await res.json()) as User
 
       return data
     } catch {

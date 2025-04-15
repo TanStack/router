@@ -10,7 +10,7 @@ export const APIRoute = createAPIFileRoute('/api/users')({
       throw new Error('Failed to fetch users')
     }
 
-    const data = await res.json() as Array<User>
+    const data = (await res.json()) as Array<User>
 
     const list = data.slice(0, 10)
 
