@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import axios from 'redaxios'
 import type { User } from '~/utils/users'
 import { DEPLOY_URL } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
@@ -7,12 +6,18 @@ import { UserErrorComponent } from '~/components/UserError'
 
 export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
-    return await axios
-      .get<User>(DEPLOY_URL + '/api/users/' + userId)
-      .then((r) => r.data)
-      .catch(() => {
-        throw new Error('Failed to fetch user')
-      })
+    try {
+      const res = await fetch(DEPLOY_URL + '/api/users/' + userId)
+      if (!res.ok) {
+        throw new Error('Unexpected status code')
+      }
+
+      const data = await res.json() as User
+
+      return data
+    } catch {
+      throw new Error('Failed to fetch user')
+    }
   },
   errorComponent: UserErrorComponent,
   component: UserComponent,
