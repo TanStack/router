@@ -1,5 +1,5 @@
 // @ts-expect-error
-import tsrStartManifest from 'tsr:start-manifest'
+import tsrStartManifest from 'tanstack:start-manifest'
 import { rootRouteId } from '@tanstack/router-core'
 import type { Manifest } from '@tanstack/router-core'
 

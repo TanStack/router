@@ -5,6 +5,7 @@ import { mergeHeaders } from '@tanstack/start-client-core'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import { serverFunctionsHandler } from './server-functions-handler'
 import { getStartManifest } from './router-manifest'
+import { createServerFileRoute } from './serverRoute'
 import type { EventHandlerResponse, H3Event } from 'h3'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { HandlerCallback } from './handlerCallback'
@@ -67,6 +68,14 @@ export function createStartHandler<
         return await serverFunctionsHandler(event)
       }
 
+      const serverRouteTreeModule: unknown =
+        // @ts-expect-error
+        await import('tanstack:server-routes')
+
+      if (serverRouteTreeModule) {
+        console.log(serverRouteTreeModule)
+      }
+
       // Handle API routes
       // handleApiRoutes(event)
       // if (event.handled) {
@@ -119,3 +128,12 @@ export function createStartHandler<
     })
   }
 }
+
+// TODO: This needs to move to a better location.
+if (typeof globalThis !== 'undefined') {
+  ;(globalThis as any).createServerFileRoute = createServerFileRoute
+} else if (typeof window !== 'undefined') {
+  ;(window as any).createServerFileRoute = createServerFileRoute
+}
+
+console.log(globalThis)

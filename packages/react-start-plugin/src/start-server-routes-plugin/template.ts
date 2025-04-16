@@ -17,7 +17,6 @@ export function fillTemplate(
 
 type TargetTemplate = {
   fullPkg: string
-  startPkg: string
   subPkg: string
   rootRoute: {
     template: () => string
@@ -51,9 +50,9 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
 
     case 'react':
       return {
-        fullPkg: '@tanstack/react-router',
-        startPkg: '@tanstack/react-start',
-        subPkg: 'react-router',
+        fullPkg: '@tanstack/react-start/server',
+        subPkg: 'react-start/server',
+        // TODO: Clean this up if it's not used
         rootRoute: {
           template: () =>
             [
@@ -103,9 +102,8 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
       }
     case 'solid':
       return {
-        fullPkg: '@tanstack/solid-router',
-        startPkg: '@tanstack/solid-start',
-        subPkg: 'solid-router',
+        fullPkg: '@tanstack/solid-start/server',
+        subPkg: 'solid-start/server',
         rootRoute: {
           template: () =>
             [

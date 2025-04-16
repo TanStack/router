@@ -2,7 +2,7 @@ import { isNotFound, isRedirect } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import { startSerializer } from '@tanstack/start-client-core'
 // @ts-expect-error
-import _serverFnManifest from 'tsr:server-fn-manifest'
+import _serverFnManifest from 'tanstack:server-fn-manifest'
 import { eventHandler, getEvent, getResponseStatus, toWebRequest } from './h3'
 import type { H3Event } from './h3'
 

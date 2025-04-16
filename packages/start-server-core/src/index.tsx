@@ -19,3 +19,6 @@ export { serverFunctionsHandler } from './server-functions-handler'
 export { getStartManifest } from './router-manifest'
 
 export * from './h3'
+
+export { createServerRoute } from './serverRoute'
+export type { CreateServerFileRoute } from './serverRoute'

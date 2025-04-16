@@ -27,13 +27,13 @@ export function startManifestPlugin(
     //   config = envConfig.
     // },
     resolveId(id) {
-      if (id === 'tsr:start-manifest') {
+      if (id === 'tanstack:start-manifest') {
         return id
       }
       return
     },
     load(id) {
-      if (id === 'tsr:start-manifest') {
+      if (id === 'tanstack:start-manifest') {
         // If we're in development, return a dummy manifest
 
         if (config.command === 'serve') {

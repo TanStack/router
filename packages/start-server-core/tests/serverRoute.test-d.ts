@@ -1,7 +1,7 @@
 import { expectTypeOf, test } from 'vitest'
-import { json } from '../json'
-import { createMiddleware } from '../createMiddleware'
-import type { CreateServerFileRoute } from '../serverRoute'
+import { json } from '../../start-client-core/src/json'
+import { createMiddleware } from '../../start-client-core/src/createMiddleware'
+import type { CreateServerFileRoute } from '../src/serverRoute'
 
 test('createServerFileRoute with methods with no middleware', () => {
   type Path = '$detailId'
@@ -10,7 +10,8 @@ test('createServerFileRoute with methods with no middleware', () => {
     any,
     Path,
     Path,
-    Path
+    Path,
+    unknown
   > = undefined as any
 
   const serverFileRoute = createServerFileRoute()
@@ -56,7 +57,8 @@ test('createServerFileRoute with methods and route middleware context', () => {
     any,
     Path,
     Path,
-    Path
+    Path,
+    unknown
   > = undefined as any
 
   const routeMiddleware = createMiddleware().server(({ next }) =>
@@ -103,7 +105,8 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
     any,
     Path,
     Path,
-    Path
+    Path,
+    unknown
   > = undefined as any
 
   const routeMiddleware = createMiddleware().server(({ next }) =>
@@ -138,7 +141,8 @@ test('createServerFileRoute with a parent middleware context', () => {
     any,
     'details',
     'details',
-    'details'
+    'details',
+    unknown
   > = undefined as any
 
   const routeMiddleware1 = createMiddleware().server(({ next }) => {
@@ -154,7 +158,8 @@ test('createServerFileRoute with a parent middleware context', () => {
     typeof detailsServerRoute,
     'details/$detailId',
     '$detailId',
-    'details/$detailId'
+    'details/$detailId',
+    unknown
   > = undefined as any
 
   const routeMiddleware2 = createMiddleware().server(({ next }) => {
@@ -202,7 +207,8 @@ test('createServerFileRoute with parent middleware params', () => {
     any,
     '$userId',
     '$userId',
-    '$userId'
+    '$userId',
+    unknown
   > = undefined as any
 
   const detailsServerRoute = createDetailsServerFileRoute()
@@ -212,7 +218,8 @@ test('createServerFileRoute with parent middleware params', () => {
     typeof detailsServerRoute,
     '$userId/$detailId',
     '$detailId',
-    '$userId/$detailId'
+    '$userId/$detailId',
+    unknown
   > = undefined as any
 
   const detailServerRoute1 = createDetailServerFileRoute().methods({
@@ -248,7 +255,8 @@ test('createServerFileRoute with no params', () => {
     any,
     'details',
     'details',
-    'details'
+    'details',
+    unknown
   > = undefined as any
 
   const detailServerRoute1 = createDetailsServerFileRoute().methods({

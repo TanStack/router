@@ -20,7 +20,6 @@ import { Route as PathlessLayoutRouteImport } from './routes/_pathlessLayout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
-import { Route as ApiIndexRouteImport } from './routes/api/index'
 import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as PathlessLayoutNestedLayoutRouteImport } from './routes/_pathlessLayout/_nested-layout'
@@ -75,12 +74,6 @@ const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
-} as any)
-
-const ApiIndexRoute = ApiIndexRouteImport.update({
-  id: '/api/',
-  path: '/api/',
-  getParentRoute: () => rootRoute,
 } as any)
 
 const UsersUserIdRoute = UsersUserIdRouteImport.update({
@@ -187,13 +180,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/users/$userId'
       preLoaderRoute: typeof UsersUserIdRouteImport
       parentRoute: typeof UsersRouteImport
-    }
-    '/api/': {
-      id: '/api/'
-      path: '/api'
-      fullPath: '/api'
-      preLoaderRoute: typeof ApiIndexRouteImport
-      parentRoute: typeof rootRoute
     }
     '/posts/': {
       id: '/posts/'
@@ -316,15 +302,6 @@ declare module './routes/users.$userId' {
     FileRoutesByPath['/users/$userId']['fullPath']
   >
 }
-declare module './routes/api/index' {
-  const createFileRoute: CreateFileRoute<
-    '/api/',
-    FileRoutesByPath['/api/']['parentRoute'],
-    FileRoutesByPath['/api/']['id'],
-    FileRoutesByPath['/api/']['path'],
-    FileRoutesByPath['/api/']['fullPath']
-  >
-}
 declare module './routes/posts.index' {
   const createFileRoute: CreateFileRoute<
     '/posts/',
@@ -436,7 +413,6 @@ export interface FileRoutesByFullPath {
   '/users': typeof UsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
-  '/api': typeof ApiIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
@@ -451,7 +427,6 @@ export interface FileRoutesByTo {
   '/redirect': typeof RedirectRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
-  '/api': typeof ApiIndexRoute
   '/posts': typeof PostsIndexRoute
   '/users': typeof UsersIndexRoute
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
@@ -470,7 +445,6 @@ export interface FileRoutesById {
   '/_pathlessLayout/_nested-layout': typeof PathlessLayoutNestedLayoutRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
-  '/api/': typeof ApiIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/_pathlessLayout/_nested-layout/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
@@ -489,7 +463,6 @@ export interface FileRouteTypes {
     | '/users'
     | '/posts/$postId'
     | '/users/$userId'
-    | '/api'
     | '/posts/'
     | '/users/'
     | '/route-a'
@@ -503,7 +476,6 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/posts/$postId'
     | '/users/$userId'
-    | '/api'
     | '/posts'
     | '/users'
     | '/route-a'
@@ -520,7 +492,6 @@ export interface FileRouteTypes {
     | '/_pathlessLayout/_nested-layout'
     | '/posts/$postId'
     | '/users/$userId'
-    | '/api/'
     | '/posts/'
     | '/users/'
     | '/_pathlessLayout/_nested-layout/route-a'
@@ -536,7 +507,6 @@ export interface RootRouteChildren {
   PostsRoute: typeof PostsRouteWithChildren
   RedirectRoute: typeof RedirectRoute
   UsersRoute: typeof UsersRouteWithChildren
-  ApiIndexRoute: typeof ApiIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
 }
 
@@ -547,7 +517,6 @@ const rootRouteChildren: RootRouteChildren = {
   PostsRoute: PostsRouteWithChildren,
   RedirectRoute: RedirectRoute,
   UsersRoute: UsersRouteWithChildren,
-  ApiIndexRoute: ApiIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
 }
 
@@ -570,7 +539,6 @@ import type * as ServerTypes from '../node_modules/.tanstack-start/server-routes
         "/posts",
         "/redirect",
         "/users",
-        "/api/",
         "/posts_/$postId/deep"
       ]
     },
@@ -618,9 +586,6 @@ import type * as ServerTypes from '../node_modules/.tanstack-start/server-routes
     "/users/$userId": {
       "filePath": "users.$userId.tsx",
       "parent": "/users"
-    },
-    "/api/": {
-      "filePath": "api/index.tsx"
     },
     "/posts/": {
       "filePath": "posts.index.tsx",

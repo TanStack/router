@@ -19,6 +19,10 @@ export default mergeConfig(
   tanstackViteConfig({
     srcDir: './src',
     entry: './src/index.tsx',
-    externalDeps: ['tsr:server-fn-manifest', 'tsr:start-manifest'],
+    externalDeps: [
+      'tanstack:server-fn-manifest',
+      'tanstack:start-manifest',
+      'tanstack:server-routes',
+    ],
   }),
 )
