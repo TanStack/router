@@ -276,7 +276,7 @@ Here's a quick example of how you can use server functions to perform a mutation
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { db } from '...'
+import { dbUpdateUser } from '...'
 
 const UserSchema = z.object({
   id: z.string(),
@@ -286,16 +286,7 @@ export type User = z.infer<typeof UserSchema>
 
 export const updateUser = createServerFn({ method: 'POST' })
   .validator(UserSchema)
-  .handler(async ({ data }) => {
-    const result = await db.users.update({
-      where: {
-        id: data.id,
-      },
-      data: {
-        name: data.name,
-      },
-    })
-  })
+  .handler(({ data }) => dbUpdateUser(data))
 
 // Somewhere else in your application
 import { useQueryClient } from '@tanstack/react-query'
@@ -319,18 +310,30 @@ export function useUpdateUser() {
 
       return result
     },
-    [router, queryClient, _updateUser],
+    [router, queryClient, _updateUser]
   )
 }
 
 // Somewhere else in your application
 import { useUpdateUser } from '...'
 
-const updateUser = useUpdateUser()
-await updateUser({ id: '1', name: 'John' })
+function MyComponent() {
+  const updateUser = useUpdateUser()
+  const onClick = useCallback(
+    async () => {
+      await updateUser({ id: '1', name: 'John' });
+      console.log('Updated user')
+    },
+    [updateUser]
+  )
+  
+  return (
+    <button onClick={onClick}>Click Me</button>
+  )
+}
 ```
 
-To learn more about mutations, check out the [mutations guide](../../../router/framework/react/guide/data-mutations).
+To learn more about mutations, check out the [mutations guide](/router/framework/react/guide/data-mutations).
 
 ## Data Loading
 
@@ -343,4 +346,4 @@ Here's a quick overview of how data loading works:
 - For performing server-only logic, call a server function from within the loader.
 - Similar to TanStack Query, data loaders are cached on the client and are re-used and even re-fetched in the background when the data is stale.
 
-To learn more about data loading, check out the [data loading guide](../../../router/framework/react/guide/data-loading).
+To learn more about data loading, check out the [data loading guide](/router/framework/react/guide/data-loading).
