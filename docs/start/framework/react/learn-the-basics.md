@@ -310,7 +310,7 @@ export function useUpdateUser() {
 
       return result
     },
-    [router, queryClient, _updateUser]
+    [router, queryClient, _updateUser],
   )
 }
 
@@ -319,17 +319,12 @@ import { useUpdateUser } from '...'
 
 function MyComponent() {
   const updateUser = useUpdateUser()
-  const onClick = useCallback(
-    async () => {
-      await updateUser({ id: '1', name: 'John' });
-      console.log('Updated user')
-    },
-    [updateUser]
-  )
-  
-  return (
-    <button onClick={onClick}>Click Me</button>
-  )
+  const onClick = useCallback(async () => {
+    await updateUser({ id: '1', name: 'John' })
+    console.log('Updated user')
+  }, [updateUser])
+
+  return <button onClick={onClick}>Click Me</button>
 }
 ```
 
