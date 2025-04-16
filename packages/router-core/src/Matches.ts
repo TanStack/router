@@ -4,6 +4,7 @@ import type {
   AllLoaderData,
   AllParams,
   FullSearchSchema,
+  FullStateSchema,
   ParseRoute,
   RouteById,
   RouteIds,
@@ -121,6 +122,7 @@ export interface RouteMatch<
   out TLoaderData,
   out TAllContext,
   out TLoaderDeps,
+  out TFullStateSchema,
 > extends RouteMatchExtensions {
   id: string
   routeId: TRouteId
@@ -144,6 +146,7 @@ export interface RouteMatch<
   context: TAllContext
   search: TFullSearchSchema
   _strictSearch: TFullSearchSchema
+  state: TFullStateSchema
   fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
@@ -164,7 +167,8 @@ export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
   TRoute['types']['fullSearchSchema'],
   TRoute['types']['loaderData'],
   TRoute['types']['allContext'],
-  TRoute['types']['loaderDeps']
+  TRoute['types']['loaderDeps'],
+  TRoute['types']['stateSchema']
 >
 
 export type MakeRouteMatch<
@@ -186,10 +190,13 @@ export type MakeRouteMatch<
   TStrict extends false
     ? AllContext<TRouteTree>
     : RouteById<TRouteTree, TRouteId>['types']['allContext'],
-  RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
+  RouteById<TRouteTree, TRouteId>['types']['loaderDeps'],
+  TStrict extends false
+    ? FullStateSchema<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['stateSchema']
 >
 
-export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any>
+export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any, any>
 
 export type MakeRouteMatchUnion<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -202,7 +209,8 @@ export type MakeRouteMatchUnion<
       TRoute['types']['fullSearchSchema'],
       TRoute['types']['loaderData'],
       TRoute['types']['allContext'],
-      TRoute['types']['loaderDeps']
+      TRoute['types']['loaderDeps'],
+      TRoute['types']['stateSchema']
     >
   : never
 

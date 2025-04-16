@@ -1000,6 +1000,7 @@ type AssetFnContextOptions<
   in out TParentRoute extends AnyRoute,
   in out TParams,
   in out TSearchValidator,
+  in out TStateValidator,
   in out TLoaderFn,
   in out TRouterContext,
   in out TRouteContextFn,
@@ -1012,6 +1013,7 @@ type AssetFnContextOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveFullStateSchema<TParentRoute, TStateValidator>,
       ResolveLoaderData<TLoaderFn>,
       ResolveAllContext<
         TParentRoute,
@@ -1027,6 +1029,7 @@ type AssetFnContextOptions<
     TFullPath,
     ResolveAllParamsFromParent<TParentRoute, TParams>,
     ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+    ResolveFullStateSchema<TParentRoute, TStateValidator>,
     ResolveLoaderData<TLoaderFn>,
     ResolveAllContext<
       TParentRoute,
@@ -1106,6 +1109,7 @@ export interface UpdatableRouteOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveFullStateSchema<TParentRoute, TStateValidator>,
       ResolveLoaderData<TLoaderFn>,
       ResolveAllContext<
         TParentRoute,
@@ -1122,6 +1126,7 @@ export interface UpdatableRouteOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveFullStateSchema<TParentRoute, TStateValidator>,
       ResolveLoaderData<TLoaderFn>,
       ResolveAllContext<
         TParentRoute,
@@ -1138,6 +1143,7 @@ export interface UpdatableRouteOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveFullStateSchema<TParentRoute, TStateValidator>,
       ResolveLoaderData<TLoaderFn>,
       ResolveAllContext<
         TParentRoute,
@@ -1158,6 +1164,7 @@ export interface UpdatableRouteOptions<
       TParentRoute,
       TParams,
       TSearchValidator,
+      TStateValidator,
       TLoaderFn,
       TRouterContext,
       TRouteContextFn,
@@ -1176,6 +1183,7 @@ export interface UpdatableRouteOptions<
       TParentRoute,
       TParams,
       TSearchValidator,
+      TStateValidator,
       TLoaderFn,
       TRouterContext,
       TRouteContextFn,
