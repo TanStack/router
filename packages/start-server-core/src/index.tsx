@@ -20,5 +20,5 @@ export { getStartManifest } from './router-manifest'
 
 export * from './h3'
 
-export { createServerRoute } from './serverRoute'
+export { createServerRoute, createServerFileRoute } from './serverRoute'
 export type { CreateServerFileRoute } from './serverRoute'
