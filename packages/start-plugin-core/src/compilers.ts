@@ -174,7 +174,7 @@ function handleCreateServerFileRouteCallExpressionFactory(
     path: babel.NodePath<t.CallExpression>,
     opts: CompileOptions,
   ) {
-    const PACKAGES = { start: `@tanstack/${factory}-start` }
+    const PACKAGES = { start: `@tanstack/${factory}-start/server` }
 
     let highestParent: babel.NodePath<any> = path
 
