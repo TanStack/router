@@ -328,7 +328,7 @@ function MyComponent() {
 }
 ```
 
-To learn more about mutations, check out the [mutations guide](/router/framework/react/guide/data-mutations).
+To learn more about mutations, check out the [mutations guide](/router/latest/docs/framework/react/guide/data-mutations).
 
 ## Data Loading
 
@@ -341,4 +341,4 @@ Here's a quick overview of how data loading works:
 - For performing server-only logic, call a server function from within the loader.
 - Similar to TanStack Query, data loaders are cached on the client and are re-used and even re-fetched in the background when the data is stale.
 
-To learn more about data loading, check out the [data loading guide](/router/framework/react/guide/data-loading).
+To learn more about data loading, check out the [data loading guide](/router/latest/docs/framework/react/guide/data-loading).
