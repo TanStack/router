@@ -2,8 +2,6 @@ import axios from 'redaxios'
 import { json } from '@tanstack/react-start'
 import type { User } from '../../utils/users'
 
-console.log('globalThis', globalThis)
-
 export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ request }) => {
     console.info('Fetching users... @', request.url)

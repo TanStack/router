@@ -601,8 +601,8 @@ export type ParseLocationFn<TRouteTree extends AnyRoute> = (
 ) => ParsedLocation<FullSearchSchema<TRouteTree>>
 
 export type GetMatchRoutesFn = (
-  next: ParsedLocation,
-  dest?: BuildNextOptions,
+  pathname: string,
+  routePathname: string,
 ) => {
   matchedRoutes: Array<AnyRoute>
   routeParams: Record<string, string>
@@ -931,124 +931,29 @@ export class RouterCore<
   }
 
   buildRouteTree = () => {
-    this.routesById = {} as RoutesById<TRouteTree>
-    this.routesByPath = {} as RoutesByPath<TRouteTree>
+    const { routesById, routesByPath, flatRoutes } = processRouteTree({
+      routeTree: this.routeTree,
+      initRoute: (route, i) => {
+        route.init({
+          originalIndex: i,
+          defaultSsr: this.options.defaultSsr,
+        })
+      },
+    })
+
+    this.routesById = routesById as RoutesById<TRouteTree>
+    this.routesByPath = routesByPath as RoutesByPath<TRouteTree>
+    this.flatRoutes = flatRoutes as Array<AnyRoute>
 
     const notFoundRoute = this.options.notFoundRoute
+
     if (notFoundRoute) {
       notFoundRoute.init({
         originalIndex: 99999999999,
         defaultSsr: this.options.defaultSsr,
       })
-      ;(this.routesById as any)[notFoundRoute.id] = notFoundRoute
+      this.routesById[notFoundRoute.id] = notFoundRoute
     }
-
-    const recurseRoutes = (childRoutes: Array<AnyRoute>) => {
-      childRoutes.forEach((childRoute, i) => {
-        childRoute.init({
-          originalIndex: i,
-          defaultSsr: this.options.defaultSsr,
-        })
-
-        const existingRoute = (this.routesById as any)[childRoute.id]
-
-        invariant(
-          !existingRoute,
-          `Duplicate routes found with id: ${String(childRoute.id)}`,
-        )
-        ;(this.routesById as any)[childRoute.id] = childRoute
-
-        if (!childRoute.isRoot && childRoute.path) {
-          const trimmedFullPath = trimPathRight(childRoute.fullPath)
-          if (
-            !(this.routesByPath as any)[trimmedFullPath] ||
-            childRoute.fullPath.endsWith('/')
-          ) {
-            ;(this.routesByPath as any)[trimmedFullPath] = childRoute
-          }
-        }
-
-        const children = childRoute.children
-
-        if (children?.length) {
-          recurseRoutes(children)
-        }
-      })
-    }
-
-    recurseRoutes([this.routeTree])
-
-    const scoredRoutes: Array<{
-      child: AnyRoute
-      trimmed: string
-      parsed: ReturnType<typeof parsePathname>
-      index: number
-      scores: Array<number>
-    }> = []
-
-    const routes: Array<AnyRoute> = Object.values(this.routesById)
-
-    routes.forEach((d, i) => {
-      if (d.isRoot || !d.path) {
-        return
-      }
-
-      const trimmed = trimPathLeft(d.fullPath)
-      const parsed = parsePathname(trimmed)
-
-      while (parsed.length > 1 && parsed[0]?.value === '/') {
-        parsed.shift()
-      }
-
-      const scores = parsed.map((segment) => {
-        if (segment.value === '/') {
-          return 0.75
-        }
-
-        if (segment.type === 'param') {
-          return 0.5
-        }
-
-        if (segment.type === 'wildcard') {
-          return 0.25
-        }
-
-        return 1
-      })
-
-      scoredRoutes.push({ child: d, trimmed, parsed, index: i, scores })
-    })
-
-    this.flatRoutes = scoredRoutes
-      .sort((a, b) => {
-        const minLength = Math.min(a.scores.length, b.scores.length)
-
-        // Sort by min available score
-        for (let i = 0; i < minLength; i++) {
-          if (a.scores[i] !== b.scores[i]) {
-            return b.scores[i]! - a.scores[i]!
-          }
-        }
-
-        // Sort by length of score
-        if (a.scores.length !== b.scores.length) {
-          return b.scores.length - a.scores.length
-        }
-
-        // Sort by min available parsed value
-        for (let i = 0; i < minLength; i++) {
-          if (a.parsed[i]!.value !== b.parsed[i]!.value) {
-            return a.parsed[i]!.value > b.parsed[i]!.value ? 1 : -1
-          }
-        }
-
-        // Sort by original index
-        return a.index - b.index
-      })
-      .map((d, i) => {
-        d.child.rank = i
-        return d.child
-      })
   }
 
   subscribe: SubscribeFn = (eventType, fn) => {
@@ -1162,8 +1067,8 @@ export class RouterCore<
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
     const { foundRoute, matchedRoutes, routeParams } = this.getMatchedRoutes(
-      next,
-      opts?.dest,
+      next.pathname,
+      opts?.dest?.to as string,
     )
     let isGlobalNotFound = false
 
@@ -1469,47 +1374,19 @@ export class RouterCore<
     return matches
   }
 
-  getMatchedRoutes: GetMatchRoutesFn = (next, dest) => {
-    let routeParams: Record<string, string> = {}
-    const trimmedPath = trimPathRight(next.pathname)
-    const getMatchedParams = (route: AnyRoute) => {
-      const result = matchPathname(this.basepath, trimmedPath, {
-        to: route.fullPath,
-        caseSensitive:
-          route.options.caseSensitive ?? this.options.caseSensitive,
-        fuzzy: true,
-      })
-      return result
-    }
-
-    let foundRoute: AnyRoute | undefined =
-      dest?.to !== undefined ? this.routesByPath[dest.to!] : undefined
-    if (foundRoute) {
-      routeParams = getMatchedParams(foundRoute)!
-    } else {
-      foundRoute = this.flatRoutes.find((route) => {
-        const matchedParams = getMatchedParams(route)
-
-        if (matchedParams) {
-          routeParams = matchedParams
-          return true
-        }
-
-        return false
-      })
-    }
-
-    let routeCursor: AnyRoute =
-      foundRoute || (this.routesById as any)[rootRouteId]
-
-    const matchedRoutes: Array<AnyRoute> = [routeCursor]
-
-    while (routeCursor.parentRoute) {
-      routeCursor = routeCursor.parentRoute
-      matchedRoutes.unshift(routeCursor)
-    }
-
-    return { matchedRoutes, routeParams, foundRoute }
+  getMatchedRoutes: GetMatchRoutesFn = (
+    pathname: string,
+    routePathname: string,
+  ) => {
+    return getMatchedRoutes({
+      pathname,
+      routePathname,
+      basepath: this.basepath,
+      caseSensitive: this.options.caseSensitive,
+      routesByPath: this.routesByPath,
+      routesById: this.routesById,
+      flatRoutes: this.flatRoutes,
+    })
   }
 
   cancelMatch = (id: string) => {
@@ -1809,11 +1686,17 @@ export class RouterCore<
         }
       }
 
-      const nextMatches = this.getMatchedRoutes(next, dest)
+      const nextMatches = this.getMatchedRoutes(
+        next.pathname,
+        dest.to as string,
+      )
       const final = build(dest, nextMatches)
 
       if (maskedNext) {
-        const maskedMatches = this.getMatchedRoutes(maskedNext, maskedDest)
+        const maskedMatches = this.getMatchedRoutes(
+          maskedNext.pathname,
+          maskedDest?.to as string,
+        )
         const maskedFinal = build(maskedDest, maskedMatches)
         final.maskedLocation = maskedFinal
       }
@@ -3185,4 +3068,192 @@ function routeNeedsPreload(route: AnyRoute) {
     }
   }
   return false
+}
+
+interface RouteLike<T = RouteLike<any>> {
+  id: string
+  isRoot?: boolean
+  path?: string
+  fullPath: string
+  rank?: number
+  parentRoute?: T
+  children?: Array<T>
+  options?: {
+    caseSensitive?: boolean
+  }
+}
+
+export function processRouteTree<TRouteLike extends RouteLike<TRouteLike>>({
+  routeTree,
+  initRoute,
+}: {
+  routeTree: TRouteLike
+  initRoute?: (route: TRouteLike, index: number) => void
+}) {
+  const routesById = {} as Record<string, TRouteLike>
+  const routesByPath = {} as Record<string, TRouteLike>
+
+  const recurseRoutes = (childRoutes: Array<TRouteLike>) => {
+    childRoutes.forEach((childRoute, i) => {
+      initRoute?.(childRoute, i)
+
+      const existingRoute = routesById[childRoute.id]
+
+      invariant(
+        !existingRoute,
+        `Duplicate routes found with id: ${String(childRoute.id)}`,
+      )
+
+      routesById[childRoute.id] = childRoute
+
+      if (!childRoute.isRoot && childRoute.path) {
+        const trimmedFullPath = trimPathRight(childRoute.fullPath)
+        if (
+          !routesByPath[trimmedFullPath] ||
+          childRoute.fullPath.endsWith('/')
+        ) {
+          routesByPath[trimmedFullPath] = childRoute
+        }
+      }
+
+      const children = childRoute.children
+
+      if (children?.length) {
+        recurseRoutes(children)
+      }
+    })
+  }
+
+  recurseRoutes([routeTree])
+
+  const scoredRoutes: Array<{
+    child: TRouteLike
+    trimmed: string
+    parsed: ReturnType<typeof parsePathname>
+    index: number
+    scores: Array<number>
+  }> = []
+
+  const routes: Array<TRouteLike> = Object.values(routesById)
+
+  routes.forEach((d, i) => {
+    if (d.isRoot || !d.path) {
+      return
+    }
+
+    const trimmed = trimPathLeft(d.fullPath)
+    const parsed = parsePathname(trimmed)
+
+    while (parsed.length > 1 && parsed[0]?.value === '/') {
+      parsed.shift()
+    }
+
+    const scores = parsed.map((segment) => {
+      if (segment.value === '/') {
+        return 0.75
+      }
+
+      if (segment.type === 'param') {
+        return 0.5
+      }
+
+      if (segment.type === 'wildcard') {
+        return 0.25
+      }
+
+      return 1
+    })
+
+    scoredRoutes.push({ child: d, trimmed, parsed, index: i, scores })
+  })
+
+  const flatRoutes = scoredRoutes
+    .sort((a, b) => {
+      const minLength = Math.min(a.scores.length, b.scores.length)
+
+      // Sort by min available score
+      for (let i = 0; i < minLength; i++) {
+        if (a.scores[i] !== b.scores[i]) {
+          return b.scores[i]! - a.scores[i]!
+        }
+      }
+
+      // Sort by length of score
+      if (a.scores.length !== b.scores.length) {
+        return b.scores.length - a.scores.length
+      }
+
+      // Sort by min available parsed value
+      for (let i = 0; i < minLength; i++) {
+        if (a.parsed[i]!.value !== b.parsed[i]!.value) {
+          return a.parsed[i]!.value > b.parsed[i]!.value ? 1 : -1
+        }
+      }
+
+      // Sort by original index
+      return a.index - b.index
+    })
+    .map((d, i) => {
+      d.child.rank = i
+      return d.child
+    })
+
+  return { routesById, routesByPath, flatRoutes }
+}
+
+export function getMatchedRoutes<TRouteLike extends RouteLike<TRouteLike>>({
+  pathname,
+  routePathname,
+  basepath,
+  caseSensitive,
+  routesByPath,
+  routesById,
+  flatRoutes,
+}: {
+  pathname: string
+  routePathname: string
+  basepath: string
+  caseSensitive?: boolean
+  routesByPath: Record<string, TRouteLike>
+  routesById: Record<string, TRouteLike>
+  flatRoutes: Array<TRouteLike>
+}) {
+  let routeParams: Record<string, string> = {}
+  const trimmedPath = trimPathRight(pathname)
+  const getMatchedParams = (route: TRouteLike) => {
+    const result = matchPathname(basepath, trimmedPath, {
+      to: route.fullPath,
+      caseSensitive: route.options?.caseSensitive ?? caseSensitive,
+      fuzzy: true,
+    })
+    return result
+  }
+
+  let foundRoute: TRouteLike | undefined =
+    routePathname !== undefined ? routesByPath[routePathname] : undefined
+  if (foundRoute) {
+    routeParams = getMatchedParams(foundRoute)!
+  } else {
+    foundRoute = flatRoutes.find((route) => {
+      const matchedParams = getMatchedParams(route)
+
+      if (matchedParams) {
+        routeParams = matchedParams
+        return true
+      }
+
+      return false
+    })
+  }
+
+  let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!
+
+  const matchedRoutes: Array<TRouteLike> = [routeCursor]
+
+  while (routeCursor.parentRoute) {
+    routeCursor = routeCursor.parentRoute
+    matchedRoutes.unshift(routeCursor)
+  }
+
+  return { matchedRoutes, routeParams, foundRoute }
 }
