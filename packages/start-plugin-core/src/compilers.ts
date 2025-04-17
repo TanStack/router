@@ -336,7 +336,7 @@ function handleCreateServerFileRouteCallExpressionFactory(
             t.identifier('createServerFileRoute'),
           ),
         ],
-        t.stringLiteral(PACKAGES.startServer),
+        t.stringLiteral(PACKAGES.start),
       )
       programPath.node.body.unshift(importDeclaration)
     }
