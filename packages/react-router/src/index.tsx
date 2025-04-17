@@ -150,6 +150,7 @@ export { useAwaited, Await } from './awaited'
 export type { AwaitOptions } from './awaited'
 
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
+export { ClientOnly } from './ClientOnly'
 
 export {
   FileRoute,

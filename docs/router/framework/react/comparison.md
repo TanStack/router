@@ -61,6 +61,7 @@ Feature/Capability Key:
 | Async Scroll Restoration                       | ✅                                               | 🛑                                                    | 🛑                                                    |
 | Router Invalidation                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Runtime Route Manipulation (Fog of War)        | 🛑                                               | ✅                                                    | ✅                                                    |
+| Parallel Routes                                | 🛑                                               | 🛑                                                    | ✅                                                    |
 | --                                             | --                                               | --                                                    | --                                                    |
 | **Full Stack**                                 | --                                               | --                                                    | --                                                    |
 | SSR                                            | ✅                                               | ✅                                                    | ✅                                                    |

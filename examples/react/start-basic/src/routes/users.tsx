@@ -1,8 +1,21 @@
 import { Link, Outlet } from '@tanstack/react-router'
+import type { User } from '../utils/users'
+
 
 export const Route = createFileRoute({
-  loader: () => {
-    return fetch('http://localhost:3000/api/users').then((res) => res.json())
+  loader: async () => {
+    try {
+      const res = await fetch('/api/users')
+      if (!res.ok) {
+        throw new Error('Unexpected status code')
+      }
+
+      const data = (await res.json()) as Array<User>
+
+      return data
+    } catch {
+      throw new Error('Failed to fetch users')
+    }
   },
   component: UsersComponent,
 })
