@@ -1,4 +1,3 @@
-import React from 'react'
 import { afterEach, describe, expect, it, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 
@@ -8,6 +7,7 @@ import {
   createRoute,
   createRouter,
   getRouteApi,
+  notFound,
 } from '../src'
 
 afterEach(() => {
@@ -259,6 +259,89 @@ describe('route.head', () => {
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
+
+    const metaState = router.state.matches.map((m) => m.meta)
+    expect(metaState).toEqual([
+      [
+        { title: 'Root' },
+        {
+          charSet: 'utf-8',
+        },
+      ],
+      [{ title: 'Index' }],
+    ])
+  })
+
+  test('meta returned when loader throws notFound', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        meta: [
+          { title: 'Root' },
+          {
+            charSet: 'utf-8',
+          },
+        ],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        meta: [{ title: 'Index' }],
+      }),
+      loader: async () => {
+        throw notFound()
+      },
+      component: () => <div>Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+    render(<RouterProvider router={router} />)
+    expect(await screen.findByText('Not Found')).toBeInTheDocument()
+
+    await router.load()
+
+    const metaState = router.state.matches.map((m) => m.meta)
+    expect(metaState).toEqual([
+      [
+        { title: 'Root' },
+        {
+          charSet: 'utf-8',
+        },
+      ],
+      [{ title: 'Index' }],
+    ])
+  })
+
+  test('meta returned when loader throws an error', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        meta: [
+          { title: 'Root' },
+          {
+            charSet: 'utf-8',
+          },
+        ],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        meta: [{ title: 'Index' }],
+      }),
+      loader: async () => {
+        throw new Error('Fly, you fools!')
+      },
+      component: () => <div>Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree })
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Fly, you fools!')).toBeInTheDocument()
+
+    await router.load()
 
     const metaState = router.state.matches.map((m) => m.meta)
     expect(metaState).toEqual([

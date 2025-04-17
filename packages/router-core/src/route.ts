@@ -959,7 +959,7 @@ type AssetFnContextOptions<
     TLoaderDeps
   >
   params: ResolveAllParamsFromParent<TParentRoute, TParams>
-  loaderData: ResolveLoaderData<TLoaderFn>
+  loaderData?: ResolveLoaderData<TLoaderFn>
 }
 
 export interface DefaultUpdatableRouteOptionsExtensions {
@@ -1069,9 +1069,20 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >,
   ) => void
-  headers?: (ctx: {
-    loaderData: ResolveLoaderData<TLoaderFn>
-  }) => Record<string, string>
+  headers?: (
+    ctx: AssetFnContextOptions<
+      TRouteId,
+      TFullPath,
+      TParentRoute,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps
+    >,
+  ) => Record<string, string>
   head?: (
     ctx: AssetFnContextOptions<
       TRouteId,
