@@ -1,4 +1,4 @@
-import { last } from './utils'
+import { hasUriEncodedChars, last } from './utils'
 import type { MatchLocation } from './RouterProvider'
 import type { AnyPathParams } from './route'
 
@@ -188,7 +188,9 @@ export function parsePathname(pathname?: string): Array<Segment> {
               .split('%25')
               .map((segment) => decodeURI(segment))
               .join('%25')
-          : decodeURI(part),
+          : hasUriEncodedChars(part)
+            ? part
+            : decodeURI(part),
       }
     }),
   )
