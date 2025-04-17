@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant'
 import { joinPaths, trimPathLeft } from './path'
 import { notFound } from './not-found'
 import { rootRouteId } from './root'
@@ -1396,7 +1397,8 @@ export class BaseRoute<
     if (isRoot) {
       this._path = rootRouteId as TPath
     } else if (!this.parentRoute) {
-      throw new Error(
+      invariant(
+        false,
         `Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
       )
     }

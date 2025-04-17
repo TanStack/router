@@ -208,6 +208,8 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
+  processRouteTree,
+  getMatchedRoutes,
 } from './router'
 export type {
   ViewTransitionOptions,

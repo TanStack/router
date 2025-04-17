@@ -2,10 +2,11 @@ import path from 'node:path'
 import { createMemoryHistory } from '@tanstack/history'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import { mergeHeaders } from '@tanstack/start-client-core'
+import { getMatchedRoutes, processRouteTree } from '@tanstack/router-core'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import { serverFunctionsHandler } from './server-functions-handler'
 import { getStartManifest } from './router-manifest'
-import { createServerFileRoute } from './serverRoute'
+import type { AnyServerRoute } from './serverRoute'
 import type { EventHandlerResponse, H3Event } from 'h3'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { HandlerCallback } from './handlerCallback'
@@ -68,12 +69,23 @@ export function createStartHandler<
         return await serverFunctionsHandler(event)
       }
 
-      const serverRouteTreeModule: unknown =
-        // @ts-expect-error
-        await import('tanstack:server-routes')
+      const serverRouteTreeModule = await (async () => {
+        try {
+          // @ts-expect-error
+          return (await import('tanstack:server-routes')) as {
+            routeTree: AnyServerRoute
+          }
+        } catch (e) {
+          console.log(e)
+          return undefined
+        }
+      })()
 
       if (serverRouteTreeModule) {
-        console.log(serverRouteTreeModule)
+        console.log(serverRouteTreeModule.routeTree)
+        const router = createServerRouter({
+          routeTree: serverRouteTreeModule.routeTree,
+        })
       }
 
       // Handle API routes
@@ -98,21 +110,6 @@ export function createStartHandler<
         history,
       })
 
-      // Normally, you could call router.load() directly, but because we're going to
-      // handle server routes, we need to prime the router with the matches
-      // so we can find any matching server routes
-      router.beforeLoad()
-
-      console.log(
-        href,
-        router.state.pendingMatches?.map((d) => {
-          const staticData = router.looseRoutesById[d.routeId]?.options
-            .staticData as undefined | { serverRoute: any }
-
-          return [d.routeId, staticData?.serverRoute]
-        }),
-      )
-
       await router.load()
 
       dehydrateRouter(router)
@@ -129,11 +126,25 @@ export function createStartHandler<
   }
 }
 
-// TODO: This needs to move to a better location.
-if (typeof globalThis !== 'undefined') {
-  ;(globalThis as any).createServerFileRoute = createServerFileRoute
-} else if (typeof window !== 'undefined') {
-  ;(window as any).createServerFileRoute = createServerFileRoute
-}
+function createServerRouter({ routeTree }: { routeTree: AnyServerRoute }) {
+  const { flatRoutes, routesById, routesByPath } = processRouteTree({
+    routeTree,
+    initRoute: (route, i) => {
+      route.init({
+        originalIndex: i,
+      })
+    },
+  })
 
-console.log(globalThis)
+  const matches = getMatchedRoutes({
+    pathname: '/',
+    routePathname: '/',
+    basepath: '/',
+    caseSensitive: true,
+    routesByPath,
+    routesById,
+    flatRoutes,
+  })
+
+  console.log(matches)
+}

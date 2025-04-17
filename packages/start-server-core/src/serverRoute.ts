@@ -56,7 +56,7 @@ export interface ServerRouteOptions<
   path: TPath
   pathname: TFullPath
   originalIndex: number
-  getParentRoute: () => TParentRoute
+  getParentRoute?: () => TParentRoute
   middleware: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
   methods: ServerRouteMethods<
     TParentRoute,
@@ -162,10 +162,14 @@ export function createServerRoute<
 
       const isRoot = !options.path && !options.id
 
-      route.parentRoute = options.getParentRoute()
+      route.parentRoute = options.getParentRoute?.() as TParentRoute
 
       if (isRoot) {
         route.path = rootRouteId as TPath
+      } else if (!(route.parentRoute as any)) {
+        throw new Error(
+          `Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a ServerRoute instance.`,
+        )
       }
 
       let path: undefined | string = isRoot ? rootRouteId : options.path
@@ -214,23 +218,7 @@ export function createServerRoute<
       return route
     },
 
-    // _addFileTypes: (RouteAddFileTypesFn<
-    //   TParentRoute,
-    //   TPath,
-    //   TFullPath,
-    //   TCustomId,
-    //   TId,
-    //   TSearchValidator,
-    //   TParams,
-    //   TRouterContext,
-    //   TRouteContextFn,
-    //   TBeforeLoadFn,
-    //   TLoaderDeps,
-    //   TLoaderFn,
-    //   TChildren
-    // > = () => {
-    //   return this
-    // }),
+    _addFileTypes: () => route,
   } as ServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren>
 
   return route
@@ -336,6 +324,15 @@ export interface ServerRouteWithTypes<
   ) => ServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren>
   init: (opts: { originalIndex: number }) => void
   _addFileChildren: ServerRouteAddFileChildrenFn<
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    TMiddlewares,
+    TMethods,
+    TChildren
+  >
+  _addFileTypes: <T = TODO>() => ServerRouteWithTypes<
     TParentRoute,
     TId,
     TPath,
