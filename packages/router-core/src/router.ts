@@ -1040,13 +1040,6 @@ export class RouterCore<
         // Sort by original index
         return a.index - b.index
       })
-      .filter((d) => {
-        if (!d.child.children) return true
-        return (
-          Array.from(d.child.children).length > 0 &&
-          Array.from(d.child.children).every((c) => (c as AnyRoute).path)
-        )
-      })
       .map((d, i) => {
         d.child.rank = i
         return d.child
