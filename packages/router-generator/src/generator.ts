@@ -214,8 +214,7 @@ export async function generator(config: Config, root: string) {
 
     node.isNonPath =
       lastRouteSegment.startsWith('_') ||
-      routeGroupPatternRegex.test(lastRouteSegment) ||
-      node._fsRouteType === 'layout'
+      routeGroupPatternRegex.test(lastRouteSegment)
 
     node.cleanedPath = removeGroups(
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
@@ -410,6 +409,17 @@ export async function generator(config: Config, root: string) {
   for (const node of onlyGeneratorRouteNodes) {
     await handleNode(node)
   }
+
+  for (const node of routeNodes) {
+    if (node.children && node.children.length > 0) {
+      const allPathlessLayout = node.children.every(
+        (child) => child._fsRouteType === 'pathless_layout',
+      )
+
+      node.isNonPath = allPathlessLayout
+    }
+  }
+
   checkRouteFullPathUniqueness(
     preRouteNodes.filter(
       (d) =>
