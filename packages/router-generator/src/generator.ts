@@ -214,7 +214,8 @@ export async function generator(config: Config, root: string) {
 
     node.isNonPath =
       lastRouteSegment.startsWith('_') ||
-      routeGroupPatternRegex.test(lastRouteSegment)
+      routeGroupPatternRegex.test(lastRouteSegment) ||
+      node._fsRouteType === 'layout'
 
     node.cleanedPath = removeGroups(
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
