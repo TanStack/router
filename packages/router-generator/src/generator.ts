@@ -1111,6 +1111,7 @@ export function startAPIRouteSegmentsFromTSRFilePath(
  * @returns
  */
 export const updateIsNonPath = (node: RouteNode) => {
+  if (node._fsRouteType === 'pathless_layout') return true
   return node.children?.every(
     (child) =>
       child._fsRouteType === 'pathless_layout' ||
