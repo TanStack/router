@@ -403,12 +403,21 @@ export async function generator(config: Config, root: string) {
       routeTree.push(node)
     }
 
+    if (node.children && node.children.length > 0) {
+      node.isNonPath = updateIsNonPath(node)
+    }
+
+    if (node.parent) {
+      node.parent.isNonPath = updateIsNonPath(node.parent)
+    }
+
     routeNodes.push(node)
   }
 
   for (const node of onlyGeneratorRouteNodes) {
     await handleNode(node)
   }
+
   checkRouteFullPathUniqueness(
     preRouteNodes.filter(
       (d) =>
@@ -835,7 +844,12 @@ function removeGroups(s: string) {
  */
 function determineNodePath(node: RouteNode) {
   return (node.path = node.parent
-    ? node.routePath?.replace(node.parent.routePath ?? '', '') || '/'
+    ? node.routePath?.replace(
+        node.parent._fsRouteType === 'pathless_layout'
+          ? (node.parent.path ?? '')
+          : (node.parent.routePath ?? ''),
+        '',
+      ) || '/'
     : node.routePath)
 }
 
@@ -1093,4 +1107,19 @@ export function startAPIRouteSegmentsFromTSRFilePath(
   })
 
   return segments
+}
+
+/**
+ * Only true if all children are pathless_layout or
+ * if children are of different types but all their children are pathless_layout
+ * @param node
+ * @returns
+ */
+export const updateIsNonPath = (node: RouteNode) => {
+  if (node._fsRouteType === 'pathless_layout') return true
+  return node.children?.every(
+    (child) =>
+      child._fsRouteType === 'pathless_layout' ||
+      (child.children?.length && child.isNonPath),
+  )
 }
