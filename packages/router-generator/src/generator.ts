@@ -844,7 +844,12 @@ function removeGroups(s: string) {
  */
 function determineNodePath(node: RouteNode) {
   return (node.path = node.parent
-    ? node.routePath?.replace(node.parent.routePath ?? '', '') || '/'
+    ? node.routePath?.replace(
+        node.parent._fsRouteType === 'pathless_layout'
+          ? (node.parent.path ?? '')
+          : (node.parent.routePath ?? ''),
+        '',
+      ) || '/'
     : node.routePath)
 }
 
