@@ -602,7 +602,7 @@ export type ParseLocationFn<TRouteTree extends AnyRoute> = (
 
 export type GetMatchRoutesFn = (
   pathname: string,
-  routePathname: string,
+  routePathname: string | undefined,
 ) => {
   matchedRoutes: Array<AnyRoute>
   routeParams: Record<string, string>
@@ -1376,7 +1376,7 @@ export class RouterCore<
 
   getMatchedRoutes: GetMatchRoutesFn = (
     pathname: string,
-    routePathname: string,
+    routePathname: string | undefined,
   ) => {
     return getMatchedRoutes({
       pathname,
@@ -3211,7 +3211,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike<TRouteLike>>({
   flatRoutes,
 }: {
   pathname: string
-  routePathname: string
+  routePathname: string | undefined
   basepath: string
   caseSensitive?: boolean
   routesByPath: Record<string, TRouteLike>
