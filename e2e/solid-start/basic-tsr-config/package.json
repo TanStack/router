@@ -15,7 +15,7 @@
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "solid-js": "^1.9.5",
-    "vinxi": "0.5.3"
+    "vinxi": "0.5.4"
   },
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",
