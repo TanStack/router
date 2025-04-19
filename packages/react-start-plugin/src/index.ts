@@ -26,6 +26,7 @@ declare global {
 }
 
 export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
+export const ssrDistDir = 'dist/.tanstack-start/ssr-dist'
 
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithReactPlugin,
@@ -67,7 +68,21 @@ export function TanStackStartVitePlugin(
                 },
               },
             },
-            server: {},
+            server: {
+              build: {
+                outDir: path.resolve(options.root, ssrDistDir),
+                copyPublicDir: false,
+                emptyOutDir: true,
+                rollupOptions: {
+                  output: {
+                    entryFileNames: 'ssr.mjs'
+                  }
+                },
+                commonjsOptions: {
+                  include: [/node_modules/],
+                },                
+              }
+            },
           },
           resolve: {
             noExternal: [

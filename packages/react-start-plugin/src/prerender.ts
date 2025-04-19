@@ -2,7 +2,7 @@ import { promises as fsp } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { getRollupConfig } from 'nitropack/rollup'
-import { createNitro } from 'nitropack'
+import { build as buildNitro, createNitro } from 'nitropack'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { Queue, buildNitroEnvironment } from '@tanstack/start-plugin-core'
 import type { Page } from '@tanstack/start-plugin-core'
@@ -68,7 +68,7 @@ export async function prerender({
     },
   }
 
-  await buildNitroEnvironment(nodeNitro, () => builder.build(serverEnv))
+  await buildNitroEnvironment(nodeNitro, () => buildNitro(nodeNitro))
 
   // Import renderer entry
   const serverFilename =

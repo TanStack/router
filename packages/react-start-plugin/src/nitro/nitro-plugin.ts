@@ -1,11 +1,11 @@
 import { platform } from 'node:os'
 import path from 'node:path'
-import { createNitro } from 'nitropack'
+import { build, createNitro } from 'nitropack'
 import { normalizePath } from 'vite'
 
 import { getRollupConfig } from 'nitropack/rollup'
 import { buildNitroEnvironment } from '@tanstack/start-plugin-core'
-import { clientDistDir } from '../index.js'
+import { clientDistDir, ssrDistDir } from '../index.js'
 import { prerender } from '../prerender.js'
 import { devServerPlugin } from './dev-server-plugin.js'
 import type { EnvironmentOptions, PluginOption } from 'vite'
@@ -32,7 +32,9 @@ export function nitroPlugin(
   const nitroConfig: NitroConfig = {
     dev: false,
     compatibilityDate: '2024-11-19',
+    logLevel: 0,
     srcDir: normalizePath(options.tsr.srcDirectory),
+    ignore: ['**/*.tsx'],
     preset: buildPreset,
     publicAssets: [
       {
@@ -43,7 +45,7 @@ export function nitroPlugin(
       generateTsConfig: false,
     },
     prerender: undefined,
-    renderer: options.serverEntryPath,
+    renderer: path.join(options.root, ssrDistDir, 'ssr.mjs'),
   }
 
   return [
@@ -64,11 +66,7 @@ export function nitroPlugin(
               ssr: true,
               sourcemap: true,
               rollupOptions: {
-                ...nitroRollupOptions,
-                output: {
-                  ...nitroRollupOptions.output,
-                  sourcemap: undefined,
-                },
+                input: options.serverEntryPath
               },
             },
           } satisfies EnvironmentOptions
@@ -93,7 +91,8 @@ export function nitroPlugin(
               }
 
               await builder.build(clientEnv)
-              await buildNitroEnvironment(nitro, () => builder.build(serverEnv))
+              await builder.build(serverEnv)
+              await buildNitroEnvironment(nitro, () => build(nitro));
 
               if (options.prerender?.enabled) {
                 await prerender({
