@@ -82,7 +82,10 @@ export function createStartHandler<
       })()
 
       if (serverRouteTreeModule) {
-        console.log(serverRouteTreeModule.routeTree)
+        console.debug(
+          '[createStartHandler.eventHandler] serverRouteTreeModule',
+          serverRouteTreeModule.routeTree,
+        )
         const router = createServerRouter({
           routeTree: serverRouteTreeModule.routeTree,
         })
@@ -146,5 +149,5 @@ function createServerRouter({ routeTree }: { routeTree: AnyServerRoute }) {
     flatRoutes,
   })
 
-  console.log(matches)
+  console.debug('[createStartHandler.createServerRouter] matches', matches)
 }
