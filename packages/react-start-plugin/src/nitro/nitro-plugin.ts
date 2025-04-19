@@ -54,7 +54,10 @@ export function nitroPlugin(
       name: 'tanstack-vite-plugin-nitro',
       async configEnvironment(name) {
         if (name === 'server') {
-          if (!nitro && !nitroRollupOptions) {
+          if (
+            typeof nitro === 'undefined' &&
+            typeof nitroRollupOptions === 'undefined'
+          ) {
             nitro = await createNitro(nitroConfig)
             nitroRollupOptions = getRollupConfig(nitro)
           }
@@ -66,7 +69,7 @@ export function nitroPlugin(
               ssr: true,
               sourcemap: true,
               rollupOptions: {
-                input: options.serverEntryPath
+                input: options.serverEntryPath,
               },
             },
           } satisfies EnvironmentOptions
@@ -92,7 +95,7 @@ export function nitroPlugin(
 
               await builder.build(clientEnv)
               await builder.build(serverEnv)
-              await buildNitroEnvironment(nitro, () => build(nitro));
+              await buildNitroEnvironment(nitro, () => build(nitro))
 
               if (options.prerender?.enabled) {
                 await prerender({

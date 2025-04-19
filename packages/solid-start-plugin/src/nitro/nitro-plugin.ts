@@ -52,11 +52,13 @@ export function nitroPlugin(
       name: 'tanstack-vite-plugin-nitro',
       async configEnvironment(name) {
         if (name === 'server') {
-          if (!nitro && !nitroRollupOptions) {
+          if (
+            typeof nitro === 'undefined' &&
+            typeof nitroRollupOptions === 'undefined'
+          ) {
             nitro = await createNitro(nitroConfig)
             nitroRollupOptions = getRollupConfig(nitro)
           }
-
           return {
             build: {
               commonjsOptions: {
@@ -65,11 +67,7 @@ export function nitroPlugin(
               ssr: true,
               sourcemap: true,
               rollupOptions: {
-                ...nitroRollupOptions,
-                output: {
-                  ...nitroRollupOptions.output,
-                  sourcemap: undefined,
-                },
+                input: options.serverEntryPath,
               },
             },
           } satisfies EnvironmentOptions
