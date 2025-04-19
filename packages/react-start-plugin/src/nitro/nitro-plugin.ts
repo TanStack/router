@@ -1,6 +1,6 @@
 import { platform } from 'node:os'
 import path from 'node:path'
-import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
+import { build, createNitro } from 'nitropack'
 import { normalizePath } from 'vite'
 
 import { getRollupConfig } from 'nitropack/rollup'
@@ -32,6 +32,7 @@ export function nitroPlugin(
   const nitroConfig: NitroConfig = {
     dev: false,
     compatibilityDate: '2024-11-19',
+    logLevel: 0,
     srcDir: normalizePath(options.tsr.srcDirectory),
     ignore: ['**/*.tsx'],
     preset: buildPreset,
@@ -91,10 +92,6 @@ export function nitroPlugin(
 
               await builder.build(clientEnv)
               await builder.build(serverEnv)
-
-              await prepare(nitro)
-              await copyPublicAssets(nitro)
-              await build(nitro)
               await buildNitroEnvironment(nitro, () => build(nitro));
 
               if (options.prerender?.enabled) {

@@ -71,6 +71,7 @@ export function TanStackStartVitePlugin(
             server: {
               build: {
                 outDir: path.resolve(options.root, ssrDistDir),
+                copyPublicDir: false,
                 emptyOutDir: true,
                 rollupOptions: {
                   output: {

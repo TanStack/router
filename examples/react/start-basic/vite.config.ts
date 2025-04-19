@@ -11,9 +11,10 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
     TanStackStartVitePlugin({
-      target: 'cloudflare'
+      // target: 'cloudflare',
       // prerender: {
       //   enabled: true,
+      //   onSuccess() {}
       // },
     }),
   ],
