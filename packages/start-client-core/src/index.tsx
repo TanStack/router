@@ -74,6 +74,7 @@ export type {
   NextFn,
   Method,
   StaticCachedResult,
+  OptionalFetcher,
 } from './createServerFn'
 export {
   applyMiddleware,

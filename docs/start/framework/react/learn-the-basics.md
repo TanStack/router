@@ -276,23 +276,57 @@ Here's a quick example of how you can use server functions to perform a mutation
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
+import { z } from 'zod'
+import { dbUpdateUser } from '...'
 
 const UserSchema = z.object({
   id: z.string(),
   name: z.string(),
 })
+export type User = z.infer<typeof UserSchema>
 
-const updateUser = createServerFn({ method: 'POST' })
+export const updateUser = createServerFn({ method: 'POST' })
   .validator(UserSchema)
-  .handler(async ({ data }) => {
-    return db
-      .update(users)
-      .set({ name: data.name })
-      .where(eq(users.id, data.id))
-  })
+  .handler(({ data }) => dbUpdateUser(data))
 
 // Somewhere else in your application
-await updateUser({ data: { id: '1', name: 'John' } })
+import { useQueryClient } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
+import { useServerFunction } from '@tanstack/react-start'
+import { updateUser, type User } from '...'
+
+export function useUpdateUser() {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const _updateUser = useServerFunction(updateUser)
+
+  return useCallback(
+    async (user: User) => {
+      const result = await _updateUser({ data: user })
+
+      router.invalidate()
+      queryClient.invalidateQueries({
+        queryKey: ['users', 'updateUser', user.id],
+      })
+
+      return result
+    },
+    [router, queryClient, _updateUser],
+  )
+}
+
+// Somewhere else in your application
+import { useUpdateUser } from '...'
+
+function MyComponent() {
+  const updateUser = useUpdateUser()
+  const onClick = useCallback(async () => {
+    await updateUser({ id: '1', name: 'John' })
+    console.log('Updated user')
+  }, [updateUser])
+
+  return <button onClick={onClick}>Click Me</button>
+}
 ```
 
 To learn more about mutations, check out the [mutations guide](/router/latest/docs/framework/react/guide/data-mutations).
