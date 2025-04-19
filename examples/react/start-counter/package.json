@@ -14,7 +14,7 @@
     "@tanstack/react-start": "^1.116.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.3"
+    "vinxi": "0.5.4"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",

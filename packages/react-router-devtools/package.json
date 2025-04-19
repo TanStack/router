@@ -66,7 +66,7 @@
     "solid-js": "^1.9.5"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^4.4.1",
     "react": ">=19",
     "react-dom": ">=19"
   },
