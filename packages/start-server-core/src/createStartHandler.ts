@@ -81,23 +81,32 @@ export function createStartHandler<
         }
       })()
 
+      // If we have a server route tree, then we try matching to see if we have a
+      // server route that matches the request.
       if (serverRouteTreeModule) {
-        console.debug(
-          '[createStartHandler.eventHandler] serverRouteTreeModule',
-          serverRouteTreeModule.routeTree,
-        )
-        const router = createServerRouter({
+        const serverRoute = createServerRouter({
+          request,
+          url,
           routeTree: serverRouteTreeModule.routeTree,
         })
+
+        // We've found a server route that matches the request, so we can call it.
+        // TODO: Get the input type-signature correct
+        // TODO: Perform the middlewares?
+        // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
+        // TODO: What happens when its a relative fetch? ie. `loader() { return fetch('/api/users') }`
+        if (serverRoute) {
+          return serverRoute.handler({
+            context: {}, // TODO: Get this should be accumulated context for server routes
+            request,
+            params: serverRoute.params,
+            pathname: url.pathname, // TODO: Should this be without the basepath?
+          })
+        }
       }
 
-      // Handle API routes
-      // handleApiRoutes(event)
-      // if (event.handled) {
-      //   return
-      // }
-
-      // If no API routes returned, then fallback to SSR on the router
+      // If no Server Routes were found, so fallback to normal SSR matching using
+      // the router
 
       // Create a history for the router
       const history = createMemoryHistory({
@@ -129,7 +138,15 @@ export function createStartHandler<
   }
 }
 
-function createServerRouter({ routeTree }: { routeTree: AnyServerRoute }) {
+function createServerRouter({
+  routeTree,
+  url,
+  request,
+}: {
+  routeTree: AnyServerRoute
+  url: URL
+  request: Request
+}) {
   const { flatRoutes, routesById, routesByPath } = processRouteTree({
     routeTree,
     initRoute: (route, i) => {
@@ -140,14 +157,42 @@ function createServerRouter({ routeTree }: { routeTree: AnyServerRoute }) {
   })
 
   const matches = getMatchedRoutes({
-    pathname: '/',
-    routePathname: '/',
-    basepath: '/',
+    pathname: url.pathname,
+    routePathname: undefined,
+    basepath: '/', // TODO: Get this from the router? or from Vite/Nitro?
     caseSensitive: true,
     routesByPath,
     routesById,
     flatRoutes,
   })
 
-  console.debug('[createStartHandler.createServerRouter] matches', matches)
+  console.debug(
+    '[createStartHandler.createServerRouter] matches.routeParams\n',
+    matches.routeParams,
+  )
+  console.debug(
+    '[createStartHandler.createServerRouter] matches.foundRoute\n',
+    matches.foundRoute,
+  )
+  console.debug(
+    '[createStartHandler.createServerRouter] matches.matchedRoutes\n',
+    matches.matchedRoutes,
+  )
+
+  if (!matches.foundRoute) {
+    return undefined
+  }
+
+  const route = matches.foundRoute
+  const method = request.method.toUpperCase()
+
+  // TODO: Need to get the types correct here
+  // @ts-expect-error
+  const routeHandler = route.options?.methods?.[method]
+
+  if (!routeHandler) {
+    return undefined
+  }
+
+  return { handler: routeHandler, params: matches.routeParams }
 }
