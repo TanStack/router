@@ -84,6 +84,15 @@ export function TanStackStartVitePlugin(
                   output: {
                     entryFileNames: ssrEntryFile
                   },
+                  plugins: [
+                    {
+                      name: 'capture-output',
+                      generateBundle(options, bundle) {
+                        // TODO can this hook be called more than once?
+                        ssrBundle = bundle
+                      },
+                    },
+                  ]
                 },
                 commonjsOptions: {
                   include: [/node_modules/],
@@ -213,13 +222,6 @@ export default createStartHandler({
       ...options.tsr,
     }),
     viteReact(options.react),
-    {
-      name: 'capture-output',
-      generateBundle(options, bundle) {
-        // TODO can this hook be called more than once?
-        ssrBundle = bundle
-      },
-    },
     nitroPlugin(options, () => ssrBundle ),
   ]
 }
