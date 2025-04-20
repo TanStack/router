@@ -4304,9 +4304,6 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
-      redaxios:
-        specifier: ^0.5.1
-        version: 0.5.1
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
