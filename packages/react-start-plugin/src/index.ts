@@ -8,7 +8,7 @@ import { nitroPlugin } from './nitro/nitro-plugin.js'
 import { startManifestPlugin } from './routesManifestPlugin.js'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
 import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/index.js'
-import type { PluginOption } from 'vite'
+import type { PluginOption, Rollup } from 'vite'
 import type { TanStackStartInputConfig, WithReactPlugin } from './schema.js'
 
 export type {
@@ -29,7 +29,7 @@ export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
 export const ssrEntryFile = 'ssr.mjs'
 
 // this needs to live outside of the TanStackStartVitePlugin since it will be invoked multiple times by vite
-const virtualFileSystem : Record<string, string> = {}
+let ssrBundle : Rollup.OutputBundle 
 
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithReactPlugin,
@@ -58,6 +58,7 @@ export function TanStackStartVitePlugin(
         return {
           environments: {
             client: {
+              consumer: 'client',
               build: {
                 manifest: true,
                 rollupOptions: {
@@ -72,7 +73,9 @@ export function TanStackStartVitePlugin(
               },
             },
             server: {
+              consumer: 'server',
               build: {
+                ssr: true,
                 // we don't write to the file system as the below 'capture-output' plugin will
                 // capture the output and write it to the virtual file system
                 write: false,
@@ -81,21 +84,6 @@ export function TanStackStartVitePlugin(
                   output: {
                     entryFileNames: ssrEntryFile
                   },
-                  plugins: [
-                    {
-                      name: 'capture-output',
-                      generateBundle(options, bundle) {
-                        // TODO can this hook be called more than once?
-                        for (const [fileName, content] of Object.entries(bundle)) {
-                          // TODO we need to handle sourcemaps correctly
-                          // currently, they are lost between SSR build and nitro build
-                          if (content.type === 'chunk') {
-                            virtualFileSystem[`${fileName}`] = content.code
-                          }
-                        }
-                      },
-                    }
-                  ]
                 },
                 commonjsOptions: {
                   include: [/node_modules/],
@@ -225,7 +213,14 @@ export default createStartHandler({
       ...options.tsr,
     }),
     viteReact(options.react),
-    nitroPlugin(options, () => virtualFileSystem ),
+    {
+      name: 'capture-output',
+      generateBundle(options, bundle) {
+        // TODO can this hook be called more than once?
+        ssrBundle = bundle
+      },
+    },
+    nitroPlugin(options, () => ssrBundle ),
   ]
 }
 

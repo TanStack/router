@@ -6095,6 +6095,9 @@ importers:
       nitropack:
         specifier: ^2.11.8
         version: 2.11.8
+      pathe:
+        specifier: ^2.0.3
+        version: 2.0.3
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3

@@ -3,12 +3,13 @@ import path from 'node:path'
 import { build, createNitro } from 'nitropack'
 import { normalizePath } from 'vite'
 
+import { dirname, resolve } from "pathe";
 import { getRollupConfig } from 'nitropack/rollup'
 import { buildNitroEnvironment } from '@tanstack/start-plugin-core'
 import { clientDistDir, ssrEntryFile } from '../index.js'
 import { prerender } from '../prerender.js'
 import { devServerPlugin } from './dev-server-plugin.js'
-import type { EnvironmentOptions, PluginOption } from 'vite'
+import type { EnvironmentOptions, PluginOption, Rollup } from 'vite'
 import type { Nitro, NitroConfig } from 'nitropack'
 import type { TanStackStartOutputConfig } from '../schema.js'
 
@@ -22,7 +23,7 @@ const filePrefix = isWindows ? 'file:///' : ''
 
 export function nitroPlugin(
   options: TanStackStartOutputConfig,
-  getVirtualFileSystem:  () => Record<string, string>,
+  getSsrBundle: () => Rollup.OutputBundle,
 ): Array<PluginOption> {
 
   const buildPreset =
@@ -85,7 +86,11 @@ export function nitroPlugin(
                 },
                 prerender: undefined,
                 renderer: ssrEntryFile,
-                virtual: getVirtualFileSystem()
+                rollupConfig: {
+                  plugins: [
+                    virtualBundlePlugin(getSsrBundle()),
+                  ]
+                }
               }
 
               const nitro = await createNitro(nitroConfig)
@@ -135,4 +140,51 @@ export function nitroPlugin(
       // },
     },
   ]
+}
+
+function virtualBundlePlugin(
+  ssrBundle: Rollup.OutputBundle,
+): PluginOption {
+  type VirtualModule = { code: string, map: string | null }
+  const _modules = new Map<string, VirtualModule>();
+
+  // group chunks and source maps
+  for (const [fileName, content] of Object.entries(ssrBundle)) {
+    if (content.type === 'chunk') {
+      const virtualModule: VirtualModule = {
+        code: content.code,
+        map: null,
+      }
+      const maybeMap = ssrBundle[`${fileName}.map`]
+      if (maybeMap && maybeMap.type === 'asset') {
+        virtualModule.map = maybeMap.source as string
+      }
+      _modules.set(fileName, virtualModule);
+      _modules.set(resolve(fileName), virtualModule);
+    }
+  }
+ 
+  return {
+    name: 'virtual-bundle',
+    resolveId(id, importer) {
+      if (_modules.has(id)) {
+        return resolve(id);
+      }
+
+      if (importer) {
+        const resolved = resolve(dirname(importer), id);
+        if (_modules.has(resolved)) {
+          return resolved;
+        }
+      }
+      return null
+    },
+    load(id) {
+      const m = _modules.get(id)
+      if (!m) {
+        return null;
+      }
+      return m
+    }
+  }
 }
