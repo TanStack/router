@@ -5,7 +5,7 @@ import { normalizePath } from 'vite'
 
 import { getRollupConfig } from 'nitropack/rollup'
 import { buildNitroEnvironment } from '@tanstack/start-plugin-core'
-import { clientDistDir, ssrDistDir } from '../index.js'
+import { clientDistDir, ssrEntryFile } from '../index.js'
 import { prerender } from '../prerender.js'
 import { devServerPlugin } from './dev-server-plugin.js'
 import type { EnvironmentOptions, PluginOption } from 'vite'
@@ -22,31 +22,11 @@ const filePrefix = isWindows ? 'file:///' : ''
 
 export function nitroPlugin(
   options: TanStackStartOutputConfig,
+  getVirtualFileSystem:  () => Record<string, string>,
 ): Array<PluginOption> {
-  let nitro: Nitro
-  let nitroRollupOptions: ReturnType<typeof getRollupConfig>
 
   const buildPreset =
     process.env['START_TARGET'] ?? (options.target as string | undefined)
-
-  const nitroConfig: NitroConfig = {
-    dev: false,
-    compatibilityDate: '2024-11-19',
-    logLevel: 0,
-    srcDir: normalizePath(options.tsr.srcDirectory),
-    ignore: ['**/*.tsx'],
-    preset: buildPreset,
-    publicAssets: [
-      {
-        dir: path.resolve(options.root, clientDistDir),
-      },
-    ],
-    typescript: {
-      generateTsConfig: false,
-    },
-    prerender: undefined,
-    renderer: path.join(options.root, ssrDistDir, 'ssr.mjs'),
-  }
 
   return [
     devServerPlugin(options),
@@ -54,13 +34,6 @@ export function nitroPlugin(
       name: 'tanstack-vite-plugin-nitro',
       async configEnvironment(name) {
         if (name === 'server') {
-          if (
-            typeof nitro === 'undefined' &&
-            typeof nitroRollupOptions === 'undefined'
-          ) {
-            nitro = await createNitro(nitroConfig)
-            nitroRollupOptions = getRollupConfig(nitro)
-          }
           return {
             build: {
               commonjsOptions: {
@@ -95,6 +68,28 @@ export function nitroPlugin(
 
               await builder.build(clientEnv)
               await builder.build(serverEnv)
+
+              const nitroConfig: NitroConfig = {
+                dev: false,
+                // TODO do we need this? should this be made configurable?
+                compatibilityDate: '2024-11-19',
+                logLevel: 0,
+                preset: buildPreset,
+                publicAssets: [
+                  {
+                    dir: path.resolve(options.root, clientDistDir),
+                  },
+                ],
+                typescript: {
+                  generateTsConfig: false,
+                },
+                prerender: undefined,
+                renderer: ssrEntryFile,
+                virtual: getVirtualFileSystem()
+              }
+
+              const nitro = await createNitro(nitroConfig)
+
               await buildNitroEnvironment(nitro, () => build(nitro))
 
               if (options.prerender?.enabled) {
