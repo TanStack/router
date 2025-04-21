@@ -136,6 +136,7 @@ export interface RouteMatch<
   error: unknown
   paramsError: unknown
   searchError: unknown
+  stateError: unknown
   updatedAt: number
   loadPromise?: ControlledPromise<void>
   beforeLoadPromise?: ControlledPromise<void>
@@ -147,6 +148,7 @@ export interface RouteMatch<
   search: TFullSearchSchema
   _strictSearch: TFullSearchSchema
   state: TFullStateSchema
+  _strictState: TFullStateSchema
   fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'

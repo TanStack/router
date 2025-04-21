@@ -799,6 +799,44 @@ export class Router<
         }
       })()
 
+      const [preMatchState, strictMatchState, stateError]: [
+        Record<string, any>,
+        Record<string, any>,
+        Error | undefined,
+      ] = (() => {
+        const rawState = next.state
+        // Exclude keys starting with __ and key named 'key'
+        const filteredState = Object.fromEntries(
+          Object.entries(rawState).filter(
+            ([key]) => !(key.startsWith('__') || key === 'key'),
+          ),
+        )
+
+        try {
+          if (route.options.validateState) {
+            const strictState =
+              validateState(route.options.validateState, filteredState) || {}
+            return [
+              {
+                ...filteredState,
+                ...strictState,
+              },
+              strictState,
+              undefined,
+            ]
+          }
+          return [filteredState, {}, undefined]
+        } catch (err: any) {
+          const stateValidationError = err
+
+          if (opts?.throwOnError) {
+            throw stateValidationError
+          }
+
+          return [filteredState, {}, stateValidationError]
+        }
+      })()
+
       // This is where we need to call route.options.loaderDeps() to get any additional
       // deps that the route's loader function might need to run. We need to do this
       // before we create the match so that we can pass the deps to the route's
@@ -853,6 +891,12 @@ export class Router<
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : replaceEqualDeep(existingMatch.search, preMatchSearch),
           _strictSearch: strictMatchSearch,
+          searchError: undefined,
+          state: previousMatch
+            ? replaceEqualDeep(previousMatch.state, preMatchState)
+            : preMatchState,
+          _strictState: strictMatchState,
+          stateError: undefined,
         }
       } else {
         const status =
@@ -878,6 +922,11 @@ export class Router<
             : preMatchSearch,
           _strictSearch: strictMatchSearch,
           searchError: undefined,
+          state: previousMatch
+            ? replaceEqualDeep(previousMatch.state, preMatchState)
+            : preMatchState,
+          _strictState: strictMatchState,
+          stateError: undefined,
           status,
           isFetching: false,
           error: undefined,
@@ -910,6 +959,9 @@ export class Router<
 
       // update the searchError if there is one
       match.searchError = searchError
+
+      // update the stateError if there is one
+      match.stateError = stateError
 
       const parentContext = getParentContext(parentMatch)
 
