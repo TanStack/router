@@ -177,14 +177,10 @@ function RouteComp({
   )
 }
 
-function filterInternalProps(state: Record<string, any>) {
-  const filteredState = { ...state }
-  Object.keys(filteredState).forEach(key => {
-    if (key.startsWith('__')) {
-      delete filteredState[key]
-    }
-  })
-  return filteredState
+function filterInternalState(state: Record<string, any>) {
+  return Object.fromEntries(
+    Object.entries(state).filter(([key]) => !(key.startsWith('__') || key === 'key'))
+  )
 }
 
 export const BaseTanStackRouterDevtoolsPanel =
@@ -238,7 +234,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     )
 
     const filteredState = createMemo(() =>
-      filterInternalProps(routerState().location.state)
+      filterInternalState(routerState().location.state)
     )
 
     const hasState = createMemo(
@@ -290,7 +286,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     const activeMatchLoaderData = createMemo(() => activeMatch()?.loaderData)
     const activeMatchValue = createMemo(() => activeMatch())
     const locationSearchValue = createMemo(() => routerState().location.search)
-    const locationStateValue = createMemo(() => filteredState())
+    const filteredStateValue = createMemo(() => filteredState())
 
     return (
       <div
@@ -579,7 +575,7 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().detailsHeader}>State Params</div>
             <div class={styles().detailsContent}>
               <Explorer
-                value={locationStateValue}
+                value={filteredStateValue}
                 defaultExpanded={Object.keys(
                   filteredState()
                 ).reduce((obj: any, next) => {
