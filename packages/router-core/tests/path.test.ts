@@ -337,55 +337,60 @@ describe('interpolatePath', () => {
 })
 
 describe('matchPathname', () => {
-  it.each([
-    {
-      name: 'should match the root path that start with the basepath',
-      basepath: '/basepath',
-      pathname: '/basepath',
-      matchLocation: {
-        to: '/',
+  describe('basepath matching', () => {
+    it.each([
+      {
+        name: 'should match when the input is the same as the basepath',
+        basepath: '/basepath',
+        input: '/basepath',
+        matchingOptions: {
+          to: '/',
+        },
+        expectedMatchedParams: {},
       },
-      expected: {},
-    },
-    {
-      name: 'should match the path that start with the basepath',
-      basepath: '/basepath',
-      pathname: '/basepath/abc',
-      matchLocation: {
-        to: '/abc',
+      {
+        name: 'should match when the input starts with the basepath and `to` is set to the remaining',
+        basepath: '/basepath',
+        input: '/basepath/abc',
+        matchingOptions: {
+          to: '/abc',
+        },
+        expectedMatchedParams: {},
       },
-      expected: {},
-    },
-    {
-      name: 'should not match the root path that does not start with the basepath',
-      basepath: '/basepath',
-      pathname: '/',
-      matchLocation: {
-        to: '/',
+      {
+        name: 'should not match when the input is `/` and does not start with the basepath',
+        basepath: '/basepath',
+        input: '/',
+        matchingOptions: {
+          to: '/',
+        },
+        expectedMatchedParams: undefined,
       },
-      expected: undefined,
-    },
-    {
-      name: 'should not match the path that does not start with the basepath',
-      basepath: '/basepath',
-      pathname: '/abc',
-      matchLocation: {
-        to: '/abc',
+      {
+        name: 'should not match when the input completely does not start with the basepath',
+        basepath: '/basepath',
+        input: '/abc',
+        matchingOptions: {
+          to: '/abc',
+        },
+        expectedMatchedParams: undefined,
       },
-      expected: undefined,
-    },
-    {
-      name: 'should not match the path that match partial of the basepath',
-      basepath: '/base',
-      pathname: '/basepath/abc',
-      matchLocation: {
-        to: '/abc',
+      {
+        name: 'should not match when the input only partially matches the basepath',
+        basepath: '/base',
+        input: '/basepath/abc',
+        matchingOptions: {
+          to: '/abc',
+        },
+        expectedMatchedParams: undefined,
       },
-      expected: undefined,
-    },
-  ])('$name', ({ basepath, pathname, matchLocation, expected }) => {
-    expect(matchPathname(basepath, pathname, matchLocation)).toStrictEqual(
-      expected,
+    ])(
+      '$name',
+      ({ basepath, input, matchingOptions, expectedMatchedParams }) => {
+        expect(matchPathname(basepath, input, matchingOptions)).toStrictEqual(
+          expectedMatchedParams,
+        )
+      },
     )
   })
 })
