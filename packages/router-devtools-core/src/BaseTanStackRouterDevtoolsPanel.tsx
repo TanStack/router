@@ -179,8 +179,21 @@ function RouteComp({
 
 function filterInternalState(state: Record<string, any>) {
   return Object.fromEntries(
-    Object.entries(state).filter(([key]) => !(key.startsWith('__') || key === 'key'))
+    Object.entries(state).filter(([key]) =>
+      !(key.startsWith('__') || key === 'key'),
+    ),
   )
+}
+
+function getMergedStrictState(routerState: any) {
+  const matches = [
+    ...(routerState.pendingMatches ?? []),
+    ...routerState.matches,
+  ]
+  return Object.assign(
+    {},
+    ...matches.map((m: any) => m._strictState).filter(Boolean),
+  ) as Record<string, any>
 }
 
 export const BaseTanStackRouterDevtoolsPanel =
@@ -233,13 +246,11 @@ export const BaseTanStackRouterDevtoolsPanel =
       () => Object.keys(routerState().location.search).length,
     )
 
-    const filteredState = createMemo(() =>
-      filterInternalState(routerState().location.state)
+    const validatedState = createMemo(() =>
+      filterInternalState(getMergedStrictState(routerState())),
     )
 
-    const hasState = createMemo(
-      () => Object.keys(filteredState()).length
-    )
+    const hasState = createMemo(() => Object.keys(validatedState()).length)
 
     const explorerState = createMemo(() => {
       return {
@@ -286,7 +297,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     const activeMatchLoaderData = createMemo(() => activeMatch()?.loaderData)
     const activeMatchValue = createMemo(() => activeMatch())
     const locationSearchValue = createMemo(() => routerState().location.search)
-    const filteredStateValue = createMemo(() => filteredState())
+    const validatedStateValue = createMemo(() => validatedState())
 
     return (
       <div
@@ -575,9 +586,9 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().detailsHeader}>State Params</div>
             <div class={styles().detailsContent}>
               <Explorer
-                value={filteredStateValue}
+                value={validatedStateValue}
                 defaultExpanded={Object.keys(
-                  filteredState()
+                  validatedState(),
                 ).reduce((obj: any, next) => {
                   obj[next] = {}
                   return obj
