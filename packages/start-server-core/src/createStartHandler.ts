@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { setGlobalOrigin } from 'undici'
 import { createMemoryHistory } from '@tanstack/history'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import { json, mergeHeaders } from '@tanstack/start-client-core'
@@ -56,6 +57,8 @@ export function createStartHandler<
   return (cb) => {
     return eventHandler(async (event) => {
       const request = toWebRequest(event)
+
+      setGlobalOrigin(getAbsoluteUrl(request))
 
       const url = new URL(request.url)
       const href = url.href.replace(url.origin, '')
@@ -180,20 +183,6 @@ async function handleServerRoutes({
     // TODO: Get the input type-signature correct
     // TODO: Perform the middlewares?
     // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
-    // TODO: What happens when its a relative fetch? ie. `loader() { return fetch('/api/users') }`
-    /**
-     * If we are patching undici, to solve the relative fetch issue, then this would be the code needed.
-     * ```sh
-     * pnpm add undici
-     * ```
-     *
-     * ```ts
-     * import { setGlobalOrigin } from 'undici'
-     *
-     * setGlobalOrigin('http://localhost:3000') // custom logic can be added here to get the origin
-     * using getGlobalOrigin()
-     * ```
-     */
 
     const method = Object.keys(foundRoute.options.methods).find(
       (method) => method.toLowerCase() === request.method.toLowerCase(),
@@ -214,4 +203,23 @@ async function handleServerRoutes({
   }
 
   return
+}
+
+function getAbsoluteUrl(
+  req: Request,
+  options: { trustProxy: boolean } = { trustProxy: false },
+) {
+  const headers = req.headers
+
+  const host = options.trustProxy
+    ? headers.get('x-forwarded-host') || headers.get('host')
+    : headers.get('host')
+
+  const protocol = options.trustProxy
+    ? headers.get('x-forwarded-proto') || 'http'
+    : 'http'
+
+  if (!host) throw new Error('Cannot determine host from request headers')
+
+  return `${protocol}://${host}`
 }

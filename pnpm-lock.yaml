@@ -6812,6 +6812,9 @@ importers:
       unctx:
         specifier: ^2.4.1
         version: 2.4.1
+      undici:
+        specifier: ^7.8.0
+        version: 7.8.0
     devDependencies:
       '@types/jsesc':
         specifier: ^3.0.3
@@ -15151,6 +15154,10 @@ packages:
 
   undici-types@6.20.0:
     resolution: {integrity: sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==}
+
+  undici@7.8.0:
+    resolution: {integrity: sha512-vFv1GA99b7eKO1HG/4RPu2Is3FBTWBrmzqzO0mz+rLxN3yXkE4mqRcb8g8fHxzX4blEysrNZLqg5RbJLqX5buA==}
+    engines: {node: '>=20.18.1'}
 
   unenv@1.10.0:
     resolution: {integrity: sha512-wY5bskBQFL9n3Eca5XnhH6KbUo/tfvkwm9OpcdCvLaeA7piBNbavbOKJySEwQ1V0RH6HvNlSAFRTpvTqgKRQXQ==}
@@ -24596,6 +24603,8 @@ snapshots:
   undici-types@5.28.4: {}
 
   undici-types@6.20.0: {}
+
+  undici@7.8.0: {}
 
   unenv@1.10.0:
     dependencies:

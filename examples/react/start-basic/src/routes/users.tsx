@@ -3,7 +3,7 @@ import type { User } from '../utils/users'
 
 export const Route = createFileRoute({
   loader: async () => {
-    const res = await fetch('http://localhost:3000/api/users')
+    const res = await fetch('/api/users')
 
     if (!res.ok) {
       throw new Error('Unexpected status code')
