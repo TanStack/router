@@ -266,7 +266,7 @@ describe('resolvePath', () => {
 })
 
 describe('interpolatePath', () => {
-  ;[
+  it.each([
     {
       name: 'should interpolate the path',
       path: '/users/$id',
@@ -324,15 +324,14 @@ describe('interpolatePath', () => {
         ['@', '+'].map((char) => [encodeURIComponent(char), char]),
       ),
     },
-  ].forEach((exp) => {
-    it(exp.name, () => {
-      const result = interpolatePath({
-        path: exp.path,
-        params: exp.params,
-        decodeCharMap: exp.decodeCharMap,
-      }).interpolatedPath
-      expect(result).toBe(exp.result)
-    })
+  ])('$name', ({ path, params, decodeCharMap, result }) => {
+    expect(
+      interpolatePath({
+        path,
+        params,
+        decodeCharMap,
+      }).interpolatedPath,
+    ).toBe(result)
   })
 })
 
