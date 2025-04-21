@@ -1,5 +1,4 @@
 import { useMatch } from './useMatch'
-import { useLocation } from './useLocation'
 import type {
   AnyRouter,
   Constrain,
@@ -96,15 +95,15 @@ export function useHistoryState<
   UseHistoryStateResult<TRouter, TFrom, TStrict, TSelected>,
   TThrow
 > {
-  const locationState = useLocation().state
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
     structuralSharing: opts.structuralSharing,
-    select: () => {
+    select: (match: any) => {
+      const matchState = match.state;
       const filteredState = Object.fromEntries(
-        Object.entries(locationState).filter(([key]) => !key.startsWith('__') && key !== 'key')
+        Object.entries(matchState).filter(([key]) => !(key.startsWith('__') || key === 'key'))
       );
       const typedState = filteredState as unknown as ResolveUseHistoryState<TRouter, TFrom, TStrict>;
       return opts.select ? opts.select(typedState) : typedState;
