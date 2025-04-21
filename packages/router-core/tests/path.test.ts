@@ -393,4 +393,74 @@ describe('matchPathname', () => {
       },
     )
   })
+
+  describe('path param(s) matching', () => {
+    it.each([
+      {
+        name: 'should not match since `to` does not match the input',
+        input: '/',
+        matchingOptions: {
+          to: '/users',
+        },
+        expectedMatchedParams: undefined,
+      },
+      {
+        name: 'should match since `to` matches the input',
+        input: '/users',
+        matchingOptions: {
+          to: '/users',
+        },
+        expectedMatchedParams: {},
+      },
+      {
+        name: 'should match and return the named path params',
+        input: '/users/123',
+        matchingOptions: {
+          to: '/users/$id',
+        },
+        expectedMatchedParams: { id: '123' },
+      },
+      {
+        name: 'should match and return the the splat param',
+        input: '/users/123',
+        matchingOptions: {
+          to: '/users/$',
+        },
+        expectedMatchedParams: {
+          '*': '123',
+          _splat: '123',
+        },
+      },
+      {
+        name: 'should match and return the named path and splat params',
+        input: '/users/123/456',
+        matchingOptions: {
+          to: '/users/$id/$',
+        },
+        expectedMatchedParams: {
+          id: '123',
+          '*': '456',
+          _splat: '456',
+        },
+      },
+      {
+        name: 'should match and return the multiple named path params and splat param',
+        input: '/sean-cassiere/settings/my-repo/123/456',
+        matchingOptions: {
+          to: '/$username/settings/$repo/$id/$',
+        },
+        expectedMatchedParams: {
+          username: 'sean-cassiere',
+          repo: 'my-repo',
+          id: '123',
+          '*': '456',
+          _splat: '456',
+        },
+      },
+    ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
+      expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+        expectedMatchedParams,
+      )
+    })
+  })
 })
