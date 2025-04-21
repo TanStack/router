@@ -201,6 +201,34 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
+function validateState(validateState: AnyValidator, input: unknown): unknown {
+  if (validateState == null) return {}
+
+  if ('~standard' in validateState) {
+    const result = validateState['~standard'].validate(input)
+
+    if (result instanceof Promise)
+      throw new Error('Async validation not supported')
+
+    if (result.issues)
+      throw new Error(JSON.stringify(result.issues, undefined, 2), {
+        cause: result,
+      })
+
+    return result.value
+  }
+
+  if ('parse' in validateState) {
+    return validateState.parse(input)
+  }
+
+  if (typeof validateState === 'function') {
+    return validateState(input)
+  }
+
+  return {}
+}
+
 export function createRouter<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
@@ -766,6 +794,43 @@ export class Router<
         }
       })()
 
+      const [preMatchState, strictMatchState, stateError]: [
+        Record<string, any>,
+        Record<string, any>,
+        Error | undefined,
+      ] = (() => {
+        const rawState = next.state
+        const filteredState = Object.fromEntries(
+          Object.entries(rawState).filter(
+            ([key]) => !(key.startsWith('__') || key === 'key'),
+          ),
+        )
+
+        try {
+          if (route.options.validateState) {
+            const strictState =
+              validateState(route.options.validateState, filteredState) || {}
+            return [
+              {
+                ...filteredState,
+                ...strictState,
+              },
+              strictState,
+              undefined,
+            ]
+          }
+          return [filteredState, {}, undefined]
+        } catch (err: any) {
+          const stateValidationError = err
+
+          if (opts?.throwOnError) {
+            throw stateValidationError
+          }
+
+          return [filteredState, {}, stateValidationError]
+        }
+      })()
+
       // This is where we need to call route.options.loaderDeps() to get any additional
       // deps that the route's loader function might need to run. We need to do this
       // before we create the match so that we can pass the deps to the route's
@@ -845,6 +910,11 @@ export class Router<
             : preMatchSearch,
           _strictSearch: strictMatchSearch,
           searchError: undefined,
+          state: previousMatch
+            ? replaceEqualDeep(previousMatch.state, preMatchState)
+            : preMatchState,
+          _strictState: strictMatchState,
+          stateError: undefined,
           status,
           isFetching: false,
           error: undefined,
@@ -877,6 +947,9 @@ export class Router<
 
       // update the searchError if there is one
       match.searchError = searchError
+
+      // update the stateError if there is one
+      match.stateError = stateError
 
       const parentContext = getParentContext(parentMatch)
 
