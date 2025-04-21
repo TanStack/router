@@ -178,6 +178,9 @@ async function handleServerRoutes({
       flatRoutes,
     })
 
+  console.log(history.location.pathname)
+  console.log('matchedRoutes', matchedRoutes)
+
   if (foundRoute && foundRoute.id !== rootRouteId) {
     // We've found a server route that matches the request, so we can call it.
     // TODO: Get the input type-signature correct

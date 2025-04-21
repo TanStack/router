@@ -1,16 +1,13 @@
 import { platform } from 'node:os'
-import path from 'node:path'
+import path, { dirname, resolve } from 'node:path'
 import { build, createNitro } from 'nitropack'
-import { normalizePath } from 'vite'
 
-import { dirname, resolve } from "pathe";
-import { getRollupConfig } from 'nitropack/rollup'
 import { buildNitroEnvironment } from '@tanstack/start-plugin-core'
 import { clientDistDir, ssrEntryFile } from '../index.js'
 import { prerender } from '../prerender.js'
 import { devServerPlugin } from './dev-server-plugin.js'
 import type { EnvironmentOptions, PluginOption, Rollup } from 'vite'
-import type { Nitro, NitroConfig } from 'nitropack'
+import type { NitroConfig } from 'nitropack'
 import type { TanStackStartOutputConfig } from '../schema.js'
 
 export type {
@@ -25,7 +22,6 @@ export function nitroPlugin(
   options: TanStackStartOutputConfig,
   getSsrBundle: () => Rollup.OutputBundle,
 ): Array<PluginOption> {
-
   const buildPreset =
     process.env['START_TARGET'] ?? (options.target as string | undefined)
 
@@ -87,10 +83,8 @@ export function nitroPlugin(
                 prerender: undefined,
                 renderer: ssrEntryFile,
                 rollupConfig: {
-                  plugins: [
-                    virtualBundlePlugin(getSsrBundle()),
-                  ]
-                }
+                  plugins: [virtualBundlePlugin(getSsrBundle())],
+                },
               }
 
               const nitro = await createNitro(nitroConfig)
@@ -142,11 +136,9 @@ export function nitroPlugin(
   ]
 }
 
-function virtualBundlePlugin(
-  ssrBundle: Rollup.OutputBundle,
-): PluginOption {
-  type VirtualModule = { code: string, map: string | null }
-  const _modules = new Map<string, VirtualModule>();
+function virtualBundlePlugin(ssrBundle: Rollup.OutputBundle): PluginOption {
+  type VirtualModule = { code: string; map: string | null }
+  const _modules = new Map<string, VirtualModule>()
 
   // group chunks and source maps
   for (const [fileName, content] of Object.entries(ssrBundle)) {
@@ -159,22 +151,22 @@ function virtualBundlePlugin(
       if (maybeMap && maybeMap.type === 'asset') {
         virtualModule.map = maybeMap.source as string
       }
-      _modules.set(fileName, virtualModule);
-      _modules.set(resolve(fileName), virtualModule);
+      _modules.set(fileName, virtualModule)
+      _modules.set(resolve(fileName), virtualModule)
     }
   }
- 
+
   return {
     name: 'virtual-bundle',
     resolveId(id, importer) {
       if (_modules.has(id)) {
-        return resolve(id);
+        return resolve(id)
       }
 
       if (importer) {
-        const resolved = resolve(dirname(importer), id);
+        const resolved = resolve(dirname(importer), id)
         if (_modules.has(resolved)) {
-          return resolved;
+          return resolved
         }
       }
       return null
@@ -182,9 +174,9 @@ function virtualBundlePlugin(
     load(id) {
       const m = _modules.get(id)
       if (!m) {
-        return null;
+        return null
       }
       return m
-    }
+    },
   }
 }
