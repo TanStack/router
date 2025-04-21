@@ -266,7 +266,7 @@ describe('resolvePath', () => {
 })
 
 describe('interpolatePath', () => {
-  ;[
+  it.each([
     {
       name: 'should interpolate the path',
       path: '/users/$id',
@@ -324,68 +324,177 @@ describe('interpolatePath', () => {
         ['@', '+'].map((char) => [encodeURIComponent(char), char]),
       ),
     },
-  ].forEach((exp) => {
-    it(exp.name, () => {
-      const result = interpolatePath({
-        path: exp.path,
-        params: exp.params,
-        decodeCharMap: exp.decodeCharMap,
-      }).interpolatedPath
-      expect(result).toBe(exp.result)
-    })
+    {
+      name: 'should interpolate the path with the splat param at the end',
+      path: '/users/$',
+      params: { _splat: '123' },
+      result: '/users/123',
+    },
+    {
+      name: 'should interpolate the path with a single named path param and the splat param at the end',
+      path: '/users/$username/$',
+      params: { username: 'seancassiere', _splat: '123' },
+      result: '/users/seancassiere/123',
+    },
+    {
+      name: 'should interpolate the path with 2 named path params with the splat param at the end',
+      path: '/users/$username/$id/$',
+      params: { username: 'seancassiere', id: '123', _splat: '456' },
+      result: '/users/seancassiere/123/456',
+    },
+    {
+      name: 'should interpolate the path with multiple named path params with the splat param at the end',
+      path: '/$username/settings/$repo/$id/$',
+      params: {
+        username: 'sean-cassiere',
+        repo: 'my-repo',
+        id: '123',
+        _splat: '456',
+      },
+      result: '/sean-cassiere/settings/my-repo/123/456',
+    },
+    {
+      name: 'should interpolate the path with the splat param containing slashes',
+      path: '/users/$',
+      params: { _splat: 'sean/cassiere' },
+      result: '/users/sean/cassiere',
+    },
+  ])('$name', ({ path, params, decodeCharMap, result }) => {
+    expect(
+      interpolatePath({
+        path,
+        params,
+        decodeCharMap,
+      }).interpolatedPath,
+    ).toBe(result)
   })
 })
 
 describe('matchPathname', () => {
-  it.each([
-    {
-      name: 'should match the root path that start with the basepath',
-      basepath: '/basepath',
-      pathname: '/basepath',
-      matchLocation: {
-        to: '/',
+  describe('basepath matching', () => {
+    it.each([
+      {
+        name: 'should match when the input is the same as the basepath',
+        basepath: '/basepath',
+        input: '/basepath',
+        matchingOptions: {
+          to: '/',
+        },
+        expectedMatchedParams: {},
       },
-      expected: {},
-    },
-    {
-      name: 'should match the path that start with the basepath',
-      basepath: '/basepath',
-      pathname: '/basepath/abc',
-      matchLocation: {
-        to: '/abc',
+      {
+        name: 'should match when the input starts with the basepath and `to` is set to the remaining',
+        basepath: '/basepath',
+        input: '/basepath/abc',
+        matchingOptions: {
+          to: '/abc',
+        },
+        expectedMatchedParams: {},
       },
-      expected: {},
-    },
-    {
-      name: 'should not match the root path that does not start with the basepath',
-      basepath: '/basepath',
-      pathname: '/',
-      matchLocation: {
-        to: '/',
+      {
+        name: 'should not match when the input is `/` and does not start with the basepath',
+        basepath: '/basepath',
+        input: '/',
+        matchingOptions: {
+          to: '/',
+        },
+        expectedMatchedParams: undefined,
       },
-      expected: undefined,
-    },
-    {
-      name: 'should not match the path that does not start with the basepath',
-      basepath: '/basepath',
-      pathname: '/abc',
-      matchLocation: {
-        to: '/abc',
+      {
+        name: 'should not match when the input completely does not start with the basepath',
+        basepath: '/basepath',
+        input: '/abc',
+        matchingOptions: {
+          to: '/abc',
+        },
+        expectedMatchedParams: undefined,
       },
-      expected: undefined,
-    },
-    {
-      name: 'should not match the path that match partial of the basepath',
-      basepath: '/base',
-      pathname: '/basepath/abc',
-      matchLocation: {
-        to: '/abc',
+      {
+        name: 'should not match when the input only partially matches the basepath',
+        basepath: '/base',
+        input: '/basepath/abc',
+        matchingOptions: {
+          to: '/abc',
+        },
+        expectedMatchedParams: undefined,
       },
-      expected: undefined,
-    },
-  ])('$name', ({ basepath, pathname, matchLocation, expected }) => {
-    expect(matchPathname(basepath, pathname, matchLocation)).toStrictEqual(
-      expected,
+    ])(
+      '$name',
+      ({ basepath, input, matchingOptions, expectedMatchedParams }) => {
+        expect(matchPathname(basepath, input, matchingOptions)).toStrictEqual(
+          expectedMatchedParams,
+        )
+      },
     )
+  })
+
+  describe('path param(s) matching', () => {
+    it.each([
+      {
+        name: 'should not match since `to` does not match the input',
+        input: '/',
+        matchingOptions: {
+          to: '/users',
+        },
+        expectedMatchedParams: undefined,
+      },
+      {
+        name: 'should match since `to` matches the input',
+        input: '/users',
+        matchingOptions: {
+          to: '/users',
+        },
+        expectedMatchedParams: {},
+      },
+      {
+        name: 'should match and return the named path params',
+        input: '/users/123',
+        matchingOptions: {
+          to: '/users/$id',
+        },
+        expectedMatchedParams: { id: '123' },
+      },
+      {
+        name: 'should match and return the the splat param',
+        input: '/users/123',
+        matchingOptions: {
+          to: '/users/$',
+        },
+        expectedMatchedParams: {
+          '*': '123',
+          _splat: '123',
+        },
+      },
+      {
+        name: 'should match and return the named path and splat params',
+        input: '/users/123/456',
+        matchingOptions: {
+          to: '/users/$id/$',
+        },
+        expectedMatchedParams: {
+          id: '123',
+          '*': '456',
+          _splat: '456',
+        },
+      },
+      {
+        name: 'should match and return the multiple named path params and splat param',
+        input: '/sean-cassiere/settings/my-repo/123/456',
+        matchingOptions: {
+          to: '/$username/settings/$repo/$id/$',
+        },
+        expectedMatchedParams: {
+          username: 'sean-cassiere',
+          repo: 'my-repo',
+          id: '123',
+          '*': '456',
+          _splat: '456',
+        },
+      },
+    ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
+      expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+        expectedMatchedParams,
+      )
+    })
   })
 })
