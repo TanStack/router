@@ -324,6 +324,41 @@ describe('interpolatePath', () => {
         ['@', '+'].map((char) => [encodeURIComponent(char), char]),
       ),
     },
+    {
+      name: 'should interpolate the path with the splat param at the end',
+      path: '/users/$',
+      params: { _splat: '123' },
+      result: '/users/123',
+    },
+    {
+      name: 'should interpolate the path with a single named path param and the splat param at the end',
+      path: '/users/$username/$',
+      params: { username: 'seancassiere', _splat: '123' },
+      result: '/users/seancassiere/123',
+    },
+    {
+      name: 'should interpolate the path with 2 named path params with the splat param at the end',
+      path: '/users/$username/$id/$',
+      params: { username: 'seancassiere', id: '123', _splat: '456' },
+      result: '/users/seancassiere/123/456',
+    },
+    {
+      name: 'should interpolate the path with multiple named path params with the splat param at the end',
+      path: '/$username/settings/$repo/$id/$',
+      params: {
+        username: 'sean-cassiere',
+        repo: 'my-repo',
+        id: '123',
+        _splat: '456',
+      },
+      result: '/sean-cassiere/settings/my-repo/123/456',
+    },
+    {
+      name: 'should interpolate the path with the splat param containing slashes',
+      path: '/users/$',
+      params: { _splat: 'sean/cassiere' },
+      result: '/users/sean/cassiere',
+    },
   ])('$name', ({ path, params, decodeCharMap, result }) => {
     expect(
       interpolatePath({
