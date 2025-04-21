@@ -1,5 +1,5 @@
 import { json } from '@tanstack/react-start'
-import type { User } from '../../utils/users'
+import type { User } from '~/utils/users'
 
 export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ request }) => {

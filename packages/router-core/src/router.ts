@@ -3070,20 +3070,20 @@ function routeNeedsPreload(route: AnyRoute) {
   return false
 }
 
-interface RouteLike<T = RouteLike<any>> {
+interface RouteLike {
   id: string
   isRoot?: boolean
   path?: string
   fullPath: string
   rank?: number
-  parentRoute?: T
-  children?: Array<T>
+  parentRoute?: RouteLike
+  children?: Array<RouteLike>
   options?: {
     caseSensitive?: boolean
   }
 }
 
-export function processRouteTree<TRouteLike extends RouteLike<TRouteLike>>({
+export function processRouteTree<TRouteLike extends RouteLike>({
   routeTree,
   initRoute,
 }: {
@@ -3116,7 +3116,7 @@ export function processRouteTree<TRouteLike extends RouteLike<TRouteLike>>({
         }
       }
 
-      const children = childRoute.children
+      const children = childRoute.children as Array<TRouteLike>
 
       if (children?.length) {
         recurseRoutes(children)
@@ -3201,7 +3201,7 @@ export function processRouteTree<TRouteLike extends RouteLike<TRouteLike>>({
   return { routesById, routesByPath, flatRoutes }
 }
 
-export function getMatchedRoutes<TRouteLike extends RouteLike<TRouteLike>>({
+export function getMatchedRoutes<TRouteLike extends RouteLike>({
   pathname,
   routePathname,
   basepath,
@@ -3211,7 +3211,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike<TRouteLike>>({
   flatRoutes,
 }: {
   pathname: string
-  routePathname: string | undefined
+  routePathname?: string
   basepath: string
   caseSensitive?: boolean
   routesByPath: Record<string, TRouteLike>
@@ -3251,7 +3251,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike<TRouteLike>>({
   const matchedRoutes: Array<TRouteLike> = [routeCursor]
 
   while (routeCursor.parentRoute) {
-    routeCursor = routeCursor.parentRoute
+    routeCursor = routeCursor.parentRoute as TRouteLike
     matchedRoutes.unshift(routeCursor)
   }
 

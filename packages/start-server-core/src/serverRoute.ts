@@ -27,20 +27,9 @@ export function createServerFileRoute<
   TPath extends RouteConstraints['TPath'],
   TFullPath extends RouteConstraints['TFullPath'],
   TChildren,
->(
-  __?: never,
-  __compiledOpts?: { manifest: ServerRouteManifest },
-): ServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren> {
+>(__?: never): ServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren> {
   return createServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren>(
     undefined,
-    __compiledOpts as ServerRouteOptions<
-      TParentRoute,
-      TId,
-      TPath,
-      TFullPath,
-      undefined,
-      TChildren
-    >,
   )
 }
 
@@ -58,15 +47,18 @@ export interface ServerRouteOptions<
   originalIndex: number
   getParentRoute?: () => TParentRoute
   middleware: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
-  methods: ServerRouteMethods<
-    TParentRoute,
-    TId,
-    TPath,
-    TFullPath,
-    ReadonlyArray<AnyMiddleware>,
-    TChildren
+  methods: Record<
+    string,
+    ServerRouteMethodHandlerFn<
+      TParentRoute,
+      TFullPath,
+      ServerRouteVerb,
+      TMiddlewares,
+      any,
+      any
+    >
   >
-  manifest?: ServerRouteManifest
+  caseSensitive?: boolean
 }
 
 export type ServerRouteManifest = {
@@ -82,32 +74,28 @@ export function createServerRoute<
   TChildren,
 >(
   __?: never,
-  __opts?: ServerRouteOptions<
-    TParentRoute,
-    TId,
-    TPath,
-    TFullPath,
-    undefined,
-    TChildren
+  __opts?: Partial<
+    ServerRouteOptions<
+      TParentRoute,
+      TId,
+      TPath,
+      TFullPath,
+      undefined,
+      TChildren
+    >
   >,
 ): ServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren> {
-  const options = (__opts || {}) as ServerRouteOptions<
-    TParentRoute,
-    TId,
-    TPath,
-    TFullPath,
-    undefined,
-    TChildren
-  >
+  const options = __opts || {}
 
-  const route = {
+  const route: ServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren> = {
     path: '' as TPath,
     id: '' as TId,
     fullPath: '' as TFullPath,
     to: '' as TrimPathRight<TFullPath>,
-    options,
+    options: options as TODO,
     parentRoute: undefined as unknown as TParentRoute,
     _types: {} as TODO,
+    // children: undefined as TChildren,
     middleware: (middlewares: TODO) =>
       createServerRoute(undefined, {
         ...options,
@@ -125,33 +113,8 @@ export function createServerRoute<
       return createServerRoute(undefined, {
         ...__opts,
         methods,
-      } as TODO) as TODO
+      }) as TODO
     },
-    client: new Proxy(
-      {},
-      {
-        get(target, propKey) {
-          return (...args: Array<any>) => {
-            if (typeof propKey === 'string') {
-              const upperPropKey = propKey.toUpperCase()
-              const method = options.manifest?.methods[
-                upperPropKey as keyof typeof options.methods
-              ] as ((...args: Array<any>) => any) | undefined
-              if (method) {
-                return fetch(
-                  new URL(`${options.pathname}/${propKey}`, args[0].url),
-                  {
-                    method: upperPropKey,
-                    ...args[0],
-                  },
-                )
-              }
-            }
-            throw new Error(`Method ${String(propKey)} not found`)
-          }
-        },
-      },
-    ),
     update: (opts) =>
       createServerRoute(undefined, {
         ...options,
@@ -215,11 +178,11 @@ export function createServerRoute<
         route.children = Object.values(children) as TChildren as TODO
       }
 
-      return route
+      return route as any
     },
 
     _addFileTypes: () => route,
-  } as ServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren>
+  }
 
   return route
 }
@@ -312,6 +275,14 @@ export interface ServerRouteWithTypes<
   to: TrimPathRight<TFullPath>
   parentRoute: TParentRoute
   children?: TChildren
+  options: ServerRouteOptions<
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    TMiddlewares,
+    TChildren
+  >
   update: (
     opts: ServerRouteOptions<
       TParentRoute,

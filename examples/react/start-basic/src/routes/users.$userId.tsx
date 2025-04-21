@@ -1,42 +1,15 @@
 import { NotFound } from 'src/components/NotFound'
 import { UserErrorComponent } from 'src/components/UserError'
-import { json } from '@tanstack/react-start'
-import type { User } from 'src/utils/users'
-
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ params, request }) => {
-    console.info(`Fetching users by id=${params.userId}... @`, request.url)
-    try {
-      const res = await fetch(
-        'https://jsonplaceholder.typicode.com/users/' + params.id,
-      )
-      if (!res.ok) {
-        throw new Error('Failed to fetch user')
-      }
-
-      const user = (await res.json()) as User
-
-      return json({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      })
-    } catch (e) {
-      console.error(e)
-      return json({ error: 'User not found' }, { status: 404 })
-    }
-  },
-})
 
 export const Route = createFileRoute({
   loader: async ({ params: { userId } }) => {
     try {
-      const res = await fetch('/api/users/' + userId)
+      const res = await fetch('/users/' + userId)
       if (!res.ok) {
         throw new Error('Unexpected status code')
       }
 
-      const data = (await res.json()) as typeof ServerRoute.methods.get.returns
+      const data = await res.json()
 
       return data
     } catch {

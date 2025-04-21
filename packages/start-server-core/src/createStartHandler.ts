@@ -1,12 +1,16 @@
 import path from 'node:path'
 import { createMemoryHistory } from '@tanstack/history'
 import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
-import { mergeHeaders } from '@tanstack/start-client-core'
-import { getMatchedRoutes, processRouteTree } from '@tanstack/router-core'
+import { json, mergeHeaders } from '@tanstack/start-client-core'
+import {
+  getMatchedRoutes,
+  processRouteTree,
+  rootRouteId,
+} from '@tanstack/router-core'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import { serverFunctionsHandler } from './server-functions-handler'
 import { getStartManifest } from './router-manifest'
-import type { AnyServerRoute } from './serverRoute'
+import type { AnyServerRoute, AnyServerRouteWithTypes } from './serverRoute'
 import type { EventHandlerResponse, H3Event } from 'h3'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { HandlerCallback } from './handlerCallback'
@@ -84,38 +88,25 @@ export function createStartHandler<
       // If we have a server route tree, then we try matching to see if we have a
       // server route that matches the request.
       if (serverRouteTreeModule) {
-        const serverRoute = createServerRouter({
-          request,
-          url,
+        const result = await handleServerRoutes({
           routeTree: serverRouteTreeModule.routeTree,
+          request,
         })
 
-        // We've found a server route that matches the request, so we can call it.
-        // TODO: Get the input type-signature correct
-        // TODO: Perform the middlewares?
-        // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
-        // TODO: What happens when its a relative fetch? ie. `loader() { return fetch('/api/users') }`
-        /**
-         * If we are patching undici, to solve the relative fetch issue, then this would be the code needed.
-         * ```sh
-         * pnpm add undici
-         * ```
-         *
-         * ```ts
-         * import { setGlobalOrigin } from 'undici'
-         *
-         * setGlobalOrigin('http://localhost:3000') // custom logic can be added here to get the origin
-         * using getGlobalOrigin()
-         * ```
-         */
-        if (serverRoute) {
-          return serverRoute.handler({
-            context: {}, // TODO: Get this should be accumulated context for server routes
-            request,
-            params: serverRoute.params,
-            pathname: url.pathname, // TODO: Should this be without the basepath?
-          })
+        if (result) {
+          return result
         }
+      }
+
+      if (!request.headers.get('Accept')?.includes('text/html')) {
+        return json(
+          {
+            error: 'Only HTML requests are supported here',
+          },
+          {
+            status: 500,
+          },
+        )
       }
 
       // If no Server Routes were found, so fallback to normal SSR matching using
@@ -151,13 +142,11 @@ export function createStartHandler<
   }
 }
 
-function createServerRouter({
+async function handleServerRoutes({
   routeTree,
-  url,
   request,
 }: {
-  routeTree: AnyServerRoute
-  url: URL
+  routeTree: AnyServerRouteWithTypes
   request: Request
 }) {
   const { flatRoutes, routesById, routesByPath } = processRouteTree({
@@ -169,43 +158,60 @@ function createServerRouter({
     },
   })
 
-  const matches = getMatchedRoutes({
-    pathname: url.pathname,
-    routePathname: undefined,
-    basepath: '/', // TODO: Get this from the router? or from Vite/Nitro?
-    caseSensitive: true,
-    routesByPath,
-    routesById,
-    flatRoutes,
+  const url = new URL(request.url)
+  const pathname = url.pathname
+
+  const history = createMemoryHistory({
+    initialEntries: [pathname],
   })
 
-  console.debug(
-    '[createStartHandler.createServerRouter] matches.routeParams\n',
-    matches.routeParams,
-  )
-  console.debug(
-    '[createStartHandler.createServerRouter] matches.foundRoute\n',
-    matches.foundRoute,
-  )
-  console.debug(
-    '[createStartHandler.createServerRouter] matches.matchedRoutes\n',
-    matches.matchedRoutes,
-  )
+  const { matchedRoutes, foundRoute, routeParams } =
+    getMatchedRoutes<AnyServerRouteWithTypes>({
+      pathname: history.location.pathname,
+      basepath: '/',
+      caseSensitive: true,
+      routesByPath,
+      routesById,
+      flatRoutes,
+    })
 
-  if (!matches.foundRoute) {
-    return undefined
+  if (foundRoute && foundRoute.id !== rootRouteId) {
+    // We've found a server route that matches the request, so we can call it.
+    // TODO: Get the input type-signature correct
+    // TODO: Perform the middlewares?
+    // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
+    // TODO: What happens when its a relative fetch? ie. `loader() { return fetch('/api/users') }`
+    /**
+     * If we are patching undici, to solve the relative fetch issue, then this would be the code needed.
+     * ```sh
+     * pnpm add undici
+     * ```
+     *
+     * ```ts
+     * import { setGlobalOrigin } from 'undici'
+     *
+     * setGlobalOrigin('http://localhost:3000') // custom logic can be added here to get the origin
+     * using getGlobalOrigin()
+     * ```
+     */
+
+    const method = Object.keys(foundRoute.options.methods).find(
+      (method) => method.toLowerCase() === request.method.toLowerCase(),
+    )
+
+    if (method) {
+      const handler = foundRoute.options.methods[method]
+
+      if (handler) {
+        return await handler({
+          request,
+          context: {},
+          params: routeParams,
+          pathname: history.location.pathname,
+        })
+      }
+    }
   }
 
-  const route = matches.foundRoute
-  const method = request.method.toUpperCase()
-
-  // TODO: Need to get the types correct here
-  // @ts-expect-error
-  const routeHandler = route.options?.methods?.[method]
-
-  if (!routeHandler) {
-    return undefined
-  }
-
-  return { handler: routeHandler, params: matches.routeParams }
+  return
 }
