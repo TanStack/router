@@ -8,7 +8,7 @@ import { nitroPlugin } from './nitro/nitro-plugin.js'
 import { startManifestPlugin } from './routesManifestPlugin.js'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
 import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/index.js'
-import type { PluginOption } from 'vite'
+import type { PluginOption, Rollup } from 'vite'
 import type { TanStackStartInputConfig, WithReactPlugin } from './schema.js'
 
 export type {
@@ -26,7 +26,10 @@ declare global {
 }
 
 export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
-export const ssrDistDir = 'dist/.tanstack-start/ssr-dist'
+export const ssrEntryFile = 'ssr.mjs'
+
+// this needs to live outside of the TanStackStartVitePlugin since it will be invoked multiple times by vite
+let ssrBundle : Rollup.OutputBundle 
 
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithReactPlugin,
@@ -55,6 +58,7 @@ export function TanStackStartVitePlugin(
         return {
           environments: {
             client: {
+              consumer: 'client',
               build: {
                 manifest: true,
                 rollupOptions: {
@@ -69,14 +73,26 @@ export function TanStackStartVitePlugin(
               },
             },
             server: {
+              consumer: 'server',
               build: {
-                outDir: path.resolve(options.root, ssrDistDir),
+                ssr: true,
+                // we don't write to the file system as the below 'capture-output' plugin will
+                // capture the output and write it to the virtual file system
+                write: false,
                 copyPublicDir: false,
-                emptyOutDir: true,
                 rollupOptions: {
                   output: {
-                    entryFileNames: 'ssr.mjs'
-                  }
+                    entryFileNames: ssrEntryFile
+                  },
+                  plugins: [
+                    {
+                      name: 'capture-output',
+                      generateBundle(options, bundle) {
+                        // TODO can this hook be called more than once?
+                        ssrBundle = bundle
+                      },
+                    },
+                  ]
                 },
                 commonjsOptions: {
                   include: [/node_modules/],
@@ -206,7 +222,7 @@ export default createStartHandler({
       ...options.tsr,
     }),
     viteReact(options.react),
-    nitroPlugin(options),
+    nitroPlugin(options, () => ssrBundle ),
   ]
 }
 
