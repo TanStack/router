@@ -95,6 +95,19 @@ export function createStartHandler<
         // TODO: Perform the middlewares?
         // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
         // TODO: What happens when its a relative fetch? ie. `loader() { return fetch('/api/users') }`
+        /**
+         * If we are patching undici, to solve the relative fetch issue, then this would be the code needed.
+         * ```sh
+         * pnpm add undici
+         * ```
+         *
+         * ```ts
+         * import { setGlobalOrigin } from 'undici'
+         *
+         * setGlobalOrigin('http://localhost:3000') // custom logic can be added here to get the origin
+         * using getGlobalOrigin()
+         * ```
+         */
         if (serverRoute) {
           return serverRoute.handler({
             context: {}, // TODO: Get this should be accumulated context for server routes
