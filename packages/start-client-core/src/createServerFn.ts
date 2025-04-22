@@ -461,20 +461,23 @@ export type ServerFnBaseOptions<
   >
 }
 
+export type ValidatorInputStringify<TValidator> = unknown extends TValidator
+  ? unknown
+  : SerializerStringifyBy<
+      ResolveValidatorInput<TValidator>,
+      Date | undefined | FormData
+    >
+
 export type ValidatorSerializerStringify<TValidator> = Validator<
-  unknown extends TValidator
-    ? unknown
-    : SerializerStringifyBy<
-        ResolveValidatorInput<TValidator>,
-        Date | undefined | FormData
-      >,
+  ValidatorInputStringify<TValidator>,
   any
 >
 
-export type ConstrainValidator<TValidator> = Constrain<
-  TValidator,
-  ValidatorSerializerStringify<TValidator>
->
+export type ConstrainValidator<TValidator> =
+  | (ResolveValidatorInput<TValidator> extends ValidatorInputStringify<TValidator>
+      ? TValidator
+      : never)
+  | ValidatorSerializerStringify<TValidator>
 
 export interface ServerFnMiddleware<
   TMethod extends Method,
