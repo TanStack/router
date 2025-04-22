@@ -629,7 +629,7 @@ test('createMiddleware merging from parent with undefined validator', () => {
 })
 
 test('createMiddleware validator infers unknown for default input type', () => {
-  createMiddleware()
+  createMiddleware({ type: 'function' })
     .validator((input) => {
       expectTypeOf(input).toEqualTypeOf<unknown>()
 
