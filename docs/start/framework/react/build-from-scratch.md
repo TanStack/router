@@ -38,7 +38,7 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
     "module": "ESNext",
     "target": "ES2022",
     "skipLibCheck": true,
-    "strictNullChecks": true,
+    "strictNullChecks": true
   },
 }
 ```
