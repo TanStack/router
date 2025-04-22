@@ -30,6 +30,7 @@ TanStack Start has load of examples to get you started. Pick one of the examples
 - [Convex + Trellaux](../examples/start-convex-trellaux) (start-convex-trellaux)
 - [Supabase](../examples/start-supabase-basic) (start-supabase-basic)
 - [Trellaux](../examples/start-trellaux) (start-trellaux)
+- [WorkOS](../examples/start-workos) (start-workos)
 - [Material UI](../examples/start-material-ui) (start-material-ui)
 
 ### Stackblitz

@@ -23,17 +23,17 @@ Alternatively, you can manually setup the project using the following steps:
 #### Install TanStack Router, Vite Plugin, and the Router Devtools
 
 ```sh
-npm install @tanstack/react-router
-npm install -D @tanstack/router-plugin @tanstack/react-router-devtools
+npm install @tanstack/react-router @tanstack/react-router-devtools
+npm install -D @tanstack/router-plugin
 # or
-pnpm add @tanstack/react-router
-pnpm add -D @tanstack/router-plugin @tanstack/react-router-devtools
+pnpm add @tanstack/react-router @tanstack/react-router-devtools
+pnpm add -D @tanstack/router-plugin
 # or
-yarn add @tanstack/react-router
-yarn add -D @tanstack/router-plugin @tanstack/react-router-devtools
+yarn add @tanstack/react-router @tanstack/react-router-devtools
+yarn add -D @tanstack/router-plugin
 # or
-bun add @tanstack/react-router
-bun add -D @tanstack/router-plugin @tanstack/react-router-devtools
+bun add @tanstack/react-router @tanstack/react-router-devtools
+bun add -D @tanstack/router-plugin
 # or
 deno add npm:@tanstack/react-router npm:@tanstack/router-plugin npm:@tanstack/react-router-devtools
 ```
@@ -49,6 +49,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    // Please make sure that '@tanstack/router-plugin' is passed before '@vitejs/plugin-react'
     TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
     react(),
     // ...,
