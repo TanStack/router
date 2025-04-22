@@ -43,15 +43,9 @@ const fn = createServerFn()
   })
 
 export const ServerRoute = createServerFileRoute().methods((api) => ({
-  GET: api
-    .validator(
-      v.object({
-        search: v.object({ searchPlaceholder: v.literal('searchPlaceholder') }),
-      }),
-    )
-    .handler((ctx) => {
-      return ctx.data
-    }),
+  GET: api.handler(() => {
+    return 'searchPlaceholder'
+  }),
 }))
 
 export const Route = createFileRoute({
@@ -63,17 +57,10 @@ export const Route = createFileRoute({
       queryKey: ['searchPlaceholder'],
       queryFn: () => fn({ data: ctx.deps.search }),
     }),
-    externalSearchQueryOptions: queryOptions({
-      queryKey: ['searchPlaceholder', 'external'],
-      queryFn: () => ServerRoute.client.get({ search: ctx.deps.search }),
-    }),
   }),
   loader: async (opts) => {
     const search = await opts.context.queryClient.ensureQueryData(
       opts.context.searchQueryOptions,
-    )
-    const external = await opts.context.queryClient.ensureQueryData(
-      opts.context.externalSearchQueryOptions,
     )
 
     return {

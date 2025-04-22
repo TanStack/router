@@ -11,8 +11,6 @@
 // Import Routes
 
 import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
-import { serverOnly } from '@tanstack/react-start'
-import type { CreateServerFileRoute } from '@tanstack/react-start'
 import { Route as rootRoute } from './routes/__root'
 import { Route as RelativeRouteImport } from './routes/relative'
 import { Route as LinkPropsRouteImport } from './routes/linkProps'
@@ -136,19 +134,12 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Add type-safety to the createFileRoute & createServerFileRoute function across the route tree
+// Add type-safety to the createFileRoute function across the route tree
 
 declare module './routes/index' {
   const createFileRoute: CreateFileRoute<
     '/',
     FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/',
-    unknown,
     FileRoutesByPath['/']['id'],
     FileRoutesByPath['/']['path'],
     FileRoutesByPath['/']['fullPath']
@@ -162,25 +153,11 @@ declare module './routes/params/route' {
     FileRoutesByPath['/params']['path'],
     FileRoutesByPath['/params']['fullPath']
   >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/params',
-    unknown,
-    FileRoutesByPath['/params']['id'],
-    FileRoutesByPath['/params']['path'],
-    FileRoutesByPath['/params']['fullPath']
-  >
 }
 declare module './routes/search/route' {
   const createFileRoute: CreateFileRoute<
     '/search',
     FileRoutesByPath['/search']['parentRoute'],
-    FileRoutesByPath['/search']['id'],
-    FileRoutesByPath['/search']['path'],
-    FileRoutesByPath['/search']['fullPath']
-  >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/search',
-    unknown,
     FileRoutesByPath['/search']['id'],
     FileRoutesByPath['/search']['path'],
     FileRoutesByPath['/search']['fullPath']
@@ -194,25 +171,11 @@ declare module './routes/absolute' {
     FileRoutesByPath['/absolute']['path'],
     FileRoutesByPath['/absolute']['fullPath']
   >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/absolute',
-    unknown,
-    FileRoutesByPath['/absolute']['id'],
-    FileRoutesByPath['/absolute']['path'],
-    FileRoutesByPath['/absolute']['fullPath']
-  >
 }
 declare module './routes/linkProps' {
   const createFileRoute: CreateFileRoute<
     '/linkProps',
     FileRoutesByPath['/linkProps']['parentRoute'],
-    FileRoutesByPath['/linkProps']['id'],
-    FileRoutesByPath['/linkProps']['path'],
-    FileRoutesByPath['/linkProps']['fullPath']
-  >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/linkProps',
-    unknown,
     FileRoutesByPath['/linkProps']['id'],
     FileRoutesByPath['/linkProps']['path'],
     FileRoutesByPath['/linkProps']['fullPath']
@@ -226,13 +189,6 @@ declare module './routes/relative' {
     FileRoutesByPath['/relative']['path'],
     FileRoutesByPath['/relative']['fullPath']
   >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/relative',
-    unknown,
-    FileRoutesByPath['/relative']['id'],
-    FileRoutesByPath['/relative']['path'],
-    FileRoutesByPath['/relative']['fullPath']
-  >
 }
 declare module './routes/params/$paramsPlaceholder' {
   const createFileRoute: CreateFileRoute<
@@ -242,25 +198,11 @@ declare module './routes/params/$paramsPlaceholder' {
     FileRoutesByPath['/params/$paramsPlaceholder']['path'],
     FileRoutesByPath['/params/$paramsPlaceholder']['fullPath']
   >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/params/$paramsPlaceholder',
-    unknown,
-    FileRoutesByPath['/params/$paramsPlaceholder']['id'],
-    FileRoutesByPath['/params/$paramsPlaceholder']['path'],
-    FileRoutesByPath['/params/$paramsPlaceholder']['fullPath']
-  >
 }
 declare module './routes/search/searchPlaceholder' {
   const createFileRoute: CreateFileRoute<
     '/search/searchPlaceholder',
     FileRoutesByPath['/search/searchPlaceholder']['parentRoute'],
-    FileRoutesByPath['/search/searchPlaceholder']['id'],
-    FileRoutesByPath['/search/searchPlaceholder']['path'],
-    FileRoutesByPath['/search/searchPlaceholder']['fullPath']
-  >
-  const createServerFileRoute: CreateServerFileRoute<
-    '/search/searchPlaceholder',
-    unknown,
     FileRoutesByPath['/search/searchPlaceholder']['id'],
     FileRoutesByPath['/search/searchPlaceholder']['path'],
     FileRoutesByPath['/search/searchPlaceholder']['fullPath']
@@ -304,8 +246,6 @@ export interface FileRoutesByFullPath {
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
 }
 
-export interface ServerFileRoutesByFullPath {}
-
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/params': typeof ParamsRouteRouteWithChildren
@@ -316,8 +256,6 @@ export interface FileRoutesByTo {
   '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
 }
-
-export interface ServerFileRoutesByTo {}
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
@@ -330,8 +268,6 @@ export interface FileRoutesById {
   '/params/$paramsPlaceholder': typeof ParamsParamsPlaceholderRoute
   '/search/searchPlaceholder': typeof SearchSearchPlaceholderRoute
 }
-
-export interface ServerFileRoutesById {}
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -388,6 +324,9 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+// @ts-ignore
+import type * as ServerTypes from '../node_modules/.tanstack-start/server-routes/routeTree.gen.ts'
 
 /* ROUTE_MANIFEST_START
 {
