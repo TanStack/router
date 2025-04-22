@@ -61,8 +61,8 @@ test('createServerFileRoute with methods and route middleware context', () => {
     unknown
   > = undefined as any
 
-  const routeMiddleware = createMiddleware().server(({ next }) =>
-    next({ context: { a: 'a' } }),
+  const routeMiddleware = createMiddleware({ type: 'function' }).server(
+    ({ next }) => next({ context: { a: 'a' } }),
   )
 
   const serverFileRoute = createServerFileRoute().middleware([routeMiddleware])
@@ -109,14 +109,14 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
     unknown
   > = undefined as any
 
-  const routeMiddleware = createMiddleware().server(({ next }) =>
-    next({ context: { a: 'a' } }),
+  const routeMiddleware = createMiddleware({ type: 'function' }).server(
+    ({ next }) => next({ context: { a: 'a' } }),
   )
 
   const serverFileRoute = createServerFileRoute().middleware([routeMiddleware])
 
-  const methodMiddleware = createMiddleware().server(({ next }) =>
-    next({ context: { b: 'b' } }),
+  const methodMiddleware = createMiddleware({ type: 'function' }).server(
+    ({ next }) => next({ context: { b: 'b' } }),
   )
 
   const serverRoute = serverFileRoute.methods((r) => ({
@@ -145,9 +145,11 @@ test('createServerFileRoute with a parent middleware context', () => {
     unknown
   > = undefined as any
 
-  const routeMiddleware1 = createMiddleware().server(({ next }) => {
-    return next({ context: { a: 'a' } })
-  })
+  const routeMiddleware1 = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { a: 'a' } })
+    },
+  )
 
   const detailsServerRoute = createDetailsServerFileRoute().middleware([
     routeMiddleware1,
@@ -162,9 +164,11 @@ test('createServerFileRoute with a parent middleware context', () => {
     unknown
   > = undefined as any
 
-  const routeMiddleware2 = createMiddleware().server(({ next }) => {
-    return next({ context: { b: 'b' } })
-  })
+  const routeMiddleware2 = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { b: 'b' } })
+    },
+  )
 
   const detailServerRoute1 = createDetailServerFileRoute()
     .middleware([routeMiddleware2])
@@ -181,9 +185,11 @@ test('createServerFileRoute with a parent middleware context', () => {
       },
     })
 
-  const methodMiddleware = createMiddleware().server(({ next }) => {
-    return next({ context: { c: 'c' } })
-  })
+  const methodMiddleware = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { c: 'c' } })
+    },
+  )
 
   const detailServerRoute2 = createDetailServerFileRoute()
     .middleware([routeMiddleware2])

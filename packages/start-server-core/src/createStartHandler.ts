@@ -86,14 +86,12 @@ export function createStartHandler<
       // If we have a server route tree, then we try matching to see if we have a
       // server route that matches the request.
       if (serverRouteTreeModule) {
-        const result = await handleServerRoutes({
+        const response = await handleServerRoutes({
           routeTree: serverRouteTreeModule.routeTree,
           request,
         })
 
-        if (result) {
-          return result
-        }
+        if (response) return response
       }
 
       const requestAcceptHeader = request.headers.get('Accept') || '*/*'

@@ -729,7 +729,7 @@ export interface ServerRouteMethod<
   TMiddlewares,
   TMethodMiddlewares,
 > {
-  middleware?: Constrain<TMiddlewares, Middleware<any>>
+  middleware?: Constrain<TMiddlewares, Middleware<any, any>>
   handler?: ServerRouteMethodHandlerFn<
     TParentRoute,
     TFullPath,

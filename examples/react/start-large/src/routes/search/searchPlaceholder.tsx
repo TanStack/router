@@ -15,7 +15,7 @@ const loaderResult = v.object({
   searchPlaceholder: v.number(),
 })
 
-const middleware = createMiddleware()
+const middleware = createMiddleware({ type: 'function' })
   .validator(search)
   .client(({ next }) => {
     const context = { client: { searchPlaceholder: 'searchPlaceholder' } }

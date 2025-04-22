@@ -59,21 +59,25 @@ test('createServerFn with validator', () => {
 })
 
 test('createServerFn with middleware and context', () => {
-  const middleware1 = createMiddleware().server(({ next }) => {
-    return next({ context: { a: 'a' } as const })
-  })
+  const middleware1 = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { a: 'a' } as const })
+    },
+  )
 
-  const middleware2 = createMiddleware().server(({ next }) => {
-    return next({ context: { b: 'b' } as const })
-  })
+  const middleware2 = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { b: 'b' } as const })
+    },
+  )
 
-  const middleware3 = createMiddleware()
+  const middleware3 = createMiddleware({ type: 'function' })
     .middleware([middleware1, middleware2])
     .client(({ next }) => {
       return next({ context: { c: 'c' } as const })
     })
 
-  const middleware4 = createMiddleware()
+  const middleware4 = createMiddleware({ type: 'function' })
     .middleware([middleware3])
     .client(({ context, next }) => {
       return next({ sendContext: context })
@@ -112,21 +116,24 @@ test('createServerFn with middleware and context', () => {
 })
 
 describe('createServerFn with middleware and validator', () => {
-  const middleware1 = createMiddleware().validator(
+  const middleware1 = createMiddleware({ type: 'function' }).validator(
     (input: { readonly inputA: 'inputA' }) =>
       ({
         outputA: 'outputA',
       }) as const,
   )
 
-  const middleware2 = createMiddleware().validator(
+  const middleware2 = createMiddleware({ type: 'function' }).validator(
     (input: { readonly inputB: 'inputB' }) =>
       ({
         outputB: 'outputB',
       }) as const,
   )
 
-  const middleware3 = createMiddleware().middleware([middleware1, middleware2])
+  const middleware3 = createMiddleware({ type: 'function' }).middleware([
+    middleware1,
+    middleware2,
+  ])
 
   test(`response: 'data'`, () => {
     const fn = createServerFn({ method: 'GET', response: 'data' })
@@ -221,7 +228,7 @@ describe('createServerFn with middleware and validator', () => {
 })
 
 test('createServerFn overrides properties', () => {
-  const middleware1 = createMiddleware()
+  const middleware1 = createMiddleware({ type: 'function' })
     .validator(
       () =>
         ({
@@ -245,7 +252,7 @@ test('createServerFn overrides properties', () => {
       return next({ sendContext: newContext, context: newContext })
     })
 
-  const middleware2 = createMiddleware()
+  const middleware2 = createMiddleware({ type: 'function' })
     .middleware([middleware1])
     .validator(
       () =>

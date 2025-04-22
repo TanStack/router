@@ -1,8 +1,8 @@
 import { createMiddleware } from '@tanstack/react-start'
 
-export const logMiddleware = createMiddleware()
+export const logMiddleware = createMiddleware({ type: 'function' })
   .middleware([
-    createMiddleware()
+    createMiddleware({ type: 'function' })
       .client(async (ctx) => {
         const clientTime = new Date()
 

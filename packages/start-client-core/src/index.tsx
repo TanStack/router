@@ -45,7 +45,7 @@ export {
   type MiddlewareClientFn,
   type MiddlewareServerFnResult,
   type MiddlewareClient,
-  type MiddlewareServerFnOptions,
+  type MiddlewareServerFnFnOptions as MiddlewareServerFnOptions,
   type MiddlewareServerNextFn,
   type ServerResultWithContext,
 } from './createMiddleware'
