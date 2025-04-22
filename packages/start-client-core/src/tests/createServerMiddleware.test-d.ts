@@ -1,6 +1,7 @@
 import { expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import type { Constrain, Validator } from '@tanstack/router-core'
+import type { ConstrainValidator } from '../createServerFn'
 
 test('createServeMiddleware removes middleware after middleware,', () => {
   const middleware = createMiddleware()
@@ -590,9 +591,7 @@ test('createMiddleware can validate Date', () => {
 
   expectTypeOf(validator)
     .parameter(0)
-    .toEqualTypeOf<
-      Constrain<(input: Date) => { output: 'string' }, Validator<Date, any>>
-    >()
+    .toEqualTypeOf<ConstrainValidator<(input: Date) => { output: 'string' }>>()
 })
 
 test('createMiddleware can validate FormData', () => {
@@ -603,9 +602,22 @@ test('createMiddleware can validate FormData', () => {
   expectTypeOf(validator)
     .parameter(0)
     .toEqualTypeOf<
-      Constrain<
-        (input: FormData) => { output: 'string' },
-        Validator<FormData, any>
-      >
+      ConstrainValidator<(input: FormData) => { output: 'string' }>
     >()
+})
+
+test('createMiddleware validator infers unknown for default input type', () => {
+  createMiddleware()
+    .validator((input) => {
+      expectTypeOf(input).toEqualTypeOf<unknown>()
+
+      if (typeof input === 'number') return 'success' as const
+
+      return 'failed' as const
+    })
+    .server(({ data, next }) => {
+      expectTypeOf(data).toEqualTypeOf<'success' | 'failed'>()
+
+      return next()
+    })
 })
