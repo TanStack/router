@@ -101,7 +101,8 @@ export function createStartHandler<
         }
       }
 
-      if (!request.headers.get('Accept')?.includes('text/html')) {
+      const requestAcceptHeader = request.headers.get('Accept') || 'text/html'
+      if (requestAcceptHeader.includes('text/html')) {
         return json(
           {
             error: 'Only HTML requests are supported here',
