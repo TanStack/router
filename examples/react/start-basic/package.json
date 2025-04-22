@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
-    "start": "vite start"
+    "start": "node .output/server/index.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.116.0",

@@ -1,13 +1,22 @@
 import { createMiddleware, json } from '@tanstack/react-start'
 import type { User } from '~/utils/users'
 
-const userLoggerMiddleware = createMiddleware().server(({ next, request }) => {
-  console.info('Request on /users... @', request.url)
-  return next()
-})
+const userLoggerMiddleware = createMiddleware({ type: 'request' }).server(
+  ({ next, request }) => {
+    console.info('Request on /users... @', request.url)
+    return next()
+  },
+)
+
+const testMiddleware = createMiddleware({ type: 'request' }).server(
+  ({ next, request }) => {
+    console.info('Testing 1, 2, 3!')
+    return next()
+  },
+)
 
 export const ServerRoute = createServerFileRoute()
-  .middleware([userLoggerMiddleware])
+  .middleware([userLoggerMiddleware, testMiddleware])
   .methods({
     GET: async ({ request }) => {
       console.info('Fetching users... @', request.url)

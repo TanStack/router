@@ -25,6 +25,8 @@ import type {
   MiddlewareServerFnResult,
 } from './createMiddleware'
 
+type TODO = any
+
 export function createServerFn<
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType = 'data',
@@ -398,6 +400,7 @@ export type ServerFnReturnType<
 > = TServerFnResponseType extends 'raw'
   ? RawResponse | Promise<RawResponse>
   : Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
+
 export type ServerFn<
   TMethod,
   TServerFnResponseType extends ServerFnResponseType,
@@ -977,7 +980,7 @@ export function serverFnBaseToMiddleware(
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function
-        const result = await options.serverFn?.(ctx)
+        const result = await options.serverFn?.(ctx as TODO)
 
         return next({
           ...ctx,
