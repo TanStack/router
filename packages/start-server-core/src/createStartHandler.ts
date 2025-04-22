@@ -101,8 +101,17 @@ export function createStartHandler<
         }
       }
 
-      const requestAcceptHeader = request.headers.get('Accept') || 'text/html'
-      if (!requestAcceptHeader.includes('text/html')) {
+      const requestAcceptHeader = request.headers.get('Accept') || '*/*'
+      const splitRequestAcceptHeader = requestAcceptHeader.split(',')
+
+      const supportedMimeTypes = ['*/*', 'text/html']
+      const isRouterAcceptSupported = supportedMimeTypes.some((mimeType) =>
+        splitRequestAcceptHeader.some((acceptedMimeType) =>
+          acceptedMimeType.trim().startsWith(mimeType),
+        ),
+      )
+
+      if (!isRouterAcceptSupported) {
         return json(
           {
             error: 'Only HTML requests are supported here',
