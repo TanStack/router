@@ -484,7 +484,29 @@ test('createServerFn can be used as a mutation function', () => {
 })
 
 test('createServerFn validator infers unknown for default input type', () => {
-  createServerFn().validator((input) => {
-    expectTypeOf(input).toEqualTypeOf<unknown>()
-  })
+  const fn = createServerFn()
+    .validator((input) => {
+      expectTypeOf(input).toEqualTypeOf<unknown>()
+
+      if (typeof input === 'number') return 'success' as const
+
+      return 'failed' as const
+    })
+    .handler(({ data }) => {
+      expectTypeOf(data).toEqualTypeOf<'success' | 'failed'>()
+
+      return data
+    })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<
+    | {
+        data?: unknown | undefined
+        headers?: HeadersInit
+        type?: 'static' | 'dynamic'
+        signal?: AbortSignal
+      }
+    | undefined
+  >()
+
+  expectTypeOf(fn()).toEqualTypeOf<Promise<'failed' | 'success'>>()
 })

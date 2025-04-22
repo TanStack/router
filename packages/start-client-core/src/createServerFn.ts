@@ -474,7 +474,7 @@ export type ValidatorSerializerStringify<TValidator> =
 export type ConstrainValidator<TValidator> =
   | (unknown extends TValidator
       ? TValidator
-      : ResolveValidatorInput<TValidator> extends ValidatorSerializerStringify<TValidator>
+      : ResolveValidatorInput<TValidator> extends ValidatorInputStringify<TValidator>
         ? TValidator
         : never)
   | ValidatorSerializerStringify<TValidator>
