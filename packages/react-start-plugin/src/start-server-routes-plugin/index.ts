@@ -508,7 +508,7 @@ FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
 FileRoutesByPath['${routeNode.routePath}']['id'],
 FileRoutesByPath['${routeNode.routePath}']['path'],
 FileRoutesByPath['${routeNode.routePath}']['fullPath'],
-${routeNode.children?.length ? `${routeNode.variableName}RouteChildren` : 'unknown'}RouteChildren
+${routeNode.children?.length ? `${routeNode.variableName}RouteChildren` : 'unknown'}
 >
 }`
       })
