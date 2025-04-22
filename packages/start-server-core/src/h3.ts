@@ -63,6 +63,7 @@ import {
   setResponseHeader as _setResponseHeader,
   setResponseHeaders as _setResponseHeaders,
   setResponseStatus as _setResponseStatus,
+  toWebRequest as _toWebRequest,
   unsealSession as _unsealSession,
   updateSession as _updateSession,
   useSession as _useSession,
@@ -95,46 +96,38 @@ export function defineMiddleware(options: {
   return options
 }
 
-function toWebRequestH3(event: H3Event) {
-  /**
-   * @type {ReadableStream | undefined}
-   */
-  let readableStream: ReadableStream | undefined
+// function toWebRequestH3(event: H3Event) {
+//   /**
+//    * @type {ReadableStream | undefined}
+//    */
+//   let readableStream: ReadableStream | undefined
 
-  const url = getRequestURL(event)
-  const base = {
-    // @ts-ignore Undici option
-    duplex: 'half',
-    method: event.method,
-    headers: event.headers,
-  }
+//   const url = _getRequestURL(event)
+//   const base = {
+//     // @ts-ignore Undici option
+//     duplex: 'half',
+//     method: event.method,
+//     headers: event.headers,
+//   }
 
-  if ((event.node.req as any).body instanceof ArrayBuffer) {
-    return new Request(url, {
-      ...base,
-      body: (event.node.req as any).body,
-    })
-  }
+//   if ((event.node.req as any).body instanceof ArrayBuffer) {
+//     return new Request(url, {
+//       ...base,
+//       body: (event.node.req as any).body,
+//     })
+//   }
 
-  return new Request(url, {
-    ...base,
-    get body() {
-      if (readableStream) {
-        return readableStream
-      }
-      readableStream = getRequestWebStream(event)
-      return readableStream
-    },
-  })
-}
-
-export function toWebRequest(event: H3Event) {
-  event.web ??= {
-    request: toWebRequestH3(event),
-    url: getRequestURL(event),
-  }
-  return event.web.request
-}
+//   return new Request(url, {
+//     ...base,
+//     get body() {
+//       if (readableStream) {
+//         return readableStream
+//       }
+//       readableStream = _getRequestWebStream(event)
+//       return readableStream
+//     },
+//   })
+// }
 
 export {
   H3Error,
@@ -166,6 +159,7 @@ export {
   toNodeListener,
   toPlainHandler,
   toWebHandler,
+  toWebRequest,
   isCorsOriginAllowed,
   isStream,
   createError,
@@ -487,4 +481,12 @@ export const removeResponseHeader = createWrapperFunction(_removeResponseHeader)
 export const getContext = createWrapperFunction(_getContext)
 export const setContext = createWrapperFunction(_setContext)
 export const clearResponseHeaders = createWrapperFunction(_clearResponseHeaders)
-export const getWebRequest = createWrapperFunction(toWebRequest)
+export const getWebRequest = createWrapperFunction(_toWebRequest)
+
+export type RequestHandler = (ctx: {
+  request: Request
+}) => Promise<Response> | Response
+
+export function requestHandler(handler: RequestHandler) {
+  return handler
+}

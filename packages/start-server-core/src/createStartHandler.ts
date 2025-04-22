@@ -1,32 +1,29 @@
 import path from 'node:path'
 import { setGlobalOrigin } from 'undici'
 import { createMemoryHistory } from '@tanstack/history'
-import { eventHandler, getResponseHeaders, toWebRequest } from 'h3'
 import { json, mergeHeaders } from '@tanstack/start-client-core'
 import {
   getMatchedRoutes,
   processRouteTree,
   rootRouteId,
 } from '@tanstack/router-core'
+import { getResponseHeaders, requestHandler } from './h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
-import { serverFunctionsHandler } from './server-functions-handler'
 import { getStartManifest } from './router-manifest'
+import { handleServerAction } from './server-functions-handler'
 import type { AnyServerRoute, AnyServerRouteWithTypes } from './serverRoute'
-import type { EventHandlerResponse, H3Event } from 'h3'
+import type { EventHandlerResponse, RequestHandler } from './h3'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { HandlerCallback } from './handlerCallback'
 
 export type CustomizeStartHandler<
   TRouter extends AnyRouter,
   TResponse extends EventHandlerResponse = EventHandlerResponse,
-> = (cb: HandlerCallback<TRouter, TResponse>) => ReturnType<typeof eventHandler>
+> = (cb: HandlerCallback<TRouter, TResponse>) => RequestHandler
 
-export function getStartResponseHeaders(opts: {
-  event: H3Event
-  router: AnyRouter
-}) {
+export function getStartResponseHeaders(opts: { router: AnyRouter }) {
   let headers = mergeHeaders(
-    getResponseHeaders(opts.event),
+    getResponseHeaders(),
     {
       'Content-Type': 'text/html; charset=UTF-8',
     },
@@ -55,9 +52,7 @@ export function createStartHandler<
   createRouter: () => TRouter
 }): CustomizeStartHandler<TRouter, TResponse> {
   return (cb) => {
-    return eventHandler(async (event) => {
-      const request = toWebRequest(event)
-
+    return requestHandler(async ({ request }) => {
       setGlobalOrigin(getAbsoluteUrl(request))
 
       const url = new URL(request.url)
@@ -73,7 +68,7 @@ export function createStartHandler<
       if (
         href.startsWith(path.join('/', process.env.TSS_SERVER_FN_BASE, '/'))
       ) {
-        return await serverFunctionsHandler(event)
+        return await handleServerAction({ request })
       }
 
       const serverRouteTreeModule = await (async () => {
@@ -143,7 +138,7 @@ export function createStartHandler<
 
       dehydrateRouter(router)
 
-      const responseHeaders = getStartResponseHeaders({ event, router })
+      const responseHeaders = getStartResponseHeaders({ router })
       const response = await cb({
         request,
         router,
@@ -187,9 +182,6 @@ async function handleServerRoutes({
       routesById,
       flatRoutes,
     })
-
-  console.log(history.location.pathname)
-  console.log('matchedRoutes', matchedRoutes)
 
   if (foundRoute && foundRoute.id !== rootRouteId) {
     // We've found a server route that matches the request, so we can call it.

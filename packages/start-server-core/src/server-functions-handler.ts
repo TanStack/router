@@ -3,14 +3,11 @@ import invariant from 'tiny-invariant'
 import { startSerializer } from '@tanstack/start-client-core'
 // @ts-expect-error
 import _serverFnManifest from 'tanstack:server-fn-manifest'
-import { eventHandler, getEvent, getResponseStatus, toWebRequest } from './h3'
-import type { H3Event } from './h3'
+import { getEvent, getResponseStatus, requestHandler } from './h3'
 
 // NOTE: This is a dummy export to silence warnings about
 // only having a default export.
 export const dummy = 2
-
-export const serverFunctionsHandler = eventHandler(handleServerAction)
 
 const serverFnManifest = _serverFnManifest as Record<
   string,
@@ -20,16 +17,6 @@ const serverFnManifest = _serverFnManifest as Record<
     importer: () => Promise<any>
   }
 >
-
-async function handleServerAction(event: H3Event) {
-  const request = toWebRequest(event)!
-
-  const response = await handleServerRequest({
-    request,
-    event,
-  })
-  return response
-}
 
 function sanitizeBase(base: string | undefined) {
   if (!base) {
@@ -41,17 +28,11 @@ function sanitizeBase(base: string | undefined) {
   return base.replace(/^\/|\/$/g, '')
 }
 
-async function handleServerRequest({
-  request,
-  event,
-}: {
-  request: Request
-  event: H3Event
-}) {
+export const handleServerAction = requestHandler(async ({ request }) => {
   const controller = new AbortController()
   const signal = controller.signal
   const abort = () => controller.abort()
-  event.node.req.on('close', abort)
+  request.signal.addEventListener('abort', abort)
 
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
@@ -269,14 +250,14 @@ async function handleServerRequest({
       })
     }
   })()
-  event.node.req.removeListener('close', abort)
+  request.signal.removeEventListener('abort', abort)
 
   if (isRaw) {
     return response
   }
 
   return response
-}
+})
 
 function redirectOrNotFoundResponse(error: any) {
   const { headers, ...rest } = error

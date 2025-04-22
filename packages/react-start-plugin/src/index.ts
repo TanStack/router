@@ -29,7 +29,7 @@ export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
 export const ssrEntryFile = 'ssr.mjs'
 
 // this needs to live outside of the TanStackStartVitePlugin since it will be invoked multiple times by vite
-let ssrBundle : Rollup.OutputBundle 
+let ssrBundle: Rollup.OutputBundle
 
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithReactPlugin,
@@ -82,7 +82,7 @@ export function TanStackStartVitePlugin(
                 copyPublicDir: false,
                 rollupOptions: {
                   output: {
-                    entryFileNames: ssrEntryFile
+                    entryFileNames: ssrEntryFile,
                   },
                   plugins: [
                     {
@@ -92,12 +92,12 @@ export function TanStackStartVitePlugin(
                         ssrBundle = bundle
                       },
                     },
-                  ]
+                  ],
                 },
                 commonjsOptions: {
                   include: [/node_modules/],
-                },                
-              }
+                },
+              },
             },
           },
           resolve: {
@@ -134,6 +134,7 @@ export function TanStackStartVitePlugin(
       resolveId(id) {
         if (
           [
+            '/~start/server-entry',
             '/~start/default-server-entry',
             '/~start/default-client-entry',
           ].includes(id)
@@ -147,6 +148,18 @@ export function TanStackStartVitePlugin(
         const routerImportPath = JSON.stringify(
           path.resolve(options.root, options.tsr.srcDirectory, 'router'),
         )
+
+        if (id === '/~start/server-entry.tsx') {
+          return `
+import { toWebRequest, eventHandler } from '@tanstack/react-start/server'
+import serverEntry from '${options.serverEntryPath}'
+
+export default eventHandler(function startEntry(event) {
+  const request = toWebRequest(event)
+  return serverEntry({ request })
+})
+`
+        }
 
         if (id === '/~start/default-client-entry.tsx') {
           return `
@@ -222,7 +235,7 @@ export default createStartHandler({
       ...options.tsr,
     }),
     viteReact(options.react),
-    nitroPlugin(options, () => ssrBundle ),
+    nitroPlugin(options, () => ssrBundle),
   ]
 }
 

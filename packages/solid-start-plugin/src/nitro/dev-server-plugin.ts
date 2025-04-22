@@ -43,7 +43,9 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
 
         viteDevServer.middlewares.use(async (req, res) => {
           const event = createEvent(req, res)
-          const serverEnv = viteDevServer.environments['server'] as Environment
+          const serverEnv = viteDevServer.environments['server'] as
+            | undefined
+            | Environment
 
           try {
             if (!serverEnv || !isRunnableDevEnvironment(serverEnv)) {

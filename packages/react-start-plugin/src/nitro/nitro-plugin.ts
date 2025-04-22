@@ -39,7 +39,7 @@ export function nitroPlugin(
               ssr: true,
               sourcemap: true,
               rollupOptions: {
-                input: options.serverEntryPath,
+                input: '~start/server-entry',
               },
             },
           } satisfies EnvironmentOptions
