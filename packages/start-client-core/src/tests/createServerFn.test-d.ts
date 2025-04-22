@@ -2,6 +2,7 @@ import { describe, expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
 import type { Constrain, Validator } from '@tanstack/router-core'
+import type { ConstrainValidator } from '../createServerFn'
 
 test('createServerFn method with autocomplete', () => {
   createServerFn().handler((options) => {
@@ -395,9 +396,7 @@ test('createServerFn can validate Date', () => {
 
   expectTypeOf(validator)
     .parameter(0)
-    .toEqualTypeOf<
-      Constrain<(input: Date) => { output: 'string' }, Validator<Date, any>>
-    >()
+    .toEqualTypeOf<ConstrainValidator<(input: Date) => { output: 'string' }>>()
 })
 
 test('createServerFn can validate FormData', () => {
@@ -408,10 +407,7 @@ test('createServerFn can validate FormData', () => {
   expectTypeOf(validator)
     .parameter(0)
     .toEqualTypeOf<
-      Constrain<
-        (input: FormData) => { output: 'string' },
-        Validator<FormData, any>
-      >
+      ConstrainValidator<(input: FormData) => { output: 'string' }>
     >()
 })
 
@@ -485,4 +481,32 @@ test('createServerFn can be used as a mutation function', () => {
   ) => {}
 
   useMutation(serverFn)
+})
+
+test('createServerFn validator infers unknown for default input type', () => {
+  const fn = createServerFn()
+    .validator((input) => {
+      expectTypeOf(input).toEqualTypeOf<unknown>()
+
+      if (typeof input === 'number') return 'success' as const
+
+      return 'failed' as const
+    })
+    .handler(({ data }) => {
+      expectTypeOf(data).toEqualTypeOf<'success' | 'failed'>()
+
+      return data
+    })
+
+  expectTypeOf(fn).parameter(0).toEqualTypeOf<
+    | {
+        data?: unknown | undefined
+        headers?: HeadersInit
+        type?: 'static' | 'dynamic'
+        signal?: AbortSignal
+      }
+    | undefined
+  >()
+
+  expectTypeOf(fn()).toEqualTypeOf<Promise<'failed' | 'success'>>()
 })
