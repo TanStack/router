@@ -30,7 +30,7 @@ npm init -y
 
 We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.json` file with at least the following settings:
 
-```jsonc
+```json
 {
   "compilerOptions": {
     "jsx": "react-jsx",
@@ -38,8 +38,8 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
     "module": "ESNext",
     "target": "ES2022",
     "skipLibCheck": true,
-    "strictNullChecks": true,
-  },
+    "strictNullChecks": true
+  }
 }
 ```
 

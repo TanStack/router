@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-start-client",
-  "version": "1.116.2",
+  "version": "1.117.0",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",

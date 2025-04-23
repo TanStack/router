@@ -678,7 +678,15 @@ export type AnyRouterWithContext<TContext> = RouterCore<
 export type AnyRouter = RouterCore<any, any, any, any, any>
 
 export interface ViewTransitionOptions {
-  types: Array<string>
+  types:
+    | Array<string>
+    | ((locationChangeInfo: {
+        fromLocation?: ParsedLocation
+        toLocation: ParsedLocation
+        pathChanged: boolean
+        hrefChanged: boolean
+        hashChanged: boolean
+      }) => Array<string>)
 }
 
 export function defaultSerializeError(err: unknown) {
@@ -2055,9 +2063,22 @@ export class RouterCore<
         typeof shouldViewTransition === 'object' &&
         this.isViewTransitionTypesSupported
       ) {
+        const next = this.latestLocation
+        const prevLocation = this.state.resolvedLocation
+
+        const resolvedViewTransitionTypes =
+          typeof shouldViewTransition.types === 'function'
+            ? shouldViewTransition.types(
+                getLocationChangeInfo({
+                  resolvedLocation: prevLocation,
+                  location: next,
+                }),
+              )
+            : shouldViewTransition.types
+
         startViewTransitionParams = {
           update: fn,
-          types: shouldViewTransition.types,
+          types: resolvedViewTransitionTypes,
         }
       } else {
         startViewTransitionParams = fn
