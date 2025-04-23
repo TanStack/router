@@ -2183,20 +2183,19 @@ export class RouterCore<
         const next = this.latestLocation
         const prevLocation = this.state.resolvedLocation
 
-        let types = shouldViewTransition.types
-
-        if (typeof types === 'function') {
-          types = types(
-            getLocationChangeInfo({
-              resolvedLocation: prevLocation,
-              location: next,
-            }),
-          )
-        }
+        const resolvedViewTransitionTypes =
+          typeof shouldViewTransition.types === 'function'
+            ? shouldViewTransition.types(
+                getLocationChangeInfo({
+                  resolvedLocation: prevLocation,
+                  location: next,
+                }),
+              )
+            : shouldViewTransition.types
 
         startViewTransitionParams = {
           update: fn,
-          types,
+          types: resolvedViewTransitionTypes,
         }
       } else {
         startViewTransitionParams = fn
