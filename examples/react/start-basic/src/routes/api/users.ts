@@ -8,15 +8,22 @@ const userLoggerMiddleware = createMiddleware({ type: 'request' }).server(
   },
 )
 
-const testMiddleware = createMiddleware({ type: 'request' }).server(
+const testParentMiddleware = createMiddleware({ type: 'request' }).server(
   ({ next, request }) => {
-    console.info('Testing 1, 2, 3!')
+    console.info('Testing parent middleware...')
     return next()
   },
 )
 
+const testMiddleware = createMiddleware({ type: 'request' })
+  .middleware([testParentMiddleware])
+  .server(({ next, request }) => {
+    console.info('Testing 1, 2, 3!')
+    return next()
+  })
+
 export const ServerRoute = createServerFileRoute()
-  .middleware([userLoggerMiddleware, testMiddleware])
+  .middleware([testMiddleware, userLoggerMiddleware, testParentMiddleware])
   .methods({
     GET: async ({ request }) => {
       console.info('Fetching users... @', request.url)

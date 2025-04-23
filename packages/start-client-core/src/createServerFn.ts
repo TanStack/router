@@ -217,7 +217,7 @@ export function createServerFn<
   }
 }
 
-async function executeMiddleware(
+export async function executeMiddleware(
   middlewares: Array<AnyMiddleware>,
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,

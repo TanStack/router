@@ -1,7 +1,12 @@
 import path from 'node:path'
 import { setGlobalOrigin } from 'undici'
 import { createMemoryHistory } from '@tanstack/history'
-import { json, mergeHeaders } from '@tanstack/start-client-core'
+import {
+  executeMiddleware,
+  flattenMiddlewares,
+  json,
+  mergeHeaders,
+} from '@tanstack/start-client-core'
 import {
   getMatchedRoutes,
   processRouteTree,
@@ -11,15 +16,15 @@ import { getResponseHeaders, requestHandler } from './h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
+import type { Method } from '@tanstack/start-client-core'
 import type { AnyServerRoute, AnyServerRouteWithTypes } from './serverRoute'
-import type { EventHandlerResponse, RequestHandler } from './h3'
+import type { RequestHandler } from './h3'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { HandlerCallback } from './handlerCallback'
 
-export type CustomizeStartHandler<
-  TRouter extends AnyRouter,
-  TResponse extends EventHandlerResponse = EventHandlerResponse,
-> = (cb: HandlerCallback<TRouter, TResponse>) => RequestHandler
+export type CustomizeStartHandler<TRouter extends AnyRouter> = (
+  cb: HandlerCallback<TRouter>,
+) => RequestHandler
 
 export function getStartResponseHeaders(opts: { router: AnyRouter }) {
   let headers = mergeHeaders(
@@ -43,14 +48,11 @@ export function getStartResponseHeaders(opts: { router: AnyRouter }) {
   return headers
 }
 
-export function createStartHandler<
-  TRouter extends AnyRouter,
-  TResponse extends EventHandlerResponse = EventHandlerResponse,
->({
+export function createStartHandler<TRouter extends AnyRouter>({
   createRouter,
 }: {
   createRouter: () => TRouter
-}): CustomizeStartHandler<TRouter, TResponse> {
+}): CustomizeStartHandler<TRouter> {
   return (cb) => {
     return requestHandler(async ({ request }) => {
       setGlobalOrigin(getAbsoluteUrl(request))
@@ -86,7 +88,7 @@ export function createStartHandler<
       // If we have a server route tree, then we try matching to see if we have a
       // server route that matches the request.
       if (serverRouteTreeModule) {
-        const response = await handleServerRoutes({
+        const [matchedRoutes, response] = await handleServerRoutes({
           routeTree: serverRouteTreeModule.routeTree,
           request,
         })
@@ -181,6 +183,8 @@ async function handleServerRoutes({
       flatRoutes,
     })
 
+  let response: Response | undefined
+
   if (foundRoute && foundRoute.id !== rootRouteId) {
     // We've found a server route that matches the request, so we can call it.
     // TODO: Get the input type-signature correct
@@ -195,7 +199,21 @@ async function handleServerRoutes({
       const handler = foundRoute.options.methods[method]
 
       if (handler) {
-        return await handler({
+        const middlewares = flattenMiddlewares(
+          matchedRoutes.flatMap((r) => r.options.middleware).filter(Boolean),
+        )
+
+        // TODO: This is starting to feel too much like a server function
+        // Do generalize the existing middleware execution? Or do we need to
+        // build a new middleware execution system for server routes?
+        executeMiddleware(middlewares, 'server', {
+          method: request.method as Method,
+          data: {},
+          type: 'dynamic',
+          functionId: foundRoute.id,
+        })
+
+        response = await handler({
           request,
           context: {},
           params: routeParams,
@@ -205,7 +223,10 @@ async function handleServerRoutes({
     }
   }
 
-  return
+  // We return the matched routes too so if
+  // the app router happens to match the same path,
+  // it can use any request middleware from server routes
+  return [matchedRoutes, response] as const
 }
 
 function getAbsoluteUrl(
