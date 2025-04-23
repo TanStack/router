@@ -311,7 +311,11 @@ async function generator(config: Config, root: string) {
       }
     }
 
-    if (!routeCode.includes('export const ServerRoute')) {
+    if (
+      !routeCode
+        .split('\n')
+        .some((line) => line.trim().startsWith('export const ServerRoute'))
+    ) {
       return
     }
 

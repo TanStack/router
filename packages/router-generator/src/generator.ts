@@ -242,9 +242,11 @@ export async function generator(config: Config, root: string) {
         }
       } else {
         // Check if the route file has a Route export
-        const hasRouteExport = routeCode.includes('export const Route')
-
-        if (!hasRouteExport) {
+        if (
+          !routeCode
+            .split('\n')
+            .some((line) => line.trim().startsWith('export const Route'))
+        ) {
           return
         }
 
