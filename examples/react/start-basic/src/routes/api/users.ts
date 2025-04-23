@@ -5,6 +5,7 @@ const userLoggerMiddleware = createMiddleware({ type: 'request' }).server(
   async ({ next, request }) => {
     console.info('In: /users')
     const result = await next()
+    result.response.headers.set('x-users', 'true')
     console.info('Out: /users')
     return result
   },
@@ -14,6 +15,7 @@ const testParentMiddleware = createMiddleware({ type: 'request' }).server(
   async ({ next, request }) => {
     console.info('In: testParentMiddleware')
     const result = await next()
+    result.response.headers.set('x-test-parent', 'true')
     console.info('Out: testParentMiddleware')
     return result
   },
@@ -24,6 +26,15 @@ const testMiddleware = createMiddleware({ type: 'request' })
   .server(async ({ next, request }) => {
     console.info('In: testMiddleware')
     const result = await next()
+    result.response.headers.set('x-test', 'true')
+
+    // if (Math.random() > 0.5) {
+    //   throw new Response(null, {
+    //     status: 302,
+    //     headers: { Location: 'https://www.google.com' },
+    //   })
+    // }
+
     console.info('Out: testMiddleware')
     return result
   })

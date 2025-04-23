@@ -8,6 +8,7 @@ import {
 } from '@tanstack/start-client-core'
 import {
   getMatchedRoutes,
+  isRedirect,
   processRouteTree,
   rootRouteId,
 } from '@tanstack/router-core'
@@ -245,19 +246,44 @@ function executeMiddleware(middlewares: TODO, ctx: TODO) {
     const result = await middleware({
       ...ctx,
       // Allow the middleware to call the next middleware in the chain
-      next: (nextCtx: TODO) => {
+      next: async (nextCtx: TODO) => {
         // Allow the caller to extend the context for the next middleware
-        return next({ ...ctx, ...nextCtx })
+        const nextResult = await next({ ...ctx, ...nextCtx })
+
+        // Merge the result into the context\
+        return Object.assign(ctx, handleCtxResult(nextResult))
       },
       // Allow the middleware result to extend the return context
+    }).catch((err: TODO) => {
+      if (isSpecialResponse(err)) {
+        return {
+          response: err,
+        }
+      }
+
+      throw err
     })
 
     // Merge the middleware result into the context, just in case it
     // returns a partial context
-    return Object.assign(ctx, result)
+    return Object.assign(ctx, handleCtxResult(result))
   }
 
-  return next(ctx)
+  return handleCtxResult(next(ctx))
+}
+
+function handleCtxResult(result: TODO) {
+  if (isSpecialResponse(result)) {
+    return {
+      response: result,
+    }
+  }
+
+  return result
+}
+
+function isSpecialResponse(err: TODO) {
+  return err instanceof Response || isRedirect(err)
 }
 
 function getAbsoluteUrl(
