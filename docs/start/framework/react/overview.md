@@ -89,9 +89,9 @@ TanStack works closely with our partners to provide the best possible developer 
 - **Neon**
   <a href="https://neon.tech?utm_source=tanstack" alt="Neon Logo">
   <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-dark.svg" style="height: 40px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-light.svg" style="height: 40px;">
-  <img alt="Neon logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-light.svg" style="height: 40px;">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-dark.svg" style="height: 60px;">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-light.svg" style="height: 60px;">
+  <img alt="Neon logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-light.svg" style="height: 60px;">
   </picture>
   </a>
   A serverless, autoscaling Postgres solution purpose-built for modern full-stack apps. Neon offers rich integration opportunities with TanStack Start, including server functions and database-backed routing. Together, we’re simplifying the database experience for developers using TanStack.
