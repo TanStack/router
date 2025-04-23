@@ -2,7 +2,6 @@ import path from 'node:path'
 import { setGlobalOrigin } from 'undici'
 import { createMemoryHistory } from '@tanstack/history'
 import {
-  executeMiddleware,
   flattenMiddlewares,
   json,
   mergeHeaders,
@@ -16,11 +15,12 @@ import { getResponseHeaders, requestHandler } from './h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
-import type { Method } from '@tanstack/start-client-core'
 import type { AnyServerRoute, AnyServerRouteWithTypes } from './serverRoute'
 import type { RequestHandler } from './h3'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { HandlerCallback } from './handlerCallback'
+
+type TODO = any
 
 export type CustomizeStartHandler<TRouter extends AnyRouter> = (
   cb: HandlerCallback<TRouter>,
@@ -201,24 +201,21 @@ async function handleServerRoutes({
       if (handler) {
         const middlewares = flattenMiddlewares(
           matchedRoutes.flatMap((r) => r.options.middleware).filter(Boolean),
-        )
+        ).map((d) => d.options.server)
+
+        middlewares.push(handlerToMiddleware(handler) as TODO)
 
         // TODO: This is starting to feel too much like a server function
         // Do generalize the existing middleware execution? Or do we need to
         // build a new middleware execution system for server routes?
-        executeMiddleware(middlewares, 'server', {
-          method: request.method as Method,
-          data: {},
-          type: 'dynamic',
-          functionId: foundRoute.id,
-        })
-
-        response = await handler({
+        const ctx = await executeMiddleware(middlewares, {
           request,
           context: {},
           params: routeParams,
           pathname: history.location.pathname,
         })
+
+        response = ctx.response
       }
     }
   }
@@ -227,6 +224,40 @@ async function handleServerRoutes({
   // the app router happens to match the same path,
   // it can use any request middleware from server routes
   return [matchedRoutes, response] as const
+}
+
+function handlerToMiddleware(
+  handler: AnyServerRouteWithTypes['options']['methods'][string],
+) {
+  return async ({ next, ...rest }: TODO) => ({
+    response: await handler(rest),
+  })
+}
+
+function executeMiddleware(middlewares: TODO, ctx: TODO) {
+  let index = -1
+
+  const next = async (ctx: TODO) => {
+    index++
+    const middleware = middlewares[index]
+    if (!middleware) return ctx
+
+    const result = await middleware({
+      ...ctx,
+      // Allow the middleware to call the next middleware in the chain
+      next: (nextCtx: TODO) => {
+        // Allow the caller to extend the context for the next middleware
+        return next({ ...ctx, ...nextCtx })
+      },
+      // Allow the middleware result to extend the return context
+    })
+
+    // Merge the middleware result into the context, just in case it
+    // returns a partial context
+    return Object.assign(ctx, result)
+  }
+
+  return next(ctx)
 }
 
 function getAbsoluteUrl(
