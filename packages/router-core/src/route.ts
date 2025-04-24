@@ -567,6 +567,7 @@ export interface Route<
   fullPath: TFullPath
   path: TPath
   id: TId
+  ssr: boolean | 'data-only'
   parentRoute: TParentRoute
   children?: TChildren
   types: RouteTypes<
@@ -1309,7 +1310,7 @@ export class BaseRoute<
   private _path!: TPath
   private _fullPath!: TFullPath
   private _to!: TrimPathRight<TFullPath>
-  private _ssr!: boolean
+  private _ssr!: boolean | 'data-only'
 
   public get to() {
     return this._to

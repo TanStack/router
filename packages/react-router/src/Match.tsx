@@ -3,6 +3,7 @@ import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
   createControlledPromise,
+  createSsrError,
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
@@ -57,7 +58,9 @@ export const Match = React.memo(function MatchImpl({
     (!route.isRoot || route.options.wrapInSuspense) &&
     (route.options.wrapInSuspense ??
       PendingComponent ??
-      (route.options.errorComponent as any)?.preload)
+      ((route.options.errorComponent as any)?.preload ||
+        !route.ssr ||
+        route.ssr === 'data-only'))
       ? React.Suspense
       : SafeFragment
 
@@ -222,6 +225,10 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     throw router.getMatch(match.id)?.loadPromise
   }
 
+  if (router.isServer && (!route.ssr || route.ssr === 'data-only')) {
+    throw createSsrError()
+  }
+
   if (match.status === 'error') {
     // If we're on the server, we need to use React's new and super
     // wonky api for throwing errors from a server side render inside
@@ -271,6 +278,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         }, pendingMinMs)
       }
     }
+
     throw router.getMatch(match.id)?.loadPromise
   }
 

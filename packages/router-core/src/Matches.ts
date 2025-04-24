@@ -155,6 +155,7 @@ export interface RouteMatch<
   staticData: StaticDataRouteOption
   minPendingPromise?: ControlledPromise<void>
   pendingTimeout?: ReturnType<typeof setTimeout>
+  dehydrated?: boolean
 }
 
 export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<

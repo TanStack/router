@@ -2,6 +2,8 @@ import { PassThrough } from 'node:stream'
 import { isbot } from 'isbot'
 import ReactDOMServer from 'react-dom/server'
 
+import { isSsrError } from '@tanstack/router-core'
+
 import {
   defineHandlerCallback,
   transformPipeableStreamWithRouter,
@@ -54,12 +56,16 @@ export const defaultStreamHandler = defineHandlerCallback(
                   },
                 }),
             onError: (error, info) => {
-              console.error('Error in renderToPipeableStream:', error, info)
+              if (!isSsrError(error)) {
+                console.error('Error in renderToPipeableStream:', error, info)
+              }
             },
           },
         )
       } catch (e) {
-        console.error('Error in renderToPipeableStream:', e)
+        if (!isSsrError(e)) {
+          console.error('Error in renderToPipeableStream:', e)
+        }
       }
 
       const responseStream = transformPipeableStreamWithRouter(

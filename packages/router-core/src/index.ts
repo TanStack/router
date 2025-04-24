@@ -410,3 +410,5 @@ export type {
   ValidateUseSearchResult,
   ValidateUseParamsResult,
 } from './typePrimitives'
+
+export { createSsrError, isSsrError } from './ssr-error'

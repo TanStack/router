@@ -24,5 +24,5 @@ const courses = [{
 }];
 export const Route = createFileRoute('/')({
   loader: lazyFn($$splitLoaderImporter, 'loader'),
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)
+  component: lazyRouteComponent($$splitComponentImporter, 'component')
 });

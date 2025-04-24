@@ -370,3 +370,5 @@ export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent, useTags } from './HeadContent'
 export { Scripts } from './Scripts'
+
+export { createSsrError, isSsrError } from '@tanstack/router-core'

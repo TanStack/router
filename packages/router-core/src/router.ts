@@ -2320,6 +2320,26 @@ export class RouterCore<
       }
     }
 
+    const shouldSkipLoader = (matchId: string) => {
+      const match = this.getMatch(matchId)!
+      const route = this.looseRoutesById[match.routeId]!
+
+      // Check if any parent route has ssr: false
+      const parentMatches = matches.slice(
+        0,
+        matches.findIndex((m) => m.id === matchId),
+      )
+
+      const isNonSsr =
+        !route.ssr ||
+        parentMatches.some((m) => {
+          const parentRoute = this.looseRoutesById[m.routeId]!
+          return !parentRoute.ssr
+        })
+
+      return (this.isServer && isNonSsr) || (!this.isServer && match.dehydrated)
+    }
+
     try {
       await new Promise<void>((resolveAll, rejectAll) => {
         ;(async () => {
@@ -2372,6 +2392,10 @@ export class RouterCore<
 
               const route = this.looseRoutesById[routeId]!
 
+              if (shouldSkipLoader(matchId)) {
+                continue
+              }
+
               const pendingMs =
                 route.options.pendingMs ?? this.options.defaultPendingMs
 
@@ -2388,7 +2412,9 @@ export class RouterCore<
                   (this.options as any)?.defaultPendingComponent)
               )
 
-              let executeBeforeLoad = true
+              // By default, execute the beforeLoad if the match is not dehydrated
+              // We'll unset this after the loader skips down below
+              let executeBeforeLoad = !existingMatch.dehydrated
               if (
                 // If we are in the middle of a load, either of these will be present
                 // (not to be confused with `loadPromise`, which is always defined)
@@ -2536,11 +2562,17 @@ export class RouterCore<
             validResolvedMatches.forEach(({ id: matchId, routeId }, index) => {
               matchPromises.push(
                 (async () => {
+                  const route = this.looseRoutesById[routeId]!
                   const { loaderPromise: prevLoaderPromise } =
                     this.getMatch(matchId)!
 
                   let loaderShouldRunAsync = false
                   let loaderIsRunningAsync = false
+
+                  // Do not run the loader if the route is not SSR'able
+                  if (shouldSkipLoader(matchId)) {
+                    return this.getMatch(matchId)!
+                  }
 
                   if (prevLoaderPromise) {
                     await prevLoaderPromise
@@ -2768,6 +2800,7 @@ export class RouterCore<
                       ? prev.loaderPromise
                       : undefined,
                     invalid: false,
+                    dehydrated: false,
                   }))
                   return this.getMatch(matchId)!
                 })(),

@@ -174,4 +174,26 @@ const serializers = [
     // From
     (v) => BigInt(v),
   ),
+  // Infinity
+  createSerializer(
+    // Key
+    'infinity',
+    // Check
+    (v): v is number => v === Infinity || v === -Infinity,
+    // To
+    (v) => (v > 0 ? '+' : '-'),
+    // From
+    (v) => (v === '+' ? Infinity : -Infinity),
+  ),
+  // NaN
+  createSerializer(
+    // Key
+    'nan',
+    // Check
+    (v): v is number => typeof v === 'number' && isNaN(v),
+    // To
+    () => 0,
+    // From
+    () => NaN,
+  ),
 ] as const

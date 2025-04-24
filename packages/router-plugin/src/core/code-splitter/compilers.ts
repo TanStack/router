@@ -277,16 +277,9 @@ export function compileCodeSplitReferenceRoute(
                             ])
                           }
 
-                          // If it's a component, we need to pass the function to check the Route.ssr value
-                          if (key === 'component') {
-                            prop.value = template.expression(
-                              `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr)`,
-                            )()
-                          } else {
-                            prop.value = template.expression(
-                              `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
-                            )()
-                          }
+                          prop.value = template.expression(
+                            `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                          )()
 
                           // If the TSRDummyComponent is not defined, define it
                           if (
