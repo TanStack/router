@@ -12,10 +12,9 @@ import type {
   TrimPathRight,
 } from '@tanstack/router-core'
 import type {
-  AnyMiddleware,
+  AnyFunctionMiddleware,
   AssignAllServerContext,
   JsonResponse,
-  Middleware,
 } from '@tanstack/start-client-core'
 
 type TODO = any
@@ -46,7 +45,7 @@ export interface ServerRouteOptions<
   pathname: TFullPath
   originalIndex: number
   getParentRoute?: () => TParentRoute
-  middleware: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
+  middleware: Constrain<TMiddlewares, ReadonlyArray<AnyFunctionMiddleware>>
   methods: Record<
     string,
     ServerRouteMethodHandlerFn<
@@ -376,7 +375,7 @@ export interface ServerRouteMiddleware<
   TChildren,
 > {
   middleware: <const TNewMiddleware>(
-    middleware: Constrain<TNewMiddleware, ReadonlyArray<AnyMiddleware>>,
+    middleware: Constrain<TNewMiddleware, ReadonlyArray<AnyFunctionMiddleware>>,
   ) => ServerRouteAfterMiddleware<
     TParentRoute,
     TId,
@@ -642,7 +641,10 @@ export interface ServerRouteMethodBuilderMiddleware<
   TMiddlewares,
 > {
   middleware: <const TNewMethodMiddlewares>(
-    middleware: Constrain<TNewMethodMiddlewares, ReadonlyArray<AnyMiddleware>>,
+    middleware: Constrain<
+      TNewMethodMiddlewares,
+      ReadonlyArray<AnyFunctionMiddleware>
+    >,
   ) => ServerRouteMethodBuilderAfterMiddleware<
     TParentRoute,
     TFullPath,
@@ -729,7 +731,7 @@ export interface ServerRouteMethod<
   TMiddlewares,
   TMethodMiddlewares,
 > {
-  middleware?: Constrain<TMiddlewares, Middleware<any, any>>
+  middleware?: Constrain<TMiddlewares, Array<AnyFunctionMiddleware>>
   handler?: ServerRouteMethodHandlerFn<
     TParentRoute,
     TFullPath,

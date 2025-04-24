@@ -1,9 +1,9 @@
-import type { AnyMiddleware } from './createMiddleware'
+import type { AnyFunctionMiddleware } from './createMiddleware'
 
-export const globalMiddleware: Array<AnyMiddleware> = []
+export const globalMiddleware: Array<AnyFunctionMiddleware> = []
 
 export function registerGlobalMiddleware(options: {
-  middleware: Array<AnyMiddleware>
+  middleware: Array<AnyFunctionMiddleware>
 }) {
   globalMiddleware.push(...options.middleware)
 }
