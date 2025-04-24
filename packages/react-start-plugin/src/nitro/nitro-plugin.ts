@@ -29,7 +29,7 @@ export function nitroPlugin(
     devServerPlugin(options),
     {
       name: 'tanstack-vite-plugin-nitro',
-      async configEnvironment(name) {
+      configEnvironment(name) {
         if (name === 'server') {
           return {
             build: {
@@ -70,7 +70,7 @@ export function nitroPlugin(
                 dev: false,
                 // TODO do we need this? should this be made configurable?
                 compatibilityDate: '2024-11-19',
-                logLevel: 0,
+                logLevel: 3,
                 preset: buildPreset,
                 publicAssets: [
                   {
