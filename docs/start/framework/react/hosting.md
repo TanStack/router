@@ -35,6 +35,7 @@ When a TanStack Start application is being deployed, the `server.preset` value i
 
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
+- [`cloudflare-modules`](#cloudflare-workers): Deploy to Cloudflare Workers
 - [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
 - [`node-server`](#nodejs): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
@@ -87,6 +88,53 @@ npm run build --preset vercel
 ```
 
 Deploy you application to Vercel using their one-click deployment process, and you're ready to go!
+
+### Cloudflare Workers
+
+When deploying to Cloudflare Workers, you'll need to complete a few extra steps before your users can start using your app.
+
+1. Installation
+
+First you will need to install `unenv`
+
+```sh
+npm install unenv
+```
+
+Set the `server.preset` value to `cloudflare-modules` in your `app.config.ts` file.
+
+2. Update `app.config.ts`
+
+```ts
+// app.config.ts
+import { defineConfig } from '@tanstack/react-start/config'
+import { cloudflare } from 'unenv'
+
+export default defineConfig({
+  server: {
+    preset: 'cloudflare-modules',
+    unenv: cloudflare,
+  },
+})
+```
+
+3. Add a `wrangler.jsonc` config file
+
+```jsonc
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "your-cloudflare-project-name",
+  "compatibility_date": "2025-04-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./.output/server/index.mjs",
+  "assets": {
+    "directory": "./.output/public/",
+    "binding": "ASSETS"
+  },
+}
+```
+
+Deploy you application to Cloudflare Workers using their one-click deployment process, and you're ready to go!
 
 ### Cloudflare Pages
 
