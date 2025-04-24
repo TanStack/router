@@ -20,20 +20,18 @@ export function createMiddleware<TType extends MiddlewareType>(
     validateClient?: boolean
   },
   __opts?: FunctionMiddlewareOptions<
-    TType,
     unknown,
     undefined,
     undefined,
     undefined,
     ServerFnResponseType
   >,
-): FunctionMiddleware<TType, ServerFnResponseType> {
+): CreateMiddlewareResult<TType> {
   // const resolvedOptions = (__opts || options) as MiddlewareOptions<
   const resolvedOptions = {
     type: 'function',
     ...(__opts ||
       (options as FunctionMiddlewareOptions<
-        TType,
         unknown,
         undefined,
         undefined,
@@ -68,37 +66,29 @@ export function createMiddleware<TType extends MiddlewareType>(
         Object.assign(resolvedOptions, { server }),
       ) as any
     },
-  } as unknown as FunctionMiddleware<TType, ServerFnResponseType>
+  } as unknown as CreateMiddlewareResult<TType>
 }
 
 export type MiddlewareType = 'request' | 'function'
 
+export type CreateMiddlewareResult<TType extends MiddlewareType> =
+  'function' extends TType ? FunctionMiddleware<ServerFnResponseType> : never
+
 export interface FunctionMiddleware<
-  TType,
   TServerFnResponseType extends ServerFnResponseType,
-> extends FunctionMiddlewareAfterMiddleware<
-    TType,
-    unknown,
-    TServerFnResponseType
-  > {
+> extends FunctionMiddlewareAfterMiddleware<unknown, TServerFnResponseType> {
   middleware: <const TNewMiddlewares = undefined>(
     middlewares: Constrain<
       TNewMiddlewares,
       ReadonlyArray<AnyFunctionMiddleware>
     >,
-  ) => FunctionMiddlewareAfterMiddleware<
-    TType,
-    TNewMiddlewares,
-    TServerFnResponseType
-  >
+  ) => FunctionMiddlewareAfterMiddleware<TNewMiddlewares, TServerFnResponseType>
 }
 
 export interface FunctionMiddlewareAfterMiddleware<
-  TType,
   TMiddlewares,
   TServerFnResponseType extends ServerFnResponseType,
 > extends FunctionMiddlewareWithTypes<
-      TType,
       TMiddlewares,
       undefined,
       undefined,
@@ -108,23 +98,16 @@ export interface FunctionMiddlewareAfterMiddleware<
       TServerFnResponseType
     >,
     FunctionMiddlewareServer<
-      TType,
       TMiddlewares,
       undefined,
       undefined,
       undefined,
       TServerFnResponseType
     >,
-    FunctionMiddlewareClient<
-      TType,
-      TMiddlewares,
-      undefined,
-      TServerFnResponseType
-    >,
-    FunctionMiddlewareValidator<TType, TMiddlewares, TServerFnResponseType> {}
+    FunctionMiddlewareClient<TMiddlewares, undefined, TServerFnResponseType>,
+    FunctionMiddlewareValidator<TMiddlewares, TServerFnResponseType> {}
 
 export interface FunctionMiddlewareWithTypes<
-  TType,
   TMiddlewares,
   TValidator,
   TServerContext,
@@ -142,7 +125,6 @@ export interface FunctionMiddlewareWithTypes<
     TClientSendContext
   >
   options: FunctionMiddlewareOptions<
-    TType,
     TMiddlewares,
     TValidator,
     TServerContext,
@@ -222,7 +204,6 @@ export type IntersectAllMiddleware<
   : TAcc
 
 export type AnyFunctionMiddleware = FunctionMiddlewareWithTypes<
-  any,
   any,
   any,
   any,
@@ -319,7 +300,6 @@ export type AssignAllClientSendContext<
     >
 
 export interface FunctionMiddlewareOptions<
-  in out TType,
   in out TMiddlewares,
   in out TValidator,
   in out TServerContext,
@@ -337,7 +317,6 @@ export interface FunctionMiddlewareOptions<
     TServerFnResponseType
   >
   server?: FunctionMiddlewareServerFn<
-    TType,
     TMiddlewares,
     TValidator,
     TServerContext,
@@ -359,7 +338,6 @@ export type FunctionMiddlewareClientNextFn<TMiddlewares> = <
 >
 
 export interface FunctionMiddlewareServer<
-  TType,
   TMiddlewares,
   TValidator,
   TServerSendContext,
@@ -368,7 +346,6 @@ export interface FunctionMiddlewareServer<
 > {
   server: <TNewServerContext = undefined, TSendContext = undefined>(
     server: FunctionMiddlewareServerFn<
-      TType,
       TMiddlewares,
       TValidator,
       TServerSendContext,
@@ -377,7 +354,6 @@ export interface FunctionMiddlewareServer<
       TServerFnResponseType
     >,
   ) => FunctionMiddlewareAfterServer<
-    TType,
     TMiddlewares,
     TValidator,
     TNewServerContext,
@@ -388,7 +364,6 @@ export interface FunctionMiddlewareServer<
   >
 }
 export type FunctionMiddlewareServerFn<
-  TType,
   TMiddlewares,
   TValidator,
   TServerSendContext,
@@ -396,14 +371,12 @@ export type FunctionMiddlewareServerFn<
   TSendContext,
   TServerFnResponseType extends ServerFnResponseType,
 > = (
-  options: TType extends 'request'
-    ? RequestMiddlewareServerFnOptions<TMiddlewares, TServerSendContext>
-    : FunctionMiddlewareServerFnOptions<
-        TMiddlewares,
-        TValidator,
-        TServerSendContext,
-        TServerFnResponseType
-      >,
+  options: FunctionMiddlewareServerFnOptions<
+    TMiddlewares,
+    TValidator,
+    TServerSendContext,
+    TServerFnResponseType
+  >,
 ) => FunctionMiddlewareServerFnResult<
   TMiddlewares,
   TServerSendContext,
@@ -493,7 +466,6 @@ export type FunctionMiddlewareServerFnResult<
     >
 
 export interface FunctionMiddlewareAfterServer<
-  TType,
   TMiddlewares,
   TValidator,
   TServerContext,
@@ -502,7 +474,6 @@ export interface FunctionMiddlewareAfterServer<
   TClientSendContext,
   TServerFnResponseType extends ServerFnResponseType,
 > extends FunctionMiddlewareWithTypes<
-    TType,
     TMiddlewares,
     TValidator,
     TServerContext,
@@ -513,7 +484,6 @@ export interface FunctionMiddlewareAfterServer<
   > {}
 
 export interface FunctionMiddlewareClient<
-  TType,
   TMiddlewares,
   TValidator,
   TServerFnResponseType extends ServerFnResponseType,
@@ -527,7 +497,6 @@ export interface FunctionMiddlewareClient<
       TServerFnResponseType
     >,
   ) => FunctionMiddlewareAfterClient<
-    TType,
     TMiddlewares,
     TValidator,
     TSendServerContext,
@@ -602,14 +571,12 @@ export type FunctionClientResultWithContext<
 }
 
 export interface FunctionMiddlewareAfterClient<
-  TType,
   TMiddlewares,
   TValidator,
   TServerSendContext,
   TClientContext,
   TServerFnResponseType extends ServerFnResponseType,
 > extends FunctionMiddlewareWithTypes<
-      TType,
       TMiddlewares,
       TValidator,
       undefined,
@@ -619,7 +586,6 @@ export interface FunctionMiddlewareAfterClient<
       TServerFnResponseType
     >,
     FunctionMiddlewareServer<
-      TType,
       TMiddlewares,
       TValidator,
       TServerSendContext,
@@ -628,14 +594,12 @@ export interface FunctionMiddlewareAfterClient<
     > {}
 
 export interface FunctionMiddlewareValidator<
-  TType,
   TMiddlewares,
   TServerFnResponseType extends ServerFnResponseType,
 > {
   validator: <TNewValidator>(
     input: ConstrainValidator<TNewValidator>,
   ) => FunctionMiddlewareAfterValidator<
-    TType,
     TMiddlewares,
     TNewValidator,
     TServerFnResponseType
@@ -643,12 +607,10 @@ export interface FunctionMiddlewareValidator<
 }
 
 export interface FunctionMiddlewareAfterValidator<
-  TType,
   TMiddlewares,
   TValidator,
   TServerFnResponseType extends ServerFnResponseType,
 > extends FunctionMiddlewareWithTypes<
-      TType,
       TMiddlewares,
       TValidator,
       undefined,
@@ -658,16 +620,10 @@ export interface FunctionMiddlewareAfterValidator<
       ServerFnResponseType
     >,
     FunctionMiddlewareServer<
-      TType,
       TMiddlewares,
       TValidator,
       undefined,
       undefined,
       TServerFnResponseType
     >,
-    FunctionMiddlewareClient<
-      TType,
-      TMiddlewares,
-      TValidator,
-      ServerFnResponseType
-    > {}
+    FunctionMiddlewareClient<TMiddlewares, TValidator, ServerFnResponseType> {}
