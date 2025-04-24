@@ -3,6 +3,7 @@ import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
   createControlledPromise,
+  createSsrError,
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
@@ -17,7 +18,6 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import { createSsrError } from '@tanstack/router-core'
 import type { AnyRoute, ParsedLocation } from '@tanstack/router-core'
 
 export const Match = React.memo(function MatchImpl({
