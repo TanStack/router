@@ -2,15 +2,15 @@ import { PassThrough } from 'node:stream'
 import { isbot } from 'isbot'
 import ReactDOMServer from 'react-dom/server'
 
-import { isSsrError } from '@tanstack/react-router'
-import { StartServer } from './StartServer'
+import { isSsrError } from '@tanstack/router-core'
 
 import {
+  defineHandlerCallback,
   transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
-} from './transformStreamWithRouter'
+} from '@tanstack/start-server-core'
+import { StartServer } from './StartServer'
 
-import { defineHandlerCallback } from './handlerCallback'
 import type { ReadableStream } from 'node:stream/web'
 
 export const defaultStreamHandler = defineHandlerCallback(

@@ -1,11 +1,10 @@
-import * as Solid from 'solid-js'
 import {
+  HeadContent,
   Link,
   Outlet,
   createRootRouteWithContext,
   useRouterState,
 } from '@tanstack/solid-router'
-// import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { Spinner } from '../components/Spinner'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import type { Auth } from '../utils/auth'
@@ -24,6 +23,7 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
   return (
     <>
+      <HeadContent />
       <div class={`min-h-screen flex flex-col`}>
         <div class={`flex items-center border-b gap-2`}>
           <h1 class={`text-3xl p-2`}>Kitchen Sink</h1>
@@ -40,8 +40,8 @@ function RootComponent() {
                 ['/', 'Home'],
                 ['/dashboard', 'Dashboard'],
                 ['/expensive', 'Expensive'],
-                ['/layout-a', 'Layout A'],
-                ['/layout-b', 'Layout B'],
+                ['/route-a', 'Pathless Layout A'],
+                ['/route-b', 'Pathless Layout B'],
                 ['/profile', 'Profile'],
                 ['/login', 'Login'],
                 ['/route-group', 'Route Group'],
@@ -75,7 +75,6 @@ function RootComponent() {
           </div>
         </div>
       </div>
-      {/* <TanStackRouterDevtools position="bottom-right" /> */}
     </>
   )
 }

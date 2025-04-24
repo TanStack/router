@@ -1,5 +1,5 @@
 import { Link, Outlet } from '@router-mono-simple-lazy/router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 export function RootComponent() {
   console.log('RootComponent')

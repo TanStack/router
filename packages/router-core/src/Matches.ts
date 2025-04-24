@@ -206,3 +206,35 @@ export type MakeRouteMatchUnion<
       TRoute['types']['loaderDeps']
     >
   : never
+
+/**
+ * The `MatchRouteOptions` type is used to describe the options that can be used when matching a route.
+ *
+ * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/MatchRouteOptionsType#matchrouteoptions-type)
+ */
+export interface MatchRouteOptions {
+  /**
+   * If `true`, will match against pending location instead of the current location.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/MatchRouteOptionsType#pending-property)
+   */
+  pending?: boolean
+  /**
+   * If `true`, will match against the current location with case sensitivity.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/MatchRouteOptionsType#casesensitive-property)
+   */
+  caseSensitive?: boolean
+  /**
+   * If `true`, will match against the current location's search params using a deep inclusive check. e.g. `{ a: 1 }` will match for a current location of `{ a: 1, b: 2 }`.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/MatchRouteOptionsType#includesearch-property)
+   */
+  includeSearch?: boolean
+  /**
+   * If `true`, will match against the current location using a fuzzy match. e.g. `/posts` will match for a current location of `/posts/123`.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/MatchRouteOptionsType#fuzzy-property)
+   */
+  fuzzy?: boolean
+}

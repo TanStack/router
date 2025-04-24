@@ -20,7 +20,7 @@ To manage the document head, it's required that you render both the `<HeadConten
 ## Managing the Document Head
 
 ```tsx
-export const Route = createRootRoute()({
+export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
@@ -64,7 +64,7 @@ It should be **rendered either in the `<head>` tag of your root layout or as hig
 ```tsx
 import { HeadContent } from '@tanstack/react-router'
 
-export const Route = createRootRoute()({
+export const Route = createRootRoute({
   component: () => (
     <html>
       <head>
@@ -83,7 +83,7 @@ export const Route = createRootRoute()({
 ```tsx
 import { HeadContent } from '@tanstack/react-router'
 
-const rootRoute = createRoute({
+const rootRoute = createRootRoute({
   component: () => (
     <>
       <HeadContent />
@@ -103,7 +103,7 @@ To do this, you must:
 - [Render the `<Scripts />` component](#scripts)
 
 ```tsx
-export const Route = createRootRoute()({
+export const Route = createRootRoute({
   scripts: [
     {
       children: 'console.log("Hello, world!")',
@@ -136,7 +136,7 @@ export const Router = createFileRoute('/')({
 ```tsx
 import { Scripts, createRootRoute } from '@tanstack/react-router'
 
-export const Route = createRootRoute()({
+export const Route = createRootRoute({
   component: () => (
     <>
       <Outlet />

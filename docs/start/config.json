@@ -78,6 +78,75 @@
               "to": "framework/react/path-aliases"
             }
           ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Overview",
+              "to": "framework/solid/overview"
+            },
+            {
+              "label": "Getting Started",
+              "to": "framework/solid/getting-started"
+            },
+            {
+              "label": "Quick Start",
+              "to": "framework/solid/quick-start"
+            },
+            {
+              "label": "Build from Scratch",
+              "to": "framework/solid/build-from-scratch"
+            },
+            {
+              "label": "Learn the Basics",
+              "to": "framework/solid/learn-the-basics"
+            },
+            {
+              "label": "Server Functions",
+              "to": "framework/solid/server-functions"
+            },
+            {
+              "label": "Static Server Functions",
+              "to": "framework/solid/static-server-functions"
+            },
+            {
+              "label": "Middleware",
+              "to": "framework/solid/middleware"
+            },
+            {
+              "label": "API Routes",
+              "to": "framework/solid/api-routes"
+            },
+            {
+              "label": "SSR",
+              "to": "framework/solid/ssr"
+            },
+            {
+              "label": "Hosting",
+              "to": "framework/solid/hosting"
+            },
+            {
+              "label": "Authentication",
+              "to": "framework/solid/authentication"
+            },
+            {
+              "label": "Databases",
+              "to": "framework/solid/databases"
+            },
+            {
+              "label": "Observability",
+              "to": "framework/solid/observability"
+            },
+            {
+              "label": "Static Prerendering",
+              "to": "framework/solid/static-prerendering"
+            },
+            {
+              "label": "Path Aliases",
+              "to": "framework/solid/path-aliases"
+            }
+          ]
         }
       ]
     },
@@ -115,6 +184,27 @@
             {
               "label": "Trellaux",
               "to": "framework/react/examples/start-trellaux"
+            },
+            {
+              "label": "WorkOS",
+              "to": "framework/react/examples/start-workos"
+            },
+            {
+              "label": "Material UI",
+              "to": "framework/react/examples/start-material-ui"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Bare",
+              "to": "framework/solid/examples/start-bare"
+            },
+            {
+              "label": "Basic",
+              "to": "framework/solid/examples/start-basic"
             }
           ]
         }

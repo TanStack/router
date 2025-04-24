@@ -85,7 +85,7 @@ If your authentication flow relies on interactions with React context and/or hoo
 
 We'll cover the `router.context` options in-detail in the [Router Context](./router-context.md) section.
 
-Here's an example that uses React context and hooks for protecting authenticated routes in TanStack Router. See the entire working setup in the [Authenticated Routes example](../../examples/authenticated-routes).
+Here's an example that uses React context and hooks for protecting authenticated routes in TanStack Router. See the entire working setup in the [Authenticated Routes example](../examples/authenticated-routes).
 
 - `src/routes/__root.tsx`
 
@@ -165,4 +165,4 @@ export const Route = createFileRoute('/dashboard')({
 
 You can _optionally_, also use the [Non-Redirected Authentication](#non-redirected-authentication) approach to show a login form instead of calling a **redirect**.
 
-This approach can also be used in conjunction with Layout or Parent Routes to protect all routes under a specific layout.
+This approach can also be used in conjunction with Pathless or Layout Route to protect all routes under their parent route.

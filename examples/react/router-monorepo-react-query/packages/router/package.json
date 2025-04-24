@@ -8,13 +8,13 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@tanstack/history": "^1.99.13",
+    "@tanstack/history": "^1.115.0",
     "@tanstack/react-query": "^5.66.0",
-    "@tanstack/react-router": "^1.111.11",
-    "@tanstack/router-plugin": "^1.111.12",
+    "@tanstack/react-router": "^1.117.1",
+    "@tanstack/router-plugin": "^1.117.1",
     "@router-mono-react-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",
-    "zod": "^3.24.1",
+    "zod": "^3.24.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

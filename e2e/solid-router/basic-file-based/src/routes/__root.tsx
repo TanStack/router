@@ -1,11 +1,13 @@
 import {
+  HeadContent,
   Link,
   Outlet,
   createRootRoute,
   useCanGoBack,
   useRouter,
+  useRouterState,
 } from '@tanstack/solid-router'
-// // import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -22,9 +24,12 @@ export const Route = createRootRoute({
 function RootComponent() {
   const router = useRouter()
   const canGoBack = useCanGoBack()
+  // test useRouterState doesn't crash client side navigation
+  const _state = useRouterState()
 
   return (
     <>
+      <HeadContent />
       <div class="flex gap-2 p-2 text-lg border-b">
         <button
           data-testid="back-button"
@@ -130,7 +135,7 @@ function RootComponent() {
       <hr />
       <Outlet />
       {/* Start rendering router matches */}
-      {/* {/* <TanStackRouterDevtools position="bottom-right" /> */}
+      <TanStackRouterDevtools position="bottom-right" />
     </>
   )
 }

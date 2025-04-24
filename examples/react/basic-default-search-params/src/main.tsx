@@ -9,7 +9,7 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import axios from 'redaxios'
 import { z } from 'zod'
 import type {
@@ -105,15 +105,15 @@ function IndexComponent() {
   )
 }
 
-const postsRoute = createRoute({
+const postsLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: () => fetchPosts(),
-  component: PostsComponent,
+  component: PostsLayoutComponent,
 })
 
-function PostsComponent() {
-  const posts = postsRoute.useLoaderData()
+function PostsLayoutComponent() {
+  const posts = postsLayoutRoute.useLoaderData()
 
   return (
     <div className="p-2 flex gap-2">
@@ -142,7 +142,7 @@ function PostsComponent() {
 }
 
 const postsIndexRoute = createRoute({
-  getParentRoute: () => postsRoute,
+  getParentRoute: () => postsLayoutRoute,
   path: '/',
   component: PostsIndexComponent,
 })
@@ -154,7 +154,7 @@ function PostsIndexComponent() {
 class NotFoundError extends Error {}
 
 const postRoute = createRoute({
-  getParentRoute: () => postsRoute,
+  getParentRoute: () => postsLayoutRoute,
   path: 'post',
   validateSearch: (
     input: {
@@ -197,7 +197,7 @@ function PostComponent() {
 }
 
 const routeTree = rootRoute.addChildren([
-  postsRoute.addChildren([postRoute, postsIndexRoute]),
+  postsLayoutRoute.addChildren([postRoute, postsIndexRoute]),
   indexRoute,
 ])
 

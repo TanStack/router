@@ -23,11 +23,11 @@ import {
   fillTemplate,
   getTargetTemplate,
 } from './template'
-import type { GetRouteNodesResult, RouteNode } from './types'
+import type { FsRouteType, GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
 export const CONSTANTS = {
-  // When changing this, you'll want to update the import in `start/api/index.ts#defaultAPIFileRouteHandler`
+  // When changing this, you'll want to update the import in `start-api-routes/src/index.ts#defaultAPIFileRouteHandler`
   APIRouteExportVariable: 'APIRoute',
 }
 
@@ -76,6 +76,10 @@ export async function generator(config: Config, root: string) {
 
   const TYPES_DISABLED = config.disableTypes
 
+  // Controls whether API Routes are generated for TanStack Start
+  const ENABLED_API_ROUTES_GENERATION =
+    config.__enableAPIRoutesGeneration ?? false
+
   let getRouteNodesResult: GetRouteNodesResult
 
   if (config.virtualRouteConfig) {
@@ -112,6 +116,30 @@ export async function generator(config: Config, root: string) {
 
   const routeTree: Array<RouteNode> = []
   const routePiecesByPath: Record<string, RouteSubNode> = {}
+
+  // Filtered API Route nodes
+  const onlyAPIRouteNodes = preRouteNodes.filter((d) => {
+    if (!ENABLED_API_ROUTES_GENERATION) {
+      return false
+    }
+
+    if (d._fsRouteType !== 'api') {
+      return false
+    }
+
+    return true
+  })
+
+  // Filtered Generator Route nodes
+  const onlyGeneratorRouteNodes = preRouteNodes.filter((d) => {
+    if (ENABLED_API_ROUTES_GENERATION) {
+      if (d._fsRouteType === 'api') {
+        return false
+      }
+    }
+
+    return true
+  })
 
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
@@ -204,7 +232,8 @@ export async function generator(config: Config, root: string) {
       const tLazyRouteTemplate = ROUTE_TEMPLATE.lazyRoute
 
       if (!routeCode) {
-        if (node.isLazy) {
+        // Creating a new lazy route file
+        if (node._fsRouteType === 'lazy') {
           // Check by default check if the user has a specific lazy route template
           // If not, check if the user has a route template and use that instead
           replaced = await fillTemplate(
@@ -221,11 +250,18 @@ export async function generator(config: Config, root: string) {
             },
           )
         } else if (
-          node.isRoute ||
-          (!node.isComponent &&
-            !node.isErrorComponent &&
-            !node.isPendingComponent &&
-            !node.isLoader)
+          // Creating a new normal route file
+          (['layout', 'static'] satisfies Array<FsRouteType>).some(
+            (d) => d === node._fsRouteType,
+          ) ||
+          (
+            [
+              'component',
+              'pendingComponent',
+              'errorComponent',
+              'loader',
+            ] satisfies Array<FsRouteType>
+          ).every((d) => d !== node._fsRouteType)
         ) {
           replaced = await fillTemplate(
             config,
@@ -241,6 +277,7 @@ export async function generator(config: Config, root: string) {
           )
         }
       } else {
+        // Update the existing route file
         replaced = routeCode
           .replace(
             /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
@@ -252,12 +289,12 @@ export async function generator(config: Config, root: string) {
               'gs',
             ),
             (_, p1, __, ___, p4) =>
-              `${p1}${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
+              `${p1}${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
           )
           .replace(
             /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
             (_, __, p2, ___, p4) =>
-              `${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
+              `${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
       }
 
@@ -270,23 +307,27 @@ export async function generator(config: Config, root: string) {
 
     if (
       !node.isVirtual &&
-      (node.isLoader ||
-        node.isComponent ||
-        node.isErrorComponent ||
-        node.isPendingComponent ||
-        node.isLazy)
+      (
+        [
+          'lazy',
+          'loader',
+          'component',
+          'pendingComponent',
+          'errorComponent',
+        ] satisfies Array<FsRouteType>
+      ).some((d) => d === node._fsRouteType)
     ) {
       routePiecesByPath[node.routePath!] =
         routePiecesByPath[node.routePath!] || {}
 
       routePiecesByPath[node.routePath!]![
-        node.isLazy
+        node._fsRouteType === 'lazy'
           ? 'lazy'
-          : node.isLoader
+          : node._fsRouteType === 'loader'
             ? 'loader'
-            : node.isErrorComponent
+            : node._fsRouteType === 'errorComponent'
               ? 'errorComponent'
-              : node.isPendingComponent
+              : node._fsRouteType === 'pendingComponent'
                 ? 'pendingComponent'
                 : 'component'
       ] = node
@@ -297,20 +338,21 @@ export async function generator(config: Config, root: string) {
         await handleNode({
           ...node,
           isVirtual: true,
-          isLazy: false,
-          isLoader: false,
-          isComponent: false,
-          isErrorComponent: false,
-          isPendingComponent: false,
+          _fsRouteType: 'static',
         })
       }
       return
     }
 
     const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
-    const nonPathRoute = node.isRoute && node.isNonPath
+    const nonPathRoute =
+      node._fsRouteType === 'pathless_layout' && node.isNonPath
+
     node.isVirtualParentRequired =
-      node.isLayout || nonPathRoute ? !cleanedPathIsEmpty : false
+      node._fsRouteType === 'pathless_layout' || nonPathRoute
+        ? !cleanedPathIsEmpty
+        : false
+
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentVariableName = routePathToVariable(parentRoutePath)
@@ -320,7 +362,7 @@ export async function generator(config: Config, root: string) {
       )
 
       if (!anchorRoute) {
-        const parentNode = {
+        const parentNode: RouteNode = {
           ...node,
           path: removeLastSegmentFromPath(node.path) || '/',
           filePath: removeLastSegmentFromPath(node.filePath) || '/',
@@ -328,7 +370,7 @@ export async function generator(config: Config, root: string) {
           routePath: parentRoutePath,
           variableName: parentVariableName,
           isVirtual: true,
-          isLayout: false,
+          _fsRouteType: 'layout', // layout since this route will wrap other routes
           isVirtualParentRoute: true,
           isVirtualParentRequired: false,
         }
@@ -338,7 +380,7 @@ export async function generator(config: Config, root: string) {
 
         node.parent = parentNode
 
-        if (node.isLayout) {
+        if (node._fsRouteType === 'pathless_layout') {
           // since `node.path` is used as the `id` on the route definition, we need to update it
           node.path = determineNodePath(node)
         }
@@ -364,18 +406,22 @@ export async function generator(config: Config, root: string) {
     routeNodes.push(node)
   }
 
-  for (const node of preRouteNodes.filter((d) => !d.isAPIRoute)) {
+  for (const node of onlyGeneratorRouteNodes) {
     await handleNode(node)
   }
   checkRouteFullPathUniqueness(
     preRouteNodes.filter(
-      (d) => !d.isAPIRoute && d.children === undefined && d.isLazy !== true,
+      (d) =>
+        d.children === undefined &&
+        (['api', 'lazy'] satisfies Array<FsRouteType>).every(
+          (type) => type !== d._fsRouteType,
+        ),
     ),
     config,
   )
 
   const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
-    preRouteNodes.filter((d) => d.isAPIRoute),
+    onlyAPIRouteNodes,
     config,
   )
 
@@ -424,17 +470,20 @@ export async function generator(config: Config, root: string) {
     }
   }
 
-  for (const node of startAPIRouteNodes) {
-    await handleAPINode(node)
+  // Handle the API routes for TanStack Start
+  if (ENABLED_API_ROUTES_GENERATION) {
+    for (const node of startAPIRouteNodes) {
+      await handleAPINode(node)
+    }
   }
 
   function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {
     const children = nodes.map((node) => {
-      if (node.isRoot) {
+      if (node._fsRouteType === '__root') {
         return
       }
 
-      if (node.isLayout && !node.children?.length) {
+      if (node._fsRouteType === 'pathless_layout' && !node.children?.length) {
         return
       }
 
@@ -747,8 +796,12 @@ export async function generator(config: Config, root: string) {
   // Write the route tree file, if it has changed
   const routeTreeWriteResult = await writeIfDifferent(
     path.resolve(config.generatedRouteTree),
-    await format(existingRouteTreeContent, config),
-    await format(routeConfigFileContent, config),
+    config.enableRouteTreeFormatting
+      ? await format(existingRouteTreeContent, config)
+      : existingRouteTreeContent,
+    config.enableRouteTreeFormatting
+      ? await format(routeConfigFileContent, config)
+      : routeConfigFileContent,
     {
       beforeWrite: () => {
         logger.log(`🟡 Updating ${config.generatedRouteTree}`)

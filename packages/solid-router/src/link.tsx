@@ -15,14 +15,15 @@ import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
-import { useMatch } from './useMatch'
+import { useMatches } from './Matches'
 import type {
+  AnyRouter,
   Constrain,
   LinkCurrentTargetElement,
   LinkOptions,
+  RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
-import type { AnyRouter, RegisteredRouter } from './router'
 import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
@@ -132,23 +133,24 @@ export function useLinkProps<
     select: (s) => s.location.searchStr,
   })
 
-  // In the rare event that the user bypasses type-safety and doesn't supply a `from`
-  // we'll use the current route as the `from` location so relative routing works as expected
-  const parentRouteId = useMatch({ strict: false, select: (s) => s.pathname })
+  // when `from` is not supplied, use the leaf route of the current matches as the `from` location
+  // so relative routing works as expected
+  const from = useMatches({
+    select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
+  })
 
-  // Use it as the default `from` location
-  options = {
-    from: parentRouteId(),
+  const _options = () => ({
     ...options,
-  }
+    from: from(),
+  })
 
   const next = Solid.createMemo(() => {
     currentSearch()
-    return router.buildLocation(options as any)
+    return router.buildLocation(_options() as any)
   })
 
   const preload = Solid.createMemo(() => {
-    if (options.reloadDocument) {
+    if (_options().reloadDocument) {
       return false
     }
     return local.preload ?? router.options.defaultPreload
@@ -203,7 +205,7 @@ export function useLinkProps<
   })
 
   const doPreload = () =>
-    router.preloadRoute(options as any).catch((err: any) => {
+    router.preloadRoute(_options() as any).catch((err: any) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
@@ -285,7 +287,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       return router.navigate({
-        ...options,
+        ..._options(),
         replace: local.replace,
         resetScroll: local.resetScroll,
         hashScrollIntoView: local.hashScrollIntoView,
@@ -386,7 +388,7 @@ export function useLinkProps<
     const nextLocation = next()
     const maskedLocation = nextLocation?.maskedLocation
 
-    return options.disabled
+    return _options().disabled
       ? undefined
       : maskedLocation
         ? router.history.createHref(maskedLocation.href)
@@ -400,7 +402,7 @@ export function useLinkProps<
     () => {
       return {
         href: href(),
-        ref: mergeRefs(setRef, options.ref),
+        ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
         onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
@@ -539,12 +541,6 @@ export const Link: LinkComponent<'a'> = (props: any) => {
           },
         })
       : rest.children
-
-  if (typeof local._asChild === 'undefined') {
-    // the Retlocal.urnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
-    // @ts-expect-error
-    delete linkProps.disabled
-  }
 
   return (
     <Dynamic component={local._asChild ? local._asChild : 'a'} {...linkProps}>

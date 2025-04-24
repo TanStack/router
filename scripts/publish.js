@@ -45,6 +45,18 @@ await publish({
       packageDir: 'packages/router-devtools',
     },
     {
+      name: '@tanstack/solid-router-devtools',
+      packageDir: 'packages/solid-router-devtools',
+    },
+    {
+      name: '@tanstack/react-router-devtools',
+      packageDir: 'packages/react-router-devtools',
+    },
+    {
+      name: '@tanstack/router-devtools-core',
+      packageDir: 'packages/router-devtools-core',
+    },
+    {
       name: '@tanstack/router-generator',
       packageDir: 'packages/router-generator',
     },
@@ -85,6 +97,38 @@ await publish({
       packageDir: 'packages/create-start',
     },
     {
+      name: '@tanstack/solid-start',
+      packageDir: 'packages/solid-start',
+    },
+    {
+      name: '@tanstack/solid-start-client',
+      packageDir: 'packages/solid-start-client',
+    },
+    {
+      name: '@tanstack/solid-start-config',
+      packageDir: 'packages/solid-start-config',
+    },
+    {
+      name: '@tanstack/solid-start-plugin',
+      packageDir: 'packages/solid-start-plugin',
+    },
+    {
+      name: '@tanstack/solid-start-router-manifest',
+      packageDir: 'packages/solid-start-router-manifest',
+    },
+    {
+      name: '@tanstack/solid-start-server',
+      packageDir: 'packages/solid-start-server',
+    },
+    {
+      name: '@tanstack/start-client-core',
+      packageDir: 'packages/start-client-core',
+    },
+    {
+      name: '@tanstack/start-server-core',
+      packageDir: 'packages/start-server-core',
+    },
+    {
       name: '@tanstack/react-start',
       packageDir: 'packages/react-start',
     },
@@ -109,24 +153,24 @@ await publish({
       packageDir: 'packages/react-start-config',
     },
     {
-      name: '@tanstack/react-start-api-routes',
-      packageDir: 'packages/react-start-api-routes',
+      name: '@tanstack/start-api-routes',
+      packageDir: 'packages/start-api-routes',
     },
     {
-      name: '@tanstack/react-start-server-functions-fetcher',
-      packageDir: 'packages/react-start-server-functions-fetcher',
+      name: '@tanstack/start-server-functions-fetcher',
+      packageDir: 'packages/start-server-functions-fetcher',
     },
     {
-      name: '@tanstack/react-start-server-functions-handler',
-      packageDir: 'packages/react-start-server-functions-handler',
+      name: '@tanstack/start-server-functions-handler',
+      packageDir: 'packages/start-server-functions-handler',
     },
     {
-      name: '@tanstack/react-start-server-functions-client',
-      packageDir: 'packages/react-start-server-functions-client',
+      name: '@tanstack/start-server-functions-client',
+      packageDir: 'packages/start-server-functions-client',
     },
     {
-      name: '@tanstack/react-start-server-functions-ssr',
-      packageDir: 'packages/react-start-server-functions-ssr',
+      name: '@tanstack/start-server-functions-ssr',
+      packageDir: 'packages/start-server-functions-ssr',
     },
     {
       name: '@tanstack/start-server-functions-server',

@@ -6,11 +6,13 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRouter, RegisteredRouter } from './router'
 import type {
+  AnyRouter,
   MakeRouteMatch,
   MakeRouteMatchUnion,
+  RegisteredRouter,
   StrictOrFrom,
+  ThrowConstraint,
   ThrowOrOptional,
 } from '@tanstack/router-core'
 
@@ -72,11 +74,6 @@ export type UseMatchResult<
     ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
     : MakeRouteMatchUnion<TRouter>
   : TSelected
-
-export type ThrowConstraint<
-  TStrict extends boolean,
-  TThrow extends boolean,
-> = TStrict extends false ? (TThrow extends true ? never : TThrow) : TThrow
 
 export function useMatch<
   TRouter extends AnyRouter = RegisteredRouter,

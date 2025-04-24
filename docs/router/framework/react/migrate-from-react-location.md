@@ -48,12 +48,12 @@ And add it to your `vite.config.js`:
 
 ```js
 import { defineConfig } from 'vite'
-import viteReact from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
   // ...
-  plugins: [TanStackRouterVite(), viteReact()],
+  plugins: [TanStackRouterVite(), react()],
 })
 ```
 
@@ -259,7 +259,7 @@ TanStack Router also has a few more features that you might want to explore:
 
 - [Router Context](./guide/router-context.md)
 - [Preloading](./guide/preloading.md)
-- [Pathless / Layout Routes](./routing/routing-concepts.md#pathless--layout-routes)
+- [Pathless Layout Routes](./routing/routing-concepts.md#pathless-layout-routes)
 - [Route masking](./guide/route-masking.md)
 - [SSR](./guide/ssr.md)
 - ... and more!

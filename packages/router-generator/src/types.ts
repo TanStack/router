@@ -2,22 +2,14 @@ export type RouteNode = {
   filePath: string
   fullPath: string
   variableName: string
+  _fsRouteType: FsRouteType
   routePath?: string
   cleanedPath?: string
   path?: string
   isNonPath?: boolean
-  isLayout?: boolean
   isVirtualParentRequired?: boolean
   isVirtualParentRoute?: boolean
-  isRoute?: boolean
-  isAPIRoute?: boolean
-  isLoader?: boolean
-  isComponent?: boolean
-  isErrorComponent?: boolean
-  isPendingComponent?: boolean
   isVirtual?: boolean
-  isLazy?: boolean
-  isRoot?: boolean
   children?: Array<RouteNode>
   parent?: RouteNode
 }
@@ -26,3 +18,15 @@ export interface GetRouteNodesResult {
   rootRouteNode?: RouteNode
   routeNodes: Array<RouteNode>
 }
+
+export type FsRouteType =
+  | '__root'
+  | 'static'
+  | 'layout'
+  | 'pathless_layout'
+  | 'lazy'
+  | 'api'
+  | 'loader' // @deprecated
+  | 'component' // @deprecated
+  | 'pendingComponent' // @deprecated
+  | 'errorComponent' // @deprecated

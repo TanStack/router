@@ -29,9 +29,9 @@ It's important to remember that each route can only have a single handler file a
 - `routes/api.users.ts`.
 - `routes/api.users.index.ts`.
 
-❗ One more thing, API Routes do not have the concept of pathless/layout routes or parallel routes. So, a file named:
+❗ One more thing, API Routes do not have the concept of pathless layout routes or parallel routes. So, a file named:
 
-- `routes/api/_layout/users.ts` would resolve to `/api/_layout/users` and **NOT** `/api/users`.
+- `routes/api/_pathlessLayout/users.ts` would resolve to `/api/_pathlessLayout/users` and **NOT** `/api/users`.
 
 ## Nested Directories vs File-names
 
@@ -61,6 +61,9 @@ API Routes export an APIRoute instance by calling the `createAPIFileRoute` funct
 
 > [!TIP]
 > If you've already got the dev server running, when you create a new API route, it'll automatically have the initial handler set up for you. From there on, you can customize the handler as needed.
+
+> [!NOTE]
+> The export variable must be named `APIRoute` or the resulting response will be a `404 not found`.
 
 ```ts
 // routes/api/hello.ts

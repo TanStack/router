@@ -1,0 +1,30 @@
+{
+  "name": "tanstack-solid-start-example-bare",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start"
+  },
+  "dependencies": {
+    "@tanstack/solid-router": "^1.117.1",
+    "@tanstack/solid-router-devtools": "^1.117.1",
+    "@tanstack/solid-start": "^1.117.1",
+    "solid-js": "^1.9.5",
+    "redaxios": "^0.5.1",
+    "tailwind-merge": "^2.6.0",
+    "vinxi": "0.5.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.8",
+    "@types/node": "^22.10.2",
+    "vite-plugin-solid": "^2.11.2",
+    "combinate": "^1.1.11",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

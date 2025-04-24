@@ -147,44 +147,110 @@ For example, a route targeting the `files/$` path is a splat route. If the URL p
 
 ## Layout Routes
 
-<!-- TODO -->
+Layout routes are used to wrap child routes with additional components and logic. They are useful for:
 
-TODO, Layout routes are an extension of Basic routes that allow you to wrap child routes with a layout component.
+- Wrapping child routes with a layout component
+- Enforcing a `loader` requirement before displaying any child routes
+- Validating and providing search params to child routes
+- Providing fallbacks for error components or pending elements to child routes
+- Providing shared context to all child routes
+- And more!
 
-## Pathless Routes
-
-Routes that are prefixed with an underscore (`_`) are considered "pathless" and are used to wrap child routes with additional components and logic, without requiring a matching `path` in the URL. You can use pathless routes to:
-
-- Wrap child routes with a layout component
-- Enforce a `loader` requirement before displaying any child routes
-- Validate and provide search params to child routes
-- Provide fallbacks for error components or pending elements to child routes
-- Provide shared context to all child routes
-
-> 🧠 The part of the path after the `_` prefix is used as the route's ID and is required because every route must be uniquely identifiable, especially when using TypeScript so as to avoid type errors and accomplish autocomplete effectively.
-
-Let's take a look at an example route called `_pathless.tsx`:
+Let's take a look at an example layout route called `app.tsx`:
 
 ```
 routes/
-├── _pathless.tsx
-├── _pathless.a.tsx
-├── _pathless.b.tsx
+├── app.tsx
+├── app.dashboard.tsx
+├── app.settings.tsx
 ```
 
-In the tree above, `_pathless.tsx` is a pathless route that wraps two child routes, `_pathless.a.tsx` and `_pathless.b.tsx`. The `_pathless.tsx` route is used to wrap the child routes with a layout component:
+In the tree above, `app.tsx` is a layout route that wraps two child routes, `app.dashboard.tsx` and `app.settings.tsx`.
+
+This tree structure is used to wrap the child routes with a layout component:
 
 ```tsx
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_pathless')({
-  component: LayoutComponent,
+export const Route = createFileRoute('/app')({
+  component: AppLayoutComponent,
 })
 
-function LayoutComponent() {
+function AppLayoutComponent() {
   return (
     <div>
-      <h1>Layout</h1>
+      <h1>App Layout</h1>
+      <Outlet />
+    </div>
+  )
+}
+```
+
+The following table shows which component(s) will be rendered based on the URL:
+
+| URL Path         | Component                |
+| ---------------- | ------------------------ |
+| `/`              | `<Index>`                |
+| `/app/dashboard` | `<AppLayout><Dashboard>` |
+| `/app/settings`  | `<AppLayout><Settings>`  |
+
+Since TanStack Router supports mixed flat and directory routes, you can also express your application's routing using layout routes within directories:
+
+```
+routes/
+├── app/
+│   ├── route.tsx
+│   ├── dashboard.tsx
+│   ├── settings.tsx
+```
+
+In this nested tree, the `app/route.tsx` file is a configuration for the layout route that wraps two child routes, `app/dashboard.tsx` and `app/settings.tsx`.
+
+Layout Routes also let you enforce component and loader logic for Dynamic Route Segments:
+
+```
+routes/
+├── app/users/
+│   ├── $userId/
+|   |   ├── route.tsx
+|   |   ├── index.tsx
+|   |   ├── edit.tsx
+```
+
+## Pathless Layout Routes
+
+Like [Layout Routes](#layout-routes), Pathless Layout Routes are used to wrap child routes with additional components and logic. However, pathless layout routes do not require a matching `path` in the URL and are used to wrap child routes with additional components and logic without requiring a matching `path` in the URL.
+
+Pathless Layout Routes are prefixed with an underscore (`_`) to denote that they are "pathless".
+
+> 🧠 The part of the path after the `_` prefix is used as the route's ID and is required because every route must be uniquely identifiable, especially when using TypeScript so as to avoid type errors and accomplish autocomplete effectively.
+
+Let's take a look at an example route called `_pathlessLayout.tsx`:
+
+```
+
+routes/
+├── _pathlessLayout.tsx
+├── _pathlessLayout.a.tsx
+├── _pathlessLayout.b.tsx
+
+```
+
+In the tree above, `_pathlessLayout.tsx` is a pathless layout route that wraps two child routes, `_pathlessLayout.a.tsx` and `_pathlessLayout.b.tsx`.
+
+The `_pathlessLayout.tsx` route is used to wrap the child routes with a Pathless layout component:
+
+```tsx
+import { Outlet, createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/_pathlessLayout')({
+  component: PathlessLayoutComponent,
+})
+
+function PathlessLayoutComponent() {
+  return (
+    <div>
+      <h1>Pathless layout</h1>
       <Outlet />
     </div>
   )
@@ -193,15 +259,44 @@ function LayoutComponent() {
 
 The following table shows which component will be rendered based on the URL:
 
-| URL Path | Component     |
-| -------- | ------------- |
-| `/`      | `<Index>`     |
-| `/a`     | `<Layout><A>` |
-| `/b`     | `<Layout><B>` |
+| URL Path | Component             |
+| -------- | --------------------- |
+| `/`      | `<Index>`             |
+| `/a`     | `<PathlessLayout><A>` |
+| `/b`     | `<PathlessLayout><B>` |
+
+Since TanStack Router supports mixed flat and directory routes, you can also express your application's routing using pathless layout routes within directories:
+
+```
+routes/
+├── _pathlessLayout/
+│   ├── route.tsx
+│   ├── a.tsx
+│   ├── b.tsx
+```
+
+However, unlike Layout Routes, since Pathless Layout Routes do match based on URL path segments, this means that these routes do not support [Dynamic Route Segments](#dynamic-route-segments) as part of their path and therefore cannot be matched in the URL.
+
+This means that you cannot do this:
+
+```
+routes/
+├── _$postId/ ❌
+│   ├── ...
+```
+
+Rather, you'd have to do this:
+
+```
+routes/
+├── $postId/
+├── _postPathlessLayout/ ✅
+│   ├── ...
+```
 
 ## Non-Nested Routes
 
-Non-nested routes can be created by suffixing a parent file route segment with a `_` and are used to **un-nest** a route from it's parents and render its own component tree.
+Non-nested routes can be created by suffixing a parent file route segment with a `_` and are used to **un-nest** a route from its parents and render its own component tree.
 
 Consider the following flat route tree:
 

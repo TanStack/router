@@ -18,14 +18,14 @@ The `RouteOptions` type accepts an object with the following properties:
 ### `path` property
 
 - Type: `string`
-- Required, unless an `id` is provided to configure the route as a layout route
+- Required, unless an `id` is provided to configure the route as a pathless layout route
 - The path segment that will be used to match the route.
 
 ### `id` property
 
 - Type: `string`
 - Optional, but required if a `path` is not provided
-- The unique identifier for the route if it is to be configured as a layout route. If provided, the, the route will not match against the location pathname and its routes will be flattened into its parent route for matching.
+- The unique identifier for the route if it is to be configured as a pathless layout route. If provided, the route will not match against the location pathname and its routes will be flattened into its parent route for matching.
 
 ### `component` property
 
@@ -75,7 +75,7 @@ The `RouteOptions` type accepts an object with the following properties:
 
 - Type: `(params: TParams) => Record<string, string>`
 - Required if `parseParams` is provided
-- A function that will be called when this routes parsed params are being used to build a location. This function should return a valid object of `Record<string, string>` mapping.
+- A function that will be called when this route's parsed params are being used to build a location. This function should return a valid object of `Record<string, string>` mapping.
 
 ### `params.parse` method
 
@@ -86,7 +86,7 @@ The `RouteOptions` type accepts an object with the following properties:
 ### `params.stringify` method
 
 - Type: `(params: TParams) => Record<string, string>`
-- A function that will be called when this routes parsed params are being used to build a location. This function should return a valid object of `Record<string, string>` mapping.
+- A function that will be called when this route's parsed params are being used to build a location. This function should return a valid object of `Record<string, string>` mapping.
 
 ### `beforeLoad` method
 
@@ -110,8 +110,8 @@ type beforeLoad = (
 
 - Optional
 - [`ParsedLocation`](./ParsedLocationType.md)
-- This async function is called before a route is loaded. If an error is thrown here, the route's loader will not be called and the route will not render. If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
-- If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this routes pendingMs threshold is reached, the `pendingComponent` will be shown until it resolved. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
+- This async function is called before a route is loaded. If an error is thrown here, the route's loader will not be called and the route will not render. If thrown during a navigation, the navigation will be canceled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
+- If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TRouteContext` object, that object will be merged into the route's context and be made available in the `loader` and other related route components/methods.
 - It's common to use this function to check if a user is authenticated and redirect them to a login page if they are not. To do this, you can either return or throw a `redirect` object from this function.
 
@@ -139,8 +139,8 @@ type loader = (
 
 - Optional
 - [`ParsedLocation`](./ParsedLocationType.md)
-- This async function is called when a route is matched and passed the route's match object. If an error is thrown here, the route will be put into an error state and the error will be thrown during render. If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
-- If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this routes pendingMs threshold is reached, the `pendingComponent` will be shown until it resolved. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
+- This async function is called when a route is matched and passed the route's match object. If an error is thrown here, the route will be put into an error state and the error will be thrown during render. If thrown during a navigation, the navigation will be canceled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
+- If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TLoaderData` object, that object will be stored on the route match until the route match is no longer active. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
 
 > 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](./redirectFunction.md).
@@ -191,7 +191,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 
 - Type: `boolean`
 - Optional
-- If `true`, this route will be matched as case-sensitive
+- If `true`, this route will be matched as case-sensitive.
 
 ### `wrapInSuspense` property
 
@@ -290,7 +290,7 @@ interface RemountDepsOptions<
 - Optional
 - A function that will be called to determine whether a route component shall be remounted after navigation. If this function returns a different value than previously, it will remount.
 - The return value needs to be JSON serializable.
-- By default, a route component will not be remounted if it stays active after a navigation
+- By default, a route component will not be remounted if it stays active after a navigation.
 
 Example:  
 If you want to configure to remount a route component upon `params` change, use:

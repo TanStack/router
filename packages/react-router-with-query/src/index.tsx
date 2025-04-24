@@ -5,7 +5,7 @@ import {
   hashKey,
   hydrate,
 } from '@tanstack/react-query'
-import { isRedirect } from '@tanstack/react-router'
+import { isRedirect } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/react-router'
 import type {
   QueryClient,
@@ -24,10 +24,15 @@ type AdditionalOptions = {
   handleRedirects?: boolean
 }
 
-export function routerWithQueryClient<TRouter extends AnyRouter>(
-  router: TRouter['options']['context'] extends { queryClient: QueryClient }
+export type ValidateRouter<TRouter extends AnyRouter> =
+  NonNullable<TRouter['options']['context']> extends {
+    queryClient: QueryClient
+  }
     ? TRouter
-    : never,
+    : never
+
+export function routerWithQueryClient<TRouter extends AnyRouter>(
+  router: ValidateRouter<TRouter>,
   queryClient: QueryClient,
   additionalOpts?: AdditionalOptions,
 ): TRouter {

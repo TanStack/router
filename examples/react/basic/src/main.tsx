@@ -8,7 +8,7 @@ import {
   createRoute,
   createRouter,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import './styles.css'
@@ -47,12 +47,12 @@ function RootComponent() {
           Posts
         </Link>{' '}
         <Link
-          to="/layout-a"
+          to="/route-a"
           activeProps={{
             className: 'font-bold',
           }}
         >
-          Layout
+          Pathless Layout
         </Link>{' '}
         <Link
           // @ts-expect-error
@@ -83,14 +83,14 @@ function IndexComponent() {
   )
 }
 
-export const postsRoute = createRoute({
+export const postsLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: () => fetchPosts(),
 }).lazy(() => import('./posts.lazy').then((d) => d.Route))
 
 const postsIndexRoute = createRoute({
-  getParentRoute: () => postsRoute,
+  getParentRoute: () => postsLayoutRoute,
   path: '/',
   component: PostsIndexComponent,
 })
@@ -100,7 +100,7 @@ function PostsIndexComponent() {
 }
 
 const postRoute = createRoute({
-  getParentRoute: () => postsRoute,
+  getParentRoute: () => postsLayoutRoute,
   path: '$postId',
   errorComponent: PostErrorComponent,
   loader: ({ params }) => fetchPost(params.postId),
@@ -127,16 +127,16 @@ function PostComponent() {
   )
 }
 
-const layoutRoute = createRoute({
+const pathlessLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  id: '_layout',
-  component: LayoutComponent,
+  id: '_pathlessLayout',
+  component: PathlessLayoutComponent,
 })
 
-function LayoutComponent() {
+function PathlessLayoutComponent() {
   return (
     <div className="p-2">
-      <div className="border-b">I'm a layout</div>
+      <div className="border-b">I'm a pathless layout</div>
       <div>
         <Outlet />
       </div>
@@ -144,32 +144,32 @@ function LayoutComponent() {
   )
 }
 
-const layout2Route = createRoute({
-  getParentRoute: () => layoutRoute,
-  id: '_layout-2',
-  component: Layout2Component,
+const nestedPathlessLayout2Route = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  id: '_nestedPathlessLayout',
+  component: PathlessLayout2Component,
 })
 
-function Layout2Component() {
+function PathlessLayout2Component() {
   return (
     <div>
-      <div>I'm a nested layout</div>
+      <div>I'm a nested pathless layout</div>
       <div className="flex gap-2 border-b">
         <Link
-          to="/layout-a"
+          to="/route-a"
           activeProps={{
             className: 'font-bold',
           }}
         >
-          Layout A
+          Go to Route A
         </Link>
         <Link
-          to="/layout-b"
+          to="/route-b"
           activeProps={{
             className: 'font-bold',
           }}
         >
-          Layout B
+          Go to Route B
         </Link>
       </div>
       <div>
@@ -179,30 +179,33 @@ function Layout2Component() {
   )
 }
 
-const layoutARoute = createRoute({
-  getParentRoute: () => layout2Route,
-  path: '/layout-a',
-  component: LayoutAComponent,
+const pathlessLayoutARoute = createRoute({
+  getParentRoute: () => nestedPathlessLayout2Route,
+  path: '/route-a',
+  component: PathlessLayoutAComponent,
 })
 
-function LayoutAComponent() {
-  return <div>I'm layout A!</div>
+function PathlessLayoutAComponent() {
+  return <div>I'm route A!</div>
 }
 
-const layoutBRoute = createRoute({
-  getParentRoute: () => layout2Route,
-  path: '/layout-b',
-  component: LayoutBComponent,
+const pathlessLayoutBRoute = createRoute({
+  getParentRoute: () => nestedPathlessLayout2Route,
+  path: '/route-b',
+  component: PathlessLayoutBComponent,
 })
 
-function LayoutBComponent() {
-  return <div>I'm layout B!</div>
+function PathlessLayoutBComponent() {
+  return <div>I'm route B!</div>
 }
 
 const routeTree = rootRoute.addChildren([
-  postsRoute.addChildren([postRoute, postsIndexRoute]),
-  layoutRoute.addChildren([
-    layout2Route.addChildren([layoutARoute, layoutBRoute]),
+  postsLayoutRoute.addChildren([postRoute, postsIndexRoute]),
+  pathlessLayoutRoute.addChildren([
+    nestedPathlessLayout2Route.addChildren([
+      pathlessLayoutARoute,
+      pathlessLayoutBRoute,
+    ]),
   ]),
   indexRoute,
 ])

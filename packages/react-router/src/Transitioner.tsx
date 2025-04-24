@@ -1,5 +1,9 @@
 import * as React from 'react'
-import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
+import {
+  getLocationChangeInfo,
+  handleHashScroll,
+  trimPathRight,
+} from '@tanstack/router-core'
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -27,7 +31,7 @@ export function Transitioner() {
   const previousIsPagePending = usePrevious(isPagePending)
 
   if (!router.isServer) {
-    router.startReactTransition = (fn: () => void) => {
+    router.startTransition = (fn: () => void) => {
       setIsTransitioning(true)
       React.startTransition(() => {
         fn()
@@ -112,6 +116,8 @@ export function Transitioner() {
         status: 'idle',
         resolvedLocation: s.location,
       }))
+
+      handleHashScroll(router)
     }
   }, [isAnyPending, previousIsAnyPending, router])
 

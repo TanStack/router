@@ -1,7 +1,6 @@
 import warning from 'tiny-warning'
 import { DefaultGlobalNotFound } from './not-found'
-import type { AnyRouter } from './router'
-import type { AnyRoute } from './route'
+import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
 
 export function renderRouteNotFound(
   router: AnyRouter,

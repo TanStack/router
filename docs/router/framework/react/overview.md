@@ -6,7 +6,7 @@ title: Overview
 
 - 100% inferred TypeScript support
 - Typesafe navigation
-- Nested Routing and layout routes
+- Nested Routing and layout routes (with pathless layouts)
 - Built-in Route Loaders w/ SWR Caching
 - Designed for client-side data caches (TanStack Query, SWR, etc.)
 - Automatic route prefetching

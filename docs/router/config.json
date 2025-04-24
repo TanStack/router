@@ -44,6 +44,10 @@
             {
               "label": "Decisions on DX",
               "to": "framework/react/decisions-on-dx"
+            },
+            {
+              "label": "Frequently Asked Questions",
+              "to": "framework/react/faq"
             }
           ]
         },
@@ -69,6 +73,10 @@
             {
               "label": "Decisions on DX",
               "to": "framework/solid/decisions-on-dx"
+            },
+            {
+              "label": "Frequently Asked Questions",
+              "to": "framework/solid/faq"
             }
           ]
         }
@@ -519,6 +527,10 @@
               "to": "framework/react/examples/navigation-blocking"
             },
             {
+              "label": "View Transitions",
+              "to": "framework/react/examples/view-transitions"
+            },
+            {
               "label": "With tRPC",
               "to": "framework/react/examples/with-trpc"
             },
@@ -543,6 +555,18 @@
         {
           "label": "solid",
           "children": [
+            {
+              "label": "Quickstart (file-based)",
+              "to": "framework/solid/examples/quickstart-file-based"
+            },
+            {
+              "label": "Basic (file-based)",
+              "to": "framework/solid/examples/basic-file-based"
+            },
+            {
+              "label": "Basic + Solid Query (file-based)",
+              "to": "framework/solid/examples/basic-solid-query-file-based"
+            },
             {
               "label": "Basic + Solid Query (code-based)",
               "to": "framework/solid/examples/basic-solid-query"

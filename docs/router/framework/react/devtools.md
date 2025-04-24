@@ -8,64 +8,44 @@ Wave your hands in the air and shout hooray because TanStack Router comes with d
 
 When you begin your TanStack Router journey, you'll want these devtools by your side. They help visualize all of the inner workings of TanStack Router and will likely save you hours of debugging if you find yourself in a pinch!
 
-> Please note that for now, the devtools **are only supported in React**. If you would like to help us make the devtools platform-agnostic, please let us know!
-
 ## Installation
 
 The devtools are a separate package that you need to install:
 
 ```sh
-npm install -D @tanstack/router-devtools
+npm install @tanstack/react-router-devtools
 ```
 
 or
 
 ```sh
-pnpm add -D @tanstack/router-devtools
+pnpm add @tanstack/react-router-devtools
 ```
 
 or
 
 ```sh
-yarn add -D @tanstack/router-devtools
+yarn add @tanstack/react-router-devtools
 ```
 
 or
 
 ```sh
-bun add -D @tanstack/router-devtools
+bun add @tanstack/react-router-devtools
 ```
 
 ## Import the Devtools
 
 ```js
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 ```
 
-## Only importing and using Devtools in Development
+## Using Devtools in production
 
-To do this, simply use `React.lazy` and the env variable of your choice to optionally return a dummy component:
-
-```tsx
-const TanStackRouterDevtools =
-  process.env.NODE_ENV === 'production'
-    ? () => null // Render nothing in production
-    : React.lazy(() =>
-        // Lazy load in development
-        import('@tanstack/router-devtools').then((res) => ({
-          default: res.TanStackRouterDevtools,
-          // For Embedded Mode
-          // default: res.TanStackRouterDevtoolsPanel
-        })),
-      )
-```
-
-Then wrap the `TanStackRouterDevtools` component in suspense.
+The Devtools, if imported as `TanStackRouterDevtools` will not be shown in production. If you want to have devtools in an environment with `process.env.NODE_ENV === 'production'`, use instead `TanStackRouterDevtoolsInProd`, which has all the same options:
 
 ```tsx
-<Suspense>
-  <TanStackRouterDevtools />
-</Suspense>
+import { TanStackRouterDevtoolsInProd } from '@tanstack/react-router-devtools'
 ```
 
 ## Using inside of the `RouterProvider`
@@ -117,7 +97,7 @@ Floating Mode will mount the devtools as a fixed, floating element in your app a
 Place the following code as high in your React app as you can. The closer it is to the root of the page, the better it will work!
 
 ```js
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 function App() {
   return (
@@ -128,6 +108,25 @@ function App() {
   )
 }
 ```
+
+## Fixed Mode
+
+To control the position of the devtools, import the `TanStackRouterDevtoolsPanel`:
+
+```js
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+```
+
+It can then be attached to provided shadow DOM target:
+
+```js
+<TanStackRouterDevtoolsPanel
+  shadowDOMTarget={shadowContainer}
+  router={router}
+/>
+```
+
+Click [here](https://tanstack.com/router/latest/docs/framework/react/examples/basic-devtools-panel) to see a live example of this in StackBlitz.
 
 ### Options
 
@@ -153,7 +152,7 @@ function App() {
 Embedded Mode will embed the devtools as a regular component in your application. You can style it however you'd like after that!
 
 ```js
-import { TanStackRouterDevtoolsPanel } from '@tanstack/router-devtools'
+import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 
 function App() {
   return (

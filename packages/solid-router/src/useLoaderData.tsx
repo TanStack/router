@@ -1,9 +1,10 @@
 import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
-import type { AnyRouter, RegisteredRouter } from './router'
-import type { StrictOrFrom } from './utils'
 import type {
+  AnyRouter,
+  RegisteredRouter,
   ResolveUseLoaderData,
+  StrictOrFrom,
   UseLoaderDataResult,
 } from '@tanstack/router-core'
 

@@ -55,7 +55,7 @@ export interface MenuProps<
 }
 
 export function Menu<
-  TRouter extends RegisteredRouter,
+  TRouter extends RegisteredRouter = RegisteredRouter,
   TItems extends ReadonlyArray<unknown>,
 >(props: MenuProps<TRouter, TItems>): React.ReactNode
 export function Menu(props: MenuProps): React.ReactNode {
@@ -95,7 +95,7 @@ export interface MenuProps<
 }
 
 export function Menu<
-  TRouter extends RegisteredRouter,
+  TRouter extends RegisteredRouter = RegisteredRouter,
   TItems extends ReadonlyArray<unknown>,
   TFrom extends string = string,
 >(props: MenuProps<TRouter, TItems, TFrom>): React.ReactNode
@@ -127,7 +127,7 @@ export function Menu(props: MenuProps): React.ReactNode {
 
 ```tsx
 export async function fetchOrRedirect<
-  TRouter extends RegisteredRouter,
+  TRouter extends RegisteredRouter = RegisteredRouter,
   TOptions,
 >(
   url: string,
@@ -167,7 +167,7 @@ export interface UseConditionalNavigateResult {
 }
 
 export function useConditionalNavigate<
-  TRouter extends RegisteredRouter,
+  TRouter extends RegisteredRouter = RegisteredRouter,
   TOptions,
 >(
   navigateOptions: ValidateNavigateOptions<TRouter, TOptions>,

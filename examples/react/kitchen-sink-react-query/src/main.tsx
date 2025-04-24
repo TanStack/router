@@ -18,7 +18,7 @@ import {
   useRouterState,
   useSearch,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import {
   QueryClient,
   QueryClientProvider,
@@ -133,8 +133,8 @@ function RootComponent() {
                 ['/', 'Home'],
                 ['/dashboard', 'Dashboard'],
                 ['/expensive', 'Expensive'],
-                ['/layout-a', 'Layout A'],
-                ['/layout-b', 'Layout B'],
+                ['/route-a', 'Pathless Layout A'],
+                ['/route-b', 'Pathless Layout B'],
                 ['/profile', 'Profile'],
                 ['/login', 'Login'],
               ] as const
@@ -210,13 +210,13 @@ function IndexComponent() {
   )
 }
 
-const dashboardRoute = createRoute({
+const dashboardLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  component: DashboardComponent,
+  component: DashboardLayoutComponent,
 })
 
-function DashboardComponent() {
+function DashboardLayoutComponent() {
   return (
     <>
       <div className="flex items-center border-b">
@@ -250,7 +250,7 @@ function DashboardComponent() {
 }
 
 const dashboardIndexRoute = createRoute({
-  getParentRoute: () => dashboardRoute,
+  getParentRoute: () => dashboardLayoutRoute,
   path: '/',
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
@@ -271,15 +271,15 @@ function DashboardIndexComponent() {
   )
 }
 
-const invoicesRoute = createRoute({
-  getParentRoute: () => dashboardRoute,
+const invoicesLayoutRoute = createRoute({
+  getParentRoute: () => dashboardLayoutRoute,
   path: 'invoices',
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
-  component: InvoicesComponent,
+  component: InvoicesLayoutComponent,
 })
 
-function InvoicesComponent() {
+function InvoicesLayoutComponent() {
   const invoicesQuery = useSuspenseQuery(invoicesQueryOptions())
   const invoices = invoicesQuery.data
   // const updateInvoiceMutation = useUpdateInvoiceMutation()
@@ -350,7 +350,7 @@ function InvoicesComponent() {
 }
 
 const invoicesIndexRoute = createRoute({
-  getParentRoute: () => invoicesRoute,
+  getParentRoute: () => invoicesLayoutRoute,
   path: '/',
   component: InvoicesIndexComponent,
 })
@@ -405,7 +405,7 @@ function InvoicesIndexComponent() {
 }
 
 const invoiceRoute = createRoute({
-  getParentRoute: () => invoicesRoute,
+  getParentRoute: () => invoicesLayoutRoute,
   path: '$invoiceId',
   params: {
     parse: (params) => ({
@@ -523,8 +523,8 @@ function InvoiceComponent() {
   )
 }
 
-const usersRoute = createRoute({
-  getParentRoute: () => dashboardRoute,
+const usersLayoutRoute = createRoute({
+  getParentRoute: () => dashboardLayoutRoute,
   path: 'users',
   validateSearch: z.object({
     usersView: z
@@ -549,10 +549,10 @@ const usersRoute = createRoute({
 })
 
 function UsersComponent() {
-  const navigate = useNavigate({ from: usersRoute.fullPath })
-  const { usersView } = usersRoute.useSearch()
+  const navigate = useNavigate({ from: usersLayoutRoute.fullPath })
+  const { usersView } = usersLayoutRoute.useSearch()
   const usersQuery = useSuspenseQuery(
-    usersQueryOptions(usersRoute.useLoaderDeps()),
+    usersQueryOptions(usersLayoutRoute.useLoaderDeps()),
   )
   const users = usersQuery.data
   const sortBy = usersView?.sortBy ?? 'name'
@@ -671,7 +671,7 @@ function UsersComponent() {
 }
 
 const usersIndexRoute = createRoute({
-  getParentRoute: () => usersRoute,
+  getParentRoute: () => usersLayoutRoute,
   path: '/',
   component: UsersIndexComponent,
 })
@@ -701,7 +701,7 @@ function UsersIndexComponent() {
 }
 
 const userRoute = createRoute({
-  getParentRoute: () => usersRoute,
+  getParentRoute: () => usersLayoutRoute,
   path: 'user',
   validateSearch: z.object({
     userId: z.number(),
@@ -738,7 +738,7 @@ const expensiveRoute = createRoute({
   component: lazyRouteComponent(() => import('./Expensive')),
 })
 
-const authRoute = createRoute({
+const authPathlessLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'auth',
   // Before loading, authenticate the user via our auth context
@@ -765,7 +765,7 @@ const authRoute = createRoute({
 })
 
 const profileRoute = createRoute({
-  getParentRoute: () => authRoute,
+  getParentRoute: () => authPathlessLayoutRoute,
   path: 'profile',
   component: ProfileComponent,
 })
@@ -847,61 +847,61 @@ function LoginComponent() {
   )
 }
 
-const layoutRoute = createRoute({
+const pathlessLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  id: 'layout',
-  component: LayoutComponent,
+  id: 'pathlessLayout',
+  component: PathlessLayoutComponent,
 })
 
-function LayoutComponent() {
+function PathlessLayoutComponent() {
   return (
     <div>
-      <div>Layout</div>
+      <div>Pathless Layout</div>
       <hr />
       <Outlet />
     </div>
   )
 }
 
-const layoutARoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: 'layout-a',
-  component: LayoutAComponent,
+const pathlessLayoutARoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  path: 'route-a',
+  component: PathlessLayoutAComponent,
 })
 
-function LayoutAComponent() {
+function PathlessLayoutAComponent() {
   return (
     <div>
-      <div>Layout A</div>
+      <div>I'm A</div>
     </div>
   )
 }
 
-const layoutBRoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: 'layout-b',
-  component: LayoutBComponent,
+const pathlessLayoutBRoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  path: 'route-b',
+  component: PathlessLayoutBComponent,
 })
 
-function LayoutBComponent() {
+function PathlessLayoutBComponent() {
   return (
     <div>
-      <div>Layout B</div>
+      <div>i"m B</div>
     </div>
   )
 }
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  dashboardRoute.addChildren([
+  dashboardLayoutRoute.addChildren([
     dashboardIndexRoute,
-    invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
-    usersRoute.addChildren([usersIndexRoute, userRoute]),
+    invoicesLayoutRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
+    usersLayoutRoute.addChildren([usersIndexRoute, userRoute]),
   ]),
   expensiveRoute,
-  authRoute.addChildren([profileRoute]),
+  authPathlessLayoutRoute.addChildren([profileRoute]),
   loginRoute,
-  layoutRoute.addChildren([layoutARoute, layoutBRoute]),
+  pathlessLayoutRoute.addChildren([pathlessLayoutARoute, pathlessLayoutBRoute]),
 ])
 
 const queryClient = new QueryClient()

@@ -189,7 +189,7 @@ test('invalidate and clearCache narrowing in filter', () => {
 
   type Router = typeof router
 
-  router.invalidate<Router>({
+  router.invalidate({
     filter: (route) => {
       expectTypeOf(route.routeId).toEqualTypeOf<
         | '__root__'
@@ -209,7 +209,7 @@ test('invalidate and clearCache narrowing in filter', () => {
     },
   })
 
-  router.clearCache<Router>({
+  router.clearCache({
     filter: (route) => {
       expectTypeOf(route.routeId).toEqualTypeOf<
         | '__root__'

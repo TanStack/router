@@ -3,8 +3,9 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRouter, RegisteredRouter } from './router'
 import type {
+  AnyRouter,
+  RegisteredRouter,
   ResolveUseLoaderDeps,
   StrictOrFrom,
   UseLoaderDepsResult,

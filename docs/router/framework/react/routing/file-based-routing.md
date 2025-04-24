@@ -41,10 +41,10 @@ See the example below:
 | 📂 `settings`           |                           | `<Root><Settings>`                |
 | ┄ ʦ `profile.tsx`       | `/settings/profile`       | `<Root><Settings><Profile>`       |
 | ┄ ʦ `notifications.tsx` | `/settings/notifications` | `<Root><Settings><Notifications>` |
-| ʦ `_layout.tsx`         |                           | `<Root><Layout>`                  |
-| 📂 `_layout`            |                           |                                   |
-| ┄ ʦ `layout-a.tsx`      | `/layout-a`               | `<Root><Layout><LayoutA>`         |
-| ┄ ʦ `layout-b.tsx`      | `/layout-b`               | `<Root><Layout><LayoutB>`         |
+| ʦ `_pathlessLayout.tsx` |                           | `<Root><PathlessLayout>`          |
+| 📂 `_pathlessLayout`    |                           |                                   |
+| ┄ ʦ `route-a.tsx`       | `/route-a`                | `<Root><PathlessLayout><RouteA>`  |
+| ┄ ʦ `route-b.tsx`       | `/route-b`                | `<Root><PathlessLayout><RouteB>`  |
 | 📂 `files`              |                           |                                   |
 | ┄ ʦ `$.tsx`             | `/files/$`                | `<Root><Files>`                   |
 
@@ -56,22 +56,22 @@ This can be useful when you have a large number of uniquely deeply nested routes
 
 See the example below:
 
-| Filename                       | Route Path                | Component Output                  |
-| ------------------------------ | ------------------------- | --------------------------------- |
-| ʦ `__root.tsx`                 |                           | `<Root>`                          |
-| ʦ `index.tsx`                  | `/` (exact)               | `<Root><RootIndex>`               |
-| ʦ `about.tsx`                  | `/about`                  | `<Root><About>`                   |
-| ʦ `posts.tsx`                  | `/posts`                  | `<Root><Posts>`                   |
-| ʦ `posts.index.tsx`            | `/posts` (exact)          | `<Root><Posts><PostsIndex>`       |
-| ʦ `posts.$postId.tsx`          | `/posts/$postId`          | `<Root><Posts><Post>`             |
-| ʦ `posts_.$postId.edit.tsx`    | `/posts/$postId/edit`     | `<Root><EditPost>`                |
-| ʦ `settings.tsx`               | `/settings`               | `<Root><Settings>`                |
-| ʦ `settings.profile.tsx`       | `/settings/profile`       | `<Root><Settings><Profile>`       |
-| ʦ `settings.notifications.tsx` | `/settings/notifications` | `<Root><Settings><Notifications>` |
-| ʦ `_layout.tsx`                |                           | `<Root><Layout>`                  |
-| ʦ `_layout.layout-a.tsx`       | `/layout-a`               | `<Root><Layout><LayoutA>`         |
-| ʦ `_layout.layout-b.tsx`       | `/layout-b`               | `<Root><Layout><LayoutB>`         |
-| ʦ `files.$.tsx`                | `/files/$`                | `<Root><Files>`                   |
+| Filename                        | Route Path                | Component Output                  |
+| ------------------------------- | ------------------------- | --------------------------------- |
+| ʦ `__root.tsx`                  |                           | `<Root>`                          |
+| ʦ `index.tsx`                   | `/` (exact)               | `<Root><RootIndex>`               |
+| ʦ `about.tsx`                   | `/about`                  | `<Root><About>`                   |
+| ʦ `posts.tsx`                   | `/posts`                  | `<Root><Posts>`                   |
+| ʦ `posts.index.tsx`             | `/posts` (exact)          | `<Root><Posts><PostsIndex>`       |
+| ʦ `posts.$postId.tsx`           | `/posts/$postId`          | `<Root><Posts><Post>`             |
+| ʦ `posts_.$postId.edit.tsx`     | `/posts/$postId/edit`     | `<Root><EditPost>`                |
+| ʦ `settings.tsx`                | `/settings`               | `<Root><Settings>`                |
+| ʦ `settings.profile.tsx`        | `/settings/profile`       | `<Root><Settings><Profile>`       |
+| ʦ `settings.notifications.tsx`  | `/settings/notifications` | `<Root><Settings><Notifications>` |
+| ʦ `_pathlessLayout.tsx`         |                           | `<Root><PathlessLayout>`          |
+| ʦ `_pathlessLayout.route-a.tsx` | `/route-a`                | `<Root><PathlessLayout><RouteA>`  |
+| ʦ `_pathlessLayout.route-b.tsx` | `/route-b`                | `<Root><PathlessLayout><RouteB>`  |
+| ʦ `files.$.tsx`                 | `/files/$`                | `<Root><Files>`                   |
 
 ## Mixed Flat and Directory Routes
 

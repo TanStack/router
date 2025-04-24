@@ -139,7 +139,7 @@ Streamed promises follow the same lifecycle as the loader data they are associat
 
 **Streaming requires a server that supports it and for TanStack Router to be configured to use it properly.**
 
-Please read the entire [Streaming SSR Guide](/docs/framework/react/guide/ssr#streaming-ssr) for step by step instructions on how to set up your server for streaming.
+Please read the entire [Streaming SSR Guide](./ssr.md#streaming-ssr) for step by step instructions on how to set up your server for streaming.
 
 ## SSR Streaming Lifecycle
 

@@ -4,10 +4,10 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { postsQueryOptions } from './posts'
 
 export const Route = createLazyRoute('/posts')({
-  component: PostsComponent,
+  component: PostsLayoutComponent,
 })
 
-function PostsComponent() {
+function PostsLayoutComponent() {
   const postsQuery = useSuspenseQuery(postsQueryOptions)
 
   const posts = postsQuery.data

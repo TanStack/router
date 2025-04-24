@@ -1,4 +1,10 @@
-import type { AnyRoute, RootRoute } from './route'
+import type {
+  AnyContext,
+  AnyPathParams,
+  AnyRoute,
+  UpdatableRouteOptions,
+} from './route'
+import type { AnyValidator } from './validators'
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: any
@@ -10,23 +16,36 @@ export interface FileRouteTypes {
 }
 
 export type InferFileRouteTypes<TRouteTree extends AnyRoute> =
-  TRouteTree extends RootRoute<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    infer TFileRouteTypes extends FileRouteTypes
-  >
-    ? unknown extends TFileRouteTypes
-      ? never
-      : TFileRouteTypes
-    : never
+  unknown extends TRouteTree['types']['fileRouteTypes']
+    ? never
+    : TRouteTree['types']['fileRouteTypes'] extends FileRouteTypes
+      ? TRouteTree['types']['fileRouteTypes']
+      : never
 
 export interface FileRoutesByPath {
   // '/': {
   //   parentRoute: typeof rootRoute
   // }
+}
+
+export type LazyRouteOptions = Pick<
+  UpdatableRouteOptions<
+    AnyRoute,
+    string,
+    string,
+    AnyPathParams,
+    AnyValidator,
+    {},
+    AnyContext,
+    AnyContext,
+    AnyContext,
+    AnyContext
+  >,
+  'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
+>
+
+export interface LazyRoute {
+  options: {
+    id: string
+  } & LazyRouteOptions
 }

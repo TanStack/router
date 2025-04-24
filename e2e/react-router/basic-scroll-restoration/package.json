@@ -13,7 +13,7 @@
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-virtual": "^3.13.0",
-    "@tanstack/router-devtools": "workspace:^",
+    "@tanstack/react-router-devtools": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",

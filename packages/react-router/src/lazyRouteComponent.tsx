@@ -18,25 +18,6 @@ function isModuleNotFoundError(error: any): boolean {
   )
 }
 
-export function ClientOnly({
-  children,
-  fallback = null,
-}: React.PropsWithChildren<{ fallback?: React.ReactNode }>) {
-  return useHydrated() ? <>{children}</> : <>{fallback}</>
-}
-
-function subscribe() {
-  return () => {}
-}
-
-export function useHydrated() {
-  return React.useSyncExternalStore(
-    subscribe,
-    () => true,
-    () => false,
-  )
-}
-
 export function lazyRouteComponent<
   T extends Record<string, any>,
   TKey extends keyof T = 'default',

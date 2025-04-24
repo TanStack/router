@@ -30,7 +30,7 @@ npm init -y
 
 We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.json` file with at least the following settings:
 
-```jsonc
+```json
 {
   "compilerOptions": {
     "jsx": "react-jsx",
@@ -38,10 +38,12 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
     "module": "ESNext",
     "target": "ES2022",
     "skipLibCheck": true,
-    "strictNullChecks": true,
-  },
+    "strictNullChecks": true
+  }
 }
 ```
+
+> [!NOTE] > Enabling `verbatimModuleSyntax` can result in server bundles leaking into client bundles. It is recommended to keep this option disabled.
 
 ## Install Dependencies
 
@@ -58,7 +60,8 @@ npm i @tanstack/react-start @tanstack/react-router vinxi
 You'll also need React and the Vite React plugin, so install them too:
 
 ```shell
-npm i react react-dom && npm i -D @vitejs/plugin-react vite-tsconfig-paths
+npm i react react-dom
+npm i -D @vitejs/plugin-react vite-tsconfig-paths
 ```
 
 and some TypeScript:
@@ -130,7 +133,10 @@ Once configuration is done, we'll have a file tree that looks like the following
 ## The Router Configuration
 
 This is the file that will dictate the behavior of TanStack Router used within Start. Here, you can configure everything
-from the default [preloading functionality](../guide/preloading.md) to [caching staleness](../guide/data-loading.md).
+from the default [preloading functionality](/router/latest/docs/framework/react/guide/preloading) to [caching staleness](/router/latest/docs/framework/react/guide/data-loading).
+
+> [!NOTE]
+> You won't have a `routeTree.gen.ts` file yet. This file will be generated when you run TanStack Start for the first time.
 
 ```tsx
 // app/router.tsx
@@ -152,9 +158,6 @@ declare module '@tanstack/react-router' {
   }
 }
 ```
-
-> `routeTree.gen.ts` is not a file you're expected to have at this point.
-> It will be generated when you run TanStack Start (via `npm run dev` or `npm run start`) for the first time.
 
 ## The Server Entry Point
 

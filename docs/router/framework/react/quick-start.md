@@ -11,18 +11,10 @@ File based route generation (through Vite, and other supported bundlers) is the 
 ### Scaffolding Your First TanStack Router Project
 
 ```sh
-npm create @tanstack/router@latest
-# or
-pnpm create @tanstack/router
-# or
-yarn create @tanstack/router
-# or
-bun create @tanstack/router
-# or
-deno init --npm @tanstack/router
+npx create-tsrouter-app@latest my-app --template file-router
 ```
 
-Follow the prompts to scaffold a full TanStack Router project.
+See [create-tsrouter-app](https://github.com/TanStack/create-tsrouter-app) for more options.
 
 ### Manual Setup
 
@@ -31,19 +23,19 @@ Alternatively, you can manually setup the project using the following steps:
 #### Install TanStack Router, Vite Plugin, and the Router Devtools
 
 ```sh
-npm install @tanstack/react-router
-npm install -D @tanstack/router-plugin @tanstack/router-devtools
+npm install @tanstack/react-router @tanstack/react-router-devtools
+npm install -D @tanstack/router-plugin
 # or
-pnpm add @tanstack/react-router
-pnpm add -D @tanstack/router-plugin @tanstack/router-devtools
+pnpm add @tanstack/react-router @tanstack/react-router-devtools
+pnpm add -D @tanstack/router-plugin
 # or
-yarn add @tanstack/react-router
-yarn add -D @tanstack/router-plugin @tanstack/router-devtools
+yarn add @tanstack/react-router @tanstack/react-router-devtools
+yarn add -D @tanstack/router-plugin
 # or
-bun add @tanstack/react-router
-bun add -D @tanstack/router-plugin @tanstack/router-devtools
+bun add @tanstack/react-router @tanstack/react-router-devtools
+bun add -D @tanstack/router-plugin
 # or
-deno add npm:@tanstack/react-router npm:@tanstack/router-plugin npm:@tanstack/router-devtools
+deno add npm:@tanstack/react-router npm:@tanstack/router-plugin npm:@tanstack/react-router-devtools
 ```
 
 #### Configure the Vite Plugin
@@ -51,14 +43,15 @@ deno add npm:@tanstack/react-router npm:@tanstack/router-plugin npm:@tanstack/ro
 ```tsx
 // vite.config.ts
 import { defineConfig } from 'vite'
-import viteReact from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    // Please make sure that '@tanstack/router-plugin' is passed before '@vitejs/plugin-react'
     TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
-    viteReact(),
+    react(),
     // ...,
   ],
 })
@@ -78,7 +71,7 @@ Create the following files:
 
 ```tsx
 import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 export const Route = createRootRoute({
   component: () => (
@@ -185,7 +178,7 @@ import {
   createRoute,
   createRootRoute,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 const rootRoute = createRootRoute({
   component: () => (
