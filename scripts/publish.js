@@ -89,10 +89,6 @@ await publish({
       packageDir: 'packages/eslint-plugin-router',
     },
     {
-      name: '@tanstack/create-start',
-      packageDir: 'packages/create-start',
-    },
-    {
       name: '@tanstack/solid-start',
       packageDir: 'packages/solid-start',
     },
