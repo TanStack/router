@@ -1,7 +1,7 @@
 import { clsx as cx } from 'clsx'
 import { default as invariant } from 'tiny-invariant'
 import { rootRouteId, trimPath } from '@tanstack/router-core'
-import { createMemo } from 'solid-js'
+import { Show, createMemo } from 'solid-js'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
 import useLocalStorage from './useLocalStorage'
@@ -10,6 +10,7 @@ import { getRouteStatusColor, getStatusColor, multiSortBy } from './utils'
 import { AgeTicker } from './AgeTicker'
 // import type { DevtoolsPanelOptions } from './TanStackRouterDevtoolsPanel'
 
+import { NavigateButton } from './NavigateButton'
 import type {
   AnyContext,
   AnyRoute,
@@ -61,6 +62,28 @@ function Logo(props: any) {
       <div class={styles().tanstackLogo}>TANSTACK</div>
       <div class={styles().routerLogo}>TanStack Router v1</div>
     </button>
+  )
+}
+
+function NavigateLink(props: {
+  class?: string
+  left?: JSX.Element
+  children?: JSX.Element
+  right?: JSX.Element
+}) {
+  return (
+    <div
+      class={props.class}
+      style={{
+        display: 'flex',
+        'align-items': 'center',
+        width: '100%',
+      }}
+    >
+      {props.left}
+      <div style={{ 'flex-grow': 1, 'min-width': 0 }}>{props.children}</div>
+      {props.right}
+    </div>
   )
 }
 
@@ -126,6 +149,23 @@ function RouteComp({
     }
   })
 
+  const navigationTarget = createMemo<string | undefined>(() => {
+    if (isRoot) return '/' // __root__ is same as /
+    if (!route.path) return undefined // no path to navigate to
+
+    const matched = match()
+    const fillDynamicParam = (s: string): string | undefined =>
+      matched?.params[s.slice(1)]
+
+    // fill in dynamic params
+    const segments = (route.fullPath as string)
+      .split('/')
+      .map((s) => (s.startsWith('$') ? fillDynamicParam(s) : s))
+
+    // can only determine full path when all dynamic params are filled
+    return segments.every((s) => s != null) ? segments.join('/') : undefined
+  })
+
   return (
     <div>
       <div
@@ -145,15 +185,20 @@ function RouteComp({
             styles().matchIndicator(getRouteStatusColor(matches(), route)),
           )}
         />
-        <div class={cx(styles().routesRow(!!match()))}>
-          <div>
-            <code class={styles().code}>
-              {isRoot ? rootRouteId : route.path || trimPath(route.id)}{' '}
-            </code>
-            <code class={styles().routeParamInfo}>{param()}</code>
-          </div>
-          <AgeTicker match={match()} router={router} />
-        </div>
+        <NavigateLink
+          class={cx(styles().routesRow(!!match()))}
+          left={
+            <Show when={navigationTarget()}>
+              {(navigate) => <NavigateButton to={navigate()} router={router} />}
+            </Show>
+          }
+          right={<AgeTicker match={match()} router={router} />}
+        >
+          <code class={styles().code}>
+            {isRoot ? rootRouteId : route.path || trimPath(route.id)}{' '}
+          </code>
+          <code class={styles().routeParamInfo}>{param()}</code>
+        </NavigateLink>
       </div>
       {route.children?.length ? (
         <div class={styles().nestedRouteRow(!!isRoot)}>
@@ -406,7 +451,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                   {(routerState().pendingMatches?.length
                     ? routerState().pendingMatches
                     : routerState().matches
-                  )?.map((match: any, i: any) => {
+                  )?.map((match: any, _i: any) => {
                     return (
                       <div
                         role="button"
@@ -421,11 +466,21 @@ export const BaseTanStackRouterDevtoolsPanel =
                             styles().matchIndicator(getStatusColor(match)),
                           )}
                         />
-
-                        <code
-                          class={styles().matchID}
-                        >{`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}</code>
-                        <AgeTicker match={match} router={router} />
+                        <NavigateLink
+                          left={
+                            <NavigateButton
+                              to={match.pathname}
+                              params={match.params}
+                              search={match.search}
+                              router={router}
+                            />
+                          }
+                          right={<AgeTicker match={match} router={router} />}
+                        >
+                          <code class={styles().matchID}>
+                            {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
+                          </code>
+                        </NavigateLink>
                       </div>
                     )
                   })}
@@ -457,10 +512,19 @@ export const BaseTanStackRouterDevtoolsPanel =
                           styles().matchIndicator(getStatusColor(match)),
                         )}
                       />
-
-                      <code class={styles().matchID}>{`${match.id}`}</code>
-
-                      <AgeTicker match={match} router={router} />
+                      <NavigateLink
+                        left={
+                          <NavigateButton
+                            to={match.pathname}
+                            params={match.params}
+                            search={match.search}
+                            router={router}
+                          />
+                        }
+                        right={<AgeTicker match={match} router={router} />}
+                      >
+                        <code class={styles().matchID}>{`${match.id}`}</code>
+                      </NavigateLink>
                     </div>
                   )
                 })}
