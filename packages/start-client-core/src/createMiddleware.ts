@@ -72,7 +72,9 @@ export function createMiddleware<TType extends MiddlewareType>(
 export type MiddlewareType = 'request' | 'function'
 
 export type CreateMiddlewareResult<TType extends MiddlewareType> =
-  'function' extends TType ? FunctionMiddleware<ServerFnResponseType> : never
+  'function' extends TType
+    ? FunctionMiddleware<ServerFnResponseType>
+    : RequestMiddleware
 
 export interface FunctionMiddleware<
   TServerFnResponseType extends ServerFnResponseType,
@@ -190,17 +192,21 @@ export type IntersectAllValidatorInputs<TMiddlewares, TValidator> =
 
 export type IntersectAllMiddleware<
   TMiddlewares,
-  TType extends keyof AnyFunctionMiddleware['_types'],
+  TType extends
+    | keyof AnyFunctionMiddleware['_types']
+    | keyof AnyRequestMiddleware['_types'],
   TAcc = undefined,
-> = TMiddlewares extends readonly [
-  infer TMiddleware extends AnyFunctionMiddleware,
-  ...infer TRest,
-]
-  ? IntersectAllMiddleware<
-      TRest,
-      TType,
-      IntersectAssign<TAcc, TMiddleware['_types'][TType]>
-    >
+> = TMiddlewares extends readonly [infer TMiddleware, ...infer TRest]
+  ? TMiddleware extends AnyFunctionMiddleware | AnyRequestMiddleware
+    ? IntersectAllMiddleware<
+        TRest,
+        TType,
+        IntersectAssign<
+          TAcc,
+          TMiddleware['_types'][TType & keyof TMiddleware['_types']]
+        >
+      >
+    : TAcc
   : TAcc
 
 export type AnyFunctionMiddleware = FunctionMiddlewareWithTypes<
@@ -241,17 +247,18 @@ export type AssignAllClientContextBeforeNext<
 
 export type AssignAllMiddleware<
   TMiddlewares,
-  TType extends keyof AnyFunctionMiddleware['_types'],
+  TType extends
+    | keyof AnyFunctionMiddleware['_types']
+    | keyof AnyRequestMiddleware['_types'],
   TAcc = undefined,
-> = TMiddlewares extends readonly [
-  infer TMiddleware extends AnyFunctionMiddleware,
-  ...infer TRest,
-]
-  ? AssignAllMiddleware<
-      TRest,
-      TType,
-      Assign<TAcc, TMiddleware['_types'][TType]>
-    >
+> = TMiddlewares extends readonly [infer TMiddleware, ...infer TRest]
+  ? TMiddleware extends AnyFunctionMiddleware | AnyRequestMiddleware
+    ? AssignAllMiddleware<
+        TRest,
+        TType,
+        Assign<TAcc, TMiddleware['_types'][TType & keyof TMiddleware['_types']]>
+      >
+    : TAcc
   : TAcc
 
 export type AssignAllClientContextAfterNext<
@@ -627,3 +634,69 @@ export interface FunctionMiddlewareAfterValidator<
       TServerFnResponseType
     >,
     FunctionMiddlewareClient<TMiddlewares, TValidator, ServerFnResponseType> {}
+
+export interface RequestMiddleware
+  extends RequestMiddlewareAfterMiddleware<undefined> {
+  middleware: <const TMiddlewares>(
+    middlewares: Constrain<TMiddlewares, ReadonlyArray<AnyRequestMiddleware>>,
+  ) => RequestMiddlewareAfterMiddleware<TMiddlewares>
+}
+
+export type AnyRequestMiddleware = RequestMiddlewareWithTypes<any, any>
+
+export interface RequestMiddlewareWithTypes<TMiddlewares, TServerContext> {
+  _types: RequestMiddlewareTypes<TMiddlewares, TServerContext>
+}
+
+export interface RequestMiddlewareTypes<TMiddlewares, TServerContext> {
+  middlewares: TMiddlewares
+  serverContext: TServerContext
+  allServerContext: AssignAllServerContext<
+    TMiddlewares,
+    undefined,
+    TServerContext
+  >
+}
+
+export interface RequestMiddlewareAfterMiddleware<TMiddlewares>
+  extends RequestMiddlewareWithTypes<TMiddlewares, undefined>,
+    RequestMiddlewareServer<TMiddlewares> {}
+
+export interface RequestMiddlewareServer<TMiddlewares> {
+  server: <TServerContext = undefined>(
+    fn: RequestServerFn<TMiddlewares, TServerContext>,
+  ) => RequestMiddlewareAfterServer<TMiddlewares, TServerContext>
+}
+
+export type RequestServerFn<TMiddlewares, TServerContext> = (
+  options: RequestServerOptions<TMiddlewares>,
+) => RequestMiddlewareServerFnResult<TMiddlewares, TServerContext>
+
+export interface RequestServerOptions<TMiddlewares> {
+  request: Request
+  pathname: string
+  context: AssignAllServerContext<TMiddlewares>
+  next: RequestServerNextFn<TMiddlewares>
+}
+
+export type RequestServerNextFn<TMiddlewares> = <TServerContext>(
+  options?: RequestServerNextFnOptions<TServerContext>,
+) => RequestMiddlewareServerFnResult<TMiddlewares, TServerContext>
+
+export interface RequestServerNextFnOptions<TServerContext> {
+  context?: TServerContext
+}
+
+export type RequestMiddlewareServerFnResult<TMiddlewares, TServerContext> =
+  | Promise<RequestServerResult<TMiddlewares, TServerContext>>
+  | RequestServerResult<TMiddlewares, TServerContext>
+
+export interface RequestServerResult<TMiddlewares, TServerContext> {
+  request: Request
+  pathname: string
+  context: AssignAllServerContext<TMiddlewares, undefined, TServerContext>
+  response: Response
+}
+
+export interface RequestMiddlewareAfterServer<TMiddlewares, TServerContext>
+  extends RequestMiddlewareWithTypes<TMiddlewares, TServerContext> {}

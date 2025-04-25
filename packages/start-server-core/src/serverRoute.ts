@@ -13,6 +13,7 @@ import type {
 } from '@tanstack/router-core'
 import type {
   AnyFunctionMiddleware,
+  AnyRequestMiddleware,
   AssignAllServerContext,
   JsonResponse,
 } from '@tanstack/start-client-core'
@@ -375,7 +376,7 @@ export interface ServerRouteMiddleware<
   TChildren,
 > {
   middleware: <const TNewMiddleware>(
-    middleware: Constrain<TNewMiddleware, ReadonlyArray<AnyFunctionMiddleware>>,
+    middleware: Constrain<TNewMiddleware, ReadonlyArray<AnyRequestMiddleware>>,
   ) => ServerRouteAfterMiddleware<
     TParentRoute,
     TId,

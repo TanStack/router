@@ -48,6 +48,7 @@ export {
   type FunctionMiddlewareServerFnOptions,
   type FunctionMiddlewareServerNextFn,
   type FunctionServerResultWithContext,
+  type AnyRequestMiddleware,
 } from './createMiddleware'
 export {
   registerGlobalMiddleware,
