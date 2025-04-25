@@ -10,13 +10,13 @@ const successCases: Array<{
   expectedRouteId: string
 }> = [
   {
+    // This test should be updated whenever the `defaultCodeSplitGroupings` changes
     name: 'defaults',
     code: `
 import {createFileRoute} from '@tanstack/react-router'
 export const Route = createFileRoute('/posts')({
 codeSplitGroupings: [
   ['component'],
-  ['pendingComponent'],
   ['errorComponent'],
   ['notFoundComponent']
 ]
