@@ -14,7 +14,7 @@ File based route generation (through Vite, and other supported bundlers) is the 
 npx create-tsrouter-app@latest my-app --framework solid --template file-router
 ```
 
-See [create-tsrouter-app](https://github.com/TanStack/create-tsrouter-app) for more options.
+See [create-tsrouter-app](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app) for more options.
 
 ### Manual Setup
 

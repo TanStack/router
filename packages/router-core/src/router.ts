@@ -2157,10 +2157,6 @@ export class RouterCore<
       return !!(allPreload && !this.state.matches.find((d) => d.id === matchId))
     }
 
-    if (!this.isServer && !this.state.matches.length) {
-      triggerOnReady()
-    }
-
     const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
       if (isResolvedRedirect(err)) {
         if (!err.reloadDocument) {
@@ -2266,7 +2262,9 @@ export class RouterCore<
                 onReady &&
                 !this.isServer &&
                 !resolvePreload(matchId) &&
-                (route.options.loader || route.options.beforeLoad) &&
+                (route.options.loader ||
+                  route.options.beforeLoad ||
+                  routeNeedsPreload(route)) &&
                 typeof pendingMs === 'number' &&
                 pendingMs !== Infinity &&
                 (route.options.pendingComponent ??
@@ -2551,6 +2549,10 @@ export class RouterCore<
                             loaderData,
                           })
 
+                          // Last but not least, wait for the the components
+                          // to be preloaded before we resolve the match
+                          await route._componentsPromise
+
                           updateMatch(matchId, (prev) => ({
                             ...prev,
                             error: undefined,
@@ -2593,10 +2595,6 @@ export class RouterCore<
                           router: this,
                           match: this.getMatch(matchId)!,
                         })
-
-                        // Last but not least, wait for the the components
-                        // to be preloaded before we resolve the match
-                        await route._componentsPromise
                       } catch (err) {
                         updateMatch(matchId, (prev) => ({
                           ...prev,

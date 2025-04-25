@@ -68,15 +68,6 @@ TanStack Start is not for you if:
 
 TanStack works closely with our partners to provide the best possible developer experience while also providing solutions that work anywhere and are vetted by industry experts. Each of our partners plays a unique role in the TanStack ecosystem:
 
-- **Netlify**
-  <a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-dark.svg" style="height: 90px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" style="height: 90px;">
-    <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" style="height: 90px;">
-  </picture>
-  </a>
-  The leading hosting platform for web applications that provides a fast, secure, and reliable environment for deploying your web applications. We work closely with Netlify to ensure that TanStack Start applications not only deploy seamlessly to their platform, but also implement best practices for performance, security, and reliability regardless of where you end up deploying.
 - **Clerk**
   <a href="https://go.clerk.com/wOwHtuJ" alt="Clerk Logo">
   <picture>
@@ -86,6 +77,24 @@ TanStack works closely with our partners to provide the best possible developer 
   </picture>
   </a>
   The best possible authentication experience for modern web applications, including TanStack Start applications. Clerk provides TanStack Start users with first-class integrations and solutions to auth and collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in auth best practices.
+- **Netlify**
+  <a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-dark.svg" style="height: 90px;">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" style="height: 90px;">
+    <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" style="height: 90px;">
+  </picture>
+  </a>
+  The leading hosting platform for web applications that provides a fast, secure, and reliable environment for deploying your web applications. We work closely with Netlify to ensure that TanStack Start applications not only deploy seamlessly to their platform, but also implement best practices for performance, security, and reliability regardless of where you end up deploying.
+- **Neon**
+  <a href="https://neon.tech?utm_source=tanstack" alt="Neon Logo">
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-dark.svg" style="height: 60px;">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-light.svg" style="height: 60px;">
+  <img alt="Neon logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-light.svg" style="height: 60px;">
+  </picture>
+  </a>
+  A serverless, autoscaling Postgres solution purpose-built for modern full-stack apps. Neon offers rich integration opportunities with TanStack Start, including server functions and database-backed routing. Together, we’re simplifying the database experience for developers using TanStack.
 - **Convex**
   <a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
   <picture>

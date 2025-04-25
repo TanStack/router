@@ -1,9 +1,5 @@
 'package: arktype-adapter':
   - 'packages/arktype-adapter/**/*'
-'package: create-router':
-  - 'packages/create-router/**/*'
-'package: create-start':
-  - 'packages/create-start/**/*'
 'package: directive-functions-plugin':
   - 'packages/directive-functions-plugin/**/*'
 'package: eslint-plugin-router':
