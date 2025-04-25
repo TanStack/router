@@ -1,8 +1,18 @@
-export { setGlobalOrigin } from 'undici'
+import { setGlobalOrigin } from 'undici'
 
 /**
+ * DO NOT USE THIS FUNCTION. THIS FUNCTION IS FOR INTERNAL USE ONLY.
+ *
+ * @internal
+ */
+export const __setGlobalOrigin = setGlobalOrigin
+
+/**
+ * DO NOT USE THIS FUNCTION. THIS FUNCTION IS FOR INTERNAL USE ONLY.
+ *
  * Constructs an absolute URL from the given request object and options.
  *
+ * @internal
  * @param req - The `Request` object containing the headers to extract the host and protocol.
  * @param options - Configuration options for determining the trust level of proxy headers.
  * @param options.trustProxy - If `true`, the function will trust the `x-forwarded-host` and `x-forwarded-proto` headers
@@ -30,7 +40,7 @@ export { setGlobalOrigin } from 'undici'
  * console.log(url2); // Output: "https://proxy.example.com"
  * ```
  */
-export function getAbsoluteUrl(
+export function __getAbsoluteUrl(
   req: Request,
   options: { trustProxy: boolean } = { trustProxy: false },
 ): string {

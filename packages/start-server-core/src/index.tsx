@@ -23,4 +23,4 @@ export * from './h3'
 export { createServerRoute, createServerFileRoute } from './serverRoute'
 export type { CreateServerFileRoute } from './serverRoute'
 
-export { getAbsoluteUrl, setGlobalOrigin } from './undici'
+export { __getAbsoluteUrl, __setGlobalOrigin } from './undici'
