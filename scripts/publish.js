@@ -85,10 +85,6 @@ await publish({
       packageDir: 'packages/server-functions-plugin',
     },
     {
-      name: '@tanstack/create-router',
-      packageDir: 'packages/create-router',
-    },
-    {
       name: '@tanstack/eslint-plugin-router',
       packageDir: 'packages/eslint-plugin-router',
     },

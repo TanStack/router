@@ -5682,100 +5682,6 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
 
-  packages/create-router:
-    dependencies:
-      '@inquirer/prompts':
-        specifier: ^5.5.0
-        version: 5.5.0
-      '@rsbuild/core':
-        specifier: ^1.0.2
-        version: 1.2.4
-      '@rsbuild/plugin-react':
-        specifier: ^1.0.1
-        version: 1.1.0(@rsbuild/core@1.2.4)
-      '@swc/core':
-        specifier: ^1.7.25
-        version: 1.10.15(@swc/helpers@0.5.15)
-      '@tanstack/react-router':
-        specifier: workspace:*
-        version: link:../react-router
-      '@tanstack/router-devtools':
-        specifier: workspace:*
-        version: link:../router-devtools
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../router-plugin
-      '@types/react':
-        specifier: ^19.0.8
-        version: 19.0.8
-      '@types/react-dom':
-        specifier: ^19.0.3
-        version: 19.0.3(@types/react@19.0.8)
-      '@vitejs/plugin-react':
-        specifier: ^4.3.2
-        version: 4.3.4(vite@6.1.4(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
-      commander:
-        specifier: ^12.1.0
-        version: 12.1.0
-      cross-spawn:
-        specifier: ^7.0.6
-        version: 7.0.6
-      html-webpack-plugin:
-        specifier: ^5.6.0
-        version: 5.6.3(@rspack/core@1.2.2(@swc/helpers@0.5.15))(webpack@5.97.1)
-      picocolors:
-        specifier: ^1.1.1
-        version: 1.1.1
-      react:
-        specifier: ^19.0.0
-        version: 19.0.0
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.0.0(react@19.0.0)
-      swc-loader:
-        specifier: ^0.2.6
-        version: 0.2.6(@swc/core@1.10.15(@swc/helpers@0.5.15))(webpack@5.97.1)
-      tinyglobby:
-        specifier: ^0.2.10
-        version: 0.2.12
-      typescript:
-        specifier: ^5.7.2
-        version: 5.8.2
-      validate-npm-package-name:
-        specifier: ^6.0.0
-        version: 6.0.0
-      vite:
-        specifier: 6.1.4
-        version: 6.1.4(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-      webpack:
-        specifier: ^5.94.0
-        version: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.0)(webpack-cli@5.1.4)
-      webpack-cli:
-        specifier: ^5.1.4
-        version: 5.1.4(webpack-dev-server@5.2.0)(webpack@5.97.1)
-      webpack-dev-server:
-        specifier: ^5.1.0
-        version: 5.2.0(webpack-cli@5.1.4)(webpack@5.97.1)
-      which:
-        specifier: ^5.0.0
-        version: 5.0.0
-      yocto-spinner:
-        specifier: ^0.2.0
-        version: 0.2.0
-    devDependencies:
-      '@types/cross-spawn':
-        specifier: ^6.0.6
-        version: 6.0.6
-      '@types/validate-npm-package-name':
-        specifier: ^4.0.2
-        version: 4.0.2
-      '@types/which':
-        specifier: ^3.0.4
-        version: 3.0.4
-      unbuild:
-        specifier: ^3.3.1
-        version: 3.3.1(typescript@5.8.2)(vue-tsc@2.0.29(typescript@5.8.2))
-
   packages/create-start:
     dependencies:
       '@commander-js/extra-typings':
@@ -10984,9 +10890,6 @@ packages:
   '@types/validate-npm-package-name@4.0.2':
     resolution: {integrity: sha512-lrpDziQipxCEeK5kWxvljWYhUvOiB2A9izZd9B2AFarYAkqZshb4lPbRs7zKEic6eGtH8V/2qJW+dPp9OtF6bw==}
 
-  '@types/which@3.0.4':
-    resolution: {integrity: sha512-liyfuo/106JdlgSchJzXEQCVArk0CvevqPote8F8HgWgJ3dRCcTHgJIsLDuee0kxk/mhbInzIZk3QWSZJ8R+2w==}
-
   '@types/wrap-ansi@3.0.0':
     resolution: {integrity: sha512-ltIpx+kM7g/MLRZfkbL7EsCEjfzCcScLpkg37eXEtx5kmrAKBkTJwd1GIAjDSL8wTpM6Hzn5YO4pSb91BEwu1g==}
 
@@ -15985,11 +15888,6 @@ packages:
     engines: {node: ^16.13.0 || >=18.0.0}
     hasBin: true
 
-  which@5.0.0:
-    resolution: {integrity: sha512-JEdGzHwwkrbWoGOlIHqQ5gtprKGOenpDHpxE9zVR1bWbOtYRyPPHMe9FaP6x61CmNaTThSkb0DAJte5jD+DmzQ==}
-    engines: {node: ^18.17.0 || >=20.5.0}
-    hasBin: true
-
   why-is-node-running@2.3.0:
     resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
@@ -20038,8 +19936,6 @@ snapshots:
   '@types/unist@3.0.3': {}
 
   '@types/validate-npm-package-name@4.0.2': {}
-
-  '@types/which@3.0.4': {}
 
   '@types/wrap-ansi@3.0.0': {}
 
@@ -25793,10 +25689,6 @@ snapshots:
       isexe: 2.0.0
 
   which@4.0.0:
-    dependencies:
-      isexe: 3.1.1
-
-  which@5.0.0:
     dependencies:
       isexe: 3.1.1
 
