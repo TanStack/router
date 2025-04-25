@@ -19,7 +19,7 @@ export async function prerender({
   nitro: Nitro
   builder: ViteBuilder
 }) {
-  console.info('Prendering pages...')
+  nitro.logger.info('Prendering pages...')
 
   // If prerender is enabled but no pages are provided, default to prerendering the root page
   if (options.prerender?.enabled && !options.pages.length) {
@@ -72,13 +72,12 @@ export async function prerender({
 
   // Import renderer entry
   const serverFilename =
-    typeof nodeNitro.options.rollupConfig?.output.entryFileNames === 'string'
-      ? nodeNitro.options.rollupConfig.output.entryFileNames
+    typeof nodeNitroRollupOptions.output.entryFileNames === 'string'
+      ? nodeNitroRollupOptions.output.entryFileNames
       : 'index.mjs'
 
   const serverEntrypoint = path.resolve(
-    nodeNitro.options.output.serverDir,
-    serverFilename,
+    path.join(nodeNitro.options.output.serverDir, serverFilename),
   )
 
   const { closePrerenderer, localFetch } = (await import(serverEntrypoint)) as {
@@ -90,14 +89,14 @@ export async function prerender({
     // Crawl all pages
     const pages = await prerenderPages()
 
-    console.info(`Prerendered ${pages.length} pages:`)
+    nitro.logger.info(`Prerendered ${pages.length} pages:`)
     pages.forEach((page) => {
-      console.info(`- ${page}`)
+      nitro.logger.info(`- ${page}`)
     })
 
     // TODO: Write the prerendered pages to the output directory
   } catch (error) {
-    console.error(error)
+    nitro.logger.error(error)
   } finally {
     // Ensure server is always closed
     // server.process.kill()
@@ -123,7 +122,7 @@ export async function prerender({
     const seen = new Set<string>()
     const retriesByPath = new Map<string, number>()
     const concurrency = options.prerender?.concurrency ?? os.cpus().length
-    console.info(`Concurrency: ${concurrency}`)
+    nitro.logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
 
     options.pages.forEach((_page) => {
@@ -165,7 +164,7 @@ export async function prerender({
 
       // Add the task
       queue.add(async () => {
-        console.info(`Crawling: ${page.path}`)
+        nitro.logger.info(`Crawling: ${page.path}`)
         const retries = retriesByPath.get(page.path) || 0
         try {
           // Fetch the route
@@ -227,7 +226,9 @@ export async function prerender({
           }
         } catch (error) {
           if (retries < (prerenderOptions.retryCount ?? 0)) {
-            console.warn(`Encountered error, retrying: ${page.path} in 500ms`)
+            nitro.logger.warn(
+              `Encountered error, retrying: ${page.path} in 500ms`,
+            )
             await new Promise((resolve) =>
               setTimeout(resolve, prerenderOptions.retryDelay),
             )
