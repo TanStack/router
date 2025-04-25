@@ -120,6 +120,7 @@ export function TanStackStartVitePlugin(
               'nitropack',
               '@tanstack/**',
             ],
+            external: ['undici'],
           },
           /* prettier-ignore */
           define: {
@@ -151,11 +152,12 @@ export function TanStackStartVitePlugin(
 
         if (id === '/~start/server-entry.tsx') {
           return `
-import { toWebRequest, eventHandler } from '@tanstack/react-start/server'
+import { toWebRequest, eventHandler, setGlobalOrigin, getAbsoluteUrl } from '@tanstack/react-start/server'
 import serverEntry from '${options.serverEntryPath}'
 
 export default eventHandler(function startEntry(event) {
   const request = toWebRequest(event)
+  setGlobalOrigin(getAbsoluteUrl(request))
   return serverEntry({ request })
 })
 `

@@ -1,5 +1,4 @@
 import path from 'node:path'
-import { setGlobalOrigin } from 'undici'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   flattenMiddlewares,
@@ -56,8 +55,6 @@ export function createStartHandler<TRouter extends AnyRouter>({
 }): CustomizeStartHandler<TRouter> {
   return (cb) => {
     return requestHandler(async ({ request }) => {
-      setGlobalOrigin(getAbsoluteUrl(request))
-
       const url = new URL(request.url)
       const href = url.href.replace(url.origin, '')
 
@@ -284,23 +281,4 @@ function handleCtxResult(result: TODO) {
 
 function isSpecialResponse(err: TODO) {
   return err instanceof Response || isRedirect(err)
-}
-
-function getAbsoluteUrl(
-  req: Request,
-  options: { trustProxy: boolean } = { trustProxy: false },
-) {
-  const headers = req.headers
-
-  const host = options.trustProxy
-    ? headers.get('x-forwarded-host') || headers.get('host')
-    : headers.get('host')
-
-  const protocol = options.trustProxy
-    ? headers.get('x-forwarded-proto') || 'http'
-    : 'http'
-
-  if (!host) throw new Error('Cannot determine host from request headers')
-
-  return `${protocol}://${host}`
 }
