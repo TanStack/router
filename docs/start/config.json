@@ -209,6 +209,34 @@
           ]
         }
       ]
+    },
+    {
+      "label": "Tutorials",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Reading and Writing a File",
+              "to": "framework/react/reading-writing-file"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Bare",
+              "to": "framework/solid/examples/start-bare"
+            },
+            {
+              "label": "Basic",
+              "to": "framework/solid/examples/start-basic"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
