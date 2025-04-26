@@ -187,7 +187,7 @@ test('server function can correctly send and receive headers', async ({
   "connection": "keep-alive",
   "content-type": "application/json",
   "host": "localhost:${PORT}",
-  "sec-ch-ua": "\\"Not(A:Brand\\";v=\\"99\\", \\"HeadlessChrome\\";v=\\"133\\", \\"Chromium\\";v=\\"133\\"",
+  "sec-ch-ua": "\\"Chromium\\";v=\\"136\\", \\"HeadlessChrome\\";v=\\"136\\", \\"Not.A/Brand\\";v=\\"99\\"",
   "sec-ch-ua-mobile": "?0",
   "sec-ch-ua-platform": "\\"Windows\\"",
   "sec-fetch-dest": "document",
@@ -195,7 +195,7 @@ test('server function can correctly send and receive headers', async ({
   "sec-fetch-site": "none",
   "sec-fetch-user": "?1",
   "upgrade-insecure-requests": "1",
-  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.6943.16 Safari/537.36"
+  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.7103.25 Safari/537.36"
 }`)
 
   await page.getByTestId('test-headers-btn').click()
@@ -205,9 +205,9 @@ test('server function can correctly send and receive headers', async ({
   "host": "localhost:${PORT}",
   "connection": "keep-alive",
   "sec-ch-ua-platform": "\\"Windows\\"",
-  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.6943.16 Safari/537.36",
+  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.7103.25 Safari/537.36",
   "accept": "application/json",
-  "sec-ch-ua": "\\"Not(A:Brand\\";v=\\"99\\", \\"HeadlessChrome\\";v=\\"133\\", \\"Chromium\\";v=\\"133\\"",
+  "sec-ch-ua": "\\"Chromium\\";v=\\"136\\", \\"HeadlessChrome\\";v=\\"136\\", \\"Not.A/Brand\\";v=\\"99\\"",
   "content-type": "application/json",
   "sec-ch-ua-mobile": "?0",
   "accept-language": "en-US",
