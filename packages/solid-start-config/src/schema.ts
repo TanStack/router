@@ -80,23 +80,19 @@ const testedDeploymentPresets: Array<DeploymentPreset> = [
   'node-server',
 ]
 
-export function checkDeploymentPresetInput(
-  preset?: string,
-): DeploymentPreset | undefined {
-  if (preset) {
-    if (!vinxiDeploymentPresets.includes(preset as any)) {
-      console.warn(
-        `Invalid deployment preset "${preset}". Available presets are: ${vinxiDeploymentPresets
-          .map((p) => `"${p}"`)
-          .join(', ')}.`,
-      )
-    }
+export function checkDeploymentPresetInput(preset: string): DeploymentPreset {
+  if (!vinxiDeploymentPresets.includes(preset as any)) {
+    console.warn(
+      `Invalid deployment preset "${preset}". Available presets are: ${vinxiDeploymentPresets
+        .map((p) => `"${p}"`)
+        .join(', ')}.`,
+    )
+  }
 
-    if (!testedDeploymentPresets.includes(preset as any)) {
-      console.warn(
-        `The deployment preset '${preset}' is not fully supported yet and may not work as expected.`,
-      )
-    }
+  if (!testedDeploymentPresets.includes(preset as any)) {
+    console.warn(
+      `The deployment preset '${preset}' is not fully supported yet and may not work as expected.`,
+    )
   }
 
   return preset

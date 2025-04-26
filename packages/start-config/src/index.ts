@@ -87,7 +87,9 @@ export async function defineConfig(
   const { preset: configDeploymentPreset, ...serverOptions } =
     serverSchema.parse(opts.server || {})
 
-  const deploymentPreset = checkDeploymentPresetInput(configDeploymentPreset)
+  const deploymentPreset = checkDeploymentPresetInput(
+    configDeploymentPreset || 'node-server',
+  )
   const tsr = setTsrDefaults(opts.tsr)
   const tsrConfig = getConfig(tsr)
 
