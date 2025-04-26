@@ -1,5 +1,6 @@
 import { expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
+import type { RequestServerNextFn } from '../createMiddleware'
 import type { Constrain, Validator } from '@tanstack/router-core'
 import type { ConstrainValidator } from '../createServerFn'
 
@@ -641,5 +642,95 @@ test('createMiddleware validator infers unknown for default input type', () => {
       expectTypeOf(data).toEqualTypeOf<'success' | 'failed'>()
 
       return next()
+    })
+})
+
+test('createMiddleware with type request, no middleware or context', () => {
+  createMiddleware({ type: 'request' }).server(async (options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      request: Request
+      next: RequestServerNextFn<undefined>
+      pathname: string
+      context: undefined
+    }>()
+
+    const result = await options.next()
+
+    expectTypeOf(result).toEqualTypeOf<{
+      context: undefined
+      pathname: string
+      request: Request
+      response: Response
+    }>()
+
+    return result
+  })
+})
+
+test('createMiddleware with type request, no middleware with context', () => {
+  createMiddleware({ type: 'request' }).server(async (options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      request: Request
+      next: RequestServerNextFn<undefined>
+      pathname: string
+      context: undefined
+    }>()
+
+    const result = await options.next({ context: { a: 'a' } })
+
+    expectTypeOf(result).toEqualTypeOf<{
+      context: { a: string }
+      pathname: string
+      request: Request
+      response: Response
+    }>()
+
+    return result
+  })
+})
+
+test('createMiddleware with type request, middleware and context', () => {
+  const middleware1 = createMiddleware({ type: 'request' }).server(
+    async (options) => {
+      expectTypeOf(options).toEqualTypeOf<{
+        request: Request
+        next: RequestServerNextFn<undefined>
+        pathname: string
+        context: undefined
+      }>()
+
+      const result = await options.next({ context: { a: 'a' } })
+
+      expectTypeOf(result).toEqualTypeOf<{
+        context: { a: string }
+        pathname: string
+        request: Request
+        response: Response
+      }>()
+
+      return result
+    },
+  )
+
+  createMiddleware({ type: 'request' })
+    .middleware([middleware1])
+    .server(async (options) => {
+      expectTypeOf(options).toEqualTypeOf<{
+        request: Request
+        next: RequestServerNextFn<undefined>
+        pathname: string
+        context: { a: string }
+      }>()
+
+      const result = await options.next({ context: { b: 'b' } })
+
+      expectTypeOf(result).toEqualTypeOf<{
+        context: { a: string; b: string }
+        pathname: string
+        request: Request
+        response: Response
+      }>()
+
+      return result
     })
 })

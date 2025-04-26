@@ -638,7 +638,7 @@ export interface FunctionMiddlewareAfterValidator<
 
 export interface RequestMiddleware
   extends RequestMiddlewareAfterMiddleware<undefined> {
-  middleware: <const TMiddlewares>(
+  middleware: <const TMiddlewares = undefined>(
     middlewares: Constrain<TMiddlewares, ReadonlyArray<AnyRequestMiddleware>>,
   ) => RequestMiddlewareAfterMiddleware<TMiddlewares>
 }
@@ -681,7 +681,7 @@ export interface RequestServerOptions<TMiddlewares> {
   next: RequestServerNextFn<TMiddlewares>
 }
 
-export type RequestServerNextFn<TMiddlewares> = <TServerContext>(
+export type RequestServerNextFn<TMiddlewares> = <TServerContext = undefined>(
   options?: RequestServerNextFnOptions<TServerContext>,
 ) => RequestMiddlewareServerFnResult<TMiddlewares, TServerContext>
 
@@ -696,7 +696,9 @@ export type RequestMiddlewareServerFnResult<TMiddlewares, TServerContext> =
 export interface RequestServerResult<TMiddlewares, TServerContext> {
   request: Request
   pathname: string
-  context: AssignAllServerContext<TMiddlewares, undefined, TServerContext>
+  context: Expand<
+    AssignAllServerContext<TMiddlewares, undefined, TServerContext>
+  >
   response: Response
 }
 
