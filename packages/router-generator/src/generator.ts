@@ -712,10 +712,7 @@ FileRoutesByPath['${routeNode.routePath}']['fullPath']
 import type * as ServerTypes from '${replaceBackslash(
       path.relative(
         path.dirname(config.generatedRouteTree),
-        path.resolve(
-          root,
-          'node_modules/.tanstack-start/server-routes/routeTree.gen.ts',
-        ),
+        path.resolve(root, '.tanstack-start/server-routes/routeTree.gen.ts'),
       ),
     )}'`,
     ...config.routeTreeFileFooter,

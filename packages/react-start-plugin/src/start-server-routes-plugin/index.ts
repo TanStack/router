@@ -101,7 +101,7 @@ let skipMessage = false
 function getGeneratedRouteTreePath(root: string) {
   return path.resolve(
     root,
-    'node_modules/.tanstack-start/server-routes/routeTree.gen.ts',
+    '.tanstack-start/server-routes/routeTree.gen.ts',
   )
 }
 
