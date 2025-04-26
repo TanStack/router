@@ -507,7 +507,6 @@ async function generator(config: Config, root: string) {
       .map((routeNode) => {
         return `declare module './${getImportPath(routeNode)}' {
 const createServerFileRoute: CreateServerFileRoute<
-'${routeNode.routePath}',
 FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
 FileRoutesByPath['${routeNode.routePath}']['id'],
 FileRoutesByPath['${routeNode.routePath}']['path'],

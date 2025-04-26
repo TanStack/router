@@ -143,6 +143,7 @@ export interface FunctionMiddlewareTypes<
   in out TClientContext,
   in out TClientSendContext,
 > {
+  type: 'function'
   middlewares: TMiddlewares
   input: ResolveValidatorInput<TValidator>
   allInput: IntersectAllValidatorInputs<TMiddlewares, TValidator>
@@ -649,6 +650,7 @@ export interface RequestMiddlewareWithTypes<TMiddlewares, TServerContext> {
 }
 
 export interface RequestMiddlewareTypes<TMiddlewares, TServerContext> {
+  type: 'request'
   middlewares: TMiddlewares
   serverContext: TServerContext
   allServerContext: AssignAllServerContext<

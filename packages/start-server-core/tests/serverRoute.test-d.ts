@@ -6,21 +6,20 @@ import type { CreateServerFileRoute } from '../src/serverRoute'
 test('createServerFileRoute with methods with no middleware', () => {
   type Path = '$detailId'
   const createServerFileRoute: CreateServerFileRoute<
-    Path,
     any,
     Path,
     Path,
     Path,
     unknown
-  > = undefined as any
+  > = undefined as never
 
   const serverFileRoute = createServerFileRoute()
 
   expectTypeOf(serverFileRoute).toHaveProperty('methods')
   expectTypeOf(serverFileRoute).toHaveProperty('middleware')
 
-  const serverFileRouteWithMethods1 = serverFileRoute.methods({
-    GET: async (ctx) => {
+  serverFileRoute.methods({
+    GET: (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         context: undefined
         params: { detailId: string }
@@ -34,8 +33,8 @@ test('createServerFileRoute with methods with no middleware', () => {
     },
   })
 
-  const serverFileRouteWithMethods2 = serverFileRoute.methods((r) => ({
-    GET: r.handler(async (ctx) => {
+  serverFileRoute.methods((r) => ({
+    GET: r.handler((ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         context: undefined
         params: { detailId: string }
@@ -53,22 +52,21 @@ test('createServerFileRoute with methods with no middleware', () => {
 test('createServerFileRoute with methods and route middleware context', () => {
   type Path = '$detailId'
   const createServerFileRoute: CreateServerFileRoute<
-    Path,
     any,
     Path,
     Path,
     Path,
     unknown
-  > = undefined as any
+  > = undefined as never
 
-  const routeMiddleware = createMiddleware({ type: 'function' }).server(
+  const routeMiddleware = createMiddleware({ type: 'request' }).server(
     ({ next }) => next({ context: { a: 'a' } }),
   )
 
   const serverFileRoute = createServerFileRoute().middleware([routeMiddleware])
 
-  const serverFileRouteWithMethods1 = serverFileRoute.methods({
-    GET: async (ctx) => {
+  serverFileRoute.methods({
+    GET: (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         context: { a: string }
         params: { detailId: string }
@@ -82,8 +80,8 @@ test('createServerFileRoute with methods and route middleware context', () => {
     },
   })
 
-  const serverFileRouteWithMethods2 = serverFileRoute.methods((r) => ({
-    GET: r.handler(async (ctx) => {
+  serverFileRoute.methods((r) => ({
+    GET: r.handler((ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         context: { a: string }
         params: { detailId: string }
@@ -101,7 +99,6 @@ test('createServerFileRoute with methods and route middleware context', () => {
 test('createServerFileRoute with methods middleware and route middleware', () => {
   type Path = '$detailId'
   const createServerFileRoute: CreateServerFileRoute<
-    Path,
     any,
     Path,
     Path,
@@ -109,18 +106,18 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
     unknown
   > = undefined as any
 
-  const routeMiddleware = createMiddleware({ type: 'function' }).server(
+  const routeMiddleware = createMiddleware({ type: 'request' }).server(
     ({ next }) => next({ context: { a: 'a' } }),
   )
 
   const serverFileRoute = createServerFileRoute().middleware([routeMiddleware])
 
-  const methodMiddleware = createMiddleware({ type: 'function' }).server(
+  const methodMiddleware = createMiddleware({ type: 'request' }).server(
     ({ next }) => next({ context: { b: 'b' } }),
   )
 
-  const serverRoute = serverFileRoute.methods((r) => ({
-    GET: r.middleware([methodMiddleware]).handler(async (ctx) => {
+  serverFileRoute.methods((r) => ({
+    GET: r.middleware([methodMiddleware]).handler((ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         context: { a: string; b: string }
         params: { detailId: string }
@@ -137,7 +134,6 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
 
 test('createServerFileRoute with a parent middleware context', () => {
   const createDetailsServerFileRoute: CreateServerFileRoute<
-    'details',
     any,
     'details',
     'details',
@@ -145,32 +141,31 @@ test('createServerFileRoute with a parent middleware context', () => {
     unknown
   > = undefined as any
 
-  const routeMiddleware1 = createMiddleware({ type: 'function' }).server(
+  const routeMiddleware1 = createMiddleware({ type: 'request' }).server(
     ({ next }) => {
       return next({ context: { a: 'a' } })
     },
   )
 
-  const detailsServerRoute = createDetailsServerFileRoute().middleware([
+  const _detailsServerRoute = createDetailsServerFileRoute().middleware([
     routeMiddleware1,
   ])
 
   const createDetailServerFileRoute: CreateServerFileRoute<
-    'details/$detailId',
-    typeof detailsServerRoute,
+    typeof _detailsServerRoute,
     'details/$detailId',
     '$detailId',
     'details/$detailId',
     unknown
   > = undefined as any
 
-  const routeMiddleware2 = createMiddleware({ type: 'function' }).server(
+  const routeMiddleware2 = createMiddleware({ type: 'request' }).server(
     ({ next }) => {
       return next({ context: { b: 'b' } })
     },
   )
 
-  const detailServerRoute1 = createDetailServerFileRoute()
+  createDetailServerFileRoute()
     .middleware([routeMiddleware2])
     .methods({
       GET: (ctx) => {
@@ -185,13 +180,13 @@ test('createServerFileRoute with a parent middleware context', () => {
       },
     })
 
-  const methodMiddleware = createMiddleware({ type: 'function' }).server(
+  const methodMiddleware = createMiddleware({ type: 'request' }).server(
     ({ next }) => {
       return next({ context: { c: 'c' } })
     },
   )
 
-  const detailServerRoute2 = createDetailServerFileRoute()
+  createDetailServerFileRoute()
     .middleware([routeMiddleware2])
     .methods((r) => ({
       GET: r.middleware([methodMiddleware]).handler((ctx) => {
@@ -209,7 +204,6 @@ test('createServerFileRoute with a parent middleware context', () => {
 
 test('createServerFileRoute with parent middleware params', () => {
   const createDetailsServerFileRoute: CreateServerFileRoute<
-    '$userId',
     any,
     '$userId',
     '$userId',
@@ -217,18 +211,17 @@ test('createServerFileRoute with parent middleware params', () => {
     unknown
   > = undefined as any
 
-  const detailsServerRoute = createDetailsServerFileRoute()
+  const _detailsServerRoute = createDetailsServerFileRoute()
 
   const createDetailServerFileRoute: CreateServerFileRoute<
-    '$userId/$detailId',
-    typeof detailsServerRoute,
+    typeof _detailsServerRoute,
     '$userId/$detailId',
     '$detailId',
     '$userId/$detailId',
     unknown
   > = undefined as any
 
-  const detailServerRoute1 = createDetailServerFileRoute().methods({
+  createDetailServerFileRoute().methods({
     GET: (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         context: undefined
@@ -241,7 +234,7 @@ test('createServerFileRoute with parent middleware params', () => {
     },
   })
 
-  const detailServerRoute2 = createDetailServerFileRoute().methods((r) => ({
+  createDetailServerFileRoute().methods((r) => ({
     GET: r.handler((ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         context: undefined
@@ -257,7 +250,6 @@ test('createServerFileRoute with parent middleware params', () => {
 
 test('createServerFileRoute with no params', () => {
   const createDetailsServerFileRoute: CreateServerFileRoute<
-    'details',
     any,
     'details',
     'details',
@@ -265,7 +257,7 @@ test('createServerFileRoute with no params', () => {
     unknown
   > = undefined as any
 
-  const detailServerRoute1 = createDetailsServerFileRoute().methods({
+  createDetailsServerFileRoute().methods({
     GET: (ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         context: undefined
@@ -278,7 +270,7 @@ test('createServerFileRoute with no params', () => {
     },
   })
 
-  const detailServerRoute2 = createDetailsServerFileRoute().methods((r) => ({
+  createDetailsServerFileRoute().methods((r) => ({
     GET: r.handler((ctx) => {
       expectTypeOf(ctx).toEqualTypeOf<{
         context: undefined
