@@ -31,7 +31,7 @@ import type {
   RouteMask,
   RouteOptions,
   RouteTypesById,
-  Router,
+  RouterCore,
   ToMaskOptions,
   UseNavigateResult,
 } from '@tanstack/router-core'
@@ -208,6 +208,7 @@ export class Route<
     >,
   ) {
     super(options)
+    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   useMatch: UseMatchRoute<TId> = (opts) => {
@@ -411,6 +412,7 @@ export class RootRoute<
     >,
   ) {
     super(options)
+    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   useMatch: UseMatchRoute<RootRouteId> = (opts) => {
@@ -516,7 +518,7 @@ export function createRouteMask<
 >(
   opts: {
     routeTree: TRouteTree
-  } & ToMaskOptions<Router<TRouteTree, 'never', boolean>, TFrom, TTo>,
+  } & ToMaskOptions<RouterCore<TRouteTree, 'never', boolean>, TFrom, TTo>,
 ): RouteMask<TRouteTree> {
   return opts as any
 }

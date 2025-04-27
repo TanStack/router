@@ -11,18 +11,10 @@ File based route generation (through Vite, and other supported bundlers) is the 
 ### Scaffolding Your First TanStack Router Project
 
 ```sh
-npm create tsrouter-app@latest my-app --template file-router
-# or
-pnpm create tsrouter-app@latest my-app --template file-router
-# or
-yarn create tsrouter-app@latest my-app --template file-router
-# or
-bun create tsrouter-app@latest my-app --template file-router
-# or
-deno run -A npm:create-tsrouter-app@latest my-app --template file-router
+npx create-tsrouter-app@latest my-app --template file-router
 ```
 
-Follow the prompts to scaffold a full TanStack Router project.
+See [create-tsrouter-app](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app) for more options.
 
 ### Manual Setup
 
@@ -31,17 +23,17 @@ Alternatively, you can manually setup the project using the following steps:
 #### Install TanStack Router, Vite Plugin, and the Router Devtools
 
 ```sh
-npm install @tanstack/react-router
-npm install -D @tanstack/router-plugin @tanstack/react-router-devtools
+npm install @tanstack/react-router @tanstack/react-router-devtools
+npm install -D @tanstack/router-plugin
 # or
-pnpm add @tanstack/react-router
-pnpm add -D @tanstack/router-plugin @tanstack/react-router-devtools
+pnpm add @tanstack/react-router @tanstack/react-router-devtools
+pnpm add -D @tanstack/router-plugin
 # or
-yarn add @tanstack/react-router
-yarn add -D @tanstack/router-plugin @tanstack/react-router-devtools
+yarn add @tanstack/react-router @tanstack/react-router-devtools
+yarn add -D @tanstack/router-plugin
 # or
-bun add @tanstack/react-router
-bun add -D @tanstack/router-plugin @tanstack/react-router-devtools
+bun add @tanstack/react-router @tanstack/react-router-devtools
+bun add -D @tanstack/router-plugin
 # or
 deno add npm:@tanstack/react-router npm:@tanstack/router-plugin npm:@tanstack/react-router-devtools
 ```
@@ -57,6 +49,7 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    // Please make sure that '@tanstack/router-plugin' is passed before '@vitejs/plugin-react'
     TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
     react(),
     // ...,

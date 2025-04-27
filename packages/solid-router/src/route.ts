@@ -30,7 +30,7 @@ import type {
   RouteMask,
   RouteOptions,
   RouteTypesById,
-  Router,
+  RouterCore,
   ToMaskOptions,
   UseNavigateResult,
 } from '@tanstack/router-core'
@@ -433,7 +433,7 @@ export function createRouteMask<
 >(
   opts: {
     routeTree: TRouteTree
-  } & ToMaskOptions<Router<TRouteTree, 'never', false>, TFrom, TTo>,
+  } & ToMaskOptions<RouterCore<TRouteTree, 'never', false>, TFrom, TTo>,
 ): RouteMask<TRouteTree> {
   return opts as any
 }

@@ -1,14 +1,14 @@
 import { Link, Outlet, createLazyRoute } from '@tanstack/solid-router'
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
+import { Suspense, createMemo } from 'solid-js'
 import { postsQueryOptions } from './posts'
-import { createMemo, Suspense } from 'solid-js'
 
 export const Route = createLazyRoute('/posts')({
   component: PostsComponent,
 })
 
 function PostsComponent() {
-  const postsQuery = createQuery(() => postsQueryOptions)
+  const postsQuery = useQuery(() => postsQueryOptions)
 
   const posts = createMemo(() => {
     if (postsQuery.data) {

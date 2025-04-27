@@ -11,18 +11,10 @@ File based route generation (through Vite, and other supported bundlers) is the 
 ### Scaffolding Your First TanStack Router Project
 
 ```sh
-npm create tsrouter-app@latest my-app --template file-router --framework solid
-# or
-pnpm create tsrouter-app@latest my-app --template file-router --framework solid
-# or
-yarn create tsrouter-app@latest my-app --template file-router --framework solid
-# or
-bun create tsrouter-app@latest my-app --template file-router --framework solid
-# or
-deno run -A npm:create-tsrouter-app@latest my-app --template file-router --framework solid
+npx create-tsrouter-app@latest my-app --framework solid --template file-router
 ```
 
-Follow the prompts to scaffold a full TanStack Router project.
+See [create-tsrouter-app](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app) for more options.
 
 ### Manual Setup
 
@@ -31,19 +23,19 @@ Alternatively, you can manually setup the project using the following steps:
 #### Install TanStack Router, Vite Plugin, and the Router Devtools
 
 ```sh
-npm install @tanstack/solid-router
-npm install -D @tanstack/router-plugin @tanstack/solid-router-devtools
+npm install @tanstack/solid-router @tanstack/solid-router-devtools
+npm install -D @tanstack/router-plugin
 # or
-pnpm add @tanstack/solid-router
-pnpm add -D @tanstack/router-plugin @tanstack/solid-router-devtools
+pnpm add @tanstack/solid-router @tanstack/solid-router-devtools
+pnpm add -D @tanstack/router-plugin
 # or
-yarn add @tanstack/solid-router
-yarn add -D @tanstack/router-plugin @tanstack/solid-router-devtools
+yarn add @tanstack/solid-router @tanstack/solid-router-devtools
+yarn add -D @tanstack/router-plugin
 # or
-bun add @tanstack/solid-router
-bun add -D @tanstack/router-plugin @tanstack/solid-router-devtools
+bun add @tanstack/solid-router @tanstack/solid-router-devtools
+bun add -D @tanstack/router-plugin
 # or
-deno add npm:@tanstack/solid-router npm:@tanstack/router-plugin @tanstack/solid-router-devtools
+deno add npm:@tanstack/solid-router npm:@tanstack/router-plugin npm:@tanstack/solid-router-devtools
 ```
 
 #### Configure the Vite Plugin

@@ -71,6 +71,7 @@ export type {
   SerializerParseBy,
   SerializerStringify,
   SerializerStringifyBy,
+  SerializerExtensions,
 } from './serializer'
 
 export type { ParsedLocation } from './location'
@@ -199,7 +200,16 @@ export type {
   RouteAddFileTypesFn,
 } from './route'
 
-export { defaultSerializeError, getLocationChangeInfo } from './router'
+export {
+  defaultSerializeError,
+  getLocationChangeInfo,
+  RouterCore,
+  componentTypes,
+  lazyFn,
+  SearchParamError,
+  PathParamError,
+  getInitialRouterState,
+} from './router'
 export type {
   ViewTransitionOptions,
   ExtractedBaseEntry,
@@ -220,7 +230,6 @@ export type {
   RouterEvents,
   MatchRoutesOpts,
   RouterOptionsExtensions,
-  Router,
   DefaultRemountDepsFn,
   PreloadRouteFn,
   MatchRouteFn,
@@ -246,6 +255,7 @@ export type {
   LoadRouteChunkFn,
   ServerSrr,
   ClearCacheFn,
+  CreateRouterFn,
 } from './router'
 
 export type {
@@ -377,6 +387,7 @@ export {
   getCssSelector,
   scrollRestorationCache,
   setupScrollRestoration,
+  handleHashScroll,
 } from './scroll-restoration'
 
 export type {

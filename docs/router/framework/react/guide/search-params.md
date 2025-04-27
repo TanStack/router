@@ -4,6 +4,8 @@ title: Search Params
 
 Similar to how TanStack Query made handling server-state in your React and Solid applications a breeze, TanStack Router aims to unlock the power of URL search params in your applications.
 
+> 🧠 If you are on a really old browser, like IE11, you may need to use a polyfill for `URLSearchParams`.
+
 ## Why not just use `URLSearchParams`?
 
 We get it, you've been hearing a lot of "use the platform" lately and for the most part, we agree. However, we also believe it's important to recognize where the platform falls short for more advanced use-cases and we believe `URLSearchParams` is one of these circumstances.
@@ -111,7 +113,7 @@ export const Route = createFileRoute('/shop/products')({
 })
 ```
 
-In the above example, we're validating the search params of the `allProductsRoute` and returning a typed `ProductSearch` object. This typed object is then made available to this route's other options **and any child routes, too!**
+In the above example, we're validating the search params of the `Route` and returning a typed `ProductSearch` object. This typed object is then made available to this route's other options **and any child routes, too!**
 
 ### Validating Search Params
 
@@ -420,14 +422,15 @@ const ProductList = () => {
 You can access your route's validated search params anywhere in your app using the `useSearch` hook. By passing the `from` id/path of your origin route, you'll get even better type safety:
 
 ```tsx
-const allProductsRoute = createRoute({
-  getParentRoute: () => shopRoute,
-  path: 'products',
+// /routes/shop.products.tsx
+export const Route = createFileRoute('/shop/products')({
   validateSearch: productSearchSchema,
+  // ...
 })
 
 // Somewhere else...
 
+// /components/product-list-sidebar.tsx
 const routeApi = getRouteApi('/shop/products')
 
 const ProductList = () => {
@@ -436,7 +439,7 @@ const ProductList = () => {
   // OR
 
   const { page, filter, sort } = useSearch({
-    from: allProductsRoute.fullPath,
+    from: Route.fullPath,
   })
 
   return <div>...</div>
@@ -480,10 +483,7 @@ export const Route = createFileRoute('/shop/products')({
 const ProductList = () => {
   return (
     <div>
-      <Link
-        from={allProductsRoute.fullPath}
-        search={(prev) => ({ page: prev.page + 1 })}
-      >
+      <Link from={Route.fullPath} search={(prev) => ({ page: prev.page + 1 })}>
         Next Page
       </Link>
     </div>

@@ -9,7 +9,7 @@ Out of the box, TanStack Router supports both **hash scrolling** and **top-of-pa
 
 ## Scroll-to-top & Nested Scrollable Areas
 
-By default, scroll-top-top mimics the behavior of the browser, which means only the `window` itself is scrolled to the top after successful navigation. For many apps however, it's common for the main scrollable area to be a nested div or similar because of advanced layouts. If you would like TanStack Router to also scroll these main scrollable areas for you, you can add selectors to target them using the `routerOptions.scrollToTopSelectors`:
+By default, scroll-to-top mimics the behavior of the browser, which means only the `window` itself is scrolled to the top after successful navigation. For many apps however, it's common for the main scrollable area to be a nested div or similar because of advanced layouts. If you would like TanStack Router to also scroll these main scrollable areas for you, you can add selectors to target them using the `routerOptions.scrollToTopSelectors`:
 
 ```tsx
 const router = createRouter({

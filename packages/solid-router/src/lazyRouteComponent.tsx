@@ -1,7 +1,7 @@
-import { Dynamic, isServer } from 'solid-js/web'
+import { Dynamic } from 'solid-js/web'
 import { createResource } from 'solid-js'
 import { Outlet } from './Match'
-import type * as Solid from 'solid-js'
+import { ClientOnly } from './ClientOnly'
 import type { AsyncRouteComponent } from './route'
 
 // If the load fails due to module not found, it may mean a new version of
@@ -14,16 +14,6 @@ function isModuleNotFoundError(error: any): boolean {
     typeof error?.message === 'string' &&
     /Failed to fetch dynamically imported module/.test(error.message)
   )
-}
-
-export function ClientOnly(
-  props: Solid.ParentProps<{ fallback?: Solid.JSX.Element }>,
-) {
-  return useHydrated() ? <>{props.children}</> : <>{props.fallback}</>
-}
-
-export function useHydrated() {
-  return isServer
 }
 
 export function lazyRouteComponent<
@@ -96,19 +86,22 @@ export function lazyRouteComponent<
       throw error
     }
 
-    const [compResource] = createResource(load, {
-      initialValue: comp,
-      ssrLoadFrom: 'initial',
-    })
+    if (!comp) {
+      const [compResource] = createResource(load, {
+        initialValue: comp,
+        ssrLoadFrom: 'initial',
+      })
+      return <>{compResource()}</>
+    }
 
     if (ssr?.() === false) {
       return (
         <ClientOnly fallback={<Outlet />}>
-          <Dynamic component={compResource()} {...props} />
+          <Dynamic component={comp} {...props} />
         </ClientOnly>
       )
     }
-    return <Dynamic component={compResource()} {...props} />
+    return <Dynamic component={comp} {...props} />
   }
 
   ;(lazyComp as any).preload = load

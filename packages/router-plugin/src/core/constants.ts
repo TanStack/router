@@ -12,7 +12,6 @@ export type CodeSplitGroupings = Array<Array<SplitRouteIdentNodes>>
 
 export const defaultCodeSplitGroupings: CodeSplitGroupings = [
   ['component'],
-  ['pendingComponent'],
   ['errorComponent'],
   ['notFoundComponent'],
 ]

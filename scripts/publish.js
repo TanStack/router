@@ -85,41 +85,33 @@ await publish({
       packageDir: 'packages/server-functions-plugin',
     },
     {
-      name: '@tanstack/create-router',
-      packageDir: 'packages/create-router',
-    },
-    {
       name: '@tanstack/eslint-plugin-router',
       packageDir: 'packages/eslint-plugin-router',
     },
     {
-      name: '@tanstack/create-start',
-      packageDir: 'packages/create-start',
+      name: '@tanstack/solid-start',
+      packageDir: 'packages/solid-start',
     },
-    // {
-    //   name: '@tanstack/solid-start',
-    //   packageDir: 'packages/solid-start',
-    // },
-    // {
-    //   name: '@tanstack/solid-start-plugin',
-    //   packageDir: 'packages/solid-start-plugin',
-    // },
-    // {
-    //   name: '@tanstack/solid-start-client',
-    //   packageDir: 'packages/solid-start-client',
-    // },
-    // {
-    //   name: '@tanstack/solid-start-server',
-    //   packageDir: 'packages/solid-start-server',
-    // },
-    // {
-    //   name: '@tanstack/solid-start-config',
-    //   packageDir: 'packages/solid-start-config',
-    // },
-    // {
-    //   name: '@tanstack/solid-start-router-manifest',
-    //   packageDir: 'packages/solid-start-router-manifest',
-    // },
+    {
+      name: '@tanstack/solid-start-client',
+      packageDir: 'packages/solid-start-client',
+    },
+    {
+      name: '@tanstack/solid-start-config',
+      packageDir: 'packages/solid-start-config',
+    },
+    {
+      name: '@tanstack/solid-start-plugin',
+      packageDir: 'packages/solid-start-plugin',
+    },
+    {
+      name: '@tanstack/solid-start-router-manifest',
+      packageDir: 'packages/solid-start-router-manifest',
+    },
+    {
+      name: '@tanstack/solid-start-server',
+      packageDir: 'packages/solid-start-server',
+    },
     {
       name: '@tanstack/start-client-core',
       packageDir: 'packages/start-client-core',

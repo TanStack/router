@@ -1,5 +1,9 @@
 import * as Solid from 'solid-js'
-import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
+import {
+  getLocationChangeInfo,
+  handleHashScroll,
+  trimPathRight,
+} from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
@@ -27,9 +31,9 @@ export function Transitioner() {
   const previousIsPagePending = usePrevious(isPagePending)
 
   if (!router.isServer) {
-    router.startTransition = (fn: () => void) => {
+    router.startTransition = async (fn: () => void | Promise<void>) => {
       setIsTransitioning(true)
-      fn()
+      await fn()
       setIsTransitioning(false)
     }
   }
@@ -126,23 +130,7 @@ export function Transitioner() {
             resolvedLocation: s.location,
           }))
 
-          if (
-            typeof document !== 'undefined' &&
-            (document as any).querySelector
-          ) {
-            const hashScrollIntoViewOptions =
-              router.state.location.state.__hashScrollIntoViewOptions ?? true
-
-            if (
-              hashScrollIntoViewOptions &&
-              router.state.location.hash !== ''
-            ) {
-              const el = document.getElementById(router.state.location.hash)
-              if (el) {
-                el.scrollIntoView(hashScrollIntoViewOptions)
-              }
-            }
-          }
+          handleHashScroll(router)
         }
       },
     ),

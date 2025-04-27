@@ -900,9 +900,19 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
       }
     },
     ExportDefaultDeclaration(path) {
+      // declared as `export default loaderFn`
       if (t.isIdentifier(path.node.declaration)) {
         if (path.node.declaration.name === node.name) {
           found = true
+        }
+      }
+
+      // declared as `export default function loaderFn() {}`
+      if (t.isFunctionDeclaration(path.node.declaration)) {
+        if (t.isIdentifier(path.node.declaration.id)) {
+          if (path.node.declaration.id.name === node.name) {
+            found = true
+          }
         }
       }
     },
@@ -914,11 +924,16 @@ function hasExport(ast: t.File, node: t.Identifier): boolean {
 function removeExports(ast: t.File, node: t.Identifier): boolean {
   let removed = false
 
+  // The checks use sequential if/else if statements since it
+  // directly mutates the AST and as such doing normal checks
+  // (using only if statements) could lead to a situation where
+  // `path.node` is null since it has been already removed from
+  // the program tree but typescript doesn't know that.
   babel.traverse(ast, {
     ExportNamedDeclaration(path) {
       if (path.node.declaration) {
-        // declared as `const loaderFn = () => {}`
         if (t.isVariableDeclaration(path.node.declaration)) {
+          // declared as `const loaderFn = () => {}`
           path.node.declaration.declarations.forEach((decl) => {
             if (t.isVariableDeclarator(decl)) {
               if (t.isIdentifier(decl.id)) {
@@ -930,6 +945,7 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
             }
           })
         } else if (t.isFunctionDeclaration(path.node.declaration)) {
+          // declared as `export const loaderFn = () => {}`
           if (t.isIdentifier(path.node.declaration.id)) {
             if (path.node.declaration.id.name === node.name) {
               path.remove()
@@ -940,10 +956,19 @@ function removeExports(ast: t.File, node: t.Identifier): boolean {
       }
     },
     ExportDefaultDeclaration(path) {
+      // declared as `export default loaderFn`
       if (t.isIdentifier(path.node.declaration)) {
         if (path.node.declaration.name === node.name) {
           path.remove()
           removed = true
+        }
+      } else if (t.isFunctionDeclaration(path.node.declaration)) {
+        // declared as `export default function loaderFn() {}`
+        if (t.isIdentifier(path.node.declaration.id)) {
+          if (path.node.declaration.id.name === node.name) {
+            path.remove()
+            removed = true
+          }
         }
       }
     },

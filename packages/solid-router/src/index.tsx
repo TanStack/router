@@ -206,6 +206,7 @@ export type {
   ControllablePromise,
   InjectedHtmlEntry,
   RouterErrorSerializer,
+  SerializerExtensions,
 } from '@tanstack/router-core'
 
 export {
@@ -227,6 +228,7 @@ export { useAwaited, Await } from './awaited'
 export type { AwaitOptions } from './awaited'
 
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
+export { ClientOnly } from './ClientOnly'
 
 export {
   FileRoute,
@@ -293,15 +295,15 @@ export type {
   NotFoundRouteComponent,
 } from './route'
 
+export { createRouter, Router } from './router'
+
 export {
   componentTypes,
-  createRouter,
-  Router,
   lazyFn,
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-} from './router'
+} from '@tanstack/router-core'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type { RouterProps } from './RouterProvider'

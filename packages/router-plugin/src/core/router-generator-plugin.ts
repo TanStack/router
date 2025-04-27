@@ -2,6 +2,7 @@ import { isAbsolute, join, normalize, resolve } from 'node:path'
 import { generator, resolveConfigPath } from '@tanstack/router-generator'
 
 import { getConfig } from './config'
+import type { FSWatcher } from 'chokidar'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 
@@ -88,66 +89,73 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         await run(generate)
       },
     },
-    async rspack(compiler) {
+    rspack(compiler) {
       userConfig = getConfig(options, ROOT)
 
-      if (compiler.options.mode === 'production') {
-        compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
-          await run(generate)
-        })
-      } else {
+      let handle: FSWatcher | null = null
+
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
+        await run(generate)
+      })
+
+      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
+        if (handle) {
+          return
+        }
+
         // rspack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
         const chokidar = await import('chokidar')
-        chokidar
+        handle = chokidar
           .watch(routesDirectoryPath, { ignoreInitial: true })
           .on('add', async () => {
             await run(generate)
           })
 
-        let generated = false
-        compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
-          if (!generated) {
-            generated = true
-            return run(generate)
-          }
-        })
-      }
+        await run(generate)
+      })
+
+      compiler.hooks.watchClose.tap(PLUGIN_NAME, async () => {
+        if (handle) {
+          await handle.close()
+        }
+      })
     },
-    async webpack(compiler) {
+    webpack(compiler) {
       userConfig = getConfig(options, ROOT)
 
-      if (compiler.options.mode === 'production') {
-        compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
-          await run(generate)
-        })
-      } else {
+      let handle: FSWatcher | null = null
+
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
+        await run(generate)
+      })
+
+      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
+        if (handle) {
+          return
+        }
+
         // webpack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
         const chokidar = await import('chokidar')
-        chokidar
+        handle = chokidar
           .watch(routesDirectoryPath, { ignoreInitial: true })
           .on('add', async () => {
             await run(generate)
           })
 
-        let generated = false
-        compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
-          if (!generated) {
-            generated = true
-            return run(generate)
-          }
-        })
-      }
+        await run(generate)
+      })
 
-      if (compiler.options.mode === 'production') {
-        compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
-          console.info('✅ ' + PLUGIN_NAME + ': route-tree generation done')
-          setTimeout(() => {
-            process.exit(0)
-          })
-        })
-      }
+      compiler.hooks.watchClose.tap(PLUGIN_NAME, async () => {
+        if (handle) {
+          await handle.close()
+        }
+      })
+
+      compiler.hooks.done.tap(PLUGIN_NAME, () => {
+        console.info('✅ ' + PLUGIN_NAME + ': route-tree generation done')
+      })
     },
   }
 }

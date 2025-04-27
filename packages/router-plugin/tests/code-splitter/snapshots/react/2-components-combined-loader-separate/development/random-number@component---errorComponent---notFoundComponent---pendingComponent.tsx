@@ -46,7 +46,9 @@ const SplitComponent = function Index() {
     fn: bytesSignupServerFn
   });
   const {
-    randomNumber
+    sponsorsPromise,
+    randomNumber,
+    testing2
   } = Route.useLoaderData();
   const gradient = sample(gradients, randomNumber);
   const textColor = sample(textColors, randomNumber);
