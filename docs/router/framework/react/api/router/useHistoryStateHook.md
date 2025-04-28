@@ -19,7 +19,7 @@ The `useHistoryState` hook accepts an optional `options` object.
 
 - Type: `boolean`
 - Optional - `default: true`
-- If `true`, the state object type will be strictly typed based on the route's `stateSchema`.
+- If `true`, the state object type will be strictly typed based on the route's `validateState`.
 - If `false`, the hook returns a loosely typed `Partial<Record<string, unknown>>` object.
 
 ### `opts.shouldThrow` option
