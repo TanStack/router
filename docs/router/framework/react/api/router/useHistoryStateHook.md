@@ -3,7 +3,7 @@ id: useHistoryStateHook
 title: useHistoryState hook
 ---
 
-The `useHistoryState` method returns the state object that was passed during navigation to the closest match or a specific route match.
+The `useHistoryState` hook returns the state object that was passed during navigation to the closest match or a specific route match.
 
 ## useHistoryState options
 
