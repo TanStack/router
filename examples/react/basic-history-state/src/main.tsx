@@ -67,7 +67,7 @@ function RootComponent() {
           activeOptions={{ exact: true }}
         >
           Home
-        </Link>{' '}
+        </Link>
         <Link
           to="/posts"
           activeProps={{
@@ -75,15 +75,14 @@ function RootComponent() {
           }}
         >
           Posts
-        </Link>{' '}
+        </Link>
         <Link
-          // @ts-expect-error
-          to="/this-route-does-not-exist"
+          to="/state-examples"
           activeProps={{
             className: 'font-bold',
           }}
         >
-          This Route Does Not Exist
+          State Examples
         </Link>
       </div>
       <Outlet />
@@ -125,7 +124,7 @@ function PostsLayoutComponent() {
                 to={postRoute.to}
                 search={{ postId: post.id }}
                 state={{
-                  color: index % 2 ? 'red' : 'white',
+                  color: index % 2 ? 'red' : 'green',
                 }}
                 className="block py-1 px-2 text-green-300 hover:text-green-200"
                 activeProps={{ className: '!text-white font-bold' }}
@@ -194,23 +193,82 @@ function PostErrorComponent({ error }: ErrorComponentProps) {
 
 function PostComponent() {
   const post = postRoute.useLoaderData()
-  const { color } = postRoute.useHistoryState()
+  const state = postRoute.useHistoryState()
   return (
     <div className="space-y-2">
       <h4 className="text-xl font-bold">{post.title}</h4>
-      <h4 className="text-xl font-bold">{"I like " + color}</h4>
+      <h4 className="text-xl font-bold">Color: <span style={{ color: state.color }}>{state.color}</span></h4>
       <hr className="opacity-20" />
-      <div className={"text-sm"}>{post.body}</div>
+      <div className="text-sm">{post.body}</div>
+    </div>
+  )
+}
+
+// Route to demonstrate various useHistoryState usages
+const stateExamplesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'state-examples',
+  component: StateExamplesComponent,
+})
+
+const stateDestinationRoute = createRoute({
+  getParentRoute: () => stateExamplesRoute,
+  path: 'destination',
+  validateState: (input: {
+    example: string
+    count: number
+    options: Array<string>
+  }) =>
+    z
+      .object({
+        example: z.string(),
+        count: z.number(),
+        options: z.array(z.string()),
+      })
+      .parse(input),
+  component: StateDestinationComponent,
+})
+
+function StateExamplesComponent() {
+  return (
+    <div className="p-2">
+      <h3 className="text-xl font-bold mb-4">useHistoryState Examples</h3>
+      <div className="flex gap-4">
+        <Link
+          to={stateDestinationRoute.to}
+          state={{
+            example: 'Test Data',
+            count: 42,
+            options: ['Option 1', 'Option 2', 'Option 3'],
+          }}
+          className="bg-green-600 px-3 py-2 rounded hover:bg-green-500"
+        >
+          Link with State
+        </Link>
+      </div>
+      <Outlet />
+    </div>
+  )
+}
+
+function StateDestinationComponent() {
+  const state = stateDestinationRoute.useHistoryState()
+  return (
+    <div className="mt-4 p-4 bg-black/20 rounded">
+      <h4 className="text-lg font-bold mb-2">State Data Display</h4>
+          <pre className="whitespace-pre-wrap bg-black/30 p-2 rounded text-sm mt-2">
+            {JSON.stringify(state, null, 2)}
+          </pre>
     </div>
   )
 }
 
 const routeTree = rootRoute.addChildren([
   postsLayoutRoute.addChildren([postRoute, postsIndexRoute]),
+  stateExamplesRoute.addChildren([stateDestinationRoute]),
   indexRoute,
 ])
 
-// Set up a Router instance
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
@@ -218,7 +276,6 @@ const router = createRouter({
   scrollRestoration: true,
 })
 
-// Register things for typesafety
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
