@@ -348,6 +348,7 @@ export type {
   ValidateToPath,
   ValidateSearch,
   ValidateParams,
+  ValidateHistoryState,
   InferFrom,
   InferTo,
   InferMaskTo,
