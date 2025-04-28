@@ -11,6 +11,7 @@ import { useSearch } from './useSearch'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
+import { useHistoryState } from './useHistoryState'
 import type {
   AnyContext,
   AnyRoute,
@@ -39,6 +40,7 @@ import type { UseMatchRoute } from './useMatch'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
+import type { UseHistoryStateRoute } from './useHistoryState'
 import type * as Solid from 'solid-js'
 import type { UseRouteContextRoute } from './useRouteContext'
 
@@ -60,6 +62,7 @@ declare module '@tanstack/router-core' {
     useParams: UseParamsRoute<TId>
     useLoaderDeps: UseLoaderDepsRoute<TId>
     useLoaderData: UseLoaderDataRoute<TId>
+    useHistoryState: UseHistoryStateRoute<TId>
     useNavigate: () => UseNavigateResult<TFullPath>
   }
 }
@@ -105,6 +108,14 @@ export class RouteApi<
 
   useParams: UseParamsRoute<TId> = (opts) => {
     return useParams({
+      select: opts?.select,
+      from: this.id,
+    } as any) as any
+  }
+
+  useHistoryState: UseHistoryStateRoute<TId> = (opts?: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    return useHistoryState({
       select: opts?.select,
       from: this.id,
     } as any) as any
@@ -217,6 +228,14 @@ export class Route<
 
   useParams: UseParamsRoute<TId> = (opts) => {
     return useParams({
+      select: opts?.select,
+      from: this.id,
+    } as any) as any
+  }
+
+  useHistoryState: UseHistoryStateRoute<TId> = (opts?: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    return useHistoryState({
       select: opts?.select,
       from: this.id,
     } as any) as any
@@ -408,6 +427,14 @@ export class RootRoute<
 
   useParams: UseParamsRoute<RootRouteId> = (opts) => {
     return useParams({
+      select: opts?.select,
+      from: this.id,
+    } as any) as any
+  }
+
+  useHistoryState: UseHistoryStateRoute<RootRouteId> = (opts?: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    return useHistoryState({
       select: opts?.select,
       from: this.id,
     } as any) as any

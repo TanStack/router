@@ -8,9 +8,11 @@ import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
 import { useRouter } from './useRouter'
+import { useHistoryState } from './useHistoryState'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
+import type { UseHistoryStateRoute } from './useHistoryState'
 import type {
   AnyContext,
   AnyRoute,
@@ -192,6 +194,14 @@ export class LazyRoute<TRoute extends AnyRoute> {
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
     return useSearch({
+      select: opts?.select,
+      from: this.options.id,
+    } as any) as any
+  }
+
+  useHistoryState: UseHistoryStateRoute<TRoute['id']> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    return useHistoryState({
       select: opts?.select,
       from: this.options.id,
     } as any) as any
