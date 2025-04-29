@@ -8,7 +8,7 @@ import { nitroPlugin } from './nitro/nitro-plugin.js'
 import { startManifestPlugin } from './routesManifestPlugin.js'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
 import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/index.js'
-import type { PluginOption } from 'vite'
+import type { PluginOption, Rollup } from 'vite'
 import type { TanStackStartInputConfig, WithSolidPlugin } from './schema.js'
 
 export type {
@@ -26,12 +26,16 @@ declare global {
 }
 
 export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
+export const ssrEntryFile = 'ssr.mjs'
+
+// this needs to live outside of the TanStackStartVitePlugin since it will be invoked multiple times by vite
+let ssrBundle: Rollup.OutputBundle
 
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithSolidPlugin,
 ): Array<PluginOption> {
   type OptionsWithSolid = ReturnType<typeof getTanStackStartOptions> &
-    WithSolidPlugin
+  WithSolidPlugin
   const options: OptionsWithSolid = getTanStackStartOptions(opts)
 
   return [
@@ -54,6 +58,7 @@ export function TanStackStartVitePlugin(
         return {
           environments: {
             client: {
+              consumer: 'client',
               build: {
                 manifest: true,
                 rollupOptions: {
@@ -67,7 +72,33 @@ export function TanStackStartVitePlugin(
                 },
               },
             },
-            server: {},
+            server: {
+              consumer: 'server',
+              build: {
+                ssr: true,
+                // we don't write to the file system as the below 'capture-output' plugin will
+                // capture the output and write it to the virtual file system
+                write: false,
+                copyPublicDir: false,
+                rollupOptions: {
+                  output: {
+                    entryFileNames: ssrEntryFile,
+                  },
+                  plugins: [
+                    {
+                      name: 'capture-output',
+                      generateBundle(options, bundle) {
+                        // TODO can this hook be called more than once?
+                        ssrBundle = bundle
+                      },
+                    },
+                  ],
+                },
+                commonjsOptions: {
+                  include: [/node_modules/],
+                },
+              },
+            },
           },
           resolve: {
             noExternal: [
@@ -89,6 +120,7 @@ export function TanStackStartVitePlugin(
               'nitropack',
               '@tanstack/**',
             ],
+            external: ['undici'],
           },
           /* prettier-ignore */
           define: {
@@ -103,6 +135,7 @@ export function TanStackStartVitePlugin(
       resolveId(id) {
         if (
           [
+            '/~start/server-entry',
             '/~start/default-server-entry',
             '/~start/default-client-entry',
           ].includes(id)
@@ -117,6 +150,19 @@ export function TanStackStartVitePlugin(
           path.resolve(options.root, options.tsr.srcDirectory, 'router'),
         )
 
+        if (id === '/~start/server-entry.tsx') {
+          return `
+import { toWebRequest, defineEventHandler, __setGlobalOrigin, __getAbsoluteUrl } from '@tanstack/solid-start/server';
+import serverEntry from '${options.serverEntryPath}';
+
+export default defineEventHandler(function(event) {
+  const request = toWebRequest(event);
+  __setGlobalOrigin(__getAbsoluteUrl(request));
+  return serverEntry({ request });
+})
+`
+        }
+
         if (id === '/~start/default-client-entry.tsx') {
           return `
 import { hydrate } from 'solid-js/web'
@@ -126,8 +172,6 @@ import { createRouter } from ${routerImportPath}
 const router = createRouter()
 
 hydrate(() => <StartClient router={router} />, document.body)
-
-
 `
         }
 
@@ -144,6 +188,25 @@ export default createStartHandler({
 
         return null
       },
+      // configureServer(server) {
+      //   server.httpServer?.on('listening', () => {
+      //     const address = (() => {
+      //       const address = server.httpServer?.address()
+
+      //       if (!address) {
+      //         throw new Error('No local address found!')
+      //       }
+
+      //       if (typeof address === 'string') {
+      //         return `http://localhost:${address}`
+      //       }
+
+      //       return `http://localhost:${address.port}`
+      //     })()
+
+      //     process.env.HOST = import.meta.env.HOST = `${address}`
+      //   })
+      // },
     },
     TanStackStartCompilerPlugin(),
     TanStackServerFnPluginEnv({
@@ -173,8 +236,8 @@ export default createStartHandler({
     TanStackStartServerRoutesVite({
       ...options.tsr,
     }),
-    viteSolid({ ...options.solid, ssr: true }),
-    nitroPlugin(options),
+    viteSolid({...options.solid, ssr: true }),
+    nitroPlugin(options, () => ssrBundle),
   ]
 }
 

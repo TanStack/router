@@ -1,15 +1,13 @@
 import { platform } from 'node:os'
-import path from 'node:path'
-import { createNitro } from 'nitropack'
-import { normalizePath } from 'vite'
+import path, { dirname, resolve } from 'node:path'
+import { build, createNitro } from 'nitropack'
 
-import { getRollupConfig } from 'nitropack/rollup'
 import { buildNitroEnvironment } from '@tanstack/start-plugin-core'
-import { clientDistDir } from '../index.js'
+import { clientDistDir, ssrEntryFile } from '../index.js'
 import { prerender } from '../prerender.js'
 import { devServerPlugin } from './dev-server-plugin.js'
-import type { EnvironmentOptions, PluginOption } from 'vite'
-import type { Nitro, NitroConfig } from 'nitropack'
+import type { EnvironmentOptions, PluginOption, Rollup } from 'vite'
+import type { NitroConfig } from 'nitropack'
 import type { TanStackStartOutputConfig } from '../schema.js'
 
 export type {
@@ -22,43 +20,17 @@ const filePrefix = isWindows ? 'file:///' : ''
 
 export function nitroPlugin(
   options: TanStackStartOutputConfig,
+  getSsrBundle: () => Rollup.OutputBundle,
 ): Array<PluginOption> {
-  let nitro: Nitro
-  let nitroRollupOptions: ReturnType<typeof getRollupConfig>
-
   const buildPreset =
     process.env['START_TARGET'] ?? (options.target as string | undefined)
-
-  const nitroConfig: NitroConfig = {
-    dev: false,
-    compatibilityDate: '2024-11-19',
-    srcDir: normalizePath(options.tsr.srcDirectory),
-    preset: buildPreset,
-    publicAssets: [
-      {
-        dir: path.resolve(options.root, clientDistDir),
-      },
-    ],
-    typescript: {
-      generateTsConfig: false,
-    },
-    prerender: undefined,
-    renderer: options.serverEntryPath,
-  }
 
   return [
     devServerPlugin(options),
     {
       name: 'tanstack-vite-plugin-nitro',
-      async configEnvironment(name) {
+      configEnvironment(name) {
         if (name === 'server') {
-          if (
-            typeof nitro === 'undefined' &&
-            typeof nitroRollupOptions === 'undefined'
-          ) {
-            nitro = await createNitro(nitroConfig)
-            nitroRollupOptions = getRollupConfig(nitro)
-          }
           return {
             build: {
               commonjsOptions: {
@@ -67,7 +39,7 @@ export function nitroPlugin(
               ssr: true,
               sourcemap: true,
               rollupOptions: {
-                input: options.serverEntryPath,
+                input: '/~start/server-entry',
               },
             },
           } satisfies EnvironmentOptions
@@ -92,7 +64,32 @@ export function nitroPlugin(
               }
 
               await builder.build(clientEnv)
-              await buildNitroEnvironment(nitro, () => builder.build(serverEnv))
+              await builder.build(serverEnv)
+
+              const nitroConfig: NitroConfig = {
+                dev: false,
+                // TODO do we need this? should this be made configurable?
+                compatibilityDate: '2024-11-19',
+                logLevel: 3,
+                preset: buildPreset,
+                publicAssets: [
+                  {
+                    dir: path.resolve(options.root, clientDistDir),
+                  },
+                ],
+                typescript: {
+                  generateTsConfig: false,
+                },
+                prerender: undefined,
+                renderer: ssrEntryFile,
+                rollupConfig: {
+                  plugins: [virtualBundlePlugin(getSsrBundle())],
+                },
+              }
+
+              const nitro = await createNitro(nitroConfig)
+
+              await buildNitroEnvironment(nitro, () => build(nitro))
 
               if (options.prerender?.enabled) {
                 await prerender({
@@ -137,4 +134,49 @@ export function nitroPlugin(
       // },
     },
   ]
+}
+
+function virtualBundlePlugin(ssrBundle: Rollup.OutputBundle): PluginOption {
+  type VirtualModule = { code: string; map: string | null }
+  const _modules = new Map<string, VirtualModule>()
+
+  // group chunks and source maps
+  for (const [fileName, content] of Object.entries(ssrBundle)) {
+    if (content.type === 'chunk') {
+      const virtualModule: VirtualModule = {
+        code: content.code,
+        map: null,
+      }
+      const maybeMap = ssrBundle[`${fileName}.map`]
+      if (maybeMap && maybeMap.type === 'asset') {
+        virtualModule.map = maybeMap.source as string
+      }
+      _modules.set(fileName, virtualModule)
+      _modules.set(resolve(fileName), virtualModule)
+    }
+  }
+
+  return {
+    name: 'virtual-bundle',
+    resolveId(id, importer) {
+      if (_modules.has(id)) {
+        return resolve(id)
+      }
+
+      if (importer) {
+        const resolved = resolve(dirname(importer), id)
+        if (_modules.has(resolved)) {
+          return resolved
+        }
+      }
+      return null
+    },
+    load(id) {
+      const m = _modules.get(id)
+      if (!m) {
+        return null
+      }
+      return m
+    },
+  }
 }

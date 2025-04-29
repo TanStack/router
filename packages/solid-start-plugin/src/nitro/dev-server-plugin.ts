@@ -5,7 +5,7 @@ import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
 import { __internal_devHtmlUtils } from '@tanstack/router-core'
 import type { ExtractedHtmlTagInfo } from '@tanstack/router-core'
-import type { Connect, Environment, Plugin, ViteDevServer } from 'vite'
+import type { Connect, Plugin, ViteDevServer } from 'vite'
 import type { TanStackStartOutputConfig } from '../schema.js'
 
 declare global {
@@ -22,14 +22,6 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
     config(userConfig, { mode }) {
       // config = userConfig
       isTest = isTest ? isTest : mode === 'test'
-
-      return {
-        resolve: {
-          alias: {
-            '/~start/ssr-entry': options.serverEntryPath,
-          },
-        },
-      }
     },
     configureServer(viteDevServer) {
       if (isTest) {
@@ -43,9 +35,7 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
 
         viteDevServer.middlewares.use(async (req, res) => {
           const event = createEvent(req, res)
-          const serverEnv = viteDevServer.environments['server'] as
-            | undefined
-            | Environment
+          const serverEnv = viteDevServer.environments['server']
 
           try {
             if (!serverEnv || !isRunnableDevEnvironment(serverEnv)) {
@@ -64,10 +54,9 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
             )
             globalThis.TSS_INJECTED_HEAD_SCRIPTS_INFO = headScripts
 
-            const serverEntry = await (serverEnv as any).runner.import(
-              '/~start/ssr-entry',
+            const serverEntry = await serverEnv.runner.import(
+              '/~start/server-entry',
             )
-
             const response = await serverEntry['default'](event)
 
             return sendWebResponse(event, response)
