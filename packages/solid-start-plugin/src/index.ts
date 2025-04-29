@@ -235,6 +235,7 @@ export default createStartHandler({
     }),
     TanStackStartServerRoutesVite({
       ...options.tsr,
+      target: 'solid',
     }),
     viteSolid({...options.solid, ssr: true }),
     nitroPlugin(options, () => ssrBundle),

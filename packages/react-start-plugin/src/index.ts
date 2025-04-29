@@ -235,6 +235,7 @@ export default createStartHandler({
     }),
     TanStackStartServerRoutesVite({
       ...options.tsr,
+      target: 'react',
     }),
     viteReact(options.react),
     nitroPlugin(options, () => ssrBundle),
