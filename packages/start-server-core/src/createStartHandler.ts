@@ -10,6 +10,7 @@ import {
   isRedirect,
   processRouteTree,
   rootRouteId,
+  tsrRedirectHeaderKey,
 } from '@tanstack/router-core'
 import { getResponseHeaders, requestHandler } from './h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
@@ -55,90 +56,153 @@ export function createStartHandler<TRouter extends AnyRouter>({
       const url = new URL(request.url)
       const href = url.href.replace(url.origin, '')
 
-      if (!process.env.TSS_SERVER_FN_BASE) {
-        throw new Error(
-          'tanstack/start-server-core: TSS_SERVER_FN_BASE must be defined in your environment for createStartHandler()',
-        )
-      }
-
-      // Handle server functions
-      if (
-        href.startsWith(path.join('/', process.env.TSS_SERVER_FN_BASE, '/'))
-      ) {
-        return await handleServerAction({ request })
-      }
-
-      const serverRouteTreeModule = await (async () => {
-        try {
-          // @ts-expect-error
-          return (await import('tanstack:server-routes')) as {
-            routeTree: AnyServerRoute
-          }
-        } catch (e) {
-          console.log(e)
-          return undefined
-        }
-      })()
-
-      // If we have a server route tree, then we try matching to see if we have a
-      // server route that matches the request.
-      if (serverRouteTreeModule) {
-        const [matchedRoutes, response] = await handleServerRoutes({
-          routeTree: serverRouteTreeModule.routeTree,
-          request,
-        })
-
-        if (response) return response
-      }
-
-      const requestAcceptHeader = request.headers.get('Accept') || '*/*'
-      const splitRequestAcceptHeader = requestAcceptHeader.split(',')
-
-      const supportedMimeTypes = ['*/*', 'text/html']
-      const isRouterAcceptSupported = supportedMimeTypes.some((mimeType) =>
-        splitRequestAcceptHeader.some((acceptedMimeType) =>
-          acceptedMimeType.trim().startsWith(mimeType),
-        ),
-      )
-
-      if (!isRouterAcceptSupported) {
-        return json(
-          {
-            error: 'Only HTML requests are supported here',
-          },
-          {
-            status: 500,
-          },
-        )
-      }
-
-      // If no Server Routes were found, so fallback to normal SSR matching using
-      // the router
-
-      // Create a history for the router
+      // Create a history for the client-side router
       const history = createMemoryHistory({
         initialEntries: [href],
       })
 
+      // Create the client-side router
       const router = createRouter()
 
+      // Attach the server-side SSR utils to the client-side router
       attachRouterServerSsrUtils(router, getStartManifest())
 
-      // Update the router with the history and context
+      // Update the client-side router with the history and context
       router.update({
         history,
       })
 
-      await router.load()
+      const response = await (async () => {
+        try {
+          if (!process.env.TSS_SERVER_FN_BASE) {
+            throw new Error(
+              'tanstack/start-server-core: TSS_SERVER_FN_BASE must be defined in your environment for createStartHandler()',
+            )
+          }
 
-      dehydrateRouter(router)
+          // First, let's attempt to handle server functions
+          if (
+            href.startsWith(path.join('/', process.env.TSS_SERVER_FN_BASE, '/'))
+          ) {
+            return await handleServerAction({ request })
+          }
 
-      const responseHeaders = getStartResponseHeaders({ router })
-      const response = await cb({
-        request,
-        router,
-        responseHeaders,
-      })
+          // Then move on to attempting to load server routes
+          const serverRouteTreeModule = await (async () => {
+            try {
+              // @ts-expect-error
+              return (await import('tanstack:server-routes')) as {
+                routeTree: AnyServerRoute
+              }
+            } catch (e) {
+              console.log(e)
+              return undefined
+            }
+          })()
+
+          // If we have a server route tree, then we try matching to see if we have a
+          // server route that matches the request.
+          if (serverRouteTreeModule) {
+            const [matchedRoutes, response] = await handleServerRoutes({
+              routeTree: serverRouteTreeModule.routeTree,
+              request,
+            })
+
+            if (response) return response
+          }
+
+          const requestAcceptHeader = request.headers.get('Accept') || '*/*'
+          const splitRequestAcceptHeader = requestAcceptHeader.split(',')
+
+          const supportedMimeTypes = ['*/*', 'text/html']
+          const isRouterAcceptSupported = supportedMimeTypes.some((mimeType) =>
+            splitRequestAcceptHeader.some((acceptedMimeType) =>
+              acceptedMimeType.trim().startsWith(mimeType),
+            ),
+          )
+
+          if (!isRouterAcceptSupported) {
+            return json(
+              {
+                error: 'Only HTML requests are supported here',
+              },
+              {
+                status: 500,
+              },
+            )
+          }
+
+          // If no Server Routes were found, so fallback to normal SSR matching using
+          // the router
+
+          await router.load()
+
+          dehydrateRouter(router)
+
+          const responseHeaders = getStartResponseHeaders({ router })
+          const response = await cb({
+            request,
+            router,
+            responseHeaders,
+          })
+
+          return response
+        } catch (err) {
+          if (err instanceof Response) {
+            return err
+          }
+
+          throw err
+        }
+      })()
+
+      if (isRedirect(response)) {
+        if (
+          response.options.to &&
+          typeof response.options.to === 'string' &&
+          !response.options.to.startsWith('/')
+        ) {
+          throw new Error(
+            `Server side redirects must use absolute paths via the 'href' or 'to' options. Received: ${JSON.stringify(response.options)}`,
+          )
+        }
+
+        if (
+          ['params', 'search', 'hash'].some(
+            (d) => typeof (response.options as any)[d] === 'function',
+          )
+        ) {
+          throw new Error(
+            `Server side redirects must use static search, params, and hash values and do not support functional values. Received functional values for: ${Object.keys(
+              response.options,
+            )
+              .filter((d) => typeof (response.options as any)[d] === 'function')
+              .map((d) => `"${d}"`)
+              .join(', ')}`,
+          )
+        }
+
+        const redirect = router.resolveRedirect(response)
+
+        if (request.headers.get('x-tsr-redirect') === 'manual') {
+          return json(
+            {
+              ...response.options,
+              isSerializedRedirect: true,
+            },
+            {
+              headers: redirect.headers,
+            },
+          )
+        }
+
+        return redirect
+      }
+
+      response.headers.append(
+        'Access-Control-Expose-Headers',
+        tsrRedirectHeaderKey,
+      )
 
       return response
     })

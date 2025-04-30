@@ -1,8 +1,4 @@
-import {
-  getRedirectOptions,
-  isRedirect,
-  updateRedirectOptions,
-} from '@tanstack/router-core'
+import { isRedirect } from '@tanstack/router-core'
 import { useRouter } from '@tanstack/solid-router'
 
 export function useServerFn<T extends (...deps: Array<any>) => Promise<any>>(
@@ -21,10 +17,8 @@ export function useServerFn<T extends (...deps: Array<any>) => Promise<any>>(
       return res
     } catch (err) {
       if (isRedirect(err)) {
-        updateRedirectOptions(err, {
-          _fromLocation: router.state.location,
-        })
-        return router.navigate(getRedirectOptions(router.resolveRedirect(err)))
+        err.options._fromLocation = router.state.location
+        return router.navigate(router.resolveRedirect(err).options)
       }
 
       throw err

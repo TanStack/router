@@ -28,12 +28,7 @@ import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
-import {
-  getRedirectOptions,
-  isRedirect,
-  isResolvedRedirect,
-  updateRedirectOptions,
-} from './redirect'
+import { isRedirect, isResolvedRedirect } from './redirect'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -420,7 +415,7 @@ export interface RouterState<
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   statusCode: number
-  redirect?: ResolvedRedirect
+  redirect?: AnyRedirect
 }
 
 export interface BuildNextOptions {
@@ -1851,6 +1846,13 @@ export class RouterCore<
   }
 
   navigate: NavigateFn = ({ to, reloadDocument, href, ...rest }) => {
+    if (!reloadDocument && href) {
+      try {
+        new URL(`${href}`)
+        reloadDocument = true
+      } catch {}
+    }
+
     if (reloadDocument) {
       if (!href) {
         const location = this.buildLocation({ to, ...rest } as any)
@@ -1896,7 +1898,7 @@ export class RouterCore<
   }
 
   load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
-    let redirect: ResolvedRedirect | undefined
+    let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
 
     let loadPromise: Promise<void>
@@ -1991,11 +1993,11 @@ export class RouterCore<
             },
           })
         } catch (err) {
-          if (isResolvedRedirect(err)) {
+          if (isRedirect(err)) {
             redirect = err
             if (!this.isServer) {
               this.navigate({
-                ...getRedirectOptions(err),
+                ...redirect.options,
                 replace: true,
                 ignoreBlocker: true,
               })
@@ -2164,7 +2166,7 @@ export class RouterCore<
 
     const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
       if (isResolvedRedirect(err)) {
-        if (err.headers.get('X-Tanstack-Router-Reload') !== 'true') {
+        if (!err.options.reloadDocument) {
           throw err
         }
       }
@@ -2193,9 +2195,7 @@ export class RouterCore<
 
         if (isRedirect(err)) {
           rendered = true
-          updateRedirectOptions(err, {
-            _fromLocation: location,
-          })
+          err.options._fromLocation = location
           err = this.resolveRedirect(err)
           throw err
         } else if (isNotFound(err)) {
@@ -2634,7 +2634,7 @@ export class RouterCore<
                           }))
                         } catch (err) {
                           if (isResolvedRedirect(err)) {
-                            await this.navigate(getRedirectOptions(err))
+                            await this.navigate(err.options)
                           }
                         }
                       })()
@@ -2720,13 +2720,9 @@ export class RouterCore<
   }
 
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
-    if (!redirect.headers.get('Location')) {
-      console.log('resolveRedirect', getRedirectOptions(redirect))
-      const href = this.buildLocation(getRedirectOptions(redirect)).href
-      updateRedirectOptions(redirect, {
-        href,
-      })
-      redirect.headers.set('Location', href)
+    if (!redirect.options.href) {
+      redirect.options.href = this.buildLocation(redirect.options).href
+      redirect.headers.set('Location', redirect.options.href)
     }
 
     return redirect
@@ -2861,7 +2857,7 @@ export class RouterCore<
       return matches
     } catch (err) {
       if (isRedirect(err)) {
-        if (err.headers.get('X-Tanstack-Router-Reload') === 'true') {
+        if (!err.options.reloadDocument) {
           return undefined
         }
         return await this.preloadRoute({

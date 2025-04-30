@@ -1,9 +1,9 @@
-import { isNotFound, isRedirect } from '@tanstack/router-core'
+import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import { startSerializer } from '@tanstack/start-client-core'
 // @ts-expect-error
 import _serverFnManifest from 'tanstack:server-fn-manifest'
-import { getEvent, getResponseStatus, requestHandler } from './h3'
+import { getEvent, getResponseStatus } from './h3'
 
 // NOTE: This is a dummy export to silence warnings about
 // only having a default export.
@@ -28,7 +28,7 @@ function sanitizeBase(base: string | undefined) {
   return base.replace(/^\/|\/$/g, '')
 }
 
-export const handleServerAction = requestHandler(async ({ request }) => {
+export const handleServerAction = async ({ request }: { request: Request }) => {
   const controller = new AbortController()
   const signal = controller.signal
   const abort = () => controller.abort()
@@ -202,8 +202,8 @@ export const handleServerAction = requestHandler(async ({ request }) => {
       //   return new Response(null, { status: 200 })
       // }
 
-      if (isRedirect(result) || isNotFound(result)) {
-        return redirectOrNotFoundResponse(result)
+      if (isNotFound(result)) {
+        return isNotFoundResponse(result)
       }
 
       return new Response(
@@ -232,8 +232,8 @@ export const handleServerAction = requestHandler(async ({ request }) => {
       // The client will check for __redirect and __notFound keys,
       // and if they exist, it will handle them appropriately.
 
-      if (isRedirect(error) || isNotFound(error)) {
-        return redirectOrNotFoundResponse(error)
+      if (isNotFound(error)) {
+        return isNotFoundResponse(error)
       }
 
       console.info()
@@ -250,6 +250,7 @@ export const handleServerAction = requestHandler(async ({ request }) => {
       })
     }
   })()
+
   request.signal.removeEventListener('abort', abort)
 
   if (isRaw) {
@@ -257,9 +258,9 @@ export const handleServerAction = requestHandler(async ({ request }) => {
   }
 
   return response
-})
+}
 
-function redirectOrNotFoundResponse(error: any) {
+function isNotFoundResponse(error: any) {
   const { headers, ...rest } = error
 
   return new Response(JSON.stringify(rest), {

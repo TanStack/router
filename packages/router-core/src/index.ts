@@ -377,8 +377,8 @@ export {
   redirect,
   isRedirect,
   isResolvedRedirect,
-  getRedirectOptions,
-  updateRedirectOptions,
+  tsrRedirectHeaderKey,
+  parseRedirect,
 } from './redirect'
 
 export type { NotFoundError } from './not-found'

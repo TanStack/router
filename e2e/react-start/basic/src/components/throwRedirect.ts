@@ -11,7 +11,13 @@ export const throwRedirect = createServerFn()
   )
   .handler((ctx) => {
     if (ctx.data.target === 'internal') {
-      throw redirect({ to: '/posts', reloadDocument: ctx.data.reloadDocument })
+      throw redirect({
+        to: '/posts/$postId/deep',
+        params: {
+          postId: '1',
+        },
+        reloadDocument: ctx.data.reloadDocument,
+      })
     }
     const href = ctx.data.externalHost ?? 'http://example.com'
     throw redirect({
