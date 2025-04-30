@@ -273,7 +273,7 @@ const requestLogger = createMiddleware({ type: 'function' })
 
 ## Reading/Modifying the Server Response
 
-Middleware that uses the `server` method executes in the same context as server functions, so you can follow the exact same [Server Function Context Utilities](./server-functions#server-function-context) to read and modify anything about the request headers, status codes, etc.
+Middleware that uses the `server` method executes in the same context as server functions, so you can follow the exact same [Server Function Context Utilities](../server-functions#server-function-context) to read and modify anything about the request headers, status codes, etc.
 
 ## Modifying the Client Request
 

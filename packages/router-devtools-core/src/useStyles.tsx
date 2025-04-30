@@ -370,6 +370,12 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
 
       return classes
     },
+    routesRowInner: css`
+      display: 'flex';
+      align-items: 'center';
+      flex-grow: 1;
+      min-width: 0;
+    `,
     routeParamInfo: css`
       color: ${colors.gray[400]};
       font-size: ${fontSize.xs};
@@ -385,6 +391,9 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
     code: css`
       font-size: ${fontSize.xs};
       line-height: ${lineHeight['xs']};
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     `,
     matchesContainer: css`
       flex: 1 1 auto;
@@ -578,6 +587,22 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       color: ${colors.gray[400]};
       width: ${size[2]};
       height: ${size[2]};
+    `,
+    navigateButton: css`
+      background: none;
+      border: none;
+      padding: 0 0 0 4px;
+      margin: 0;
+      color: ${colors.gray[400]};
+      font-size: ${fontSize.md};
+      cursor: pointer;
+      line-height: 1;
+      vertical-align: middle;
+      margin-right: 0.5ch;
+      flex-shrink: 0;
+      &:hover {
+        color: ${colors.blue[300]};
+      }
     `,
   }
 }
