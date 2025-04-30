@@ -1,19 +1,21 @@
 import { parse } from '@babel/parser'
 import _generate from '@babel/generator'
 import type { GeneratorOptions, GeneratorResult } from '@babel/generator'
-import type { ParseResult } from '@babel/parser'
+import type { ParseResult, ParserOptions } from '@babel/parser'
 import type * as _babel_types from '@babel/types'
 
-export type ParseAstOptions = {
+export type ParseAstOptions = ParserOptions & {
   code: string
 }
 
-export function parseAst(
-  opts: ParseAstOptions,
-): ParseResult<_babel_types.File> {
-  return parse(opts.code, {
+export function parseAst({
+  code,
+  ...opts
+}: ParseAstOptions): ParseResult<_babel_types.File> {
+  return parse(code, {
     plugins: ['jsx', 'typescript'],
     sourceType: 'module',
+    ...opts,
   })
 }
 
