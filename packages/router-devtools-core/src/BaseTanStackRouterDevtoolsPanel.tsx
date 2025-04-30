@@ -154,17 +154,7 @@ function RouteComp({
     if (!route.path) return undefined // no path to navigate to
 
     // flatten all params in the router state, into a single object
-    const allParams = matches()
-      .flatMap((m) => m.params)
-      .reduce((prev, curr) => {
-        const keys = Object.keys(curr)
-        for (const key of keys) {
-          if (prev[key] === undefined) {
-            prev[key] = curr[key]
-          }
-        }
-        return prev
-      }, {})
+    const allParams = Object.assign({}, ...matches().flatMap((m) => m.params))
 
     // interpolatePath is used by router-core to generate the `to`
     // path for the navigate function in the router
