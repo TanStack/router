@@ -216,6 +216,7 @@ interface InterpolatePathOptions {
 type InterPolatePathResult = {
   interpolatedPath: string
   usedParams: Record<string, unknown>
+  isMissingParams: boolean // true if any params were not available when being looked up in the params object
 }
 export function interpolatePath({
   path,
@@ -238,6 +239,7 @@ export function interpolatePath({
     }
   }
 
+  const missingKeys = new Set<string>()
   const usedParams: Record<string, unknown> = {}
   const interpolatedPath = joinPaths(
     interpolatedPathSegments.map((segment) => {
@@ -250,6 +252,9 @@ export function interpolatePath({
 
       if (segment.type === 'param') {
         const key = segment.value.substring(1)
+        if (typeof params[key] === 'undefined') {
+          missingKeys.add(key)
+        }
         usedParams[key] = params[key]
         if (leaveParams) {
           const value = encodeParam(segment.value)
@@ -261,7 +266,7 @@ export function interpolatePath({
       return segment.value
     }),
   )
-  return { usedParams, interpolatedPath }
+  return { usedParams, interpolatedPath, isMissingParams: missingKeys.size > 0 }
 }
 
 function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {

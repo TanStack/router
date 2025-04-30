@@ -154,28 +154,23 @@ function RouteComp({
     if (!route.path) return undefined // no path to navigate to
 
     // flatten all params in the router state, into a single object
-    const allParams = Object.assign({}, ...matches().flatMap((m) => m.params))
+    const allParams = Object.assign({}, ...matches().map((m) => m.params))
 
     // interpolatePath is used by router-core to generate the `to`
     // path for the navigate function in the router
-    // setting leaveWildcards and leaveParams to true
-    // allows us to see the full path with all params
-    // and wildcards if they are not filled
-    const interpolatedPath = interpolatePath({
+    const interpolated = interpolatePath({
       path: route.fullPath,
       params: allParams,
-      leaveWildcards: true,
-      leaveParams: true,
+      leaveWildcards: false,
+      leaveParams: false,
       decodeCharMap: router().pathParamsDecodeCharMap,
-    }).interpolatedPath
+    })
 
-    // determine if navigation is possible based on whether or not the returned path
-    const canNavigate = interpolatedPath
-      .split('/')
-      .filter(Boolean)
-      .every((s) => !s.startsWith('$'))
-
-    return canNavigate ? interpolatedPath : undefined
+    // only if `interpolated` is not missing params, return the path since this
+    // means that all the params are present for a successful navigation
+    return !interpolated.isMissingParams
+      ? interpolated.interpolatedPath
+      : undefined
   })
 
   return (
