@@ -1,7 +1,5 @@
-// @ts-expect-error
-import tsrStartManifest from 'tanstack:start-manifest'
+import { tsrStartManifest } from 'tanstack:start-manifest'
 import { rootRouteId } from '@tanstack/router-core'
-import type { Manifest } from '@tanstack/router-core'
 
 /**
  * @description Returns the router manifest that should be sent to the client.
@@ -10,7 +8,7 @@ import type { Manifest } from '@tanstack/router-core'
  * between routes or any other data that is not needed for the client.
  */
 export function getStartManifest() {
-  const startManifest = tsrStartManifest() as Manifest
+  const startManifest = tsrStartManifest()
 
   const rootRoute = (startManifest.routes[rootRouteId] =
     startManifest.routes[rootRouteId] || {})

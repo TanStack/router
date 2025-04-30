@@ -34,10 +34,15 @@ export function startManifestPlugin(
     },
     load(id) {
       if (id === 'tanstack:start-manifest') {
+        if (this.environment.config.consumer !== 'server') {
+          // this will ultimately fail the build if the plugin is used outside the server environment
+          // TODO: do we need special handling for `serve`?
+          return `export default {}`
+        }
         // If we're in development, return a dummy manifest
 
         if (config.command === 'serve') {
-          return `export default () => ({
+          return `export const tsrStartManifest = () => ({
             entry: "$${process.env.TSS_CLIENT_BASE}/",
             routes: {}
           })`
@@ -45,7 +50,7 @@ export function startManifestPlugin(
 
         const clientViteManifestPath = path.resolve(
           opts.root,
-          'node_modules/.tanstack-start/client-dist/.vite/manifest.json',
+          '.tanstack-start/build/client-dist/.vite/manifest.json',
         )
 
         let viteManifest: ViteManifest
@@ -203,7 +208,7 @@ export function startManifestPlugin(
           routes,
         }
 
-        return `export default () => (${JSON.stringify(routesManifest)})`
+        return `export const tsrStartManifest = () => (${JSON.stringify(routesManifest)})`
       }
       return
     },
