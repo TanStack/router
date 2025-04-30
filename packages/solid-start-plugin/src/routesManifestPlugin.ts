@@ -45,7 +45,7 @@ export function startManifestPlugin(
 
         const clientViteManifestPath = path.resolve(
           opts.root,
-          'node_modules/.tanstack-start/client-dist/.vite/manifest.json',
+          '.tanstack-start/build/client-dist/.vite/manifest.json',
         )
 
         let viteManifest: ViteManifest

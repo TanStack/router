@@ -28,6 +28,9 @@ export type ServerFnPluginOpts = {
   server: ServerFnPluginEnvOpts
 }
 
+const manifestFilename =
+    '.tanstack-start/build/server/server-functions-manifest.json'
+
 export type ServerFnPluginEnvOpts = {
   getRuntimeCode: () => string
   replacer: ReplacerFn
@@ -39,8 +42,6 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
   server: Array<Plugin>
 } {
   const ROOT = process.cwd()
-  const manifestFilename =
-    'node_modules/.tanstack-start/server/server-functions-manifest.json'
 
   globalThis.TSR_directiveFnsById = {}
 
@@ -215,8 +216,6 @@ export function TanStackServerFnPluginEnv(opts: {
   }
 
   const root = process.cwd()
-  const manifestFilename =
-    'node_modules/.tanstack-start/server/server-functions-manifest.json'
 
   globalThis.TSR_directiveFnsById = {}
 

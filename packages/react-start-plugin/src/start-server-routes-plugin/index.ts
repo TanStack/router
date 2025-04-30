@@ -99,10 +99,7 @@ let isFirst = false
 let skipMessage = false
 
 function getGeneratedRouteTreePath(root: string) {
-  return path.resolve(
-    root,
-    '.tanstack-start/server-routes/routeTree.gen.ts',
-  )
+  return path.resolve(root, '.tanstack-start/server-routes/routeTree.gen.ts')
 }
 
 async function generator(config: Config, root: string) {
