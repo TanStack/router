@@ -252,7 +252,7 @@ export function interpolatePath({
 
       if (segment.type === 'param') {
         const key = segment.value.substring(1)
-        if (typeof params[key] === 'undefined') {
+        if (!(key in params)) {
           missingKeys.add(key)
         }
         usedParams[key] = params[key]
