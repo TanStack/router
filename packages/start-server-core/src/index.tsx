@@ -16,8 +16,6 @@ export type { HandlerCallback } from './handlerCallback'
 export { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 export { handleServerAction } from './server-functions-handler'
 
-export { getStartManifest } from './router-manifest'
-
 export * from './h3'
 
 export { createServerRoute, createServerFileRoute } from './serverRoute'
