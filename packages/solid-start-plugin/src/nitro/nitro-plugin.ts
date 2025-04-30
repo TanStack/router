@@ -1,5 +1,5 @@
-import { platform } from 'node:os'
 import path, { dirname, resolve } from 'node:path'
+import { rmSync } from 'node:fs'
 import { build, createNitro } from 'nitropack'
 
 import { buildNitroEnvironment } from '@tanstack/start-plugin-core'
@@ -14,9 +14,6 @@ export type {
   TanStackStartInputConfig,
   TanStackStartOutputConfig,
 } from '../schema.js'
-
-const isWindows = platform() === 'win32'
-const filePrefix = isWindows ? 'file:///' : ''
 
 export function nitroPlugin(
   options: TanStackStartOutputConfig,
@@ -63,7 +60,10 @@ export function nitroPlugin(
                 throw new Error('SSR environment not found')
               }
 
+              const clientOutputDir = resolve(options.root, clientDistDir)
+              rmSync(clientOutputDir, { recursive: true, force: true })
               await builder.build(clientEnv)
+
               await builder.build(serverEnv)
 
               const nitroConfig: NitroConfig = {
