@@ -17,6 +17,7 @@ export type Redirect<
   TMaskTo extends string = '.',
 > = Response & {
   options: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  redirectHandled?: boolean
 }
 
 export type RedirectOptions<

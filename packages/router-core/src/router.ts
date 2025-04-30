@@ -28,7 +28,7 @@ import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
-import { isRedirect, isResolvedRedirect } from './redirect'
+import { isRedirect } from './redirect'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -1907,10 +1907,10 @@ export class RouterCore<
     loadPromise = new Promise<void>((resolve) => {
       this.startTransition(async () => {
         try {
-          this.beforeLoad()
-
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
+
+          this.beforeLoad()
 
           if (!this.state.redirect) {
             this.emit({
@@ -2165,13 +2165,16 @@ export class RouterCore<
     }
 
     const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
-      if (isResolvedRedirect(err)) {
-        if (!err.options.reloadDocument) {
-          throw err
-        }
-      }
-
+      console.log('handleRedirectAndNotFound', err)
       if (isRedirect(err) || isNotFound(err)) {
+        if (isRedirect(err)) {
+          if (err.redirectHandled) {
+            if (!err.options.reloadDocument) {
+              throw err
+            }
+          }
+        }
+
         updateMatch(match.id, (prev) => ({
           ...prev,
           status: isRedirect(err)
@@ -2196,6 +2199,7 @@ export class RouterCore<
         if (isRedirect(err)) {
           rendered = true
           err.options._fromLocation = location
+          err.redirectHandled = true
           err = this.resolveRedirect(err)
           throw err
         } else if (isNotFound(err)) {
@@ -2220,6 +2224,7 @@ export class RouterCore<
               err: any,
               routerCode: string,
             ) => {
+              console.log('handleSerialError', err)
               const { id: matchId, routeId } = matches[index]!
               const route = this.looseRoutesById[routeId]!
 
@@ -2633,7 +2638,7 @@ export class RouterCore<
                             loaderPromise: undefined,
                           }))
                         } catch (err) {
-                          if (isResolvedRedirect(err)) {
+                          if (isRedirect(err)) {
                             await this.navigate(err.options)
                           }
                         }
