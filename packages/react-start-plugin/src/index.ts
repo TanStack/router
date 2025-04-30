@@ -25,7 +25,7 @@ declare global {
   }
 }
 
-export const clientDistDir = 'node_modules/.tanstack-start/client-dist'
+export const clientDistDir = '.tanstack-start/build/client-dist'
 export const ssrEntryFile = 'ssr.mjs'
 
 // this needs to live outside of the TanStackStartVitePlugin since it will be invoked multiple times by vite
