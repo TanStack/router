@@ -1,12 +1,9 @@
 import * as React from 'react'
-import {
-  Link,
+import { Link,
   Outlet,
-  createFileRoute,
-  linkOptions,
-} from '@tanstack/react-router'
+  linkOptions, } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/dashboard')({
+export const Route = createFileRoute({
   component: DashboardComponent,
   loader: () => ({
     crumb: 'Dashboard',

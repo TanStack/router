@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import {  useNavigate } from '@tanstack/react-router'
 import { fallback, zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 import { Header } from '../../components/Header'
@@ -29,7 +29,7 @@ const Zod = () => {
   )
 }
 
-export const Route = createFileRoute('/users/zod/')({
+export const Route = createFileRoute({
   validateSearch: zodValidator(
     z.object({
       search: fallback(z.string().optional(), undefined),

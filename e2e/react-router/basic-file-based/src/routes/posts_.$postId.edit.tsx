@@ -1,4 +1,4 @@
-import { createFileRoute, getRouteApi, useParams } from '@tanstack/react-router'
+import {  getRouteApi, useParams } from '@tanstack/react-router'
 
 export const Route = createFileRoute({
   component: PostEditPage,

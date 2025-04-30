@@ -10,73 +10,74 @@
 
 // Import Routes
 
+import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/solid-router'
 import { Route as rootRoute } from './routes/__root'
-import { Route as WithoutLoaderImport } from './routes/without-loader'
-import { Route as ViewportTestImport } from './routes/viewport-test'
-import { Route as PostsImport } from './routes/posts'
-import { Route as LayoutImport } from './routes/_layout'
-import { Route as IndexImport } from './routes/index'
-import { Route as PostsIndexImport } from './routes/posts.index'
-import { Route as PostsPostIdImport } from './routes/posts.$postId'
-import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
-import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
-import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as WithoutLoaderRouteImport } from './routes/without-loader'
+import { Route as ViewportTestRouteImport } from './routes/viewport-test'
+import { Route as PostsRouteImport } from './routes/posts'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as PostsIndexRouteImport } from './routes/posts.index'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 
 // Create/Update Routes
 
-const WithoutLoaderRoute = WithoutLoaderImport.update({
+const WithoutLoaderRoute = WithoutLoaderRouteImport.update({
   id: '/without-loader',
   path: '/without-loader',
   getParentRoute: () => rootRoute,
 } as any)
 
-const ViewportTestRoute = ViewportTestImport.update({
+const ViewportTestRoute = ViewportTestRouteImport.update({
   id: '/viewport-test',
   path: '/viewport-test',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsRoute = PostsImport.update({
+const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LayoutRoute = LayoutImport.update({
+const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsIndexRoute = PostsIndexImport.update({
+const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const PostsPostIdRoute = PostsPostIdImport.update({
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const LayoutLayout2Route = LayoutLayout2Import.update({
+const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
 
-const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
+const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
-const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
+const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
@@ -90,73 +91,166 @@ declare module '@tanstack/solid-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/_layout': {
       id: '/_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutImport
+      preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRoute
     }
     '/viewport-test': {
       id: '/viewport-test'
       path: '/viewport-test'
       fullPath: '/viewport-test'
-      preLoaderRoute: typeof ViewportTestImport
+      preLoaderRoute: typeof ViewportTestRouteImport
       parentRoute: typeof rootRoute
     }
     '/without-loader': {
       id: '/without-loader'
       path: '/without-loader'
       fullPath: '/without-loader'
-      preLoaderRoute: typeof WithoutLoaderImport
+      preLoaderRoute: typeof WithoutLoaderRouteImport
       parentRoute: typeof rootRoute
     }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutLayout2Import
-      parentRoute: typeof LayoutImport
+      preLoaderRoute: typeof LayoutLayout2RouteImport
+      parentRoute: typeof LayoutRouteImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/_layout/_layout-2/layout-a': {
       id: '/_layout/_layout-2/layout-a'
       path: '/layout-a'
       fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutAImport
-      parentRoute: typeof LayoutLayout2Import
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2RouteImport
     }
     '/_layout/_layout-2/layout-b': {
       id: '/_layout/_layout-2/layout-b'
       path: '/layout-b'
       fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBImport
-      parentRoute: typeof LayoutLayout2Import
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
+      parentRoute: typeof LayoutLayout2RouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/_layout' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout',
+    FileRoutesByPath['/_layout']['parentRoute'],
+    FileRoutesByPath['/_layout']['id'],
+    FileRoutesByPath['/_layout']['path'],
+    FileRoutesByPath['/_layout']['fullPath']
+  >
+}
+declare module './routes/posts' {
+  const createFileRoute: CreateFileRoute<
+    '/posts',
+    FileRoutesByPath['/posts']['parentRoute'],
+    FileRoutesByPath['/posts']['id'],
+    FileRoutesByPath['/posts']['path'],
+    FileRoutesByPath['/posts']['fullPath']
+  >
+}
+declare module './routes/viewport-test' {
+  const createFileRoute: CreateFileRoute<
+    '/viewport-test',
+    FileRoutesByPath['/viewport-test']['parentRoute'],
+    FileRoutesByPath['/viewport-test']['id'],
+    FileRoutesByPath['/viewport-test']['path'],
+    FileRoutesByPath['/viewport-test']['fullPath']
+  >
+}
+declare module './routes/without-loader' {
+  const createFileRoute: CreateFileRoute<
+    '/without-loader',
+    FileRoutesByPath['/without-loader']['parentRoute'],
+    FileRoutesByPath['/without-loader']['id'],
+    FileRoutesByPath['/without-loader']['path'],
+    FileRoutesByPath['/without-loader']['fullPath']
+  >
+}
+declare module './routes/_layout/_layout-2' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2',
+    FileRoutesByPath['/_layout/_layout-2']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2']['id'],
+    FileRoutesByPath['/_layout/_layout-2']['path'],
+    FileRoutesByPath['/_layout/_layout-2']['fullPath']
+  >
+}
+declare module './routes/posts.$postId' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/$postId',
+    FileRoutesByPath['/posts/$postId']['parentRoute'],
+    FileRoutesByPath['/posts/$postId']['id'],
+    FileRoutesByPath['/posts/$postId']['path'],
+    FileRoutesByPath['/posts/$postId']['fullPath']
+  >
+}
+declare module './routes/posts.index' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/',
+    FileRoutesByPath['/posts/']['parentRoute'],
+    FileRoutesByPath['/posts/']['id'],
+    FileRoutesByPath['/posts/']['path'],
+    FileRoutesByPath['/posts/']['fullPath']
+  >
+}
+declare module './routes/_layout/_layout-2/layout-a' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2/layout-a',
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['id'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['path'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['fullPath']
+  >
+}
+declare module './routes/_layout/_layout-2/layout-b' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2/layout-b',
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath']
+  >
 }
 
 // Create and export the route tree
@@ -291,3 +385,69 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+// @ts-ignore
+import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.gen.ts'
+
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/_layout",
+        "/posts",
+        "/viewport-test",
+        "/without-loader"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/_layout": {
+      "filePath": "_layout.tsx",
+      "children": [
+        "/_layout/_layout-2"
+      ]
+    },
+    "/posts": {
+      "filePath": "posts.tsx",
+      "children": [
+        "/posts/$postId",
+        "/posts/"
+      ]
+    },
+    "/viewport-test": {
+      "filePath": "viewport-test.tsx"
+    },
+    "/without-loader": {
+      "filePath": "without-loader.tsx"
+    },
+    "/_layout/_layout-2": {
+      "filePath": "_layout/_layout-2.tsx",
+      "parent": "/_layout",
+      "children": [
+        "/_layout/_layout-2/layout-a",
+        "/_layout/_layout-2/layout-b"
+      ]
+    },
+    "/posts/$postId": {
+      "filePath": "posts.$postId.tsx",
+      "parent": "/posts"
+    },
+    "/posts/": {
+      "filePath": "posts.index.tsx",
+      "parent": "/posts"
+    },
+    "/_layout/_layout-2/layout-a": {
+      "filePath": "_layout/_layout-2/layout-a.tsx",
+      "parent": "/_layout/_layout-2"
+    },
+    "/_layout/_layout-2/layout-b": {
+      "filePath": "_layout/_layout-2/layout-b.tsx",
+      "parent": "/_layout/_layout-2"
+    }
+  }
+}
+ROUTE_MANIFEST_END */

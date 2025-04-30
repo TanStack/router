@@ -11,10 +11,10 @@
 // Import Routes
 
 import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
-import { Route as rootRoute  } from './routes/__root'
-import { Route as IndexRouteImport  } from './routes/index'
-import { Route as NestedIndexRouteImport  } from './routes/nested/index'
-import { Route as NestedChildRouteImport  } from './routes/nested/child'
+import { Route as rootRoute } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as NestedIndexRouteImport } from './routes/nested/index'
+import { Route as NestedChildRouteImport } from './routes/nested/child'
 
 // Create/Update Routes
 
@@ -121,6 +121,9 @@ const rootRouteChildren: RootRouteChildren = {
 }
 
 export const routeTree = rootRoute._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
+
+// @ts-ignore
+import type * as ServerTypes from '.tanstack-start/server-routes/routeTree.gen.ts'
 
 
 /* ROUTE_MANIFEST_START

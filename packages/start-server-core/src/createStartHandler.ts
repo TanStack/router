@@ -36,14 +36,11 @@ export function getStartResponseHeaders(opts: { router: AnyRouter }) {
       return match.headers
     }),
   )
-
   // Handle Redirects
   const { redirect } = opts.router.state
 
   if (redirect) {
-    headers = mergeHeaders(headers, redirect.headers, {
-      Location: redirect.href,
-    })
+    headers = mergeHeaders(headers, redirect.headers)
   }
   return headers
 }

@@ -5,7 +5,11 @@ import {
   hashKey,
   hydrate,
 } from '@tanstack/react-query'
-import { isRedirect } from '@tanstack/router-core'
+import {
+  getRedirectOptions,
+  isRedirect,
+  updateRedirectOptions,
+} from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/react-router'
 import type {
   QueryClient,
@@ -118,10 +122,13 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
       onError: (error, _variables, _context, _mutation) => {
         if (isRedirect(error)) {
           return router.navigate(
-            router.resolveRedirect({
-              ...error,
-              _fromLocation: router.state.location,
-            }),
+            getRedirectOptions(
+              router.resolveRedirect(
+                updateRedirectOptions(error, {
+                  _fromLocation: router.state.location,
+                }),
+              ),
+            ),
           )
         }
 
@@ -140,10 +147,13 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
       onError: (error, _query) => {
         if (isRedirect(error)) {
           return router.navigate(
-            router.resolveRedirect({
-              ...error,
-              _fromLocation: router.state.location,
-            }),
+            getRedirectOptions(
+              router.resolveRedirect(
+                updateRedirectOptions(error, {
+                  _fromLocation: router.state.location,
+                }),
+              ),
+            ),
           )
         }
 

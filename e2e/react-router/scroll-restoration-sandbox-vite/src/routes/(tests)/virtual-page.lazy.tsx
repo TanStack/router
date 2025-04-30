@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { createLazyFileRoute } from '@tanstack/react-router'
+
 import { ScrollBlock } from '../-components/scroll-block'
 
-export const Route = createLazyFileRoute('/(tests)/virtual-page')({
+export const Route = createLazyFileRoute({
   component: Component,
 })
 

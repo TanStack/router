@@ -8,6 +8,8 @@ import {
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
+import invariant from 'tiny-invariant'
+import { getRedirectOptions } from '@tanstack/router-core'
 import {
   Link,
   RouterProvider,
@@ -284,7 +286,11 @@ describe('redirect', () => {
 
       await router.load()
 
-      expect(router.state.redirect).toEqual({
+      expect(router.state.redirect).toBeDefined()
+      expect(router.state.redirect).toBeInstanceOf(Response)
+      invariant(router.state.redirect)
+
+      expect(getRedirectOptions(router.state.redirect)).toEqual({
         _fromLocation: expect.objectContaining({
           hash: '',
           href: '/',
@@ -293,13 +299,8 @@ describe('redirect', () => {
           searchStr: '',
         }),
         to: '/about',
-        headers: {},
-        reloadDocument: false,
         href: '/about',
         isRedirect: true,
-        routeId: '/',
-        routerCode: 'BEFORE_LOAD',
-        statusCode: 307,
       })
     })
 
@@ -336,21 +337,28 @@ describe('redirect', () => {
 
       await router.load()
 
-      expect(router.state.redirect).toEqual({
-        _fromLocation: expect.objectContaining({
+      const currentRedirect = router.state.redirect
+
+      expect(currentRedirect).toBeDefined()
+      expect(currentRedirect).toBeInstanceOf(Response)
+      invariant(currentRedirect)
+      expect(currentRedirect.status).toEqual(307)
+      expect(currentRedirect.headers.get('Location')).toEqual('/about')
+      expect(getRedirectOptions(currentRedirect)).toEqual({
+        _fromLocation: {
           hash: '',
           href: '/',
           pathname: '/',
           search: {},
           searchStr: '',
-        }),
-        to: '/about',
-        headers: {},
+          state: {
+            __TSR_index: 0,
+            key: getRedirectOptions(currentRedirect)._fromLocation!.state.key,
+          },
+        },
         href: '/about',
         isRedirect: true,
-        reloadDocument: false,
-        routeId: '/',
-        statusCode: 307,
+        to: '/about',
       })
     })
   })

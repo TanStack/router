@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/solid-router'
+
 import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { ScrollBlock } from '../-components/scroll-block'
 
-export const Route = createFileRoute('/(tests)/page-with-search')({
+export const Route = createFileRoute({
   validateSearch: zodValidator(z.object({ where: z.string() })),
   component: Component,
 })

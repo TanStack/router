@@ -1013,7 +1013,6 @@ function checkRouteFullPathUniqueness(
       .join(', ')}.
 Please ensure each Route has a unique full path.
 Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDirectory, d.filePath)).join('\n ')}\n`
-    console.error(errorMessage)
-    process.exit(1)
+    throw new Error(errorMessage)
   }
 }

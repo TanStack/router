@@ -1,9 +1,9 @@
-import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
+import { Link, Outlet } from '@tanstack/solid-router'
 import { useQuery } from '@tanstack/solid-query'
 import { postsQueryOptions } from '../postsQueryOptions'
 import { createMemo } from 'solid-js'
 
-export const Route = createFileRoute('/posts')({
+export const Route = createFileRoute({
   loader: ({ context: { queryClient } }) =>
     queryClient.ensureQueryData(postsQueryOptions),
   component: PostsComponent,

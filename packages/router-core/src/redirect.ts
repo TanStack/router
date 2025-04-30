@@ -1,7 +1,7 @@
+import { pick } from './utils'
 import type { NavigateOptions } from './link'
 import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { PickAsRequired } from './utils'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
@@ -9,6 +9,14 @@ export type AnyRedirect = Redirect<any, any, any, any, any>
  * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RedirectType)
  */
 export type Redirect<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = '/',
+  TTo extends string | undefined = '.',
+  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TMaskTo extends string = '.',
+> = Response
+
+export type RedirectOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = '/',
   TTo extends string | undefined = '.',
@@ -43,12 +51,7 @@ export type ResolvedRedirect<
   TTo extends string = '',
   TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
   TMaskTo extends string = '',
-> = PickAsRequired<
-  Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  'code' | 'statusCode' | 'headers'
-> & {
-  href: string
-}
+> = Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export function redirect<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -57,30 +60,85 @@ export function redirect<
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(
-  opts: Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  opts: RedirectOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
   ;(opts as any).isRedirect = true
-  opts.statusCode = opts.statusCode || opts.code || 307
-  opts.headers = opts.headers || {}
+  const status = opts.statusCode || opts.code || 307
+
   if (!opts.reloadDocument) {
-    opts.reloadDocument = false
     try {
       new URL(`${opts.href}`)
       opts.reloadDocument = true
     } catch {}
   }
 
+  const headers = new Headers(opts.headers || {})
+  headers.set(
+    'X-Tanstack-Router-Navigate-Options',
+    JSON.stringify(
+      pick(opts, ['ignoreBlocker', 'reloadDocument', 'replace', 'resetScroll']),
+    ),
+  )
+
+  // If we already have a href, set it in the headers
+  if (opts.href) headers.set('Location', opts.href)
+
+  const response = new Response(null, {
+    status,
+    headers,
+  })
+
+  ;(response as any).__options = opts
+
   if (opts.throw) {
-    throw opts
+    throw response
   }
 
-  return opts
+  return response
 }
 
 export function isRedirect(obj: any): obj is AnyRedirect {
-  return !!obj?.isRedirect
+  return (
+    obj instanceof Response &&
+    !!obj.headers.get('X-Tanstack-Router-Navigate-Options')
+  )
 }
 
-export function isResolvedRedirect(obj: any): obj is ResolvedRedirect {
-  return !!obj?.isRedirect && obj.href
+export function isResolvedRedirect(obj: any): obj is Redirect {
+  return isRedirect(obj) && !!obj.headers.get('Location')
+}
+
+export function getRedirectOptions(obj: AnyRedirect): RedirectOptions {
+  const header = obj.headers.get('X-Tanstack-Router-Navigate-Options')
+  if (!header) {
+    throw new Error('No redirect options found')
+  }
+  return {
+    ...JSON.parse(header),
+    ...(obj as any).__options,
+  }
+}
+
+export function updateRedirectOptions<TRedirect extends AnyRedirect>(
+  redirect: TRedirect,
+  opts: Partial<RedirectOptions>,
+): TRedirect {
+  redirect.headers.set(
+    'X-Tanstack-Router-Navigate-Options',
+    JSON.stringify({
+      ...getRedirectOptions(redirect),
+      ...pick(opts, [
+        'ignoreBlocker',
+        'reloadDocument',
+        'replace',
+        'resetScroll',
+      ]),
+    }),
+  )
+  ;(redirect as any).__options = {
+    ...(redirect as any).__options,
+    ...opts,
+  }
+
+  return redirect
 }

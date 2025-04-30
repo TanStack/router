@@ -1,19 +1,16 @@
 import * as React from 'react'
-import {
-  Link,
+import { Link,
   MatchRoute,
   Outlet,
-  createFileRoute,
   retainSearchParams,
-  useNavigate,
-} from '@tanstack/react-router'
+  useNavigate, } from '@tanstack/react-router'
 import { z } from 'zod'
 import { Spinner } from '../components/Spinner'
 import { fetchUsers } from '../utils/mockTodos'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-export const Route = createFileRoute('/dashboard/users')({
+export const Route = createFileRoute({
   validateSearch: z.object({
     usersView: z
       .object({

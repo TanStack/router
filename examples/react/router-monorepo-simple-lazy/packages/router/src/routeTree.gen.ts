@@ -10,19 +10,20 @@
 
 // Import Routes
 
+import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostIdImport } from './routes/$postId'
-import { Route as IndexImport } from './routes/index'
+import { Route as PostIdRouteImport } from './routes/$postId'
+import { Route as IndexRouteImport } from './routes/index'
 
 // Create/Update Routes
 
-const PostIdRoute = PostIdImport.update({
+const PostIdRoute = PostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
@@ -36,17 +37,38 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/$postId': {
       id: '/$postId'
       path: '/$postId'
       fullPath: '/$postId'
-      preLoaderRoute: typeof PostIdImport
+      preLoaderRoute: typeof PostIdRouteImport
       parentRoute: typeof rootRoute
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/$postId' {
+  const createFileRoute: CreateFileRoute<
+    '/$postId',
+    FileRoutesByPath['/$postId']['parentRoute'],
+    FileRoutesByPath['/$postId']['id'],
+    FileRoutesByPath['/$postId']['path'],
+    FileRoutesByPath['/$postId']['fullPath']
+  >
 }
 
 // Create and export the route tree
@@ -89,6 +111,9 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+// @ts-ignore
+import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.gen.ts'
 
 /* ROUTE_MANIFEST_START
 {

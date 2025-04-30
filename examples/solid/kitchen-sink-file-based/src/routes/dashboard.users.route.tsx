@@ -1,13 +1,10 @@
 import * as Solid from 'solid-js'
-import {
-  Link,
+import { Link,
   MatchRoute,
   Outlet,
-  createFileRoute,
   retainSearchParams,
   useNavigate,
-  useRouterState,
-} from '@tanstack/solid-router'
+  useRouterState, } from '@tanstack/solid-router'
 import { z } from 'zod'
 import { createMemo } from 'solid-js'
 import { Spinner } from '../components/Spinner'
@@ -15,7 +12,7 @@ import { fetchUsers } from '../utils/mockTodos'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-export const Route = createFileRoute('/dashboard/users')({
+export const Route = createFileRoute({
   validateSearch: z.object({
     usersView: z
       .object({

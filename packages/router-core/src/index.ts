@@ -373,7 +373,13 @@ export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 
 export type { Redirect, ResolvedRedirect, AnyRedirect } from './redirect'
 
-export { redirect, isRedirect, isResolvedRedirect } from './redirect'
+export {
+  redirect,
+  isRedirect,
+  isResolvedRedirect,
+  getRedirectOptions,
+  updateRedirectOptions,
+} from './redirect'
 
 export type { NotFoundError } from './not-found'
 export { isNotFound, notFound } from './not-found'

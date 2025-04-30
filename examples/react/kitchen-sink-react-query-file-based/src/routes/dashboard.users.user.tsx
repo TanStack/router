@@ -1,10 +1,10 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { userQueryOptions } from '../utils/queryOptions'
 
-export const Route = createFileRoute('/dashboard/users/user')({
+export const Route = createFileRoute({
   validateSearch: z.object({
     userId: z.number(),
   }),

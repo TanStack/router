@@ -1,10 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import {
   Link,
-  createFileRoute,
   useLocation,
-  useNavigate,
-} from '@tanstack/react-router'
+  useNavigate, } from '@tanstack/react-router'
 
 export const Route = createFileRoute({
   component: AnchorComponent,

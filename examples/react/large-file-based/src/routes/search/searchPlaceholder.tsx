@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 
 import { z } from 'zod'
 import { queryOptions } from '@tanstack/react-query'
@@ -26,7 +26,7 @@ const searchQueryOptions = queryOptions({
   },
 })
 
-export const Route = createFileRoute('/search/searchPlaceholder')({
+export const Route = createFileRoute({
   component: SearchComponent,
   validateSearch: search,
   loader: (opts) =>

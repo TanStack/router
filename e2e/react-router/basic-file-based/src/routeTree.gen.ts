@@ -12,118 +12,120 @@ import { createFileRoute } from '@tanstack/react-router'
 
 // Import Routes
 
+import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostsImport } from './routes/posts'
-import { Route as EditingBImport } from './routes/editing-b'
-import { Route as EditingAImport } from './routes/editing-a'
-import { Route as AnchorImport } from './routes/anchor'
-import { Route as LayoutImport } from './routes/_layout'
-import { Route as IndexImport } from './routes/index'
-import { Route as RedirectIndexImport } from './routes/redirect/index'
-import { Route as PostsIndexImport } from './routes/posts.index'
-import { Route as StructuralSharingEnabledImport } from './routes/structural-sharing.$enabled'
-import { Route as RedirectTargetImport } from './routes/redirect/$target'
-import { Route as PostsPostIdImport } from './routes/posts.$postId'
-import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
-import { Route as groupLazyinsideImport } from './routes/(group)/lazyinside'
-import { Route as groupInsideImport } from './routes/(group)/inside'
-import { Route as groupLayoutImport } from './routes/(group)/_layout'
-import { Route as anotherGroupOnlyrouteinsideImport } from './routes/(another-group)/onlyrouteinside'
-import { Route as RedirectTargetIndexImport } from './routes/redirect/$target/index'
-import { Route as RedirectPreloadThirdImport } from './routes/redirect/preload/third'
-import { Route as RedirectPreloadSecondImport } from './routes/redirect/preload/second'
-import { Route as RedirectPreloadFirstImport } from './routes/redirect/preload/first'
-import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
-import { Route as RedirectTargetViaBeforeLoadImport } from './routes/redirect/$target/via-beforeLoad'
-import { Route as PostsPostIdEditImport } from './routes/posts_.$postId.edit'
-import { Route as ParamsSingleValueImport } from './routes/params.single.$value'
-import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
-import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
-import { Route as groupSubfolderInsideImport } from './routes/(group)/subfolder/inside'
-import { Route as groupLayoutInsidelayoutImport } from './routes/(group)/_layout.insidelayout'
+import { Route as PostsRouteImport } from './routes/posts'
+import { Route as EditingBRouteImport } from './routes/editing-b'
+import { Route as EditingARouteImport } from './routes/editing-a'
+import { Route as AnchorRouteImport } from './routes/anchor'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
+import { Route as PostsIndexRouteImport } from './routes/posts.index'
+import { Route as StructuralSharingEnabledRouteImport } from './routes/structural-sharing.$enabled'
+import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as groupLazyinsideRouteImport } from './routes/(group)/lazyinside'
+import { Route as groupInsideRouteImport } from './routes/(group)/inside'
+import { Route as groupLayoutRouteImport } from './routes/(group)/_layout'
+import { Route as anotherGroupOnlyrouteinsideRouteImport } from './routes/(another-group)/onlyrouteinside'
+import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
+import { Route as RedirectPreloadThirdRouteImport } from './routes/redirect/preload/third'
+import { Route as RedirectPreloadSecondRouteImport } from './routes/redirect/preload/second'
+import { Route as RedirectPreloadFirstRouteImport } from './routes/redirect/preload/first'
+import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
+import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
+import { Route as PostsPostIdEditRouteImport } from './routes/posts_.$postId.edit'
+import { Route as ParamsSingleValueRouteImport } from './routes/params.single.$value'
+import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
+import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_layout.insidelayout'
 
 // Create Virtual Routes
 
-const groupImport = createFileRoute('/(group)')()
+const groupRouteImport = createFileRoute('/(group)')()
 
 // Create/Update Routes
 
-const groupRoute = groupImport.update({
+const groupRoute = groupRouteImport.update({
   id: '/(group)',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsRoute = PostsImport.update({
+const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const EditingBRoute = EditingBImport.update({
+const EditingBRoute = EditingBRouteImport.update({
   id: '/editing-b',
   path: '/editing-b',
   getParentRoute: () => rootRoute,
 } as any)
 
-const EditingARoute = EditingAImport.update({
+const EditingARoute = EditingARouteImport.update({
   id: '/editing-a',
   path: '/editing-a',
   getParentRoute: () => rootRoute,
 } as any)
 
-const AnchorRoute = AnchorImport.update({
+const AnchorRoute = AnchorRouteImport.update({
   id: '/anchor',
   path: '/anchor',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LayoutRoute = LayoutImport.update({
+const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const RedirectIndexRoute = RedirectIndexImport.update({
+const RedirectIndexRoute = RedirectIndexRouteImport.update({
   id: '/redirect/',
   path: '/redirect/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsIndexRoute = PostsIndexImport.update({
+const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const StructuralSharingEnabledRoute = StructuralSharingEnabledImport.update({
-  id: '/structural-sharing/$enabled',
-  path: '/structural-sharing/$enabled',
-  getParentRoute: () => rootRoute,
-} as any)
+const StructuralSharingEnabledRoute =
+  StructuralSharingEnabledRouteImport.update({
+    id: '/structural-sharing/$enabled',
+    path: '/structural-sharing/$enabled',
+    getParentRoute: () => rootRoute,
+  } as any)
 
-const RedirectTargetRoute = RedirectTargetImport.update({
+const RedirectTargetRoute = RedirectTargetRouteImport.update({
   id: '/redirect/$target',
   path: '/redirect/$target',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsPostIdRoute = PostsPostIdImport.update({
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const LayoutLayout2Route = LayoutLayout2Import.update({
+const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
 
-const groupLazyinsideRoute = groupLazyinsideImport
+const groupLazyinsideRoute = groupLazyinsideRouteImport
   .update({
     id: '/lazyinside',
     path: '/lazyinside',
@@ -131,92 +133,92 @@ const groupLazyinsideRoute = groupLazyinsideImport
   } as any)
   .lazy(() => import('./routes/(group)/lazyinside.lazy').then((d) => d.Route))
 
-const groupInsideRoute = groupInsideImport.update({
+const groupInsideRoute = groupInsideRouteImport.update({
   id: '/inside',
   path: '/inside',
   getParentRoute: () => groupRoute,
 } as any)
 
-const groupLayoutRoute = groupLayoutImport.update({
+const groupLayoutRoute = groupLayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => groupRoute,
 } as any)
 
 const anotherGroupOnlyrouteinsideRoute =
-  anotherGroupOnlyrouteinsideImport.update({
+  anotherGroupOnlyrouteinsideRouteImport.update({
     id: '/(another-group)/onlyrouteinside',
     path: '/onlyrouteinside',
     getParentRoute: () => rootRoute,
   } as any)
 
-const RedirectTargetIndexRoute = RedirectTargetIndexImport.update({
+const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
 
-const RedirectPreloadThirdRoute = RedirectPreloadThirdImport.update({
+const RedirectPreloadThirdRoute = RedirectPreloadThirdRouteImport.update({
   id: '/redirect/preload/third',
   path: '/redirect/preload/third',
   getParentRoute: () => rootRoute,
 } as any)
 
-const RedirectPreloadSecondRoute = RedirectPreloadSecondImport.update({
+const RedirectPreloadSecondRoute = RedirectPreloadSecondRouteImport.update({
   id: '/redirect/preload/second',
   path: '/redirect/preload/second',
   getParentRoute: () => rootRoute,
 } as any)
 
-const RedirectPreloadFirstRoute = RedirectPreloadFirstImport.update({
+const RedirectPreloadFirstRoute = RedirectPreloadFirstRouteImport.update({
   id: '/redirect/preload/first',
   path: '/redirect/preload/first',
   getParentRoute: () => rootRoute,
 } as any)
 
-const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderImport.update({
+const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
 
 const RedirectTargetViaBeforeLoadRoute =
-  RedirectTargetViaBeforeLoadImport.update({
+  RedirectTargetViaBeforeLoadRouteImport.update({
     id: '/via-beforeLoad',
     path: '/via-beforeLoad',
     getParentRoute: () => RedirectTargetRoute,
   } as any)
 
-const PostsPostIdEditRoute = PostsPostIdEditImport.update({
+const PostsPostIdEditRoute = PostsPostIdEditRouteImport.update({
   id: '/posts_/$postId/edit',
   path: '/posts/$postId/edit',
   getParentRoute: () => rootRoute,
 } as any)
 
-const ParamsSingleValueRoute = ParamsSingleValueImport.update({
+const ParamsSingleValueRoute = ParamsSingleValueRouteImport.update({
   id: '/params/single/$value',
   path: '/params/single/$value',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
+const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
-const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
+const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
-const groupSubfolderInsideRoute = groupSubfolderInsideImport.update({
+const groupSubfolderInsideRoute = groupSubfolderInsideRouteImport.update({
   id: '/subfolder/inside',
   path: '/subfolder/inside',
   getParentRoute: () => groupRoute,
 } as any)
 
-const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutImport.update({
+const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
   id: '/insidelayout',
   path: '/insidelayout',
   getParentRoute: () => groupLayoutRoute,
@@ -230,351 +232,469 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/_layout': {
       id: '/_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutImport
+      preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRoute
     }
     '/anchor': {
       id: '/anchor'
       path: '/anchor'
       fullPath: '/anchor'
-      preLoaderRoute: typeof AnchorImport
+      preLoaderRoute: typeof AnchorRouteImport
       parentRoute: typeof rootRoute
     }
     '/editing-a': {
       id: '/editing-a'
       path: '/editing-a'
       fullPath: '/editing-a'
-      preLoaderRoute: typeof EditingAImport
+      preLoaderRoute: typeof EditingARouteImport
       parentRoute: typeof rootRoute
     }
     '/editing-b': {
       id: '/editing-b'
       path: '/editing-b'
       fullPath: '/editing-b'
-      preLoaderRoute: typeof EditingBImport
+      preLoaderRoute: typeof EditingBRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRoute
     }
     '/(another-group)/onlyrouteinside': {
       id: '/(another-group)/onlyrouteinside'
       path: '/onlyrouteinside'
       fullPath: '/onlyrouteinside'
-      preLoaderRoute: typeof anotherGroupOnlyrouteinsideImport
+      preLoaderRoute: typeof anotherGroupOnlyrouteinsideRouteImport
       parentRoute: typeof rootRoute
     }
     '/(group)': {
       id: '/(group)'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupImport
+      preLoaderRoute: typeof groupRouteImport
       parentRoute: typeof rootRoute
     }
     '/(group)/_layout': {
       id: '/(group)/_layout'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupLayoutImport
+      preLoaderRoute: typeof groupLayoutRouteImport
       parentRoute: typeof groupRoute
     }
     '/(group)/inside': {
       id: '/(group)/inside'
       path: '/inside'
       fullPath: '/inside'
-      preLoaderRoute: typeof groupInsideImport
-      parentRoute: typeof groupImport
+      preLoaderRoute: typeof groupInsideRouteImport
+      parentRoute: typeof groupRouteImport
     }
     '/(group)/lazyinside': {
       id: '/(group)/lazyinside'
       path: '/lazyinside'
       fullPath: '/lazyinside'
-      preLoaderRoute: typeof groupLazyinsideImport
-      parentRoute: typeof groupImport
+      preLoaderRoute: typeof groupLazyinsideRouteImport
+      parentRoute: typeof groupRouteImport
     }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutLayout2Import
-      parentRoute: typeof LayoutImport
+      preLoaderRoute: typeof LayoutLayout2RouteImport
+      parentRoute: typeof LayoutRouteImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/redirect/$target': {
       id: '/redirect/$target'
       path: '/redirect/$target'
       fullPath: '/redirect/$target'
-      preLoaderRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetRouteImport
       parentRoute: typeof rootRoute
     }
     '/structural-sharing/$enabled': {
       id: '/structural-sharing/$enabled'
       path: '/structural-sharing/$enabled'
       fullPath: '/structural-sharing/$enabled'
-      preLoaderRoute: typeof StructuralSharingEnabledImport
+      preLoaderRoute: typeof StructuralSharingEnabledRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/redirect/': {
       id: '/redirect/'
       path: '/redirect'
       fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectIndexImport
+      preLoaderRoute: typeof RedirectIndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/(group)/_layout/insidelayout': {
       id: '/(group)/_layout/insidelayout'
       path: '/insidelayout'
       fullPath: '/insidelayout'
-      preLoaderRoute: typeof groupLayoutInsidelayoutImport
-      parentRoute: typeof groupLayoutImport
+      preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
+      parentRoute: typeof groupLayoutRouteImport
     }
     '/(group)/subfolder/inside': {
       id: '/(group)/subfolder/inside'
       path: '/subfolder/inside'
       fullPath: '/subfolder/inside'
-      preLoaderRoute: typeof groupSubfolderInsideImport
-      parentRoute: typeof groupImport
+      preLoaderRoute: typeof groupSubfolderInsideRouteImport
+      parentRoute: typeof groupRouteImport
     }
     '/_layout/_layout-2/layout-a': {
       id: '/_layout/_layout-2/layout-a'
       path: '/layout-a'
       fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutAImport
-      parentRoute: typeof LayoutLayout2Import
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2RouteImport
     }
     '/_layout/_layout-2/layout-b': {
       id: '/_layout/_layout-2/layout-b'
       path: '/layout-b'
       fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBImport
-      parentRoute: typeof LayoutLayout2Import
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
+      parentRoute: typeof LayoutLayout2RouteImport
     }
     '/params/single/$value': {
       id: '/params/single/$value'
       path: '/params/single/$value'
       fullPath: '/params/single/$value'
-      preLoaderRoute: typeof ParamsSingleValueImport
+      preLoaderRoute: typeof ParamsSingleValueRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts_/$postId/edit': {
       id: '/posts_/$postId/edit'
       path: '/posts/$postId/edit'
       fullPath: '/posts/$postId/edit'
-      preLoaderRoute: typeof PostsPostIdEditImport
+      preLoaderRoute: typeof PostsPostIdEditRouteImport
       parentRoute: typeof rootRoute
     }
     '/redirect/$target/via-beforeLoad': {
       id: '/redirect/$target/via-beforeLoad'
       path: '/via-beforeLoad'
       fullPath: '/redirect/$target/via-beforeLoad'
-      preLoaderRoute: typeof RedirectTargetViaBeforeLoadImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRouteImport
     }
     '/redirect/$target/via-loader': {
       id: '/redirect/$target/via-loader'
       path: '/via-loader'
       fullPath: '/redirect/$target/via-loader'
-      preLoaderRoute: typeof RedirectTargetViaLoaderImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
+      parentRoute: typeof RedirectTargetRouteImport
     }
     '/redirect/preload/first': {
       id: '/redirect/preload/first'
       path: '/redirect/preload/first'
       fullPath: '/redirect/preload/first'
-      preLoaderRoute: typeof RedirectPreloadFirstImport
+      preLoaderRoute: typeof RedirectPreloadFirstRouteImport
       parentRoute: typeof rootRoute
     }
     '/redirect/preload/second': {
       id: '/redirect/preload/second'
       path: '/redirect/preload/second'
       fullPath: '/redirect/preload/second'
-      preLoaderRoute: typeof RedirectPreloadSecondImport
+      preLoaderRoute: typeof RedirectPreloadSecondRouteImport
       parentRoute: typeof rootRoute
     }
     '/redirect/preload/third': {
       id: '/redirect/preload/third'
       path: '/redirect/preload/third'
       fullPath: '/redirect/preload/third'
-      preLoaderRoute: typeof RedirectPreloadThirdImport
+      preLoaderRoute: typeof RedirectPreloadThirdRouteImport
       parentRoute: typeof rootRoute
     }
     '/redirect/$target/': {
       id: '/redirect/$target/'
       path: '/'
       fullPath: '/redirect/$target/'
-      preLoaderRoute: typeof RedirectTargetIndexImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetIndexRouteImport
+      parentRoute: typeof RedirectTargetRouteImport
     }
   }
 }
 
+// Add type-safety to the createFileRoute function across the route tree
+
 declare module './routes/index' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/'>
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
   >
 }
 declare module './routes/_layout' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/_layout'>
+  const createFileRoute: CreateFileRoute<
+    '/_layout',
+    FileRoutesByPath['/_layout']['parentRoute'],
+    FileRoutesByPath['/_layout']['id'],
+    FileRoutesByPath['/_layout']['path'],
+    FileRoutesByPath['/_layout']['fullPath']
   >
 }
 declare module './routes/anchor' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/anchor'>
+  const createFileRoute: CreateFileRoute<
+    '/anchor',
+    FileRoutesByPath['/anchor']['parentRoute'],
+    FileRoutesByPath['/anchor']['id'],
+    FileRoutesByPath['/anchor']['path'],
+    FileRoutesByPath['/anchor']['fullPath']
   >
 }
 declare module './routes/editing-a' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/editing-a'>
+  const createFileRoute: CreateFileRoute<
+    '/editing-a',
+    FileRoutesByPath['/editing-a']['parentRoute'],
+    FileRoutesByPath['/editing-a']['id'],
+    FileRoutesByPath['/editing-a']['path'],
+    FileRoutesByPath['/editing-a']['fullPath']
   >
 }
 declare module './routes/editing-b' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/editing-b'>
+  const createFileRoute: CreateFileRoute<
+    '/editing-b',
+    FileRoutesByPath['/editing-b']['parentRoute'],
+    FileRoutesByPath['/editing-b']['id'],
+    FileRoutesByPath['/editing-b']['path'],
+    FileRoutesByPath['/editing-b']['fullPath']
   >
 }
 declare module './routes/posts' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/posts'>
+  const createFileRoute: CreateFileRoute<
+    '/posts',
+    FileRoutesByPath['/posts']['parentRoute'],
+    FileRoutesByPath['/posts']['id'],
+    FileRoutesByPath['/posts']['path'],
+    FileRoutesByPath['/posts']['fullPath']
   >
 }
 declare module './routes/(another-group)/onlyrouteinside' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/(another-group)/onlyrouteinside'>
+  const createFileRoute: CreateFileRoute<
+    '/(another-group)/onlyrouteinside',
+    FileRoutesByPath['/(another-group)/onlyrouteinside']['parentRoute'],
+    FileRoutesByPath['/(another-group)/onlyrouteinside']['id'],
+    FileRoutesByPath['/(another-group)/onlyrouteinside']['path'],
+    FileRoutesByPath['/(another-group)/onlyrouteinside']['fullPath']
   >
 }
 declare module './routes/(group)' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)'>
+  const createFileRoute: CreateFileRoute<
+    '/(group)',
+    FileRoutesByPath['/(group)']['parentRoute'],
+    FileRoutesByPath['/(group)']['id'],
+    FileRoutesByPath['/(group)']['path'],
+    FileRoutesByPath['/(group)']['fullPath']
   >
 }
 declare module './routes/(group)/_layout' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)/_layout'>
+  const createFileRoute: CreateFileRoute<
+    '/(group)/_layout',
+    FileRoutesByPath['/(group)/_layout']['parentRoute'],
+    FileRoutesByPath['/(group)/_layout']['id'],
+    FileRoutesByPath['/(group)/_layout']['path'],
+    FileRoutesByPath['/(group)/_layout']['fullPath']
   >
 }
 declare module './routes/(group)/inside' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)/inside'>
+  const createFileRoute: CreateFileRoute<
+    '/(group)/inside',
+    FileRoutesByPath['/(group)/inside']['parentRoute'],
+    FileRoutesByPath['/(group)/inside']['id'],
+    FileRoutesByPath['/(group)/inside']['path'],
+    FileRoutesByPath['/(group)/inside']['fullPath']
   >
 }
 declare module './routes/(group)/lazyinside' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)/lazyinside'>
+  const createFileRoute: CreateFileRoute<
+    '/(group)/lazyinside',
+    FileRoutesByPath['/(group)/lazyinside']['parentRoute'],
+    FileRoutesByPath['/(group)/lazyinside']['id'],
+    FileRoutesByPath['/(group)/lazyinside']['path'],
+    FileRoutesByPath['/(group)/lazyinside']['fullPath']
   >
 }
 declare module './routes/_layout/_layout-2' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/_layout/_layout-2'>
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2',
+    FileRoutesByPath['/_layout/_layout-2']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2']['id'],
+    FileRoutesByPath['/_layout/_layout-2']['path'],
+    FileRoutesByPath['/_layout/_layout-2']['fullPath']
   >
 }
 declare module './routes/posts.$postId' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/posts/$postId'>
+  const createFileRoute: CreateFileRoute<
+    '/posts/$postId',
+    FileRoutesByPath['/posts/$postId']['parentRoute'],
+    FileRoutesByPath['/posts/$postId']['id'],
+    FileRoutesByPath['/posts/$postId']['path'],
+    FileRoutesByPath['/posts/$postId']['fullPath']
   >
 }
 declare module './routes/redirect/$target' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/$target'>
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target',
+    FileRoutesByPath['/redirect/$target']['parentRoute'],
+    FileRoutesByPath['/redirect/$target']['id'],
+    FileRoutesByPath['/redirect/$target']['path'],
+    FileRoutesByPath['/redirect/$target']['fullPath']
   >
 }
 declare module './routes/structural-sharing.$enabled' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/structural-sharing/$enabled'>
+  const createFileRoute: CreateFileRoute<
+    '/structural-sharing/$enabled',
+    FileRoutesByPath['/structural-sharing/$enabled']['parentRoute'],
+    FileRoutesByPath['/structural-sharing/$enabled']['id'],
+    FileRoutesByPath['/structural-sharing/$enabled']['path'],
+    FileRoutesByPath['/structural-sharing/$enabled']['fullPath']
   >
 }
 declare module './routes/posts.index' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/posts/'>
+  const createFileRoute: CreateFileRoute<
+    '/posts/',
+    FileRoutesByPath['/posts/']['parentRoute'],
+    FileRoutesByPath['/posts/']['id'],
+    FileRoutesByPath['/posts/']['path'],
+    FileRoutesByPath['/posts/']['fullPath']
   >
 }
 declare module './routes/redirect/index' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/'>
+  const createFileRoute: CreateFileRoute<
+    '/redirect/',
+    FileRoutesByPath['/redirect/']['parentRoute'],
+    FileRoutesByPath['/redirect/']['id'],
+    FileRoutesByPath['/redirect/']['path'],
+    FileRoutesByPath['/redirect/']['fullPath']
   >
 }
 declare module './routes/(group)/_layout.insidelayout' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)/_layout/insidelayout'>
+  const createFileRoute: CreateFileRoute<
+    '/(group)/_layout/insidelayout',
+    FileRoutesByPath['/(group)/_layout/insidelayout']['parentRoute'],
+    FileRoutesByPath['/(group)/_layout/insidelayout']['id'],
+    FileRoutesByPath['/(group)/_layout/insidelayout']['path'],
+    FileRoutesByPath['/(group)/_layout/insidelayout']['fullPath']
   >
 }
 declare module './routes/(group)/subfolder/inside' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/(group)/subfolder/inside'>
+  const createFileRoute: CreateFileRoute<
+    '/(group)/subfolder/inside',
+    FileRoutesByPath['/(group)/subfolder/inside']['parentRoute'],
+    FileRoutesByPath['/(group)/subfolder/inside']['id'],
+    FileRoutesByPath['/(group)/subfolder/inside']['path'],
+    FileRoutesByPath['/(group)/subfolder/inside']['fullPath']
   >
 }
 declare module './routes/_layout/_layout-2/layout-a' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/_layout/_layout-2/layout-a'>
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2/layout-a',
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['id'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['path'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['fullPath']
   >
 }
 declare module './routes/_layout/_layout-2/layout-b' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/_layout/_layout-2/layout-b'>
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2/layout-b',
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath']
   >
 }
 declare module './routes/params.single.$value' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/params/single/$value'>
+  const createFileRoute: CreateFileRoute<
+    '/params/single/$value',
+    FileRoutesByPath['/params/single/$value']['parentRoute'],
+    FileRoutesByPath['/params/single/$value']['id'],
+    FileRoutesByPath['/params/single/$value']['path'],
+    FileRoutesByPath['/params/single/$value']['fullPath']
   >
 }
 declare module './routes/posts_.$postId.edit' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/posts_/$postId/edit'>
+  const createFileRoute: CreateFileRoute<
+    '/posts_/$postId/edit',
+    FileRoutesByPath['/posts_/$postId/edit']['parentRoute'],
+    FileRoutesByPath['/posts_/$postId/edit']['id'],
+    FileRoutesByPath['/posts_/$postId/edit']['path'],
+    FileRoutesByPath['/posts_/$postId/edit']['fullPath']
   >
 }
 declare module './routes/redirect/$target/via-beforeLoad' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/$target/via-beforeLoad'>
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/via-beforeLoad',
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['id'],
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['path'],
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['fullPath']
   >
 }
 declare module './routes/redirect/$target/via-loader' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/$target/via-loader'>
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/via-loader',
+    FileRoutesByPath['/redirect/$target/via-loader']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/via-loader']['id'],
+    FileRoutesByPath['/redirect/$target/via-loader']['path'],
+    FileRoutesByPath['/redirect/$target/via-loader']['fullPath']
   >
 }
 declare module './routes/redirect/preload/first' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/preload/first'>
+  const createFileRoute: CreateFileRoute<
+    '/redirect/preload/first',
+    FileRoutesByPath['/redirect/preload/first']['parentRoute'],
+    FileRoutesByPath['/redirect/preload/first']['id'],
+    FileRoutesByPath['/redirect/preload/first']['path'],
+    FileRoutesByPath['/redirect/preload/first']['fullPath']
   >
 }
 declare module './routes/redirect/preload/second' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/preload/second'>
+  const createFileRoute: CreateFileRoute<
+    '/redirect/preload/second',
+    FileRoutesByPath['/redirect/preload/second']['parentRoute'],
+    FileRoutesByPath['/redirect/preload/second']['id'],
+    FileRoutesByPath['/redirect/preload/second']['path'],
+    FileRoutesByPath['/redirect/preload/second']['fullPath']
   >
 }
 declare module './routes/redirect/preload/third' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/preload/third'>
+  const createFileRoute: CreateFileRoute<
+    '/redirect/preload/third',
+    FileRoutesByPath['/redirect/preload/third']['parentRoute'],
+    FileRoutesByPath['/redirect/preload/third']['id'],
+    FileRoutesByPath['/redirect/preload/third']['path'],
+    FileRoutesByPath['/redirect/preload/third']['fullPath']
   >
 }
 declare module './routes/redirect/$target/index' {
-  const createFileRoute: ReturnType<
-    typeof import('@tanstack/react-router').createFileRouteImpl<'/redirect/$target/'>
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/',
+    FileRoutesByPath['/redirect/$target/']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/']['id'],
+    FileRoutesByPath['/redirect/$target/']['path'],
+    FileRoutesByPath['/redirect/$target/']['fullPath']
   >
 }
 
@@ -880,6 +1000,9 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+// @ts-ignore
+import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.gen.ts'
 
 /* ROUTE_MANIFEST_START
 {

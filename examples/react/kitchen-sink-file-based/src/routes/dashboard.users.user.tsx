@@ -1,9 +1,9 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+
 import { z } from 'zod'
 import { fetchUserById } from '../utils/mockTodos'
 
-export const Route = createFileRoute('/dashboard/users/user')({
+export const Route = createFileRoute({
   validateSearch: z.object({
     userId: z.number(),
   }),

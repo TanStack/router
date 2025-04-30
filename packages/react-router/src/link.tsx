@@ -401,9 +401,19 @@ export function useLinkProps<
     }
   }
 
+  const pointerDownRef = React.useRef(false)
+
+  const onPointerDown = (e: PointerEvent) => {
+    pointerDownRef.current = true
+  }
+
+  const onPointerUp = (e: PointerEvent) => {
+    pointerDownRef.current = false
+  }
+
   // The click handler
   const handleFocus = (_: MouseEvent) => {
-    if (disabled) return
+    if (disabled || pointerDownRef.current) return
     if (preload) {
       doPreload()
     }
@@ -471,6 +481,8 @@ export function useLinkProps<
     onMouseEnter: composeHandlers([onMouseEnter, handleMouseEnter]),
     onMouseLeave: composeHandlers([onMouseLeave, handleMouseLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
+    onPointerDown: composeHandlers([onPointerDown]),
+    onPointerUp: composeHandlers([onPointerUp]),
     disabled: !!disabled,
     target,
     ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),

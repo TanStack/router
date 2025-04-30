@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
-import { createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createFileRoute('/dashboard/users/')({
+
+export const Route = createFileRoute({
   component: UsersIndexComponent,
 })
 
