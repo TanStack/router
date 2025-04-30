@@ -1,6 +1,6 @@
 import { clsx as cx } from 'clsx'
 import { default as invariant } from 'tiny-invariant'
-import { rootRouteId, trimPath } from '@tanstack/router-core'
+import { interpolatePath, rootRouteId, trimPath } from '@tanstack/router-core'
 import { Show, createMemo } from 'solid-js'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
@@ -150,20 +150,42 @@ function RouteComp({
   })
 
   const navigationTarget = createMemo<string | undefined>(() => {
-    if (isRoot) return '/' // __root__ is same as /
+    if (isRoot) return undefined // rootRouteId has no path
     if (!route.path) return undefined // no path to navigate to
 
-    const matched = match()
-    const fillDynamicParam = (s: string): string | undefined =>
-      matched?.params[s.slice(1)]
+    // flatten all params in the router state, into a single object
+    const allParams = matches()
+      .flatMap((m) => m.params)
+      .reduce((prev, curr) => {
+        const keys = Object.keys(curr)
+        for (const key of keys) {
+          if (prev[key] === undefined) {
+            prev[key] = curr[key]
+          }
+        }
+        return prev
+      }, {})
 
-    // fill in dynamic params
-    const segments = (route.fullPath as string)
+    // interpolatePath is used by router-core to generate the `to`
+    // path for the navigate function in the router
+    // setting leaveWildcards and leaveParams to true
+    // allows us to see the full path with all params
+    // and wildcards if they are not filled
+    const interpolatedPath = interpolatePath({
+      path: route.fullPath,
+      params: allParams,
+      leaveWildcards: true,
+      leaveParams: true,
+      decodeCharMap: router().pathParamsDecodeCharMap,
+    }).interpolatedPath
+
+    // determine if navigation is possible based on whether or not the returned path
+    const canNavigate = interpolatedPath
       .split('/')
-      .map((s) => (s.startsWith('$') ? fillDynamicParam(s) : s))
+      .filter(Boolean)
+      .every((s) => !s.startsWith('$'))
 
-    // can only determine full path when all dynamic params are filled
-    return segments.every((s) => s != null) ? segments.join('/') : undefined
+    return canNavigate ? interpolatedPath : undefined
   })
 
   return (
