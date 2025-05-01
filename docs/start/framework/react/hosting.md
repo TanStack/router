@@ -63,7 +63,7 @@ Or you can use the `--preset` flag with the `build` command to specify the deplo
 npm run build --preset netlify
 ```
 
-Deploy you application to Netlify using their one-click deployment process, and you're ready to go!
+Deploy your application to Netlify using their one-click deployment process, and you're ready to go!
 
 ### Vercel
 
@@ -86,7 +86,7 @@ Or you can use the `--preset` flag with the `build` command to specify the deplo
 npm run build --preset vercel
 ```
 
-Deploy you application to Vercel using their one-click deployment process, and you're ready to go!
+Deploy your application to Vercel using their one-click deployment process, and you're ready to go!
 
 ### Cloudflare Pages
 
@@ -127,7 +127,7 @@ compatibility_flags = ["nodejs_compat"]
 compatibility_date = "2024-11-13"
 ```
 
-Deploy you application to Cloudflare Pages using their one-click deployment process, and you're ready to go!
+Deploy your application to Cloudflare Pages using their one-click deployment process, and you're ready to go!
 
 ### Node.js
 
