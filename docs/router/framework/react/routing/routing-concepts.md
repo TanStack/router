@@ -327,10 +327,10 @@ Consider the following route tree:
 ```
 routes/
 ├── posts.tsx
-├── -posts-table.tsx
-├── -components.tsx
-│   ├── header.tsx
-│   ├── footer.tsx
+├── -posts-table.tsx // 👈🏼 ignored
+├── -components/ // 👈🏼 ignored
+│   ├── header.tsx // 👈🏼 ignored
+│   ├── footer.tsx // 👈🏼 ignored
 │   ├── ...
 ```
 
