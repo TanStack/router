@@ -1,6 +1,6 @@
 <img src="https://static.scarf.sh/a.png?x-pxid=d988eb79-b0fc-4a2b-8514-6a1ab932d188" />
 
-# TanStack Start - Server Core
+# TanStack Start - Plugin Core
 
 This package is not meant to be used directly. It is a dependency of the TanStack Start framework-specific packages:
 
