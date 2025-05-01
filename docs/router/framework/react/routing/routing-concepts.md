@@ -349,7 +349,7 @@ export const Route = createFileRoute('/posts')({
 
 function PostComponent() {
   const posts = Route.useLoaderData()
-  
+
   return (
     <div>
       <PostsHeader />
@@ -360,7 +360,7 @@ function PostComponent() {
 }
 ```
 
-The excluded files will not be added to `routeTree.gen.ts`. 
+The excluded files will not be added to `routeTree.gen.ts`.
 
 ## Pathless Route Group Directories
 
