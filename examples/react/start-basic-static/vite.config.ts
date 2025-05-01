@@ -1,6 +1,6 @@
+import { TanStackStartVitePlugin } from '@tanstack/react-start/plugin'
 import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
-import { TanStackStartVitePlugin } from '@tanstack/react-start/plugin'
 
 export default defineConfig({
   server: {
@@ -10,6 +10,10 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    TanStackStartVitePlugin(),
+    TanStackStartVitePlugin({
+      prerender: {
+        enabled: true,
+      },
+    }),
   ],
 })

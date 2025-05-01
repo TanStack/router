@@ -182,7 +182,8 @@ const pagePrerenderOptionsSchema = z.object({
         html: z.string(),
       }),
     )
-    .returns(z.any()),
+    .returns(z.any())
+    .optional(),
 })
 
 export const pageSchema = pageBaseSchema.extend({

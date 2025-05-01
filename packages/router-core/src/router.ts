@@ -2165,7 +2165,6 @@ export class RouterCore<
     }
 
     const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
-      console.log('handleRedirectAndNotFound', err)
       if (isRedirect(err) || isNotFound(err)) {
         if (isRedirect(err)) {
           if (err.redirectHandled) {
@@ -2224,7 +2223,6 @@ export class RouterCore<
               err: any,
               routerCode: string,
             ) => {
-              console.log('handleSerialError', err)
               const { id: matchId, routeId } = matches[index]!
               const route = this.looseRoutesById[routeId]!
 
