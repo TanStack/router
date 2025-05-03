@@ -36,7 +36,8 @@ declare module '@tanstack/router-core' {
       | undefined
     >
     links?: Array<
-      | (Solid.JSX.IntrinsicElements['link'] & Omit<LinkWithoutEvents, 'referrerpolicy'>)
+      | (Solid.JSX.IntrinsicElements['link'] &
+          Omit<LinkWithoutEvents, 'referrerpolicy'>)
       | undefined
     >
     scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>

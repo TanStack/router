@@ -1,4 +1,4 @@
-import type { LinkWithoutEvents, Meta } from "unhead/types"
+import type { LinkWithoutEvents, Meta } from 'unhead/types'
 
 export type Manifest = {
   routes: Record<

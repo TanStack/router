@@ -41,7 +41,8 @@ declare module '@tanstack/router-core' {
       | undefined
     >
     links?: Array<
-      | (React.JSX.IntrinsicElements['link'] & Omit<LinkWithoutEvents, 'referrerpolicy'>)
+      | (React.JSX.IntrinsicElements['link'] &
+          Omit<LinkWithoutEvents, 'referrerpolicy'>)
       | undefined
     >
     scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
