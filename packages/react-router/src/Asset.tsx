@@ -1,6 +1,7 @@
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
+
   switch (tag) {
     case 'title':
       return (
@@ -9,7 +10,13 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
         </title>
       )
     case 'meta':
-      return <meta {...attrs} suppressHydrationWarning />
+      return (
+        <meta
+          {...attrs}
+          content={attrs?.content ? String(attrs.content) : undefined}
+          suppressHydrationWarning
+        />
+      )
     case 'link':
       return <link {...attrs} suppressHydrationWarning />
     case 'style':

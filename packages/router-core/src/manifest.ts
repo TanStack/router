@@ -1,3 +1,5 @@
+import type { Link, Meta } from "zhead"
+
 export type Manifest = {
   routes: Record<
     string,
@@ -11,22 +13,27 @@ export type Manifest = {
 
 export type RouterManagedTag =
   | {
-      tag: 'title'
-      attrs?: Record<string, any>
-      children: string
-    }
+    tag: 'title'
+    attrs?: Record<string, any>
+    children: string
+  }
   | {
-      tag: 'meta' | 'link'
-      attrs?: Record<string, any>
-      children?: never
-    }
+    tag: 'meta'
+    attrs?: Meta
+    children?: never
+  }
   | {
-      tag: 'script'
-      attrs?: Record<string, any>
-      children?: string
-    }
+    tag: 'link'
+    attrs?: Link
+    children?: never
+  }
   | {
-      tag: 'style'
-      attrs?: Record<string, any>
-      children?: string
-    }
+    tag: 'script'
+    attrs?: Record<string, any>
+    children?: string
+  }
+  | {
+    tag: 'style'
+    attrs?: Record<string, any>
+    children?: string
+  }
