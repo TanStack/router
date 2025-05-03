@@ -44,6 +44,11 @@ describe('server function compilation', () => {
           'use server'
           return 'hello'
         })
+        
+        export const namedGeneratorFunction = createServerFn(function* namedGeneratorFunction () {
+          'use server'
+          return 'hello'
+        })
   
         export const arrowFunction = createServerFn(() => {
           'use server'
@@ -51,6 +56,11 @@ describe('server function compilation', () => {
         })
   
         export const anonymousFunction = createServerFn(function () {
+          'use server'
+          return 'hello'
+        })
+
+        export const anonymousGeneratorFunction = createServerFn(function* () {
           'use server'
           return 'hello'
         })
@@ -85,6 +95,11 @@ describe('server function compilation', () => {
           'use server'
           return usedFn()
         }
+
+        export const namedExportConstGenerator = function* () {
+          'use server'
+          return usedFn()
+        }
   
         function usedFn() {
           return 'hello'
@@ -104,7 +119,6 @@ describe('server function compilation', () => {
         export {
           namedExport
         }
-  
       `
     const client = compileDirectives({
       ...clientConfig,
@@ -122,10 +136,14 @@ describe('server function compilation', () => {
       "import { createClientRpc } from "my-rpc-lib-client";
       const namedFunction_createServerFn_namedFunction = createClientRpc("test_ts--namedFunction_createServerFn_namedFunction");
       export const namedFunction = createServerFn(namedFunction_createServerFn_namedFunction);
+      const namedGeneratorFunction_createServerFn_namedGeneratorFunction = createClientRpc("test_ts--namedGeneratorFunction_createServerFn_namedGeneratorFunction");
+      export const namedGeneratorFunction = createServerFn(namedGeneratorFunction_createServerFn_namedGeneratorFunction);
       const arrowFunction_createServerFn = createClientRpc("test_ts--arrowFunction_createServerFn");
       export const arrowFunction = createServerFn(arrowFunction_createServerFn);
       const anonymousFunction_createServerFn = createClientRpc("test_ts--anonymousFunction_createServerFn");
       export const anonymousFunction = createServerFn(anonymousFunction_createServerFn);
+      const anonymousGeneratorFunction_createServerFn = createClientRpc("test_ts--anonymousGeneratorFunction_createServerFn");
+      export const anonymousGeneratorFunction = createServerFn(anonymousGeneratorFunction_createServerFn);
       const multipleDirectives_multipleDirectives = createClientRpc("test_ts--multipleDirectives_multipleDirectives");
       export const multipleDirectives = multipleDirectives_multipleDirectives;
       const iife_1 = createClientRpc("test_ts--iife_1");
@@ -138,6 +156,8 @@ describe('server function compilation', () => {
       export const exportedArrowFunction = wrapper(exportedArrowFunction_wrapper);
       const namedExportConst_1 = createClientRpc("test_ts--namedExportConst_1");
       export const namedExportConst = namedExportConst_1;
+      const namedExportConstGenerator_1 = createClientRpc("test_ts--namedExportConstGenerator_1");
+      export const namedExportConstGenerator = namedExportConstGenerator_1;
       function unusedFn() {
         return 'hello';
       }
@@ -152,10 +172,14 @@ describe('server function compilation', () => {
       "import { createSsrRpc } from "my-rpc-lib-server";
       const namedFunction_createServerFn_namedFunction = createSsrRpc("test_ts--namedFunction_createServerFn_namedFunction");
       export const namedFunction = createServerFn(namedFunction_createServerFn_namedFunction);
+      const namedGeneratorFunction_createServerFn_namedGeneratorFunction = createSsrRpc("test_ts--namedGeneratorFunction_createServerFn_namedGeneratorFunction");
+      export const namedGeneratorFunction = createServerFn(namedGeneratorFunction_createServerFn_namedGeneratorFunction);
       const arrowFunction_createServerFn = createSsrRpc("test_ts--arrowFunction_createServerFn");
       export const arrowFunction = createServerFn(arrowFunction_createServerFn);
       const anonymousFunction_createServerFn = createSsrRpc("test_ts--anonymousFunction_createServerFn");
       export const anonymousFunction = createServerFn(anonymousFunction_createServerFn);
+      const anonymousGeneratorFunction_createServerFn = createSsrRpc("test_ts--anonymousGeneratorFunction_createServerFn");
+      export const anonymousGeneratorFunction = createServerFn(anonymousGeneratorFunction_createServerFn);
       const multipleDirectives_multipleDirectives = createSsrRpc("test_ts--multipleDirectives_multipleDirectives");
       export const multipleDirectives = multipleDirectives_multipleDirectives;
       const iife_1 = createSsrRpc("test_ts--iife_1");
@@ -168,6 +192,8 @@ describe('server function compilation', () => {
       export const exportedArrowFunction = wrapper(exportedArrowFunction_wrapper);
       const namedExportConst_1 = createSsrRpc("test_ts--namedExportConst_1");
       export const namedExportConst = namedExportConst_1;
+      const namedExportConstGenerator_1 = createSsrRpc("test_ts--namedExportConstGenerator_1");
+      export const namedExportConstGenerator = namedExportConstGenerator_1;
       function unusedFn() {
         return 'hello';
       }
@@ -184,10 +210,16 @@ describe('server function compilation', () => {
       const namedFunction_createServerFn_namedFunction = createServerRpc("test_ts--namedFunction_createServerFn_namedFunction", function namedFunction() {
         return 'hello';
       });
+      const namedGeneratorFunction_createServerFn_namedGeneratorFunction = createServerRpc("test_ts--namedGeneratorFunction_createServerFn_namedGeneratorFunction", function* namedGeneratorFunction() {
+        return 'hello';
+      });
       const arrowFunction_createServerFn = createServerRpc("test_ts--arrowFunction_createServerFn", () => {
         return 'hello';
       });
       const anonymousFunction_createServerFn = createServerRpc("test_ts--anonymousFunction_createServerFn", function () {
+        return 'hello';
+      });
+      const anonymousGeneratorFunction_createServerFn = createServerRpc("test_ts--anonymousGeneratorFunction_createServerFn", function* () {
         return 'hello';
       });
       const multipleDirectives_multipleDirectives = createServerRpc("test_ts--multipleDirectives_multipleDirectives", function multipleDirectives() {
@@ -210,6 +242,9 @@ describe('server function compilation', () => {
       const namedExportConst_1 = createServerRpc("test_ts--namedExportConst_1", () => {
         return usedFn();
       });
+      const namedExportConstGenerator_1 = createServerRpc("test_ts--namedExportConstGenerator_1", function* () {
+        return usedFn();
+      });
       function usedFn() {
         return 'hello';
       }
@@ -218,7 +253,7 @@ describe('server function compilation', () => {
       }
       const usedButNotExported = 'usedButNotExported';
       const namedExportFn = namedExportFn_1;
-      export { namedFunction_createServerFn_namedFunction, arrowFunction_createServerFn, anonymousFunction_createServerFn, multipleDirectives_multipleDirectives, iife_1, defaultExportFn_1, namedExportFn_1, exportedArrowFunction_wrapper, namedExportConst_1 };"
+      export { namedFunction_createServerFn_namedFunction, namedGeneratorFunction_createServerFn_namedGeneratorFunction, arrowFunction_createServerFn, anonymousFunction_createServerFn, anonymousGeneratorFunction_createServerFn, multipleDirectives_multipleDirectives, iife_1, defaultExportFn_1, namedExportFn_1, exportedArrowFunction_wrapper, namedExportConst_1, namedExportConstGenerator_1 };"
     `,
     )
   })
