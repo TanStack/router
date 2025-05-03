@@ -1,4 +1,4 @@
-import type { LinkBase, Meta } from 'zhead'
+import type { LinkWithoutEvents, Meta } from "unhead/types"
 
 export type Manifest = {
   routes: Record<
@@ -30,7 +30,7 @@ export type RouterManagedTag =
     }
   | {
       tag: 'link'
-      attrs?: Record<string, any> & Omit<LinkBase, 'referrerpolicy'>
+      attrs?: Record<string, any> & Omit<LinkWithoutEvents, 'referrerpolicy'>
       children?: never
     }
   | {

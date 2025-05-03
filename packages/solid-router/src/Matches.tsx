@@ -7,7 +7,7 @@ import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
-import type { LinkBase, Meta } from 'zhead'
+import type { LinkWithoutEvents, Meta } from 'unhead/types'
 import type {
   AnyRouter,
   DeepPartial,
@@ -36,7 +36,7 @@ declare module '@tanstack/router-core' {
       | undefined
     >
     links?: Array<
-      | (Solid.JSX.IntrinsicElements['link'] & Omit<LinkBase, 'referrerpolicy'>)
+      | (Solid.JSX.IntrinsicElements['link'] & Omit<LinkWithoutEvents, 'referrerpolicy'>)
       | undefined
     >
     scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>

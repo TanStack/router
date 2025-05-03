@@ -64,6 +64,6 @@
     "tiny-invariant": "^1.3.3"
   },
   "devDependencies": {
-    "zhead": "^2.2.4"
+    "unhead": "^2.0.8"
   }
 }
