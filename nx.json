@@ -3,6 +3,7 @@
   "defaultBase": "main",
   "nxCloudAccessToken": "ZWJiNDliYTgtNzFiMi00NDg2LWFkZGMtYjIxOWY0MDU1ZGYxfHJlYWQtb25seQ==",
   "useInferencePlugins": false,
+  "bust": 1,
   "parallel": 5,
   "namedInputs": {
     "sharedGlobals": [
