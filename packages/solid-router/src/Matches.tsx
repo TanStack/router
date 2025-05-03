@@ -27,11 +27,18 @@ import type {
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
-    meta?: Array<Solid.JSX.IntrinsicElements['meta'] & Omit<Meta, 'http-equiv' | 'charset'> & {
-      charSet?: Meta['charset']
-      httpEquiv?: Meta['http-equiv']
-    } | undefined>
-    links?: Array<Solid.JSX.IntrinsicElements['link'] & Omit<LinkBase, 'referrerpolicy'> | undefined>
+    meta?: Array<
+      | (Solid.JSX.IntrinsicElements['meta'] &
+          Omit<Meta, 'http-equiv' | 'charset'> & {
+            charSet?: Meta['charset']
+            httpEquiv?: Meta['http-equiv']
+          })
+      | undefined
+    >
+    links?: Array<
+      | (Solid.JSX.IntrinsicElements['link'] & Omit<LinkBase, 'referrerpolicy'>)
+      | undefined
+    >
     scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
     headScripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
   }
@@ -148,13 +155,13 @@ export type MakeMatchRouteOptions<
 > = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-  | ((
-    params?: RouteByPath<
-      TRouter['routeTree'],
-      ResolveRelativePath<TFrom, NoInfer<TTo>>
-    >['types']['allParams'],
-  ) => Solid.JSX.Element)
-  | Solid.JSX.Element
+    | ((
+        params?: RouteByPath<
+          TRouter['routeTree'],
+          ResolveRelativePath<TFrom, NoInfer<TTo>>
+        >['types']['allParams'],
+      ) => Solid.JSX.Element)
+    | Solid.JSX.Element
 }
 
 export function MatchRoute<

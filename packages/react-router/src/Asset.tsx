@@ -1,7 +1,6 @@
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
-
   switch (tag) {
     case 'title':
       return (

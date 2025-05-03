@@ -2,8 +2,6 @@ import { Meta, Style, Title } from '@solidjs/meta'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
-
-
   switch (tag) {
     case 'title':
       return <Title {...attrs}>{children}</Title>
