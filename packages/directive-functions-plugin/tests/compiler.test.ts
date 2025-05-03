@@ -38,75 +38,74 @@ const serverConfig: Omit<CompileDirectivesOpts, 'code'> = {
 }
 
 describe('server function compilation', () => {
-  const code = `
-      export const namedFunction = createServerFn(function namedFunction() {
-        'use server'
-        return 'hello'
-      })
-
-      export const arrowFunction = createServerFn(() => {
-        'use server'
-        return 'hello'
-      })
-
-      export const anonymousFunction = createServerFn(function () {
-        'use server'
-        return 'hello'
-      })
-
-      export const multipleDirectives = function multipleDirectives() {
-        'use server'
-        'use strict'
-        return 'hello'
-      }
-
-      export const iife = (function () {
-        'use server'
-        return 'hello'
-      })()
-
-      export default function defaultExportFn() {
-        'use server'
-        return 'hello'
-      }
-
-      export function namedExportFn() {
-        'use server'
-        return 'hello'
-      }
-
-      export const exportedArrowFunction = wrapper(() => {
-        'use server'
-        return 'hello'
-      })
-
-      export const namedExportConst = () => {
-        'use server'
-        return usedFn()
-      }
-
-      function usedFn() {
-        return 'hello'
-      }
-
-      function unusedFn() {
-        return 'hello'
-      }
-
-      const namedDefaultExport = 'namedDefaultExport'
-      export default namedDefaultExport
-
-      const usedButNotExported = 'usedButNotExported'
-      
-      const namedExport = 'namedExport'
-
-      export {
-        namedExport
-      }
-
-    `
-
   test('basic function declaration nested in other variable', () => {
+    const code = `
+        export const namedFunction = createServerFn(function namedFunction() {
+          'use server'
+          return 'hello'
+        })
+  
+        export const arrowFunction = createServerFn(() => {
+          'use server'
+          return 'hello'
+        })
+  
+        export const anonymousFunction = createServerFn(function () {
+          'use server'
+          return 'hello'
+        })
+  
+        export const multipleDirectives = function multipleDirectives() {
+          'use server'
+          'use strict'
+          return 'hello'
+        }
+  
+        export const iife = (function () {
+          'use server'
+          return 'hello'
+        })()
+  
+        export default function defaultExportFn() {
+          'use server'
+          return 'hello'
+        }
+  
+        export function namedExportFn() {
+          'use server'
+          return 'hello'
+        }
+  
+        export const exportedArrowFunction = wrapper(() => {
+          'use server'
+          return 'hello'
+        })
+  
+        export const namedExportConst = () => {
+          'use server'
+          return usedFn()
+        }
+  
+        function usedFn() {
+          return 'hello'
+        }
+  
+        function unusedFn() {
+          return 'hello'
+        }
+  
+        const namedDefaultExport = 'namedDefaultExport'
+        export default namedDefaultExport
+  
+        const usedButNotExported = 'usedButNotExported'
+        
+        const namedExport = 'namedExport'
+  
+        export {
+          namedExport
+        }
+  
+      `
     const client = compileDirectives({
       ...clientConfig,
       code,
