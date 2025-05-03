@@ -45,36 +45,36 @@ export const useTags = () => {
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
-    ;[...routeMeta()].reverse().forEach((metas) => {
-      ;[...metas].reverse().forEach((m) => {
-        if (!m) return
+      ;[...routeMeta()].reverse().forEach((metas) => {
+        ;[...metas].reverse().forEach((m) => {
+          if (!m) return
 
-        if (m.title) {
-          if (!title) {
-            title = {
-              tag: 'title',
-              children: m.title,
+          if (m.title) {
+            if (!title) {
+              title = {
+                tag: 'title',
+                children: m.title,
+              }
             }
-          }
-        } else {
-          const attribute = m.name ?? m.property
-          if (attribute) {
-            if (metaByAttribute[attribute]) {
-              return
-            } else {
-              metaByAttribute[attribute] = true
+          } else {
+            const attribute = m.name ?? m.property
+            if (attribute) {
+              if (metaByAttribute[attribute]) {
+                return
+              } else {
+                metaByAttribute[attribute] = true
+              }
             }
-          }
 
-          resultMeta.push({
-            tag: 'meta',
-            attrs: {
-              ...m,
-            },
-          })
-        }
+            resultMeta.push({
+              tag: 'meta',
+              attrs: {
+                ...m,
+              },
+            })
+          }
+        })
       })
-    })
 
     if (title) {
       resultMeta.push(title)
@@ -191,7 +191,10 @@ function weightTags(tag: RouterManagedTag) {
       weight = WEIGHT_MAP.meta[metaType]
     }
   } else if (tag.tag === 'link' && tag.attrs?.rel) {
-    weight = WEIGHT_MAP.link[tag.attrs.rel as keyof typeof WEIGHT_MAP.link]
+    weight =
+      tag.attrs.rel in WEIGHT_MAP.link
+        ? WEIGHT_MAP.link[tag.attrs.rel as keyof typeof WEIGHT_MAP.link]
+        : weight
   } else if (tag.tag === 'script') {
     if (isTruthy(tag.attrs?.async)) {
       weight = WEIGHT_MAP.script.async
