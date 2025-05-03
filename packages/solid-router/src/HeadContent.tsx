@@ -160,55 +160,56 @@ export const useTags = () => {
 export function HeadContent() {
   const tags = useTags()
 
-  let weight = 100
-  const weightedTags = tags().map((tag) => {
-    if (tag.tag === 'title') {
-      weight = 10
-    } else if (tag.tag === 'meta') {
-      const metaType = tag.attrs?.['http-equiv'] === 'content-security-policy'
-        ? 'content-security-policy'
-        : tag.attrs?.charset
-          ? 'charset'
-          : tag.attrs?.name === 'viewport'
-            ? 'viewport'
-            : null
-
-      if (metaType) {
-        weight = WEIGHT_MAP.meta[metaType]
-      }
-    } else if (tag.tag === 'link' && tag.attrs?.rel) {
-      weight = WEIGHT_MAP.link[tag.attrs.rel as keyof typeof WEIGHT_MAP.link]
-    } else if (tag.tag === 'script') {
-      if (isTruthy(tag.attrs?.async)) {
-        weight = WEIGHT_MAP.script.async
-      }
-      else if (tag.attrs?.src
-        && !isTruthy(tag.attrs.defer)
-        && !isTruthy(tag.attrs.async)
-        && tag.attrs.type !== 'module'
-        && !tag.attrs.type?.endsWith('json')) {
-        weight = WEIGHT_MAP.script.sync
-      }
-      else if (isTruthy(tag.attrs?.defer) && tag.attrs.src && !isTruthy(tag.attrs.async)) {
-        weight = WEIGHT_MAP.script.defer
-      }
-    } else if (tag.tag === 'style') {
-      weight = tag.children ? WEIGHT_MAP.style.imported : WEIGHT_MAP.style.sync
-    }
-
-    return {
-      ...tag,
-      weight,
-    }
-  })
-
   return (
     <MetaProvider>
-      {weightedTags.map((tag) => (
+      {tags().map(weightTags).sort((a, b) => a.weight - b.weight).map((tag) => (
         <Asset {...tag} />
       ))}
     </MetaProvider>
   )
+}
+
+function weightTags(tag: RouterManagedTag) {
+  let weight = 100
+
+  if (tag.tag === 'title') {
+    weight = 10
+  } else if (tag.tag === 'meta') {
+    const metaType = tag.attrs?.['http-equiv'] === 'content-security-policy'
+      ? 'content-security-policy'
+      : tag.attrs?.charset
+        ? 'charset'
+        : tag.attrs?.name === 'viewport'
+          ? 'viewport'
+          : null
+
+    if (metaType) {
+      weight = WEIGHT_MAP.meta[metaType]
+    }
+  } else if (tag.tag === 'link' && tag.attrs?.rel) {
+    weight = WEIGHT_MAP.link[tag.attrs.rel as keyof typeof WEIGHT_MAP.link]
+  } else if (tag.tag === 'script') {
+    if (isTruthy(tag.attrs?.async)) {
+      weight = WEIGHT_MAP.script.async
+    }
+    else if (tag.attrs?.src
+      && !isTruthy(tag.attrs.defer)
+      && !isTruthy(tag.attrs.async)
+      && tag.attrs.type !== 'module'
+      && !tag.attrs.type?.endsWith('json')) {
+      weight = WEIGHT_MAP.script.sync
+    }
+    else if (isTruthy(tag.attrs?.defer) && tag.attrs.src && !isTruthy(tag.attrs.async)) {
+      weight = WEIGHT_MAP.script.defer
+    }
+  } else if (tag.tag === 'style') {
+    weight = tag.children ? WEIGHT_MAP.style.imported : WEIGHT_MAP.style.sync
+  }
+
+  return {
+    ...tag,
+    weight,
+  }
 }
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
