@@ -787,4 +787,79 @@ describe('server function compilation', () => {
       export { bytesSignupServerFn_1 };"
     `)
   })
+
+  test('generator function', () => {
+    const code = `
+    function* generator() {
+      'use server'
+      yield 'hello'
+    }
+    `
+    const client = compileDirectives({
+      ...clientConfig,
+      code,
+    })
+    const ssr = compileDirectives({ ...ssrConfig, code })
+
+    const server = compileDirectives({
+      ...serverConfig,
+      code,
+      filename: `${ssr.directiveFnsById[Object.keys(ssr.directiveFnsById)[0]!]!.extractedFilename}`,
+    })
+
+    expect(client.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createClientRpc } from "my-rpc-lib-client";
+      const generator_1 = createClientRpc("test_ts--generator_1");
+      const generator = generator_1;"`)
+
+    expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createSsrRpc } from "my-rpc-lib-server";
+      const generator_1 = createSsrRpc("test_ts--generator_1");
+      const generator = generator_1;"`)
+
+    expect(server.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createServerRpc } from "my-rpc-lib-server";
+      const generator_1 = createServerRpc("test_ts--generator_1", function* () {
+        yield 'hello';
+      });
+      const generator = generator_1;
+      export { generator_1 };"`)
+  })
+  test('async generator function', () => {
+    const code = `
+    async function* asyncGenerator() {
+      'use server'
+      yield 'hello'
+    }
+    `
+    const client = compileDirectives({
+      ...clientConfig,
+      code,
+    })
+    const ssr = compileDirectives({ ...ssrConfig, code })
+
+    const server = compileDirectives({
+      ...serverConfig,
+      code,
+      filename: `${ssr.directiveFnsById[Object.keys(ssr.directiveFnsById)[0]!]!.extractedFilename}`,
+    })
+
+    expect(client.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createClientRpc } from "my-rpc-lib-client";
+      const asyncGenerator_1 = createClientRpc("test_ts--asyncGenerator_1");
+      const asyncGenerator = asyncGenerator_1;"`)
+
+    expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createSsrRpc } from "my-rpc-lib-server";
+      const asyncGenerator_1 = createSsrRpc("test_ts--asyncGenerator_1");
+      const asyncGenerator = asyncGenerator_1;"`)
+
+    expect(server.compiledResult.code).toMatchInlineSnapshot(`
+      "import { createServerRpc } from "my-rpc-lib-server";
+      const asyncGenerator_1 = createServerRpc("test_ts--asyncGenerator_1", async function* () {
+        yield 'hello';
+      });
+      const asyncGenerator = asyncGenerator_1;
+      export { asyncGenerator_1 };"`)
+  })
 })
