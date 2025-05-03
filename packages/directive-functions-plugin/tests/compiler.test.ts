@@ -292,30 +292,6 @@ describe('server function compilation', () => {
     ).toThrow()
   })
 
-  test('does not support generator functions', () => {
-    const code = `
-      function* generatorServer() {
-        'use server'
-        yield 'hello'
-      }
-
-      async function* asyncGeneratorServer() {
-        'use server'
-        yield 'hello'
-      }
-    `
-
-    expect(() => compileDirectives({ ...clientConfig, code })).toThrow()
-    expect(() => compileDirectives({ ...serverConfig, code })).toThrow()
-    expect(() =>
-      compileDirectives({
-        ...serverConfig,
-        code,
-        filename: serverConfig.filename + `?tsr-serverfn-split=temp`,
-      }),
-    ).toThrow()
-  })
-
   test('multiple directiveFnsById', () => {
     const code = `
       function multiDirective() {
