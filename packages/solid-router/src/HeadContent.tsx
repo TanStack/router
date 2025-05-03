@@ -175,9 +175,9 @@ function weightTags(tag: RouterManagedTag) {
   if (tag.tag === 'title') {
     weight = 10
   } else if (tag.tag === 'meta') {
-    const metaType = tag.attrs?.['http-equiv'] === 'content-security-policy'
+    const metaType = tag.attrs?.httpEquiv === 'content-security-policy'
       ? 'content-security-policy'
-      : tag.attrs?.charset
+      : tag.attrs?.charSet
         ? 'charset'
         : tag.attrs?.name === 'viewport'
           ? 'viewport'

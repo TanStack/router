@@ -10,13 +10,7 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
         </title>
       )
     case 'meta':
-      return (
-        <meta
-          {...attrs}
-          content={attrs?.content ? String(attrs.content) : undefined}
-          suppressHydrationWarning
-        />
-      )
+      return <meta {...attrs} suppressHydrationWarning />
     case 'link':
       return <link {...attrs} suppressHydrationWarning />
     case 'style':

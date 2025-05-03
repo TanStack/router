@@ -1,4 +1,4 @@
-import type { Link, Meta } from "zhead"
+import type { LinkBase, Meta } from "zhead"
 
 export type Manifest = {
   routes: Record<
@@ -18,14 +18,17 @@ export type RouterManagedTag =
     children: string
   }
   | {
-    tag: 'meta'
-    attrs?: Meta
-    children?: never
+    tag: 'meta';
+    attrs?: Record<string, any> & Omit<Meta, 'http-equiv' | 'charset' | 'content'> & {
+      charSet?: Meta['charset'];
+      httpEquiv?: Meta['http-equiv'];
+    } | undefined;
+    children?: never;
   }
   | {
-    tag: 'link'
-    attrs?: Link
-    children?: never
+    tag: 'link';
+    attrs?: Record<string, any> & Omit<LinkBase, 'referrerpolicy'>;
+    children?: never;
   }
   | {
     tag: 'script'

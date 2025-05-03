@@ -7,6 +7,7 @@ import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
+import type { LinkBase, Meta } from 'zhead'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -31,8 +32,11 @@ import type {
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
-    meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
-    links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
+    meta?: Array<React.JSX.IntrinsicElements['meta'] & Omit<Meta, 'http-equiv' | 'charset'> & {
+      charSet?: Meta['charset']
+      httpEquiv?: Meta['http-equiv']
+    } | undefined>
+    links?: Array<React.JSX.IntrinsicElements['link'] & Omit<LinkBase, 'referrerpolicy'> | undefined>
     scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
     headScripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
   }
@@ -146,13 +150,13 @@ export type MakeMatchRouteOptions<
 > = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | ((
-        params?: RouteByPath<
-          TRouter['routeTree'],
-          ResolveRelativePath<TFrom, NoInfer<TTo>>
-        >['types']['allParams'],
-      ) => ReactNode)
-    | React.ReactNode
+  | ((
+    params?: RouteByPath<
+      TRouter['routeTree'],
+      ResolveRelativePath<TFrom, NoInfer<TTo>>
+    >['types']['allParams'],
+  ) => ReactNode)
+  | React.ReactNode
 }
 
 export function MatchRoute<

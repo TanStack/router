@@ -160,7 +160,6 @@ export const useTags = () => {
  */
 export function HeadContent() {
   const tags = useTags()
-
   return tags.map(weightTags).sort((a, b) => a.weight - b.weight).map((tag) => (
     <Asset {...tag} key={`tsr-meta-${JSON.stringify(tag)}`} />
   ))
@@ -172,9 +171,9 @@ function weightTags(tag: RouterManagedTag) {
   if (tag.tag === 'title') {
     weight = 10
   } else if (tag.tag === 'meta') {
-    const metaType = tag.attrs?.['http-equiv'] === 'content-security-policy'
+    const metaType = tag.attrs?.httpEquiv === 'content-security-policy'
       ? 'content-security-policy'
-      : tag.attrs?.charset
+      : tag.attrs?.charSet
         ? 'charset'
         : tag.attrs?.name === 'viewport'
           ? 'viewport'
@@ -184,7 +183,7 @@ function weightTags(tag: RouterManagedTag) {
       weight = WEIGHT_MAP.meta[metaType]
     }
   } else if (tag.tag === 'link' && tag.attrs?.rel) {
-    weight = WEIGHT_MAP.link[tag.attrs.rel as keyof typeof WEIGHT_MAP.link]
+    weight = tag.attrs.rel in WEIGHT_MAP.link ? WEIGHT_MAP.link[tag.attrs.rel as keyof typeof WEIGHT_MAP.link] : weight
   } else if (tag.tag === 'script') {
     if (isTruthy(tag.attrs?.async)) {
       weight = WEIGHT_MAP.script.async
