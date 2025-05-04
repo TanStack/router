@@ -2,6 +2,7 @@ import { getDocument } from '~/server/document'
 
 export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ params }) => {
+    console.log('params', params)
     const splat = params['_splat'] || ''
     const docPath = splat.split('.md')[0]
 
