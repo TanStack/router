@@ -288,24 +288,19 @@ export function findDirectives(
     babel.traverse(ast, {
       DirectiveLiteral(nodePath) {
         if (nodePath.node.value === opts.directive) {
-          const directiveFn = nodePath.findParent((p) => p.isFunction()) as
-            | SupportedFunctionPath
-            | undefined
+          const directiveFn = nodePath.findParent((p) => p.isFunction())
 
           if (!directiveFn) return
 
           // Handle class and object methods which are not supported
-          const isGenerator =
-            directiveFn.isFunction() && directiveFn.node.generator
-
           const isClassMethod = directiveFn.isClassMethod()
           const isObjectMethod = directiveFn.isObjectMethod()
 
-          if (isClassMethod || isObjectMethod || isGenerator) {
+          if (isClassMethod || isObjectMethod) {
             throw codeFrameError(
               opts.code,
               directiveFn.node.loc,
-              `"${opts.directive}" in ${isClassMethod ? 'class' : isObjectMethod ? 'object method' : 'generator function'} not supported`,
+              `"${opts.directive}" in ${isClassMethod ? 'class' : isObjectMethod ? 'object method' : ''} not supported`,
             )
           }
 
