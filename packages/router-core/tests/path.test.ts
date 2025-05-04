@@ -573,6 +573,36 @@ describe('matchPathname', () => {
           _splat: 'bar/baz',
         },
       },
+      {
+        name: 'named path param with a prefix',
+        input: '/docs/prefixfoo',
+        matchingOptions: {
+          to: '/docs/prefix$bar',
+        },
+        expectedMatchedParams: {
+          bar: 'baz',
+        },
+      },
+      {
+        name: 'named path param with a suffix',
+        input: '/docs/foo.suffix',
+        matchingOptions: {
+          to: '/docs/$bar.suffix',
+        },
+        expectedMatchedParams: {
+          bar: 'foo',
+        },
+      },
+      {
+        name: 'named path param with a prefix and suffix',
+        input: '/docs/prefixfoobar-suffix',
+        matchingOptions: {
+          to: '/docs/prefix$param-suffix',
+        },
+        expectedMatchedParams: {
+          param: 'foobar',
+        },
+      },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
         expectedMatchedParams,
