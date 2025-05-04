@@ -5,6 +5,9 @@ import type { AnyPathParams } from './route'
 export interface Segment {
   type: 'pathname' | 'param' | 'wildcard'
   value: string
+  // Add a new property to store the static segment if present
+  prefixSegment?: string
+  suffixSegment?: string
 }
 
 export function joinPaths(paths: Array<string | undefined>) {
@@ -167,20 +170,42 @@ export function parsePathname(pathname?: string): Array<Segment> {
 
   segments.push(
     ...split.map((part): Segment => {
-      if (part === '$' || part === '*') {
-        return {
-          type: 'wildcard',
-          value: part,
-        }
-      }
+      // Check for param with prefix and/or suffix: prefix-$paramName.extension
+      const paramWithSegmentsMatch = part.match(
+        /^(.*?)(\$[a-zA-Z_$][a-zA-Z0-9_$]*)(.*)$/,
+      )
+      if (
+        paramWithSegmentsMatch &&
+        paramWithSegmentsMatch[2]?.charAt(0) === '$'
+      ) {
+        const prefix = paramWithSegmentsMatch[1]
+        const paramValue = paramWithSegmentsMatch[2]
+        const suffix = paramWithSegmentsMatch[3]
 
-      if (part.charAt(0) === '$') {
         return {
           type: 'param',
-          value: part,
+          value: paramValue,
+          prefixSegment: prefix || undefined,
+          suffixSegment: suffix || undefined,
         }
       }
 
+      // Check for wildcard with prefix and/or suffix: prefix-$.extension
+      const wildcardWithSegmentsMatch = part.match(/^(.*?)(\$)(.*)$/)
+      if (wildcardWithSegmentsMatch && wildcardWithSegmentsMatch[2] === '$') {
+        const prefix = wildcardWithSegmentsMatch[1]
+        const wildcard = wildcardWithSegmentsMatch[2]
+        const suffix = wildcardWithSegmentsMatch[3]
+
+        return {
+          type: 'wildcard',
+          value: wildcard,
+          prefixSegment: prefix || undefined,
+          suffixSegment: suffix || undefined,
+        }
+      }
+
+      // Handle regular pathname segment
       return {
         type: 'pathname',
         value: part.includes('%25')
@@ -248,9 +273,13 @@ export function interpolatePath({
     interpolatedPathSegments.map((segment) => {
       if (segment.type === 'wildcard') {
         usedParams._splat = params._splat
+        const segmentPrefix = segment.prefixSegment || ''
+        const segmentSuffix = segment.suffixSegment || ''
         const value = encodeParam('_splat')
-        if (leaveWildcards) return `${segment.value}${value ?? ''}`
-        return value
+        if (leaveWildcards) {
+          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
+        }
+        return `${segmentPrefix}${value}${segmentSuffix}`
       }
 
       if (segment.type === 'param') {
@@ -259,11 +288,14 @@ export function interpolatePath({
           isMissingParams = true
         }
         usedParams[key] = params[key]
+
+        const segmentPrefix = segment.prefixSegment || ''
+        const segmentSuffix = segment.suffixSegment || ''
         if (leaveParams) {
           const value = encodeParam(segment.value)
-          return `${segment.value}${value ?? ''}`
+          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
         }
-        return encodeParam(key) ?? 'undefined'
+        return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
       }
 
       return segment.value
@@ -390,9 +422,57 @@ export function matchByPath(
 
       if (routeSegment) {
         if (routeSegment.type === 'wildcard') {
-          const _splat = decodeURI(
-            joinPaths(baseSegments.slice(i).map((d) => d.value)),
-          )
+          // Capture all remaining segments for a wildcard
+          const remainingBaseSegments = baseSegments.slice(i)
+
+          let _splat: string
+
+          // If this is a wildcard with prefix/suffix, we need to handle the first segment specially
+          if (routeSegment.prefixSegment || routeSegment.suffixSegment) {
+            if (!baseSegment) return false
+
+            const prefix = routeSegment.prefixSegment || ''
+            const suffix = routeSegment.suffixSegment || ''
+
+            // Check if the base segment starts with prefix and ends with suffix
+            const baseValue = baseSegment.value
+            if ('prefixSegment' in routeSegment) {
+              if (!baseValue.startsWith(prefix)) {
+                return false
+              }
+            }
+            if ('suffixSegment' in routeSegment) {
+              if (
+                !baseSegments[baseSegments.length - 1]?.value.endsWith(suffix)
+              ) {
+                return false
+              }
+            }
+
+            let rejoinedSplat = decodeURI(
+              joinPaths(remainingBaseSegments.map((d) => d.value)),
+            )
+
+            // Remove the prefix and suffix from the rejoined splat
+            if (prefix && rejoinedSplat.startsWith(prefix)) {
+              rejoinedSplat = rejoinedSplat.slice(prefix.length)
+            }
+
+            if (suffix && rejoinedSplat.endsWith(suffix)) {
+              rejoinedSplat = rejoinedSplat.slice(
+                0,
+                rejoinedSplat.length - suffix.length,
+              )
+            }
+
+            _splat = rejoinedSplat
+          } else {
+            // If no prefix/suffix, just rejoin the remaining segments
+            _splat = decodeURI(
+              joinPaths(remainingBaseSegments.map((d) => d.value)),
+            )
+          }
+
           // TODO: Deprecate *
           params['*'] = _splat
           params['_splat'] = _splat
