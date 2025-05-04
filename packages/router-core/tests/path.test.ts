@@ -362,10 +362,40 @@ describe('interpolatePath', () => {
       result: '/users/sean/cassiere',
     },
     {
-      name: 'should interpolate the path with a splat param and a suffix',
-      path: '/$-foo',
+      name: 'splat param with prefix',
+      path: '/prefix$',
       params: { _splat: 'bar' },
-      result: '/bar-foo',
+      result: '/prefixbar',
+    },
+    {
+      name: 'splat param with suffix',
+      path: '/$-suffix',
+      params: { _splat: 'bar' },
+      result: '/bar-suffix',
+    },
+    {
+      name: 'splat param with prefix and suffix',
+      path: '/prefix$-suffix',
+      params: { _splat: 'bar' },
+      result: '/prefixbar-suffix',
+    },
+    {
+      name: 'named path param with prefix',
+      path: '/prefix$bar',
+      params: { bar: 'baz' },
+      result: '/prefixbaz',
+    },
+    {
+      name: 'named path param with suffix',
+      path: '/$foo.suffix',
+      params: { foo: 'bar' },
+      result: '/bar.suffix',
+    },
+    {
+      name: 'named path param with prefix and suffix',
+      path: '/prefix$param.suffix',
+      params: { param: 'foobar' },
+      result: '/prefixfoobar.suffix',
     },
   ])('$name', ({ path, params, decodeCharMap, result }) => {
     expect(
