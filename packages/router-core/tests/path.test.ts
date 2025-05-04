@@ -3,10 +3,12 @@ import {
   exactPathTest,
   interpolatePath,
   matchPathname,
+  parsePathname,
   removeBasepath,
   removeTrailingSlash,
   resolvePath,
 } from '../src/path'
+import type { Segment as PathSegment } from '../src/path'
 
 describe('removeBasepath', () => {
   it.each([
@@ -496,5 +498,115 @@ describe('matchPathname', () => {
         expectedMatchedParams,
       )
     })
+  })
+})
+
+describe('parsePathname', () => {
+  it.each([
+    {
+      name: 'should handle pathname being undefined',
+      pathname: undefined,
+      expected: [],
+    },
+    {
+      name: 'should handle pathname being empty',
+      pathname: '',
+      expected: [],
+    },
+    {
+      name: 'should handle pathname at root',
+      pathname: '/',
+      expected: [{ type: 'pathname', value: '/' }],
+    },
+    {
+      name: 'should handle pathname with a single segment',
+      pathname: '/foo',
+      expected: [
+        { type: 'pathname', value: '/' },
+        { type: 'pathname', value: 'foo' },
+      ],
+    },
+    {
+      name: 'should handle pathname with multiple segments',
+      pathname: '/foo/bar/baz',
+      expected: [
+        { type: 'pathname', value: '/' },
+        { type: 'pathname', value: 'foo' },
+        { type: 'pathname', value: 'bar' },
+        { type: 'pathname', value: 'baz' },
+      ],
+    },
+    {
+      name: 'should handle pathname with a trailing slash',
+      pathname: '/foo/',
+      expected: [
+        { type: 'pathname', value: '/' },
+        { type: 'pathname', value: 'foo' },
+        { type: 'pathname', value: '/' },
+      ],
+    },
+    {
+      name: 'should handle named params',
+      pathname: '/foo/$bar',
+      expected: [
+        { type: 'pathname', value: '/' },
+        { type: 'pathname', value: 'foo' },
+        { type: 'param', value: '$bar' },
+      ],
+    },
+    {
+      name: 'should handle named params at the root',
+      pathname: '/$bar',
+      expected: [
+        { type: 'pathname', value: '/' },
+        { type: 'param', value: '$bar' },
+      ],
+    },
+    {
+      name: 'should handle named params followed by a segment',
+      pathname: '/foo/$bar/baz',
+      expected: [
+        { type: 'pathname', value: '/' },
+        { type: 'pathname', value: 'foo' },
+        { type: 'param', value: '$bar' },
+        { type: 'pathname', value: 'baz' },
+      ],
+    },
+    {
+      name: 'should handle multiple named params',
+      pathname: '/foo/$bar/$baz/qux/$quux',
+      expected: [
+        { type: 'pathname', value: '/' },
+        { type: 'pathname', value: 'foo' },
+        { type: 'param', value: '$bar' },
+        { type: 'param', value: '$baz' },
+        { type: 'pathname', value: 'qux' },
+        { type: 'param', value: '$quux' },
+      ],
+    },
+    {
+      name: 'should handle splat params',
+      pathname: '/foo/$',
+      expected: [
+        { type: 'pathname', value: '/' },
+        { type: 'pathname', value: 'foo' },
+        { type: 'wildcard', value: '$' },
+      ],
+    },
+    {
+      name: 'should handle splat params at the root',
+      pathname: '/$',
+      expected: [
+        { type: 'pathname', value: '/' },
+        { type: 'wildcard', value: '$' },
+      ],
+    },
+  ] satisfies Array<{
+    name: string
+    pathname: string | undefined
+    expected: Array<PathSegment>
+  }>)('$name', ({ pathname, expected }) => {
+    const result = parsePathname(pathname)
+    expect(result).toEqual(expected)
   })
 })
