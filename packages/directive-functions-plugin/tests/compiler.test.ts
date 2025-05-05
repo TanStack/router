@@ -47,7 +47,8 @@ describe('server function compilation', () => {
         
         export const namedGeneratorFunction = createServerFn(function* namedGeneratorFunction () {
           'use server'
-          return 'hello'
+          yield 'hello'
+          return 'hello world'
         })
   
         export const arrowFunction = createServerFn(() => {
@@ -62,7 +63,8 @@ describe('server function compilation', () => {
 
         export const anonymousGeneratorFunction = createServerFn(function* () {
           'use server'
-          return 'hello'
+          yield 'hello'
+          return 'hello world'
         })
   
         export const multipleDirectives = function multipleDirectives() {
@@ -98,6 +100,7 @@ describe('server function compilation', () => {
 
         export const namedExportConstGenerator = function* () {
           'use server'
+          yield 'hello'
           return usedFn()
         }
   
@@ -211,7 +214,8 @@ describe('server function compilation', () => {
         return 'hello';
       });
       const namedGeneratorFunction_createServerFn_namedGeneratorFunction = createServerRpc("test_ts--namedGeneratorFunction_createServerFn_namedGeneratorFunction", function* namedGeneratorFunction() {
-        return 'hello';
+        yield 'hello';
+        return 'hello world';
       });
       const arrowFunction_createServerFn = createServerRpc("test_ts--arrowFunction_createServerFn", () => {
         return 'hello';
@@ -220,7 +224,8 @@ describe('server function compilation', () => {
         return 'hello';
       });
       const anonymousGeneratorFunction_createServerFn = createServerRpc("test_ts--anonymousGeneratorFunction_createServerFn", function* () {
-        return 'hello';
+        yield 'hello';
+        return 'hello world';
       });
       const multipleDirectives_multipleDirectives = createServerRpc("test_ts--multipleDirectives_multipleDirectives", function multipleDirectives() {
         'use strict';
@@ -243,6 +248,7 @@ describe('server function compilation', () => {
         return usedFn();
       });
       const namedExportConstGenerator_1 = createServerRpc("test_ts--namedExportConstGenerator_1", function* () {
+        yield 'hello';
         return usedFn();
       });
       function usedFn() {
@@ -801,6 +807,7 @@ describe('server function compilation', () => {
     function* generator() {
       'use server'
       yield 'hello'
+      return 'hello world'
     }
     `
     const client = compileDirectives({
@@ -829,6 +836,7 @@ describe('server function compilation', () => {
       "import { createServerRpc } from "my-rpc-lib-server";
       const generator_1 = createServerRpc("test_ts--generator_1", function* () {
         yield 'hello';
+        return 'hello world';
       });
       const generator = generator_1;
       export { generator_1 };"`)
@@ -838,6 +846,7 @@ describe('server function compilation', () => {
     async function* asyncGenerator() {
       'use server'
       yield 'hello'
+      return 'hello world'
     }
     `
     const client = compileDirectives({
@@ -866,6 +875,7 @@ describe('server function compilation', () => {
       "import { createServerRpc } from "my-rpc-lib-server";
       const asyncGenerator_1 = createServerRpc("test_ts--asyncGenerator_1", async function* () {
         yield 'hello';
+        return 'hello world';
       });
       const asyncGenerator = asyncGenerator_1;
       export { asyncGenerator_1 };"`)
