@@ -7,6 +7,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
@@ -205,10 +206,212 @@ function LayoutBComponent() {
   return <div>I'm layout B!</div>
 }
 
+const paramsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/params',
+})
+
+const paramsIndexRoute = createRoute({
+  getParentRoute: () => paramsRoute,
+  path: '/',
+  component: function ParamsIndex() {
+    return (
+      <div>
+        <h3 className="pb-2">Named path params</h3>
+        <ul className="grid mb-2">
+          <li>
+            <Link
+              data-testid="l-to-named-foo"
+              to="/params/named/$foo"
+              params={{ foo: 'foo' }}
+            >
+              /params/named/$foo
+            </Link>
+          </li>
+          <li>
+            <Link
+              data-testid="l-to-named-prefixfoo"
+              to="/params/named/prefix${foo}"
+              params={{ foo: 'foo' }}
+            >
+              /params/named/{'prefix${foo}'}
+            </Link>
+          </li>
+          <li>
+            <Link
+              data-testid="l-to-named-foosuffix"
+              to="/params/named/${foo}suffix"
+              params={{ foo: 'foo' }}
+            >
+              /params/named/{'${foo}suffix'}
+            </Link>
+          </li>
+        </ul>
+        <hr />
+        <h3 className="pb-2">Wildcard path params</h3>
+        <ul className="grid mb-2">
+          <li>
+            <Link
+              data-testid="l-to-wildcard-foo"
+              to="/params/wildcard/$"
+              params={{ _splat: 'foo' }}
+            >
+              /params/wildcard/$
+            </Link>
+          </li>
+          <li>
+            <Link
+              data-testid="l-to-wildcard-prefixfoo"
+              to="/params/wildcard/prefix${$}"
+              params={{ _splat: 'foo' }}
+            >
+              /params/wildcard/{'prefix${$}'}
+            </Link>
+          </li>
+          <li>
+            <Link
+              data-testid="l-to-wildcard-foosuffix"
+              to="/params/wildcard/${$}suffix"
+              params={{ _splat: 'foo' }}
+            >
+              /params/wildcard/{'${$}suffix'}
+            </Link>
+          </li>
+        </ul>
+      </div>
+    )
+  },
+})
+
+const paramsNamedRoute = createRoute({
+  getParentRoute: () => paramsRoute,
+  path: '/named',
+})
+
+const paramsNamedIndexRoute = createRoute({
+  getParentRoute: () => paramsNamedRoute,
+  path: '/',
+  beforeLoad: () => {
+    throw redirect({ to: '/params/named' })
+  },
+})
+
+const paramsNamedFooRoute = createRoute({
+  getParentRoute: () => paramsNamedRoute,
+  path: '/$foo',
+  component: function ParamsNamedFoo() {
+    const p = paramsNamedFooRoute.useParams()
+    return (
+      <div>
+        ParamsNamedFoo:{' '}
+        <div data-testid="params-output">{JSON.stringify(p)}</div>
+      </div>
+    )
+  },
+})
+
+const paramsNamedFooPrefixRoute = createRoute({
+  getParentRoute: () => paramsNamedRoute,
+  path: '/prefix${foo}',
+  component: function ParamsNamedFooMarkdown() {
+    const p = paramsNamedFooPrefixRoute.useParams()
+    return (
+      <div>
+        ParamsNamedFooPrefix:{' '}
+        <div data-testid="params-output">{JSON.stringify(p)}</div>
+      </div>
+    )
+  },
+})
+
+const paramsNamedFooSuffixRoute = createRoute({
+  getParentRoute: () => paramsNamedRoute,
+  path: '/${foo}suffix',
+  component: function ParamsNamedFooSuffix() {
+    const p = paramsNamedFooSuffixRoute.useParams()
+    return (
+      <div>
+        ParamsNamedFooSuffix:{' '}
+        <div data-testid="params-output">{JSON.stringify(p)}</div>
+      </div>
+    )
+  },
+})
+
+const paramsWildcardRoute = createRoute({
+  getParentRoute: () => paramsRoute,
+  path: '/wildcard',
+})
+
+const paramsWildcardIndexRoute = createRoute({
+  getParentRoute: () => paramsWildcardRoute,
+  path: '/',
+  beforeLoad: () => {
+    throw redirect({ to: '/params' })
+  },
+})
+
+const paramsWildcardSplatRoute = createRoute({
+  getParentRoute: () => paramsWildcardRoute,
+  path: '$',
+  component: function ParamsWildcardSplat() {
+    const p = paramsWildcardSplatRoute.useParams()
+    return (
+      <div>
+        ParamsWildcardSplat:{' '}
+        <div data-testid="params-output">{JSON.stringify(p)}</div>
+      </div>
+    )
+  },
+})
+
+const paramsWildcardSplatPrefixRoute = createRoute({
+  getParentRoute: () => paramsWildcardRoute,
+  path: 'prefix${$}',
+  component: function ParamsWildcardSplatPrefix() {
+    const p = paramsWildcardSplatPrefixRoute.useParams()
+    return (
+      <div>
+        ParamsWildcardSplatPrefix:{' '}
+        <div data-testid="params-output">{JSON.stringify(p)}</div>
+      </div>
+    )
+  },
+})
+
+const paramsWildcardSplatSuffixRoute = createRoute({
+  getParentRoute: () => paramsWildcardRoute,
+  path: '${$}suffix',
+  component: function ParamsWildcardSplatSuffix() {
+    const p = paramsWildcardSplatSuffixRoute.useParams()
+    return (
+      <div>
+        ParamsWildcardSplatSuffix:{' '}
+        <div data-testid="params-output">{JSON.stringify(p)}</div>
+      </div>
+    )
+  },
+})
+
 const routeTree = rootRoute.addChildren([
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   layoutRoute.addChildren([
     layout2Route.addChildren([layoutARoute, layoutBRoute]),
+  ]),
+  paramsRoute.addChildren([
+    paramsNamedRoute.addChildren([
+      paramsNamedFooPrefixRoute,
+      paramsNamedFooSuffixRoute,
+      paramsNamedFooRoute,
+      paramsNamedIndexRoute,
+    ]),
+    paramsWildcardRoute.addChildren([
+      paramsWildcardSplatRoute,
+      paramsWildcardSplatPrefixRoute,
+      paramsWildcardSplatSuffixRoute,
+      paramsWildcardIndexRoute,
+    ]),
+    paramsIndexRoute,
   ]),
   indexRoute,
 ])
