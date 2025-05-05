@@ -255,7 +255,7 @@ export class Route<
     return useNavigate({ from: this.fullPath })
   }
 
-  Link = React.forwardRef(
+  Link: LinkComponent<'a', TFullPath> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
       const router = useRouter()
       return (
@@ -453,7 +453,7 @@ export class RootRoute<
     return useNavigate({ from: this.fullPath })
   }
 
-  Link = React.forwardRef(
+  Link: LinkComponent<'a', '/'> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
       const router = useRouter()
       return (
