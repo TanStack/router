@@ -140,7 +140,29 @@ export function resolvePath({
     }
   }
 
-  const joined = joinPaths([basepath, ...baseSegments.map((d) => d.value)])
+  const segmentValues = baseSegments.map((segment) => {
+    if (segment.type === 'param') {
+      const param = segment.value.substring(1)
+      if (segment.prefixSegment && segment.suffixSegment) {
+        return `${segment.prefixSegment}$\{${param}}${segment.suffixSegment}`
+      } else if (segment.prefixSegment) {
+        return `${segment.prefixSegment}$\{${param}}`
+      } else if (segment.suffixSegment) {
+        return `$\{${param}}${segment.suffixSegment}`
+      }
+    }
+    if (segment.type === 'wildcard') {
+      if (segment.prefixSegment && segment.suffixSegment) {
+        return `${segment.prefixSegment}\${$}${segment.suffixSegment}`
+      } else if (segment.prefixSegment) {
+        return `${segment.prefixSegment}\${$}`
+      } else if (segment.suffixSegment) {
+        return `\${$}${segment.suffixSegment}`
+      }
+    }
+    return segment.value
+  })
+  const joined = joinPaths([basepath, ...segmentValues])
   return cleanPath(joined)
 }
 

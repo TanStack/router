@@ -7,6 +7,7 @@ import {
   removeBasepath,
   removeTrailingSlash,
   resolvePath,
+  trimPathLeft,
 } from '../src/path'
 import type { Segment as PathSegment } from '../src/path'
 
@@ -265,6 +266,71 @@ describe('resolvePath', () => {
       })
     })
   })
+
+  describe.each([{ base: '/' }, { base: '/nested' }])(
+    'param routes w/ base=$base',
+    ({ base }) => {
+      describe('wildcard (prefix + suffix)', () => {
+        it.each([
+          { name: 'regular top-level', to: '/$' },
+          { name: 'regular nested', to: '/params/wildcard/$' },
+          { name: 'with top-level prefix', to: '/prefix${$}' },
+          { name: 'with nested prefix', to: '/params/wildcard/prefix${$}' },
+          { name: 'with top-level suffix', to: '/${$}suffix' },
+          { name: 'with nested suffix', to: '/params/wildcard/${$}suffix' },
+          {
+            name: 'with top-level prefix + suffix',
+            to: '/prefix${$}suffix',
+          },
+          {
+            name: 'with nested prefix + suffix',
+            to: '/params/wildcard/prefix${$}suffix',
+          },
+        ])('$name', ({ to }) => {
+          const candidate = base + trimPathLeft(to)
+          expect(
+            resolvePath({
+              basepath: '/',
+              base,
+              to: candidate,
+              trailingSlash: 'never',
+              caseSensitive: false,
+            }),
+          ).toEqual(candidate)
+        })
+      })
+
+      describe('named (prefix + suffix)', () => {
+        it.each([
+          { name: 'regular top-level', to: '/$foo' },
+          { name: 'regular nested', to: '/params/named/$foo' },
+          { name: 'with top-level prefix', to: '/prefix${foo}' },
+          { name: 'with nested prefix', to: '/params/named/prefix${foo}' },
+          { name: 'with top-level suffix', to: '/${foo}suffix' },
+          { name: 'with nested suffix', to: '/params/named/${foo}suffix' },
+          {
+            name: 'with top-level prefix + suffix',
+            to: '/prefix${foo}suffix',
+          },
+          {
+            name: 'with nested prefix + suffix',
+            to: '/params/named/prefix${foo}suffix',
+          },
+        ])('$name', ({ to }) => {
+          const candidate = base + trimPathLeft(to)
+          expect(
+            resolvePath({
+              basepath: '/',
+              base,
+              to: candidate,
+              trailingSlash: 'never',
+              caseSensitive: false,
+            }),
+          ).toEqual(candidate)
+        })
+      })
+    },
+  )
 })
 
 describe('interpolatePath', () => {
