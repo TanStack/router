@@ -147,8 +147,10 @@ export function resolvePath({
 /**
  * From Chris Horobin:
  * Required: `/foo/$bar` ✅
- * Optional: `/foo/{$bar}`
  * Prefix and Suffix: `/foo/prefix${bar}suffix` ✅
+ * Wildcard: `/foo/$` ✅
+ * Wildcard with Prefix and Suffix: `/foo/prefix${$}suffix` 🔧
+ * Optional: `/foo/{$bar}`
  * Optional named segment: `/foo/{bar}`
  * Optional named segment with Prefix and Suffix: `/foo/prefix{${bar}}suffix`
  */
@@ -178,23 +180,33 @@ export function parsePathname(pathname?: string): Array<Segment> {
 
   segments.push(
     ...split.map((part): Segment => {
-      // Check for param with prefix and/or suffix: prefix-$paramName.extension
-      const paramWithSegmentsMatch = part.match(
-        /^(.*?)(\$[a-zA-Z_$][a-zA-Z0-9_$]*)(.*)$/,
+      // Check for the new parameter format: prefix${paramName}suffix
+      const paramMatch = part.match(
+        /^(.*?)\$\{([a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/,
       )
-      if (
-        paramWithSegmentsMatch &&
-        paramWithSegmentsMatch[2]?.charAt(0) === '$'
-      ) {
-        const prefix = paramWithSegmentsMatch[1]
-        const paramValue = paramWithSegmentsMatch[2]
-        const suffix = paramWithSegmentsMatch[3]
-
+      if (paramMatch) {
+        const prefix = paramMatch[1]
+        const paramName = paramMatch[2]
+        const suffix = paramMatch[3]
         return {
           type: 'param',
-          value: paramValue,
+          value: '$' + paramName,
           prefixSegment: prefix || undefined,
           suffixSegment: suffix || undefined,
+        }
+      }
+
+      // Check for bare parameter format: $paramName (without curly braces)
+      if (part.startsWith('$') && part.length > 1) {
+        const paramName = part.substring(1)
+        // Validate that it's a valid parameter name
+        if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(paramName)) {
+          return {
+            type: 'param',
+            value: '$' + paramName,
+            prefixSegment: undefined,
+            suffixSegment: undefined,
+          }
         }
       }
 
