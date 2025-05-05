@@ -580,7 +580,7 @@ describe('matchPathname', () => {
           to: '/docs/prefix$bar',
         },
         expectedMatchedParams: {
-          bar: 'baz',
+          bar: 'foo',
         },
       },
       {
