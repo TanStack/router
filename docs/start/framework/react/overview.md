@@ -73,7 +73,7 @@ TanStack works closely with our partners to provide the best possible developer 
   <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-dark.svg" style="height: 40px;">
   <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-light.svg" style="height: 40px;">
-  <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-light.svg" style="height: 40px;">
+  <img alt="Clerk logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-light.svg" style="height: 40px;">
   </picture>
   </a>
   The best possible authentication experience for modern web applications, including TanStack Start applications. Clerk provides TanStack Start users with first-class integrations and solutions to auth and collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in auth best practices.
