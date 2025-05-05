@@ -59,7 +59,26 @@ describe('getRouteApi', () => {
     expectTypeOf(invoiceRouteApi.useParams<DefaultRouter>()).toEqualTypeOf<{
       invoiceId: string
     }>()
+
+    expectTypeOf(
+      invoiceRouteApi.useParams<
+        DefaultRouter,
+        /* TSelected */ unknown,
+        /* TStructuralSharing */ boolean,
+        /* TThrow */ true
+      >({ shouldThrow: true }),
+    ).toEqualTypeOf<{ invoiceId: string }>()
+
+    expectTypeOf(
+      invoiceRouteApi.useParams<
+        DefaultRouter,
+        /* TSelected */ unknown,
+        /* TStructuralSharing */ boolean,
+        /* TThrow */ false
+      >({ shouldThrow: false }),
+    ).toEqualTypeOf<{ invoiceId: string } | undefined>()
   })
+
   test('useContext', () => {
     expectTypeOf(
       invoiceRouteApi.useRouteContext<DefaultRouter>(),
@@ -71,6 +90,26 @@ describe('getRouteApi', () => {
     expectTypeOf(invoiceRouteApi.useSearch<DefaultRouter>()).toEqualTypeOf<{
       page: number
     }>()
+
+    expectTypeOf(
+      invoiceRouteApi.useSearch<
+        DefaultRouter,
+        /* TSelected */ unknown,
+        /* TStructuralSharing */ boolean,
+        /* TThrow */ true
+      >({ shouldThrow: true }),
+    ).toEqualTypeOf<{
+      page: number
+    }>()
+
+    expectTypeOf(
+      invoiceRouteApi.useSearch<
+        DefaultRouter,
+        /* TSelected */ unknown,
+        /* TStructuralSharing */ boolean,
+        /* TThrow */ false
+      >({ shouldThrow: false }),
+    ).toEqualTypeOf<{ page: number } | undefined>()
   })
   test('useLoaderData', () => {
     expectTypeOf(invoiceRouteApi.useLoaderData<DefaultRouter>()).toEqualTypeOf<{
