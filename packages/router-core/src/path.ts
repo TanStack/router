@@ -506,11 +506,41 @@ export function matchByPath(
           if (baseSegment.value === '/') {
             return false
           }
-          if (baseSegment.value.charAt(0) !== '$') {
-            params[routeSegment.value.substring(1)] = decodeURIComponent(
-              baseSegment.value,
-            )
+
+          let _paramValue: string
+
+          // If this param has prefix/suffix, we need to extract the actual parameter value
+          if (routeSegment.prefixSegment || routeSegment.suffixSegment) {
+            const prefix = routeSegment.prefixSegment || ''
+            const suffix = routeSegment.suffixSegment || ''
+
+            // Check if the base segment starts with prefix and ends with suffix
+            const baseValue = baseSegment.value
+            if (prefix && !baseValue.startsWith(prefix)) {
+              return false
+            }
+            if (suffix && !baseValue.endsWith(suffix)) {
+              return false
+            }
+
+            let paramValue = baseValue
+            if (prefix && paramValue.startsWith(prefix)) {
+              paramValue = paramValue.slice(prefix.length)
+            }
+            if (suffix && paramValue.endsWith(suffix)) {
+              paramValue = paramValue.slice(
+                0,
+                paramValue.length - suffix.length,
+              )
+            }
+
+            _paramValue = decodeURIComponent(paramValue)
+          } else {
+            // If no prefix/suffix, just decode the base segment value
+            _paramValue = decodeURIComponent(baseSegment.value)
           }
+
+          params[routeSegment.value.substring(1)] = _paramValue
         }
       }
 
