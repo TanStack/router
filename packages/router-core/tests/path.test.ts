@@ -383,19 +383,19 @@ describe('interpolatePath', () => {
       },
       {
         name: 'with prefix',
-        to: '/prefix$',
+        to: '/prefix${$}',
         params: { _splat: 'bar' },
         result: '/prefixbar',
       },
       {
         name: 'with suffix',
-        to: '/$-suffix',
+        to: '/${$}-suffix',
         params: { _splat: 'bar' },
         result: '/bar-suffix',
       },
       {
         name: 'with prefix + suffix',
-        to: '/prefix$-suffix',
+        to: '/prefix${$}-suffix',
         params: { _splat: 'bar' },
         result: '/prefixbar-suffix',
       },
@@ -602,7 +602,7 @@ describe('matchPathname', () => {
         name: 'with prefix',
         input: '/docs/prefixbar/baz',
         matchingOptions: {
-          to: '/docs/prefix$',
+          to: '/docs/prefix${$}',
         },
         expectedMatchedParams: {
           '*': 'bar/baz',
@@ -613,7 +613,7 @@ describe('matchPathname', () => {
         name: 'with suffix',
         input: '/docs/bar/baz.suffix',
         matchingOptions: {
-          to: '/docs/$.suffix',
+          to: '/docs/${$}.suffix',
         },
         expectedMatchedParams: {
           '*': 'bar/baz',
@@ -624,7 +624,7 @@ describe('matchPathname', () => {
         name: 'with prefix + suffix',
         input: '/docs/prefixbar/baz-suffix',
         matchingOptions: {
-          to: '/docs/prefix$-suffix',
+          to: '/docs/prefix${$}-suffix',
         },
         expectedMatchedParams: {
           '*': 'bar/baz',
@@ -805,7 +805,7 @@ describe('parsePathname', () => {
     it.each([
       {
         name: 'with prefix (regular text)',
-        to: '/foo$',
+        to: '/foo${$}',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -817,7 +817,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with prefix + followed by special character',
-        to: '/foo.$',
+        to: '/foo.${$}',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -829,7 +829,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with suffix',
-        to: '/$-foo',
+        to: '/${$}-foo',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -841,7 +841,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with prefix + suffix',
-        to: '/foo$-bar',
+        to: '/foo${$}-bar',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -854,7 +854,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with prefix + followed by special character and a segment',
-        to: '/foo.$/bar',
+        to: '/foo.${$}/bar',
         expected: [
           { type: 'pathname', value: '/' },
           {

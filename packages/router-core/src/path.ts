@@ -180,14 +180,27 @@ export function parsePathname(pathname?: string): Array<Segment> {
 
   segments.push(
     ...split.map((part): Segment => {
+      // Check for wildcard with curly braces: prefix${$}suffix
+      const wildcardWithBracesMatch = part.match(/^(.*?)\$\{\$\}(.*)$/)
+      if (wildcardWithBracesMatch) {
+        const prefix = wildcardWithBracesMatch[1]
+        const suffix = wildcardWithBracesMatch[2]
+        return {
+          type: 'wildcard',
+          value: '$',
+          prefixSegment: prefix || undefined,
+          suffixSegment: suffix || undefined,
+        }
+      }
+
       // Check for the new parameter format: prefix${paramName}suffix
-      const paramMatch = part.match(
+      const paramWithBracesMatch = part.match(
         /^(.*?)\$\{([a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/,
       )
-      if (paramMatch) {
-        const prefix = paramMatch[1]
-        const paramName = paramMatch[2]
-        const suffix = paramMatch[3]
+      if (paramWithBracesMatch) {
+        const prefix = paramWithBracesMatch[1]
+        const paramName = paramWithBracesMatch[2]
+        const suffix = paramWithBracesMatch[3]
         return {
           type: 'param',
           value: '$' + paramName,
@@ -210,18 +223,13 @@ export function parsePathname(pathname?: string): Array<Segment> {
         }
       }
 
-      // Check for wildcard with prefix and/or suffix: prefix-$.extension
-      const wildcardWithSegmentsMatch = part.match(/^(.*?)(\$)(.*)$/)
-      if (wildcardWithSegmentsMatch && wildcardWithSegmentsMatch[2] === '$') {
-        const prefix = wildcardWithSegmentsMatch[1]
-        const wildcard = wildcardWithSegmentsMatch[2]
-        const suffix = wildcardWithSegmentsMatch[3]
-
+      // Check for bare wildcard: $
+      if (part === '$') {
         return {
           type: 'wildcard',
-          value: wildcard,
-          prefixSegment: prefix || undefined,
-          suffixSegment: suffix || undefined,
+          value: '$',
+          prefixSegment: undefined,
+          suffixSegment: undefined,
         }
       }
 
