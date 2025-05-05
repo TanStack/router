@@ -144,6 +144,14 @@ export function resolvePath({
   return cleanPath(joined)
 }
 
+/**
+ * From Chris Horobin:
+ * Required: `/foo/$bar` ✅
+ * Optional: `/foo/{$bar}`
+ * Prefix and Suffix: `/foo/prefix${bar}suffix` ✅
+ * Optional named segment: `/foo/{bar}`
+ * Optional named segment with Prefix and Suffix: `/foo/prefix{${bar}}suffix`
+ */
 export function parsePathname(pathname?: string): Array<Segment> {
   if (!pathname) {
     return []
