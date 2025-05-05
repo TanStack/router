@@ -144,12 +144,16 @@ export function resolvePath({
   return cleanPath(joined)
 }
 
+const PARAM_RE = /^\$.{1,}$/ // $paramName
+const PARAM_W_CURLY_BRACES_RE = /^(.*?)\$\{([a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix${paramName}suffix
+const WILDCARD_RE = /^\$$/ // $
+const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\$\{\$\}(.*)$/ // prefix${$}suffix
+
 /**
- * From Chris Horobin:
  * Required: `/foo/$bar` ✅
  * Prefix and Suffix: `/foo/prefix${bar}suffix` ✅
  * Wildcard: `/foo/$` ✅
- * Wildcard with Prefix and Suffix: `/foo/prefix${$}suffix` 🔧
+ * Wildcard with Prefix and Suffix: `/foo/prefix${$}suffix` ✅
  * Optional: `/foo/{$bar}`
  * Optional named segment: `/foo/{bar}`
  * Optional named segment with Prefix and Suffix: `/foo/prefix{${bar}}suffix`
@@ -181,10 +185,10 @@ export function parsePathname(pathname?: string): Array<Segment> {
   segments.push(
     ...split.map((part): Segment => {
       // Check for wildcard with curly braces: prefix${$}suffix
-      const wildcardWithBracesMatch = part.match(/^(.*?)\$\{\$\}(.*)$/)
-      if (wildcardWithBracesMatch) {
-        const prefix = wildcardWithBracesMatch[1]
-        const suffix = wildcardWithBracesMatch[2]
+      const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
+      if (wildcardBracesMatch) {
+        const prefix = wildcardBracesMatch[1]
+        const suffix = wildcardBracesMatch[2]
         return {
           type: 'wildcard',
           value: '$',
@@ -194,13 +198,11 @@ export function parsePathname(pathname?: string): Array<Segment> {
       }
 
       // Check for the new parameter format: prefix${paramName}suffix
-      const paramWithBracesMatch = part.match(
-        /^(.*?)\$\{([a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/,
-      )
-      if (paramWithBracesMatch) {
-        const prefix = paramWithBracesMatch[1]
-        const paramName = paramWithBracesMatch[2]
-        const suffix = paramWithBracesMatch[3]
+      const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
+      if (paramBracesMatch) {
+        const prefix = paramBracesMatch[1]
+        const paramName = paramBracesMatch[2]
+        const suffix = paramBracesMatch[3]
         return {
           type: 'param',
           value: '$' + paramName,
@@ -210,21 +212,18 @@ export function parsePathname(pathname?: string): Array<Segment> {
       }
 
       // Check for bare parameter format: $paramName (without curly braces)
-      if (part.startsWith('$') && part.length > 1) {
+      if (PARAM_RE.test(part)) {
         const paramName = part.substring(1)
-        // Validate that it's a valid parameter name
-        if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(paramName)) {
-          return {
-            type: 'param',
-            value: '$' + paramName,
-            prefixSegment: undefined,
-            suffixSegment: undefined,
-          }
+        return {
+          type: 'param',
+          value: '$' + paramName,
+          prefixSegment: undefined,
+          suffixSegment: undefined,
         }
       }
 
       // Check for bare wildcard: $
-      if (part === '$') {
+      if (WILDCARD_RE.test(part)) {
         return {
           type: 'wildcard',
           value: '$',
