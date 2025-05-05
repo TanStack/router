@@ -12,21 +12,25 @@ test.describe('params operations + prefix/suffix', () => {
         id: 'l-to-named-foo',
         pathname: '/params/named/foo',
         params: { foo: 'foo' },
+        destHeadingId: 'ParamsNamedFoo',
       },
       {
         id: 'l-to-named-prefixfoo',
         pathname: '/params/named/prefixfoo',
         params: { foo: 'foo' },
+        destHeadingId: 'ParamsNamedFooPrefix',
       },
       {
         id: 'l-to-named-foosuffix',
         pathname: '/params/named/foosuffix',
         params: { foo: 'foo' },
+        destHeadingId: 'ParamsNamedFooSuffix',
       },
     ] satisfies Array<{
       id: string
       pathname: string
       params: Record<string, string>
+      destHeadingId: string
     }>
 
     test.describe('Link', () => {
@@ -52,7 +56,7 @@ test.describe('params operations + prefix/suffix', () => {
       })
     })
 
-    NAMED_PARAMS_PAIRS.forEach(({ pathname, params }) => {
+    NAMED_PARAMS_PAIRS.forEach(({ pathname, params, destHeadingId }) => {
       test(`on first-load to "${pathname}" has correct params`, async ({
         page,
       }) => {
@@ -60,6 +64,9 @@ test.describe('params operations + prefix/suffix', () => {
         await page.waitForLoadState('networkidle')
         const pagePathname = new URL(page.url()).pathname
         expect(pagePathname).toBe(pathname)
+
+        const headingEl = page.getByRole('heading', { name: destHeadingId })
+        await expect(headingEl).toBeVisible()
 
         const paramsEl = page.getByTestId('params-output')
         const paramsText = await paramsEl.innerText()
@@ -76,21 +83,25 @@ test.describe('params operations + prefix/suffix', () => {
         id: 'l-to-wildcard-foo',
         pathname: '/params/wildcard/foo',
         params: { '*': 'foo', _splat: 'foo' },
+        destHeadingId: 'ParamsWildcardSplat',
       },
       {
         id: 'l-to-wildcard-prefixfoo',
         pathname: '/params/wildcard/prefixfoo',
         params: { '*': 'foo', _splat: 'foo' },
+        destHeadingId: 'ParamsWildcardSplatPrefix',
       },
       {
         id: 'l-to-wildcard-foosuffix',
         pathname: '/params/wildcard/foosuffix',
         params: { '*': 'foo', _splat: 'foo' },
+        destHeadingId: 'ParamsWildcardSplatSuffix',
       },
     ] satisfies Array<{
       id: string
       pathname: string
       params: Record<string, string>
+      destHeadingId: string
     }>
 
     test.describe('Link', () => {
@@ -116,7 +127,7 @@ test.describe('params operations + prefix/suffix', () => {
       })
     })
 
-    WILDCARD_PARAM_PAIRS.forEach(({ pathname, params }) => {
+    WILDCARD_PARAM_PAIRS.forEach(({ pathname, params, destHeadingId }) => {
       test(`on first-load to "${pathname}" has correct params`, async ({
         page,
       }) => {
@@ -124,6 +135,9 @@ test.describe('params operations + prefix/suffix', () => {
         await page.waitForLoadState('networkidle')
         const pagePathname = new URL(page.url()).pathname
         expect(pagePathname).toBe(pathname)
+
+        const headingEl = page.getByRole('heading', { name: destHeadingId })
+        await expect(headingEl).toBeVisible()
 
         const paramsEl = page.getByTestId('params-output')
         const paramsText = await paramsEl.innerText()

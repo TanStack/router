@@ -303,7 +303,7 @@ const paramsNamedFooRoute = createRoute({
     const p = paramsNamedFooRoute.useParams()
     return (
       <div>
-        ParamsNamedFoo:{' '}
+        <h3>ParamsNamedFoo</h3>
         <div data-testid="params-output">{JSON.stringify(p)}</div>
       </div>
     )
@@ -317,7 +317,7 @@ const paramsNamedFooPrefixRoute = createRoute({
     const p = paramsNamedFooPrefixRoute.useParams()
     return (
       <div>
-        ParamsNamedFooPrefix:{' '}
+        <h3>ParamsNamedFooPrefix</h3>
         <div data-testid="params-output">{JSON.stringify(p)}</div>
       </div>
     )
@@ -331,7 +331,7 @@ const paramsNamedFooSuffixRoute = createRoute({
     const p = paramsNamedFooSuffixRoute.useParams()
     return (
       <div>
-        ParamsNamedFooSuffix:{' '}
+        <h3>ParamsNamedFooSuffix</h3>
         <div data-testid="params-output">{JSON.stringify(p)}</div>
       </div>
     )
@@ -358,7 +358,7 @@ const paramsWildcardSplatRoute = createRoute({
     const p = paramsWildcardSplatRoute.useParams()
     return (
       <div>
-        ParamsWildcardSplat:{' '}
+        <h3>ParamsWildcardSplat</h3>
         <div data-testid="params-output">{JSON.stringify(p)}</div>
       </div>
     )
@@ -372,7 +372,7 @@ const paramsWildcardSplatPrefixRoute = createRoute({
     const p = paramsWildcardSplatPrefixRoute.useParams()
     return (
       <div>
-        ParamsWildcardSplatPrefix:{' '}
+        <h3>ParamsWildcardSplatPrefix</h3>
         <div data-testid="params-output">{JSON.stringify(p)}</div>
       </div>
     )
@@ -386,7 +386,7 @@ const paramsWildcardSplatSuffixRoute = createRoute({
     const p = paramsWildcardSplatSuffixRoute.useParams()
     return (
       <div>
-        ParamsWildcardSplatSuffix:{' '}
+        <h3>ParamsWildcardSplatSuffix</h3>
         <div data-testid="params-output">{JSON.stringify(p)}</div>
       </div>
     )
