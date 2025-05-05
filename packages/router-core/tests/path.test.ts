@@ -382,6 +382,12 @@ describe('interpolatePath', () => {
         result: '/bar/foo/me',
       },
       {
+        name: 'regular curly braces',
+        to: '/${$}',
+        params: { _splat: 'bar/foo/me' },
+        result: '/bar/foo/me',
+      },
+      {
         name: 'with prefix',
         to: '/prefix${$}',
         params: { _splat: 'bar' },
@@ -414,6 +420,12 @@ describe('interpolatePath', () => {
       {
         name: 'regular',
         to: '/$foo',
+        params: { foo: 'bar' },
+        result: '/bar',
+      },
+      {
+        name: 'regular curly braces',
+        to: '/${foo}',
         params: { foo: 'bar' },
         result: '/bar',
       },
@@ -599,6 +611,17 @@ describe('matchPathname', () => {
         },
       },
       {
+        name: 'regular curly braces',
+        input: '/docs/foo/bar',
+        matchingOptions: {
+          to: '/docs/${$}',
+        },
+        expectedMatchedParams: {
+          '*': 'foo/bar',
+          _splat: 'foo/bar',
+        },
+      },
+      {
         name: 'with prefix',
         input: '/docs/prefixbar/baz',
         matchingOptions: {
@@ -645,6 +668,16 @@ describe('matchPathname', () => {
         input: '/docs/foo',
         matchingOptions: {
           to: '/docs/$bar',
+        },
+        expectedMatchedParams: {
+          bar: 'foo',
+        },
+      },
+      {
+        name: 'regular curly braces',
+        input: '/docs/foo',
+        matchingOptions: {
+          to: '/docs/${bar}',
         },
         expectedMatchedParams: {
           bar: 'foo',
@@ -804,6 +837,22 @@ describe('parsePathname', () => {
   describe('wildcard (prefix + suffix)', () => {
     it.each([
       {
+        name: 'regular',
+        to: '/$',
+        expected: [
+          { type: 'pathname', value: '/' },
+          { type: 'wildcard', value: '$' },
+        ],
+      },
+      {
+        name: 'regular curly braces',
+        to: '/${$}',
+        expected: [
+          { type: 'pathname', value: '/' },
+          { type: 'wildcard', value: '$' },
+        ],
+      },
+      {
         name: 'with prefix (regular text)',
         to: '/foo${$}',
         expected: [
@@ -873,6 +922,22 @@ describe('parsePathname', () => {
 
   describe('named params (prefix + suffix)', () => {
     it.each([
+      {
+        name: 'regular',
+        to: '/$bar',
+        expected: [
+          { type: 'pathname', value: '/' },
+          { type: 'param', value: '$bar' },
+        ],
+      },
+      {
+        name: 'regular curly braces',
+        to: '/${bar}',
+        expected: [
+          { type: 'pathname', value: '/' },
+          { type: 'param', value: '$bar' },
+        ],
+      },
       {
         name: 'with prefix (regular text)',
         to: '/foo${bar}',
