@@ -3173,6 +3173,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     const trimmed = trimPathLeft(d.fullPath)
     const parsed = parsePathname(trimmed)
 
+    // Removes the leading slash if it is not the only remaining segment
     while (parsed.length > 1 && parsed[0]?.value === '/') {
       parsed.shift()
     }
@@ -3182,8 +3183,40 @@ export function processRouteTree<TRouteLike extends RouteLike>({
         return 0.75
       }
 
+      if (
+        segment.type === 'param' &&
+        segment.prefixSegment &&
+        segment.suffixSegment
+      ) {
+        return 0.55
+      }
+
+      if (segment.type === 'param' && segment.prefixSegment) {
+        return 0.52
+      }
+
+      if (segment.type === 'param' && segment.suffixSegment) {
+        return 0.51
+      }
+
       if (segment.type === 'param') {
         return 0.5
+      }
+
+      if (
+        segment.type === 'wildcard' &&
+        segment.prefixSegment &&
+        segment.suffixSegment
+      ) {
+        return 0.3
+      }
+
+      if (segment.type === 'wildcard' && segment.prefixSegment) {
+        return 0.27
+      }
+
+      if (segment.type === 'wildcard' && segment.suffixSegment) {
+        return 0.26
       }
 
       if (segment.type === 'wildcard') {
