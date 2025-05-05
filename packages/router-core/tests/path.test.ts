@@ -376,27 +376,33 @@ describe('interpolatePath', () => {
   describe('wildcard (prefix + suffix)', () => {
     it.each([
       {
+        name: 'regular',
+        to: '/$',
+        params: { _splat: 'bar/foo/me' },
+        result: '/bar/foo/me',
+      },
+      {
         name: 'with prefix',
-        path: '/prefix$',
+        to: '/prefix$',
         params: { _splat: 'bar' },
         result: '/prefixbar',
       },
       {
         name: 'with suffix',
-        path: '/$-suffix',
+        to: '/$-suffix',
         params: { _splat: 'bar' },
         result: '/bar-suffix',
       },
       {
         name: 'with prefix + suffix',
-        path: '/prefix$-suffix',
+        to: '/prefix$-suffix',
         params: { _splat: 'bar' },
         result: '/prefixbar-suffix',
       },
-    ])('$name', ({ path, params, result }) => {
+    ])('$name', ({ to, params, result }) => {
       expect(
         interpolatePath({
-          path,
+          path: to,
           params,
         }).interpolatedPath,
       ).toBe(result)
@@ -406,27 +412,33 @@ describe('interpolatePath', () => {
   describe('named params (prefix + suffix', () => {
     it.each([
       {
-        name: 'named path param with prefix',
-        path: '/prefix$bar',
+        name: 'regular',
+        to: '/$foo',
+        params: { foo: 'bar' },
+        result: '/bar',
+      },
+      {
+        name: 'with prefix',
+        to: '/prefix$bar',
         params: { bar: 'baz' },
         result: '/prefixbaz',
       },
       {
-        name: 'named path param with suffix',
-        path: '/$foo.suffix',
+        name: 'with suffix',
+        to: '/$foo.suffix',
         params: { foo: 'bar' },
         result: '/bar.suffix',
       },
       {
-        name: 'named path param with prefix and suffix',
-        path: '/prefix$param.suffix',
+        name: 'with prefix and suffix',
+        to: '/prefix$param.suffix',
         params: { param: 'foobar' },
         result: '/prefixfoobar.suffix',
       },
-    ])('$name', ({ path, params, result }) => {
+    ])('$name', ({ to, params, result }) => {
       expect(
         interpolatePath({
-          path,
+          path: to,
           params,
         }).interpolatedPath,
       ).toBe(result)
@@ -679,7 +691,7 @@ describe('matchPathname', () => {
 describe('parsePathname', () => {
   type ParsePathnameTestScheme = Array<{
     name: string
-    pathname: string | undefined
+    to: string | undefined
     expected: Array<PathSegment>
   }>
 
@@ -687,22 +699,22 @@ describe('parsePathname', () => {
     it.each([
       {
         name: 'should handle pathname being undefined',
-        pathname: undefined,
+        to: undefined,
         expected: [],
       },
       {
         name: 'should handle pathname being empty',
-        pathname: '',
+        to: '',
         expected: [],
       },
       {
         name: 'should handle pathname at root',
-        pathname: '/',
+        to: '/',
         expected: [{ type: 'pathname', value: '/' }],
       },
       {
         name: 'should handle pathname with a single segment',
-        pathname: '/foo',
+        to: '/foo',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'pathname', value: 'foo' },
@@ -710,7 +722,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'should handle pathname with multiple segments',
-        pathname: '/foo/bar/baz',
+        to: '/foo/bar/baz',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'pathname', value: 'foo' },
@@ -720,7 +732,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'should handle pathname with a trailing slash',
-        pathname: '/foo/',
+        to: '/foo/',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'pathname', value: 'foo' },
@@ -729,7 +741,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'should handle named params',
-        pathname: '/foo/$bar',
+        to: '/foo/$bar',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'pathname', value: 'foo' },
@@ -738,7 +750,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'should handle named params at the root',
-        pathname: '/$bar',
+        to: '/$bar',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'param', value: '$bar' },
@@ -746,7 +758,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'should handle named params followed by a segment',
-        pathname: '/foo/$bar/baz',
+        to: '/foo/$bar/baz',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'pathname', value: 'foo' },
@@ -756,7 +768,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'should handle multiple named params',
-        pathname: '/foo/$bar/$baz/qux/$quux',
+        to: '/foo/$bar/$baz/qux/$quux',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'pathname', value: 'foo' },
@@ -768,7 +780,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'should handle splat params',
-        pathname: '/foo/$',
+        to: '/foo/$',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'pathname', value: 'foo' },
@@ -777,14 +789,14 @@ describe('parsePathname', () => {
       },
       {
         name: 'should handle splat params at the root',
-        pathname: '/$',
+        to: '/$',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'wildcard', value: '$' },
         ],
       },
-    ] satisfies ParsePathnameTestScheme)('$name', ({ pathname, expected }) => {
-      const result = parsePathname(pathname)
+    ] satisfies ParsePathnameTestScheme)('$name', ({ to, expected }) => {
+      const result = parsePathname(to)
       expect(result).toEqual(expected)
     })
   })
@@ -792,8 +804,8 @@ describe('parsePathname', () => {
   describe('wildcard (prefix + suffix)', () => {
     it.each([
       {
-        name: 'with regular text prefix',
-        pathname: '/foo$',
+        name: 'with prefix (regular text)',
+        to: '/foo$',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -804,8 +816,8 @@ describe('parsePathname', () => {
         ],
       },
       {
-        name: 'with prefix followed by a special character',
-        pathname: '/foo.$',
+        name: 'with prefix + followed by special character',
+        to: '/foo.$',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -817,7 +829,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with suffix',
-        pathname: '/$-foo',
+        to: '/$-foo',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -829,7 +841,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with prefix + suffix',
-        pathname: '/foo$-bar',
+        to: '/foo$-bar',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -841,8 +853,8 @@ describe('parsePathname', () => {
         ],
       },
       {
-        name: 'with prefix + special character and a segment',
-        pathname: '/foo.$/bar',
+        name: 'with prefix + followed by special character and a segment',
+        to: '/foo.$/bar',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -853,8 +865,8 @@ describe('parsePathname', () => {
           { type: 'pathname', value: 'bar' },
         ],
       },
-    ] satisfies ParsePathnameTestScheme)('$name', ({ pathname, expected }) => {
-      const result = parsePathname(pathname)
+    ] satisfies ParsePathnameTestScheme)('$name', ({ to, expected }) => {
+      const result = parsePathname(to)
       expect(result).toEqual(expected)
     })
   })
@@ -862,8 +874,32 @@ describe('parsePathname', () => {
   describe('named params (prefix + suffix)', () => {
     it.each([
       {
-        name: 'should handle named path param with a suffix',
-        pathname: '/$bar.foo',
+        name: 'with prefix (regular text)',
+        to: '/foo$bar',
+        expected: [
+          { type: 'pathname', value: '/' },
+          {
+            type: 'param',
+            value: '$bar',
+            prefixSegment: 'foo',
+          },
+        ],
+      },
+      {
+        name: 'with prefix + followed by special character',
+        to: '/foo.$bar',
+        expected: [
+          { type: 'pathname', value: '/' },
+          {
+            type: 'param',
+            value: '$bar',
+            prefixSegment: 'foo.',
+          },
+        ],
+      },
+      {
+        name: 'with suffix',
+        to: '/$bar.foo',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -874,8 +910,8 @@ describe('parsePathname', () => {
         ],
       },
       {
-        name: 'should handle named path param with a suffix started by a special character',
-        pathname: '/$bar.foo',
+        name: 'with suffix + started by special character',
+        to: '/$bar.foo',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -886,8 +922,8 @@ describe('parsePathname', () => {
         ],
       },
       {
-        name: 'should handle named path param with a suffix started by a special character and a segment',
-        pathname: '/$bar.foo/baz',
+        name: 'with suffix + started by special character and followed by segment',
+        to: '/$bar.foo/baz',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -899,8 +935,8 @@ describe('parsePathname', () => {
         ],
       },
       {
-        name: 'should handle named path param with a suffix and a prefix',
-        pathname: '/foo$bar.baz',
+        name: 'with suffix + prefix',
+        to: '/foo$bar.baz',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -911,8 +947,8 @@ describe('parsePathname', () => {
           },
         ],
       },
-    ] satisfies ParsePathnameTestScheme)('$name', ({ pathname, expected }) => {
-      const result = parsePathname(pathname)
+    ] satisfies ParsePathnameTestScheme)('$name', ({ to, expected }) => {
+      const result = parsePathname(to)
       expect(result).toEqual(expected)
     })
   })
