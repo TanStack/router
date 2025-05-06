@@ -13,3 +13,12 @@ export {
   pageSchema,
 } from './schema'
 export type { Page } from './schema'
+
+
+export { __internal_devHtmlUtils } from './dev-html'
+export type { ExtractedHtmlTagInfo } from './dev-html'
+
+declare global {
+  // eslint-disable-next-line no-var
+  var TSS_INJECTED_HEAD_SCRIPTS: string | undefined
+}

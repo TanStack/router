@@ -1,6 +1,11 @@
 import { tsrStartManifest } from 'tanstack:start-manifest'
 import { rootRouteId } from '@tanstack/router-core'
 
+declare global {
+  // eslint-disable-next-line no-var
+  var TSS_INJECTED_HEAD_SCRIPTS: string | undefined
+}
+
 /**
  * @description Returns the router manifest that should be sent to the client.
  * This includes only the assets and preloads for the current route and any
@@ -40,7 +45,7 @@ export function getStartManifest() {
     //   )
     // }
 
-    const script = `import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
+    const script = `${globalThis.TSS_INJECTED_HEAD_SCRIPTS ? globalThis.TSS_INJECTED_HEAD_SCRIPTS + '; ' : ''}import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
 
     rootRoute.assets.push({
       tag: 'script',
