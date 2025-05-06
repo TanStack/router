@@ -154,6 +154,10 @@ export function routePathToVariable(routePath: string): string {
         return 'Dash'
       case '@':
         return 'At'
+      case '(':
+        return '' // Removed since route groups use parentheses
+      case ')':
+        return '' // Removed since route groups use parentheses
       case ' ':
         return '' // Remove spaces
       default:
