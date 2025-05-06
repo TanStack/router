@@ -465,6 +465,21 @@ export type LinkComponent<
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => React.ReactElement
 
+export type LinkComponentRoute<in out TDefaultFrom extends string = string> = <
+  TRouter extends AnyRouter = RegisteredRouter,
+  const TTo extends string | undefined = undefined,
+  const TMaskTo extends string = '',
+>(
+  props: LinkComponentProps<
+    'a',
+    TRouter,
+    TDefaultFrom,
+    TTo,
+    TDefaultFrom,
+    TMaskTo
+  >,
+) => React.ReactElement
+
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
 ): LinkComponent<TComp> {
