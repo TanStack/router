@@ -292,7 +292,7 @@ const paramsNamedIndexRoute = createRoute({
   getParentRoute: () => paramsNamedRoute,
   path: '/',
   beforeLoad: () => {
-    throw redirect({ to: '/params/named' })
+    throw redirect({ to: '/params' })
   },
 })
 
