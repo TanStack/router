@@ -19,16 +19,16 @@ import {
   createServerFileRoute,
 } from '@tanstack/react-start/server'
 
-import { ServerRoute as ProjectVersionDocsFrameworkFrameworkSplatDotmdRouteImport } from './../../src/routes/$project.$version.docs.framework.$framework.${$}[.]md'
+import { ServerRoute as ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRouteImport } from './../../src/routes/$project.$version.docs.framework.$framework.{$}[.]md'
 
 // Create/Update Routes
 
 const rootRoute = createServerRoute()
 
-const ProjectVersionDocsFrameworkFrameworkSplatDotmdRoute =
-  ProjectVersionDocsFrameworkFrameworkSplatDotmdRouteImport.update({
-    id: '/$project/$version/docs/framework/$framework/${$}.md',
-    path: '/$project/$version/docs/framework/$framework/${$}.md',
+const ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute =
+  ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRouteImport.update({
+    id: '/$project/$version/docs/framework/$framework/{$}.md',
+    path: '/$project/$version/docs/framework/$framework/{$}.md',
     getParentRoute: () => rootRoute,
   } as any)
 
@@ -36,11 +36,11 @@ const ProjectVersionDocsFrameworkFrameworkSplatDotmdRoute =
 
 declare module '@tanstack/react-start/server' {
   interface FileRoutesByPath {
-    '/$project/$version/docs/framework/$framework/${$}.md': {
-      id: '/$project/$version/docs/framework/$framework/${$}.md'
-      path: '/$project/$version/docs/framework/$framework/${$}.md'
-      fullPath: '/$project/$version/docs/framework/$framework/${$}.md'
-      preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkSplatDotmdRouteImport
+    '/$project/$version/docs/framework/$framework/{$}.md': {
+      id: '/$project/$version/docs/framework/$framework/{$}.md'
+      path: '/$project/$version/docs/framework/$framework/{$}.md'
+      fullPath: '/$project/$version/docs/framework/$framework/{$}.md'
+      preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRouteImport
       parentRoute: typeof rootRoute
     }
   }
@@ -48,12 +48,12 @@ declare module '@tanstack/react-start/server' {
 
 // Add type-safety to the createFileRoute function across the route tree
 
-declare module './../../src/routes/$project.$version.docs.framework.$framework.${$}[.]md' {
+declare module './../../src/routes/$project.$version.docs.framework.$framework.{$}[.]md' {
   const createServerFileRoute: CreateServerFileRoute<
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/${$}.md']['parentRoute'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/${$}.md']['id'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/${$}.md']['path'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/${$}.md']['fullPath'],
+    FileRoutesByPath['/$project/$version/docs/framework/$framework/{$}.md']['parentRoute'],
+    FileRoutesByPath['/$project/$version/docs/framework/$framework/{$}.md']['id'],
+    FileRoutesByPath['/$project/$version/docs/framework/$framework/{$}.md']['path'],
+    FileRoutesByPath['/$project/$version/docs/framework/$framework/{$}.md']['fullPath'],
     unknown
   >
 }
@@ -61,34 +61,34 @@ declare module './../../src/routes/$project.$version.docs.framework.$framework.$
 // Create and export the route tree
 
 export interface FileRoutesByFullPath {
-  '/$project/$version/docs/framework/$framework/${$}.md': typeof ProjectVersionDocsFrameworkFrameworkSplatDotmdRoute
+  '/$project/$version/docs/framework/$framework/{$}.md': typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute
 }
 
 export interface FileRoutesByTo {
-  '/$project/$version/docs/framework/$framework/${$}.md': typeof ProjectVersionDocsFrameworkFrameworkSplatDotmdRoute
+  '/$project/$version/docs/framework/$framework/{$}.md': typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
-  '/$project/$version/docs/framework/$framework/${$}.md': typeof ProjectVersionDocsFrameworkFrameworkSplatDotmdRoute
+  '/$project/$version/docs/framework/$framework/{$}.md': typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/$project/$version/docs/framework/$framework/${$}.md'
+  fullPaths: '/$project/$version/docs/framework/$framework/{$}.md'
   fileRoutesByTo: FileRoutesByTo
-  to: '/$project/$version/docs/framework/$framework/${$}.md'
-  id: '__root__' | '/$project/$version/docs/framework/$framework/${$}.md'
+  to: '/$project/$version/docs/framework/$framework/{$}.md'
+  id: '__root__' | '/$project/$version/docs/framework/$framework/{$}.md'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
-  ProjectVersionDocsFrameworkFrameworkSplatDotmdRoute: typeof ProjectVersionDocsFrameworkFrameworkSplatDotmdRoute
+  ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute: typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  ProjectVersionDocsFrameworkFrameworkSplatDotmdRoute:
-    ProjectVersionDocsFrameworkFrameworkSplatDotmdRoute,
+  ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute:
+    ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute,
 }
 
 export const routeTree = rootRoute
@@ -101,11 +101,11 @@ export const routeTree = rootRoute
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/$project/$version/docs/framework/$framework/${$}.md"
+        "/$project/$version/docs/framework/$framework/{$}.md"
       ]
     },
-    "/$project/$version/docs/framework/$framework/${$}.md": {
-      "filePath": "$project.$version.docs.framework.$framework.${$}[.]md.tsx"
+    "/$project/$version/docs/framework/$framework/{$}.md": {
+      "filePath": "$project.$version.docs.framework.$framework.{$}[.]md.tsx"
     }
   }
 }
