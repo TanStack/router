@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, getRouteApi } from '../src'
-import type { LinkComponent, MakeRouteMatch, UseNavigateResult } from '../src'
+import type { MakeRouteMatch, UseNavigateResult } from '../src'
+import type { LinkComponentRoute } from '../src/link'
 
 const rootRoute = createRootRoute()
 
@@ -90,7 +91,7 @@ describe('getRouteApi', () => {
   test('Link', () => {
     const Link = invoiceRouteApi.Link
     expectTypeOf(Link).toEqualTypeOf<
-      LinkComponent<'a', '/invoices/$invoiceId'>
+      LinkComponentRoute<'/invoices/$invoiceId'>
     >()
   })
 })
