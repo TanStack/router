@@ -257,14 +257,7 @@ export class Route<
 
   Link: LinkComponent<'a', TFullPath> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      const router = useRouter()
-      return (
-        <Link
-          ref={ref}
-          from={router.routesById[this.id].fullPath as never}
-          {...props}
-        />
-      )
+      return <Link ref={ref} from={this.fullPath as never} {...props} />
     },
   ) as unknown as LinkComponent<'a', TFullPath>
 }
@@ -455,14 +448,7 @@ export class RootRoute<
 
   Link: LinkComponent<'a', '/'> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      const router = useRouter()
-      return (
-        <Link
-          ref={ref}
-          from={router.routesById[this.id].fullPath as never}
-          {...props}
-        />
-      )
+      return <Link ref={ref} from={this.fullPath} {...props} />
     },
   ) as unknown as LinkComponent<'a', '/'>
 }
