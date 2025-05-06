@@ -95,6 +95,9 @@ export function determineInitialRoutePath(routePath: string) {
     '<',
     '>',
     '|',
+    '!',
+    '$',
+    '%',
   ])
 
   const parts = routePath.split(/(?<!\[)\.(?!\])/g)
@@ -138,15 +141,39 @@ export function replaceBackslash(s: string) {
 }
 
 export function routePathToVariable(routePath: string): string {
+  const toVariableSafeChar = (char: string): string => {
+    if (/[a-zA-Z0-9_]/.test(char)) {
+      return char // Keep alphanumeric characters and underscores as is
+    }
+
+    // Replace special characters with meaningful text equivalents
+    switch (char) {
+      case '.':
+        return 'Dot'
+      case '-':
+        return 'Dash'
+      case '@':
+        return 'At'
+      case ' ':
+        return '' // Remove spaces
+      default:
+        return `Char${char.charCodeAt(0)}` // For any other characters
+    }
+  }
+
   return (
     removeUnderscores(routePath)
       ?.replace(/\/\$\//g, '/splat/')
       .replace(/\$$/g, 'splat')
+      .replace(/\$\{\$\}/g, 'splat')
       .replace(/\$/g, '')
       .split(/[/-]/g)
       .map((d, i) => (i > 0 ? capitalize(d) : d))
       .join('')
-      .replace(/([^a-zA-Z0-9]|[.])/gm, '')
+      .split('')
+      .map(toVariableSafeChar)
+      .join('')
+      // .replace(/([^a-zA-Z0-9]|[.])/gm, '')
       .replace(/^(\d)/g, 'R$1') ?? ''
   )
 }
