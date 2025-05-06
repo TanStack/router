@@ -85,14 +85,52 @@ export function removeTrailingSlash(s: string) {
 }
 
 export function determineInitialRoutePath(routePath: string) {
-  return (
-    cleanPath(
-      `/${routePath.split(/(?<!\[)\.(?!\])/g).join('/')}`.replace(
-        /\[(.)\]/g,
-        '$1',
-      ),
-    ) || ''
-  )
+  const DISALLOWED_ESCAPE_CHARS = new Set([
+    '/',
+    '\\',
+    '?',
+    '#',
+    ':',
+    '*',
+    '<',
+    '>',
+    '|',
+  ])
+
+  const parts = routePath.split(/(?<!\[)\.(?!\])/g)
+
+  // Escape any characters that in square brackets
+  const escapedParts = parts.map((part) => {
+    // Check if any disallowed characters are used in brackets
+    const BRACKET_CONTENT_RE = /\[(.*?)\]/g
+
+    let match
+    while ((match = BRACKET_CONTENT_RE.exec(part)) !== null) {
+      const character = match[1]
+      if (character === undefined) continue
+      if (DISALLOWED_ESCAPE_CHARS.has(character)) {
+        console.error(
+          `Error: Disallowed character "${character}" found in square brackets in route path "${routePath}".\nYou cannot use any of the following characters in square brackets: ${Array.from(
+            DISALLOWED_ESCAPE_CHARS,
+          ).join(', ')}\nPlease remove and/or replace them.`,
+        )
+        process.exit(1)
+      }
+    }
+
+    // Since this split segment is safe at this point, we can
+    // remove the brackets and replace them with the content inside
+    return part.replace(/\[(.)\]/g, '$1')
+  })
+
+  // If the syntax for prefix/suffix is different, from the path
+  // matching internals of router-core, we'd perform those changes here
+  // on the `escapedParts` array before it is joined back together in
+  // `final`
+
+  const final = cleanPath(`/${escapedParts.join('/')}`) || ''
+
+  return final
 }
 
 export function replaceBackslash(s: string) {
