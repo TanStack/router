@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 test.describe('params operations + prefix/suffix', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/params')
+    await page.goto('/params-ps')
   })
 
   test.describe('named params', () => {
@@ -10,19 +10,19 @@ test.describe('params operations + prefix/suffix', () => {
       // Test ID | Expected href
       {
         id: 'l-to-named-foo',
-        pathname: '/params/named/foo',
+        pathname: '/params-ps/named/foo',
         params: { foo: 'foo' },
         destHeadingId: 'ParamsNamedFoo',
       },
       {
         id: 'l-to-named-prefixfoo',
-        pathname: '/params/named/prefixfoo',
+        pathname: '/params-ps/named/prefixfoo',
         params: { foo: 'foo' },
         destHeadingId: 'ParamsNamedFooPrefix',
       },
       {
         id: 'l-to-named-foosuffix',
-        pathname: '/params/named/foosuffix',
+        pathname: '/params-ps/named/foosuffix',
         params: { foo: 'foo' },
         destHeadingId: 'ParamsNamedFooSuffix',
       },
@@ -81,19 +81,19 @@ test.describe('params operations + prefix/suffix', () => {
       // Test ID | Expected href
       {
         id: 'l-to-wildcard-foo',
-        pathname: '/params/wildcard/foo',
+        pathname: '/params-ps/wildcard/foo',
         params: { '*': 'foo', _splat: 'foo' },
         destHeadingId: 'ParamsWildcardSplat',
       },
       {
         id: 'l-to-wildcard-prefixfoo',
-        pathname: '/params/wildcard/prefixfoo',
+        pathname: '/params-ps/wildcard/prefixfoo',
         params: { '*': 'foo', _splat: 'foo' },
         destHeadingId: 'ParamsWildcardSplatPrefix',
       },
       {
         id: 'l-to-wildcard-foosuffix',
-        pathname: '/params/wildcard/foosuffix',
+        pathname: '/params-ps/wildcard/foosuffix',
         params: { '*': 'foo', _splat: 'foo' },
         destHeadingId: 'ParamsWildcardSplatSuffix',
       },

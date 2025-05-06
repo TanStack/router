@@ -206,13 +206,13 @@ function LayoutBComponent() {
   return <div>I'm layout B!</div>
 }
 
-const paramsRoute = createRoute({
+const paramsPsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/params',
+  path: '/params-ps',
 })
 
-const paramsIndexRoute = createRoute({
-  getParentRoute: () => paramsRoute,
+const paramsPsIndexRoute = createRoute({
+  getParentRoute: () => paramsPsRoute,
   path: '/',
   component: function ParamsIndex() {
     return (
@@ -222,28 +222,28 @@ const paramsIndexRoute = createRoute({
           <li>
             <Link
               data-testid="l-to-named-foo"
-              to="/params/named/$foo"
+              to="/params-ps/named/$foo"
               params={{ foo: 'foo' }}
             >
-              /params/named/$foo
+              /params-ps/named/$foo
             </Link>
           </li>
           <li>
             <Link
               data-testid="l-to-named-prefixfoo"
-              to="/params/named/prefix${foo}"
+              to="/params-ps/named/prefix${foo}"
               params={{ foo: 'foo' }}
             >
-              /params/named/{'prefix${foo}'}
+              /params-ps/named/{'prefix${foo}'}
             </Link>
           </li>
           <li>
             <Link
               data-testid="l-to-named-foosuffix"
-              to="/params/named/${foo}suffix"
+              to="/params-ps/named/${foo}suffix"
               params={{ foo: 'foo' }}
             >
-              /params/named/{'${foo}suffix'}
+              /params-ps/named/{'${foo}suffix'}
             </Link>
           </li>
         </ul>
@@ -253,28 +253,28 @@ const paramsIndexRoute = createRoute({
           <li>
             <Link
               data-testid="l-to-wildcard-foo"
-              to="/params/wildcard/$"
+              to="/params-ps/wildcard/$"
               params={{ _splat: 'foo' }}
             >
-              /params/wildcard/$
+              /params-ps/wildcard/$
             </Link>
           </li>
           <li>
             <Link
               data-testid="l-to-wildcard-prefixfoo"
-              to="/params/wildcard/prefix${$}"
+              to="/params-ps/wildcard/prefix${$}"
               params={{ _splat: 'foo' }}
             >
-              /params/wildcard/{'prefix${$}'}
+              /params-ps/wildcard/{'prefix${$}'}
             </Link>
           </li>
           <li>
             <Link
               data-testid="l-to-wildcard-foosuffix"
-              to="/params/wildcard/${$}suffix"
+              to="/params-ps/wildcard/${$}suffix"
               params={{ _splat: 'foo' }}
             >
-              /params/wildcard/{'${$}suffix'}
+              /params-ps/wildcard/{'${$}suffix'}
             </Link>
           </li>
         </ul>
@@ -283,24 +283,24 @@ const paramsIndexRoute = createRoute({
   },
 })
 
-const paramsNamedRoute = createRoute({
-  getParentRoute: () => paramsRoute,
+const paramsPsNamedRoute = createRoute({
+  getParentRoute: () => paramsPsRoute,
   path: '/named',
 })
 
-const paramsNamedIndexRoute = createRoute({
-  getParentRoute: () => paramsNamedRoute,
+const paramsPsNamedIndexRoute = createRoute({
+  getParentRoute: () => paramsPsNamedRoute,
   path: '/',
   beforeLoad: () => {
     throw redirect({ to: '/params' })
   },
 })
 
-const paramsNamedFooRoute = createRoute({
-  getParentRoute: () => paramsNamedRoute,
+const paramsPsNamedFooRoute = createRoute({
+  getParentRoute: () => paramsPsNamedRoute,
   path: '/$foo',
   component: function ParamsNamedFoo() {
-    const p = paramsNamedFooRoute.useParams()
+    const p = paramsPsNamedFooRoute.useParams()
     return (
       <div>
         <h3>ParamsNamedFoo</h3>
@@ -310,11 +310,11 @@ const paramsNamedFooRoute = createRoute({
   },
 })
 
-const paramsNamedFooPrefixRoute = createRoute({
-  getParentRoute: () => paramsNamedRoute,
+const paramsPsNamedFooPrefixRoute = createRoute({
+  getParentRoute: () => paramsPsNamedRoute,
   path: '/prefix${foo}',
   component: function ParamsNamedFooMarkdown() {
-    const p = paramsNamedFooPrefixRoute.useParams()
+    const p = paramsPsNamedFooPrefixRoute.useParams()
     return (
       <div>
         <h3>ParamsNamedFooPrefix</h3>
@@ -324,11 +324,11 @@ const paramsNamedFooPrefixRoute = createRoute({
   },
 })
 
-const paramsNamedFooSuffixRoute = createRoute({
-  getParentRoute: () => paramsNamedRoute,
+const paramsPsNamedFooSuffixRoute = createRoute({
+  getParentRoute: () => paramsPsNamedRoute,
   path: '/${foo}suffix',
   component: function ParamsNamedFooSuffix() {
-    const p = paramsNamedFooSuffixRoute.useParams()
+    const p = paramsPsNamedFooSuffixRoute.useParams()
     return (
       <div>
         <h3>ParamsNamedFooSuffix</h3>
@@ -338,24 +338,24 @@ const paramsNamedFooSuffixRoute = createRoute({
   },
 })
 
-const paramsWildcardRoute = createRoute({
-  getParentRoute: () => paramsRoute,
+const paramsPsWildcardRoute = createRoute({
+  getParentRoute: () => paramsPsRoute,
   path: '/wildcard',
 })
 
-const paramsWildcardIndexRoute = createRoute({
-  getParentRoute: () => paramsWildcardRoute,
+const paramsPsWildcardIndexRoute = createRoute({
+  getParentRoute: () => paramsPsWildcardRoute,
   path: '/',
   beforeLoad: () => {
     throw redirect({ to: '/params' })
   },
 })
 
-const paramsWildcardSplatRoute = createRoute({
-  getParentRoute: () => paramsWildcardRoute,
+const paramsPsWildcardSplatRoute = createRoute({
+  getParentRoute: () => paramsPsWildcardRoute,
   path: '$',
   component: function ParamsWildcardSplat() {
-    const p = paramsWildcardSplatRoute.useParams()
+    const p = paramsPsWildcardSplatRoute.useParams()
     return (
       <div>
         <h3>ParamsWildcardSplat</h3>
@@ -365,11 +365,11 @@ const paramsWildcardSplatRoute = createRoute({
   },
 })
 
-const paramsWildcardSplatPrefixRoute = createRoute({
-  getParentRoute: () => paramsWildcardRoute,
+const paramsPsWildcardSplatPrefixRoute = createRoute({
+  getParentRoute: () => paramsPsWildcardRoute,
   path: 'prefix${$}',
   component: function ParamsWildcardSplatPrefix() {
-    const p = paramsWildcardSplatPrefixRoute.useParams()
+    const p = paramsPsWildcardSplatPrefixRoute.useParams()
     return (
       <div>
         <h3>ParamsWildcardSplatPrefix</h3>
@@ -379,11 +379,11 @@ const paramsWildcardSplatPrefixRoute = createRoute({
   },
 })
 
-const paramsWildcardSplatSuffixRoute = createRoute({
-  getParentRoute: () => paramsWildcardRoute,
+const paramsPsWildcardSplatSuffixRoute = createRoute({
+  getParentRoute: () => paramsPsWildcardRoute,
   path: '${$}suffix',
   component: function ParamsWildcardSplatSuffix() {
-    const p = paramsWildcardSplatSuffixRoute.useParams()
+    const p = paramsPsWildcardSplatSuffixRoute.useParams()
     return (
       <div>
         <h3>ParamsWildcardSplatSuffix</h3>
@@ -398,20 +398,20 @@ const routeTree = rootRoute.addChildren([
   layoutRoute.addChildren([
     layout2Route.addChildren([layoutARoute, layoutBRoute]),
   ]),
-  paramsRoute.addChildren([
-    paramsNamedRoute.addChildren([
-      paramsNamedFooPrefixRoute,
-      paramsNamedFooSuffixRoute,
-      paramsNamedFooRoute,
-      paramsNamedIndexRoute,
+  paramsPsRoute.addChildren([
+    paramsPsNamedRoute.addChildren([
+      paramsPsNamedFooPrefixRoute,
+      paramsPsNamedFooSuffixRoute,
+      paramsPsNamedFooRoute,
+      paramsPsNamedIndexRoute,
     ]),
-    paramsWildcardRoute.addChildren([
-      paramsWildcardSplatRoute,
-      paramsWildcardSplatPrefixRoute,
-      paramsWildcardSplatSuffixRoute,
-      paramsWildcardIndexRoute,
+    paramsPsWildcardRoute.addChildren([
+      paramsPsWildcardSplatRoute,
+      paramsPsWildcardSplatPrefixRoute,
+      paramsPsWildcardSplatSuffixRoute,
+      paramsPsWildcardIndexRoute,
     ]),
-    paramsIndexRoute,
+    paramsPsIndexRoute,
   ]),
   indexRoute,
 ])
