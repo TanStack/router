@@ -243,9 +243,7 @@ export class Route<
   }
 
   Link: LinkComponent<'a', TFullPath> = (props) => {
-    const router = useRouter()
-    const fullPath = router.routesById[this.id as string].fullPath
-    return <Link from={fullPath as never} {...props} />
+    return <Link from={this.fullPath} {...props} />
   }
 }
 
@@ -430,9 +428,7 @@ export class RootRoute<
   }
 
   Link: LinkComponent<'a', '/'> = (props) => {
-    const router = useRouter()
-    const fullPath = router.routesById[this.id as string].fullPath
-    return <Link from={fullPath as never} {...props} />
+    return <Link from={this.fullPath} {...props} />
   }
 }
 
