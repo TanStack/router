@@ -509,9 +509,12 @@ export type CreateLinkProps = LinkProps<
   string
 >
 
-export type LinkComponent<TComp> = <
+export type LinkComponent<
+  in out TComp,
+  in out TDefaultFrom extends string = string,
+> = <
   TRouter extends AnyRouter = RegisteredRouter,
-  const TFrom extends string = string,
+  const TFrom extends string = TDefaultFrom,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',

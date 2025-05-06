@@ -4,6 +4,7 @@ import {
   BaseRouteApi,
   notFound,
 } from '@tanstack/router-core'
+import { Link } from './link'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
@@ -41,6 +42,7 @@ import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
 import type * as Solid from 'solid-js'
 import type { UseRouteContextRoute } from './useRouteContext'
+import type { LinkComponent } from './link'
 
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
@@ -61,6 +63,7 @@ declare module '@tanstack/router-core' {
     useLoaderDeps: UseLoaderDepsRoute<TId>
     useLoaderData: UseLoaderDataRoute<TId>
     useNavigate: () => UseNavigateResult<TFullPath>
+    Link: LinkComponent<'a', TFullPath>
   }
 }
 
@@ -127,6 +130,14 @@ export class RouteApi<
 
   notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id as string, ...opts })
+  }
+
+  Link: LinkComponent<'a', RouteTypesById<TRouter, TId>['fullPath']> = (
+    props,
+  ) => {
+    const router = useRouter()
+    const fullPath = router.routesById[this.id as string].fullPath
+    return <Link from={fullPath as never} {...props} />
   }
 }
 
@@ -229,6 +240,12 @@ export class Route<
 
   useNavigate = (): UseNavigateResult<TFullPath> => {
     return useNavigate({ from: this.fullPath })
+  }
+
+  Link: LinkComponent<'a', TFullPath> = (props) => {
+    const router = useRouter()
+    const fullPath = router.routesById[this.id as string].fullPath
+    return <Link from={fullPath as never} {...props} />
   }
 }
 
@@ -410,6 +427,12 @@ export class RootRoute<
 
   useNavigate = (): UseNavigateResult<'/'> => {
     return useNavigate({ from: this.fullPath })
+  }
+
+  Link: LinkComponent<'a', '/'> = (props) => {
+    const router = useRouter()
+    const fullPath = router.routesById[this.id as string].fullPath
+    return <Link from={fullPath as never} {...props} />
   }
 }
 

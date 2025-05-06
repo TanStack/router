@@ -4,6 +4,7 @@ import {
   BaseRouteApi,
   notFound,
 } from '@tanstack/router-core'
+import React from 'react'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
@@ -11,6 +12,7 @@ import { useSearch } from './useSearch'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
+import { Link } from './link'
 import type {
   AnyContext,
   AnyRoute,
@@ -39,8 +41,8 @@ import type { UseMatchRoute } from './useMatch'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
-import type * as React from 'react'
 import type { UseRouteContextRoute } from './useRouteContext'
+import type { LinkComponent } from './link'
 
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
@@ -61,6 +63,7 @@ declare module '@tanstack/router-core' {
     useLoaderDeps: UseLoaderDepsRoute<TId>
     useLoaderData: UseLoaderDataRoute<TId>
     useNavigate: () => UseNavigateResult<TFullPath>
+    Link: LinkComponent<'a', TFullPath>
   }
 }
 
@@ -133,6 +136,16 @@ export class RouteApi<
   notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id as string, ...opts })
   }
+
+  Link: LinkComponent<'a', RouteTypesById<TRouter, TId>['fullPath']> =
+    React.forwardRef((props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
+      const router = useRouter()
+      const fullPath = router.routesById[this.id as string].fullPath
+      return <Link ref={ref} from={fullPath as never} {...props} />
+    }) as unknown as LinkComponent<
+      'a',
+      RouteTypesById<TRouter, TId>['fullPath']
+    >
 }
 
 export class Route<
@@ -241,6 +254,19 @@ export class Route<
   useNavigate = (): UseNavigateResult<TFullPath> => {
     return useNavigate({ from: this.fullPath })
   }
+
+  Link: LinkComponent<'a', TFullPath> = React.forwardRef(
+    (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
+      const router = useRouter()
+      return (
+        <Link
+          ref={ref}
+          from={router.routesById[this.id].fullPath as never}
+          {...props}
+        />
+      )
+    },
+  ) as unknown as LinkComponent<'a', TFullPath>
 }
 
 export function createRoute<
@@ -426,6 +452,19 @@ export class RootRoute<
   useNavigate = (): UseNavigateResult<'/'> => {
     return useNavigate({ from: this.fullPath })
   }
+
+  Link: LinkComponent<'a', '/'> = React.forwardRef(
+    (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
+      const router = useRouter()
+      return (
+        <Link
+          ref={ref}
+          from={router.routesById[this.id].fullPath as never}
+          {...props}
+        />
+      )
+    },
+  ) as unknown as LinkComponent<'a', '/'>
 }
 
 export function createRootRoute<
