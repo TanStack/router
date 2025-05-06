@@ -261,11 +261,13 @@ async function handleServerRequest({
         return redirectOrNotFoundResponse(error)
       }
 
-      console.info()
-      console.info('Server Fn Error!')
-      console.info()
-      console.error(error)
-      console.info()
+      if (process.env.NODE_ENV === 'development') {
+        console.info()
+        console.info('Server Fn Error!')
+        console.info()
+        console.error(error)
+        console.info()
+      }
 
       return new Response(startSerializer.stringify(error), {
         status: 500,
