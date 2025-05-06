@@ -144,20 +144,20 @@ export function resolvePath({
     if (segment.type === 'param') {
       const param = segment.value.substring(1)
       if (segment.prefixSegment && segment.suffixSegment) {
-        return `${segment.prefixSegment}$\{${param}}${segment.suffixSegment}`
+        return `${segment.prefixSegment}{$${param}}${segment.suffixSegment}`
       } else if (segment.prefixSegment) {
-        return `${segment.prefixSegment}$\{${param}}`
+        return `${segment.prefixSegment}{$${param}}`
       } else if (segment.suffixSegment) {
-        return `$\{${param}}${segment.suffixSegment}`
+        return `{$${param}}${segment.suffixSegment}`
       }
     }
     if (segment.type === 'wildcard') {
       if (segment.prefixSegment && segment.suffixSegment) {
-        return `${segment.prefixSegment}\${$}${segment.suffixSegment}`
+        return `${segment.prefixSegment}{$}${segment.suffixSegment}`
       } else if (segment.prefixSegment) {
-        return `${segment.prefixSegment}\${$}`
+        return `${segment.prefixSegment}{$}`
       } else if (segment.suffixSegment) {
-        return `\${$}${segment.suffixSegment}`
+        return `{$}${segment.suffixSegment}`
       }
     }
     return segment.value
@@ -167,9 +167,9 @@ export function resolvePath({
 }
 
 const PARAM_RE = /^\$.{1,}$/ // $paramName
-const PARAM_W_CURLY_BRACES_RE = /^(.*?)\$\{([a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix${paramName}suffix
+const PARAM_W_CURLY_BRACES_RE = /^(.*?)\{(\$[a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix{$paramName}suffix
 const WILDCARD_RE = /^\$$/ // $
-const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\$\{\$\}(.*)$/ // prefix${$}suffix
+const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
 
 /**
  * Required: `/foo/$bar` ✅
@@ -227,7 +227,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
         const suffix = paramBracesMatch[3]
         return {
           type: 'param',
-          value: '$' + paramName,
+          value: '' + paramName,
           prefixSegment: prefix || undefined,
           suffixSegment: suffix || undefined,
         }

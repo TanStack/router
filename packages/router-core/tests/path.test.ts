@@ -274,17 +274,17 @@ describe('resolvePath', () => {
         it.each([
           { name: 'regular top-level', to: '/$' },
           { name: 'regular nested', to: '/params/wildcard/$' },
-          { name: 'with top-level prefix', to: '/prefix${$}' },
-          { name: 'with nested prefix', to: '/params/wildcard/prefix${$}' },
-          { name: 'with top-level suffix', to: '/${$}suffix' },
-          { name: 'with nested suffix', to: '/params/wildcard/${$}suffix' },
+          { name: 'with top-level prefix', to: '/prefix{$}' },
+          { name: 'with nested prefix', to: '/params/wildcard/prefix{$}' },
+          { name: 'with top-level suffix', to: '/{$}suffix' },
+          { name: 'with nested suffix', to: '/params/wildcard/{$}suffix' },
           {
             name: 'with top-level prefix + suffix',
-            to: '/prefix${$}suffix',
+            to: '/prefix{$}suffix',
           },
           {
             name: 'with nested prefix + suffix',
-            to: '/params/wildcard/prefix${$}suffix',
+            to: '/params/wildcard/prefix{$}suffix',
           },
         ])('$name', ({ to }) => {
           const candidate = base + trimPathLeft(to)
@@ -304,17 +304,17 @@ describe('resolvePath', () => {
         it.each([
           { name: 'regular top-level', to: '/$foo' },
           { name: 'regular nested', to: '/params/named/$foo' },
-          { name: 'with top-level prefix', to: '/prefix${foo}' },
-          { name: 'with nested prefix', to: '/params/named/prefix${foo}' },
-          { name: 'with top-level suffix', to: '/${foo}suffix' },
-          { name: 'with nested suffix', to: '/params/named/${foo}suffix' },
+          { name: 'with top-level prefix', to: '/prefix{$foo}' },
+          { name: 'with nested prefix', to: '/params/named/prefix{$foo}' },
+          { name: 'with top-level suffix', to: '/{$foo}suffix' },
+          { name: 'with nested suffix', to: '/params/named/{$foo}suffix' },
           {
             name: 'with top-level prefix + suffix',
-            to: '/prefix${foo}suffix',
+            to: '/prefix{$foo}suffix',
           },
           {
             name: 'with nested prefix + suffix',
-            to: '/params/named/prefix${foo}suffix',
+            to: '/params/named/prefix{$foo}suffix',
           },
         ])('$name', ({ to }) => {
           const candidate = base + trimPathLeft(to)
@@ -449,25 +449,25 @@ describe('interpolatePath', () => {
       },
       {
         name: 'regular curly braces',
-        to: '/${$}',
+        to: '/{$}',
         params: { _splat: 'bar/foo/me' },
         result: '/bar/foo/me',
       },
       {
         name: 'with prefix',
-        to: '/prefix${$}',
+        to: '/prefix{$}',
         params: { _splat: 'bar' },
         result: '/prefixbar',
       },
       {
         name: 'with suffix',
-        to: '/${$}-suffix',
+        to: '/{$}-suffix',
         params: { _splat: 'bar' },
         result: '/bar-suffix',
       },
       {
         name: 'with prefix + suffix',
-        to: '/prefix${$}-suffix',
+        to: '/prefix{$}-suffix',
         params: { _splat: 'bar' },
         result: '/prefixbar-suffix',
       },
@@ -491,25 +491,25 @@ describe('interpolatePath', () => {
       },
       {
         name: 'regular curly braces',
-        to: '/${foo}',
+        to: '/{$foo}',
         params: { foo: 'bar' },
         result: '/bar',
       },
       {
         name: 'with prefix',
-        to: '/prefix${bar}',
+        to: '/prefix{$bar}',
         params: { bar: 'baz' },
         result: '/prefixbaz',
       },
       {
         name: 'with suffix',
-        to: '/${foo}.suffix',
+        to: '/{$foo}.suffix',
         params: { foo: 'bar' },
         result: '/bar.suffix',
       },
       {
         name: 'with prefix and suffix',
-        to: '/prefix${param}.suffix',
+        to: '/prefix{$param}.suffix',
         params: { param: 'foobar' },
         result: '/prefixfoobar.suffix',
       },
@@ -680,7 +680,7 @@ describe('matchPathname', () => {
         name: 'regular curly braces',
         input: '/docs/foo/bar',
         matchingOptions: {
-          to: '/docs/${$}',
+          to: '/docs/{$}',
         },
         expectedMatchedParams: {
           '*': 'foo/bar',
@@ -691,7 +691,7 @@ describe('matchPathname', () => {
         name: 'with prefix',
         input: '/docs/prefixbar/baz',
         matchingOptions: {
-          to: '/docs/prefix${$}',
+          to: '/docs/prefix{$}',
         },
         expectedMatchedParams: {
           '*': 'bar/baz',
@@ -702,7 +702,7 @@ describe('matchPathname', () => {
         name: 'with suffix',
         input: '/docs/bar/baz.suffix',
         matchingOptions: {
-          to: '/docs/${$}.suffix',
+          to: '/docs/{$}.suffix',
         },
         expectedMatchedParams: {
           '*': 'bar/baz',
@@ -713,7 +713,7 @@ describe('matchPathname', () => {
         name: 'with prefix + suffix',
         input: '/docs/prefixbar/baz-suffix',
         matchingOptions: {
-          to: '/docs/prefix${$}-suffix',
+          to: '/docs/prefix{$}-suffix',
         },
         expectedMatchedParams: {
           '*': 'bar/baz',
@@ -743,7 +743,7 @@ describe('matchPathname', () => {
         name: 'regular curly braces',
         input: '/docs/foo',
         matchingOptions: {
-          to: '/docs/${bar}',
+          to: '/docs/{$bar}',
         },
         expectedMatchedParams: {
           bar: 'foo',
@@ -753,7 +753,7 @@ describe('matchPathname', () => {
         name: 'with prefix',
         input: '/docs/prefixfoo',
         matchingOptions: {
-          to: '/docs/prefix${bar}',
+          to: '/docs/prefix{$bar}',
         },
         expectedMatchedParams: {
           bar: 'foo',
@@ -763,7 +763,7 @@ describe('matchPathname', () => {
         name: 'with suffix',
         input: '/docs/foo.suffix',
         matchingOptions: {
-          to: '/docs/${bar}.suffix',
+          to: '/docs/{$bar}.suffix',
         },
         expectedMatchedParams: {
           bar: 'foo',
@@ -773,7 +773,7 @@ describe('matchPathname', () => {
         name: 'with prefix + suffix',
         input: '/docs/prefixfoobar-suffix',
         matchingOptions: {
-          to: '/docs/prefix${param}-suffix',
+          to: '/docs/prefix{$param}-suffix',
         },
         expectedMatchedParams: {
           param: 'foobar',
@@ -912,7 +912,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'regular curly braces',
-        to: '/${$}',
+        to: '/{$}',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'wildcard', value: '$' },
@@ -920,7 +920,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with prefix (regular text)',
-        to: '/foo${$}',
+        to: '/foo{$}',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -932,7 +932,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with prefix + followed by special character',
-        to: '/foo.${$}',
+        to: '/foo.{$}',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -944,7 +944,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with suffix',
-        to: '/${$}-foo',
+        to: '/{$}-foo',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -956,7 +956,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with prefix + suffix',
-        to: '/foo${$}-bar',
+        to: '/foo{$}-bar',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -969,7 +969,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with prefix + followed by special character and a segment',
-        to: '/foo.${$}/bar',
+        to: '/foo.{$}/bar',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -998,7 +998,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'regular curly braces',
-        to: '/${bar}',
+        to: '/{$bar}',
         expected: [
           { type: 'pathname', value: '/' },
           { type: 'param', value: '$bar' },
@@ -1006,7 +1006,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with prefix (regular text)',
-        to: '/foo${bar}',
+        to: '/foo{$bar}',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -1018,7 +1018,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with prefix + followed by special character',
-        to: '/foo.${bar}',
+        to: '/foo.{$bar}',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -1030,7 +1030,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with suffix',
-        to: '/${bar}.foo',
+        to: '/{$bar}.foo',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -1042,7 +1042,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with suffix + started by special character',
-        to: '/${bar}.foo',
+        to: '/{$bar}.foo',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -1054,7 +1054,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with suffix + started by special character and followed by segment',
-        to: '/${bar}.foo/baz',
+        to: '/{$bar}.foo/baz',
         expected: [
           { type: 'pathname', value: '/' },
           {
@@ -1067,7 +1067,7 @@ describe('parsePathname', () => {
       },
       {
         name: 'with suffix + prefix',
-        to: '/foo${bar}.baz',
+        to: '/foo{$bar}.baz',
         expected: [
           { type: 'pathname', value: '/' },
           {

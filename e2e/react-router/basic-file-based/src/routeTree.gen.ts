@@ -41,11 +41,11 @@ import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$
 import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdEditRouteImport } from './routes/posts_.$postId.edit'
 import { Route as ParamsSingleValueRouteImport } from './routes/params.single.$value'
-import { Route as ParamsPsWildcardPrefixsplatRouteImport } from './routes/params-ps/wildcard/prefix${$}'
-import { Route as ParamsPsWildcardSplatsuffixRouteImport } from './routes/params-ps/wildcard/${$}suffix'
+import { Route as ParamsPsWildcardChar123Char125suffixRouteImport } from './routes/params-ps/wildcard/{$}suffix'
+import { Route as ParamsPsWildcardPrefixChar123Char125RouteImport } from './routes/params-ps/wildcard/prefix{$}'
 import { Route as ParamsPsWildcardSplatRouteImport } from './routes/params-ps/wildcard/$'
-import { Route as ParamsPsNamedPrefixChar123fooChar125RouteImport } from './routes/params-ps/named/prefix${foo}'
-import { Route as ParamsPsNamedChar123fooChar125suffixRouteImport } from './routes/params-ps/named/${foo}suffix'
+import { Route as ParamsPsNamedChar123fooChar125suffixRouteImport } from './routes/params-ps/named/{$foo}suffix'
+import { Route as ParamsPsNamedPrefixChar123fooChar125RouteImport } from './routes/params-ps/named/prefix{$foo}'
 import { Route as ParamsPsNamedFooRouteImport } from './routes/params-ps/named/$foo'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
@@ -227,17 +227,17 @@ const ParamsSingleValueRoute = ParamsSingleValueRouteImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const ParamsPsWildcardPrefixsplatRoute =
-  ParamsPsWildcardPrefixsplatRouteImport.update({
-    id: '/params-ps/wildcard/prefix${$}',
-    path: '/params-ps/wildcard/prefix${$}',
+const ParamsPsWildcardChar123Char125suffixRoute =
+  ParamsPsWildcardChar123Char125suffixRouteImport.update({
+    id: '/params-ps/wildcard/{$}suffix',
+    path: '/params-ps/wildcard/{$}suffix',
     getParentRoute: () => rootRoute,
   } as any)
 
-const ParamsPsWildcardSplatsuffixRoute =
-  ParamsPsWildcardSplatsuffixRouteImport.update({
-    id: '/params-ps/wildcard/${$}suffix',
-    path: '/params-ps/wildcard/${$}suffix',
+const ParamsPsWildcardPrefixChar123Char125Route =
+  ParamsPsWildcardPrefixChar123Char125RouteImport.update({
+    id: '/params-ps/wildcard/prefix{$}',
+    path: '/params-ps/wildcard/prefix{$}',
     getParentRoute: () => rootRoute,
   } as any)
 
@@ -247,17 +247,17 @@ const ParamsPsWildcardSplatRoute = ParamsPsWildcardSplatRouteImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const ParamsPsNamedPrefixChar123fooChar125Route =
-  ParamsPsNamedPrefixChar123fooChar125RouteImport.update({
-    id: '/params-ps/named/prefix${foo}',
-    path: '/params-ps/named/prefix${foo}',
+const ParamsPsNamedChar123fooChar125suffixRoute =
+  ParamsPsNamedChar123fooChar125suffixRouteImport.update({
+    id: '/params-ps/named/{$foo}suffix',
+    path: '/params-ps/named/{$foo}suffix',
     getParentRoute: () => rootRoute,
   } as any)
 
-const ParamsPsNamedChar123fooChar125suffixRoute =
-  ParamsPsNamedChar123fooChar125suffixRouteImport.update({
-    id: '/params-ps/named/${foo}suffix',
-    path: '/params-ps/named/${foo}suffix',
+const ParamsPsNamedPrefixChar123fooChar125Route =
+  ParamsPsNamedPrefixChar123fooChar125RouteImport.update({
+    id: '/params-ps/named/prefix{$foo}',
+    path: '/params-ps/named/prefix{$foo}',
     getParentRoute: () => rootRoute,
   } as any)
 
@@ -456,18 +456,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParamsPsNamedFooRouteImport
       parentRoute: typeof rootRoute
     }
-    '/params-ps/named/${foo}suffix': {
-      id: '/params-ps/named/${foo}suffix'
-      path: '/params-ps/named/${foo}suffix'
-      fullPath: '/params-ps/named/${foo}suffix'
-      preLoaderRoute: typeof ParamsPsNamedChar123fooChar125suffixRouteImport
+    '/params-ps/named/prefix{$foo}': {
+      id: '/params-ps/named/prefix{$foo}'
+      path: '/params-ps/named/prefix{$foo}'
+      fullPath: '/params-ps/named/prefix{$foo}'
+      preLoaderRoute: typeof ParamsPsNamedPrefixChar123fooChar125RouteImport
       parentRoute: typeof rootRoute
     }
-    '/params-ps/named/prefix${foo}': {
-      id: '/params-ps/named/prefix${foo}'
-      path: '/params-ps/named/prefix${foo}'
-      fullPath: '/params-ps/named/prefix${foo}'
-      preLoaderRoute: typeof ParamsPsNamedPrefixChar123fooChar125RouteImport
+    '/params-ps/named/{$foo}suffix': {
+      id: '/params-ps/named/{$foo}suffix'
+      path: '/params-ps/named/{$foo}suffix'
+      fullPath: '/params-ps/named/{$foo}suffix'
+      preLoaderRoute: typeof ParamsPsNamedChar123fooChar125suffixRouteImport
       parentRoute: typeof rootRoute
     }
     '/params-ps/wildcard/$': {
@@ -477,18 +477,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParamsPsWildcardSplatRouteImport
       parentRoute: typeof rootRoute
     }
-    '/params-ps/wildcard/${$}suffix': {
-      id: '/params-ps/wildcard/${$}suffix'
-      path: '/params-ps/wildcard/${$}suffix'
-      fullPath: '/params-ps/wildcard/${$}suffix'
-      preLoaderRoute: typeof ParamsPsWildcardSplatsuffixRouteImport
+    '/params-ps/wildcard/prefix{$}': {
+      id: '/params-ps/wildcard/prefix{$}'
+      path: '/params-ps/wildcard/prefix{$}'
+      fullPath: '/params-ps/wildcard/prefix{$}'
+      preLoaderRoute: typeof ParamsPsWildcardPrefixChar123Char125RouteImport
       parentRoute: typeof rootRoute
     }
-    '/params-ps/wildcard/prefix${$}': {
-      id: '/params-ps/wildcard/prefix${$}'
-      path: '/params-ps/wildcard/prefix${$}'
-      fullPath: '/params-ps/wildcard/prefix${$}'
-      preLoaderRoute: typeof ParamsPsWildcardPrefixsplatRouteImport
+    '/params-ps/wildcard/{$}suffix': {
+      id: '/params-ps/wildcard/{$}suffix'
+      path: '/params-ps/wildcard/{$}suffix'
+      fullPath: '/params-ps/wildcard/{$}suffix'
+      preLoaderRoute: typeof ParamsPsWildcardChar123Char125suffixRouteImport
       parentRoute: typeof rootRoute
     }
     '/params/single/$value': {
@@ -773,22 +773,22 @@ declare module './routes/params-ps/named/$foo' {
     FileRoutesByPath['/params-ps/named/$foo']['fullPath']
   >
 }
-declare module './routes/params-ps/named/${foo}suffix' {
+declare module './routes/params-ps/named/prefix{$foo}' {
   const createFileRoute: CreateFileRoute<
-    '/params-ps/named/${foo}suffix',
-    FileRoutesByPath['/params-ps/named/${foo}suffix']['parentRoute'],
-    FileRoutesByPath['/params-ps/named/${foo}suffix']['id'],
-    FileRoutesByPath['/params-ps/named/${foo}suffix']['path'],
-    FileRoutesByPath['/params-ps/named/${foo}suffix']['fullPath']
+    '/params-ps/named/prefix{$foo}',
+    FileRoutesByPath['/params-ps/named/prefix{$foo}']['parentRoute'],
+    FileRoutesByPath['/params-ps/named/prefix{$foo}']['id'],
+    FileRoutesByPath['/params-ps/named/prefix{$foo}']['path'],
+    FileRoutesByPath['/params-ps/named/prefix{$foo}']['fullPath']
   >
 }
-declare module './routes/params-ps/named/prefix${foo}' {
+declare module './routes/params-ps/named/{$foo}suffix' {
   const createFileRoute: CreateFileRoute<
-    '/params-ps/named/prefix${foo}',
-    FileRoutesByPath['/params-ps/named/prefix${foo}']['parentRoute'],
-    FileRoutesByPath['/params-ps/named/prefix${foo}']['id'],
-    FileRoutesByPath['/params-ps/named/prefix${foo}']['path'],
-    FileRoutesByPath['/params-ps/named/prefix${foo}']['fullPath']
+    '/params-ps/named/{$foo}suffix',
+    FileRoutesByPath['/params-ps/named/{$foo}suffix']['parentRoute'],
+    FileRoutesByPath['/params-ps/named/{$foo}suffix']['id'],
+    FileRoutesByPath['/params-ps/named/{$foo}suffix']['path'],
+    FileRoutesByPath['/params-ps/named/{$foo}suffix']['fullPath']
   >
 }
 declare module './routes/params-ps/wildcard/$' {
@@ -800,22 +800,22 @@ declare module './routes/params-ps/wildcard/$' {
     FileRoutesByPath['/params-ps/wildcard/$']['fullPath']
   >
 }
-declare module './routes/params-ps/wildcard/${$}suffix' {
+declare module './routes/params-ps/wildcard/prefix{$}' {
   const createFileRoute: CreateFileRoute<
-    '/params-ps/wildcard/${$}suffix',
-    FileRoutesByPath['/params-ps/wildcard/${$}suffix']['parentRoute'],
-    FileRoutesByPath['/params-ps/wildcard/${$}suffix']['id'],
-    FileRoutesByPath['/params-ps/wildcard/${$}suffix']['path'],
-    FileRoutesByPath['/params-ps/wildcard/${$}suffix']['fullPath']
+    '/params-ps/wildcard/prefix{$}',
+    FileRoutesByPath['/params-ps/wildcard/prefix{$}']['parentRoute'],
+    FileRoutesByPath['/params-ps/wildcard/prefix{$}']['id'],
+    FileRoutesByPath['/params-ps/wildcard/prefix{$}']['path'],
+    FileRoutesByPath['/params-ps/wildcard/prefix{$}']['fullPath']
   >
 }
-declare module './routes/params-ps/wildcard/prefix${$}' {
+declare module './routes/params-ps/wildcard/{$}suffix' {
   const createFileRoute: CreateFileRoute<
-    '/params-ps/wildcard/prefix${$}',
-    FileRoutesByPath['/params-ps/wildcard/prefix${$}']['parentRoute'],
-    FileRoutesByPath['/params-ps/wildcard/prefix${$}']['id'],
-    FileRoutesByPath['/params-ps/wildcard/prefix${$}']['path'],
-    FileRoutesByPath['/params-ps/wildcard/prefix${$}']['fullPath']
+    '/params-ps/wildcard/{$}suffix',
+    FileRoutesByPath['/params-ps/wildcard/{$}suffix']['parentRoute'],
+    FileRoutesByPath['/params-ps/wildcard/{$}suffix']['id'],
+    FileRoutesByPath['/params-ps/wildcard/{$}suffix']['path'],
+    FileRoutesByPath['/params-ps/wildcard/{$}suffix']['fullPath']
   >
 }
 declare module './routes/params.single.$value' {
@@ -1013,11 +1013,11 @@ export interface FileRoutesByFullPath {
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRoute
-  '/params-ps/named/${foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
-  '/params-ps/named/prefix${foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/named/{$foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
   '/params-ps/wildcard/$': typeof ParamsPsWildcardSplatRoute
-  '/params-ps/wildcard/${$}suffix': typeof ParamsPsWildcardSplatsuffixRoute
-  '/params-ps/wildcard/prefix${$}': typeof ParamsPsWildcardPrefixsplatRoute
+  '/params-ps/wildcard/prefix{$}': typeof ParamsPsWildcardPrefixChar123Char125Route
+  '/params-ps/wildcard/{$}suffix': typeof ParamsPsWildcardChar123Char125suffixRoute
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -1049,11 +1049,11 @@ export interface FileRoutesByTo {
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRoute
-  '/params-ps/named/${foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
-  '/params-ps/named/prefix${foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/named/{$foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
   '/params-ps/wildcard/$': typeof ParamsPsWildcardSplatRoute
-  '/params-ps/wildcard/${$}suffix': typeof ParamsPsWildcardSplatsuffixRoute
-  '/params-ps/wildcard/prefix${$}': typeof ParamsPsWildcardPrefixsplatRoute
+  '/params-ps/wildcard/prefix{$}': typeof ParamsPsWildcardPrefixChar123Char125Route
+  '/params-ps/wildcard/{$}suffix': typeof ParamsPsWildcardChar123Char125suffixRoute
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -1091,11 +1091,11 @@ export interface FileRoutesById {
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRoute
-  '/params-ps/named/${foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
-  '/params-ps/named/prefix${foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/named/prefix{$foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/named/{$foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
   '/params-ps/wildcard/$': typeof ParamsPsWildcardSplatRoute
-  '/params-ps/wildcard/${$}suffix': typeof ParamsPsWildcardSplatsuffixRoute
-  '/params-ps/wildcard/prefix${$}': typeof ParamsPsWildcardPrefixsplatRoute
+  '/params-ps/wildcard/prefix{$}': typeof ParamsPsWildcardPrefixChar123Char125Route
+  '/params-ps/wildcard/{$}suffix': typeof ParamsPsWildcardChar123Char125suffixRoute
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts_/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -1131,11 +1131,11 @@ export interface FileRouteTypes {
     | '/layout-a'
     | '/layout-b'
     | '/params-ps/named/$foo'
-    | '/params-ps/named/${foo}suffix'
-    | '/params-ps/named/prefix${foo}'
+    | '/params-ps/named/prefix{$foo}'
+    | '/params-ps/named/{$foo}suffix'
     | '/params-ps/wildcard/$'
-    | '/params-ps/wildcard/${$}suffix'
-    | '/params-ps/wildcard/prefix${$}'
+    | '/params-ps/wildcard/prefix{$}'
+    | '/params-ps/wildcard/{$}suffix'
     | '/params/single/$value'
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
@@ -1166,11 +1166,11 @@ export interface FileRouteTypes {
     | '/layout-a'
     | '/layout-b'
     | '/params-ps/named/$foo'
-    | '/params-ps/named/${foo}suffix'
-    | '/params-ps/named/prefix${foo}'
+    | '/params-ps/named/prefix{$foo}'
+    | '/params-ps/named/{$foo}suffix'
     | '/params-ps/wildcard/$'
-    | '/params-ps/wildcard/${$}suffix'
-    | '/params-ps/wildcard/prefix${$}'
+    | '/params-ps/wildcard/prefix{$}'
+    | '/params-ps/wildcard/{$}suffix'
     | '/params/single/$value'
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
@@ -1206,11 +1206,11 @@ export interface FileRouteTypes {
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
     | '/params-ps/named/$foo'
-    | '/params-ps/named/${foo}suffix'
-    | '/params-ps/named/prefix${foo}'
+    | '/params-ps/named/prefix{$foo}'
+    | '/params-ps/named/{$foo}suffix'
     | '/params-ps/wildcard/$'
-    | '/params-ps/wildcard/${$}suffix'
-    | '/params-ps/wildcard/prefix${$}'
+    | '/params-ps/wildcard/prefix{$}'
+    | '/params-ps/wildcard/{$}suffix'
     | '/params/single/$value'
     | '/posts_/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
@@ -1238,11 +1238,11 @@ export interface RootRouteChildren {
   ParamsPsIndexRoute: typeof ParamsPsIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   ParamsPsNamedFooRoute: typeof ParamsPsNamedFooRoute
-  ParamsPsNamedChar123fooChar125suffixRoute: typeof ParamsPsNamedChar123fooChar125suffixRoute
   ParamsPsNamedPrefixChar123fooChar125Route: typeof ParamsPsNamedPrefixChar123fooChar125Route
+  ParamsPsNamedChar123fooChar125suffixRoute: typeof ParamsPsNamedChar123fooChar125suffixRoute
   ParamsPsWildcardSplatRoute: typeof ParamsPsWildcardSplatRoute
-  ParamsPsWildcardSplatsuffixRoute: typeof ParamsPsWildcardSplatsuffixRoute
-  ParamsPsWildcardPrefixsplatRoute: typeof ParamsPsWildcardPrefixsplatRoute
+  ParamsPsWildcardPrefixChar123Char125Route: typeof ParamsPsWildcardPrefixChar123Char125Route
+  ParamsPsWildcardChar123Char125suffixRoute: typeof ParamsPsWildcardChar123Char125suffixRoute
   ParamsSingleValueRoute: typeof ParamsSingleValueRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
   RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
@@ -1266,13 +1266,15 @@ const rootRouteChildren: RootRouteChildren = {
   ParamsPsIndexRoute: ParamsPsIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   ParamsPsNamedFooRoute: ParamsPsNamedFooRoute,
-  ParamsPsNamedChar123fooChar125suffixRoute:
-    ParamsPsNamedChar123fooChar125suffixRoute,
   ParamsPsNamedPrefixChar123fooChar125Route:
     ParamsPsNamedPrefixChar123fooChar125Route,
+  ParamsPsNamedChar123fooChar125suffixRoute:
+    ParamsPsNamedChar123fooChar125suffixRoute,
   ParamsPsWildcardSplatRoute: ParamsPsWildcardSplatRoute,
-  ParamsPsWildcardSplatsuffixRoute: ParamsPsWildcardSplatsuffixRoute,
-  ParamsPsWildcardPrefixsplatRoute: ParamsPsWildcardPrefixsplatRoute,
+  ParamsPsWildcardPrefixChar123Char125Route:
+    ParamsPsWildcardPrefixChar123Char125Route,
+  ParamsPsWildcardChar123Char125suffixRoute:
+    ParamsPsWildcardChar123Char125suffixRoute,
   ParamsSingleValueRoute: ParamsSingleValueRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
   RedirectPreloadFirstRoute: RedirectPreloadFirstRoute,
@@ -1308,11 +1310,11 @@ import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.ge
         "/params-ps/",
         "/redirect/",
         "/params-ps/named/$foo",
-        "/params-ps/named/${foo}suffix",
-        "/params-ps/named/prefix${foo}",
+        "/params-ps/named/prefix{$foo}",
+        "/params-ps/named/{$foo}suffix",
         "/params-ps/wildcard/$",
-        "/params-ps/wildcard/${$}suffix",
-        "/params-ps/wildcard/prefix${$}",
+        "/params-ps/wildcard/prefix{$}",
+        "/params-ps/wildcard/{$}suffix",
         "/params/single/$value",
         "/posts_/$postId/edit",
         "/redirect/preload/first",
@@ -1426,20 +1428,20 @@ import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.ge
     "/params-ps/named/$foo": {
       "filePath": "params-ps/named/$foo.tsx"
     },
-    "/params-ps/named/${foo}suffix": {
-      "filePath": "params-ps/named/${foo}suffix.tsx"
+    "/params-ps/named/prefix{$foo}": {
+      "filePath": "params-ps/named/prefix{$foo}.tsx"
     },
-    "/params-ps/named/prefix${foo}": {
-      "filePath": "params-ps/named/prefix${foo}.tsx"
+    "/params-ps/named/{$foo}suffix": {
+      "filePath": "params-ps/named/{$foo}suffix.tsx"
     },
     "/params-ps/wildcard/$": {
       "filePath": "params-ps/wildcard/$.tsx"
     },
-    "/params-ps/wildcard/${$}suffix": {
-      "filePath": "params-ps/wildcard/${$}suffix.tsx"
+    "/params-ps/wildcard/prefix{$}": {
+      "filePath": "params-ps/wildcard/prefix{$}.tsx"
     },
-    "/params-ps/wildcard/prefix${$}": {
-      "filePath": "params-ps/wildcard/prefix${$}.tsx"
+    "/params-ps/wildcard/{$}suffix": {
+      "filePath": "params-ps/wildcard/{$}suffix.tsx"
     },
     "/params/single/$value": {
       "filePath": "params.single.$value.tsx"
