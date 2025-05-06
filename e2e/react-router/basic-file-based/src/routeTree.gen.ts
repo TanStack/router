@@ -22,6 +22,7 @@ import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
+import { Route as ParamsPsIndexRouteImport } from './routes/params-ps/index'
 import { Route as StructuralSharingEnabledRouteImport } from './routes/structural-sharing.$enabled'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
@@ -31,6 +32,8 @@ import { Route as groupInsideRouteImport } from './routes/(group)/inside'
 import { Route as groupLayoutRouteImport } from './routes/(group)/_layout'
 import { Route as anotherGroupOnlyrouteinsideRouteImport } from './routes/(another-group)/onlyrouteinside'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
+import { Route as ParamsPsWildcardIndexRouteImport } from './routes/params-ps/wildcard/index'
+import { Route as ParamsPsNamedIndexRouteImport } from './routes/params-ps/named/index'
 import { Route as RedirectPreloadThirdRouteImport } from './routes/redirect/preload/third'
 import { Route as RedirectPreloadSecondRouteImport } from './routes/redirect/preload/second'
 import { Route as RedirectPreloadFirstRouteImport } from './routes/redirect/preload/first'
@@ -38,6 +41,12 @@ import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$
 import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdEditRouteImport } from './routes/posts_.$postId.edit'
 import { Route as ParamsSingleValueRouteImport } from './routes/params.single.$value'
+import { Route as ParamsPsWildcardPrefixsplatRouteImport } from './routes/params-ps/wildcard/prefix${$}'
+import { Route as ParamsPsWildcardSplatsuffixRouteImport } from './routes/params-ps/wildcard/${$}suffix'
+import { Route as ParamsPsWildcardSplatRouteImport } from './routes/params-ps/wildcard/$'
+import { Route as ParamsPsNamedPrefixChar123fooChar125RouteImport } from './routes/params-ps/named/prefix${foo}'
+import { Route as ParamsPsNamedChar123fooChar125suffixRouteImport } from './routes/params-ps/named/${foo}suffix'
+import { Route as ParamsPsNamedFooRouteImport } from './routes/params-ps/named/$foo'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
@@ -101,6 +110,12 @@ const PostsIndexRoute = PostsIndexRouteImport.update({
   getParentRoute: () => PostsRoute,
 } as any)
 
+const ParamsPsIndexRoute = ParamsPsIndexRouteImport.update({
+  id: '/params-ps/',
+  path: '/params-ps/',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const StructuralSharingEnabledRoute =
   StructuralSharingEnabledRouteImport.update({
     id: '/structural-sharing/$enabled',
@@ -157,6 +172,18 @@ const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   getParentRoute: () => RedirectTargetRoute,
 } as any)
 
+const ParamsPsWildcardIndexRoute = ParamsPsWildcardIndexRouteImport.update({
+  id: '/params-ps/wildcard/',
+  path: '/params-ps/wildcard/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ParamsPsNamedIndexRoute = ParamsPsNamedIndexRouteImport.update({
+  id: '/params-ps/named/',
+  path: '/params-ps/named/',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const RedirectPreloadThirdRoute = RedirectPreloadThirdRouteImport.update({
   id: '/redirect/preload/third',
   path: '/redirect/preload/third',
@@ -197,6 +224,46 @@ const PostsPostIdEditRoute = PostsPostIdEditRouteImport.update({
 const ParamsSingleValueRoute = ParamsSingleValueRouteImport.update({
   id: '/params/single/$value',
   path: '/params/single/$value',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ParamsPsWildcardPrefixsplatRoute =
+  ParamsPsWildcardPrefixsplatRouteImport.update({
+    id: '/params-ps/wildcard/prefix${$}',
+    path: '/params-ps/wildcard/prefix${$}',
+    getParentRoute: () => rootRoute,
+  } as any)
+
+const ParamsPsWildcardSplatsuffixRoute =
+  ParamsPsWildcardSplatsuffixRouteImport.update({
+    id: '/params-ps/wildcard/${$}suffix',
+    path: '/params-ps/wildcard/${$}suffix',
+    getParentRoute: () => rootRoute,
+  } as any)
+
+const ParamsPsWildcardSplatRoute = ParamsPsWildcardSplatRouteImport.update({
+  id: '/params-ps/wildcard/$',
+  path: '/params-ps/wildcard/$',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ParamsPsNamedPrefixChar123fooChar125Route =
+  ParamsPsNamedPrefixChar123fooChar125RouteImport.update({
+    id: '/params-ps/named/prefix${foo}',
+    path: '/params-ps/named/prefix${foo}',
+    getParentRoute: () => rootRoute,
+  } as any)
+
+const ParamsPsNamedChar123fooChar125suffixRoute =
+  ParamsPsNamedChar123fooChar125suffixRouteImport.update({
+    id: '/params-ps/named/${foo}suffix',
+    path: '/params-ps/named/${foo}suffix',
+    getParentRoute: () => rootRoute,
+  } as any)
+
+const ParamsPsNamedFooRoute = ParamsPsNamedFooRouteImport.update({
+  id: '/params-ps/named/$foo',
+  path: '/params-ps/named/$foo',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -333,6 +400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StructuralSharingEnabledRouteImport
       parentRoute: typeof rootRoute
     }
+    '/params-ps/': {
+      id: '/params-ps/'
+      path: '/params-ps'
+      fullPath: '/params-ps'
+      preLoaderRoute: typeof ParamsPsIndexRouteImport
+      parentRoute: typeof rootRoute
+    }
     '/posts/': {
       id: '/posts/'
       path: '/'
@@ -374,6 +448,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/layout-b'
       preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
       parentRoute: typeof LayoutLayout2RouteImport
+    }
+    '/params-ps/named/$foo': {
+      id: '/params-ps/named/$foo'
+      path: '/params-ps/named/$foo'
+      fullPath: '/params-ps/named/$foo'
+      preLoaderRoute: typeof ParamsPsNamedFooRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/params-ps/named/${foo}suffix': {
+      id: '/params-ps/named/${foo}suffix'
+      path: '/params-ps/named/${foo}suffix'
+      fullPath: '/params-ps/named/${foo}suffix'
+      preLoaderRoute: typeof ParamsPsNamedChar123fooChar125suffixRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/params-ps/named/prefix${foo}': {
+      id: '/params-ps/named/prefix${foo}'
+      path: '/params-ps/named/prefix${foo}'
+      fullPath: '/params-ps/named/prefix${foo}'
+      preLoaderRoute: typeof ParamsPsNamedPrefixChar123fooChar125RouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/params-ps/wildcard/$': {
+      id: '/params-ps/wildcard/$'
+      path: '/params-ps/wildcard/$'
+      fullPath: '/params-ps/wildcard/$'
+      preLoaderRoute: typeof ParamsPsWildcardSplatRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/params-ps/wildcard/${$}suffix': {
+      id: '/params-ps/wildcard/${$}suffix'
+      path: '/params-ps/wildcard/${$}suffix'
+      fullPath: '/params-ps/wildcard/${$}suffix'
+      preLoaderRoute: typeof ParamsPsWildcardSplatsuffixRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/params-ps/wildcard/prefix${$}': {
+      id: '/params-ps/wildcard/prefix${$}'
+      path: '/params-ps/wildcard/prefix${$}'
+      fullPath: '/params-ps/wildcard/prefix${$}'
+      preLoaderRoute: typeof ParamsPsWildcardPrefixsplatRouteImport
+      parentRoute: typeof rootRoute
     }
     '/params/single/$value': {
       id: '/params/single/$value'
@@ -422,6 +538,20 @@ declare module '@tanstack/react-router' {
       path: '/redirect/preload/third'
       fullPath: '/redirect/preload/third'
       preLoaderRoute: typeof RedirectPreloadThirdRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/params-ps/named/': {
+      id: '/params-ps/named/'
+      path: '/params-ps/named'
+      fullPath: '/params-ps/named'
+      preLoaderRoute: typeof ParamsPsNamedIndexRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/params-ps/wildcard/': {
+      id: '/params-ps/wildcard/'
+      path: '/params-ps/wildcard'
+      fullPath: '/params-ps/wildcard'
+      preLoaderRoute: typeof ParamsPsWildcardIndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/redirect/$target/': {
@@ -571,6 +701,15 @@ declare module './routes/structural-sharing.$enabled' {
     FileRoutesByPath['/structural-sharing/$enabled']['fullPath']
   >
 }
+declare module './routes/params-ps/index' {
+  const createFileRoute: CreateFileRoute<
+    '/params-ps/',
+    FileRoutesByPath['/params-ps/']['parentRoute'],
+    FileRoutesByPath['/params-ps/']['id'],
+    FileRoutesByPath['/params-ps/']['path'],
+    FileRoutesByPath['/params-ps/']['fullPath']
+  >
+}
 declare module './routes/posts.index' {
   const createFileRoute: CreateFileRoute<
     '/posts/',
@@ -623,6 +762,60 @@ declare module './routes/_layout/_layout-2/layout-b' {
     FileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
     FileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
     FileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath']
+  >
+}
+declare module './routes/params-ps/named/$foo' {
+  const createFileRoute: CreateFileRoute<
+    '/params-ps/named/$foo',
+    FileRoutesByPath['/params-ps/named/$foo']['parentRoute'],
+    FileRoutesByPath['/params-ps/named/$foo']['id'],
+    FileRoutesByPath['/params-ps/named/$foo']['path'],
+    FileRoutesByPath['/params-ps/named/$foo']['fullPath']
+  >
+}
+declare module './routes/params-ps/named/${foo}suffix' {
+  const createFileRoute: CreateFileRoute<
+    '/params-ps/named/${foo}suffix',
+    FileRoutesByPath['/params-ps/named/${foo}suffix']['parentRoute'],
+    FileRoutesByPath['/params-ps/named/${foo}suffix']['id'],
+    FileRoutesByPath['/params-ps/named/${foo}suffix']['path'],
+    FileRoutesByPath['/params-ps/named/${foo}suffix']['fullPath']
+  >
+}
+declare module './routes/params-ps/named/prefix${foo}' {
+  const createFileRoute: CreateFileRoute<
+    '/params-ps/named/prefix${foo}',
+    FileRoutesByPath['/params-ps/named/prefix${foo}']['parentRoute'],
+    FileRoutesByPath['/params-ps/named/prefix${foo}']['id'],
+    FileRoutesByPath['/params-ps/named/prefix${foo}']['path'],
+    FileRoutesByPath['/params-ps/named/prefix${foo}']['fullPath']
+  >
+}
+declare module './routes/params-ps/wildcard/$' {
+  const createFileRoute: CreateFileRoute<
+    '/params-ps/wildcard/$',
+    FileRoutesByPath['/params-ps/wildcard/$']['parentRoute'],
+    FileRoutesByPath['/params-ps/wildcard/$']['id'],
+    FileRoutesByPath['/params-ps/wildcard/$']['path'],
+    FileRoutesByPath['/params-ps/wildcard/$']['fullPath']
+  >
+}
+declare module './routes/params-ps/wildcard/${$}suffix' {
+  const createFileRoute: CreateFileRoute<
+    '/params-ps/wildcard/${$}suffix',
+    FileRoutesByPath['/params-ps/wildcard/${$}suffix']['parentRoute'],
+    FileRoutesByPath['/params-ps/wildcard/${$}suffix']['id'],
+    FileRoutesByPath['/params-ps/wildcard/${$}suffix']['path'],
+    FileRoutesByPath['/params-ps/wildcard/${$}suffix']['fullPath']
+  >
+}
+declare module './routes/params-ps/wildcard/prefix${$}' {
+  const createFileRoute: CreateFileRoute<
+    '/params-ps/wildcard/prefix${$}',
+    FileRoutesByPath['/params-ps/wildcard/prefix${$}']['parentRoute'],
+    FileRoutesByPath['/params-ps/wildcard/prefix${$}']['id'],
+    FileRoutesByPath['/params-ps/wildcard/prefix${$}']['path'],
+    FileRoutesByPath['/params-ps/wildcard/prefix${$}']['fullPath']
   >
 }
 declare module './routes/params.single.$value' {
@@ -686,6 +879,24 @@ declare module './routes/redirect/preload/third' {
     FileRoutesByPath['/redirect/preload/third']['id'],
     FileRoutesByPath['/redirect/preload/third']['path'],
     FileRoutesByPath['/redirect/preload/third']['fullPath']
+  >
+}
+declare module './routes/params-ps/named/index' {
+  const createFileRoute: CreateFileRoute<
+    '/params-ps/named/',
+    FileRoutesByPath['/params-ps/named/']['parentRoute'],
+    FileRoutesByPath['/params-ps/named/']['id'],
+    FileRoutesByPath['/params-ps/named/']['path'],
+    FileRoutesByPath['/params-ps/named/']['fullPath']
+  >
+}
+declare module './routes/params-ps/wildcard/index' {
+  const createFileRoute: CreateFileRoute<
+    '/params-ps/wildcard/',
+    FileRoutesByPath['/params-ps/wildcard/']['parentRoute'],
+    FileRoutesByPath['/params-ps/wildcard/']['id'],
+    FileRoutesByPath['/params-ps/wildcard/']['path'],
+    FileRoutesByPath['/params-ps/wildcard/']['fullPath']
   >
 }
 declare module './routes/redirect/$target/index' {
@@ -794,12 +1005,19 @@ export interface FileRoutesByFullPath {
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
+  '/params-ps': typeof ParamsPsIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params-ps/named/$foo': typeof ParamsPsNamedFooRoute
+  '/params-ps/named/${foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
+  '/params-ps/named/prefix${foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/wildcard/$': typeof ParamsPsWildcardSplatRoute
+  '/params-ps/wildcard/${$}suffix': typeof ParamsPsWildcardSplatsuffixRoute
+  '/params-ps/wildcard/prefix${$}': typeof ParamsPsWildcardPrefixsplatRoute
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -807,6 +1025,8 @@ export interface FileRoutesByFullPath {
   '/redirect/preload/first': typeof RedirectPreloadFirstRoute
   '/redirect/preload/second': typeof RedirectPreloadSecondRoute
   '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/params-ps/named': typeof ParamsPsNamedIndexRoute
+  '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
 }
 
@@ -821,12 +1041,19 @@ export interface FileRoutesByTo {
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
+  '/params-ps': typeof ParamsPsIndexRoute
   '/posts': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params-ps/named/$foo': typeof ParamsPsNamedFooRoute
+  '/params-ps/named/${foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
+  '/params-ps/named/prefix${foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/wildcard/$': typeof ParamsPsWildcardSplatRoute
+  '/params-ps/wildcard/${$}suffix': typeof ParamsPsWildcardSplatsuffixRoute
+  '/params-ps/wildcard/prefix${$}': typeof ParamsPsWildcardPrefixsplatRoute
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -834,6 +1061,8 @@ export interface FileRoutesByTo {
   '/redirect/preload/first': typeof RedirectPreloadFirstRoute
   '/redirect/preload/second': typeof RedirectPreloadSecondRoute
   '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/params-ps/named': typeof ParamsPsNamedIndexRoute
+  '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
 }
 
@@ -854,12 +1083,19 @@ export interface FileRoutesById {
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
+  '/params-ps/': typeof ParamsPsIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params-ps/named/$foo': typeof ParamsPsNamedFooRoute
+  '/params-ps/named/${foo}suffix': typeof ParamsPsNamedChar123fooChar125suffixRoute
+  '/params-ps/named/prefix${foo}': typeof ParamsPsNamedPrefixChar123fooChar125Route
+  '/params-ps/wildcard/$': typeof ParamsPsWildcardSplatRoute
+  '/params-ps/wildcard/${$}suffix': typeof ParamsPsWildcardSplatsuffixRoute
+  '/params-ps/wildcard/prefix${$}': typeof ParamsPsWildcardPrefixsplatRoute
   '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts_/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -867,6 +1103,8 @@ export interface FileRoutesById {
   '/redirect/preload/first': typeof RedirectPreloadFirstRoute
   '/redirect/preload/second': typeof RedirectPreloadSecondRoute
   '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/params-ps/named/': typeof ParamsPsNamedIndexRoute
+  '/params-ps/wildcard/': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
 }
 
@@ -885,12 +1123,19 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/redirect/$target'
     | '/structural-sharing/$enabled'
+    | '/params-ps'
     | '/posts/'
     | '/redirect'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/params-ps/named/$foo'
+    | '/params-ps/named/${foo}suffix'
+    | '/params-ps/named/prefix${foo}'
+    | '/params-ps/wildcard/$'
+    | '/params-ps/wildcard/${$}suffix'
+    | '/params-ps/wildcard/prefix${$}'
     | '/params/single/$value'
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
@@ -898,6 +1143,8 @@ export interface FileRouteTypes {
     | '/redirect/preload/first'
     | '/redirect/preload/second'
     | '/redirect/preload/third'
+    | '/params-ps/named'
+    | '/params-ps/wildcard'
     | '/redirect/$target/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -911,12 +1158,19 @@ export interface FileRouteTypes {
     | '/lazyinside'
     | '/posts/$postId'
     | '/structural-sharing/$enabled'
+    | '/params-ps'
     | '/posts'
     | '/redirect'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/params-ps/named/$foo'
+    | '/params-ps/named/${foo}suffix'
+    | '/params-ps/named/prefix${foo}'
+    | '/params-ps/wildcard/$'
+    | '/params-ps/wildcard/${$}suffix'
+    | '/params-ps/wildcard/prefix${$}'
     | '/params/single/$value'
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
@@ -924,6 +1178,8 @@ export interface FileRouteTypes {
     | '/redirect/preload/first'
     | '/redirect/preload/second'
     | '/redirect/preload/third'
+    | '/params-ps/named'
+    | '/params-ps/wildcard'
     | '/redirect/$target'
   id:
     | '__root__'
@@ -942,12 +1198,19 @@ export interface FileRouteTypes {
     | '/posts/$postId'
     | '/redirect/$target'
     | '/structural-sharing/$enabled'
+    | '/params-ps/'
     | '/posts/'
     | '/redirect/'
     | '/(group)/_layout/insidelayout'
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/params-ps/named/$foo'
+    | '/params-ps/named/${foo}suffix'
+    | '/params-ps/named/prefix${foo}'
+    | '/params-ps/wildcard/$'
+    | '/params-ps/wildcard/${$}suffix'
+    | '/params-ps/wildcard/prefix${$}'
     | '/params/single/$value'
     | '/posts_/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
@@ -955,6 +1218,8 @@ export interface FileRouteTypes {
     | '/redirect/preload/first'
     | '/redirect/preload/second'
     | '/redirect/preload/third'
+    | '/params-ps/named/'
+    | '/params-ps/wildcard/'
     | '/redirect/$target/'
   fileRoutesById: FileRoutesById
 }
@@ -970,12 +1235,21 @@ export interface RootRouteChildren {
   groupRoute: typeof groupRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
+  ParamsPsIndexRoute: typeof ParamsPsIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
+  ParamsPsNamedFooRoute: typeof ParamsPsNamedFooRoute
+  ParamsPsNamedChar123fooChar125suffixRoute: typeof ParamsPsNamedChar123fooChar125suffixRoute
+  ParamsPsNamedPrefixChar123fooChar125Route: typeof ParamsPsNamedPrefixChar123fooChar125Route
+  ParamsPsWildcardSplatRoute: typeof ParamsPsWildcardSplatRoute
+  ParamsPsWildcardSplatsuffixRoute: typeof ParamsPsWildcardSplatsuffixRoute
+  ParamsPsWildcardPrefixsplatRoute: typeof ParamsPsWildcardPrefixsplatRoute
   ParamsSingleValueRoute: typeof ParamsSingleValueRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
   RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
   RedirectPreloadSecondRoute: typeof RedirectPreloadSecondRoute
   RedirectPreloadThirdRoute: typeof RedirectPreloadThirdRoute
+  ParamsPsNamedIndexRoute: typeof ParamsPsNamedIndexRoute
+  ParamsPsWildcardIndexRoute: typeof ParamsPsWildcardIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -989,12 +1263,23 @@ const rootRouteChildren: RootRouteChildren = {
   groupRoute: groupRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
+  ParamsPsIndexRoute: ParamsPsIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
+  ParamsPsNamedFooRoute: ParamsPsNamedFooRoute,
+  ParamsPsNamedChar123fooChar125suffixRoute:
+    ParamsPsNamedChar123fooChar125suffixRoute,
+  ParamsPsNamedPrefixChar123fooChar125Route:
+    ParamsPsNamedPrefixChar123fooChar125Route,
+  ParamsPsWildcardSplatRoute: ParamsPsWildcardSplatRoute,
+  ParamsPsWildcardSplatsuffixRoute: ParamsPsWildcardSplatsuffixRoute,
+  ParamsPsWildcardPrefixsplatRoute: ParamsPsWildcardPrefixsplatRoute,
   ParamsSingleValueRoute: ParamsSingleValueRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
   RedirectPreloadFirstRoute: RedirectPreloadFirstRoute,
   RedirectPreloadSecondRoute: RedirectPreloadSecondRoute,
   RedirectPreloadThirdRoute: RedirectPreloadThirdRoute,
+  ParamsPsNamedIndexRoute: ParamsPsNamedIndexRoute,
+  ParamsPsWildcardIndexRoute: ParamsPsWildcardIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -1020,12 +1305,21 @@ import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.ge
         "/(group)",
         "/redirect/$target",
         "/structural-sharing/$enabled",
+        "/params-ps/",
         "/redirect/",
+        "/params-ps/named/$foo",
+        "/params-ps/named/${foo}suffix",
+        "/params-ps/named/prefix${foo}",
+        "/params-ps/wildcard/$",
+        "/params-ps/wildcard/${$}suffix",
+        "/params-ps/wildcard/prefix${$}",
         "/params/single/$value",
         "/posts_/$postId/edit",
         "/redirect/preload/first",
         "/redirect/preload/second",
-        "/redirect/preload/third"
+        "/redirect/preload/third",
+        "/params-ps/named/",
+        "/params-ps/wildcard/"
       ]
     },
     "/": {
@@ -1103,6 +1397,9 @@ import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.ge
     "/structural-sharing/$enabled": {
       "filePath": "structural-sharing.$enabled.tsx"
     },
+    "/params-ps/": {
+      "filePath": "params-ps/index.tsx"
+    },
     "/posts/": {
       "filePath": "posts.index.tsx",
       "parent": "/posts"
@@ -1126,6 +1423,24 @@ import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.ge
       "filePath": "_layout/_layout-2/layout-b.tsx",
       "parent": "/_layout/_layout-2"
     },
+    "/params-ps/named/$foo": {
+      "filePath": "params-ps/named/$foo.tsx"
+    },
+    "/params-ps/named/${foo}suffix": {
+      "filePath": "params-ps/named/${foo}suffix.tsx"
+    },
+    "/params-ps/named/prefix${foo}": {
+      "filePath": "params-ps/named/prefix${foo}.tsx"
+    },
+    "/params-ps/wildcard/$": {
+      "filePath": "params-ps/wildcard/$.tsx"
+    },
+    "/params-ps/wildcard/${$}suffix": {
+      "filePath": "params-ps/wildcard/${$}suffix.tsx"
+    },
+    "/params-ps/wildcard/prefix${$}": {
+      "filePath": "params-ps/wildcard/prefix${$}.tsx"
+    },
     "/params/single/$value": {
       "filePath": "params.single.$value.tsx"
     },
@@ -1148,6 +1463,12 @@ import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.ge
     },
     "/redirect/preload/third": {
       "filePath": "redirect/preload/third.tsx"
+    },
+    "/params-ps/named/": {
+      "filePath": "params-ps/named/index.tsx"
+    },
+    "/params-ps/wildcard/": {
+      "filePath": "params-ps/wildcard/index.tsx"
     },
     "/redirect/$target/": {
       "filePath": "redirect/$target/index.tsx",
