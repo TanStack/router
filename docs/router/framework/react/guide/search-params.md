@@ -318,7 +318,7 @@ export const Route = createFileRoute('/shop/products/')({
 })
 ```
 
-## Effect/Schema
+### Effect/Schema
 
 When using [Effect/Schema](https://effect.website/docs/schema/introduction/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [Effect/Schema](https://effect.website/docs/schema/standard-schema/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
 
