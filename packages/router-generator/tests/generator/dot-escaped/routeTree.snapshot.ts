@@ -12,36 +12,37 @@
 
 import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
-import { Route as ScriptjsRouteImport } from './routes/script[.]js'
-import { Route as NestedjsRouteImport } from './routes/nested[.]js'
-import { Route as NestedjsScriptjsRouteImport } from './routes/nested[.]js.script[.]js'
-import { Route as NestedjsDoubleextjsRouteImport } from './routes/nested[.]js.double[.]ext[.]js'
+import { Route as ScriptDotjsRouteImport } from './routes/script[.]js'
+import { Route as NestedDotjsRouteImport } from './routes/nested[.]js'
+import { Route as NestedDotjsScriptDotjsRouteImport } from './routes/nested[.]js.script[.]js'
+import { Route as NestedDotjsDoubleDotextDotjsRouteImport } from './routes/nested[.]js.double[.]ext[.]js'
 
 // Create/Update Routes
 
-const ScriptjsRoute = ScriptjsRouteImport.update({
+const ScriptDotjsRoute = ScriptDotjsRouteImport.update({
   id: '/script.js',
   path: '/script.js',
   getParentRoute: () => rootRoute,
 } as any)
 
-const NestedjsRoute = NestedjsRouteImport.update({
+const NestedDotjsRoute = NestedDotjsRouteImport.update({
   id: '/nested.js',
   path: '/nested.js',
   getParentRoute: () => rootRoute,
 } as any)
 
-const NestedjsScriptjsRoute = NestedjsScriptjsRouteImport.update({
+const NestedDotjsScriptDotjsRoute = NestedDotjsScriptDotjsRouteImport.update({
   id: '/script.js',
   path: '/script.js',
-  getParentRoute: () => NestedjsRoute,
+  getParentRoute: () => NestedDotjsRoute,
 } as any)
 
-const NestedjsDoubleextjsRoute = NestedjsDoubleextjsRouteImport.update({
-  id: '/double.ext.js',
-  path: '/double.ext.js',
-  getParentRoute: () => NestedjsRoute,
-} as any)
+const NestedDotjsDoubleDotextDotjsRoute =
+  NestedDotjsDoubleDotextDotjsRouteImport.update({
+    id: '/double.ext.js',
+    path: '/double.ext.js',
+    getParentRoute: () => NestedDotjsRoute,
+  } as any)
 
 // Populate the FileRoutesByPath interface
 
@@ -51,29 +52,29 @@ declare module '@tanstack/react-router' {
       id: '/nested.js'
       path: '/nested.js'
       fullPath: '/nested.js'
-      preLoaderRoute: typeof NestedjsRouteImport
+      preLoaderRoute: typeof NestedDotjsRouteImport
       parentRoute: typeof rootRoute
     }
     '/script.js': {
       id: '/script.js'
       path: '/script.js'
       fullPath: '/script.js'
-      preLoaderRoute: typeof ScriptjsRouteImport
+      preLoaderRoute: typeof ScriptDotjsRouteImport
       parentRoute: typeof rootRoute
     }
     '/nested.js/double.ext.js': {
       id: '/nested.js/double.ext.js'
       path: '/double.ext.js'
       fullPath: '/nested.js/double.ext.js'
-      preLoaderRoute: typeof NestedjsDoubleextjsRouteImport
-      parentRoute: typeof NestedjsRouteImport
+      preLoaderRoute: typeof NestedDotjsDoubleDotextDotjsRouteImport
+      parentRoute: typeof NestedDotjsRouteImport
     }
     '/nested.js/script.js': {
       id: '/nested.js/script.js'
       path: '/script.js'
       fullPath: '/nested.js/script.js'
-      preLoaderRoute: typeof NestedjsScriptjsRouteImport
-      parentRoute: typeof NestedjsRouteImport
+      preLoaderRoute: typeof NestedDotjsScriptDotjsRouteImport
+      parentRoute: typeof NestedDotjsRouteImport
     }
   }
 }
@@ -119,40 +120,40 @@ declare module './routes/nested[.]js.script[.]js' {
 
 // Create and export the route tree
 
-interface NestedjsRouteChildren {
-  NestedjsDoubleextjsRoute: typeof NestedjsDoubleextjsRoute
-  NestedjsScriptjsRoute: typeof NestedjsScriptjsRoute
+interface NestedDotjsRouteChildren {
+  NestedDotjsDoubleDotextDotjsRoute: typeof NestedDotjsDoubleDotextDotjsRoute
+  NestedDotjsScriptDotjsRoute: typeof NestedDotjsScriptDotjsRoute
 }
 
-const NestedjsRouteChildren: NestedjsRouteChildren = {
-  NestedjsDoubleextjsRoute: NestedjsDoubleextjsRoute,
-  NestedjsScriptjsRoute: NestedjsScriptjsRoute,
+const NestedDotjsRouteChildren: NestedDotjsRouteChildren = {
+  NestedDotjsDoubleDotextDotjsRoute: NestedDotjsDoubleDotextDotjsRoute,
+  NestedDotjsScriptDotjsRoute: NestedDotjsScriptDotjsRoute,
 }
 
-const NestedjsRouteWithChildren = NestedjsRoute._addFileChildren(
-  NestedjsRouteChildren,
+const NestedDotjsRouteWithChildren = NestedDotjsRoute._addFileChildren(
+  NestedDotjsRouteChildren,
 )
 
 export interface FileRoutesByFullPath {
-  '/nested.js': typeof NestedjsRouteWithChildren
-  '/script.js': typeof ScriptjsRoute
-  '/nested.js/double.ext.js': typeof NestedjsDoubleextjsRoute
-  '/nested.js/script.js': typeof NestedjsScriptjsRoute
+  '/nested.js': typeof NestedDotjsRouteWithChildren
+  '/script.js': typeof ScriptDotjsRoute
+  '/nested.js/double.ext.js': typeof NestedDotjsDoubleDotextDotjsRoute
+  '/nested.js/script.js': typeof NestedDotjsScriptDotjsRoute
 }
 
 export interface FileRoutesByTo {
-  '/nested.js': typeof NestedjsRouteWithChildren
-  '/script.js': typeof ScriptjsRoute
-  '/nested.js/double.ext.js': typeof NestedjsDoubleextjsRoute
-  '/nested.js/script.js': typeof NestedjsScriptjsRoute
+  '/nested.js': typeof NestedDotjsRouteWithChildren
+  '/script.js': typeof ScriptDotjsRoute
+  '/nested.js/double.ext.js': typeof NestedDotjsDoubleDotextDotjsRoute
+  '/nested.js/script.js': typeof NestedDotjsScriptDotjsRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
-  '/nested.js': typeof NestedjsRouteWithChildren
-  '/script.js': typeof ScriptjsRoute
-  '/nested.js/double.ext.js': typeof NestedjsDoubleextjsRoute
-  '/nested.js/script.js': typeof NestedjsScriptjsRoute
+  '/nested.js': typeof NestedDotjsRouteWithChildren
+  '/script.js': typeof ScriptDotjsRoute
+  '/nested.js/double.ext.js': typeof NestedDotjsDoubleDotextDotjsRoute
+  '/nested.js/script.js': typeof NestedDotjsScriptDotjsRoute
 }
 
 export interface FileRouteTypes {
@@ -178,13 +179,13 @@ export interface FileRouteTypes {
 }
 
 export interface RootRouteChildren {
-  NestedjsRoute: typeof NestedjsRouteWithChildren
-  ScriptjsRoute: typeof ScriptjsRoute
+  NestedDotjsRoute: typeof NestedDotjsRouteWithChildren
+  ScriptDotjsRoute: typeof ScriptDotjsRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  NestedjsRoute: NestedjsRouteWithChildren,
-  ScriptjsRoute: ScriptjsRoute,
+  NestedDotjsRoute: NestedDotjsRouteWithChildren,
+  ScriptDotjsRoute: ScriptDotjsRoute,
 }
 
 export const routeTree = rootRoute
