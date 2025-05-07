@@ -509,14 +509,32 @@ export type CreateLinkProps = LinkProps<
   string
 >
 
-export type LinkComponent<TComp> = <
+export type LinkComponent<
+  in out TComp,
+  in out TDefaultFrom extends string = string,
+> = <
   TRouter extends AnyRouter = RegisteredRouter,
-  const TFrom extends string = string,
+  const TFrom extends string = TDefaultFrom,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => Solid.JSX.Element
+
+export type LinkComponentRoute<in out TDefaultFrom extends string = string> = <
+  TRouter extends AnyRouter = RegisteredRouter,
+  const TTo extends string | undefined = undefined,
+  const TMaskTo extends string = '',
+>(
+  props: LinkComponentProps<
+    'a',
+    TRouter,
+    TDefaultFrom,
+    TTo,
+    TDefaultFrom,
+    TMaskTo
+  >,
 ) => Solid.JSX.Element
 
 export function createLink<const TComp>(

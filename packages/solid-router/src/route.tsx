@@ -4,6 +4,7 @@ import {
   BaseRouteApi,
   notFound,
 } from '@tanstack/router-core'
+import { Link } from './link'
 import { useLoaderData } from './useLoaderData'
 import { useLoaderDeps } from './useLoaderDeps'
 import { useParams } from './useParams'
@@ -39,8 +40,9 @@ import type { UseMatchRoute } from './useMatch'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
-import type * as React from 'react'
+import type * as Solid from 'solid-js'
 import type { UseRouteContextRoute } from './useRouteContext'
+import type { LinkComponentRoute } from './link'
 
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
@@ -61,6 +63,7 @@ declare module '@tanstack/router-core' {
     useLoaderDeps: UseLoaderDepsRoute<TId>
     useLoaderData: UseLoaderDataRoute<TId>
     useNavigate: () => UseNavigateResult<TFullPath>
+    Link: LinkComponentRoute<TFullPath>
   }
 }
 
@@ -86,7 +89,6 @@ export class RouteApi<
     return useMatch({
       select: opts?.select,
       from: this.id,
-      structuralSharing: opts?.structuralSharing,
     } as any) as any
   }
 
@@ -98,19 +100,15 @@ export class RouteApi<
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
       from: this.id,
     } as any) as any
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
       from: this.id,
     } as any) as any
   }
@@ -132,6 +130,14 @@ export class RouteApi<
 
   notFound = (opts?: NotFoundError) => {
     return notFound({ routeId: this.id as string, ...opts })
+  }
+
+  Link: LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']> = (
+    props,
+  ) => {
+    const router = useRouter()
+    const fullPath = router.routesById[this.id as string].fullPath
+    return <Link from={fullPath as never} {...props} />
   }
 }
 
@@ -193,14 +199,12 @@ export class Route<
     >,
   ) {
     super(options)
-    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   useMatch: UseMatchRoute<TId> = (opts) => {
     return useMatch({
       select: opts?.select,
       from: this.id,
-      structuralSharing: opts?.structuralSharing,
     } as any) as any
   }
 
@@ -213,19 +217,15 @@ export class Route<
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
       from: this.id,
     } as any) as any
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
       from: this.id,
     } as any) as any
   }
@@ -240,6 +240,10 @@ export class Route<
 
   useNavigate = (): UseNavigateResult<TFullPath> => {
     return useNavigate({ from: this.fullPath })
+  }
+
+  Link: LinkComponentRoute<TFullPath> = (props) => {
+    return <Link from={this.fullPath} {...props} />
   }
 }
 
@@ -291,7 +295,8 @@ export function createRoute<
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,
-  TChildren
+  TChildren,
+  unknown
 > {
   return new Route<
     TParentRoute,
@@ -306,7 +311,8 @@ export function createRoute<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TChildren
+    TChildren,
+    unknown
   >(options)
 }
 
@@ -378,14 +384,12 @@ export class RootRoute<
     >,
   ) {
     super(options)
-    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   useMatch: UseMatchRoute<RootRouteId> = (opts) => {
     return useMatch({
       select: opts?.select,
       from: this.id,
-      structuralSharing: opts?.structuralSharing,
     } as any) as any
   }
 
@@ -398,19 +402,15 @@ export class RootRoute<
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
       from: this.id,
     } as any) as any
   }
 
   useParams: UseParamsRoute<RootRouteId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
       from: this.id,
     } as any) as any
   }
@@ -426,42 +426,10 @@ export class RootRoute<
   useNavigate = (): UseNavigateResult<'/'> => {
     return useNavigate({ from: this.fullPath })
   }
-}
 
-export function createRootRoute<
-  TSearchValidator = undefined,
-  TRouterContext = {},
-  TRouteContextFn = AnyContext,
-  TBeforeLoadFn = AnyContext,
-  TLoaderDeps extends Record<string, any> = {},
-  TLoaderFn = undefined,
->(
-  options?: RootRouteOptions<
-    TSearchValidator,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn
-  >,
-): RootRoute<
-  TSearchValidator,
-  TRouterContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
-  TLoaderDeps,
-  TLoaderFn,
-  unknown,
-  unknown
-> {
-  return new RootRoute<
-    TSearchValidator,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TLoaderDeps,
-    TLoaderFn
-  >(options)
+  Link: LinkComponentRoute<'/'> = (props) => {
+    return <Link from={this.fullPath} {...(props as any)} />
+  }
 }
 
 export function createRouteMask<
@@ -471,16 +439,14 @@ export function createRouteMask<
 >(
   opts: {
     routeTree: TRouteTree
-  } & ToMaskOptions<RouterCore<TRouteTree, 'never', boolean>, TFrom, TTo>,
+  } & ToMaskOptions<RouterCore<TRouteTree, 'never', false>, TFrom, TTo>,
 ): RouteMask<TRouteTree> {
   return opts as any
 }
 
-export type ReactNode = any
+export type SolidNode = Solid.JSX.Element
 
-export type SyncRouteComponent<TProps> =
-  | ((props: TProps) => ReactNode)
-  | React.LazyExoticComponent<(props: TProps) => ReactNode>
+export type SyncRouteComponent<TProps> = (props: TProps) => Solid.JSX.Element
 
 export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>
@@ -545,4 +511,40 @@ export class NotFoundRoute<
       id: '404',
     })
   }
+}
+
+export function createRootRoute<
+  TSearchValidator = undefined,
+  TRouterContext = {},
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderFn = undefined,
+>(
+  options?: RootRouteOptions<
+    TSearchValidator,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn
+  >,
+): RootRoute<
+  TSearchValidator,
+  TRouterContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  unknown,
+  unknown
+> {
+  return new RootRoute<
+    TSearchValidator,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn
+  >(options)
 }
