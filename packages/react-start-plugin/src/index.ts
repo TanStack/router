@@ -5,8 +5,8 @@ import viteReact from '@vitejs/plugin-react'
 import { TanStackStartServerRoutesVite, TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
 import { getTanStackStartOptions } from './schema.js'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
+import type { TanStackStartInputConfig, WithReactPlugin } from './schema.js';
 import type { PluginOption } from 'vite'
-import type * as schema from './schema.js'
 
 export type {
   TanStackStartInputConfig,
@@ -16,10 +16,10 @@ export type {
 
 
 export function TanStackStartVitePlugin(
-  opts?: schema.TanStackStartInputConfig & schema.WithReactPlugin,
+  opts?: TanStackStartInputConfig & WithReactPlugin,
 ): Array<PluginOption> {
   type OptionsWithReact = ReturnType<typeof getTanStackStartOptions> &
-    schema.WithReactPlugin
+    WithReactPlugin
   const options: OptionsWithReact = getTanStackStartOptions(opts)
 
   return [
