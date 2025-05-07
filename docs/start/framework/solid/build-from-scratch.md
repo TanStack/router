@@ -89,12 +89,13 @@ We'll then update our `package.json` to use Vinxi's CLI and set `"type": "module
 }
 ```
 
-Then configure TanStack Start's `app.config.ts` file:
+Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 
 ```typescript
-// app.config.ts
-import { defineConfig } from '@tanstack/solid-start/config'
+// vite.config.ts
+import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
+import { TanStackStartVitePlugin } from '@tanstack/react-start/plugin'
 
 export default defineConfig({
   vite: {
@@ -102,6 +103,7 @@ export default defineConfig({
       tsConfigPaths({
         projects: ['./tsconfig.json'],
       }),
+      TanStackStartVitePlugin(),
     ],
   },
 })
@@ -126,7 +128,6 @@ Once configuration is done, we'll have a file tree that looks like the following
 │   ├── `client.tsx`
 │   ├── `router.tsx`
 │   ├── `routeTree.gen.ts`
-│   └── `ssr.tsx`
 ├── `.gitignore`
 ├── `app.config.ts`
 ├── `package.json`
@@ -162,47 +163,8 @@ declare module '@tanstack/solid-router' {
 }
 ```
 
-## The Server Entry Point
-
-As TanStack Start is an [SSR](https://unicorn-utterances.com/posts/what-is-ssr-and-ssg) framework, we need to pipe this router
-information to our server entry point:
-
-```tsx
-// app/ssr.tsx
-import {
-  createStartHandler,
-  defaultStreamHandler,
-} from '@tanstack/solid-start/server'
-import { getRouterManifest } from '@tanstack/solid-start/router-manifest'
-
-import { createRouter } from './router'
-
-export default createStartHandler({
-  createRouter,
-  getRouterManifest,
-})(defaultStreamHandler)
-```
-
-This allows us to know what routes and loaders we need to execute when the user hits a given route.
-
-## The Client Entry Point
-
-Now we need a way to hydrate our client-side JavaScript once the route resolves to the client. We do this by piping the same
-router information to our client entry point:
-
-```tsx
-// app/client.tsx
-/// <reference types="vinxi/types/client" />
-import { hydrate } from 'solid-js/web'
-import { StartClient } from '@tanstack/solid-start'
-import { createRouter } from './router'
-
-const router = createRouter()
-
-hydrate(() => <StartClient router={router} />, document.body)
-```
-
-This enables us to kick off client-side routing once the user's initial server request has fulfilled.
+> [!NOTE]
+> TanStack Start provides **default server and client entry points** to handle requests and client-entry + hydration. You can customize these entry points by adding a `server.ts` and/or `client.tsx` file in the root of your project, but for now, we'll use the defaults.
 
 ## The Root of Your Application
 
