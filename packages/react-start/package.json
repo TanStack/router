@@ -72,16 +72,6 @@
         "default": "./dist/cjs/plugin.cjs"
       }
     },
-    "./api": {
-      "import": {
-        "types": "./dist/esm/api.d.ts",
-        "default": "./dist/esm/api.js"
-      },
-      "require": {
-        "types": "./dist/cjs/api.d.cts",
-        "default": "./dist/cjs/api.cjs"
-      }
-    },
     "./server-functions-client": {
       "import": {
         "types": "./dist/esm/server-functions-client.d.ts",

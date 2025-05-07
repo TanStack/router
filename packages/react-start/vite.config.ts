@@ -20,7 +20,6 @@ export default mergeConfig(
       './src/plugin.ts',
       './src/server-functions-client.tsx',
       './src/server-functions-server.tsx',
-      './src/api.tsx',
     ],
     externalDeps: [
       '@tanstack/react-start-client',
