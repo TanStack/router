@@ -175,10 +175,16 @@ const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
  * Required: `/foo/$bar` ✅
  * Prefix and Suffix: `/foo/prefix${bar}suffix` ✅
  * Wildcard: `/foo/$` ✅
- * Wildcard with Prefix and Suffix: `/foo/prefix${$}suffix` ✅
- * Optional: `/foo/{$bar}`
+ * Wildcard with Prefix and Suffix: `/foo/prefix{$}suffix` ✅
+ *
+ * Future:
+ * Optional: `/foo/{-bar}`
  * Optional named segment: `/foo/{bar}`
- * Optional named segment with Prefix and Suffix: `/foo/prefix{${bar}}suffix`
+ * Optional named segment with Prefix and Suffix: `/foo/prefix{-bar}suffix`
+ * Escape special characters:
+ * - `/foo/[$]` - Static route
+ * - `/foo/[$]{$foo} - Dynamic route with a static prefix of `$`
+ * - `/foo/{$foo}[$]` - Dynamic route with a static suffix of `$`
  */
 export function parsePathname(pathname?: string): Array<Segment> {
   if (!pathname) {
@@ -206,7 +212,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
 
   segments.push(
     ...split.map((part): Segment => {
-      // Check for wildcard with curly braces: prefix${$}suffix
+      // Check for wildcard with curly braces: prefix{$}suffix
       const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
       if (wildcardBracesMatch) {
         const prefix = wildcardBracesMatch[1]
@@ -219,7 +225,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
         }
       }
 
-      // Check for the new parameter format: prefix${paramName}suffix
+      // Check for the new parameter format: prefix{$paramName}suffix
       const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
       if (paramBracesMatch) {
         const prefix = paramBracesMatch[1]
@@ -244,7 +250,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
         }
       }
 
-      // Check for bare wildcard: $
+      // Check for bare wildcard: $ (without curly braces)
       if (WILDCARD_RE.test(part)) {
         return {
           type: 'wildcard',
