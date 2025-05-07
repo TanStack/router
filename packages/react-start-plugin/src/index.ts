@@ -2,14 +2,11 @@ import path from 'node:path'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import { createNitro } from 'nitropack'
+import { TanStackStartServerRoutesVite, TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
 import { getTanStackStartOptions } from './schema.js'
-import { nitroPlugin } from './nitro/nitro-plugin.js'
-import { startManifestPlugin } from './routesManifestPlugin.js'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
-import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/index.js'
-import type { PluginOption, Rollup } from 'vite'
-import type { TanStackStartInputConfig, WithReactPlugin } from './schema.js'
+import type { PluginOption } from 'vite'
+import type * as schema from './schema.js'
 
 export type {
   TanStackStartInputConfig,
@@ -17,120 +14,18 @@ export type {
   WithReactPlugin,
 } from './schema.js'
 
-declare global {
-  interface ImportMeta {
-    env: {
-      HOST: string
-    }
-  }
-}
-
-export const clientDistDir = '.tanstack-start/build/client-dist'
-export const ssrEntryFile = 'ssr.mjs'
-
-// this needs to live outside of the TanStackStartVitePlugin since it will be invoked multiple times by vite
-let ssrBundle: Rollup.OutputBundle
 
 export function TanStackStartVitePlugin(
-  opts?: TanStackStartInputConfig & WithReactPlugin,
+  opts?: schema.TanStackStartInputConfig & schema.WithReactPlugin,
 ): Array<PluginOption> {
   type OptionsWithReact = ReturnType<typeof getTanStackStartOptions> &
-    WithReactPlugin
+    schema.WithReactPlugin
   const options: OptionsWithReact = getTanStackStartOptions(opts)
 
   return [
+    TanStackStartVitePluginCore(options),
     {
-      name: 'tss-vite-config-client',
-      async config() {
-        const nitroOutputPublicDir = await (async () => {
-          // Create a dummy nitro app to get the resolved public output path
-          const dummyNitroApp = await createNitro({
-            preset: options.target,
-            compatibilityDate: '2024-12-01',
-          })
-
-          const nitroOutputPublicDir = dummyNitroApp.options.output.publicDir
-          await dummyNitroApp.close()
-
-          return nitroOutputPublicDir
-        })()
-
-        return {
-          environments: {
-            client: {
-              consumer: 'client',
-              build: {
-                manifest: true,
-                rollupOptions: {
-                  input: {
-                    main: options.clientEntryPath,
-                  },
-                  output: {
-                    dir: path.resolve(options.root, clientDistDir),
-                  },
-                  external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
-                },
-              },
-            },
-            server: {
-              consumer: 'server',
-              build: {
-                ssr: true,
-                // we don't write to the file system as the below 'capture-output' plugin will
-                // capture the output and write it to the virtual file system
-                write: false,
-                copyPublicDir: false,
-                rollupOptions: {
-                  output: {
-                    entryFileNames: ssrEntryFile,
-                  },
-                  plugins: [
-                    {
-                      name: 'capture-output',
-                      generateBundle(options, bundle) {
-                        // TODO can this hook be called more than once?
-                        ssrBundle = bundle
-                      },
-                    },
-                  ],
-                },
-                commonjsOptions: {
-                  include: [/node_modules/],
-                },
-              },
-            },
-          },
-          resolve: {
-            noExternal: [
-              '@tanstack/react-start',
-              '@tanstack/react-start-server',
-              '@tanstack/start-client',
-              '@tanstack/start-client-core',
-              '@tanstack/start-server',
-              '@tanstack/start-server-core',
-              '@tanstack/start-server-functions-fetcher',
-              '@tanstack/start-server-functions-client',
-              '@tanstack/start-server-functions-server',
-              '@tanstack/start-router-manifest',
-              '@tanstack/start-config',
-              '@tanstack/server-functions-plugin',
-              'tanstack:start-manifest',
-              'tanstack:server-fn-manifest',
-              'nitropack',
-              '@tanstack/**',
-            ],
-            external: ['undici'],
-          },
-          /* prettier-ignore */
-          define: {
-            ...injectDefineEnv('TSS_PUBLIC_BASE', options.public.base),
-            ...injectDefineEnv('TSS_CLIENT_BASE', options.client.base),
-            ...injectDefineEnv('TSS_CLIENT_ENTRY', options.clientEntryPath),
-            ...injectDefineEnv('TSS_SERVER_FN_BASE', options.serverFns.base),
-            ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
-          },
-        }
-      },
+      name: 'tanstack-react-start:resolve-entries',
       resolveId(id) {
         if (
           [
@@ -190,25 +85,6 @@ export default createStartHandler({
 
         return null
       },
-      // configureServer(server) {
-      //   server.httpServer?.on('listening', () => {
-      //     const address = (() => {
-      //       const address = server.httpServer?.address()
-
-      //       if (!address) {
-      //         throw new Error('No local address found!')
-      //       }
-
-      //       if (typeof address === 'string') {
-      //         return `http://localhost:${address}`
-      //       }
-
-      //       return `http://localhost:${address.port}`
-      //     })()
-
-      //     process.env.HOST = import.meta.env.HOST = `${address}`
-      //   })
-      // },
     },
     TanStackStartCompilerPlugin(),
     TanStackServerFnPluginEnv({
@@ -228,7 +104,6 @@ export default createStartHandler({
           `createServerRpc('${d.functionId}', '${options.serverFns.base}', ${d.fn})`,
       },
     }),
-    startManifestPlugin(options),
     TanStackRouterVite({
       ...options.tsr,
       target: 'react',
@@ -240,25 +115,6 @@ export default createStartHandler({
       target: 'react',
     }),
     viteReact(options.react),
-    nitroPlugin(options, () => ssrBundle),
   ]
 }
 
-function injectDefineEnv<TKey extends string, TValue extends string>(
-  key: TKey,
-  value: TValue,
-): { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue } {
-  return {
-    [`process.env.${key}`]: JSON.stringify(value),
-    [`import.meta.env.${key}`]: JSON.stringify(value),
-  } as { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue }
-}
-
-// function isEmptyPrerenderRoutes(options?: Options): boolean {
-//   if (!options || isArrayWithElements(nitroConfig.prerender?.routes)) {
-//     return false
-//   }
-//   return !options.server.prerender?.routes
-// }
-
-export { compileStartOutput } from './compilers'

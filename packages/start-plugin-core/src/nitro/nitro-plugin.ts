@@ -1,19 +1,14 @@
-import path, { dirname, resolve } from 'node:path'
+import path from 'node:path'
 import { rmSync } from 'node:fs'
 import { build, createNitro } from 'nitropack'
-
-import { buildNitroEnvironment } from '@tanstack/start-plugin-core'
-import { clientDistDir, ssrEntryFile } from '../index.js'
+import { dirname, resolve } from 'pathe'
+import { clientDistDir, ssrEntryFile } from '../plugin.js'
 import { prerender } from '../prerender.js'
 import { devServerPlugin } from './dev-server-plugin.js'
+import { buildNitroEnvironment } from './build-nitro.js'
 import type { EnvironmentOptions, PluginOption, Rollup } from 'vite'
 import type { NitroConfig } from 'nitropack'
-import type { TanStackStartOutputConfig } from '../schema.js'
-
-export type {
-  TanStackStartInputConfig,
-  TanStackStartOutputConfig,
-} from '../schema.js'
+import type { TanStackStartOutputConfig } from '../plugin.js'
 
 export function nitroPlugin(
   options: TanStackStartOutputConfig,
@@ -23,7 +18,7 @@ export function nitroPlugin(
     process.env['START_TARGET'] ?? (options.target as string | undefined)
 
   return [
-    devServerPlugin(options),
+    devServerPlugin(),
     {
       name: 'tanstack-vite-plugin-nitro',
       configEnvironment(name) {
@@ -116,22 +111,6 @@ export function nitroPlugin(
           },
         }
       },
-      // async buildStart() {
-      //   await Promise.all(
-      //     [
-      //       nitro.options.output.dir,
-      //       nitro.options.output.serverDir,
-      //       nitro.options.output.publicDir,
-      //     ].map((dir) => {
-      //       if (dir) {
-      //         return promises.mkdir(dir, {
-      //           recursive: true,
-      //         })
-      //       }
-      //       return
-      //     }),
-      //   )
-      // },
     },
   ]
 }

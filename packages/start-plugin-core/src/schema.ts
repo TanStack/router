@@ -10,7 +10,7 @@ const tsrConfig = configSchema.partial().extend({
 
 export function createTanStackConfig<
   TFrameworkPlugin extends Record<string, unknown>,
->(frameworkPlugin: TFrameworkPlugin) {
+>(frameworkPlugin?: TFrameworkPlugin) {
   const schema = createTanStackStartOptionsSchema(frameworkPlugin)
 
   return {

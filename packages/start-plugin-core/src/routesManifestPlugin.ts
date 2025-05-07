@@ -9,7 +9,7 @@ import type {
   ManifestChunk as ViteManifestChunk,
 } from 'vite'
 import type { Manifest, RouterManagedTag } from '@tanstack/router-core'
-import type { TanStackStartOutputConfig } from './schema'
+import type { TanStackStartOutputConfig } from './plugin'
 
 export function startManifestPlugin(
   opts: TanStackStartOutputConfig,

@@ -1,13 +1,14 @@
-// SSR dev server, middleware and error page source modified from
-// https://github.com/solidjs/solid-start/blob/main/packages/start/dev/server.js
-
 import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
-import { __internal_devHtmlUtils } from '@tanstack/start-plugin-core'
+import { extractHtmlScripts } from '../extractHtmlScripts'
 import type { Connect, Plugin, ViteDevServer } from 'vite'
-import type { TanStackStartOutputConfig } from '../schema.js'
 
-export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
+declare global {
+  // eslint-disable-next-line no-var
+  var TSS_INJECTED_HEAD_SCRIPTS: string | undefined
+}
+
+export function devServerPlugin(): Plugin {
   // let config: UserConfig
   let isTest = false
 
@@ -26,7 +27,7 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
 
       return () => {
         remove_html_middlewares(viteDevServer.middlewares)
-
+        let cachedScripts: string | undefined
         viteDevServer.middlewares.use(async (req, res) => {
           const event = createEvent(req, res)
           const serverEnv = viteDevServer.environments['server']
@@ -35,19 +36,15 @@ export function devServerPlugin(options: TanStackStartOutputConfig): Plugin {
             if (!serverEnv || !isRunnableDevEnvironment(serverEnv)) {
               throw new Error('Server environment not found')
             }
-
-            const templateHtml = `<html><head></head><body></body></html>`
-            const transformedHtml = await viteDevServer.transformIndexHtml(
-              req.url || '/',
-              templateHtml,
-            )
-
-            const headScripts = __internal_devHtmlUtils.extractHtmlTagInfo(
-              'script',
-              __internal_devHtmlUtils.extractHeadContent(transformedHtml),
-            )
-            globalThis.TSS_INJECTED_HEAD_SCRIPTS = headScripts.map(script => script.content).join(';') 
-
+            if(cachedScripts === undefined) {
+              const templateHtml = `<html><head></head><body></body></html>`
+              const transformedHtml = await viteDevServer.transformIndexHtml(
+                req.url || '/',
+                templateHtml,
+              )
+              const scripts = extractHtmlScripts(transformedHtml)
+              globalThis.TSS_INJECTED_HEAD_SCRIPTS = scripts.map(script => script.content ?? '').join(';') 
+            }
             const serverEntry = await serverEnv.runner.import(
               '/~start/server-entry',
             )

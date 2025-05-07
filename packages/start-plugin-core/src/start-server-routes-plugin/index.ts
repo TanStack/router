@@ -16,6 +16,7 @@ import {
   virtualGetRouteNodes,
   writeIfDifferent,
 } from '@tanstack/router-generator'
+import { rootRouteId } from '@tanstack/router-core'
 import { fillTemplate, getTargetTemplate } from './template'
 import type { GetRouteNodesResult, RouteNode } from '@tanstack/router-generator'
 import type { Config } from './config'
@@ -89,8 +90,6 @@ export function TanStackStartServerRoutesVite(config: Config): Plugin {
 }
 
 // Maybe import this from `@tanstack/router-core` in the future???
-const rootRouteId = '__root__'
-
 let latestTask = 0
 const routeGroupPatternRegex = /\(.+\)/g
 const possiblyNestedRouteGroupPatternRegex = /\([^/]+\)\/?/g
@@ -99,10 +98,7 @@ let isFirst = false
 let skipMessage = false
 
 function getGeneratedRouteTreePath(root: string) {
-  return path.resolve(
-    root,
-    '.tanstack-start/server-routes/routeTree.gen.ts',
-  )
+  return path.resolve(root, '.tanstack-start/server-routes/routeTree.gen.ts')
 }
 
 async function generator(config: Config, root: string) {
