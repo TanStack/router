@@ -117,7 +117,6 @@ export function TanStackStartVitePlugin(
               '@tanstack/start-server-functions-server',
               '@tanstack/start-router-manifest',
               '@tanstack/start-config',
-              '@tanstack/start-api-routes',
               '@tanstack/server-functions-plugin',
               'tanstack:start-manifest',
               'tanstack:server-fn-manifest',

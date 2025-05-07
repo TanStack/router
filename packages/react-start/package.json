@@ -117,8 +117,7 @@
     "@tanstack/react-start-server": "workspace:^",
     "@tanstack/react-start-plugin": "workspace:^",
     "@tanstack/start-server-functions-client": "workspace:^",
-    "@tanstack/start-server-functions-server": "workspace:^",
-    "@tanstack/start-api-routes": "workspace:^"
+    "@tanstack/start-server-functions-server": "workspace:^"
   },
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",

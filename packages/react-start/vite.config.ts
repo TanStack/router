@@ -28,7 +28,6 @@ export default mergeConfig(
       '@tanstack/react-start-plugin',
       '@tanstack/start-server-functions-client',
       '@tanstack/start-server-functions-server',
-      '@tanstack/start-api-routes',
     ],
   }),
 )

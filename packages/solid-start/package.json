@@ -127,8 +127,7 @@
     "@tanstack/solid-start-server": "workspace:^",
     "@tanstack/solid-start-plugin": "workspace:^",
     "@tanstack/start-server-functions-client": "workspace:^",
-    "@tanstack/start-server-functions-server": "workspace:^",
-    "@tanstack/start-api-routes": "workspace:^"
+    "@tanstack/start-server-functions-server": "workspace:^"
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0",
