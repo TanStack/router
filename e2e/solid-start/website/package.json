@@ -17,7 +17,6 @@
     "solid-js": "^1.9.5",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
-    "vinxi": "0.5.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {

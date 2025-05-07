@@ -48,14 +48,16 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 
 ## Install Dependencies
 
-TanStack Start is (currently\*) powered by [Vinxi](https://vinxi.vercel.app/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
+TanStack Start is powered by:
 
-> [!NOTE] > \*Vinxi will be removed before version 1.0.0 is released and TanStack will rely only on Vite and Nitro. The commands and APIs that use Vinxi will likely be replaced with a Vite plugin or dedicated TanStack Start CLI.
+- [**TanStack Router**](https://tanstack.com/router) - A router for building web applications.
+- [**Vite**](https://vite.dev/) - A build tool for building web applications.
+- [**Nitro**](https://nitro.unjs.io/) - A framework for building server applications.
 
 To install them, run:
 
 ```shell
-npm i @tanstack/solid-start @tanstack/solid-router vinxi
+npm i @tanstack/solid-start @tanstack/solid-router vite
 ```
 
 You'll also need Solid and the Vite Solid plugin, so install them too:
@@ -80,9 +82,9 @@ We'll then update our `package.json` to use Vinxi's CLI and set `"type": "module
   // ...
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start"
   }
 }
 ```

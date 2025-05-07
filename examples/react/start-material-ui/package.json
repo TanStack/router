@@ -4,9 +4,9 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start"
   },
   "dependencies": {
     "@emotion/cache": "11.14.0",
@@ -19,7 +19,6 @@
     "@tanstack/react-router-devtools": "^1.119.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
