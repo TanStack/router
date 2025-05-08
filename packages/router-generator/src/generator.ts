@@ -708,13 +708,18 @@ FileRoutesByPath['${routeNode.routePath}']['fullPath']
   ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
 }`,
     `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)${TYPES_DISABLED ? '' : '._addFileTypes<FileRouteTypes>()'}`,
-    `// @ts-ignore
+    !TYPES_DISABLED
+      ? `// @ts-ignore
 import type * as ServerTypes from '${replaceBackslash(
-      path.relative(
-        path.dirname(config.generatedRouteTree),
-        path.resolve(root, '.tanstack-start/server-routes/routeTree.gen.ts'),
-      ),
-    )}'`,
+          path.relative(
+            path.dirname(config.generatedRouteTree),
+            path.resolve(
+              root,
+              '.tanstack-start/server-routes/routeTree.gen.ts',
+            ),
+          ),
+        )}'`
+      : '',
     ...config.routeTreeFileFooter,
   ]
     .filter(Boolean)
