@@ -9,7 +9,7 @@ import {
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
-type CompileStartFrameworkOptions = 'react' | 'solid'
+export type CompileStartFrameworkOptions = 'react' | 'solid'
 
 export function compileStartOutputFactory(
   framework: CompileStartFrameworkOptions,

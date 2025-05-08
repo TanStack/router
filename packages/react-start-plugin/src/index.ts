@@ -2,10 +2,12 @@ import path from 'node:path'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import { TanStackStartServerRoutesVite, TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
+import {
+  TanStackStartServerRoutesVite,
+  TanStackStartVitePluginCore,
+} from '@tanstack/start-plugin-core'
 import { getTanStackStartOptions } from './schema.js'
-import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
-import type { TanStackStartInputConfig, WithReactPlugin } from './schema.js';
+import type { TanStackStartInputConfig, WithReactPlugin } from './schema.js'
 import type { PluginOption } from 'vite'
 
 export type {
@@ -13,7 +15,6 @@ export type {
   TanStackStartOutputConfig,
   WithReactPlugin,
 } from './schema.js'
-
 
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithReactPlugin,
@@ -23,7 +24,7 @@ export function TanStackStartVitePlugin(
   const options: OptionsWithReact = getTanStackStartOptions(opts)
 
   return [
-    TanStackStartVitePluginCore(options),
+    TanStackStartVitePluginCore('react', options),
     {
       name: 'tanstack-react-start:resolve-entries',
       resolveId(id) {
@@ -86,7 +87,6 @@ export default createStartHandler({
         return null
       },
     },
-    TanStackStartCompilerPlugin(),
     TanStackServerFnPluginEnv({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
@@ -117,4 +117,3 @@ export default createStartHandler({
     viteReact(options.react),
   ]
 }
-

@@ -2,9 +2,11 @@ import path from 'node:path'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import viteSolid from 'vite-plugin-solid'
-import { TanStackStartServerRoutesVite, TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
+import {
+  TanStackStartServerRoutesVite,
+  TanStackStartVitePluginCore,
+} from '@tanstack/start-plugin-core'
 import { getTanStackStartOptions } from './schema.js'
-import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
 import type { PluginOption } from 'vite'
 import type { TanStackStartInputConfig, WithSolidPlugin } from './schema.js'
 
@@ -14,16 +16,15 @@ export type {
   WithSolidPlugin,
 } from './schema.js'
 
-
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithSolidPlugin,
 ): Array<PluginOption> {
   type OptionsWithSolid = ReturnType<typeof getTanStackStartOptions> &
-  WithSolidPlugin
+    WithSolidPlugin
   const options: OptionsWithSolid = getTanStackStartOptions(opts)
 
   return [
-    TanStackStartVitePluginCore(options),
+    TanStackStartVitePluginCore('solid', options),
     {
       name: 'tanstack-solid-start:resolve-entries',
       resolveId(id) {
@@ -83,7 +84,6 @@ export default createStartHandler({
         return null
       },
     },
-    TanStackStartCompilerPlugin(),
     TanStackServerFnPluginEnv({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
@@ -111,8 +111,6 @@ export default createStartHandler({
       ...options.tsr,
       target: 'solid',
     }),
-    viteSolid({...options.solid, ssr: true }),
+    viteSolid({ ...options.solid, ssr: true }),
   ]
 }
-
-export { compileStartOutput } from './compilers'

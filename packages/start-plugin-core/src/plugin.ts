@@ -1,14 +1,18 @@
 import path from 'node:path'
 import { createNitro } from 'nitropack'
-import { createTanStackConfig, createTanStackStartOptionsSchema } from './schema.js'
+import {
+  createTanStackConfig,
+  createTanStackStartOptionsSchema,
+} from './schema.js'
 import { nitroPlugin } from './nitro/nitro-plugin.js'
 import { startManifestPlugin } from './routesManifestPlugin.js'
+import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
+import type { CompileStartFrameworkOptions } from './compilers.js'
 
-const TanStackStartOptionsSchema =
-  createTanStackStartOptionsSchema()
-  export type TanStackStartInputConfig = z.input<
+const TanStackStartOptionsSchema = createTanStackStartOptionsSchema()
+export type TanStackStartInputConfig = z.input<
   typeof TanStackStartOptionsSchema
 >
 
@@ -27,11 +31,10 @@ export const ssrEntryFile = 'ssr.mjs'
 // this needs to live outside of the TanStackStartVitePluginCore since it will be invoked multiple times by vite
 let ssrBundle: Rollup.OutputBundle
 
-
 export function TanStackStartVitePluginCore(
+  framework: CompileStartFrameworkOptions,
   opts: TanStackStartOutputConfig,
 ): Array<PluginOption> {
-
   return [
     {
       name: 'tanstack-start-core:config-client',
@@ -125,6 +128,7 @@ export function TanStackStartVitePluginCore(
         }
       },
     },
+    TanStackStartCompilerPlugin(framework),
     startManifestPlugin(opts),
     nitroPlugin(opts, () => ssrBundle),
   ]

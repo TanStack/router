@@ -1,8 +1,9 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { logDiff } from '@tanstack/router-utils'
-import { compileStartOutput } from './compilers'
 
+import { compileStartOutputFactory } from './compilers'
 import type { Plugin } from 'vite'
+import type { CompileStartFrameworkOptions } from './compilers'
 
 const debug =
   process.env.TSR_VITE_DEBUG &&
@@ -23,14 +24,17 @@ const transformFuncs = [
 
 const tokenRegex = new RegExp(transformFuncs.join('|'))
 
-export function TanStackStartCompilerPlugin(opts?: {
-  client?: {
-    envName?: string
-  }
-  server?: {
-    envName?: string
-  }
-}): Plugin {
+export function TanStackStartCompilerPlugin(
+  framework: CompileStartFrameworkOptions,
+  opts?: {
+    client?: {
+      envName?: string
+    }
+    server?: {
+      envName?: string
+    }
+  },
+): Plugin {
   opts = {
     client: {
       envName: 'client',
@@ -64,6 +68,7 @@ export function TanStackStartCompilerPlugin(opts?: {
         code,
         id,
         env,
+        framework,
       })
     },
   }
@@ -73,8 +78,9 @@ function transformCode(opts: {
   code: string
   id: string
   env: 'server' | 'client'
+  framework: CompileStartFrameworkOptions
 }) {
-  const { code, env } = opts
+  const { code, env, framework } = opts
   let { id } = opts
 
   const url = pathToFileURL(id)
@@ -89,6 +95,7 @@ function transformCode(opts: {
 
   if (debug) console.info(`${env} Compiling Start: `, id)
 
+  const compileStartOutput = compileStartOutputFactory(framework)
   const compiled = compileStartOutput({
     code,
     filename: id,
