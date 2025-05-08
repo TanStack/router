@@ -19,40 +19,113 @@ import {
   createServerFileRoute,
 } from '@tanstack/react-start/server'
 
+import { ServerRoute as ApiUsersRouteImport } from './../../src/routes/api.users'
+import { ServerRoute as ApiUsersIdRouteImport } from './../../src/routes/api/users.$id'
+
 // Create/Update Routes
 
 const rootRoute = createServerRoute()
 
+const ApiUsersRoute = ApiUsersRouteImport.update({
+  id: '/api/users',
+  path: '/api/users',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ApiUsersIdRoute = ApiUsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiUsersRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-start/server' {
-  interface FileRoutesByPath {}
+  interface FileRoutesByPath {
+    '/api/users': {
+      id: '/api/users'
+      path: '/api/users'
+      fullPath: '/api/users'
+      preLoaderRoute: typeof ApiUsersRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/api/users/$id': {
+      id: '/api/users/$id'
+      path: '/$id'
+      fullPath: '/api/users/$id'
+      preLoaderRoute: typeof ApiUsersIdRouteImport
+      parentRoute: typeof ApiUsersRouteImport
+    }
+  }
 }
 
 // Add type-safety to the createFileRoute function across the route tree
 
+declare module './../../src/routes/api.users' {
+  const createServerFileRoute: CreateServerFileRoute<
+    FileRoutesByPath['/api/users']['parentRoute'],
+    FileRoutesByPath['/api/users']['id'],
+    FileRoutesByPath['/api/users']['path'],
+    FileRoutesByPath['/api/users']['fullPath'],
+    ApiUsersRouteChildren
+  >
+}
+declare module './../../src/routes/api/users.$id' {
+  const createServerFileRoute: CreateServerFileRoute<
+    FileRoutesByPath['/api/users/$id']['parentRoute'],
+    FileRoutesByPath['/api/users/$id']['id'],
+    FileRoutesByPath['/api/users/$id']['path'],
+    FileRoutesByPath['/api/users/$id']['fullPath'],
+    unknown
+  >
+}
+
 // Create and export the route tree
 
-export interface FileRoutesByFullPath {}
+interface ApiUsersRouteChildren {
+  ApiUsersIdRoute: typeof ApiUsersIdRoute
+}
 
-export interface FileRoutesByTo {}
+const ApiUsersRouteChildren: ApiUsersRouteChildren = {
+  ApiUsersIdRoute: ApiUsersIdRoute,
+}
+
+const ApiUsersRouteWithChildren = ApiUsersRoute._addFileChildren(
+  ApiUsersRouteChildren,
+)
+
+export interface FileRoutesByFullPath {
+  '/api/users': typeof ApiUsersRouteWithChildren
+  '/api/users/$id': typeof ApiUsersIdRoute
+}
+
+export interface FileRoutesByTo {
+  '/api/users': typeof ApiUsersRouteWithChildren
+  '/api/users/$id': typeof ApiUsersIdRoute
+}
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
+  '/api/users': typeof ApiUsersRouteWithChildren
+  '/api/users/$id': typeof ApiUsersIdRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: never
+  fullPaths: '/api/users' | '/api/users/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: never
-  id: '__root__'
+  to: '/api/users' | '/api/users/$id'
+  id: '__root__' | '/api/users' | '/api/users/$id'
   fileRoutesById: FileRoutesById
 }
 
-export interface RootRouteChildren {}
+export interface RootRouteChildren {
+  ApiUsersRoute: typeof ApiUsersRouteWithChildren
+}
 
-const rootRouteChildren: RootRouteChildren = {}
+const rootRouteChildren: RootRouteChildren = {
+  ApiUsersRoute: ApiUsersRouteWithChildren,
+}
 
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
@@ -63,7 +136,19 @@ export const routeTree = rootRoute
   "routes": {
     "__root__": {
       "filePath": "__root.tsx",
-      "children": []
+      "children": [
+        "/api/users"
+      ]
+    },
+    "/api/users": {
+      "filePath": "api.users.ts",
+      "children": [
+        "/api/users/$id"
+      ]
+    },
+    "/api/users/$id": {
+      "filePath": "api/users.$id.ts",
+      "parent": "/api/users"
     }
   }
 }
