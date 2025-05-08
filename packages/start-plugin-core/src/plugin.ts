@@ -4,12 +4,12 @@ import {
   createTanStackConfig,
   createTanStackStartOptionsSchema,
 } from './schema.js'
-import { nitroPlugin } from './nitro/nitro-plugin.js'
-import { startManifestPlugin } from './routesManifestPlugin.js'
-import { TanStackStartCompilerPlugin } from './start-compiler-plugin.js'
+import { nitroPlugin } from './nitro/nitro-plugin'
+import { startManifestPlugin } from './routesManifestPlugin'
+import { TanStackStartCompilerPlugin } from './start-compiler-plugin'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
-import type { CompileStartFrameworkOptions } from './compilers.js'
+import type { CompileStartFrameworkOptions } from './compilers'
 
 const TanStackStartOptionsSchema = createTanStackStartOptionsSchema()
 export type TanStackStartInputConfig = z.input<

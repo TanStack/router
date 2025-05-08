@@ -4,12 +4,12 @@ import path from 'node:path'
 import { getRollupConfig } from 'nitropack/rollup'
 import { build as buildNitro, createNitro } from 'nitropack'
 import { joinURL, withBase, withoutBase } from 'ufo'
-import { Queue } from './queue.js'
-import { buildNitroEnvironment } from './nitro/build-nitro.js'
+import { Queue } from './queue'
+import { buildNitroEnvironment } from './nitro/build-nitro'
 import type { ViteBuilder } from 'vite'
 import type { $Fetch, Nitro } from 'nitropack'
-import type { TanStackStartOutputConfig } from './plugin.js'
-import type { Page } from './schema.js'
+import type { TanStackStartOutputConfig } from './plugin'
+import type { Page } from './schema'
 
 export async function prerender({
   options,

@@ -6,8 +6,8 @@ import {
   TanStackStartServerRoutesVite,
   TanStackStartVitePluginCore,
 } from '@tanstack/start-plugin-core'
-import { getTanStackStartOptions } from './schema.js'
-import type { TanStackStartInputConfig, WithReactPlugin } from './schema.js'
+import { getTanStackStartOptions } from './schema'
+import type { TanStackStartInputConfig, WithReactPlugin } from './schema'
 import type { PluginOption } from 'vite'
 
 export type {

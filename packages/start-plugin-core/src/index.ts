@@ -12,4 +12,4 @@ export {
 } from './schema'
 
 export { TanStackStartVitePluginCore } from './plugin'
-export { TanStackStartServerRoutesVite } from './start-server-routes-plugin'
+export { TanStackStartServerRoutesVite } from './start-server-routes-plugin/plugin'
