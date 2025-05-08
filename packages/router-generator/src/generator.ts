@@ -280,19 +280,19 @@ export async function generator(config: Config, root: string) {
         // Update the existing route file
         replaced = routeCode
           .replace(
-            /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+            /(FileRoute\(\s*['"`])([^\s]*)(['"`],?\s*\))/g,
             (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
           )
           .replace(
             new RegExp(
-              `(import\\s*\\{.*)(create(Lazy)?FileRoute)(.*\\}\\s*from\\s*['"]@tanstack\\/${ROUTE_TEMPLATE.subPkg}['"])`,
+              `(import\\s*\\{.*)(create(Lazy)?FileRoute)(.*\\}\\s*from\\s*['"`]@tanstack\\/${ROUTE_TEMPLATE.subPkg}['"`])`,
               'gs',
             ),
             (_, p1, __, ___, p4) =>
               `${p1}${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
           )
           .replace(
-            /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+            /create(Lazy)?FileRoute(\(\s*['"`])([^\s]*)(['"`],?\s*\))/g,
             (_, __, p2, ___, p4) =>
               `${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
@@ -458,7 +458,7 @@ export async function generator(config: Config, root: string) {
         node.fullPath,
         routeCode,
         routeCode.replace(
-          /(createAPIFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
+          /(createAPIFileRoute\(\s*['"`])([^\s]*)(['"`],?\s*\))/g,
           (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
         ),
         {
