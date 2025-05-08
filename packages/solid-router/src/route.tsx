@@ -53,8 +53,8 @@ declare module '@tanstack/router-core' {
   }
 
   export interface RouteExtensions<
-    TId extends string,
-    TFullPath extends string,
+    in out TId extends string,
+    in out TFullPath extends string,
   > {
     useMatch: UseMatchRoute<TId>
     useRouteContext: UseRouteContextRoute<TId>
