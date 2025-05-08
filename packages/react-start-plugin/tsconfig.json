@@ -6,6 +6,6 @@
     "rootDir": "src",
     "outDir": "dist/esm",
     "target": "esnext",
-    "noEmit": false
+    "noEmit": true
   }
 }
