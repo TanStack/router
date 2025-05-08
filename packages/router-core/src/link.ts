@@ -34,28 +34,6 @@ export type IsRequiredParams<TParams> =
 
 export type IgnoreSplatParam<T> = T extends '' ? never : T
 
-export type ParseRequiredBoundaryPathParam<
-  T extends string,
-  TAcc = never,
-> = T extends `${string}{$}${infer TRest}`
-  ? ParseRequiredBoundaryPathParam<TRest, TAcc>
-  : T extends `${string}{$${infer TParam}}${infer TRest}`
-    ? ParseRequiredBoundaryPathParam<TRest, TAcc | IgnoreSplatParam<TParam>>
-    : TAcc
-
-export type ParseRequiredSegmentPathParam<
-  T extends string,
-  TAcc = never,
-> = T extends `${string}{-$${string}}${infer TRest}`
-  ? ParseRequiredSegmentPathParam<TRest, TAcc>
-  : T extends `${string}{$${string}}${infer TRest}`
-    ? ParseRequiredSegmentPathParam<TRest, TAcc>
-    : T extends `${string}$${infer TParam}/${infer TRest}`
-      ? ParseRequiredSegmentPathParam<TRest, TAcc | IgnoreSplatParam<TParam>>
-      : T extends `${string}$${infer TParam}`
-        ? TAcc | IgnoreSplatParam<TParam>
-        : TAcc
-
 export type ParseRequiredPathParams<
   T extends string,
   TAcc = never,
