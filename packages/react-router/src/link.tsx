@@ -129,7 +129,13 @@ export function useLinkProps<
         router.options.defaultPreloadIntentProximity ??
         0,
     ] as const
-  }, [router.options.defaultPreload, userPreload, _options.reloadDocument])
+  }, [
+    router.options.defaultPreload,
+    userPreload,
+    _options.reloadDocument,
+    router.options.defaultPreloadIntentProximity,
+    userPreloadIntentProximity,
+  ])
 
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
@@ -232,7 +238,7 @@ export function useLinkProps<
         doPreload()
       }
     },
-    [doPreload],
+    [doPreload, preload],
   )
 
   useIntersectionObserver(
@@ -342,11 +348,23 @@ export function useLinkProps<
       document.removeEventListener('scroll', handleScroll)
       cancelPreload()
     }
-  }, [disabled, doPreload, preload, preloadDelay, preloadIntentProximity])
+  }, [
+    disabled,
+    doPreload,
+    preload,
+    preloadDelay,
+    preloadIntentProximity,
+    cancelPreload,
+    innerRef,
+    tryPreload,
+    type,
+  ])
 
   useRectCallback(innerRef, (rect) => {
     rectRef.current = rect
   })
+
+  const pointerDownRef = React.useRef(false)
 
   if (type === 'external') {
     return {
@@ -400,8 +418,6 @@ export function useLinkProps<
       } as any)
     }
   }
-
-  const pointerDownRef = React.useRef(false)
 
   const onPointerDown = (e: PointerEvent) => {
     pointerDownRef.current = true
@@ -726,7 +742,7 @@ export const useRectCallback = (
         window.removeEventListener('resize', handleResize)
       }
     }
-  }, [ref.current, handleResize])
+  }, [ref, handleResize])
 }
 
 type Rect = {
