@@ -4,24 +4,20 @@ import { unpluginRouterHmrFactory } from './router-hmr-plugin'
 import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
-
 export const unpluginRouterComposedFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}, meta) => {
-
-  const getPlugin = (
-    pluginFactory: UnpluginFactory<Partial<Config>>,
-  ) => {
+  const getPlugin = (pluginFactory: UnpluginFactory<Partial<Config>>) => {
     const plugin = pluginFactory(options, meta)
     if (!Array.isArray(plugin)) {
       return [plugin]
     }
-    return plugin 
+    return plugin
   }
 
   const routerGenerator = getPlugin(unpluginRouterGeneratorFactory)
   const routerCodeSplitter = getPlugin(unpluginRouterCodeSplitterFactory)
-  
+
   const result = [...routerGenerator, ...routerCodeSplitter]
 
   const isProduction = process.env.NODE_ENV === 'production'
