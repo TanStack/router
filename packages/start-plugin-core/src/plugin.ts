@@ -3,7 +3,7 @@ import { createNitro } from 'nitropack'
 import {
   createTanStackConfig,
   createTanStackStartOptionsSchema,
-} from './schema.js'
+} from './schema'
 import { nitroPlugin } from './nitro/nitro-plugin'
 import { startManifestPlugin } from './routesManifestPlugin'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin'

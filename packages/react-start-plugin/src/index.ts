@@ -14,7 +14,7 @@ export type {
   TanStackStartInputConfig,
   TanStackStartOutputConfig,
   WithReactPlugin,
-} from './schema.js'
+} from './schema'
 
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithReactPlugin,
