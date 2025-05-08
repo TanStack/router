@@ -503,11 +503,9 @@ export type IsRequired<
       ? never
       : TPath extends CatchAllPaths<TRouter>
         ? never
-        : [TFrom] extends [TPath]
-          ? never
-          : IsRequiredParams<
-              ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
-            >
+        : IsRequiredParams<
+            ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
+          >
     : never
 
 export type SearchParamOptions<TRouter extends AnyRouter, TFrom, TTo> =

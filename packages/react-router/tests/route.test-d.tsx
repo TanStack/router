@@ -1700,7 +1700,7 @@ test('when creating a child route with no explicit search input', () => {
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ page: number } | undefined>()
+    .toEqualTypeOf<{ page: number }>()
 
   expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
@@ -1763,7 +1763,7 @@ test('when creating a child route with an explicit search input', () => {
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function | boolean>()
-    .toEqualTypeOf<{ input: string } | undefined>()
+    .toEqualTypeOf<{ input: string }>()
 
   expectTypeOf(navigate<typeof router, '/', '/'>)
     .parameter(0)
