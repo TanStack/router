@@ -402,6 +402,13 @@ export async function generator(config: Config, root: string) {
     } else {
       routeTree.push(node)
     }
+    if (
+      node._fsRouteType === 'layout' &&
+      node.isVirtual &&
+      node.isVirtualParentRoute
+    ) {
+      node.isNonPath = node.children?.every((d) => d.isNonPath)
+    }
 
     routeNodes.push(node)
   }
@@ -409,6 +416,7 @@ export async function generator(config: Config, root: string) {
   for (const node of onlyGeneratorRouteNodes) {
     await handleNode(node)
   }
+
   checkRouteFullPathUniqueness(
     preRouteNodes.filter(
       (d) =>
@@ -835,7 +843,10 @@ function removeGroups(s: string) {
  */
 function determineNodePath(node: RouteNode) {
   return (node.path = node.parent
-    ? node.routePath?.replace(node.parent.routePath ?? '', '') || '/'
+    ? node.routePath?.replace(
+        node.parent.isNonPath ? '' : (node.parent.routePath ?? ''),
+        '',
+      ) || '/'
     : node.routePath)
 }
 
