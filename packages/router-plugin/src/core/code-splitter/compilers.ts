@@ -7,6 +7,7 @@ import {
 } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { tsrSplit } from '../constants'
+import { routeHmrStatement } from '../route-hmr-statement'
 import { createIdentifier } from './path-ids'
 import { getFrameworkOptions } from './framework-options'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
@@ -285,18 +286,9 @@ export function compileCodeSplitReferenceRoute(
                             )()
                           }
 
-                          // If the TSRDummyComponent is not defined, define it
-                          if (
-                            opts.runtimeEnv !== 'prod' && // only in development
-                            !hasImportedOrDefinedIdentifier(
-                              frameworkOptions.idents.dummyHMRComponent,
-                            )
-                          ) {
-                            programPath.pushContainer('body', [
-                              template.statement(
-                                frameworkOptions.dummyHMRComponent,
-                              )(),
-                            ])
+                          // add HMR handling
+                          if (opts.runtimeEnv !== 'prod') {
+                            programPath.pushContainer('body', routeHmrStatement)
                           }
                         }
 
