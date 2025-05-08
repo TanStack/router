@@ -643,6 +643,8 @@ test('when creating a child route with a param and splat param from the root rou
     routeTree: rootRoute.addChildren([invoicesRoute]),
   })
 
+  const params = invoicesRoute.useParams<typeof router>()
+
   expectTypeOf(invoicesRoute.useParams<typeof router>()).toEqualTypeOf<{
     invoiceId: string
     _splat?: string
@@ -1775,4 +1777,95 @@ test('when creating a child route with an explicit search input', () => {
     .toHaveProperty('search')
     .parameter(0)
     .toEqualTypeOf<{ page: string }>()
+})
+
+test('when creating a route with a prefix and suffix', () => {
+  const rootRoute = createRootRoute()
+
+  const prefixSuffixRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'prefix{$postId}suffix',
+  })
+
+  const routeTree = rootRoute.addChildren([prefixSuffixRoute])
+
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(prefixSuffixRoute.useParams<typeof router>()).toEqualTypeOf<{
+    postId: string
+  }>()
+})
+
+test('when creating a route with a optional prefix and suffix', () => {
+  const rootRoute = createRootRoute()
+
+  const prefixSuffixRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'prefix{-$postId}suffix',
+  })
+
+  const routeTree = rootRoute.addChildren([prefixSuffixRoute])
+
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(prefixSuffixRoute.useParams<typeof router>()).toEqualTypeOf<{
+    postId?: string
+  }>()
+})
+
+test('when creating a route with a splat prefix and suffix', () => {
+  const rootRoute = createRootRoute()
+
+  const prefixSuffixRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'prefix{$}suffix',
+  })
+
+  const routeTree = rootRoute.addChildren([prefixSuffixRoute])
+
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(prefixSuffixRoute.useParams<typeof router>()).toEqualTypeOf<{
+    _splat?: string
+  }>()
+})
+
+test('when creating a route with a splat, optional param and required param', () => {
+  const rootRoute = createRootRoute()
+
+  const prefixSuffixRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'docs/$docId/$/{-$detailId}/{$myFile}.pdf',
+  })
+
+  const routeTree = rootRoute.addChildren([prefixSuffixRoute])
+
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(prefixSuffixRoute.useParams<typeof router>()).toEqualTypeOf<{
+    docId: string
+    _splat?: string
+    myFile: string
+    detailId?: string
+  }>()
+})
+
+test('when creating a route with a boundary splat, optional param and required param', () => {
+  const rootRoute = createRootRoute()
+
+  const prefixSuffixRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'docs/$docId/before{$}after/detail{-$detailId}/file-{$myFile}.pdf',
+  })
+
+  const routeTree = rootRoute.addChildren([prefixSuffixRoute])
+
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(prefixSuffixRoute.useParams<typeof router>()).toEqualTypeOf<{
+    docId: string
+    _splat?: string
+    myFile: string
+    detailId?: string
+  }>()
 })

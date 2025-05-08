@@ -32,18 +32,63 @@ import type { ParsedLocation } from './location'
 export type IsRequiredParams<TParams> =
   Record<never, never> extends TParams ? never : true
 
-export type ParsePathParams<T extends string, TAcc = never> = T &
-  `${string}$${string}` extends never
-  ? TAcc
-  : T extends `${string}$${infer TPossiblyParam}`
-    ? TPossiblyParam extends ''
-      ? TAcc
-      : TPossiblyParam & `${string}/${string}` extends never
-        ? TPossiblyParam | TAcc
-        : TPossiblyParam extends `${infer TParam}/${infer TRest}`
-          ? ParsePathParams<TRest, TParam extends '' ? TAcc : TParam | TAcc>
-          : never
+export type IgnoreSplatParam<T> = T extends '' ? never : T
+
+export type ParseRequiredBoundaryPathParam<
+  T extends string,
+  TAcc = never,
+> = T extends `${string}{$}${infer TRest}`
+  ? ParseRequiredBoundaryPathParam<TRest, TAcc>
+  : T extends `${string}{$${infer TParam}}${infer TRest}`
+    ? ParseRequiredBoundaryPathParam<TRest, TAcc | IgnoreSplatParam<TParam>>
     : TAcc
+
+export type ParseRequiredSegmentPathParam<
+  T extends string,
+  TAcc = never,
+> = T extends `${string}{-$${string}}${infer TRest}`
+  ? ParseRequiredSegmentPathParam<TRest, TAcc>
+  : T extends `${string}{$${string}}${infer TRest}`
+    ? ParseRequiredSegmentPathParam<TRest, TAcc>
+    : T extends `${string}$${infer TParam}/${infer TRest}`
+      ? ParseRequiredSegmentPathParam<TRest, TAcc | IgnoreSplatParam<TParam>>
+      : T extends `${string}$${infer TParam}`
+        ? TAcc | IgnoreSplatParam<TParam>
+        : TAcc
+
+export type ParseRequiredPathParams<
+  T extends string,
+  TAcc = never,
+> = T extends `${infer TLeft}$${infer TRight}`
+  ? TLeft extends `${string}{-`
+    ? ParseRequiredPathParams<TRight, TAcc>
+    : TLeft extends `${string}{`
+      ? TRight extends `${infer TParam}}${infer TRest}`
+        ? ParseRequiredPathParams<TRest, TAcc | IgnoreSplatParam<TParam>>
+        : never
+      : TRight extends `${infer TParam}/${infer TRest}`
+        ? ParseRequiredPathParams<TRest, TAcc | IgnoreSplatParam<TParam>>
+        : TAcc | IgnoreSplatParam<TRight>
+  : TAcc
+
+export type ParseOptionalPathParams<
+  T extends string,
+  TAcc = never,
+> = T extends `${infer TLeft}$${infer TRight}`
+  ? TLeft extends `${string}{-`
+    ? TRight extends `${infer TParam}}${infer TRest}`
+      ? ParseOptionalPathParams<TRest, TAcc | TParam>
+      : never
+    : TLeft extends `${string}{`
+      ? TRight extends `}${string}`
+        ? ParseOptionalPathParams<TRight, TAcc | '_splat'>
+        : ParseOptionalPathParams<TRight, TAcc>
+      : TRight extends `/${infer TRest}`
+        ? ParseOptionalPathParams<TRest, TAcc | '_splat'>
+        : TRight extends ''
+          ? TAcc | '_splat'
+          : ParseOptionalPathParams<TRight, TAcc>
+  : TAcc
 
 export type AddTrailingSlash<T> = T extends `${string}/` ? T : `${T & string}/`
 
