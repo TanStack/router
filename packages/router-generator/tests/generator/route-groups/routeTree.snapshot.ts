@@ -243,6 +243,15 @@ declare module './routes/(foo)/asdf/(bar)/_layout.xyz.lazy' {
     FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['fullPath']
   >
 }
+declare module './routes/(foo)/asdf/(bar)/_layout.xyz.lazy' {
+  const createLazyFileRoute: CreateFileRoute<
+    '/(foo)/asdf/(bar)/_layout/xyz',
+    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['parentRoute'],
+    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['id'],
+    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['path'],
+    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['fullPath']
+  >
+}
 
 // Create and export the route tree
 

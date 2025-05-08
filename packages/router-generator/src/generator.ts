@@ -207,7 +207,7 @@ export async function generator(config: Config, root: string) {
               tLazyRouteTemplate.template(),
             {
               tsrImports: tLazyRouteTemplate.imports.tsrImports(),
-              tsrPath: escapedRoutePath,
+              tsrPath: escapedRoutePath.replaceAll(/\{(.+)\}/gm, '$1'),
               tsrExportStart:
                 tLazyRouteTemplate.imports.tsrExportStart(escapedRoutePath),
               tsrExportEnd: tLazyRouteTemplate.imports.tsrExportEnd(),
@@ -233,7 +233,7 @@ export async function generator(config: Config, root: string) {
               tRouteTemplate.template(),
             {
               tsrImports: tRouteTemplate.imports.tsrImports(),
-              tsrPath: escapedRoutePath,
+              tsrPath: escapedRoutePath.replaceAll(/\{(.+)\}/gm, '$1'),
               tsrExportStart:
                 tRouteTemplate.imports.tsrExportStart(escapedRoutePath),
               tsrExportEnd: tRouteTemplate.imports.tsrExportEnd(),
@@ -657,15 +657,26 @@ export async function generator(config: Config, root: string) {
           `// Add type-safety to the createFileRoute function across the route tree`,
           routeNodes
             .map((routeNode) => {
-              return `declare module './${getImportPath(routeNode)}' {
-const createFileRoute: CreateFileRoute<
-'${routeNode.routePath}',
-FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
-FileRoutesByPath['${routeNode.routePath}']['id'],
-FileRoutesByPath['${routeNode.routePath}']['path'],
-FileRoutesByPath['${routeNode.routePath}']['fullPath']
->
-}`
+              function getModuleDeclaration(routeNode?: RouteNode) {
+                if (!routeNode) {
+                  return ''
+                }
+                return `declare module './${getImportPath(routeNode)}' {
+                  const ${routeNode._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}: CreateFileRoute<
+                  '${routeNode.routePath}',
+                  FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
+                  FileRoutesByPath['${routeNode.routePath}']['id'],
+                  FileRoutesByPath['${routeNode.routePath}']['path'],
+                  FileRoutesByPath['${routeNode.routePath}']['fullPath']
+                  >
+                  }`
+              }
+              return (
+                getModuleDeclaration(routeNode) +
+                getModuleDeclaration(
+                  routePiecesByPath[routeNode.routePath!]?.lazy,
+                )
+              )
             })
             .join('\n'),
         ]),

@@ -89,6 +89,15 @@ declare module './routes/foo.lazy' {
     FileRoutesByPath['/foo']['fullPath']
   >
 }
+declare module './routes/foo.lazy' {
+  const createLazyFileRoute: CreateFileRoute<
+    '/foo',
+    FileRoutesByPath['/foo']['parentRoute'],
+    FileRoutesByPath['/foo']['id'],
+    FileRoutesByPath['/foo']['path'],
+    FileRoutesByPath['/foo']['fullPath']
+  >
+}
 declare module './routes/api/bar' {
   const createFileRoute: CreateFileRoute<
     '/api/bar',
