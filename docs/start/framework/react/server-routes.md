@@ -200,7 +200,7 @@ Server routes support dynamic path parameters in the same way as TanStack Router
 
 ```ts
 // routes/users/$id.ts
-export const APIRoute = createServerFileRoute().methods({
+export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ params }) => {
     const { id } = params
     return new Response(`User ID: ${id}`)
@@ -215,7 +215,7 @@ You can also have multiple dynamic path parameters in a single route. For exampl
 
 ```ts
 // routes/users/$id/posts/$postId.ts
-export const APIRoute = createServerFileRoute().methods({
+export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ params }) => {
     const { id, postId } = params
     return new Response(`User ID: ${id}, Post ID: ${postId}`)
@@ -232,7 +232,7 @@ Server routes also support wildcard parameters at the end of the path, which are
 
 ```ts
 // routes/file/$.ts
-export const APIRoute = createServerFileRoute().methods({
+export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ params }) => {
     const { _splat } = params
     return new Response(`File: ${_splat}`)
@@ -249,7 +249,7 @@ To handle POST requests,you can add a `POST` handler to the route object. The ha
 
 ```ts
 // routes/hello.ts
-export const APIRoute = createServerFileRoute().methods({
+export const ServerRoute = createServerFileRoute().methods({
   POST: async ({ request }) => {
     const body = await request.json()
     return new Response(`Hello, ${body.name}!`)
@@ -272,7 +272,7 @@ When returning JSON using a Response object, this is a common pattern:
 
 ```ts
 // routes/hello.ts
-export const APIRoute = createServerFileRoute().methods({
+export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ request }) => {
     return new Response(JSON.stringify({ message: 'Hello, World!' }), {
       headers: {
@@ -294,7 +294,7 @@ Or you can use the `json` helper function to automatically set the `Content-Type
 // routes/hello.ts
 import { json } from '@tanstack/react-start'
 
-export const APIRoute = createServerFileRoute().methods({
+export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ request }) => {
     return json({ message: 'Hello, World!' })
   },
@@ -314,7 +314,7 @@ You can set the status code of the response by either:
   // routes/hello.ts
   import { json } from '@tanstack/react-start'
 
-  export const APIRoute = createServerFileRoute().methods({
+  export const ServerRoute = createServerFileRoute().methods({
     GET: async ({ request, params }) => {
       const user = await findUser(params.id)
       if (!user) {
@@ -334,7 +334,7 @@ You can set the status code of the response by either:
   import { json } from '@tanstack/react-start'
   import { setResponseStatus } from '@tanstack/react-start/server'
 
-  export const APIRoute = createServerFileRoute().methods({
+  export const ServerRoute = createServerFileRoute().methods({
     GET: async ({ request, params }) => {
       const user = await findUser(params.id)
       if (!user) {
@@ -356,7 +356,7 @@ Sometimes you may need to set headers in the response. You can do this by either
 
   ```ts
   // routes/hello.ts
-  export const APIRoute = createServerFileRoute().methods({
+  export const ServerRoute = createServerFileRoute().methods({
     GET: async ({ request }) => {
       return new Response('Hello, World!', {
         headers: {
@@ -376,7 +376,7 @@ Sometimes you may need to set headers in the response. You can do this by either
   // routes/hello.ts
   import { setHeaders } from '@tanstack/react-start/server'
 
-  export const APIRoute = createServerFileRoute().methods({
+  export const ServerRoute = createServerFileRoute().methods({
     GET: async ({ request }) => {
       setHeaders({
         'Content-Type': 'text/plain',
