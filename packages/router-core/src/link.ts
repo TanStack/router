@@ -21,11 +21,8 @@ import type {
   ConstrainLiteral,
   Expand,
   MakeDifferenceOptional,
-  NoInfer,
   NonNullableUpdater,
-  PickRequired,
   Updater,
-  WithoutEmpty,
 } from './utils'
 import type { ParsedLocation } from './location'
 
@@ -469,11 +466,11 @@ type MakeRequiredParamsReducer<
 > =
   | (string extends TFrom
       ? never
-      : ResolveFromParams<TRouter, TParamVariant, TFrom> extends WithoutEmpty<
-            PickRequired<
-              ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
-            >
-          >
+      : ResolveFromParams<
+            TRouter,
+            TParamVariant,
+            TFrom
+          > extends ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
         ? true
         : never)
   | (ParamsReducer<TRouter, TParamVariant, TFrom, TTo> & {})
@@ -505,9 +502,11 @@ export type IsRequired<
       ? never
       : TPath extends CatchAllPaths<TRouter>
         ? never
-        : IsRequiredParams<
-            ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
-          >
+        : TFrom extends TPath
+          ? never
+          : IsRequiredParams<
+              ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
+            >
     : never
 
 export type SearchParamOptions<TRouter extends AnyRouter, TFrom, TTo> =

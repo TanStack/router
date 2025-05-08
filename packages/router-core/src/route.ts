@@ -442,7 +442,10 @@ export type ResolveFullPath<
   TPrefixed = RoutePrefix<TParentRoute['fullPath'], TPath>,
 > = TPrefixed extends RootRouteId ? '/' : TPrefixed
 
-export interface RouteExtensions<TId, TFullPath> {}
+export interface RouteExtensions<in out TId, in out TFullPath> {
+  id: TId
+  fullPath: TFullPath
+}
 
 export type RouteLazyFn<TRoute extends AnyRoute> = (
   lazyFn: () => Promise<LazyRoute>,
@@ -564,9 +567,7 @@ export interface Route<
   in out TChildren,
   in out TFileRouteTypes,
 > extends RouteExtensions<TId, TFullPath> {
-  fullPath: TFullPath
   path: TPath
-  id: TId
   parentRoute: TParentRoute
   children?: TChildren
   types: RouteTypes<
