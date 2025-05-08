@@ -1,7 +1,5 @@
 import * as React from 'react'
-import { ErrorComponent,
-  useRouter,
-} from '@tanstack/react-router'
+import { ErrorComponent, useRouter } from '@tanstack/react-router'
 import {
   useQueryErrorResetBoundary,
   useSuspenseQuery,

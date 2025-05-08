@@ -1,4 +1,3 @@
-
 import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { ScrollBlock } from '../-components/scroll-block'

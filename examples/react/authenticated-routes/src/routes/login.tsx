@@ -1,8 +1,5 @@
 import * as React from 'react'
-import { 
-  redirect,
-  useRouter,
-  useRouterState, } from '@tanstack/react-router'
+import { redirect, useRouter, useRouterState } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { useAuth } from '../auth'

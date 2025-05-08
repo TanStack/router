@@ -1,4 +1,3 @@
-
 import { postQueryOptions } from '@router-mono-react-query/post-query'
 
 export const Route = createFileRoute({

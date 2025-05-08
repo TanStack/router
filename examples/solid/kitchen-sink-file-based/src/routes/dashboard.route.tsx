@@ -1,7 +1,5 @@
 import * as Solid from 'solid-js'
-import { Link,
-  Outlet,
-  linkOptions, } from '@tanstack/solid-router'
+import { Link, Outlet, linkOptions } from '@tanstack/solid-router'
 
 export const Route = createFileRoute({
   component: DashboardComponent,

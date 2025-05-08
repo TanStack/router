@@ -1,6 +1,4 @@
-import { Link,
-  Outlet,
-  useLocation, } from '@tanstack/react-router'
+import { Link, Outlet, useLocation } from '@tanstack/react-router'
 import { getDocumentHeads } from '~/server/document'
 import { getProject } from '~/server/projects'
 

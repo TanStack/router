@@ -1,9 +1,11 @@
 import * as React from 'react'
-import { Link,
+import {
+  Link,
   MatchRoute,
   Outlet,
   retainSearchParams,
-  useNavigate, } from '@tanstack/react-router'
+  useNavigate,
+} from '@tanstack/react-router'
 import { z } from 'zod'
 import { Spinner } from '../components/Spinner'
 import { fetchUsers } from '../utils/mockTodos'

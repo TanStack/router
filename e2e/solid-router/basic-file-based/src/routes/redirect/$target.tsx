@@ -1,4 +1,4 @@
-import {  retainSearchParams } from '@tanstack/solid-router'
+import { retainSearchParams } from '@tanstack/solid-router'
 import z from 'zod'
 
 export const Route = createFileRoute({

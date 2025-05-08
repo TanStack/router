@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import {  useRouter } from '@tanstack/solid-router'
+import { useRouter } from '@tanstack/solid-router'
 import { InvoiceFields } from '../components/InvoiceFields'
 import { Spinner } from '../components/Spinner'
 import { useMutation } from '../hooks/useMutation'

@@ -1,4 +1,3 @@
-
 import { NotFound } from '~/components/NotFound'
 import { capitalize, seo } from '~/utils/seo'
 

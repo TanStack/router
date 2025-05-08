@@ -1,6 +1,4 @@
-import { Link,
-  Outlet,
-  useLocation, } from '@tanstack/react-router'
+import { Link, Outlet, useLocation } from '@tanstack/react-router'
 import { getProjects } from '~/server/projects'
 
 export const Route = createFileRoute({

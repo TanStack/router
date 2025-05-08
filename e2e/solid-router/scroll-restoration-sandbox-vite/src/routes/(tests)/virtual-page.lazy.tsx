@@ -1,4 +1,3 @@
-
 import { ScrollBlock } from '../-components/scroll-block'
 
 export const Route = createLazyFileRoute({

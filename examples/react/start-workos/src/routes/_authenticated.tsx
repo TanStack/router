@@ -1,4 +1,4 @@
-import {  redirect } from '@tanstack/react-router';
+import { redirect } from '@tanstack/react-router';
 import { getSignInUrl } from '../authkit/serverFunctions';
 
 export const Route = createFileRoute({

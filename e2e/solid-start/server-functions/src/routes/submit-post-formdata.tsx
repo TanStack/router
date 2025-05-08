@@ -1,4 +1,3 @@
-
 import { createServerFn } from '@tanstack/solid-start'
 
 export const Route = createFileRoute({

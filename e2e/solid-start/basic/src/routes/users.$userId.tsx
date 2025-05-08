@@ -1,4 +1,4 @@
-import { ErrorComponent,} from '@tanstack/solid-router'
+import { ErrorComponent } from '@tanstack/solid-router'
 import axios from 'redaxios'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 

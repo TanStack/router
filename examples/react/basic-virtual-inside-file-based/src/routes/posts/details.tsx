@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { ErrorComponent,} from '@tanstack/react-router'
+import { ErrorComponent } from '@tanstack/react-router'
 import { fetchPost } from '../../posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 

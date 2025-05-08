@@ -1,6 +1,4 @@
-import { Link,
-  useLocation,
-  useNavigate, } from '@tanstack/solid-router'
+import { Link, useLocation, useNavigate } from '@tanstack/solid-router'
 import {
   createEffect,
   createRenderEffect,

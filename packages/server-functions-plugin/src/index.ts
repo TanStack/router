@@ -29,7 +29,7 @@ export type ServerFnPluginOpts = {
 }
 
 const manifestFilename =
-    '.tanstack-start/build/server/server-functions-manifest.json'
+  '.tanstack-start/build/server/server-functions-manifest.json'
 
 export type ServerFnPluginEnvOpts = {
   getRuntimeCode: () => string

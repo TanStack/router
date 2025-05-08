@@ -1,4 +1,3 @@
-
 import { fetchPost } from '../posts'
 import { PostErrorComponent } from './-components/PostErrorComponent'
 

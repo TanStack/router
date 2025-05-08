@@ -1,7 +1,5 @@
 import * as React from 'react'
-import { Link,
-  Outlet,
-  linkOptions, } from '@tanstack/react-router'
+import { Link, Outlet, linkOptions } from '@tanstack/react-router'
 
 export const Route = createFileRoute({
   component: DashboardComponent,

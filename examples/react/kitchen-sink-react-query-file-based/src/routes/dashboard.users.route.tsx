@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import * as React from 'react'
-import { Link,
+import {
+  Link,
   MatchRoute,
   Outlet,
   retainSearchParams,
-  useNavigate, } from '@tanstack/react-router'
+  useNavigate,
+} from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { Spinner } from '../components/Spinner'

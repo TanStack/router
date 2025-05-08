@@ -10,18 +10,12 @@
 
 // Import Routes
 
-import type {
-  FileRoutesByPath,
-  CreateServerFileRoute,
-} from '@tanstack/react-start/server'
-import {
-  createServerRoute,
-  createServerFileRoute,
-} from '@tanstack/react-start/server'
+import type { FileRoutesByPath, CreateServerFileRoute } from '@tanstack/react-start/server';
+import { createServerRoute, createServerFileRoute } from '@tanstack/react-start/server';
 
 // Create/Update Routes
 
-const rootRoute = createServerRoute()
+const rootRoute = createServerRoute();
 
 // Populate the FileRoutesByPath interface
 
@@ -38,25 +32,23 @@ export interface FileRoutesByFullPath {}
 export interface FileRoutesByTo {}
 
 export interface FileRoutesById {
-  __root__: typeof rootRoute
+  __root__: typeof rootRoute;
 }
 
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: never
-  fileRoutesByTo: FileRoutesByTo
-  to: never
-  id: '__root__'
-  fileRoutesById: FileRoutesById
+  fileRoutesByFullPath: FileRoutesByFullPath;
+  fullPaths: never;
+  fileRoutesByTo: FileRoutesByTo;
+  to: never;
+  id: '__root__';
+  fileRoutesById: FileRoutesById;
 }
 
 export interface RootRouteChildren {}
 
-const rootRouteChildren: RootRouteChildren = {}
+const rootRouteChildren: RootRouteChildren = {};
 
-export const routeTree = rootRoute
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+export const routeTree = rootRoute._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>();
 
 /* ROUTE_MANIFEST_START
 {

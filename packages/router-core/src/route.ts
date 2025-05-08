@@ -1439,9 +1439,9 @@ export class BaseRoute<
   }
 
   clone = (other: typeof this) => {
-    this._path = other._path 
+    this._path = other._path
     this._id = other._id
-    this._fullPath = other._fullPath 
+    this._fullPath = other._fullPath
     this._to = other._to
     this._ssr = other._ssr
     this.options.getParentRoute = other.options.getParentRoute

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import {  useRouter } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
 import { z } from 'zod'
 
 export const Route = createFileRoute({

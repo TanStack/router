@@ -1,6 +1,5 @@
 import * as Solid from 'solid-js'
 
-
 export const Route = createFileRoute({
   component: RouteGroupExample,
 })

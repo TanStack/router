@@ -1,6 +1,4 @@
-import { Link,
-  Outlet,
-  useLocation, } from '@tanstack/solid-router'
+import { Link, Outlet, useLocation } from '@tanstack/solid-router'
 import { getDocumentHeads } from '~/server/document'
 import { getProject } from '~/server/projects'
 

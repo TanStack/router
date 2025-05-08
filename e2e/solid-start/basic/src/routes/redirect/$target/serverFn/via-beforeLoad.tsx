@@ -1,4 +1,3 @@
-
 import { throwRedirect } from '~/components/throwRedirect'
 
 export const Route = createFileRoute({

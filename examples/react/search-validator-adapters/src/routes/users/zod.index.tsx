@@ -1,5 +1,5 @@
 import * as React from 'react'
-import {  useNavigate } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { fallback, zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 import { Header } from '../../components/Header'

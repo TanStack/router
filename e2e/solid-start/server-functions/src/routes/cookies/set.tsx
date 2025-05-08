@@ -1,4 +1,3 @@
-
 import { createServerFn } from '@tanstack/solid-start'
 import { setCookie } from '@tanstack/solid-start/server'
 import { z } from 'zod'

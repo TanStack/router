@@ -1,4 +1,4 @@
-import { ErrorComponent,} from '@tanstack/solid-router'
+import { ErrorComponent } from '@tanstack/solid-router'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 import { NotFound } from '~/components/NotFound'
 import { getDocument } from '~/server/document'

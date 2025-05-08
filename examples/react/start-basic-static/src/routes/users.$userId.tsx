@@ -1,4 +1,4 @@
-import { ErrorComponent,} from '@tanstack/react-router'
+import { ErrorComponent } from '@tanstack/react-router'
 import axios from 'redaxios'
 import { createServerFn } from '@tanstack/react-start'
 import type { ErrorComponentProps } from '@tanstack/react-router'

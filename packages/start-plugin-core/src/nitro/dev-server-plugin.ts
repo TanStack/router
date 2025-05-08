@@ -36,14 +36,16 @@ export function devServerPlugin(): Plugin {
             if (!serverEnv || !isRunnableDevEnvironment(serverEnv)) {
               throw new Error('Server environment not found')
             }
-            if(cachedScripts === undefined) {
+            if (cachedScripts === undefined) {
               const templateHtml = `<html><head></head><body></body></html>`
               const transformedHtml = await viteDevServer.transformIndexHtml(
                 req.url || '/',
                 templateHtml,
               )
               const scripts = extractHtmlScripts(transformedHtml)
-              globalThis.TSS_INJECTED_HEAD_SCRIPTS = scripts.map(script => script.content ?? '').join(';') 
+              globalThis.TSS_INJECTED_HEAD_SCRIPTS = scripts
+                .map((script) => script.content ?? '')
+                .join(';')
             }
             const serverEntry = await serverEnv.runner.import(
               '/~start/server-entry',

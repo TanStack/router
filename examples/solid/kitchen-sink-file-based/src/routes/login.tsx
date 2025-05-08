@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import {  useRouter } from '@tanstack/solid-router'
+import { useRouter } from '@tanstack/solid-router'
 import { z } from 'zod'
 
 export const Route = createFileRoute({

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import {  useRouter } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
 import { InvoiceFields } from '../components/InvoiceFields'
 import { Spinner } from '../components/Spinner'
 import { useMutation } from '../hooks/useMutation'

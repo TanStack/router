@@ -1,5 +1,3 @@
-
-
 const isProd = process.env.PROD
 
 export const Route = createFileRoute({

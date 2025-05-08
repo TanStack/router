@@ -1,4 +1,4 @@
-import { ErrorComponent, Link,} from '@tanstack/solid-router'
+import { ErrorComponent, Link } from '@tanstack/solid-router'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 
 import { fetchPost } from '~/utils/posts'

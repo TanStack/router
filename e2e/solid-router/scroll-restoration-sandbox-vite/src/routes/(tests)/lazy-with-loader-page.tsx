@@ -1,4 +1,3 @@
-
 import { sleep } from '../../posts'
 
 export const Route = createFileRoute({

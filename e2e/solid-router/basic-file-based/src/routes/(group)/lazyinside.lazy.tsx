@@ -1,6 +1,4 @@
-import { 
-  getRouteApi,
-  useSearch, } from '@tanstack/solid-router'
+import { getRouteApi, useSearch } from '@tanstack/solid-router'
 
 const routeApi = getRouteApi('/(group)/lazyinside')
 

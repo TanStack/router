@@ -1,10 +1,12 @@
 import * as Solid from 'solid-js'
-import { Link,
+import {
+  Link,
   MatchRoute,
   Outlet,
   retainSearchParams,
   useNavigate,
-  useRouterState, } from '@tanstack/solid-router'
+  useRouterState,
+} from '@tanstack/solid-router'
 import { z } from 'zod'
 import { createMemo } from 'solid-js'
 import { Spinner } from '../components/Spinner'
