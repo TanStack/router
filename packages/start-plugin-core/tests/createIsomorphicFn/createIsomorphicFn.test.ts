@@ -2,7 +2,9 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { afterAll, describe, expect, test, vi } from 'vitest'
 
-import { compileStartOutput } from '../../src/compilers'
+import { compileStartOutputFactory } from '../../src/compilers'
+
+const compileStartOutput = compileStartOutputFactory('react')
 
 async function getFilenames() {
   return await readdir(path.resolve(import.meta.dirname, './test-files'))
@@ -39,7 +41,6 @@ describe('createIsomorphicFn compiles correctly', async () => {
         const compiledResult = compileStartOutput({
           env,
           code,
-          root: './test-files',
           filename,
           dce: false,
         })
@@ -57,7 +58,6 @@ describe('createIsomorphicFn compiles correctly', async () => {
         code: `
         import { createIsomorphicFn } from '@tanstack/react-start'
         const clientOnly = createIsomorphicFn().client()`,
-        root: './test-files',
         filename: 'no-fn.ts',
         dce: false,
       })
@@ -68,7 +68,6 @@ describe('createIsomorphicFn compiles correctly', async () => {
         code: `
         import { createIsomorphicFn } from '@tanstack/react-start'
         const serverOnly = createIsomorphicFn().server()`,
-        root: './test-files',
         filename: 'no-fn.ts',
         dce: false,
       })
@@ -80,7 +79,6 @@ describe('createIsomorphicFn compiles correctly', async () => {
       code: `
       import { createIsomorphicFn } from '@tanstack/react-start'
       const noImpl = createIsomorphicFn()`,
-      root: './test-files',
       filename: 'no-fn.ts',
       dce: false,
     })

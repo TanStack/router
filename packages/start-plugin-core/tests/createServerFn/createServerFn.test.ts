@@ -2,7 +2,9 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { compileStartOutput } from '../../src/compilers'
+import { compileStartOutputFactory } from '../../src/compilers'
+
+const compileStartOutput = compileStartOutputFactory('react')
 
 async function getFilenames() {
   return await readdir(path.resolve(import.meta.dirname, './test-files'))
@@ -23,7 +25,6 @@ describe('createServerFn compiles correctly', async () => {
         const compiledResult = compileStartOutput({
           env,
           code,
-          root: './test-files',
           filename,
           dce: false,
         })
@@ -42,7 +43,6 @@ describe('createServerFn compiles correctly', async () => {
         code: `
         import { createServerFn } from '@tanstack/react-start'
         createServerFn()`,
-        root: './test-files',
         filename: 'no-fn.ts',
         dce: false,
       })
@@ -56,7 +56,6 @@ describe('createServerFn compiles correctly', async () => {
         code: `
         import { createServerFn } from '@tanstack/react-start'
         createServerFn().handler(async () => {})`,
-        root: './test-files',
         filename: 'no-fn.ts',
         dce: false,
       })
@@ -72,7 +71,6 @@ describe('createServerFn compiles correctly', async () => {
         const myServerFn = createServerFn().handler(myFunc)`
 
     const compiledResultClient = compileStartOutput({
-      root: '/test',
       filename: 'test.ts',
       code,
       env: 'client',
@@ -80,7 +78,6 @@ describe('createServerFn compiles correctly', async () => {
     })
 
     const compiledResultServer = compileStartOutput({
-      root: '/test',
       filename: 'test.ts',
       code,
       env: 'server',
@@ -123,7 +120,6 @@ describe('createServerFn compiles correctly', async () => {
 
     // Client
     const compiledResult = compileStartOutput({
-      root: '/test',
       filename: 'test.ts',
       code,
       env: 'client',
@@ -146,7 +142,6 @@ describe('createServerFn compiles correctly', async () => {
 
     // Server
     const compiledResultServer = compileStartOutput({
-      root: '/test',
       filename: 'test.ts',
       code,
       env: 'server',

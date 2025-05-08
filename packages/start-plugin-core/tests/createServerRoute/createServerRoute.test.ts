@@ -2,7 +2,9 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { compileStartOutput } from '../../src/compilers'
+import { compileStartOutputFactory } from '../../src/compilers'
+
+const compileStartOutput = compileStartOutputFactory('react')
 
 async function getFilenames() {
   return await readdir(path.resolve(import.meta.dirname, './test-files'))
@@ -23,7 +25,6 @@ describe('createMiddleware compiles correctly', async () => {
         const compiledResult = compileStartOutput({
           env,
           code,
-          root: './test-files',
           filename,
           dce: false,
         })

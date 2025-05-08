@@ -2,7 +2,9 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { compileStartOutput } from '../../src/compilers'
+import { compileStartOutputFactory } from '../../src/compilers'
+
+const compileStartOutput = compileStartOutputFactory('react')
 
 async function getFilenames() {
   return await readdir(path.resolve(import.meta.dirname, './test-files'))
@@ -23,7 +25,6 @@ describe('envOnly functions compile correctly', async () => {
         const compiledResult = compileStartOutput({
           env,
           code,
-          root: './test-files',
           filename,
           dce: false,
         })
@@ -41,7 +42,6 @@ describe('envOnly functions compile correctly', async () => {
         code: `
         import { clientOnly } from '@tanstack/react-start'
         const fn = clientOnly()`,
-        root: './test-files',
         filename: 'no-fn.ts',
         dce: false,
       })
@@ -52,7 +52,6 @@ describe('envOnly functions compile correctly', async () => {
         code: `
         import { serverOnly } from '@tanstack/react-start'
         const fn = serverOnly()`,
-        root: './test-files',
         filename: 'no-fn.ts',
         dce: false,
       })
