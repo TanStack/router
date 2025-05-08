@@ -503,7 +503,7 @@ export type IsRequired<
       ? never
       : TPath extends CatchAllPaths<TRouter>
         ? never
-        : TFrom extends TPath
+        : ResolveRelativePath<TFrom, TTo> extends TFrom
           ? never
           : IsRequiredParams<
               ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
