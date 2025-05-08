@@ -1,4 +1,6 @@
-const isProd = process.env.PROD
+/// <reference types="vite/client" />
+
+const isProd = import.meta.env.PROD
 
 export const Route = createFileRoute({
   head: () => ({
