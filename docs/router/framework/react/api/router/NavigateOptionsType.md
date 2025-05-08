@@ -73,6 +73,6 @@ The `NavigateOptions` object accepts the following properties:
 
 - Type: `string`
 - Optional
-- This can be used instead of `to` to navigate to a fully built href, e.g. pointing to an external target.
+- This can be used instead of `to` to navigate to a fully built href, e.g. pointing to an external target. When using with a fully built href, `reloadDocument` should be set to `true`
 
 - [`ToOptions`](./ToOptionsType.md)
