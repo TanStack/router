@@ -21,6 +21,7 @@ import type {
   ConstrainLiteral,
   Expand,
   MakeDifferenceOptional,
+  NoInfer,
   NonNullableUpdater,
   Updater,
 } from './utils'
