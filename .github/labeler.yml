@@ -50,8 +50,6 @@
   - 'packages/solid-start-plugin/**/*'
 'package: solid-start-server':
   - 'packages/solid-start-server/**/*'
-'package: start-api-routes':
-  - 'packages/start-api-routes/**/*'
 'package: start-client-core':
   - 'packages/start-client-core/**/*'
 'package: start-plugin-core':
