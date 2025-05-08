@@ -13,11 +13,11 @@
 import type {
   FileRoutesByPath,
   CreateServerFileRoute,
-} from '@tanstack/react-start/server'
+} from '@tanstack/solid-start/server'
 import {
   createServerRoute,
   createServerFileRoute,
-} from '@tanstack/react-start/server'
+} from '@tanstack/solid-start/server'
 
 import { ServerRoute as ApiUsersRouteImport } from './../../src/routes/api/users'
 import { ServerRoute as ApiUsersUserIdRouteImport } from './../../src/routes/api/users.$userId'
@@ -40,7 +40,7 @@ const ApiUsersUserIdRoute = ApiUsersUserIdRouteImport.update({
 
 // Populate the FileRoutesByPath interface
 
-declare module '@tanstack/react-start/server' {
+declare module '@tanstack/solid-start/server' {
   interface FileRoutesByPath {
     '/api/users': {
       id: '/api/users'
