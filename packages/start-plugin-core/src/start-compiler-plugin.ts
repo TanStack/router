@@ -50,13 +50,13 @@ export function TanStackStartCompilerPlugin(
     name: 'vite-plugin-tanstack-start-create-server-fn',
     enforce: 'pre',
     applyToEnvironment(env) {
-      return [opts.client?.envName, opts.server?.envName].includes(env.name)
+      return [opts?.client?.envName, opts?.server?.envName].includes(env.name)
     },
     transform(code, id) {
       const env =
-        this.environment.name === opts.client?.envName
+        this.environment.name === opts?.client?.envName
           ? 'client'
-          : this.environment.name === opts.server?.envName
+          : this.environment.name === opts?.server?.envName
             ? 'server'
             : (() => {
                 throw new Error(
