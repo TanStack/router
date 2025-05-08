@@ -3,7 +3,6 @@ export type { DeferredPromiseState, DeferredPromise } from './defer'
 export { preloadWarning } from './link'
 export type {
   IsRequiredParams,
-  ParsePathParams,
   AddTrailingSlash,
   RemoveTrailingSlashes,
   AddLeadingSlash,
@@ -144,8 +143,6 @@ export type {
   ErrorRouteProps,
   ErrorComponentProps,
   NotFoundRouteProps,
-  ParseSplatParams,
-  SplatParams,
   ResolveParams,
   ParseParamsFn,
   StringifyParamsFn,

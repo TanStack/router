@@ -30,18 +30,74 @@ import type { ParsedLocation } from './location'
 export type IsRequiredParams<TParams> =
   Record<never, never> extends TParams ? never : true
 
-export type ParsePathParams<T extends string, TAcc = never> = T &
-  `${string}$${string}` extends never
-  ? TAcc
-  : T extends `${string}$${infer TPossiblyParam}`
-    ? TPossiblyParam extends ''
-      ? TAcc
-      : TPossiblyParam & `${string}/${string}` extends never
-        ? TPossiblyParam | TAcc
-        : TPossiblyParam extends `${infer TParam}/${infer TRest}`
-          ? ParsePathParams<TRest, TParam extends '' ? TAcc : TParam | TAcc>
-          : never
-    : TAcc
+export interface ParsePathParamsResult<TRequired, TOptional, TRest> {
+  required: TRequired
+  optional: TOptional
+  rest: TRest
+}
+
+export type AnyParsePathParamsResult = ParsePathParamsResult<
+  string,
+  string,
+  string
+>
+
+export type ParsePathParamsBoundaryStart<T extends string> =
+  T extends `${infer TLeft}{-${infer TRight}`
+    ? ParsePathParamsResult<
+        ParsePathParams<TLeft>['required'],
+        | ParsePathParams<TLeft>['optional']
+        | ParsePathParams<TRight>['required']
+        | ParsePathParams<TRight>['optional'],
+        ParsePathParams<TRight>['rest']
+      >
+    : T extends `${infer TLeft}{${infer TRight}`
+      ? ParsePathParamsResult<
+          | ParsePathParams<TLeft>['required']
+          | ParsePathParams<TRight>['required'],
+          | ParsePathParams<TLeft>['optional']
+          | ParsePathParams<TRight>['optional'],
+          ParsePathParams<TRight>['rest']
+        >
+      : never
+
+export type ParsePathParamsSymbol<T extends string> =
+  T extends `${string}$${infer TRight}`
+    ? TRight extends `${infer TParam}/${infer TRest}`
+      ? TParam extends ''
+        ? ParsePathParamsResult<
+            ParsePathParams<TRest>['required'],
+            '_splat' | ParsePathParams<TRest>['optional'],
+            ParsePathParams<TRest>['rest']
+          >
+        : ParsePathParamsResult<
+            TParam | ParsePathParams<TRest>['required'],
+            ParsePathParams<TRest>['optional'],
+            ParsePathParams<TRest>['rest']
+          >
+      : TRight extends ''
+        ? ParsePathParamsResult<never, '_splat', never>
+        : ParsePathParamsResult<TRight, never, never>
+    : never
+
+export type ParsePathParamsBoundaryEnd<T extends string> =
+  T extends `${infer TLeft}}${infer TRight}`
+    ? ParsePathParamsResult<
+        | ParsePathParams<TLeft>['required']
+        | ParsePathParams<TRight>['required'],
+        | ParsePathParams<TLeft>['optional']
+        | ParsePathParams<TRight>['optional'],
+        ParsePathParams<TRight>['rest']
+      >
+    : never
+
+export type ParsePathParams<T extends string> = T extends `${string}}${string}`
+  ? ParsePathParamsBoundaryEnd<T>
+  : T extends `${string}{${string}`
+    ? ParsePathParamsBoundaryStart<T>
+    : T extends `${string}$${string}`
+      ? ParsePathParamsSymbol<T>
+      : never
 
 export type AddTrailingSlash<T> = T extends `${string}/` ? T : `${T & string}/`
 
