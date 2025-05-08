@@ -53,8 +53,8 @@ declare module '@tanstack/router-core' {
   }
 
   export interface RouteExtensions<
-    TId extends string,
-    TFullPath extends string,
+    in out TId extends string,
+    in out TFullPath extends string,
   > {
     useMatch: UseMatchRoute<TId>
     useRouteContext: UseRouteContextRoute<TId>
@@ -132,13 +132,13 @@ export class RouteApi<
     return notFound({ routeId: this.id as string, ...opts })
   }
 
-  Link: LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']> = (
+  Link: LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']> = ((
     props,
   ) => {
     const router = useRouter()
     const fullPath = router.routesById[this.id as string].fullPath
     return <Link from={fullPath as never} {...props} />
-  }
+  }) as LinkComponentRoute<RouteTypesById<TRouter, TId>['fullPath']>
 }
 
 export class Route<
@@ -242,9 +242,9 @@ export class Route<
     return useNavigate({ from: this.fullPath })
   }
 
-  Link: LinkComponentRoute<TFullPath> = (props) => {
+  Link: LinkComponentRoute<TFullPath> = ((props) => {
     return <Link from={this.fullPath} {...props} />
-  }
+  }) as LinkComponentRoute<TFullPath>
 }
 
 export function createRoute<
@@ -427,9 +427,9 @@ export class RootRoute<
     return useNavigate({ from: this.fullPath })
   }
 
-  Link: LinkComponentRoute<'/'> = (props) => {
+  Link: LinkComponentRoute<'/'> = ((props) => {
     return <Link from={this.fullPath} {...(props as any)} />
-  }
+  }) as LinkComponentRoute<'/'>
 }
 
 export function createRouteMask<

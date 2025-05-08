@@ -1,5 +1,4 @@
 import type { NavigateOptions } from './link'
-import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { PickAsRequired } from './utils'
 
@@ -10,9 +9,9 @@ export type AnyRedirect = Redirect<any, any, any, any, any>
  */
 export type Redirect<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = '/',
-  TTo extends string | undefined = '.',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
 > = {
   href?: string
@@ -39,9 +38,9 @@ export type Redirect<
 
 export type ResolvedRedirect<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> = '/',
+  TFrom extends string = string,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 > = PickAsRequired<
   Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
