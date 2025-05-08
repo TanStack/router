@@ -246,6 +246,13 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     if (event.target === document || event.target === window) {
       elementSelector = 'window'
     } else {
+      const disable = (event.target as Element).hasAttribute(
+        'data-scroll-restoration-disable',
+      )
+      if (disable) {
+        return
+      }
+
       const attrId = (event.target as Element).getAttribute(
         'data-scroll-restoration-id',
       )

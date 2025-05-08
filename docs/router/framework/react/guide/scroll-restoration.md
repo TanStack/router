@@ -97,6 +97,35 @@ Sometimes you may want to prevent scroll restoration from happening. To do this 
 
 When `resetScroll` is set to `false`, the scroll position for the next navigation will not be restored (if navigating to an existing history event in the stack) or reset to the top (if it's a new history event in the stack).
 
+### Disabling Scroll Restoration for specific scrollable containers
+
+If you want to disable scroll restoration only for specific scrollable containers, you can use the `data-scroll-restoration-disable` DOM attribute:
+
+[//]: # 'DisableRestorationExample'
+
+```tsx
+function Component() {
+  return (
+    <div
+      data-scroll-restoration-disable
+      style={{
+        height: '200px',
+        overflowY: 'scroll',
+        border: '1px solid red',
+      }}
+    >
+      <div
+        style={{
+          height: '1000px',
+        }}
+      >
+        Scroll me!
+      </div>
+    </div>
+  )
+}
+```
+
 ## Manual Scroll Restoration
 
 Most of the time, you won't need to do anything special to get scroll restoration to work. However, there are some cases where you may need to manually control scroll restoration. The most common example is **virtualized lists**.
