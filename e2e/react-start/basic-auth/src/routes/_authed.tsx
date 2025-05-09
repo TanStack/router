@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+
 import { createServerFn } from '@tanstack/react-start'
 
 import { hashPassword, prismaClient } from '~/utils/prisma'
@@ -45,7 +45,7 @@ export const loginFn = createServerFn({
     })
   })
 
-export const Route = createFileRoute('/_authed')({
+export const Route = createFileRoute({
   beforeLoad: ({ context }) => {
     if (!context.user) {
       throw new Error('Not authenticated')
