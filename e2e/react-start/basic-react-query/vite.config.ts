@@ -4,7 +4,9 @@ import { TanStackStartVitePlugin } from '@tanstack/react-start/plugin'
 
 export default defineConfig({
   plugins: [
-    tsConfigPaths({ projects: ['./tsconfig.json'] }),
+    tsConfigPaths({
+      projects: ['./tsconfig.json'],
+    }),
     TanStackStartVitePlugin(),
   ],
 })
