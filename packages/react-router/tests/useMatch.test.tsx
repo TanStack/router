@@ -1,10 +1,9 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import {
   Link,
   Outlet,
   RouterProvider,
-  createBrowserHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
