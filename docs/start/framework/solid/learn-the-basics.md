@@ -79,7 +79,6 @@ Getting our html to the client is only half the battle. Once there, we need to h
 
 ```tsx
 // app/client.tsx
-/// <reference types="vinxi/types/client" />
 import { hydrate } from 'solid-js/web'
 import { StartClient } from '@tanstack/solid-start'
 import { createRouter } from './router'

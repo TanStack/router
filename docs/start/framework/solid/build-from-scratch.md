@@ -75,7 +75,7 @@ npm i -D typescript
 
 ## Update Configuration Files
 
-We'll then update our `package.json` to use Vinxi's CLI and set `"type": "module"`:
+We'll then update our `package.json` to use Vite's CLI and set `"type": "module"`:
 
 ```json
 {

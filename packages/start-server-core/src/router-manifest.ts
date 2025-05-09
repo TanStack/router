@@ -20,13 +20,13 @@ export function getStartManifest() {
 
   rootRoute.assets = rootRoute.assets || []
 
-  // Get the entry for the client from vinxi
-  // const vinxiClientManifest = getManifest('client')
+  // Get the entry for the client
+  // const ClientManifest = getManifest('client')
 
   // const importPath =
-  //   vinxiClientManifest.inputs[vinxiClientManifest.handler]?.output.path
+  //   ClientManifest.inputs[ClientManifest.handler]?.output.path
   // if (!importPath) {
-  //   invariant(importPath, 'Could not find client entry in vinxi manifest')
+  //   invariant(importPath, 'Could not find client entry in manifest')
   // }
 
   if (process.env.NODE_ENV === 'development' && !process.env.TSS_CLIENT_ENTRY) {
