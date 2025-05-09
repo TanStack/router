@@ -15,7 +15,7 @@
     "@tanstack/react-start": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.3"
+    "vinxi": "0.5.6"
   },
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",

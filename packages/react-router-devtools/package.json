@@ -63,10 +63,10 @@
   },
   "dependencies": {
     "@tanstack/router-devtools-core": "workspace:^",
-    "solid-js": "^1.9.5"
+    "solid-js": "^1.9.6"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^4.4.1",
     "react": ">=19",
     "react-dom": ">=19"
   },
