@@ -10,33 +10,34 @@
 
 // Import Routes
 
+import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
-import { Route as IndexImport } from './routes/index'
-import { Route as testsWithSearchImport } from './routes/(tests)/with-search'
-import { Route as testsWithLoaderImport } from './routes/(tests)/with-loader'
-import { Route as testsNormalPageImport } from './routes/(tests)/normal-page'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as testsWithSearchRouteImport } from './routes/(tests)/with-search'
+import { Route as testsWithLoaderRouteImport } from './routes/(tests)/with-loader'
+import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
 
 // Create/Update Routes
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const testsWithSearchRoute = testsWithSearchImport.update({
+const testsWithSearchRoute = testsWithSearchRouteImport.update({
   id: '/(tests)/with-search',
   path: '/with-search',
   getParentRoute: () => rootRoute,
 } as any)
 
-const testsWithLoaderRoute = testsWithLoaderImport.update({
+const testsWithLoaderRoute = testsWithLoaderRouteImport.update({
   id: '/(tests)/with-loader',
   path: '/with-loader',
   getParentRoute: () => rootRoute,
 } as any)
 
-const testsNormalPageRoute = testsNormalPageImport.update({
+const testsNormalPageRoute = testsNormalPageRouteImport.update({
   id: '/(tests)/normal-page',
   path: '/normal-page',
   getParentRoute: () => rootRoute,
@@ -50,31 +51,70 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/(tests)/normal-page': {
       id: '/(tests)/normal-page'
       path: '/normal-page'
       fullPath: '/normal-page'
-      preLoaderRoute: typeof testsNormalPageImport
+      preLoaderRoute: typeof testsNormalPageRouteImport
       parentRoute: typeof rootRoute
     }
     '/(tests)/with-loader': {
       id: '/(tests)/with-loader'
       path: '/with-loader'
       fullPath: '/with-loader'
-      preLoaderRoute: typeof testsWithLoaderImport
+      preLoaderRoute: typeof testsWithLoaderRouteImport
       parentRoute: typeof rootRoute
     }
     '/(tests)/with-search': {
       id: '/(tests)/with-search'
       path: '/with-search'
       fullPath: '/with-search'
-      preLoaderRoute: typeof testsWithSearchImport
+      preLoaderRoute: typeof testsWithSearchRouteImport
       parentRoute: typeof rootRoute
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/(tests)/normal-page' {
+  const createFileRoute: CreateFileRoute<
+    '/(tests)/normal-page',
+    FileRoutesByPath['/(tests)/normal-page']['parentRoute'],
+    FileRoutesByPath['/(tests)/normal-page']['id'],
+    FileRoutesByPath['/(tests)/normal-page']['path'],
+    FileRoutesByPath['/(tests)/normal-page']['fullPath']
+  >
+}
+declare module './routes/(tests)/with-loader' {
+  const createFileRoute: CreateFileRoute<
+    '/(tests)/with-loader',
+    FileRoutesByPath['/(tests)/with-loader']['parentRoute'],
+    FileRoutesByPath['/(tests)/with-loader']['id'],
+    FileRoutesByPath['/(tests)/with-loader']['path'],
+    FileRoutesByPath['/(tests)/with-loader']['fullPath']
+  >
+}
+declare module './routes/(tests)/with-search' {
+  const createFileRoute: CreateFileRoute<
+    '/(tests)/with-search',
+    FileRoutesByPath['/(tests)/with-search']['parentRoute'],
+    FileRoutesByPath['/(tests)/with-search']['id'],
+    FileRoutesByPath['/(tests)/with-search']['path'],
+    FileRoutesByPath['/(tests)/with-search']['fullPath']
+  >
 }
 
 // Create and export the route tree
@@ -132,6 +172,9 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+// @ts-ignore
+import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.gen.ts'
 
 /* ROUTE_MANIFEST_START
 {

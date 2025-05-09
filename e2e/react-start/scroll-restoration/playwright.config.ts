@@ -20,7 +20,8 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `VITE_SERVER_PORT=${PORT} pnpm build && VITE_SERVER_PORT=${PORT} pnpm start --port ${PORT}`,
+    // command: `VITE_SERVER_PORT=${PORT} pnpm build && VITE_SERVER_PORT=${PORT} pnpm start --PORT ${PORT}`,
+    command: `VITE_SERVER_PORT=${PORT} pnpm build && NITRO_PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',

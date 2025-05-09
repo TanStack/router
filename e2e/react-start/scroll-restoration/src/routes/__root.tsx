@@ -1,11 +1,11 @@
 import * as React from 'react'
 import {
+  HeadContent,
   Link,
   Outlet,
+  Scripts,
   createRootRoute,
   linkOptions,
-  HeadContent,
-  Scripts,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
