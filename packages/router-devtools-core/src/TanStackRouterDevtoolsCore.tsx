@@ -58,7 +58,8 @@ class TanStackRouterDevtoolsCore {
   #panelProps: any
   #closeButtonProps: any
   #toggleButtonProps: any
-
+  #containerElement?: Container
+  
   #isMounted = false
   #Component: any
   #dispose?: () => void
@@ -73,6 +74,7 @@ class TanStackRouterDevtoolsCore {
     this.#panelProps = config.panelProps
     this.#closeButtonProps = config.closeButtonProps
     this.#toggleButtonProps = config.toggleButtonProps
+    this.#containerElement = config.containerElement
   }
 
   mount<T extends HTMLElement>(el: T) {
@@ -90,6 +92,7 @@ class TanStackRouterDevtoolsCore {
       const panelProps = this.#panelProps
       const closeButtonProps = this.#closeButtonProps
       const toggleButtonProps = this.#toggleButtonProps
+      const containerElement = this.#containerElement
 
       let Devtools
 
@@ -110,6 +113,7 @@ class TanStackRouterDevtoolsCore {
           panelProps={panelProps}
           closeButtonProps={closeButtonProps}
           toggleButtonProps={toggleButtonProps}
+          containerElement={containerElement}
         />
       )
     }, el)
@@ -145,6 +149,10 @@ class TanStackRouterDevtoolsCore {
 
     if (options.shadowDOMTarget !== undefined) {
       this.#shadowDOMTarget = options.shadowDOMTarget
+    }
+
+    if (options.containerElement !== undefined) {
+      this.#containerElement = options.containerElement
     }
   }
 }
