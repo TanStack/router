@@ -1,5 +1,4 @@
 import { RouterCore } from '@tanstack/router-core'
-import { createFileRoute, createLazyFileRoute } from './fileRoute'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
