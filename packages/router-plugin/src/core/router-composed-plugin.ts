@@ -1,9 +1,9 @@
 import { unpluginRouterGeneratorFactory } from './router-generator-plugin'
 import { unpluginRouterCodeSplitterFactory } from './router-code-splitter-plugin'
 import { unpluginRouterHmrFactory } from './router-hmr-plugin'
+import { unpluginRouteAutoimportFactory } from './route-autoimport-plugin'
 import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
-import { unpluginRouteAutoimportFactory } from './route-autoimport-plugin'
 
 export const unpluginRouterComposedFactory: UnpluginFactory<
   Partial<Config> | undefined

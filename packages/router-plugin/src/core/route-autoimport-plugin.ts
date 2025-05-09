@@ -1,110 +1,109 @@
 import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
+import babel from '@babel/core'
+import * as template from '@babel/template'
 import { getConfig } from './config'
 import { debug, fileIsInRoutesDirectory } from './utils'
 import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
-import babel from '@babel/core'
-import * as template from '@babel/template'
-
-
 /**
  * This plugin adds imports for createFileRoute and createLazyFileRoute to the file route.
  */
 export const unpluginRouteAutoimportFactory: UnpluginFactory<
-    Partial<Config> | undefined
+  Partial<Config> | undefined
 > = (options = {}) => {
-    let ROOT: string = process.cwd()
-    let userConfig = options as Config
+  let ROOT: string = process.cwd()
+  let userConfig = options as Config
 
-    const routerImportPath = `@tanstack/${userConfig.target}-router`
-    const autoImports = {
-        createFileRoute: template.statement(
-            `import { createFileRoute } from '${routerImportPath}'`,
-        )(),
-        createLazyFileRoute: template.statement(
-            `import { createLazyFileRoute } from '${routerImportPath}'`,
-        )()
-    }
+  const routerImportPath = `@tanstack/${userConfig.target}-router`
+  const autoImports = {
+    createFileRoute: template.statement(
+      `import { createFileRoute } from '${routerImportPath}'`,
+    )(),
+    createLazyFileRoute: template.statement(
+      `import { createLazyFileRoute } from '${routerImportPath}'`,
+    )(),
+  }
 
-    return {
-        name: 'router-autoimport-plugin',
-        enforce: 'pre',
+  return {
+    name: 'router-autoimport-plugin',
+    enforce: 'pre',
 
-        transform(code, id) {
-            let routeType: 'createFileRoute' | 'createLazyFileRoute' | undefined = undefined
-            if (code.includes('export const Route = createFileRoute(')) {
-                routeType = 'createFileRoute'
-            } else if (code.includes('export const Route = createLazyFileRoute(')) {
-                routeType = 'createLazyFileRoute'
-            }
-            if (!routeType) {
-                return null
-            }
+    transform(code, id) {
+      let routeType: 'createFileRoute' | 'createLazyFileRoute' | undefined =
+        undefined
+      if (code.includes('export const Route = createFileRoute(')) {
+        routeType = 'createFileRoute'
+      } else if (code.includes('export const Route = createLazyFileRoute(')) {
+        routeType = 'createLazyFileRoute'
+      }
+      if (!routeType) {
+        return null
+      }
 
-            if (debug) console.info('Adding autoimports to route ', id)
+      if (debug) console.info('Adding autoimports to route ', id)
 
-            const ast = parseAst({ code })
+      const ast = parseAst({ code })
 
-            let isCreateRouteFunctionImported = false;
+      let isCreateRouteFunctionImported = false as boolean
 
-            babel.traverse(ast, {
-                Program: {
-                    enter(programPath) {
-                        programPath.traverse({
-                            ImportDeclaration(path) {
-                                const importedSpecifiers = path.node.specifiers.map(
-                                    (specifier) => specifier.local.name
-                                );
-                                if (
-                                    importedSpecifiers.includes(routeType) &&
-                                    path.node.source.value === routerImportPath
-                                ) {
-                                    isCreateRouteFunctionImported = true;
-                                }
-                            },
-                        });
-                    },
-                },
-            });
-
-            if (!isCreateRouteFunctionImported) {
-                ast.program.body.unshift(autoImports[routeType]);
-            }
-
-            const result = generateFromAst(ast, {
-                sourceMaps: true,
-                filename: id,
-                sourceFileName: id,
+      babel.traverse(ast, {
+        Program: {
+          enter(programPath) {
+            programPath.traverse({
+              ImportDeclaration(path) {
+                const importedSpecifiers = path.node.specifiers.map(
+                  (specifier) => specifier.local.name,
+                )
+                if (
+                  importedSpecifiers.includes(routeType) &&
+                  path.node.source.value === routerImportPath
+                ) {
+                  isCreateRouteFunctionImported = true
+                }
+              },
             })
-            if (debug) {
-                logDiff(code, result.code)
-                console.log('Output:\n', result.code + '\n\n')
-            }
-            return result
+          },
         },
+      })
 
-        transformInclude(id) {
-            return fileIsInRoutesDirectory(id, userConfig.routesDirectory)
-        },
+      if (!isCreateRouteFunctionImported) {
+        ast.program.body.unshift(autoImports[routeType])
+      }
 
-        vite: {
-            configResolved(config) {
-                ROOT = config.root
-                config.mode
+      const result = generateFromAst(ast, {
+        sourceMaps: true,
+        filename: id,
+        sourceFileName: id,
+      })
+      if (debug) {
+        logDiff(code, result.code)
+        console.log('Output:\n', result.code + '\n\n')
+      }
+      return result
+    },
 
-                userConfig = getConfig(options, ROOT)
-            },
-        },
+    transformInclude(id) {
+      return fileIsInRoutesDirectory(id, userConfig.routesDirectory)
+    },
 
-        rspack() {
-            ROOT = process.cwd()
-            userConfig = getConfig(options, ROOT)
-        },
+    vite: {
+      configResolved(config) {
+        ROOT = config.root
+        config.mode
 
-        webpack() {
-            ROOT = process.cwd()
-            userConfig = getConfig(options, ROOT)
-        },
-    }
+        userConfig = getConfig(options, ROOT)
+      },
+    },
+
+    rspack() {
+      ROOT = process.cwd()
+      userConfig = getConfig(options, ROOT)
+    },
+
+    webpack() {
+      ROOT = process.cwd()
+      userConfig = getConfig(options, ROOT)
+    },
+  }
 }
