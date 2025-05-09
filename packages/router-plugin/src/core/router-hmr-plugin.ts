@@ -48,8 +48,6 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
     vite: {
       configResolved(config) {
         ROOT = config.root
-        config.mode
-
         userConfig = getConfig(options, ROOT)
       },
     },

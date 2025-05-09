@@ -15,16 +15,6 @@ export const unpluginRouteAutoimportFactory: UnpluginFactory<
   let ROOT: string = process.cwd()
   let userConfig = options as Config
 
-  const routerImportPath = `@tanstack/${userConfig.target}-router`
-  const autoImports = {
-    createFileRoute: template.statement(
-      `import { createFileRoute } from '${routerImportPath}'`,
-    )(),
-    createLazyFileRoute: template.statement(
-      `import { createLazyFileRoute } from '${routerImportPath}'`,
-    )(),
-  }
-
   return {
     name: 'router-autoimport-plugin',
     enforce: 'pre',
@@ -35,12 +25,11 @@ export const unpluginRouteAutoimportFactory: UnpluginFactory<
         routeType = 'createFileRoute'
       } else if (code.includes('export const Route = createLazyFileRoute(')) {
         routeType = 'createLazyFileRoute'
-      }
-      else {
+      } else {
         return null
       }
 
-      if (debug) console.info('Adding autoimports to route ', id)
+      const routerImportPath = `@tanstack/${userConfig.target}-router`
 
       const ast = parseAst({ code })
 
@@ -67,19 +56,26 @@ export const unpluginRouteAutoimportFactory: UnpluginFactory<
       })
 
       if (!isCreateRouteFunctionImported) {
-        ast.program.body.unshift(autoImports[routeType])
+        if (debug) console.info('Adding autoimports to route ', id)
+
+        const autoImportStatement = template.statement(
+          `import { ${routeType} } from '${routerImportPath}'`,
+        )()
+        ast.program.body.unshift(autoImportStatement)
+
+        const result = generateFromAst(ast, {
+          sourceMaps: true,
+          filename: id,
+          sourceFileName: id,
+        })
+        if (debug) {
+          logDiff(code, result.code)
+          console.log('Output:\n', result.code + '\n\n')
+        }
+        return result
       }
 
-      const result = generateFromAst(ast, {
-        sourceMaps: true,
-        filename: id,
-        sourceFileName: id,
-      })
-      if (debug) {
-        logDiff(code, result.code)
-        console.log('Output:\n', result.code + '\n\n')
-      }
-      return result
+      return null
     },
 
     transformInclude(id) {
@@ -89,8 +85,6 @@ export const unpluginRouteAutoimportFactory: UnpluginFactory<
     vite: {
       configResolved(config) {
         ROOT = config.root
-        config.mode
-
         userConfig = getConfig(options, ROOT)
       },
     },
