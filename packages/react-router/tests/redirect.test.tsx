@@ -342,10 +342,9 @@ describe('redirect', () => {
           initialEntries: ['/'],
         }),
         routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+        // Mock server mode
+        isServer: true,
       })
-
-      // Mock server mode
-      router.isServer = true
 
       await router.load()
 
