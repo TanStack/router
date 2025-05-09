@@ -488,15 +488,7 @@ declare module './routes/(another-group)/onlyrouteinside' {
     FileRoutesByPath['/(another-group)/onlyrouteinside']['fullPath']
   >
 }
-declare module './routes/(group)' {
-  const createFileRoute: CreateFileRoute<
-    '/(group)',
-    FileRoutesByPath['/(group)']['parentRoute'],
-    FileRoutesByPath['/(group)']['id'],
-    FileRoutesByPath['/(group)']['path'],
-    FileRoutesByPath['/(group)']['fullPath']
-  >
-}
+
 declare module './routes/(group)/_layout' {
   const createFileRoute: CreateFileRoute<
     '/(group)/_layout',
