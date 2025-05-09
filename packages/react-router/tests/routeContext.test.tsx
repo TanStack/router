@@ -122,7 +122,6 @@ describe('context function', () => {
       await clickButton('detail-1')
 
       await findByText('Detail page: 1')
-      console.log(mockContextFn.mock.calls)
       expect(mockContextFn).toHaveBeenCalledOnce()
       expect(mockContextFn).toHaveBeenCalledWith({ id: 1 })
       mockContextFn.mockClear()
