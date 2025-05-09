@@ -16,8 +16,7 @@ import {
 } from '../src'
 
 import { sleep } from './utils'
-import type {
-  RouterHistory} from '../src';
+import type { RouterHistory } from '../src'
 
 let history: RouterHistory
 
@@ -242,7 +241,7 @@ describe('redirect', () => {
       ])
       const router = createRouter({ routeTree, history })
 
-      render(() =><RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
       const linkToAbout = await screen.findByTestId('link-to-about')
       expect(linkToAbout).toBeInTheDocument()
