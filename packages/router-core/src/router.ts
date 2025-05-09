@@ -2727,6 +2727,10 @@ export class RouterCore<
       redirect.headers.set('Location', redirect.options.href)
     }
 
+    if (!redirect.headers.get('Location')) {
+      redirect.headers.set('Location', redirect.options.href)
+    }
+
     return redirect
   }
 
