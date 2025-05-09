@@ -115,20 +115,21 @@ export function useLinkProps<
 
   const next = React.useMemo(
     () => router.buildLocation(_options as any),
-    
+
     [router, _options, currentSearch],
   )
 
-  const {preload, preloadIntentProximity} = React.useMemo(() => {
+  const { preload, preloadIntentProximity } = React.useMemo(() => {
     if (_options.reloadDocument) {
-      return {preload: false, preloadIntentProximity:0}
+      return { preload: false, preloadIntentProximity: 0 }
     }
     return {
       preload: userPreload ?? router.options.defaultPreload,
-      preloadIntentProximity: userPreloadIntentProximity ??
+      preloadIntentProximity:
+        userPreloadIntentProximity ??
         router.options.defaultPreloadIntentProximity ??
         0,
-     } as const
+    } as const
   }, [
     router.options.defaultPreload,
     userPreload,
