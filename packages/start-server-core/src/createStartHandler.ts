@@ -137,6 +137,9 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
           await router.load()
 
+          // If there was a redirect, skip rendering the page at all
+          if (router.state.redirect) return router.state.redirect
+
           dehydrateRouter(router)
 
           const responseHeaders = getStartResponseHeaders({ router })
