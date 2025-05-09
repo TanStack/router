@@ -42,6 +42,8 @@ export function useLinkProps<
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
   let hasRenderFetched = false
 
+  const innerRef: Element | null = null
+
   const [local, rest] = Solid.splitProps(
     Solid.mergeProps(
       {
@@ -57,6 +59,7 @@ export function useLinkProps<
       'to',
       'preload',
       'preloadDelay',
+      'preloadIntentProximity',
       'hashScrollIntoView',
       'replace',
       'startTransition',
@@ -155,6 +158,21 @@ export function useLinkProps<
     }
     return local.preload ?? router.options.defaultPreload
   })
+
+  const preloadMemo: () => { preload: any; preloadIntentProximity: any } =
+    Solid.createMemo(() => {
+      if (_options().reloadDocument) {
+        return { preload: false, preloadIntentProximity: 0 }
+      }
+      return {
+        preload: local.preload ?? router.options.defaultPreload,
+        preloadIntentProximity:
+          local.preloadIntentProximity ??
+          router.options.defaultPreloadIntentProximity ??
+          0,
+      } as const
+    })
+
   const preloadDelay = () =>
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
@@ -175,11 +193,11 @@ export function useLinkProps<
           router.basepath,
         ).split('/')
         const nextPathSplit = removeTrailingSlash(
-          next()?.pathname,
+          next().pathname,
           router.basepath,
-        )?.split('/')
+        ).split('/')
 
-        const pathIsFuzzyEqual = nextPathSplit?.every(
+        const pathIsFuzzyEqual = nextPathSplit.every(
           (d, i) => d === currentPathSplit[i],
         )
         if (!pathIsFuzzyEqual) {
@@ -210,10 +228,44 @@ export function useLinkProps<
       console.warn(preloadWarning)
     })
 
+  let timeoutIdRef: any = null
+  let hasPreloadedRef = false
+
+  const tryPreload = () => {
+    if (hasPreloadedRef || timeoutIdRef) {
+      return
+    }
+
+    timeoutIdRef = setTimeout(() => {
+      doPreload()
+      hasPreloadedRef = true
+      timeoutIdRef = null
+    }, preloadDelay())
+  }
+
+  const cancelPreload = () => {
+    if (timeoutIdRef) {
+      clearTimeout(timeoutIdRef)
+      timeoutIdRef = null
+    }
+  }
+
+  let isIntersectingRef = false
+
+  const shouldUseIntersectionObserver = Solid.createMemo(() => {
+    return (
+      !local.disabled &&
+      (preload() === 'viewport' ||
+        (preload() === 'intent' && preloadMemo().preloadIntentProximity() > 0))
+    )
+  })
+
   const preloadViewportIoCallback = (
     entry: IntersectionObserverEntry | undefined,
   ) => {
-    if (entry?.isIntersecting) {
+    isIntersectingRef = entry?.isIntersecting ?? false
+
+    if (isIntersectingRef && preloadMemo().preload === 'viewport') {
       doPreload()
     }
   }
@@ -224,7 +276,7 @@ export function useLinkProps<
     ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!local.disabled || !(preload() === 'viewport') },
+    { disabled: !shouldUseIntersectionObserver() || !!local.disabled || !(preload() === 'viewport') },
   )
 
   Solid.createEffect(() => {
@@ -236,6 +288,105 @@ export function useLinkProps<
       hasRenderFetched = true
     }
   })
+
+
+  let rectRef: Rect | null = null;
+
+
+  Solid.createEffect(() => {
+    if (
+      type() === 'internal' &&
+      preloadMemo().preload === 'intent' &&
+      preloadMemo().preloadIntentProximity > 0 &&
+      local.disabled &&
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      !innerRef
+    ) {
+      return
+    }
+
+    let lastMousePosition: {
+      x: number
+      y: number
+    } | null = null
+
+    let frameId: number | null = null
+
+    const handleMousePos = (pairs: Array<{ x: number; y: number }>) => {
+      if (!isIntersectingRef || frameId) return
+
+      frameId = requestAnimationFrame(() => {
+        // If one of pairs is within the preloadIntentProximity
+        // stop the loop
+        pairs.some(({ x, y }, i) => {
+          if (!rectRef) return
+
+          // Calculate the distance to the nearest edge of the bounding box
+          const dx = Math.max(
+            rectRef.left - x,
+            0,
+            x - rectRef.right,
+          )
+          const dy = Math.max(
+            rectRef.top - y,
+            0,
+            y - rectRef.bottom,
+          )
+
+          const distance = Math.sqrt(dx * dx + dy * dy)
+
+          if (distance <= preloadMemo().preloadIntentProximity) {
+            tryPreload()
+            return true
+          } else {
+            return false
+          }
+        })
+
+        frameId = null
+      })
+    }
+
+    const handleScroll = () => {
+      if (!lastMousePosition) return
+      handleMousePos([{ x: lastMousePosition.x, y: lastMousePosition.y }])
+    }
+
+    const handlePointerMove = (e: PointerEvent) => {
+      lastMousePosition = {
+        x: e.clientX,
+        y: e.clientY,
+      }
+      if ((e as any).getPredictedEvents) {
+        const events = e.getPredictedEvents()
+        handleMousePos([
+          {
+            x: e.clientX,
+            y: e.clientY,
+          },
+          ...events.map((event) => ({
+            x: event.clientX,
+            y: event.clientY,
+          })),
+        ])
+      }
+    }
+
+    document.addEventListener('pointermove', handlePointerMove)
+    document.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      document.removeEventListener('pointermove', handlePointerMove)
+      document.removeEventListener('scroll', handleScroll)
+      cancelPreload()
+    }
+  })
+
+  useRectCallback(innerRef, (rect) => {
+    rectRef = rect
+  })
+
+  let pointerDownRef = false
 
   if (type() === 'external') {
     return Solid.mergeProps(
@@ -298,11 +449,40 @@ export function useLinkProps<
     }
   }
 
+  
+  const onPointerDown = (e: PointerEvent) => {
+    pointerDownRef = true
+  }
+  
+  const onPointerUp = (e: PointerEvent) => {
+    pointerDownRef = false
+  }
+
   // The click handler
   const handleFocus = (_: MouseEvent) => {
-    if (local.disabled) return
+    if (local.disabled || pointerDownRef) return
     if (preload()) {
       doPreload()
+    }
+  }
+
+
+
+  const handleMouseEnter = () => {
+    if (
+      preloadMemo().preload === 'intent' &&
+      preloadMemo().preloadIntentProximity <= 0
+    ) {
+      tryPreload()
+    }
+  }
+
+  const handleMouseLeave = () => {
+    if (
+      preloadMemo().preload === 'intent' &&
+      preloadMemo().preloadIntentProximity <= 0
+    ) {
+      cancelPreload()
     }
   }
 
@@ -386,13 +566,13 @@ export function useLinkProps<
 
   const href = Solid.createMemo(() => {
     const nextLocation = next()
-    const maskedLocation = nextLocation?.maskedLocation
+    const maskedLocation = nextLocation.maskedLocation
 
     return _options().disabled
       ? undefined
       : maskedLocation
         ? router.history.createHref(maskedLocation.href)
-        : router.history.createHref(nextLocation?.href)
+        : router.history.createHref(nextLocation.href)
   })
 
   return Solid.mergeProps(
@@ -405,14 +585,16 @@ export function useLinkProps<
         ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
-        onMouseEnter: composeEventHandlers([local.onMouseEnter, handleEnter]),
+        onMouseEnter: composeEventHandlers([local.onMouseEnter, handleMouseEnter]),
         onMouseOver: composeEventHandlers([local.onMouseOver, handleEnter]),
-        onMouseLeave: composeEventHandlers([local.onMouseLeave, handleLeave]),
+        onMouseLeave: composeEventHandlers([local.onMouseLeave, handleMouseLeave]),
         onMouseOut: composeEventHandlers([local.onMouseOut, handleLeave]),
         onTouchStart: composeEventHandlers([
           local.onTouchStart,
           handleTouchStart,
         ]),
+        onPointerDown: composeEventHandlers([onPointerDown]),
+        onPointerUp: composeEventHandlers([onPointerUp]),
         disabled: !!local.disabled,
         target: local.target,
         ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
@@ -426,6 +608,7 @@ export function useLinkProps<
       }
     },
   ) as any
+
 }
 
 export type UseLinkPropsOptions<
@@ -594,4 +777,68 @@ export type LinkOptionsFn<TComp> = <
 
 export const linkOptions: LinkOptionsFn<'a'> = (options) => {
   return options as any
+}
+
+export const useRectCallback = (
+  ref: Element | null,
+  onSizeChange: (rect: Rect) => void,
+) => {
+  const handleResize = () => {
+    if (!ref) {
+      return
+    }
+
+    // Update client rect
+    const newRect = getRect(ref)
+    onSizeChange(newRect)
+  }
+
+  Solid.createEffect(() => {
+    const element = ref
+    if (!element) {
+      return
+    }
+
+    handleResize()
+
+    if (typeof ResizeObserver === 'function') {
+      const resizeObserver = new ResizeObserver(() => handleResize())
+      resizeObserver.observe(element)
+
+      return () => {
+        resizeObserver.disconnect()
+      }
+    } else {
+      // Browser support, remove freely
+      window.addEventListener('resize', handleResize)
+
+      return () => {
+        window.removeEventListener('resize', handleResize)
+      }
+    }
+  }, [ref, handleResize])
+}
+
+type Rect = {
+  bottom: number
+  height: number
+  left: number
+  right: number
+  top: number
+  width: number
+}
+
+function getRect(element: Element | null): Rect {
+  if (!element) {
+    return {
+      bottom: 0,
+      height: 0,
+      left: 0,
+      right: 0,
+      top: 0,
+      width: 0,
+    }
+  }
+
+  return element.getBoundingClientRect()
 }
