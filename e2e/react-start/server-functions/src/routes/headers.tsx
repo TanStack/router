@@ -1,10 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
+
 import * as React from 'react'
 import { createServerFn } from '@tanstack/react-start'
 import { getHeaders, setHeader } from '@tanstack/react-start/server'
 import type { HTTPHeaderName } from '@tanstack/react-start/server'
 
-export const Route = createFileRoute('/headers')({
+export const Route = createFileRoute({
   loader: async () => {
     return {
       testHeaders: await getTestHeaders(),

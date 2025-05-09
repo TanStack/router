@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+
 import { createServerFn } from '@tanstack/react-start'
 
-export const Route = createFileRoute('/raw-response')({
+export const Route = createFileRoute({
   component: RouteComponent,
 })
 
