@@ -1911,7 +1911,6 @@ export class RouterCore<
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
 
-
           if (!this.state.redirect) {
             this.emit({
               type: 'onBeforeNavigate',
