@@ -677,7 +677,7 @@ export async function generator(config: Config, root: string) {
           routeNodes
             .map((routeNode) => {
               function getModuleDeclaration(routeNode?: RouteNode) {
-                if (!routeNode) {
+                if (!routeNode || routeNode.isVirtual) {
                   return ''
                 }
                 return `declare module './${getImportPath(routeNode)}' {

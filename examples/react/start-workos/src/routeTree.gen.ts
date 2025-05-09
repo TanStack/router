@@ -10,7 +10,7 @@
 
 // Import Routes
 
-import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router';
+import type { FileRoutesByPath, CreateFileRoute, CreateLazyFileRoute } from '@tanstack/react-router';
 import { Route as rootRoute } from './routes/__root';
 import { Route as LogoutRouteImport } from './routes/logout';
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated';

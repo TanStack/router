@@ -10,7 +10,11 @@
 
 // Import Routes
 
-import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/solid-router'
+import type {
+  FileRoutesByPath,
+  CreateFileRoute,
+  CreateLazyFileRoute,
+} from '@tanstack/solid-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 
