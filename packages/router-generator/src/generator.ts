@@ -342,7 +342,7 @@ export async function generator(config: Config, root: string) {
         )
         if (!replaced.match(regex)) {
           replaced = [
-            `import {${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}} from '@tanstack/${ROUTE_TEMPLATE.subPkg}'`,
+            `import { ${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'} } from '@tanstack/${ROUTE_TEMPLATE.subPkg}'`,
             ...replaced.split('\n'),
           ].join('\n')
         }
