@@ -30,14 +30,13 @@ export const unpluginRouteAutoimportFactory: UnpluginFactory<
     enforce: 'pre',
 
     transform(code, id) {
-      let routeType: 'createFileRoute' | 'createLazyFileRoute' | undefined =
-        undefined
+      let routeType: 'createFileRoute' | 'createLazyFileRoute'
       if (code.includes('export const Route = createFileRoute(')) {
         routeType = 'createFileRoute'
       } else if (code.includes('export const Route = createLazyFileRoute(')) {
         routeType = 'createLazyFileRoute'
       }
-      if (!routeType) {
+      else {
         return null
       }
 
