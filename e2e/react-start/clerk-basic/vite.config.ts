@@ -7,8 +7,6 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    TanStackStartVitePlugin({
-      server: { entry: './src/server.tsx' },
-    }),
+    TanStackStartVitePlugin(),
   ],
 })
