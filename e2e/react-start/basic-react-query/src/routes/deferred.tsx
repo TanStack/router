@@ -1,5 +1,5 @@
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
-import { } from '@tanstack/react-router'
+import {} from '@tanstack/react-router'
 import { Suspense, useState } from 'react'
 
 const deferredQueryOptions = () =>

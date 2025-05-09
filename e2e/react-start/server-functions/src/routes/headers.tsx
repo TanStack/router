@@ -1,4 +1,3 @@
-
 import * as React from 'react'
 import { createServerFn } from '@tanstack/react-start'
 import { getHeaders, setHeader } from '@tanstack/react-start/server'
