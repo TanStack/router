@@ -12,7 +12,11 @@ import { createFileRoute } from '@tanstack/react-router'
 
 // Import Routes
 
-import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
+import type {
+  FileRoutesByPath,
+  CreateFileRoute,
+  CreateLazyFileRoute,
+} from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/root'
 import { Route as postsPostsRouteImport } from './routes/posts/posts'
 import { Route as layoutFirstLayoutRouteImport } from './routes/layout/first-layout'
@@ -275,15 +279,7 @@ declare module './routes/posts/posts-detail' {
     FileRoutesByPath['/posts/$postId']['fullPath']
   >
 }
-declare module './routes' {
-  const createFileRoute: CreateFileRoute<
-    '/_first/_second-layout/route-without-file',
-    FileRoutesByPath['/_first/_second-layout/route-without-file']['parentRoute'],
-    FileRoutesByPath['/_first/_second-layout/route-without-file']['id'],
-    FileRoutesByPath['/_first/_second-layout/route-without-file']['path'],
-    FileRoutesByPath['/_first/_second-layout/route-without-file']['fullPath']
-  >
-}
+
 declare module './routes/file-based-subtree/hello/universe' {
   const createFileRoute: CreateFileRoute<
     '/classic/hello/universe',
