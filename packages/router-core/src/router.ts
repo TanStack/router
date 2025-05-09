@@ -1907,10 +1907,10 @@ export class RouterCore<
     loadPromise = new Promise<void>((resolve) => {
       this.startTransition(async () => {
         try {
+          this.beforeLoad()
           const next = this.latestLocation
           const prevLocation = this.state.resolvedLocation
 
-          this.beforeLoad()
 
           if (!this.state.redirect) {
             this.emit({
@@ -2860,11 +2860,11 @@ export class RouterCore<
       return matches
     } catch (err) {
       if (isRedirect(err)) {
-        if (!err.options.reloadDocument) {
+        if (err.options.reloadDocument) {
           return undefined
         }
         return await this.preloadRoute({
-          ...(err as any),
+          ...err.options,
           _fromLocation: next,
         })
       }
