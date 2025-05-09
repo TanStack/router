@@ -276,7 +276,12 @@ export function useLinkProps<
     ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !shouldUseIntersectionObserver() || !!local.disabled || !(preload() === 'viewport') },
+    {
+      disabled:
+        !shouldUseIntersectionObserver() ||
+        !!local.disabled ||
+        !(preload() === 'viewport'),
+    },
   )
 
   Solid.createEffect(() => {
@@ -289,9 +294,7 @@ export function useLinkProps<
     }
   })
 
-
-  let rectRef: Rect | null = null;
-
+  let rectRef: Rect | null = null
 
   Solid.createEffect(() => {
     if (
@@ -322,16 +325,8 @@ export function useLinkProps<
           if (!rectRef) return
 
           // Calculate the distance to the nearest edge of the bounding box
-          const dx = Math.max(
-            rectRef.left - x,
-            0,
-            x - rectRef.right,
-          )
-          const dy = Math.max(
-            rectRef.top - y,
-            0,
-            y - rectRef.bottom,
-          )
+          const dx = Math.max(rectRef.left - x, 0, x - rectRef.right)
+          const dy = Math.max(rectRef.top - y, 0, y - rectRef.bottom)
 
           const distance = Math.sqrt(dx * dx + dy * dy)
 
@@ -449,11 +444,10 @@ export function useLinkProps<
     }
   }
 
-  
   const onPointerDown = (e: PointerEvent) => {
     pointerDownRef = true
   }
-  
+
   const onPointerUp = (e: PointerEvent) => {
     pointerDownRef = false
   }
@@ -465,8 +459,6 @@ export function useLinkProps<
       doPreload()
     }
   }
-
-
 
   const handleMouseEnter = () => {
     if (
@@ -585,9 +577,15 @@ export function useLinkProps<
         ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),
-        onMouseEnter: composeEventHandlers([local.onMouseEnter, handleMouseEnter]),
+        onMouseEnter: composeEventHandlers([
+          local.onMouseEnter,
+          handleMouseEnter,
+        ]),
         onMouseOver: composeEventHandlers([local.onMouseOver, handleEnter]),
-        onMouseLeave: composeEventHandlers([local.onMouseLeave, handleMouseLeave]),
+        onMouseLeave: composeEventHandlers([
+          local.onMouseLeave,
+          handleMouseLeave,
+        ]),
         onMouseOut: composeEventHandlers([local.onMouseOut, handleLeave]),
         onTouchStart: composeEventHandlers([
           local.onTouchStart,
@@ -608,7 +606,6 @@ export function useLinkProps<
       }
     },
   ) as any
-
 }
 
 export type UseLinkPropsOptions<
