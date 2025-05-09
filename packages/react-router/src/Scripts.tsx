@@ -50,6 +50,7 @@ export const Scripts = () => {
         children,
       })),
     }),
+    structuralSharing: true as any,
   })
 
   const allScripts = [...scripts, ...assetScripts] as Array<RouterManagedTag>
