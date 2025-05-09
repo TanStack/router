@@ -1456,7 +1456,7 @@ describe('beforeLoad in the route definition', () => {
     }
 
     await check(1)
-    await router.invalidate()
+    await act(async () => await router.invalidate())
     await check(2)
   })
 })

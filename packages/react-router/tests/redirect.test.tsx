@@ -6,13 +6,13 @@ import {
   screen,
 } from '@testing-library/react'
 
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import invariant from 'tiny-invariant'
-import { getRedirectOptions } from '@tanstack/router-core'
 import {
   Link,
   RouterProvider,
+  createBrowserHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -22,8 +22,17 @@ import {
 } from '../src'
 
 import { sleep } from './utils'
+import type { RouterHistory } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   vi.clearAllMocks()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
@@ -82,7 +91,7 @@ describe('redirect', () => {
         aboutRoute,
         indexRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -159,7 +168,7 @@ describe('redirect', () => {
         aboutRoute,
         indexRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -237,7 +246,7 @@ describe('redirect', () => {
         indexRoute,
         finalRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -282,6 +291,9 @@ describe('redirect', () => {
         routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
         // Mock server mode
         isServer: true,
+        history: createMemoryHistory({
+          initialEntries: ['/'],
+        }),
       })
 
       await router.load()
@@ -290,7 +302,7 @@ describe('redirect', () => {
       expect(router.state.redirect).toBeInstanceOf(Response)
       invariant(router.state.redirect)
 
-      expect(getRedirectOptions(router.state.redirect)).toEqual({
+      expect(router.state.redirect.options).toEqual({
         _fromLocation: expect.objectContaining({
           hash: '',
           href: '/',
@@ -300,7 +312,7 @@ describe('redirect', () => {
         }),
         to: '/about',
         href: '/about',
-        isRedirect: true,
+        statusCode: 307,
       })
     })
 
@@ -344,7 +356,7 @@ describe('redirect', () => {
       invariant(currentRedirect)
       expect(currentRedirect.status).toEqual(307)
       expect(currentRedirect.headers.get('Location')).toEqual('/about')
-      expect(getRedirectOptions(currentRedirect)).toEqual({
+      expect(currentRedirect.options).toEqual({
         _fromLocation: {
           hash: '',
           href: '/',
@@ -353,12 +365,12 @@ describe('redirect', () => {
           searchStr: '',
           state: {
             __TSR_index: 0,
-            key: getRedirectOptions(currentRedirect)._fromLocation!.state.key,
+            key: currentRedirect.options._fromLocation!.state.key,
           },
         },
         href: '/about',
-        isRedirect: true,
         to: '/about',
+        statusCode: 307,
       })
     })
   })
