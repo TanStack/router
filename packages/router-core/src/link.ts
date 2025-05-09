@@ -30,6 +30,42 @@ import type { ParsedLocation } from './location'
 export type IsRequiredParams<TParams> =
   Record<never, never> extends TParams ? never : true
 
+export interface ParsePathParamsResult<TRequired, TOptional, TRest> {
+  required: TRequired
+  optional: TOptional
+  rest: TRest
+}
+
+export type AnyParsePathParamsResult = ParsePathParamsResult<
+  string,
+  string,
+  string
+>
+
+export type ParsePathParamsOptionalCurly<
+  TLeft extends string,
+  TRight extends string,
+  TParsedLeft extends AnyParsePathParamsResult = ParsePathParams<TLeft>,
+  TParsedRight extends AnyParsePathParamsResult = ParsePathParams<TRight>,
+> = ParsePathParamsResult<
+  TParsedLeft['required'],
+  TParsedLeft['optional'] | TParsedRight['required'],
+  ParsePathParams<TRight>['rest']
+>
+
+export type ParsePathParamsCurly<T extends string> =
+  T extends `${infer TLeft}{-${infer TRight}`
+    ? ParsePathParamsOptionalCurly<TLeft, TRight>
+    : never
+
+export type ParsePathParamsSymbol<T extends string> =
+  
+
+export type ParsePathParams<T extends string> = T extends `${string}{${string}`
+  ? ParsePathParamsBoundary<T>
+  : T extends `${string}$${string}` ?
+
+
 export type IgnoreSplatParam<T> = T extends '' ? never : T
 
 export type ParseRequiredPathParams<
