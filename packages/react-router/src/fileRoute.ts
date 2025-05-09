@@ -28,6 +28,7 @@ import type {
   RouteIds,
   RouteLoaderFn,
   UpdatableRouteOptions,
+  UseNavigateResult,
 } from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
@@ -164,6 +165,18 @@ export function FileRouteLoader<
   return (loaderFn) => loaderFn as any
 }
 
+declare module '@tanstack/router-core' {
+  export interface LazyRoute<in out TRoute extends AnyRoute> {
+    useMatch: UseMatchRoute<TRoute['id']>
+    useRouteContext: UseRouteContextRoute<TRoute['id']>
+    useSearch: UseSearchRoute<TRoute['id']>
+    useParams: UseParamsRoute<TRoute['id']>
+    useLoaderDeps: UseLoaderDepsRoute<TRoute['id']>
+    useLoaderData: UseLoaderDataRoute<TRoute['id']>
+    useNavigate: () => UseNavigateResult<TRoute['fullPath']>
+  }
+}
+
 export class LazyRoute<TRoute extends AnyRoute> {
   options: {
     id: string
@@ -219,7 +232,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
     return useLoaderData({ ...opts, from: this.options.id } as any)
   }
 
-  useNavigate = () => {
+  useNavigate = (): UseNavigateResult<TRoute['fullPath']> => {
     const router = useRouter()
     return useNavigate({ from: router.routesById[this.options.id].fullPath })
   }

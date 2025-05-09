@@ -129,8 +129,12 @@ export type LazyRouteOptions = Pick<
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >
 
-export interface LazyRoute {
+export interface LazyRoute<in out TRoute extends AnyRoute> {
   options: {
     id: string
   } & LazyRouteOptions
 }
+
+export type CreateLazyFileRoute<TRoute extends AnyRoute> = (
+  opts: LazyRouteOptions,
+) => LazyRoute<TRoute>

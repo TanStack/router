@@ -63,6 +63,7 @@ export type {
   CreateFileRoute,
   LazyRoute,
   LazyRouteOptions,
+  CreateLazyFileRoute,
 } from './fileRoute'
 
 export type {

@@ -238,6 +238,7 @@ export type {
   RouteConstraints,
   RouteMask,
   MatchRouteOptions,
+  CreateLazyFileRoute,
 } from '@tanstack/router-core'
 export type {
   UseLinkPropsOptions,

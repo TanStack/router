@@ -208,6 +208,7 @@ export type {
   RouterErrorSerializer,
   SerializerExtensions,
   CreateFileRoute,
+  CreateLazyFileRoute,
 } from '@tanstack/router-core'
 
 export {

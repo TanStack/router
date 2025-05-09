@@ -527,7 +527,7 @@ export async function generator(config: Config, root: string) {
       ...(TYPES_DISABLED
         ? []
         : [
-            `import type { FileRoutesByPath, CreateFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
+            `import type { FileRoutesByPath, CreateFileRoute, CreateLazyFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
           ]),
       `import { Route as rootRoute } from './${getImportPath(rootRouteNode)}'`,
       ...sortedRouteNodes
@@ -662,13 +662,17 @@ export async function generator(config: Config, root: string) {
                   return ''
                 }
                 return `declare module './${getImportPath(routeNode)}' {
-                  const ${routeNode._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}: CreateFileRoute<
+                  const ${routeNode._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}: ${
+                    routeNode._fsRouteType === 'lazy'
+                      ? `CreateLazyFileRoute<FileRoutesByPath['${routeNode.routePath}']['preLoaderRoute']>}`
+                      : `CreateFileRoute<
                   '${routeNode.routePath}',
                   FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
                   FileRoutesByPath['${routeNode.routePath}']['id'],
                   FileRoutesByPath['${routeNode.routePath}']['path'],
                   FileRoutesByPath['${routeNode.routePath}']['fullPath']
                   >
+                  }`
                   }`
               }
               return (
