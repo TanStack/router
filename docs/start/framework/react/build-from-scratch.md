@@ -4,7 +4,7 @@ title: Build a Project from Scratch
 ---
 
 > [!NOTE]
-> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Learn the Basics](../learn-the-basics) guide.
+> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Learn the Basics](./learn-the-basics.md) guide.
 
 _So you want to build a TanStack Start project from scratch?_
 
@@ -84,21 +84,19 @@ We'll then update our `package.json` to set `"type": "module"`:
 }
 ```
 
-Then configure TanStack Start's `app.config.ts` file:
+Then configure TanStack Start's `vite.config.ts` file:
 
-```typescript
-// app.config.ts
-import { defineConfig } from '@tanstack/react-start/config'
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
+import { TanStackStartVitePlugin } from '@tanstack/react-start/plugin'
 
 export default defineConfig({
-  vite: {
-    plugins: [
-      tsConfigPaths({
-        projects: ['./tsconfig.json'],
-      }),
-    ],
+  server: {
+    port: 3000,
   },
+  plugins: [tsConfigPaths(), TanStackStartVitePlugin()],
 })
 ```
 
@@ -215,7 +213,7 @@ Now that we have the basic templating setup, we can write our first route. This 
 ```tsx
 // app/routes/index.tsx
 import * as fs from 'node:fs'
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 
 const filePath = 'count.txt'
@@ -239,7 +237,7 @@ const updateCount = createServerFn({ method: 'POST' })
     await fs.promises.writeFile(filePath, `${count + data}`)
   })
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute({
   component: Home,
   loader: async () => await getCount(),
 })
