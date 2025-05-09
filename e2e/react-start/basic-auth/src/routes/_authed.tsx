@@ -1,4 +1,3 @@
-
 import { createServerFn } from '@tanstack/react-start'
 
 import { hashPassword, prismaClient } from '~/utils/prisma'
