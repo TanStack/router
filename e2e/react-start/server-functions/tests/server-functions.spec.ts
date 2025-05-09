@@ -179,15 +179,19 @@ test('server function can correctly send and receive headers', async ({
   await page.goto('/headers')
 
   await page.waitForLoadState('networkidle')
-  let headers = JSON.parse(await page.getByTestId('test-headers-result').innerText())
+  let headers = JSON.parse(
+    await page.getByTestId('test-headers-result').innerText(),
+  )
   expect(headers['host']).toBe(`localhost:${PORT}`)
   expect(headers['user-agent']).toContain('Mozilla/5.0')
   expect(headers['sec-fetch-mode']).toBe('navigate')
- 
+
   await page.getByTestId('test-headers-btn').click()
   await page.waitForLoadState('networkidle')
 
-  headers = JSON.parse(await page.getByTestId('test-headers-result').innerText())
+  headers = JSON.parse(
+    await page.getByTestId('test-headers-result').innerText(),
+  )
 
   expect(headers['host']).toBe(`localhost:${PORT}`)
   expect(headers['user-agent']).toContain('Mozilla/5.0')
