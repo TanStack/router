@@ -7,7 +7,7 @@
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "vite start",
+    "start": "node .output/server/index.mjs",
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
+    "vite": "6.1.4",
     "zod": "^3.24.2"
   },
   "devDependencies": {

@@ -129,7 +129,13 @@ export function useLinkProps<
         router.options.defaultPreloadIntentProximity ??
         0,
     ] as const
-  }, [router.options.defaultPreload, userPreload, _options.reloadDocument])
+  }, [
+    router.options.defaultPreload,
+    userPreload,
+    _options.reloadDocument,
+    router.options.defaultPreloadIntentProximity,
+    userPreloadIntentProximity,
+  ])
 
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
@@ -232,7 +238,7 @@ export function useLinkProps<
         doPreload()
       }
     },
-    [doPreload],
+    [doPreload, preload],
   )
 
   useIntersectionObserver(
@@ -342,11 +348,23 @@ export function useLinkProps<
       document.removeEventListener('scroll', handleScroll)
       cancelPreload()
     }
-  }, [disabled, doPreload, preload, preloadDelay, preloadIntentProximity])
+  }, [
+    disabled,
+    doPreload,
+    preload,
+    preloadDelay,
+    preloadIntentProximity,
+    cancelPreload,
+    innerRef,
+    tryPreload,
+    type,
+  ])
 
   useRectCallback(innerRef, (rect) => {
     rectRef.current = rect
   })
+
+  const pointerDownRef = React.useRef(false)
 
   if (type === 'external') {
     return {
@@ -400,8 +418,6 @@ export function useLinkProps<
       } as any)
     }
   }
-
-  const pointerDownRef = React.useRef(false)
 
   const onPointerDown = (e: PointerEvent) => {
     pointerDownRef.current = true
@@ -604,20 +620,25 @@ export type LinkComponent<
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => React.ReactElement
 
-export type LinkComponentRoute<in out TDefaultFrom extends string = string> = <
-  TRouter extends AnyRouter = RegisteredRouter,
-  const TTo extends string | undefined = undefined,
-  const TMaskTo extends string = '',
->(
-  props: LinkComponentProps<
-    'a',
-    TRouter,
-    TDefaultFrom,
-    TTo,
-    TDefaultFrom,
-    TMaskTo
-  >,
-) => React.ReactElement
+export interface LinkComponentRoute<
+  in out TDefaultFrom extends string = string,
+> {
+  defaultFrom: TDefaultFrom
+  <
+    TRouter extends AnyRouter = RegisteredRouter,
+    const TTo extends string | undefined = undefined,
+    const TMaskTo extends string = '',
+  >(
+    props: LinkComponentProps<
+      'a',
+      TRouter,
+      this['defaultFrom'],
+      TTo,
+      this['defaultFrom'],
+      TMaskTo
+    >,
+  ): React.ReactElement
+}
 
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
@@ -721,7 +742,7 @@ export const useRectCallback = (
         window.removeEventListener('resize', handleResize)
       }
     }
-  }, [ref.current, handleResize])
+  }, [ref, handleResize])
 }
 
 type Rect = {

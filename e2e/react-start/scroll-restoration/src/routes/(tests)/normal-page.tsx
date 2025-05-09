@@ -1,8 +1,7 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
 import { ScrollBlock } from '../-components/scroll-block'
 
-export const Route = createFileRoute('/(tests)/normal-page')({
+export const Route = createFileRoute({
   component: Component,
 })
 

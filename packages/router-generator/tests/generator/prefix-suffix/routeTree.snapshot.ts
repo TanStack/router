@@ -12,30 +12,33 @@
 
 import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
-import { Route as WildcardPrefixsplatRouteImport } from './routes/wildcard/prefix${$}'
-import { Route as WildcardSplatsuffixRouteImport } from './routes/wildcard/${$}suffix'
-import { Route as WildcardSplatDotsuffixRouteImport } from './routes/wildcard/${$}[.]suffix'
+import { Route as WildcardChar123Char125suffixRouteImport } from './routes/wildcard/{$}suffix'
+import { Route as WildcardChar123Char125DotsuffixRouteImport } from './routes/wildcard/{$}[.]suffix'
+import { Route as WildcardPrefixChar123Char125RouteImport } from './routes/wildcard/prefix{$}'
 import { Route as WildcardSplatRouteImport } from './routes/wildcard/$'
 
 // Create/Update Routes
 
-const WildcardPrefixsplatRoute = WildcardPrefixsplatRouteImport.update({
-  id: '/wildcard/prefix${$}',
-  path: '/wildcard/prefix${$}',
-  getParentRoute: () => rootRoute,
-} as any)
+const WildcardChar123Char125suffixRoute =
+  WildcardChar123Char125suffixRouteImport.update({
+    id: '/wildcard/{$}suffix',
+    path: '/wildcard/{$}suffix',
+    getParentRoute: () => rootRoute,
+  } as any)
 
-const WildcardSplatsuffixRoute = WildcardSplatsuffixRouteImport.update({
-  id: '/wildcard/${$}suffix',
-  path: '/wildcard/${$}suffix',
-  getParentRoute: () => rootRoute,
-} as any)
+const WildcardChar123Char125DotsuffixRoute =
+  WildcardChar123Char125DotsuffixRouteImport.update({
+    id: '/wildcard/{$}.suffix',
+    path: '/wildcard/{$}.suffix',
+    getParentRoute: () => rootRoute,
+  } as any)
 
-const WildcardSplatDotsuffixRoute = WildcardSplatDotsuffixRouteImport.update({
-  id: '/wildcard/${$}.suffix',
-  path: '/wildcard/${$}.suffix',
-  getParentRoute: () => rootRoute,
-} as any)
+const WildcardPrefixChar123Char125Route =
+  WildcardPrefixChar123Char125RouteImport.update({
+    id: '/wildcard/prefix{$}',
+    path: '/wildcard/prefix{$}',
+    getParentRoute: () => rootRoute,
+  } as any)
 
 const WildcardSplatRoute = WildcardSplatRouteImport.update({
   id: '/wildcard/$',
@@ -54,25 +57,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WildcardSplatRouteImport
       parentRoute: typeof rootRoute
     }
-    '/wildcard/${$}.suffix': {
-      id: '/wildcard/${$}.suffix'
-      path: '/wildcard/${$}.suffix'
-      fullPath: '/wildcard/${$}.suffix'
-      preLoaderRoute: typeof WildcardSplatDotsuffixRouteImport
+    '/wildcard/prefix{$}': {
+      id: '/wildcard/prefix{$}'
+      path: '/wildcard/prefix{$}'
+      fullPath: '/wildcard/prefix{$}'
+      preLoaderRoute: typeof WildcardPrefixChar123Char125RouteImport
       parentRoute: typeof rootRoute
     }
-    '/wildcard/${$}suffix': {
-      id: '/wildcard/${$}suffix'
-      path: '/wildcard/${$}suffix'
-      fullPath: '/wildcard/${$}suffix'
-      preLoaderRoute: typeof WildcardSplatsuffixRouteImport
+    '/wildcard/{$}.suffix': {
+      id: '/wildcard/{$}.suffix'
+      path: '/wildcard/{$}.suffix'
+      fullPath: '/wildcard/{$}.suffix'
+      preLoaderRoute: typeof WildcardChar123Char125DotsuffixRouteImport
       parentRoute: typeof rootRoute
     }
-    '/wildcard/prefix${$}': {
-      id: '/wildcard/prefix${$}'
-      path: '/wildcard/prefix${$}'
-      fullPath: '/wildcard/prefix${$}'
-      preLoaderRoute: typeof WildcardPrefixsplatRouteImport
+    '/wildcard/{$}suffix': {
+      id: '/wildcard/{$}suffix'
+      path: '/wildcard/{$}suffix'
+      fullPath: '/wildcard/{$}suffix'
+      preLoaderRoute: typeof WildcardChar123Char125suffixRouteImport
       parentRoute: typeof rootRoute
     }
   }
@@ -89,31 +92,31 @@ declare module './routes/wildcard/$' {
     FileRoutesByPath['/wildcard/$']['fullPath']
   >
 }
-declare module './routes/wildcard/${$}[.]suffix' {
+declare module './routes/wildcard/prefix{$}' {
   const createFileRoute: CreateFileRoute<
-    '/wildcard/${$}.suffix',
-    FileRoutesByPath['/wildcard/${$}.suffix']['parentRoute'],
-    FileRoutesByPath['/wildcard/${$}.suffix']['id'],
-    FileRoutesByPath['/wildcard/${$}.suffix']['path'],
-    FileRoutesByPath['/wildcard/${$}.suffix']['fullPath']
+    '/wildcard/prefix{$}',
+    FileRoutesByPath['/wildcard/prefix{$}']['parentRoute'],
+    FileRoutesByPath['/wildcard/prefix{$}']['id'],
+    FileRoutesByPath['/wildcard/prefix{$}']['path'],
+    FileRoutesByPath['/wildcard/prefix{$}']['fullPath']
   >
 }
-declare module './routes/wildcard/${$}suffix' {
+declare module './routes/wildcard/{$}[.]suffix' {
   const createFileRoute: CreateFileRoute<
-    '/wildcard/${$}suffix',
-    FileRoutesByPath['/wildcard/${$}suffix']['parentRoute'],
-    FileRoutesByPath['/wildcard/${$}suffix']['id'],
-    FileRoutesByPath['/wildcard/${$}suffix']['path'],
-    FileRoutesByPath['/wildcard/${$}suffix']['fullPath']
+    '/wildcard/{$}.suffix',
+    FileRoutesByPath['/wildcard/{$}.suffix']['parentRoute'],
+    FileRoutesByPath['/wildcard/{$}.suffix']['id'],
+    FileRoutesByPath['/wildcard/{$}.suffix']['path'],
+    FileRoutesByPath['/wildcard/{$}.suffix']['fullPath']
   >
 }
-declare module './routes/wildcard/prefix${$}' {
+declare module './routes/wildcard/{$}suffix' {
   const createFileRoute: CreateFileRoute<
-    '/wildcard/prefix${$}',
-    FileRoutesByPath['/wildcard/prefix${$}']['parentRoute'],
-    FileRoutesByPath['/wildcard/prefix${$}']['id'],
-    FileRoutesByPath['/wildcard/prefix${$}']['path'],
-    FileRoutesByPath['/wildcard/prefix${$}']['fullPath']
+    '/wildcard/{$}suffix',
+    FileRoutesByPath['/wildcard/{$}suffix']['parentRoute'],
+    FileRoutesByPath['/wildcard/{$}suffix']['id'],
+    FileRoutesByPath['/wildcard/{$}suffix']['path'],
+    FileRoutesByPath['/wildcard/{$}suffix']['fullPath']
   >
 }
 
@@ -121,60 +124,60 @@ declare module './routes/wildcard/prefix${$}' {
 
 export interface FileRoutesByFullPath {
   '/wildcard/$': typeof WildcardSplatRoute
-  '/wildcard/${$}.suffix': typeof WildcardSplatDotsuffixRoute
-  '/wildcard/${$}suffix': typeof WildcardSplatsuffixRoute
-  '/wildcard/prefix${$}': typeof WildcardPrefixsplatRoute
+  '/wildcard/prefix{$}': typeof WildcardPrefixChar123Char125Route
+  '/wildcard/{$}.suffix': typeof WildcardChar123Char125DotsuffixRoute
+  '/wildcard/{$}suffix': typeof WildcardChar123Char125suffixRoute
 }
 
 export interface FileRoutesByTo {
   '/wildcard/$': typeof WildcardSplatRoute
-  '/wildcard/${$}.suffix': typeof WildcardSplatDotsuffixRoute
-  '/wildcard/${$}suffix': typeof WildcardSplatsuffixRoute
-  '/wildcard/prefix${$}': typeof WildcardPrefixsplatRoute
+  '/wildcard/prefix{$}': typeof WildcardPrefixChar123Char125Route
+  '/wildcard/{$}.suffix': typeof WildcardChar123Char125DotsuffixRoute
+  '/wildcard/{$}suffix': typeof WildcardChar123Char125suffixRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/wildcard/$': typeof WildcardSplatRoute
-  '/wildcard/${$}.suffix': typeof WildcardSplatDotsuffixRoute
-  '/wildcard/${$}suffix': typeof WildcardSplatsuffixRoute
-  '/wildcard/prefix${$}': typeof WildcardPrefixsplatRoute
+  '/wildcard/prefix{$}': typeof WildcardPrefixChar123Char125Route
+  '/wildcard/{$}.suffix': typeof WildcardChar123Char125DotsuffixRoute
+  '/wildcard/{$}suffix': typeof WildcardChar123Char125suffixRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/wildcard/$'
-    | '/wildcard/${$}.suffix'
-    | '/wildcard/${$}suffix'
-    | '/wildcard/prefix${$}'
+    | '/wildcard/prefix{$}'
+    | '/wildcard/{$}.suffix'
+    | '/wildcard/{$}suffix'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/wildcard/$'
-    | '/wildcard/${$}.suffix'
-    | '/wildcard/${$}suffix'
-    | '/wildcard/prefix${$}'
+    | '/wildcard/prefix{$}'
+    | '/wildcard/{$}.suffix'
+    | '/wildcard/{$}suffix'
   id:
     | '__root__'
     | '/wildcard/$'
-    | '/wildcard/${$}.suffix'
-    | '/wildcard/${$}suffix'
-    | '/wildcard/prefix${$}'
+    | '/wildcard/prefix{$}'
+    | '/wildcard/{$}.suffix'
+    | '/wildcard/{$}suffix'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   WildcardSplatRoute: typeof WildcardSplatRoute
-  WildcardSplatDotsuffixRoute: typeof WildcardSplatDotsuffixRoute
-  WildcardSplatsuffixRoute: typeof WildcardSplatsuffixRoute
-  WildcardPrefixsplatRoute: typeof WildcardPrefixsplatRoute
+  WildcardPrefixChar123Char125Route: typeof WildcardPrefixChar123Char125Route
+  WildcardChar123Char125DotsuffixRoute: typeof WildcardChar123Char125DotsuffixRoute
+  WildcardChar123Char125suffixRoute: typeof WildcardChar123Char125suffixRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   WildcardSplatRoute: WildcardSplatRoute,
-  WildcardSplatDotsuffixRoute: WildcardSplatDotsuffixRoute,
-  WildcardSplatsuffixRoute: WildcardSplatsuffixRoute,
-  WildcardPrefixsplatRoute: WildcardPrefixsplatRoute,
+  WildcardPrefixChar123Char125Route: WildcardPrefixChar123Char125Route,
+  WildcardChar123Char125DotsuffixRoute: WildcardChar123Char125DotsuffixRoute,
+  WildcardChar123Char125suffixRoute: WildcardChar123Char125suffixRoute,
 }
 
 export const routeTree = rootRoute
@@ -191,22 +194,22 @@ import type * as ServerTypes from '.tanstack-start/server-routes/routeTree.gen.t
       "filePath": "__root.tsx",
       "children": [
         "/wildcard/$",
-        "/wildcard/${$}.suffix",
-        "/wildcard/${$}suffix",
-        "/wildcard/prefix${$}"
+        "/wildcard/prefix{$}",
+        "/wildcard/{$}.suffix",
+        "/wildcard/{$}suffix"
       ]
     },
     "/wildcard/$": {
       "filePath": "wildcard/$.tsx"
     },
-    "/wildcard/${$}.suffix": {
-      "filePath": "wildcard/${$}[.]suffix.tsx"
+    "/wildcard/prefix{$}": {
+      "filePath": "wildcard/prefix{$}.tsx"
     },
-    "/wildcard/${$}suffix": {
-      "filePath": "wildcard/${$}suffix.tsx"
+    "/wildcard/{$}.suffix": {
+      "filePath": "wildcard/{$}[.]suffix.tsx"
     },
-    "/wildcard/prefix${$}": {
-      "filePath": "wildcard/prefix${$}.tsx"
+    "/wildcard/{$}suffix": {
+      "filePath": "wildcard/{$}suffix.tsx"
     }
   }
 }

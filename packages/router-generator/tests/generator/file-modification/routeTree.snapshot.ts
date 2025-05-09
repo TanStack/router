@@ -109,6 +109,15 @@ declare module './routes/(test)/initiallyEmpty' {
     FileRoutesByPath['/(test)/initiallyEmpty']['fullPath']
   >
 }
+declare module './routes/(test)/initiallyEmpty.lazy' {
+  const createLazyFileRoute: CreateFileRoute<
+    '/(test)/initiallyEmpty',
+    FileRoutesByPath['/(test)/initiallyEmpty']['parentRoute'],
+    FileRoutesByPath['/(test)/initiallyEmpty']['id'],
+    FileRoutesByPath['/(test)/initiallyEmpty']['path'],
+    FileRoutesByPath['/(test)/initiallyEmpty']['fullPath']
+  >
+}
 declare module './routes/(test)/initiallyLazy' {
   const createFileRoute: CreateFileRoute<
     '/(test)/initiallyLazy',
@@ -120,6 +129,15 @@ declare module './routes/(test)/initiallyLazy' {
 }
 declare module './routes/(test)/bar.lazy' {
   const createFileRoute: CreateFileRoute<
+    '/(test)/bar',
+    FileRoutesByPath['/(test)/bar']['parentRoute'],
+    FileRoutesByPath['/(test)/bar']['id'],
+    FileRoutesByPath['/(test)/bar']['path'],
+    FileRoutesByPath['/(test)/bar']['fullPath']
+  >
+}
+declare module './routes/(test)/bar.lazy' {
+  const createLazyFileRoute: CreateFileRoute<
     '/(test)/bar',
     FileRoutesByPath['/(test)/bar']['parentRoute'],
     FileRoutesByPath['/(test)/bar']['id'],

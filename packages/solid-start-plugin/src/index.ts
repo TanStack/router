@@ -6,15 +6,15 @@ import {
   TanStackStartServerRoutesVite,
   TanStackStartVitePluginCore,
 } from '@tanstack/start-plugin-core'
-import { getTanStackStartOptions } from './schema.js'
+import { getTanStackStartOptions } from './schema'
 import type { PluginOption } from 'vite'
-import type { TanStackStartInputConfig, WithSolidPlugin } from './schema.js'
+import type { TanStackStartInputConfig, WithSolidPlugin } from './schema'
 
 export type {
   TanStackStartInputConfig,
   TanStackStartOutputConfig,
   WithSolidPlugin,
-} from './schema.js'
+} from './schema'
 
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithSolidPlugin,

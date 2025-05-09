@@ -1,5 +1,4 @@
 import type { NavigateOptions } from './link'
-import type { RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 
 export const tsrRedirectHeaderKey = 'X-Tanstack-Router-Redirect-Options'
@@ -11,9 +10,9 @@ export type AnyRedirect = Redirect<any, any, any, any, any>
  */
 export type Redirect<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = '/',
-  TTo extends string | undefined = '.',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
 > = Response & {
   options: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
@@ -22,9 +21,9 @@ export type Redirect<
 
 export type RedirectOptions<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> | string = '/',
-  TTo extends string | undefined = '.',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
 > = {
   href?: string
@@ -51,9 +50,9 @@ export type RedirectOptions<
 
 export type ResolvedRedirect<
   TRouter extends AnyRouter = RegisteredRouter,
-  TFrom extends RoutePaths<TRouter['routeTree']> = '/',
+  TFrom extends string = string,
   TTo extends string = '',
-  TMaskFrom extends RoutePaths<TRouter['routeTree']> = TFrom,
+  TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
 > = Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 

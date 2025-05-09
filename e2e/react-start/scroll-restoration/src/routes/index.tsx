@@ -1,7 +1,7 @@
 import * as React from 'react'
-import { Link, createFileRoute, linkOptions } from '@tanstack/react-router'
+import { Link, linkOptions } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute({
   component: HomeComponent,
 })
 

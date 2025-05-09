@@ -19,7 +19,7 @@ import {
   createServerFileRoute,
 } from '@tanstack/react-start/server'
 
-import { ServerRoute as CustomScriptjsRouteImport } from './../../src/routes/customScript[.]js'
+import { ServerRoute as CustomScriptDotjsRouteImport } from './../../src/routes/customScript[.]js'
 import { ServerRoute as ApiUsersRouteImport } from './../../src/routes/api/users'
 import { ServerRoute as ApiUsersUserIdRouteImport } from './../../src/routes/api/users.$userId'
 
@@ -27,7 +27,7 @@ import { ServerRoute as ApiUsersUserIdRouteImport } from './../../src/routes/api
 
 const rootRoute = createServerRoute()
 
-const CustomScriptjsRoute = CustomScriptjsRouteImport.update({
+const CustomScriptDotjsRoute = CustomScriptDotjsRouteImport.update({
   id: '/customScript.js',
   path: '/customScript.js',
   getParentRoute: () => rootRoute,
@@ -53,7 +53,7 @@ declare module '@tanstack/react-start/server' {
       id: '/customScript.js'
       path: '/customScript.js'
       fullPath: '/customScript.js'
-      preLoaderRoute: typeof CustomScriptjsRouteImport
+      preLoaderRoute: typeof CustomScriptDotjsRouteImport
       parentRoute: typeof rootRoute
     }
     '/api/users': {
@@ -118,20 +118,20 @@ const ApiUsersRouteWithChildren = ApiUsersRoute._addFileChildren(
 )
 
 export interface FileRoutesByFullPath {
-  '/customScript.js': typeof CustomScriptjsRoute
+  '/customScript.js': typeof CustomScriptDotjsRoute
   '/api/users': typeof ApiUsersRouteWithChildren
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
 
 export interface FileRoutesByTo {
-  '/customScript.js': typeof CustomScriptjsRoute
+  '/customScript.js': typeof CustomScriptDotjsRoute
   '/api/users': typeof ApiUsersRouteWithChildren
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
-  '/customScript.js': typeof CustomScriptjsRoute
+  '/customScript.js': typeof CustomScriptDotjsRoute
   '/api/users': typeof ApiUsersRouteWithChildren
   '/api/users/$userId': typeof ApiUsersUserIdRoute
 }
@@ -146,12 +146,12 @@ export interface FileRouteTypes {
 }
 
 export interface RootRouteChildren {
-  CustomScriptjsRoute: typeof CustomScriptjsRoute
+  CustomScriptDotjsRoute: typeof CustomScriptDotjsRoute
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  CustomScriptjsRoute: CustomScriptjsRoute,
+  CustomScriptDotjsRoute: CustomScriptDotjsRoute,
   ApiUsersRoute: ApiUsersRouteWithChildren,
 }
 

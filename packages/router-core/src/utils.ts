@@ -37,12 +37,12 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
-export type MakeDifferenceOptional<TLeft, TRight> = Omit<
-  TRight,
-  keyof TLeft
-> & {
-  [K in keyof TLeft & keyof TRight]?: TRight[K]
-}
+export type MakeDifferenceOptional<TLeft, TRight> = keyof TLeft &
+  keyof TRight extends never
+  ? TRight
+  : Omit<TRight, keyof TLeft & keyof TRight> & {
+      [K in keyof TLeft & keyof TRight]?: TRight[K]
+    }
 
 // from https://stackoverflow.com/a/53955431
 // eslint-disable-next-line @typescript-eslint/naming-convention

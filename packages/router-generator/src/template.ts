@@ -154,10 +154,3 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
       throw new Error(`router-generator: Unknown target type: ${target}`)
   }
 }
-
-export const defaultAPIRouteTemplate = [
-  'import { json } from "@tanstack/react-start";\n',
-  '%%tsrImports%%',
-  '\n\n',
-  '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message:\'Hello "%%tsrPath%%"!\' }) }}%%tsrExportEnd%%\n',
-].join('')

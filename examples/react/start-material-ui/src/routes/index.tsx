@@ -1,9 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { Stack, Typography } from '@mui/material'
 import z from 'zod'
 import { Counter } from '~/components/Counter'
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute({
   validateSearch: z.object({
     count: z.number().optional(),
   }),

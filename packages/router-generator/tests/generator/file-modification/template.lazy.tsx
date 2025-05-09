@@ -2,7 +2,7 @@
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router'
 
-export const Route = createLazyFileRoute('/(test)/lazy')({
+export const Route = createLazyFileRoute({
   component: () => {
     const post = Route.useLoaderData()
 

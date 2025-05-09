@@ -520,6 +520,15 @@ declare module './routes/(group)/lazyinside' {
     FileRoutesByPath['/(group)/lazyinside']['fullPath']
   >
 }
+declare module './routes/(group)/lazyinside.lazy' {
+  const createLazyFileRoute: CreateFileRoute<
+    '/(group)/lazyinside',
+    FileRoutesByPath['/(group)/lazyinside']['parentRoute'],
+    FileRoutesByPath['/(group)/lazyinside']['id'],
+    FileRoutesByPath['/(group)/lazyinside']['path'],
+    FileRoutesByPath['/(group)/lazyinside']['fullPath']
+  >
+}
 declare module './routes/_layout/_layout-2' {
   const createFileRoute: CreateFileRoute<
     '/_layout/_layout-2',

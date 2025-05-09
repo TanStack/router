@@ -3,7 +3,7 @@ import {
   defaultStreamHandler,
   defineEventHandler,
 } from '@tanstack/react-start/server'
-import { createClerkHandler } from '@clerk/tanstack-start/server'
+import { createClerkHandler } from '@clerk/tanstack-react-start/server'
 import { createRouter } from './router'
 
 export default defineEventHandler((event) => {

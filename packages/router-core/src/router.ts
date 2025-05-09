@@ -94,15 +94,15 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type InjectedHtmlEntry = Promise<string>
 
-export interface Register {
+export interface DefaultRegister {
+  router: AnyRouter
+}
+
+export interface Register extends DefaultRegister {
   // router: Router
 }
 
-export type RegisteredRouter = Register extends {
-  router: infer TRouter extends AnyRouter
-}
-  ? TRouter
-  : AnyRouter
+export type RegisteredRouter = Register['router']
 
 export type DefaultRemountDepsFn<TRouteTree extends AnyRoute> = (
   opts: MakeRemountDepsOptionsUnion<TRouteTree>,

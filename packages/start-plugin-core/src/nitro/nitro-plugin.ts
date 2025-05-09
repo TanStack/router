@@ -2,13 +2,13 @@ import path from 'node:path'
 import { rmSync } from 'node:fs'
 import { build, createNitro } from 'nitropack'
 import { dirname, resolve } from 'pathe'
-import { clientDistDir, ssrEntryFile } from '../plugin.js'
-import { prerender } from '../prerender.js'
-import { devServerPlugin } from './dev-server-plugin.js'
-import { buildNitroEnvironment } from './build-nitro.js'
+import { clientDistDir, ssrEntryFile } from '../plugin'
+import { prerender } from '../prerender'
+import { devServerPlugin } from './dev-server-plugin'
+import { buildNitroEnvironment } from './build-nitro'
 import type { EnvironmentOptions, PluginOption, Rollup } from 'vite'
 import type { NitroConfig } from 'nitropack'
-import type { TanStackStartOutputConfig } from '../plugin.js'
+import type { TanStackStartOutputConfig } from '../plugin'
 
 export function nitroPlugin(
   options: TanStackStartOutputConfig,
@@ -115,7 +115,7 @@ export function nitroPlugin(
   ]
 }
 
-function virtualBundlePlugin(ssrBundle: Rollup.OutputBundle): PluginOption {
+function virtualBundlePlugin(ssrBundle: Rollup.OutputBundle): Rollup.Plugin {
   type VirtualModule = { code: string; map: string | null }
   const _modules = new Map<string, VirtualModule>()
 

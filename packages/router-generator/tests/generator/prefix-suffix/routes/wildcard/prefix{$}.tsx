@@ -3,5 +3,5 @@ export const Route = createFileRoute({
 })
 
 function RouteComponent() {
-  return <div>Hello "/wildcard/${$}.suffix"!</div>
+  return <div>Hello "/wildcard/prefix"!</div>
 }

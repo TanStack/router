@@ -141,8 +141,26 @@ declare module './routes/(tests)/lazy-page' {
     FileRoutesByPath['/(tests)/lazy-page']['fullPath']
   >
 }
+declare module './routes/(tests)/lazy-page.lazy' {
+  const createLazyFileRoute: CreateFileRoute<
+    '/(tests)/lazy-page',
+    FileRoutesByPath['/(tests)/lazy-page']['parentRoute'],
+    FileRoutesByPath['/(tests)/lazy-page']['id'],
+    FileRoutesByPath['/(tests)/lazy-page']['path'],
+    FileRoutesByPath['/(tests)/lazy-page']['fullPath']
+  >
+}
 declare module './routes/(tests)/lazy-with-loader-page' {
   const createFileRoute: CreateFileRoute<
+    '/(tests)/lazy-with-loader-page',
+    FileRoutesByPath['/(tests)/lazy-with-loader-page']['parentRoute'],
+    FileRoutesByPath['/(tests)/lazy-with-loader-page']['id'],
+    FileRoutesByPath['/(tests)/lazy-with-loader-page']['path'],
+    FileRoutesByPath['/(tests)/lazy-with-loader-page']['fullPath']
+  >
+}
+declare module './routes/(tests)/lazy-with-loader-page.lazy' {
+  const createLazyFileRoute: CreateFileRoute<
     '/(tests)/lazy-with-loader-page',
     FileRoutesByPath['/(tests)/lazy-with-loader-page']['parentRoute'],
     FileRoutesByPath['/(tests)/lazy-with-loader-page']['id'],
@@ -170,6 +188,15 @@ declare module './routes/(tests)/page-with-search' {
 }
 declare module './routes/(tests)/virtual-page.lazy' {
   const createFileRoute: CreateFileRoute<
+    '/(tests)/virtual-page',
+    FileRoutesByPath['/(tests)/virtual-page']['parentRoute'],
+    FileRoutesByPath['/(tests)/virtual-page']['id'],
+    FileRoutesByPath['/(tests)/virtual-page']['path'],
+    FileRoutesByPath['/(tests)/virtual-page']['fullPath']
+  >
+}
+declare module './routes/(tests)/virtual-page.lazy' {
+  const createLazyFileRoute: CreateFileRoute<
     '/(tests)/virtual-page',
     FileRoutesByPath['/(tests)/virtual-page']['parentRoute'],
     FileRoutesByPath['/(tests)/virtual-page']['id'],
