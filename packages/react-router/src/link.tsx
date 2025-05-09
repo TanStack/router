@@ -20,6 +20,7 @@ import { useMatches } from './Matches'
 import type {
   AnyRouter,
   Constrain,
+  LinkCurrentTargetElement,
   LinkOptions,
   RegisteredRouter,
   RoutePaths,
@@ -53,7 +54,6 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
-    preloadIntentProximity: userPreloadIntentProximity,
     hashScrollIntoView,
     replace,
     startTransition,
@@ -119,24 +119,12 @@ export function useLinkProps<
     [router, _options, currentSearch],
   )
 
-  const [preload, preloadIntentProximity] = React.useMemo(() => {
+  const preload = React.useMemo(() => {
     if (_options.reloadDocument) {
-      return [false, 0]
+      return false
     }
-    return [
-      userPreload ?? router.options.defaultPreload,
-      userPreloadIntentProximity ??
-        router.options.defaultPreloadIntentProximity ??
-        0,
-    ] as const
-  }, [
-    router.options.defaultPreload,
-    userPreload,
-    _options.reloadDocument,
-    router.options.defaultPreloadIntentProximity,
-    userPreloadIntentProximity,
-  ])
-
+    return userPreload ?? router.options.defaultPreload
+  }, [router.options.defaultPreload, userPreload, _options.reloadDocument])
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
@@ -191,63 +179,22 @@ export function useLinkProps<
       console.warn(err)
       console.warn(preloadWarning)
     })
-    // NOTE: Use this to debug preloading!
-    // .then(() => {
-    //   // @ts-expect-error
-    //   innerRef.current.style.boxShadow = '0 0 10px 0 rgba(255, 0, 0, 0.5)'
-    // })
   }, [_options, router])
-
-  const timeoutIdRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const hasPreloadedRef = React.useRef(false)
-
-  const tryPreload = React.useCallback(() => {
-    if (hasPreloadedRef.current || timeoutIdRef.current) {
-      return
-    }
-
-    timeoutIdRef.current = setTimeout(() => {
-      doPreload()
-      hasPreloadedRef.current = true
-      timeoutIdRef.current = null
-    }, preloadDelay)
-  }, [preloadDelay, doPreload])
-
-  const cancelPreload = React.useCallback(() => {
-    if (timeoutIdRef.current) {
-      clearTimeout(timeoutIdRef.current)
-      timeoutIdRef.current = null
-    }
-  }, [])
-
-  const isIntersectingRef = React.useRef(false)
-
-  const shouldUseIntersectionObserver = React.useMemo(() => {
-    return (
-      !disabled &&
-      (preload === 'viewport' ||
-        (preload === 'intent' && preloadIntentProximity > 0))
-    )
-  }, [preload, preloadIntentProximity, disabled])
 
   const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
-      isIntersectingRef.current = entry?.isIntersecting ?? false
-
-      if (isIntersectingRef.current && preload === 'viewport') {
+      if (entry?.isIntersecting) {
         doPreload()
       }
     },
-    [doPreload, preload],
+    [doPreload],
   )
 
   useIntersectionObserver(
     innerRef,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    {
-      disabled: !shouldUseIntersectionObserver,
-    },
+    { disabled: !!disabled || !(preload === 'viewport') },
   )
 
   useLayoutEffect(() => {
@@ -259,112 +206,6 @@ export function useLinkProps<
       hasRenderFetched.current = true
     }
   }, [disabled, doPreload, preload])
-
-  const rectRef = React.useRef<Rect>(null)
-
-  useLayoutEffect(() => {
-    if (
-      type === 'internal' &&
-      preload === 'intent' &&
-      preloadIntentProximity > 0 &&
-      disabled &&
-      !innerRef.current
-    ) {
-      return
-    }
-
-    let lastMousePosition: {
-      x: number
-      y: number
-    } | null = null
-
-    let frameId: number | null = null
-
-    const handleMousePos = (pairs: Array<{ x: number; y: number }>) => {
-      if (!isIntersectingRef.current || frameId) return
-
-      frameId = requestAnimationFrame(() => {
-        // If one of pairs is within the preloadIntentProximity
-        // stop the loop
-        pairs.some(({ x, y }, i) => {
-          if (!rectRef.current) return
-
-          // Calculate the distance to the nearest edge of the bounding box
-          const dx = Math.max(
-            rectRef.current.left - x,
-            0,
-            x - rectRef.current.right,
-          )
-          const dy = Math.max(
-            rectRef.current.top - y,
-            0,
-            y - rectRef.current.bottom,
-          )
-
-          const distance = Math.sqrt(dx * dx + dy * dy)
-
-          if (distance <= preloadIntentProximity) {
-            tryPreload()
-            return true
-          } else {
-            return false
-          }
-        })
-
-        frameId = null
-      })
-    }
-
-    const handleScroll = () => {
-      if (!lastMousePosition) return
-      handleMousePos([{ x: lastMousePosition.x, y: lastMousePosition.y }])
-    }
-
-    const handlePointerMove = (e: PointerEvent) => {
-      lastMousePosition = {
-        x: e.clientX,
-        y: e.clientY,
-      }
-      if ((e as any).getPredictedEvents) {
-        const events = e.getPredictedEvents()
-        handleMousePos([
-          {
-            x: e.clientX,
-            y: e.clientY,
-          },
-          ...events.map((event) => ({
-            x: event.clientX,
-            y: event.clientY,
-          })),
-        ])
-      }
-    }
-
-    document.addEventListener('pointermove', handlePointerMove)
-    document.addEventListener('scroll', handleScroll, { passive: true })
-
-    return () => {
-      document.removeEventListener('pointermove', handlePointerMove)
-      document.removeEventListener('scroll', handleScroll)
-      cancelPreload()
-    }
-  }, [
-    disabled,
-    doPreload,
-    preload,
-    preloadDelay,
-    preloadIntentProximity,
-    cancelPreload,
-    innerRef,
-    tryPreload,
-    type,
-  ])
-
-  useRectCallback(innerRef, (rect) => {
-    rectRef.current = rect
-  })
-
-  const pointerDownRef = React.useRef(false)
 
   if (type === 'external') {
     return {
@@ -419,35 +260,41 @@ export function useLinkProps<
     }
   }
 
-  const onPointerDown = (e: PointerEvent) => {
-    pointerDownRef.current = true
-  }
-
-  const onPointerUp = (e: PointerEvent) => {
-    pointerDownRef.current = false
-  }
-
   // The click handler
   const handleFocus = (_: MouseEvent) => {
-    if (disabled || pointerDownRef.current) return
+    if (disabled) return
     if (preload) {
       doPreload()
     }
   }
 
-  const handleMouseEnter = () => {
-    if (preload === 'intent' && preloadIntentProximity <= 0) {
-      tryPreload()
-    }
-  }
-
-  const handleMouseLeave = () => {
-    if (preload === 'intent' && preloadIntentProximity <= 0) {
-      cancelPreload()
-    }
-  }
-
   const handleTouchStart = handleFocus
+
+  const handleEnter = (e: MouseEvent) => {
+    if (disabled) return
+    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+
+    if (preload) {
+      if (eventTarget.preloadTimeout) {
+        return
+      }
+
+      eventTarget.preloadTimeout = setTimeout(() => {
+        eventTarget.preloadTimeout = null
+        doPreload()
+      }, preloadDelay)
+    }
+  }
+
+  const handleLeave = (e: MouseEvent) => {
+    if (disabled) return
+    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+
+    if (eventTarget.preloadTimeout) {
+      clearTimeout(eventTarget.preloadTimeout)
+      eventTarget.preloadTimeout = null
+    }
+  }
 
   const composeHandlers =
     (handlers: Array<undefined | ((e: any) => void)>) =>
@@ -494,11 +341,9 @@ export function useLinkProps<
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
-    onMouseEnter: composeHandlers([onMouseEnter, handleMouseEnter]),
-    onMouseLeave: composeHandlers([onMouseLeave, handleMouseLeave]),
+    onMouseEnter: composeHandlers([onMouseEnter, handleEnter]),
+    onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
-    onPointerDown: composeHandlers([onPointerDown]),
-    onPointerUp: composeHandlers([onPointerUp]),
     disabled: !!disabled,
     target,
     ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
@@ -703,68 +548,4 @@ export type LinkOptionsFn<TComp> = <
 
 export const linkOptions: LinkOptionsFn<'a'> = (options) => {
   return options as any
-}
-
-export const useRectCallback = (
-  ref: React.RefObject<Element | null>,
-  onSizeChange: (rect: Rect) => void,
-) => {
-  const handleResize = React.useCallback(() => {
-    if (!ref.current) {
-      return
-    }
-
-    // Update client rect
-    const newRect = getRect(ref.current)
-    onSizeChange(newRect)
-  }, [ref, onSizeChange])
-
-  useLayoutEffect(() => {
-    const element = ref.current
-    if (!element) {
-      return
-    }
-
-    handleResize()
-
-    if (typeof ResizeObserver === 'function') {
-      const resizeObserver = new ResizeObserver(() => handleResize())
-      resizeObserver.observe(element)
-
-      return () => {
-        resizeObserver.disconnect()
-      }
-    } else {
-      // Browser support, remove freely
-      window.addEventListener('resize', handleResize)
-
-      return () => {
-        window.removeEventListener('resize', handleResize)
-      }
-    }
-  }, [ref, handleResize])
-}
-
-type Rect = {
-  bottom: number
-  height: number
-  left: number
-  right: number
-  top: number
-  width: number
-}
-
-function getRect(element: Element | null): Rect {
-  if (!element) {
-    return {
-      bottom: 0,
-      height: 0,
-      left: 0,
-      right: 0,
-      top: 0,
-      width: 0,
-    }
-  }
-
-  return element.getBoundingClientRect()
 }
