@@ -12,6 +12,9 @@ export function main() {
     .usage('$0 <cmd> [args]')
     .command('generate', 'Generate the routes for a project', async () => {
       const config = getConfig()
+      if (config.verboseFileRoutes === undefined) {
+        config.verboseFileRoutes = true
+      }
       await generate(config, process.cwd())
     })
     .command(
