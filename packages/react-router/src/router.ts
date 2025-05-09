@@ -106,11 +106,3 @@ export class Router<
     super(options)
   }
 }
-
-if (typeof globalThis !== 'undefined') {
-  ;(globalThis as any).createFileRoute = createFileRoute
-  ;(globalThis as any).createLazyFileRoute = createLazyFileRoute
-} else if (typeof window !== 'undefined') {
-  ;(window as any).createFileRoute = createFileRoute
-  ;(window as any).createLazyFileRoute = createLazyFileRoute
-}

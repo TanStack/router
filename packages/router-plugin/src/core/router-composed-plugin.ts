@@ -3,6 +3,7 @@ import { unpluginRouterCodeSplitterFactory } from './router-code-splitter-plugin
 import { unpluginRouterHmrFactory } from './router-hmr-plugin'
 import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
+import { unpluginRouteAutoimportFactory } from './route-autoimport-plugin'
 
 export const unpluginRouterComposedFactory: UnpluginFactory<
   Partial<Config> | undefined
@@ -17,8 +18,9 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
 
   const routerGenerator = getPlugin(unpluginRouterGeneratorFactory)
   const routerCodeSplitter = getPlugin(unpluginRouterCodeSplitterFactory)
+  const routeAutoImport = getPlugin(unpluginRouteAutoimportFactory)
 
-  const result = [...routerGenerator, ...routerCodeSplitter]
+  const result = [...routerGenerator, ...routerCodeSplitter, ...routeAutoImport]
 
   const isProduction = process.env.NODE_ENV === 'production'
 
