@@ -33,6 +33,7 @@ export type BaseConfig = z.infer<typeof baseConfigSchema>
 export const configSchema = baseConfigSchema.extend({
   generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   disableTypes: z.boolean().optional().default(false),
+  verboseFileRoutes: z.boolean().optional().default(false),
   addExtensions: z.boolean().optional().default(false),
   disableManifestGeneration: z.boolean().optional().default(false),
   enableRouteTreeFormatting: z.boolean().optional().default(true),
