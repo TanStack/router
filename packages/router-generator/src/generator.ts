@@ -311,9 +311,15 @@ export async function generator(config: Config, root: string) {
           )
       } else {
         replaced = routeCode
+          // fix wrong ids
           .replace(
             /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
             (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
+          )
+          // fix missing ids
+          .replace(
+            /((FileRoute)(\s*)(\({))/g,
+            (_, __, p2, p3, p4) => `${p2}('${escapedRoutePath}')${p3}${p4}`,
           )
           .replace(
             new RegExp(
@@ -328,6 +334,18 @@ export async function generator(config: Config, root: string) {
             (_, __, p2, ___, p4) =>
               `${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
+
+        // check whether the import statement is already present
+        const regex = new RegExp(
+          `(import\\s*\\{.*)(create(Lazy)?FileRoute)(.*\\}\\s*from\\s*[\'"]@tanstack\\\/${ROUTE_TEMPLATE.subPkg}[\'"])`,
+          'gm',
+        )
+        if (!replaced.match(regex)) {
+          replaced = [
+            `import {${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}} from '@tanstack/${ROUTE_TEMPLATE.subPkg}'`,
+            ...replaced.split('\n'),
+          ].join('\n')
+        }
       }
 
       await writeIfDifferent(node.fullPath, routeCode, replaced, {
@@ -672,15 +690,17 @@ export async function generator(config: Config, root: string) {
         ]),
     ...(TYPES_DISABLED
       ? []
-      : [
-          `// Add type-safety to the createFileRoute function across the route tree`,
-          routeNodes
-            .map((routeNode) => {
-              function getModuleDeclaration(routeNode?: RouteNode) {
-                if (!routeNode || routeNode.isVirtual) {
-                  return ''
-                }
-                return `declare module './${getImportPath(routeNode)}' {
+      : config.verboseFileRoutes
+        ? []
+        : [
+            `// Add type-safety to the createFileRoute function across the route tree`,
+            routeNodes
+              .map((routeNode) => {
+                function getModuleDeclaration(routeNode?: RouteNode) {
+                  if (!routeNode || routeNode.isVirtual) {
+                    return ''
+                  }
+                  return `declare module './${getImportPath(routeNode)}' {
                   const ${routeNode._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}: ${
                     routeNode._fsRouteType === 'lazy'
                       ? `CreateLazyFileRoute<FileRoutesByPath['${routeNode.routePath}']['preLoaderRoute']>}`
@@ -693,16 +713,16 @@ export async function generator(config: Config, root: string) {
                   >
                   }`
                   }`
-              }
-              return (
-                getModuleDeclaration(routeNode) +
-                getModuleDeclaration(
-                  routePiecesByPath[routeNode.routePath!]?.lazy,
+                }
+                return (
+                  getModuleDeclaration(routeNode) +
+                  getModuleDeclaration(
+                    routePiecesByPath[routeNode.routePath!]?.lazy,
+                  )
                 )
-              )
-            })
-            .join('\n'),
-        ]),
+              })
+              .join('\n'),
+          ]),
     '// Create and export the route tree',
     routeConfigChildrenText,
     ...(TYPES_DISABLED
