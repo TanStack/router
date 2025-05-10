@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import {
   TanStackStartServerRoutesVite,
@@ -24,7 +24,7 @@ export function TanStackStartVitePlugin(
   const options: OptionsWithReact = getTanStackStartOptions(opts)
 
   return [
-    TanStackRouterVite({
+    tanstackRouter({
       ...options.tsr,
       target: 'react',
       enableRouteGeneration: true,

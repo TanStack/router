@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import viteSolid from 'vite-plugin-solid'
 import {
   TanStackStartServerRoutesVite,
@@ -24,7 +24,7 @@ export function TanStackStartVitePlugin(
   const options: OptionsWithSolid = getTanStackStartOptions(opts)
 
   return [
-    TanStackRouterVite({
+    tanstackRouter({
       ...options.tsr,
       target: 'solid',
       enableRouteGeneration: true,

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import packageJson from './package.json'
 
 export default defineConfig({
@@ -12,7 +12,7 @@ export default defineConfig({
     typecheck: { enabled: true },
   },
   plugins: [
-    TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
     react(),
   ],
 })
