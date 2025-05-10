@@ -67,6 +67,7 @@ export async function generator(config: Config, root: string) {
   const start = Date.now()
 
   const TYPES_DISABLED = config.disableTypes
+  const PLUGIN_OUTPUT = config.__pluginOutput || 'router'
 
   let getRouteNodesResult: GetRouteNodesResult
 
@@ -762,8 +763,9 @@ export async function generator(config: Config, root: string) {
   ${routeTree.map((child) => `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`).join(',')}
 }`,
     `export const routeTree = rootRoute._addFileChildren(rootRouteChildren)${TYPES_DISABLED ? '' : '._addFileTypes<FileRouteTypes>()'}`,
-    !TYPES_DISABLED
-      ? `// @ts-ignore
+    PLUGIN_OUTPUT === 'start' && !TYPES_DISABLED
+      ? `// Register the types for Server Routes
+// @ts-ignore
 import type * as ServerTypes from '${replaceBackslash(
           path.relative(
             path.dirname(config.generatedRouteTree),

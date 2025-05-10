@@ -83,6 +83,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-// @ts-ignore
-import type * as ServerTypes from '.tanstack-start/server-routes/routeTree.gen.ts'

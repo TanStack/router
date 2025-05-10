@@ -109,10 +109,12 @@ export default createStartHandler({
       target: 'react',
       enableRouteGeneration: true,
       autoCodeSplitting: true,
+      __pluginOutput: 'start',
     }),
     TanStackStartServerRoutesVite({
       ...options.tsr,
       target: 'react',
+      __pluginOutput: 'start',
     }),
     viteReact(options.react),
   ]

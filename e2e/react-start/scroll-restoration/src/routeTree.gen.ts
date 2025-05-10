@@ -177,6 +177,7 @@ export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
+// Register the types for Server Routes
 // @ts-ignore
 import type * as ServerTypes from '../.tanstack-start/server-routes/routeTree.gen.ts'
 
