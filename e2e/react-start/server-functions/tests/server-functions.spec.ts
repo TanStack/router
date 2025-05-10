@@ -173,7 +173,7 @@ test('Server function can correctly send and receive FormData', async ({
   ).toContainText(expected)
 })
 
-test.only('server function can correctly send and receive headers', async ({
+test('server function can correctly send and receive headers', async ({
   page,
 }) => {
   await page.goto('/headers')
