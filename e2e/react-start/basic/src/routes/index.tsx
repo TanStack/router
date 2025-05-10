@@ -16,7 +16,7 @@ function Home() {
     <div className="p-2">
       <h3>Welcome Home!!!</h3>
       <CustomMessage message="Hello from a custom component!" />
-      <h3>DATABASE_URL: {databaseUrl}</h3>
+      <p>DATABASE_URL: {databaseUrl}</p>
     </div>
   )
 }
