@@ -58,7 +58,7 @@ class TanStackRouterDevtoolsCore {
   #panelProps: any
   #closeButtonProps: any
   #toggleButtonProps: any
-  #containerElement?: Container
+  #containerElement?: string | any
   
   #isMounted = false
   #Component: any
