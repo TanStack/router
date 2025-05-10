@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-start-e2e-basic-rsc",
+  "name": "tanstack-react-start-e2e-basic-rsc",
   "private": true,
   "sideEffects": false,
   "type": "module",

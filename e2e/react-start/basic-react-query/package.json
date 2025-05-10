@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-start-e2e-basic-react-query",
+  "name": "tanstack-react-start-e2e-basic-react-query",
   "private": true,
   "sideEffects": false,
   "type": "module",

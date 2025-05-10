@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-start-e2e-server-functions",
+  "name": "tanstack-react-start-e2e-server-functions",
   "private": true,
   "sideEffects": false,
   "type": "module",

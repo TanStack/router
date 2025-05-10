@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-start-e2e-basic-auth",
+  "name": "tanstack-react-start-e2e-basic-auth",
   "private": true,
   "sideEffects": false,
   "type": "module",
