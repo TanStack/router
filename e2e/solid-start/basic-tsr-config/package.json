@@ -14,7 +14,8 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "solid-js": "^1.9.5"
+    "solid-js": "^1.9.5",
+    "vite": "6.3.5"
   },
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",
