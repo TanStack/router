@@ -102,7 +102,7 @@ function getGeneratedRouteTreePath(root: string) {
 }
 
 async function generator(config: Config, root: string) {
-  const generatedRouteTreePath = getGeneratedRouteTreePath(root)
+  const generatedServerRouteTreePath = getGeneratedRouteTreePath(root)
   const ROUTE_TEMPLATE = getTargetTemplate(config.target)
   const logger = logging({ disabled: config.disableLogging })
 
@@ -398,7 +398,7 @@ async function generator(config: Config, root: string) {
     return replaceBackslash(
       removeExt(
         path.relative(
-          path.dirname(generatedRouteTreePath),
+          path.dirname(generatedServerRouteTreePath),
           path.resolve(config.routesDirectory, node.filePath),
         ),
       ),
@@ -424,12 +424,6 @@ async function generator(config: Config, root: string) {
     [
       `import type { FileRoutesByPath, CreateServerFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
       `import { createServerRoute, createServerFileRoute } from '${ROUTE_TEMPLATE.fullPkg}'`,
-      //       `
-      // if (typeof globalThis !== 'undefined') {
-      //   ;(globalThis as any).createServerFileRoute = createServerFileRoute
-      // } else if (typeof window !== 'undefined') {
-      //   ;(window as any).createServerFileRoute = createServerFileRoute
-      // }`,
       hasServerRootRoute
         ? `import { ServerRoute as rootRouteImport } from './${getImportPath(rootRouteNode)}'`
         : '',
@@ -596,7 +590,7 @@ ${routeNode.children?.length ? `${routeNode.variableName}RouteChildren` : 'unkno
   if (!checkLatest()) return
 
   const existingRouteTreeContent = await fsp
-    .readFile(path.resolve(generatedRouteTreePath), 'utf-8')
+    .readFile(path.resolve(generatedServerRouteTreePath), 'utf-8')
     .catch((err) => {
       if (err.code === 'ENOENT') {
         return ''
@@ -608,7 +602,7 @@ ${routeNode.children?.length ? `${routeNode.variableName}RouteChildren` : 'unkno
   if (!checkLatest()) return
 
   // Ensure the directory exists
-  await fsp.mkdir(path.dirname(path.resolve(generatedRouteTreePath)), {
+  await fsp.mkdir(path.dirname(path.resolve(generatedServerRouteTreePath)), {
     recursive: true,
   })
 
@@ -616,7 +610,7 @@ ${routeNode.children?.length ? `${routeNode.variableName}RouteChildren` : 'unkno
 
   // Write the route tree file, if it has changed
   const routeTreeWriteResult = await writeIfDifferent(
-    path.resolve(generatedRouteTreePath),
+    path.resolve(generatedServerRouteTreePath),
     await format(existingRouteTreeContent, config),
     await format(routeConfigFileContent, config),
     {
@@ -625,6 +619,53 @@ ${routeNode.children?.length ? `${routeNode.variableName}RouteChildren` : 'unkno
       },
     },
   )
+
+  // Write declaration file
+  const startDeclarationFilePath = path.join(
+    path.resolve(root, config.srcDirectory),
+    'tanstack-start.d.ts',
+  )
+  const serverRoutesRelativePath = removeExt(
+    path.relative(
+      path.dirname(startDeclarationFilePath),
+      generatedServerRouteTreePath,
+    ),
+  )
+  const startDeclarationFileContent = buildStartDeclarationFile({
+    serverRoutesRelativePath,
+  })
+  if (!fs.existsSync(startDeclarationFilePath)) {
+    await writeIfDifferent(
+      startDeclarationFilePath,
+      '',
+      startDeclarationFileContent,
+      {
+        beforeWrite: () => {
+          logger.log(`🟡 Creating tanstack-start.d.ts`)
+        },
+      },
+    )
+  } else {
+    const existingDeclarationFileContent = await fsp
+      .readFile(startDeclarationFilePath, 'utf-8')
+      .catch((err) => {
+        if (err.code === 'ENOENT') {
+          return ''
+        }
+        throw err
+      })
+    await writeIfDifferent(
+      startDeclarationFilePath,
+      existingDeclarationFileContent,
+      startDeclarationFileContent,
+      {
+        beforeWrite: () => {
+          logger.log(`🟡 Updating tanstack-start.d.ts`)
+        },
+      },
+    )
+  }
+
   if (routeTreeWriteResult && !checkLatest()) {
     return
   }
@@ -634,6 +675,14 @@ ${routeNode.children?.length ? `${routeNode.variableName}RouteChildren` : 'unkno
   //     Date.now() - start
   //   }ms`,
   // )
+}
+
+function buildStartDeclarationFile({
+  serverRoutesRelativePath,
+}: {
+  serverRoutesRelativePath: string
+}) {
+  return [`import '${serverRoutesRelativePath}'`].join('\n') + '\n'
 }
 
 function removeGroups(s: string) {

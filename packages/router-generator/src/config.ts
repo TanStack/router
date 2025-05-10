@@ -26,7 +26,6 @@ export const baseConfigSchema = z.object({
   pathParamsAllowedCharacters: z
     .array(z.enum([';', ':', '@', '&', '=', '+', '$', ',']))
     .optional(),
-  __pluginOutput: z.enum(['router', 'start']).optional(),
 })
 
 export type BaseConfig = z.infer<typeof baseConfigSchema>
