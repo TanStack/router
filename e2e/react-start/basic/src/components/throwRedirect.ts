@@ -12,10 +12,7 @@ export const throwRedirect = createServerFn()
   .handler((ctx) => {
     if (ctx.data.target === 'internal') {
       throw redirect({
-        to: '/posts/$postId/deep',
-        params: {
-          postId: '1',
-        },
+        to: '/posts',
         reloadDocument: ctx.data.reloadDocument,
       })
     }
