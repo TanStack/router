@@ -8,9 +8,10 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
-import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as WildcardChar123Char125suffixRouteImport } from './routes/wildcard/{$}suffix'
 import { Route as WildcardChar123Char125DotsuffixRouteImport } from './routes/wildcard/{$}[.]suffix'

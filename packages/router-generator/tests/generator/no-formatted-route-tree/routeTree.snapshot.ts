@@ -8,9 +8,10 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
-import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NestedIndexRouteImport } from './routes/nested/index'
@@ -121,7 +122,6 @@ const rootRouteChildren: RootRouteChildren = {
 }
 
 export const routeTree = rootRoute._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
-
 
 
 /* ROUTE_MANIFEST_START

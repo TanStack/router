@@ -9,10 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
 
-import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/root'
 import { Route as layoutRouteImport } from './routes/layout'
 import { Route as indexRouteImport } from './routes/index'
@@ -205,15 +205,7 @@ declare module './routes/index' {
     FileRoutesByPath['/']['fullPath']
   >
 }
-declare module './routes' {
-  const createFileRoute: CreateFileRoute<
-    '/$lang',
-    FileRoutesByPath['/$lang']['parentRoute'],
-    FileRoutesByPath['/$lang']['id'],
-    FileRoutesByPath['/$lang']['path'],
-    FileRoutesByPath['/$lang']['fullPath']
-  >
-}
+
 declare module './routes/layout' {
   const createFileRoute: CreateFileRoute<
     '/_layout',

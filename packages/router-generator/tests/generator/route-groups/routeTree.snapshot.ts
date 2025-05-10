@@ -9,10 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
 
-import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as fooAsdfLayoutRouteImport } from './routes/(foo)/asdf/_layout'
 import { Route as fooAsdfLayoutFooRouteImport } from './routes/(foo)/asdf/_layout.foo'
@@ -162,15 +162,6 @@ declare module '@tanstack/react-router' {
 
 // Add type-safety to the createFileRoute function across the route tree
 
-declare module './routes/(foo)/asdf' {
-  const createFileRoute: CreateFileRoute<
-    '/(foo)/asdf',
-    FileRoutesByPath['/(foo)/asdf']['parentRoute'],
-    FileRoutesByPath['/(foo)/asdf']['id'],
-    FileRoutesByPath['/(foo)/asdf']['path'],
-    FileRoutesByPath['/(foo)/asdf']['fullPath']
-  >
-}
 declare module './routes/(foo)/asdf/_layout' {
   const createFileRoute: CreateFileRoute<
     '/(foo)/asdf/_layout',
@@ -180,15 +171,7 @@ declare module './routes/(foo)/asdf/_layout' {
     FileRoutesByPath['/(foo)/asdf/_layout']['fullPath']
   >
 }
-declare module './routes/(foo)/asdf/(another-group)' {
-  const createFileRoute: CreateFileRoute<
-    '/(foo)/asdf/(another-group)',
-    FileRoutesByPath['/(foo)/asdf/(another-group)']['parentRoute'],
-    FileRoutesByPath['/(foo)/asdf/(another-group)']['id'],
-    FileRoutesByPath['/(foo)/asdf/(another-group)']['path'],
-    FileRoutesByPath['/(foo)/asdf/(another-group)']['fullPath']
-  >
-}
+
 declare module './routes/(foo)/asdf/(another-group)/_layout' {
   const createFileRoute: CreateFileRoute<
     '/(foo)/asdf/(another-group)/_layout',
@@ -235,21 +218,8 @@ declare module './routes/(foo)/asdf/(bar)/_layout.about' {
   >
 }
 declare module './routes/(foo)/asdf/(bar)/_layout.xyz.lazy' {
-  const createFileRoute: CreateFileRoute<
-    '/(foo)/asdf/(bar)/_layout/xyz',
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['parentRoute'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['id'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['path'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['fullPath']
-  >
-}
-declare module './routes/(foo)/asdf/(bar)/_layout.xyz.lazy' {
-  const createLazyFileRoute: CreateFileRoute<
-    '/(foo)/asdf/(bar)/_layout/xyz',
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['parentRoute'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['id'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['path'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['fullPath']
+  const createLazyFileRoute: CreateLazyFileRoute<
+    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['preLoaderRoute']
   >
 }
 

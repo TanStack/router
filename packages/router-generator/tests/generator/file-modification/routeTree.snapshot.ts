@@ -9,10 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
 
-import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as testInitiallyLazyRouteImport } from './routes/(test)/initiallyLazy'
 import { Route as testInitiallyEmptyRouteImport } from './routes/(test)/initiallyEmpty'
@@ -110,12 +110,8 @@ declare module './routes/(test)/initiallyEmpty' {
   >
 }
 declare module './routes/(test)/initiallyEmpty.lazy' {
-  const createLazyFileRoute: CreateFileRoute<
-    '/(test)/initiallyEmpty',
-    FileRoutesByPath['/(test)/initiallyEmpty']['parentRoute'],
-    FileRoutesByPath['/(test)/initiallyEmpty']['id'],
-    FileRoutesByPath['/(test)/initiallyEmpty']['path'],
-    FileRoutesByPath['/(test)/initiallyEmpty']['fullPath']
+  const createLazyFileRoute: CreateLazyFileRoute<
+    FileRoutesByPath['/(test)/initiallyEmpty']['preLoaderRoute']
   >
 }
 declare module './routes/(test)/initiallyLazy' {
@@ -128,21 +124,8 @@ declare module './routes/(test)/initiallyLazy' {
   >
 }
 declare module './routes/(test)/bar.lazy' {
-  const createFileRoute: CreateFileRoute<
-    '/(test)/bar',
-    FileRoutesByPath['/(test)/bar']['parentRoute'],
-    FileRoutesByPath['/(test)/bar']['id'],
-    FileRoutesByPath['/(test)/bar']['path'],
-    FileRoutesByPath['/(test)/bar']['fullPath']
-  >
-}
-declare module './routes/(test)/bar.lazy' {
-  const createLazyFileRoute: CreateFileRoute<
-    '/(test)/bar',
-    FileRoutesByPath['/(test)/bar']['parentRoute'],
-    FileRoutesByPath['/(test)/bar']['id'],
-    FileRoutesByPath['/(test)/bar']['path'],
-    FileRoutesByPath['/(test)/bar']['fullPath']
+  const createLazyFileRoute: CreateLazyFileRoute<
+    FileRoutesByPath['/(test)/bar']['preLoaderRoute']
   >
 }
 

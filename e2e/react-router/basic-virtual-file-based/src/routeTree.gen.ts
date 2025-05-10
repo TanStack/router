@@ -8,13 +8,10 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
-import type {
-  FileRoutesByPath,
-  CreateFileRoute,
-  CreateLazyFileRoute,
-} from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/root'
 import { Route as postsPostsRouteImport } from './routes/posts/posts'
 import { Route as layoutFirstLayoutRouteImport } from './routes/layout/first-layout'

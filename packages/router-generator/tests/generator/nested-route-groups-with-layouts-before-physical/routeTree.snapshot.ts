@@ -9,10 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
 
-import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as groupCLayoutCRouteImport } from './routes/(group-c)/_layout-c'
 import { Route as groupBLayoutBRouteImport } from './routes/(group-b)/_layout-b'
@@ -163,15 +163,6 @@ declare module '@tanstack/react-router' {
 
 // Add type-safety to the createFileRoute function across the route tree
 
-declare module './routes/(group-a)' {
-  const createFileRoute: CreateFileRoute<
-    '/(group-a)',
-    FileRoutesByPath['/(group-a)']['parentRoute'],
-    FileRoutesByPath['/(group-a)']['id'],
-    FileRoutesByPath['/(group-a)']['path'],
-    FileRoutesByPath['/(group-a)']['fullPath']
-  >
-}
 declare module './routes/(group-a)/_layout-a' {
   const createFileRoute: CreateFileRoute<
     '/(group-a)/_layout-a',
@@ -181,15 +172,7 @@ declare module './routes/(group-a)/_layout-a' {
     FileRoutesByPath['/(group-a)/_layout-a']['fullPath']
   >
 }
-declare module './routes/(group-b)' {
-  const createFileRoute: CreateFileRoute<
-    '/(group-b)',
-    FileRoutesByPath['/(group-b)']['parentRoute'],
-    FileRoutesByPath['/(group-b)']['id'],
-    FileRoutesByPath['/(group-b)']['path'],
-    FileRoutesByPath['/(group-b)']['fullPath']
-  >
-}
+
 declare module './routes/(group-b)/_layout-b' {
   const createFileRoute: CreateFileRoute<
     '/(group-b)/_layout-b',
@@ -199,15 +182,7 @@ declare module './routes/(group-b)/_layout-b' {
     FileRoutesByPath['/(group-b)/_layout-b']['fullPath']
   >
 }
-declare module './routes/(group-c)' {
-  const createFileRoute: CreateFileRoute<
-    '/(group-c)',
-    FileRoutesByPath['/(group-c)']['parentRoute'],
-    FileRoutesByPath['/(group-c)']['id'],
-    FileRoutesByPath['/(group-c)']['path'],
-    FileRoutesByPath['/(group-c)']['fullPath']
-  >
-}
+
 declare module './routes/(group-c)/_layout-c' {
   const createFileRoute: CreateFileRoute<
     '/(group-c)/_layout-c',

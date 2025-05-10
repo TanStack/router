@@ -9,10 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
 
-import type { FileRoutesByPath, CreateFileRoute } from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as LayoutA2RouteImport } from './routes/_layout-a2'
 import { Route as LayoutA1RouteImport } from './routes/_layout-a1'
@@ -408,15 +408,7 @@ declare module './routes/_layout-a2' {
     FileRoutesByPath['/_layout-a2']['fullPath']
   >
 }
-declare module './routes/foo/_layout-b5' {
-  const createFileRoute: CreateFileRoute<
-    '/foo',
-    FileRoutesByPath['/foo']['parentRoute'],
-    FileRoutesByPath['/foo']['id'],
-    FileRoutesByPath['/foo']['path'],
-    FileRoutesByPath['/foo']['fullPath']
-  >
-}
+
 declare module './routes/foo/_layout-b5/route' {
   const createFileRoute: CreateFileRoute<
     '/foo/_layout-b5',
@@ -480,15 +472,7 @@ declare module './routes/jested/_layout-b4' {
     FileRoutesByPath['/jested/_layout-b4']['fullPath']
   >
 }
-declare module './routes/nested' {
-  const createFileRoute: CreateFileRoute<
-    '/nested',
-    FileRoutesByPath['/nested']['parentRoute'],
-    FileRoutesByPath['/nested']['id'],
-    FileRoutesByPath['/nested']['path'],
-    FileRoutesByPath['/nested']['fullPath']
-  >
-}
+
 declare module './routes/nested/_layout-b1' {
   const createFileRoute: CreateFileRoute<
     '/nested/_layout-b1',

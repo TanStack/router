@@ -9,14 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
 
-import type {
-  FileRoutesByPath,
-  CreateFileRoute,
-  CreateLazyFileRoute,
-} from '@tanstack/react-router'
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as testsPageWithSearchRouteImport } from './routes/(tests)/page-with-search'
