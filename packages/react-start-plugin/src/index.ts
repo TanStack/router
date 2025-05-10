@@ -24,6 +24,12 @@ export function TanStackStartVitePlugin(
   const options: OptionsWithReact = getTanStackStartOptions(opts)
 
   return [
+    TanStackRouterVite({
+      ...options.tsr,
+      target: 'react',
+      enableRouteGeneration: true,
+      autoCodeSplitting: true,
+    }),
     TanStackStartVitePluginCore('react', options),
     {
       name: 'tanstack-react-start:resolve-entries',
@@ -103,12 +109,6 @@ export default createStartHandler({
         replacer: (d) =>
           `createServerRpc('${d.functionId}', '${options.serverFns.base}', ${d.fn})`,
       },
-    }),
-    TanStackRouterVite({
-      ...options.tsr,
-      target: 'react',
-      enableRouteGeneration: true,
-      autoCodeSplitting: true,
     }),
     TanStackStartServerRoutesVite({
       ...options.tsr,

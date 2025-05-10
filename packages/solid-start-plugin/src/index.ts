@@ -24,6 +24,12 @@ export function TanStackStartVitePlugin(
   const options: OptionsWithSolid = getTanStackStartOptions(opts)
 
   return [
+    TanStackRouterVite({
+      ...options.tsr,
+      target: 'solid',
+      enableRouteGeneration: true,
+      autoCodeSplitting: true,
+    }),
     TanStackStartVitePluginCore('solid', options),
     {
       name: 'tanstack-solid-start:resolve-entries',
@@ -100,12 +106,6 @@ export default createStartHandler({
         replacer: (d) =>
           `createServerRpc('${d.functionId}', '${options.serverFns.base}', ${d.fn})`,
       },
-    }),
-    TanStackRouterVite({
-      ...options.tsr,
-      target: 'solid',
-      enableRouteGeneration: true,
-      autoCodeSplitting: true,
     }),
     TanStackStartServerRoutesVite({
       ...options.tsr,
