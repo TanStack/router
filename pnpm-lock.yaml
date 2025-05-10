@@ -5658,15 +5658,16 @@ importers:
       '@tanstack/start-plugin-core':
         specifier: workspace:*
         version: link:../start-plugin-core
+      zod:
+        specifier: ^3.24.2
+        version: 3.24.2
+    devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
       vite:
         specifier: 6.3.5
         version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-      zod:
-        specifier: ^3.24.2
-        version: 3.24.2
 
   packages/react-start-server:
     dependencies:
