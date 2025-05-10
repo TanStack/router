@@ -15,7 +15,7 @@
     "@tanstack/react-start": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vite": "6.1.4"
+    "vite": "^6.3.5"
   },
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",
