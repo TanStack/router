@@ -526,19 +526,21 @@ export async function generator(config: Config, root: string) {
     // Used for augmentation of regular routes
     CreateFileRoute:
       !config.verboseFileRoutes &&
-      routeNodes.some(
+      sortedRouteNodes.some(
         (d) => isRouteNodeValidForAugmentation(d) && d._fsRouteType !== 'lazy',
       ),
     // Used for augmentation of lazy (`.lazy`) routes
     CreateLazyFileRoute:
       !config.verboseFileRoutes &&
-      routeNodes.some(
-        (d) => isRouteNodeValidForAugmentation(d) && d._fsRouteType === 'lazy',
+      sortedRouteNodes.some(
+        (node) =>
+          routePiecesByPath[node.routePath!]?.lazy &&
+          isRouteNodeValidForAugmentation(node),
       ),
     // Used in the process of augmenting the routes
     FileRoutesByPath:
       !config.verboseFileRoutes &&
-      routeNodes.some((d) => isRouteNodeValidForAugmentation(d)),
+      sortedRouteNodes.some((d) => isRouteNodeValidForAugmentation(d)),
   })
     .filter((d) => d[1])
     .map((d) => d[0])

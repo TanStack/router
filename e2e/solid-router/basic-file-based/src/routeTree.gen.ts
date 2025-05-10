@@ -9,7 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/solid-router'
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/solid-router'
+import type {
+  CreateFileRoute,
+  CreateLazyFileRoute,
+  FileRoutesByPath,
+} from '@tanstack/solid-router'
 
 // Import Routes
 
