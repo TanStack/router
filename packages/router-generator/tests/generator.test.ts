@@ -51,6 +51,7 @@ async function setupConfig(
     disableLogging: true,
     routesDirectory: dir + '/routes',
     generatedRouteTree: dir + generatedRouteTree,
+    verboseFileRoutes: false,
     ...rest,
   })
   return config
