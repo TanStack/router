@@ -69,8 +69,14 @@
     "@tanstack/router-utils": "workspace:^",
     "@tanstack/server-functions-plugin": "workspace:^",
     "@tanstack/start-plugin-core": "workspace:^",
-    "vite": "^6.0.0",
-    "vite-plugin-solid": "^2.11.6",
     "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0",
+    "vite-plugin-solid": "^2.11.6"
+  },
+  "peerDependencies": {
+    "vite": ">=6.0.0",
+    "vite-plugin-solid": ">=2.11.6"
   }
 }

@@ -111,7 +111,8 @@
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0",
-    "vite": "^6.0.0"
+    "vite": ">=6.0.0",
+    "vite-plugin-solid": ">=2.11.6"
   },
   "devDependencies": {
     "esbuild": "^0.25.0"
