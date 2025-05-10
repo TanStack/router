@@ -188,7 +188,7 @@ test('server function can correctly send and receive headers', async ({
 
   await page.getByTestId('test-headers-btn').click()
   await page.waitForSelector('[data-testid="updated-headers-result"]')
-  
+
   headers = JSON.parse(
     await page.getByTestId('updated-headers-result').innerText(),
   )
