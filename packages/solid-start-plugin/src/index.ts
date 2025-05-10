@@ -25,6 +25,7 @@ export function TanStackStartVitePlugin(
 
   return [
     tanstackRouter({
+      verboseFileRoutes: false,
       ...options.tsr,
       target: 'solid',
       enableRouteGeneration: true,

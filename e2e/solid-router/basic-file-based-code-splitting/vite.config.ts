@@ -8,6 +8,7 @@ export default defineConfig({
     tanstackRouter({
       target: 'solid',
       autoCodeSplitting: true,
+      verboseFileRoutes: false,
       codeSplittingOptions: {
         splitBehavior: ({ routeId }) => {
           if (routeId === '/posts') {

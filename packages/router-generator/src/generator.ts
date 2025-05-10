@@ -240,7 +240,7 @@ export async function generator(config: Config, root: string) {
             },
           )
         }
-      } else if (!config.verboseFileRoutes) {
+      } else if (config.verboseFileRoutes === false) {
         // Check if the route file has a Route export
         if (
           !routeCode
@@ -525,13 +525,13 @@ export async function generator(config: Config, root: string) {
   const typeImports = Object.entries({
     // Used for augmentation of regular routes
     CreateFileRoute:
-      !config.verboseFileRoutes &&
+      config.verboseFileRoutes === false &&
       sortedRouteNodes.some(
         (d) => isRouteNodeValidForAugmentation(d) && d._fsRouteType !== 'lazy',
       ),
     // Used for augmentation of lazy (`.lazy`) routes
     CreateLazyFileRoute:
-      !config.verboseFileRoutes &&
+      config.verboseFileRoutes === false &&
       sortedRouteNodes.some(
         (node) =>
           routePiecesByPath[node.routePath!]?.lazy &&
@@ -539,7 +539,7 @@ export async function generator(config: Config, root: string) {
       ),
     // Used in the process of augmenting the routes
     FileRoutesByPath:
-      !config.verboseFileRoutes &&
+      config.verboseFileRoutes === false &&
       sortedRouteNodes.some((d) => isRouteNodeValidForAugmentation(d)),
   })
     .filter((d) => d[1])
@@ -716,7 +716,7 @@ export async function generator(config: Config, root: string) {
         ]),
     ...(TYPES_DISABLED
       ? []
-      : config.verboseFileRoutes
+      : config.verboseFileRoutes !== false
         ? []
         : [
             `// Add type-safety to the createFileRoute function across the route tree`,

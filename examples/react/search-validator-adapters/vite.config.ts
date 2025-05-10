@@ -12,7 +12,11 @@ export default defineConfig({
     typecheck: { enabled: true },
   },
   plugins: [
-    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
+      verboseFileRoutes: false,
+    }),
     react(),
   ],
 })

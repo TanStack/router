@@ -49,7 +49,11 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
+    tanstackRouter({
+      target: 'solid',
+      autoCodeSplitting: true,
+      verboseFileRoutes: false,
+    }),
     solid(),
     // ...,
   ],

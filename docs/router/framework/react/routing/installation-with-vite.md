@@ -22,7 +22,11 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 export default defineConfig({
   plugins: [
     // Please make sure that '@tanstack/router-plugin' is passed before '@vitejs/plugin-react'
-    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
+      verboseFileRoutes: false,
+    }),
     react(),
     // ...
   ],
