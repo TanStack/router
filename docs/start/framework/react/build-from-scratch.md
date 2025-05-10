@@ -47,7 +47,7 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 
 ## Install Dependencies
 
-TanStack Start is (currently\*) powered by [Vite](https://vite.dev/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
+TanStack Start is powered by [Vite](https://vite.dev/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
 
 To install them, run:
 
@@ -111,13 +111,13 @@ Once configuration is done, we'll have a file tree that looks like the following
 
 ```
 .
-├── app/
+├── src/
 │   ├── routes/
 │   │   └── `__root.tsx`
 │   ├── `router.tsx`
 │   ├── `routeTree.gen.ts`
 ├── `.gitignore`
-├── `app.config.ts`
+├── `vite.config.ts`
 ├── `package.json`
 └── `tsconfig.json`
 ```
@@ -131,7 +131,7 @@ from the default [preloading functionality](/router/latest/docs/framework/react/
 > You won't have a `routeTree.gen.ts` file yet. This file will be generated when you run TanStack Start for the first time.
 
 ```tsx
-// app/router.tsx
+// src/router.tsx
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
@@ -156,7 +156,7 @@ declare module '@tanstack/react-router' {
 Finally, we need to create the root of our application. This is the entry point for all other routes. The code in this file will wrap all other routes in the application.
 
 ```tsx
-// app/routes/__root.tsx
+// src/routes/__root.tsx
 import type { ReactNode } from 'react'
 import {
   Outlet,
@@ -208,10 +208,10 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 
 ## Writing Your First Route
 
-Now that we have the basic templating setup, we can write our first route. This is done by creating a new file in the `app/routes` directory.
+Now that we have the basic templating setup, we can write our first route. This is done by creating a new file in the `src/routes` directory.
 
 ```tsx
-// app/routes/index.tsx
+// src/routes/index.tsx
 import * as fs from 'node:fs'
 import { useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
