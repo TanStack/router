@@ -337,7 +337,7 @@ export async function generator(config: Config, root: string) {
 
         // check whether the import statement is already present
         const regex = new RegExp(
-          `(import\\s*\\{.*)(create(Lazy)?FileRoute)(.*\\}\\s*from\\s*[\'"]@tanstack\\\/${ROUTE_TEMPLATE.subPkg}[\'"])`,
+          `(import\\s*\\{.*)(create(Lazy)?FileRoute)(.*\\}\\s*from\\s*['"]@tanstack\\/${ROUTE_TEMPLATE.subPkg}['"])`,
           'gm',
         )
         if (!replaced.match(regex)) {
