@@ -6253,15 +6253,16 @@ importers:
       ufo:
         specifier: ^1.5.4
         version: 1.5.4
-      vite:
-        specifier: 6.3.5
-        version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
       xmlbuilder2:
         specifier: ^3.1.1
         version: 3.1.1
       zod:
         specifier: ^3.24.2
         version: 3.24.2
+    devDependencies:
+      vite:
+        specifier: 6.3.5
+        version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
 
   packages/start-server-core:
     dependencies:
