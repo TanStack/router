@@ -4,7 +4,11 @@ import { notFound } from './not-found'
 import { rootRouteId } from './root'
 import type { LazyRoute } from './fileRoute'
 import type { NotFoundError } from './not-found'
-import type { NavigateOptions, ParsePathParams } from './link'
+import type {
+  NavigateOptions,
+  ParseOptionalPathParams,
+  ParseRequiredPathParams,
+} from './link'
 import type { ParsedLocation } from './location'
 import type {
   AnyRouteMatch,
@@ -153,27 +157,25 @@ export type ResolveSearchSchema<TSearchValidator> =
           ? ResolveSearchSchemaFn<TSearchValidator['parse']>
           : ResolveSearchSchemaFn<TSearchValidator>
 
-export type ParseSplatParams<TPath extends string> = TPath &
-  `${string}$` extends never
-  ? TPath & `${string}$/${string}` extends never
-    ? never
-    : '_splat'
-  : '_splat'
-
 export interface SplatParams {
   _splat?: string
 }
 
-export type ResolveParams<TPath extends string> =
-  ParseSplatParams<TPath> extends never
-    ? Record<ParsePathParams<TPath>, string>
-    : Record<ParsePathParams<TPath>, string> & SplatParams
+export type ResolveParams<TPath extends string> = Record<
+  ParseRequiredPathParams<TPath>,
+  string
+> &
+  Partial<Record<ParseOptionalPathParams<TPath>, string>>
+
+export type ResolveAnyParams<TPath extends string> = Record<
+  ParseRequiredPathParams<TPath>,
+  any
+> &
+  Partial<Record<ParseOptionalPathParams<TPath>, any>>
 
 export type ParseParamsFn<in out TPath extends string, in out TParams> = (
-  rawParams: ResolveParams<TPath>,
-) => TParams extends Record<ParsePathParams<TPath>, any>
-  ? TParams
-  : Record<ParsePathParams<TPath>, any>
+  rawParams: Expand<ResolveParams<TPath>>,
+) => TParams extends ResolveAnyParams<TPath> ? TParams : ResolveAnyParams<TPath>
 
 export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
