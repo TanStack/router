@@ -87,4 +87,4 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 To run example React projects with Tanstack Router, see [CONTRIBUTING.md](./CONTRIBUTING.md)
 
-<!-- Use the force, Luke!!!! -->
+<!-- Use the force, Luke!!!!! -->
