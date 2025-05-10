@@ -1,1 +1,1 @@
-import '../.tanstack-start/server-routes/routeTree.gen'
+import '../.tanstack-start/server-routes/routeTree.gen';
