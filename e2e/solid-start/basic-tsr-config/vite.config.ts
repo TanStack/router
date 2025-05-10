@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
-import { TanStackStartVitePlugin } from '@tanstack/solid-start/plugin'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 
 export default defineConfig({
   server: {
@@ -10,7 +10,7 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    TanStackStartVitePlugin({
+    tanstackStart({
       tsr: {
         srcDirectory: './src/app',
       },

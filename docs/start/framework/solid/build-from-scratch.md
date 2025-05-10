@@ -95,13 +95,13 @@ Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 // vite.config.ts
 import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
-import { TanStackStartVitePlugin } from '@tanstack/react-start/plugin'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 
 export default defineConfig({
   server: {
     port: 3000,
   },
-  plugins: [tsConfigPaths(), TanStackStartVitePlugin()],
+  plugins: [tsConfigPaths(), tanstackStart()],
 })
 ```
 

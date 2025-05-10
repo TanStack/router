@@ -62,14 +62,14 @@
         "default": "./dist/cjs/server.cjs"
       }
     },
-    "./plugin": {
+    "./plugin/vite": {
       "import": {
-        "types": "./dist/esm/plugin.d.ts",
-        "default": "./dist/esm/plugin.js"
+        "types": "./dist/esm/plugin-vite.d.ts",
+        "default": "./dist/esm/plugin-vite.js"
       },
       "require": {
-        "types": "./dist/cjs/plugin.d.cts",
-        "default": "./dist/cjs/plugin.cjs"
+        "types": "./dist/cjs/plugin-vite.d.cts",
+        "default": "./dist/cjs/plugin-vite.cjs"
       }
     },
     "./server-functions-client": {

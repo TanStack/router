@@ -17,7 +17,7 @@ export default mergeConfig(
     entry: [
       './src/client.tsx',
       './src/server.tsx',
-      './src/plugin.ts',
+      './src/plugin-vite.ts',
       './src/server-functions-client.tsx',
       './src/server-functions-server.tsx',
     ],

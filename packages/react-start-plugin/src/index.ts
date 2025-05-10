@@ -117,3 +117,5 @@ export default createStartHandler({
     viteReact(options.react),
   ]
 }
+
+export { TanStackStartVitePlugin as tanstackStart }

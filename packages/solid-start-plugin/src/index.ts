@@ -114,3 +114,5 @@ export default createStartHandler({
     viteSolid({ ...options.solid, ssr: true }),
   ]
 }
+
+export { TanStackStartVitePlugin as tanstackStart }
