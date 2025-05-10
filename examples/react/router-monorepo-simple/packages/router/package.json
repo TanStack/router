@@ -8,9 +8,9 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@tanstack/history": "^1.20.3-alpha.1",
-    "@tanstack/react-router": "^1.20.3-alpha.1",
-    "@tanstack/router-plugin": "^1.20.3-alpha.1",
+    "@tanstack/history": "^1.120.4-alpha.1",
+    "@tanstack/react-router": "^1.120.4-alpha.1",
+    "@tanstack/router-plugin": "^1.120.4-alpha.1",
     "redaxios": "^0.5.1",
     "zod": "^3.24.2",
     "react": "^19.0.0",
