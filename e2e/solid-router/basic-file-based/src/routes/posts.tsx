@@ -1,7 +1,7 @@
-import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
+import { Link, Outlet } from '@tanstack/solid-router'
 import { fetchPosts } from '../posts'
 
-export const Route = createFileRoute('/posts')({
+export const Route = createFileRoute({
   head: () => ({
     meta: [
       {

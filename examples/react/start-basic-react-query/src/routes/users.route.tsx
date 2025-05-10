@@ -1,8 +1,8 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
+import { Link, Outlet } from '@tanstack/react-router'
 import { usersQueryOptions } from '../utils/users'
 
-export const Route = createFileRoute('/users')({
+export const Route = createFileRoute({
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData(usersQueryOptions())
   },

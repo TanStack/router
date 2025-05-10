@@ -8,42 +8,44 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as AboutImport } from './routes/about'
-import { Route as R03Import } from './routes/03'
-import { Route as IndexImport } from './routes/index'
-import { Route as R02IndexImport } from './routes/02.index'
-import { Route as R01ExampleIndexImport } from './routes/01-example/index'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as R03RouteImport } from './routes/03'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as R02IndexRouteImport } from './routes/02.index'
+import { Route as R01ExampleIndexRouteImport } from './routes/01-example/index'
 
 // Create/Update Routes
 
-const AboutRoute = AboutImport.update({
+const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
   getParentRoute: () => rootRoute,
 } as any)
 
-const R03Route = R03Import.update({
+const R03Route = R03RouteImport.update({
   id: '/03',
   path: '/03',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const R02IndexRoute = R02IndexImport.update({
+const R02IndexRoute = R02IndexRouteImport.update({
   id: '/02/',
   path: '/02/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const R01ExampleIndexRoute = R01ExampleIndexImport.update({
+const R01ExampleIndexRoute = R01ExampleIndexRouteImport.update({
   id: '/01-example/',
   path: '/01-example/',
   getParentRoute: () => rootRoute,
@@ -57,38 +59,86 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/03': {
       id: '/03'
       path: '/03'
       fullPath: '/03'
-      preLoaderRoute: typeof R03Import
+      preLoaderRoute: typeof R03RouteImport
       parentRoute: typeof rootRoute
     }
     '/about': {
       id: '/about'
       path: '/about'
       fullPath: '/about'
-      preLoaderRoute: typeof AboutImport
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRoute
     }
     '/01-example/': {
       id: '/01-example/'
       path: '/01-example'
       fullPath: '/01-example'
-      preLoaderRoute: typeof R01ExampleIndexImport
+      preLoaderRoute: typeof R01ExampleIndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/02/': {
       id: '/02/'
       path: '/02'
       fullPath: '/02'
-      preLoaderRoute: typeof R02IndexImport
+      preLoaderRoute: typeof R02IndexRouteImport
       parentRoute: typeof rootRoute
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/03' {
+  const createFileRoute: CreateFileRoute<
+    '/03',
+    FileRoutesByPath['/03']['parentRoute'],
+    FileRoutesByPath['/03']['id'],
+    FileRoutesByPath['/03']['path'],
+    FileRoutesByPath['/03']['fullPath']
+  >
+}
+declare module './routes/about' {
+  const createFileRoute: CreateFileRoute<
+    '/about',
+    FileRoutesByPath['/about']['parentRoute'],
+    FileRoutesByPath['/about']['id'],
+    FileRoutesByPath['/about']['path'],
+    FileRoutesByPath['/about']['fullPath']
+  >
+}
+declare module './routes/01-example/index' {
+  const createFileRoute: CreateFileRoute<
+    '/01-example/',
+    FileRoutesByPath['/01-example/']['parentRoute'],
+    FileRoutesByPath['/01-example/']['id'],
+    FileRoutesByPath['/01-example/']['path'],
+    FileRoutesByPath['/01-example/']['fullPath']
+  >
+}
+declare module './routes/02.index' {
+  const createFileRoute: CreateFileRoute<
+    '/02/',
+    FileRoutesByPath['/02/']['parentRoute'],
+    FileRoutesByPath['/02/']['id'],
+    FileRoutesByPath['/02/']['path'],
+    FileRoutesByPath['/02/']['fullPath']
+  >
 }
 
 // Create and export the route tree

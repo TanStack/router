@@ -1,9 +1,4 @@
-import {
-  Link,
-  createFileRoute,
-  getRouteApi,
-  useSearch,
-} from '@tanstack/react-router'
+import { Link, getRouteApi, useSearch } from '@tanstack/react-router'
 import React from 'react'
 import { z } from 'zod'
 
@@ -17,7 +12,7 @@ const enabledSchema = {
   }, z.boolean()),
 }
 
-export const Route = createFileRoute('/structural-sharing/$enabled')({
+export const Route = createFileRoute({
   component: RouteComponent,
   params: {
     parse: (p) => z.object(enabledSchema).parse(p),

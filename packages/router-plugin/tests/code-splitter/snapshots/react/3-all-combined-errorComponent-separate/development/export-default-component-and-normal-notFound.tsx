@@ -12,6 +12,10 @@ export default function Home() {
       <h1>{one}</h1>
     </div>;
 }
-export function TSRDummyComponent() {
-  return null;
+if (import.meta.hot) {
+  import.meta.hot.accept(newModule => {
+    if (newModule.Route && typeof newModule.Route.clone === 'function') {
+      newModule.Route.clone(Route);
+    }
+  });
 }

@@ -67,8 +67,8 @@ describe('code-splitter works', () => {
 
                 const compileResult = compileCodeSplitReferenceRoute({
                   code,
-                  root: dirs.files,
                   filename,
+                  id: filename,
                   runtimeEnv: NODE_ENV === 'production' ? 'prod' : 'dev',
                   codeSplitGroupings: grouping,
                   targetFramework: framework,
@@ -91,7 +91,6 @@ describe('code-splitter works', () => {
 
                   const splitResult = compileCodeSplitVirtualRoute({
                     code,
-                    root: dirs.files,
                     filename: `${filename}?${ident}`,
                     splitTargets: targets,
                   })

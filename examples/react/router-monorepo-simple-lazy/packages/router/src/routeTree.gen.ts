@@ -8,21 +8,23 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostIdImport } from './routes/$postId'
-import { Route as IndexImport } from './routes/index'
+import { Route as PostIdRouteImport } from './routes/$postId'
+import { Route as IndexRouteImport } from './routes/index'
 
 // Create/Update Routes
 
-const PostIdRoute = PostIdImport.update({
+const PostIdRoute = PostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
@@ -36,17 +38,38 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/$postId': {
       id: '/$postId'
       path: '/$postId'
       fullPath: '/$postId'
-      preLoaderRoute: typeof PostIdImport
+      preLoaderRoute: typeof PostIdRouteImport
       parentRoute: typeof rootRoute
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/$postId' {
+  const createFileRoute: CreateFileRoute<
+    '/$postId',
+    FileRoutesByPath['/$postId']['parentRoute'],
+    FileRoutesByPath['/$postId']['id'],
+    FileRoutesByPath['/$postId']['path'],
+    FileRoutesByPath['/$postId']['fullPath']
+  >
 }
 
 // Create and export the route tree

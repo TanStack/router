@@ -1,9 +1,9 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { Loader } from '~/components/Loader'
 import { boardQueries } from '~/queries'
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute({
   component: Home,
   pendingComponent: () => <Loader />,
 })

@@ -4,7 +4,6 @@ import {
   Link,
   MatchRoute,
   Outlet,
-  createFileRoute,
   retainSearchParams,
   useNavigate,
 } from '@tanstack/react-router'
@@ -15,7 +14,7 @@ import { usersQueryOptions } from '../utils/queryOptions'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-export const Route = createFileRoute('/dashboard/users')({
+export const Route = createFileRoute({
   validateSearch: z.object({
     usersView: z
       .object({

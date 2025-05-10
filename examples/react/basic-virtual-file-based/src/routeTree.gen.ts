@@ -9,103 +9,104 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
 
 import { Route as rootRoute } from './routes/root'
-import { Route as postsPostsImport } from './routes/posts/posts'
-import { Route as layoutFirstLayoutImport } from './routes/layout/first-layout'
-import { Route as homeImport } from './routes/home'
-import { Route as postsPostsDetailImport } from './routes/posts/posts-detail'
-import { Route as layoutSecondLayoutImport } from './routes/layout/second-layout'
-import { Route as postsPostsHomeImport } from './routes/posts/posts-home'
-import { Route as ClassicHelloRouteImport } from './routes/file-based-subtree/hello/route'
-import { Route as ClassicHelloIndexImport } from './routes/file-based-subtree/hello/index'
-import { Route as ClassicHelloWorldImport } from './routes/file-based-subtree/hello/world'
-import { Route as ClassicHelloUniverseImport } from './routes/file-based-subtree/hello/universe'
-import { Route as bImport } from './routes/b'
-import { Route as aImport } from './routes/a'
+import { Route as postsPostsRouteImport } from './routes/posts/posts'
+import { Route as layoutFirstLayoutRouteImport } from './routes/layout/first-layout'
+import { Route as homeRouteImport } from './routes/home'
+import { Route as postsPostsDetailRouteImport } from './routes/posts/posts-detail'
+import { Route as layoutSecondLayoutRouteImport } from './routes/layout/second-layout'
+import { Route as postsPostsHomeRouteImport } from './routes/posts/posts-home'
+import { Route as ClassicHelloRouteRouteImport } from './routes/file-based-subtree/hello/route'
+import { Route as ClassicHelloIndexRouteImport } from './routes/file-based-subtree/hello/index'
+import { Route as ClassicHelloWorldRouteImport } from './routes/file-based-subtree/hello/world'
+import { Route as ClassicHelloUniverseRouteImport } from './routes/file-based-subtree/hello/universe'
+import { Route as bRouteImport } from './routes/b'
+import { Route as aRouteImport } from './routes/a'
 
 // Create Virtual Routes
 
-const FirstSecondLayoutRouteWithoutFileImport = createFileRoute(
+const FirstSecondLayoutRouteWithoutFileRouteImport = createFileRoute(
   '/_first/_second-layout/route-without-file',
 )()
 
 // Create/Update Routes
 
-const postsPostsRoute = postsPostsImport.update({
+const postsPostsRoute = postsPostsRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const layoutFirstLayoutRoute = layoutFirstLayoutImport.update({
+const layoutFirstLayoutRoute = layoutFirstLayoutRouteImport.update({
   id: '/_first',
   getParentRoute: () => rootRoute,
 } as any)
 
-const homeRoute = homeImport.update({
+const homeRoute = homeRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const postsPostsDetailRoute = postsPostsDetailImport.update({
+const postsPostsDetailRoute = postsPostsDetailRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => postsPostsRoute,
 } as any)
 
-const layoutSecondLayoutRoute = layoutSecondLayoutImport.update({
+const layoutSecondLayoutRoute = layoutSecondLayoutRouteImport.update({
   id: '/_second-layout',
   getParentRoute: () => layoutFirstLayoutRoute,
 } as any)
 
-const postsPostsHomeRoute = postsPostsHomeImport.update({
+const postsPostsHomeRoute = postsPostsHomeRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => postsPostsRoute,
 } as any)
 
-const ClassicHelloRouteRoute = ClassicHelloRouteImport.update({
+const ClassicHelloRouteRoute = ClassicHelloRouteRouteImport.update({
   id: '/classic/hello',
   path: '/classic/hello',
   getParentRoute: () => rootRoute,
 } as any)
 
-const ClassicHelloIndexRoute = ClassicHelloIndexImport.update({
+const ClassicHelloIndexRoute = ClassicHelloIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
 
-const ClassicHelloWorldRoute = ClassicHelloWorldImport.update({
+const ClassicHelloWorldRoute = ClassicHelloWorldRouteImport.update({
   id: '/world',
   path: '/world',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
 
-const ClassicHelloUniverseRoute = ClassicHelloUniverseImport.update({
+const ClassicHelloUniverseRoute = ClassicHelloUniverseRouteImport.update({
   id: '/universe',
   path: '/universe',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
 
 const FirstSecondLayoutRouteWithoutFileRoute =
-  FirstSecondLayoutRouteWithoutFileImport.update({
+  FirstSecondLayoutRouteWithoutFileRouteImport.update({
     id: '/route-without-file',
     path: '/route-without-file',
     getParentRoute: () => layoutSecondLayoutRoute,
   } as any)
 
-const bRoute = bImport.update({
+const bRoute = bRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => FirstSecondLayoutRouteWithoutFileRoute,
 } as any)
 
-const aRoute = aImport.update({
+const aRoute = aRouteImport.update({
   id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => FirstSecondLayoutRouteWithoutFileRoute,
@@ -119,94 +120,206 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof homeImport
+      preLoaderRoute: typeof homeRouteImport
       parentRoute: typeof rootRoute
     }
     '/_first': {
       id: '/_first'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof layoutFirstLayoutImport
+      preLoaderRoute: typeof layoutFirstLayoutRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof postsPostsImport
+      preLoaderRoute: typeof postsPostsRouteImport
       parentRoute: typeof rootRoute
     }
     '/classic/hello': {
       id: '/classic/hello'
       path: '/classic/hello'
       fullPath: '/classic/hello'
-      preLoaderRoute: typeof ClassicHelloRouteImport
+      preLoaderRoute: typeof ClassicHelloRouteRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof postsPostsHomeImport
-      parentRoute: typeof postsPostsImport
+      preLoaderRoute: typeof postsPostsHomeRouteImport
+      parentRoute: typeof postsPostsRouteImport
     }
     '/_first/_second-layout': {
       id: '/_first/_second-layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof layoutSecondLayoutImport
-      parentRoute: typeof layoutFirstLayoutImport
+      preLoaderRoute: typeof layoutSecondLayoutRouteImport
+      parentRoute: typeof layoutFirstLayoutRouteImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof postsPostsDetailImport
-      parentRoute: typeof postsPostsImport
+      preLoaderRoute: typeof postsPostsDetailRouteImport
+      parentRoute: typeof postsPostsRouteImport
     }
     '/_first/_second-layout/route-without-file': {
       id: '/_first/_second-layout/route-without-file'
       path: '/route-without-file'
       fullPath: '/route-without-file'
-      preLoaderRoute: typeof FirstSecondLayoutRouteWithoutFileImport
-      parentRoute: typeof layoutSecondLayoutImport
+      preLoaderRoute: typeof FirstSecondLayoutRouteWithoutFileRouteImport
+      parentRoute: typeof layoutSecondLayoutRouteImport
     }
     '/classic/hello/universe': {
       id: '/classic/hello/universe'
       path: '/universe'
       fullPath: '/classic/hello/universe'
-      preLoaderRoute: typeof ClassicHelloUniverseImport
-      parentRoute: typeof ClassicHelloRouteImport
+      preLoaderRoute: typeof ClassicHelloUniverseRouteImport
+      parentRoute: typeof ClassicHelloRouteRouteImport
     }
     '/classic/hello/world': {
       id: '/classic/hello/world'
       path: '/world'
       fullPath: '/classic/hello/world'
-      preLoaderRoute: typeof ClassicHelloWorldImport
-      parentRoute: typeof ClassicHelloRouteImport
+      preLoaderRoute: typeof ClassicHelloWorldRouteImport
+      parentRoute: typeof ClassicHelloRouteRouteImport
     }
     '/classic/hello/': {
       id: '/classic/hello/'
       path: '/'
       fullPath: '/classic/hello/'
-      preLoaderRoute: typeof ClassicHelloIndexImport
-      parentRoute: typeof ClassicHelloRouteImport
+      preLoaderRoute: typeof ClassicHelloIndexRouteImport
+      parentRoute: typeof ClassicHelloRouteRouteImport
     }
     '/_first/_second-layout/route-without-file/layout-a': {
       id: '/_first/_second-layout/route-without-file/layout-a'
       path: '/layout-a'
       fullPath: '/route-without-file/layout-a'
-      preLoaderRoute: typeof aImport
-      parentRoute: typeof FirstSecondLayoutRouteWithoutFileImport
+      preLoaderRoute: typeof aRouteImport
+      parentRoute: typeof FirstSecondLayoutRouteWithoutFileRouteImport
     }
     '/_first/_second-layout/route-without-file/layout-b': {
       id: '/_first/_second-layout/route-without-file/layout-b'
       path: '/layout-b'
       fullPath: '/route-without-file/layout-b'
-      preLoaderRoute: typeof bImport
-      parentRoute: typeof FirstSecondLayoutRouteWithoutFileImport
+      preLoaderRoute: typeof bRouteImport
+      parentRoute: typeof FirstSecondLayoutRouteWithoutFileRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/home' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/layout/first-layout' {
+  const createFileRoute: CreateFileRoute<
+    '/_first',
+    FileRoutesByPath['/_first']['parentRoute'],
+    FileRoutesByPath['/_first']['id'],
+    FileRoutesByPath['/_first']['path'],
+    FileRoutesByPath['/_first']['fullPath']
+  >
+}
+declare module './routes/posts/posts' {
+  const createFileRoute: CreateFileRoute<
+    '/posts',
+    FileRoutesByPath['/posts']['parentRoute'],
+    FileRoutesByPath['/posts']['id'],
+    FileRoutesByPath['/posts']['path'],
+    FileRoutesByPath['/posts']['fullPath']
+  >
+}
+declare module './routes/file-based-subtree/hello/route' {
+  const createFileRoute: CreateFileRoute<
+    '/classic/hello',
+    FileRoutesByPath['/classic/hello']['parentRoute'],
+    FileRoutesByPath['/classic/hello']['id'],
+    FileRoutesByPath['/classic/hello']['path'],
+    FileRoutesByPath['/classic/hello']['fullPath']
+  >
+}
+declare module './routes/posts/posts-home' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/',
+    FileRoutesByPath['/posts/']['parentRoute'],
+    FileRoutesByPath['/posts/']['id'],
+    FileRoutesByPath['/posts/']['path'],
+    FileRoutesByPath['/posts/']['fullPath']
+  >
+}
+declare module './routes/layout/second-layout' {
+  const createFileRoute: CreateFileRoute<
+    '/_first/_second-layout',
+    FileRoutesByPath['/_first/_second-layout']['parentRoute'],
+    FileRoutesByPath['/_first/_second-layout']['id'],
+    FileRoutesByPath['/_first/_second-layout']['path'],
+    FileRoutesByPath['/_first/_second-layout']['fullPath']
+  >
+}
+declare module './routes/posts/posts-detail' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/$postId',
+    FileRoutesByPath['/posts/$postId']['parentRoute'],
+    FileRoutesByPath['/posts/$postId']['id'],
+    FileRoutesByPath['/posts/$postId']['path'],
+    FileRoutesByPath['/posts/$postId']['fullPath']
+  >
+}
+
+declare module './routes/file-based-subtree/hello/universe' {
+  const createFileRoute: CreateFileRoute<
+    '/classic/hello/universe',
+    FileRoutesByPath['/classic/hello/universe']['parentRoute'],
+    FileRoutesByPath['/classic/hello/universe']['id'],
+    FileRoutesByPath['/classic/hello/universe']['path'],
+    FileRoutesByPath['/classic/hello/universe']['fullPath']
+  >
+}
+declare module './routes/file-based-subtree/hello/world' {
+  const createFileRoute: CreateFileRoute<
+    '/classic/hello/world',
+    FileRoutesByPath['/classic/hello/world']['parentRoute'],
+    FileRoutesByPath['/classic/hello/world']['id'],
+    FileRoutesByPath['/classic/hello/world']['path'],
+    FileRoutesByPath['/classic/hello/world']['fullPath']
+  >
+}
+declare module './routes/file-based-subtree/hello/index' {
+  const createFileRoute: CreateFileRoute<
+    '/classic/hello/',
+    FileRoutesByPath['/classic/hello/']['parentRoute'],
+    FileRoutesByPath['/classic/hello/']['id'],
+    FileRoutesByPath['/classic/hello/']['path'],
+    FileRoutesByPath['/classic/hello/']['fullPath']
+  >
+}
+declare module './routes/a' {
+  const createFileRoute: CreateFileRoute<
+    '/_first/_second-layout/route-without-file/layout-a',
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['parentRoute'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['id'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['path'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['fullPath']
+  >
+}
+declare module './routes/b' {
+  const createFileRoute: CreateFileRoute<
+    '/_first/_second-layout/route-without-file/layout-b',
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['parentRoute'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['id'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['path'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['fullPath']
+  >
 }
 
 // Create and export the route tree

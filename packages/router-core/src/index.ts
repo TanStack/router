@@ -60,8 +60,10 @@ export type {
   InferFileRouteTypes,
   FileRouteTypes,
   FileRoutesByPath,
+  CreateFileRoute,
   LazyRoute,
   LazyRouteOptions,
+  CreateLazyFileRoute,
 } from './fileRoute'
 
 export type {
@@ -149,8 +151,6 @@ export type {
   StringifyParamsFn,
   ParamsOptions,
   UpdatableStaticRouteOption,
-  LooseReturnType,
-  LooseAsyncReturnType,
   ContextReturnType,
   ContextAsyncReturnType,
   ResolveRouteContext,
@@ -209,6 +209,8 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
+  processRouteTree,
+  getMatchedRoutes,
 } from './router'
 export type {
   ViewTransitionOptions,
@@ -322,6 +324,8 @@ export type {
   MergeAll,
   ValidateJSON,
   StrictOrFrom,
+  LooseReturnType,
+  LooseAsyncReturnType,
 } from './utils'
 
 export type {
@@ -370,7 +374,13 @@ export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 
 export type { Redirect, ResolvedRedirect, AnyRedirect } from './redirect'
 
-export { redirect, isRedirect, isResolvedRedirect } from './redirect'
+export {
+  redirect,
+  isRedirect,
+  isResolvedRedirect,
+  tsrRedirectHeaderKey,
+  parseRedirect,
+} from './redirect'
 
 export type { NotFoundError } from './not-found'
 export { isNotFound, notFound } from './not-found'

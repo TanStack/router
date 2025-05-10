@@ -4,9 +4,9 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start"
   },
   "dependencies": {
     "@babel/plugin-syntax-typescript": "^7.25.9",
@@ -16,8 +16,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.6.0",
-    "vinxi": "0.5.3"
+    "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",

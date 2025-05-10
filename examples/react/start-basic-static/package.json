@@ -4,9 +4,9 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.120.3",
@@ -15,8 +15,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.5.5",
-    "vinxi": "0.5.1"
+    "tailwind-merge": "^2.5.5"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",

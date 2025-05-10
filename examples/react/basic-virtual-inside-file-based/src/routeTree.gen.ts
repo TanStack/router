@@ -8,75 +8,77 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostsImport } from './routes/posts'
-import { Route as LayoutImport } from './routes/_layout'
-import { Route as IndexImport } from './routes/index'
-import { Route as postsDetailsImport } from './routes/posts/details'
-import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
-import { Route as postsHomeImport } from './routes/posts/home'
-import { Route as postsLetsGoIndexImport } from './routes/posts/lets-go/index'
-import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
-import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
-import { Route as postsLetsGoDeeperHomeImport } from './routes/posts/lets-go/deeper/home'
+import { Route as PostsRouteImport } from './routes/posts'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as postsDetailsRouteImport } from './routes/posts/details'
+import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as postsHomeRouteImport } from './routes/posts/home'
+import { Route as postsLetsGoIndexRouteImport } from './routes/posts/lets-go/index'
+import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as postsLetsGoDeeperHomeRouteImport } from './routes/posts/lets-go/deeper/home'
 
 // Create/Update Routes
 
-const PostsRoute = PostsImport.update({
+const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LayoutRoute = LayoutImport.update({
+const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const postsDetailsRoute = postsDetailsImport.update({
+const postsDetailsRoute = postsDetailsRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const LayoutLayout2Route = LayoutLayout2Import.update({
+const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
 
-const postsHomeRoute = postsHomeImport.update({
+const postsHomeRoute = postsHomeRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const postsLetsGoIndexRoute = postsLetsGoIndexImport.update({
+const postsLetsGoIndexRoute = postsLetsGoIndexRouteImport.update({
   id: '/inception/',
   path: '/inception/',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
+const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
-const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
+const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
-const postsLetsGoDeeperHomeRoute = postsLetsGoDeeperHomeImport.update({
+const postsLetsGoDeeperHomeRoute = postsLetsGoDeeperHomeRouteImport.update({
   id: '/inception/deeper/',
   path: '/inception/deeper/',
   getParentRoute: () => PostsRoute,
@@ -90,73 +92,166 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/_layout': {
       id: '/_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutImport
+      preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof postsHomeImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof postsHomeRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutLayout2Import
-      parentRoute: typeof LayoutImport
+      preLoaderRoute: typeof LayoutLayout2RouteImport
+      parentRoute: typeof LayoutRouteImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof postsDetailsImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof postsDetailsRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/_layout/_layout-2/layout-a': {
       id: '/_layout/_layout-2/layout-a'
       path: '/layout-a'
       fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutAImport
-      parentRoute: typeof LayoutLayout2Import
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2RouteImport
     }
     '/_layout/_layout-2/layout-b': {
       id: '/_layout/_layout-2/layout-b'
       path: '/layout-b'
       fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBImport
-      parentRoute: typeof LayoutLayout2Import
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
+      parentRoute: typeof LayoutLayout2RouteImport
     }
     '/posts/inception/': {
       id: '/posts/inception/'
       path: '/inception'
       fullPath: '/posts/inception'
-      preLoaderRoute: typeof postsLetsGoIndexImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof postsLetsGoIndexRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/posts/inception/deeper/': {
       id: '/posts/inception/deeper/'
       path: '/inception/deeper'
       fullPath: '/posts/inception/deeper'
-      preLoaderRoute: typeof postsLetsGoDeeperHomeImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof postsLetsGoDeeperHomeRouteImport
+      parentRoute: typeof PostsRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/_layout' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout',
+    FileRoutesByPath['/_layout']['parentRoute'],
+    FileRoutesByPath['/_layout']['id'],
+    FileRoutesByPath['/_layout']['path'],
+    FileRoutesByPath['/_layout']['fullPath']
+  >
+}
+declare module './routes/posts' {
+  const createFileRoute: CreateFileRoute<
+    '/posts',
+    FileRoutesByPath['/posts']['parentRoute'],
+    FileRoutesByPath['/posts']['id'],
+    FileRoutesByPath['/posts']['path'],
+    FileRoutesByPath['/posts']['fullPath']
+  >
+}
+declare module './routes/posts/home' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/',
+    FileRoutesByPath['/posts/']['parentRoute'],
+    FileRoutesByPath['/posts/']['id'],
+    FileRoutesByPath['/posts/']['path'],
+    FileRoutesByPath['/posts/']['fullPath']
+  >
+}
+declare module './routes/_layout/_layout-2' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2',
+    FileRoutesByPath['/_layout/_layout-2']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2']['id'],
+    FileRoutesByPath['/_layout/_layout-2']['path'],
+    FileRoutesByPath['/_layout/_layout-2']['fullPath']
+  >
+}
+declare module './routes/posts/details' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/$postId',
+    FileRoutesByPath['/posts/$postId']['parentRoute'],
+    FileRoutesByPath['/posts/$postId']['id'],
+    FileRoutesByPath['/posts/$postId']['path'],
+    FileRoutesByPath['/posts/$postId']['fullPath']
+  >
+}
+declare module './routes/_layout/_layout-2/layout-a' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2/layout-a',
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['id'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['path'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['fullPath']
+  >
+}
+declare module './routes/_layout/_layout-2/layout-b' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2/layout-b',
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath']
+  >
+}
+declare module './routes/posts/lets-go/index' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/inception/',
+    FileRoutesByPath['/posts/inception/']['parentRoute'],
+    FileRoutesByPath['/posts/inception/']['id'],
+    FileRoutesByPath['/posts/inception/']['path'],
+    FileRoutesByPath['/posts/inception/']['fullPath']
+  >
+}
+declare module './routes/posts/lets-go/deeper/home' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/inception/deeper/',
+    FileRoutesByPath['/posts/inception/deeper/']['parentRoute'],
+    FileRoutesByPath['/posts/inception/deeper/']['id'],
+    FileRoutesByPath['/posts/inception/deeper/']['path'],
+    FileRoutesByPath['/posts/inception/deeper/']['fullPath']
+  >
 }
 
 // Create and export the route tree

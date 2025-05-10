@@ -207,6 +207,8 @@ export type {
   InjectedHtmlEntry,
   RouterErrorSerializer,
   SerializerExtensions,
+  CreateFileRoute,
+  CreateLazyFileRoute,
 } from '@tanstack/router-core'
 
 export {

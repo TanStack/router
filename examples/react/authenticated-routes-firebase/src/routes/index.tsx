@@ -1,6 +1,6 @@
-import { Link, createFileRoute, redirect } from '@tanstack/react-router'
+import { Link, redirect } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute({
   beforeLoad: ({ context }) => {
     // Log for debugging
     console.log('Checking context on index.tsx:', context) // Check if user is authenticated

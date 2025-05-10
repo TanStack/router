@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant'
 import { joinPaths, trimPathLeft } from './path'
 import { notFound } from './not-found'
 import { rootRouteId } from './root'
@@ -20,6 +21,8 @@ import type {
   Constrain,
   Expand,
   IntersectAssign,
+  LooseAsyncReturnType,
+  LooseReturnType,
   NoInfer,
 } from './utils'
 import type {
@@ -270,20 +273,6 @@ export type TrimPathRight<T extends string> = T extends '/'
     ? TrimPathRight<U>
     : T
 
-export type LooseReturnType<T> = T extends (
-  ...args: Array<any>
-) => infer TReturn
-  ? TReturn
-  : never
-
-export type LooseAsyncReturnType<T> = T extends (
-  ...args: Array<any>
-) => infer TReturn
-  ? TReturn extends Promise<infer TReturn>
-    ? TReturn
-    : TReturn
-  : never
-
 export type ContextReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn
   : LooseReturnType<TContextFn> extends never
@@ -448,7 +437,7 @@ export interface RouteExtensions<in out TId, in out TFullPath> {
 }
 
 export type RouteLazyFn<TRoute extends AnyRoute> = (
-  lazyFn: () => Promise<LazyRoute>,
+  lazyFn: () => Promise<LazyRoute<TRoute>>,
 ) => TRoute
 
 export type RouteAddChildrenFn<
@@ -602,7 +591,26 @@ export interface Route<
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
   _componentsPromise?: Promise<Array<void>>
-  lazyFn?: () => Promise<LazyRoute>
+  lazyFn?: () => Promise<
+    LazyRoute<
+      Route<
+        TParentRoute,
+        TPath,
+        TFullPath,
+        TCustomId,
+        TId,
+        TSearchValidator,
+        TParams,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn,
+        TLoaderDeps,
+        TLoaderFn,
+        TChildren,
+        TFileRouteTypes
+      >
+    >
+  >
   _lazyPromise?: Promise<void>
   rank: number
   to: TrimPathRight<TFullPath>
@@ -621,7 +629,24 @@ export interface Route<
       TBeforeLoadFn
     >,
   ) => this
-  lazy: RouteLazyFn<this>
+  lazy: RouteLazyFn<
+    Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+  >
   addChildren: RouteAddChildrenFn<
     TParentRoute,
     TPath,
@@ -1336,7 +1361,26 @@ export class BaseRoute<
   children?: TChildren
   originalIndex?: number
   rank!: number
-  lazyFn?: () => Promise<LazyRoute>
+  lazyFn?: () => Promise<
+    LazyRoute<
+      Route<
+        TParentRoute,
+        TPath,
+        TFullPath,
+        TCustomId,
+        TId,
+        TSearchValidator,
+        TParams,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn,
+        TLoaderDeps,
+        TLoaderFn,
+        TChildren,
+        TFileRouteTypes
+      >
+    >
+  >
   _lazyPromise?: Promise<void>
   _componentsPromise?: Promise<Array<void>>
 
@@ -1409,7 +1453,8 @@ export class BaseRoute<
     if (isRoot) {
       this._path = rootRouteId as TPath
     } else if (!this.parentRoute) {
-      throw new Error(
+      invariant(
+        false,
         `Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
       )
     }
@@ -1447,6 +1492,16 @@ export class BaseRoute<
     this._fullPath = fullPath as TFullPath
     this._to = fullPath as TrimPathRight<TFullPath>
     this._ssr = options?.ssr ?? opts.defaultSsr ?? true
+  }
+
+  clone = (other: typeof this) => {
+    this._path = other._path
+    this._id = other._id
+    this._fullPath = other._fullPath
+    this._to = other._to
+    this._ssr = other._ssr
+    this.options.getParentRoute = other.options.getParentRoute
+    this.children = other.children
   }
 
   addChildren: RouteAddChildrenFn<
@@ -1562,7 +1617,24 @@ export class BaseRoute<
     return this
   }
 
-  lazy: RouteLazyFn<this> = (lazyFn) => {
+  lazy: RouteLazyFn<
+    Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+  > = (lazyFn) => {
     this.lazyFn = lazyFn
     return this
   }

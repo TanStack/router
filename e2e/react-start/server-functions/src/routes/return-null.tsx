@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import * as React from 'react'
 
@@ -8,7 +7,7 @@ import * as React from 'react'
  * @link https://github.com/TanStack/router/issues/2776
  */
 
-export const Route = createFileRoute('/return-null')({
+export const Route = createFileRoute({
   component: AllowServerFnReturnNull,
 })
 

@@ -1,10 +1,10 @@
-import { createFileRoute, getRouteApi, useSearch } from '@tanstack/react-router'
+import { getRouteApi, useSearch } from '@tanstack/react-router'
 import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 
 const routeApi = getRouteApi('/(group)/_layout/insidelayout')
 
-export const Route = createFileRoute('/(group)/_layout/insidelayout')({
+export const Route = createFileRoute({
   validateSearch: zodValidator(z.object({ hello: z.string().optional() })),
   component: () => {
     const searchViaHook = useSearch({ from: '/(group)/_layout/insidelayout' })

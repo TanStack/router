@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import { setCookie } from '@tanstack/solid-start/server'
 import { z } from 'zod'
@@ -7,7 +6,7 @@ import * as Solid from 'solid-js'
 
 const cookieSchema = z.object({ value: z.string() })
 
-export const Route = createFileRoute('/cookies/set')({
+export const Route = createFileRoute({
   validateSearch: cookieSchema,
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {

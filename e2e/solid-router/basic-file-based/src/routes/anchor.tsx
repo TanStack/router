@@ -1,9 +1,4 @@
-import {
-  Link,
-  createFileRoute,
-  useLocation,
-  useNavigate,
-} from '@tanstack/solid-router'
+import { Link, useLocation, useNavigate } from '@tanstack/solid-router'
 import {
   createEffect,
   createRenderEffect,
@@ -11,7 +6,7 @@ import {
   onCleanup,
 } from 'solid-js'
 
-export const Route = createFileRoute('/anchor')({
+export const Route = createFileRoute({
   component: AnchorComponent,
 })
 

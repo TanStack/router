@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 
 import * as v from 'valibot'
 import { queryOptions } from '@tanstack/react-query'
@@ -15,7 +15,7 @@ const loaderResult = v.object({
   searchPlaceholder: v.number(),
 })
 
-const middleware = createMiddleware()
+const middleware = createMiddleware({ type: 'function' })
   .validator(search)
   .client(({ next }) => {
     const context = { client: { searchPlaceholder: 'searchPlaceholder' } }
@@ -42,7 +42,13 @@ const fn = createServerFn()
     return result
   })
 
-export const Route = createFileRoute('/search/searchPlaceholder')({
+export const ServerRoute = createServerFileRoute().methods((api) => ({
+  GET: api.handler(() => {
+    return 'searchPlaceholder'
+  }),
+}))
+
+export const Route = createFileRoute({
   component: SearchComponent,
   validateSearch: search,
   loaderDeps: ({ search }) => ({ search }),
@@ -52,8 +58,16 @@ export const Route = createFileRoute('/search/searchPlaceholder')({
       queryFn: () => fn({ data: ctx.deps.search }),
     }),
   }),
-  loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(opts.context.searchQueryOptions),
+  loader: async (opts) => {
+    const search = await opts.context.queryClient.ensureQueryData(
+      opts.context.searchQueryOptions,
+    )
+
+    return {
+      search,
+      external,
+    }
+  },
 })
 
 function SearchComponent() {

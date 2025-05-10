@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import * as Solid from 'solid-js'
 
@@ -8,7 +7,7 @@ import * as Solid from 'solid-js'
  * @link https://github.com/TanStack/router/issues/2776
  */
 
-export const Route = createFileRoute('/return-null')({
+export const Route = createFileRoute({
   component: AllowServerFnReturnNull,
 })
 

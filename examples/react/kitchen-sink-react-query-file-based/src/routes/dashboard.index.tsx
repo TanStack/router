@@ -1,9 +1,9 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { invoicesQueryOptions } from '../utils/queryOptions'
 
-export const Route = createFileRoute('/dashboard/')({
+export const Route = createFileRoute({
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(invoicesQueryOptions()),
   component: DashboardIndexComponent,

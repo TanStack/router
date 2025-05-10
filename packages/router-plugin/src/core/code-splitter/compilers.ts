@@ -7,6 +7,7 @@ import {
 } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { tsrSplit } from '../constants'
+import { routeHmrStatement } from '../route-hmr-statement'
 import { createIdentifier } from './path-ids'
 import { getFrameworkOptions } from './framework-options'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
@@ -117,6 +118,8 @@ export function compileCodeSplitReferenceRoute(
     runtimeEnv: 'dev' | 'prod'
     codeSplitGroupings: CodeSplitGroupings
     targetFramework: Config['target']
+    filename: string
+    id: string
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
@@ -166,18 +169,13 @@ export function compileCodeSplitReferenceRoute(
                 return
               }
 
-              if (t.isCallExpression(path.parentPath.node)) {
-                const options = resolveIdentifier(
-                  path,
-                  path.parentPath.node.arguments[0],
-                )
-
+              function babelHandleReference(routeOptions: t.Node | undefined) {
                 const hasImportedOrDefinedIdentifier = (name: string) => {
                   return programPath.scope.hasBinding(name)
                 }
 
-                if (t.isObjectExpression(options)) {
-                  options.properties.forEach((prop) => {
+                if (t.isObjectExpression(routeOptions)) {
+                  routeOptions.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
                       if (t.isIdentifier(prop.key)) {
                         // If the user has not specified a split grouping for this key
@@ -288,18 +286,9 @@ export function compileCodeSplitReferenceRoute(
                             )()
                           }
 
-                          // If the TSRDummyComponent is not defined, define it
-                          if (
-                            opts.runtimeEnv !== 'prod' && // only in development
-                            !hasImportedOrDefinedIdentifier(
-                              frameworkOptions.idents.dummyHMRComponent,
-                            )
-                          ) {
-                            programPath.pushContainer('body', [
-                              template.statement(
-                                frameworkOptions.dummyHMRComponent,
-                              )(),
-                            ])
+                          // add HMR handling
+                          if (opts.runtimeEnv !== 'prod') {
+                            programPath.pushContainer('body', routeHmrStatement)
                           }
                         }
 
@@ -369,6 +358,27 @@ export function compileCodeSplitReferenceRoute(
                   })
                 }
               }
+
+              if (t.isCallExpression(path.parentPath.node)) {
+                // createFileRoute('/')({ ... })
+                const options = resolveIdentifier(
+                  path,
+                  path.parentPath.node.arguments[0],
+                )
+
+                babelHandleReference(options)
+              } else if (t.isVariableDeclarator(path.parentPath.node)) {
+                // createFileRoute({ ... })
+                const caller = resolveIdentifier(
+                  path,
+                  path.parentPath.node.init,
+                )
+
+                if (t.isCallExpression(caller)) {
+                  const options = resolveIdentifier(path, caller.arguments[0])
+                  babelHandleReference(options)
+                }
+              }
             },
           },
           state,
@@ -406,6 +416,7 @@ export function compileCodeSplitReferenceRoute(
 export function compileCodeSplitVirtualRoute(
   opts: ParseAstOptions & {
     splitTargets: Array<SplitRouteIdentNodes>
+    filename: string
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
@@ -448,12 +459,7 @@ export function compileCodeSplitVirtualRoute(
                 return
               }
 
-              if (t.isCallExpression(path.parentPath.node)) {
-                const options = resolveIdentifier(
-                  path,
-                  path.parentPath.node.arguments[0],
-                )
-
+              function babelHandleVirtual(options: t.Node | undefined) {
                 if (t.isObjectExpression(options)) {
                   options.properties.forEach((prop) => {
                     if (t.isObjectProperty(prop)) {
@@ -495,6 +501,27 @@ export function compileCodeSplitVirtualRoute(
 
                   // Remove all of the options
                   options.properties = []
+                }
+              }
+
+              if (t.isCallExpression(path.parentPath.node)) {
+                // createFileRoute('/')({ ... })
+                const options = resolveIdentifier(
+                  path,
+                  path.parentPath.node.arguments[0],
+                )
+
+                babelHandleVirtual(options)
+              } else if (t.isVariableDeclarator(path.parentPath.node)) {
+                // createFileRoute({ ... })
+                const caller = resolveIdentifier(
+                  path,
+                  path.parentPath.node.init,
+                )
+
+                if (t.isCallExpression(caller)) {
+                  const options = resolveIdentifier(path, caller.arguments[0])
+                  babelHandleVirtual(options)
                 }
               }
             },
@@ -841,7 +868,7 @@ function getImportSpecifierAndPathFromLocalName(
 }
 
 // Reusable function to get literal value or resolve variable to literal
-function resolveIdentifier(path: any, node: any) {
+function resolveIdentifier(path: any, node: any): t.Node | undefined {
   if (t.isIdentifier(node)) {
     const binding = path.scope.getBinding(node.name)
     if (

@@ -8,35 +8,37 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as IndexImport } from './routes/index'
-import { Route as UsersZodIndexImport } from './routes/users/zod.index'
-import { Route as UsersValibotIndexImport } from './routes/users/valibot.index'
-import { Route as UsersArktypeIndexImport } from './routes/users/arktype.index'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as UsersZodIndexRouteImport } from './routes/users/zod.index'
+import { Route as UsersValibotIndexRouteImport } from './routes/users/valibot.index'
+import { Route as UsersArktypeIndexRouteImport } from './routes/users/arktype.index'
 
 // Create/Update Routes
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const UsersZodIndexRoute = UsersZodIndexImport.update({
+const UsersZodIndexRoute = UsersZodIndexRouteImport.update({
   id: '/users/zod/',
   path: '/users/zod/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const UsersValibotIndexRoute = UsersValibotIndexImport.update({
+const UsersValibotIndexRoute = UsersValibotIndexRouteImport.update({
   id: '/users/valibot/',
   path: '/users/valibot/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const UsersArktypeIndexRoute = UsersArktypeIndexImport.update({
+const UsersArktypeIndexRoute = UsersArktypeIndexRouteImport.update({
   id: '/users/arktype/',
   path: '/users/arktype/',
   getParentRoute: () => rootRoute,
@@ -50,31 +52,70 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/users/arktype/': {
       id: '/users/arktype/'
       path: '/users/arktype'
       fullPath: '/users/arktype'
-      preLoaderRoute: typeof UsersArktypeIndexImport
+      preLoaderRoute: typeof UsersArktypeIndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/users/valibot/': {
       id: '/users/valibot/'
       path: '/users/valibot'
       fullPath: '/users/valibot'
-      preLoaderRoute: typeof UsersValibotIndexImport
+      preLoaderRoute: typeof UsersValibotIndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/users/zod/': {
       id: '/users/zod/'
       path: '/users/zod'
       fullPath: '/users/zod'
-      preLoaderRoute: typeof UsersZodIndexImport
+      preLoaderRoute: typeof UsersZodIndexRouteImport
       parentRoute: typeof rootRoute
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/users/arktype.index' {
+  const createFileRoute: CreateFileRoute<
+    '/users/arktype/',
+    FileRoutesByPath['/users/arktype/']['parentRoute'],
+    FileRoutesByPath['/users/arktype/']['id'],
+    FileRoutesByPath['/users/arktype/']['path'],
+    FileRoutesByPath['/users/arktype/']['fullPath']
+  >
+}
+declare module './routes/users/valibot.index' {
+  const createFileRoute: CreateFileRoute<
+    '/users/valibot/',
+    FileRoutesByPath['/users/valibot/']['parentRoute'],
+    FileRoutesByPath['/users/valibot/']['id'],
+    FileRoutesByPath['/users/valibot/']['path'],
+    FileRoutesByPath['/users/valibot/']['fullPath']
+  >
+}
+declare module './routes/users/zod.index' {
+  const createFileRoute: CreateFileRoute<
+    '/users/zod/',
+    FileRoutesByPath['/users/zod/']['parentRoute'],
+    FileRoutesByPath['/users/zod/']['id'],
+    FileRoutesByPath['/users/zod/']['path'],
+    FileRoutesByPath['/users/zod/']['fullPath']
+  >
 }
 
 // Create and export the route tree

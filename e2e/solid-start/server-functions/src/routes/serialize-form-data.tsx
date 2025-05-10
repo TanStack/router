@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { createFileRoute } from '@tanstack/solid-router'
+
 import { createServerFn } from '@tanstack/solid-start'
 
 const testValues = {
@@ -79,6 +79,6 @@ export function SerializeFormDataFnCall() {
   )
 }
 
-export const Route = createFileRoute('/serialize-form-data')({
+export const Route = createFileRoute({
   component: SerializeFormDataFnCall,
 })

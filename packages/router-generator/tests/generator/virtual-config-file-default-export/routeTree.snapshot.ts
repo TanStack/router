@@ -9,94 +9,95 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
 
 import { Route as rootRoute } from './routes/root'
-import { Route as layoutImport } from './routes/layout'
-import { Route as indexImport } from './routes/index'
-import { Route as dbDashboardImport } from './routes/db/dashboard'
-import { Route as pagesImport } from './routes/pages'
-import { Route as HelloIndexImport } from './routes/subtree/index'
-import { Route as dbDashboardInvoicesImport } from './routes/db/dashboard-invoices'
-import { Route as dbDashboardIndexImport } from './routes/db/dashboard-index'
-import { Route as HelloFooIndexImport } from './routes/subtree/foo/index'
-import { Route as HelloFooIdImport } from './routes/subtree/foo/$id'
-import { Route as dbInvoiceDetailImport } from './routes/db/invoice-detail'
-import { Route as dbInvoicesIndexImport } from './routes/db/invoices-index'
+import { Route as layoutRouteImport } from './routes/layout'
+import { Route as indexRouteImport } from './routes/index'
+import { Route as dbDashboardRouteImport } from './routes/db/dashboard'
+import { Route as pagesRouteImport } from './routes/pages'
+import { Route as HelloIndexRouteImport } from './routes/subtree/index'
+import { Route as dbDashboardInvoicesRouteImport } from './routes/db/dashboard-invoices'
+import { Route as dbDashboardIndexRouteImport } from './routes/db/dashboard-index'
+import { Route as HelloFooIndexRouteImport } from './routes/subtree/foo/index'
+import { Route as HelloFooIdRouteImport } from './routes/subtree/foo/$id'
+import { Route as dbInvoiceDetailRouteImport } from './routes/db/invoice-detail'
+import { Route as dbInvoicesIndexRouteImport } from './routes/db/invoices-index'
 
 // Create Virtual Routes
 
-const LangImport = createFileRoute('/$lang')()
+const LangRouteImport = createFileRoute('/$lang')()
 
 // Create/Update Routes
 
-const layoutRoute = layoutImport.update({
+const layoutRoute = layoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LangRoute = LangImport.update({
+const LangRoute = LangRouteImport.update({
   id: '/$lang',
   path: '/$lang',
   getParentRoute: () => rootRoute,
 } as any)
 
-const indexRoute = indexImport.update({
+const indexRoute = indexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const dbDashboardRoute = dbDashboardImport.update({
+const dbDashboardRoute = dbDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => layoutRoute,
 } as any)
 
-const pagesRoute = pagesImport.update({
+const pagesRoute = pagesRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => LangRoute,
 } as any)
 
-const HelloIndexRoute = HelloIndexImport.update({
+const HelloIndexRoute = HelloIndexRouteImport.update({
   id: '/hello/',
   path: '/hello/',
   getParentRoute: () => layoutRoute,
 } as any)
 
-const dbDashboardInvoicesRoute = dbDashboardInvoicesImport.update({
+const dbDashboardInvoicesRoute = dbDashboardInvoicesRouteImport.update({
   id: '/invoices',
   path: '/invoices',
   getParentRoute: () => dbDashboardRoute,
 } as any)
 
-const dbDashboardIndexRoute = dbDashboardIndexImport.update({
+const dbDashboardIndexRoute = dbDashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => dbDashboardRoute,
 } as any)
 
-const HelloFooIndexRoute = HelloFooIndexImport.update({
+const HelloFooIndexRoute = HelloFooIndexRouteImport.update({
   id: '/hello/foo/',
   path: '/hello/foo/',
   getParentRoute: () => layoutRoute,
 } as any)
 
-const HelloFooIdRoute = HelloFooIdImport.update({
+const HelloFooIdRoute = HelloFooIdRouteImport.update({
   id: '/hello/foo/$id',
   path: '/hello/foo/$id',
   getParentRoute: () => layoutRoute,
 } as any)
 
-const dbInvoiceDetailRoute = dbInvoiceDetailImport.update({
+const dbInvoiceDetailRoute = dbInvoiceDetailRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => dbDashboardInvoicesRoute,
 } as any)
 
-const dbInvoicesIndexRoute = dbInvoicesIndexImport.update({
+const dbInvoicesIndexRoute = dbInvoicesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => dbDashboardInvoicesRoute,
@@ -110,87 +111,190 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof indexImport
+      preLoaderRoute: typeof indexRouteImport
       parentRoute: typeof rootRoute
     }
     '/$lang': {
       id: '/$lang'
       path: '/$lang'
       fullPath: '/$lang'
-      preLoaderRoute: typeof LangImport
+      preLoaderRoute: typeof LangRouteImport
       parentRoute: typeof rootRoute
     }
     '/_layout': {
       id: '/_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof layoutImport
+      preLoaderRoute: typeof layoutRouteImport
       parentRoute: typeof rootRoute
     }
     '/$lang/': {
       id: '/$lang/'
       path: '/'
       fullPath: '/$lang/'
-      preLoaderRoute: typeof pagesImport
-      parentRoute: typeof LangImport
+      preLoaderRoute: typeof pagesRouteImport
+      parentRoute: typeof LangRouteImport
     }
     '/_layout/dashboard': {
       id: '/_layout/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
-      preLoaderRoute: typeof dbDashboardImport
-      parentRoute: typeof layoutImport
+      preLoaderRoute: typeof dbDashboardRouteImport
+      parentRoute: typeof layoutRouteImport
     }
     '/_layout/dashboard/': {
       id: '/_layout/dashboard/'
       path: '/'
       fullPath: '/dashboard/'
-      preLoaderRoute: typeof dbDashboardIndexImport
-      parentRoute: typeof dbDashboardImport
+      preLoaderRoute: typeof dbDashboardIndexRouteImport
+      parentRoute: typeof dbDashboardRouteImport
     }
     '/_layout/dashboard/invoices': {
       id: '/_layout/dashboard/invoices'
       path: '/invoices'
       fullPath: '/dashboard/invoices'
-      preLoaderRoute: typeof dbDashboardInvoicesImport
-      parentRoute: typeof dbDashboardImport
+      preLoaderRoute: typeof dbDashboardInvoicesRouteImport
+      parentRoute: typeof dbDashboardRouteImport
     }
     '/_layout/hello/': {
       id: '/_layout/hello/'
       path: '/hello'
       fullPath: '/hello'
-      preLoaderRoute: typeof HelloIndexImport
-      parentRoute: typeof layoutImport
+      preLoaderRoute: typeof HelloIndexRouteImport
+      parentRoute: typeof layoutRouteImport
     }
     '/_layout/dashboard/invoices/': {
       id: '/_layout/dashboard/invoices/'
       path: '/'
       fullPath: '/dashboard/invoices/'
-      preLoaderRoute: typeof dbInvoicesIndexImport
-      parentRoute: typeof dbDashboardInvoicesImport
+      preLoaderRoute: typeof dbInvoicesIndexRouteImport
+      parentRoute: typeof dbDashboardInvoicesRouteImport
     }
     '/_layout/dashboard/invoices/$id': {
       id: '/_layout/dashboard/invoices/$id'
       path: '/$id'
       fullPath: '/dashboard/invoices/$id'
-      preLoaderRoute: typeof dbInvoiceDetailImport
-      parentRoute: typeof dbDashboardInvoicesImport
+      preLoaderRoute: typeof dbInvoiceDetailRouteImport
+      parentRoute: typeof dbDashboardInvoicesRouteImport
     }
     '/_layout/hello/foo/$id': {
       id: '/_layout/hello/foo/$id'
       path: '/hello/foo/$id'
       fullPath: '/hello/foo/$id'
-      preLoaderRoute: typeof HelloFooIdImport
-      parentRoute: typeof layoutImport
+      preLoaderRoute: typeof HelloFooIdRouteImport
+      parentRoute: typeof layoutRouteImport
     }
     '/_layout/hello/foo/': {
       id: '/_layout/hello/foo/'
       path: '/hello/foo'
       fullPath: '/hello/foo'
-      preLoaderRoute: typeof HelloFooIndexImport
-      parentRoute: typeof layoutImport
+      preLoaderRoute: typeof HelloFooIndexRouteImport
+      parentRoute: typeof layoutRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+
+declare module './routes/layout' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout',
+    FileRoutesByPath['/_layout']['parentRoute'],
+    FileRoutesByPath['/_layout']['id'],
+    FileRoutesByPath['/_layout']['path'],
+    FileRoutesByPath['/_layout']['fullPath']
+  >
+}
+declare module './routes/pages' {
+  const createFileRoute: CreateFileRoute<
+    '/$lang/',
+    FileRoutesByPath['/$lang/']['parentRoute'],
+    FileRoutesByPath['/$lang/']['id'],
+    FileRoutesByPath['/$lang/']['path'],
+    FileRoutesByPath['/$lang/']['fullPath']
+  >
+}
+declare module './routes/db/dashboard' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/dashboard',
+    FileRoutesByPath['/_layout/dashboard']['parentRoute'],
+    FileRoutesByPath['/_layout/dashboard']['id'],
+    FileRoutesByPath['/_layout/dashboard']['path'],
+    FileRoutesByPath['/_layout/dashboard']['fullPath']
+  >
+}
+declare module './routes/db/dashboard-index' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/dashboard/',
+    FileRoutesByPath['/_layout/dashboard/']['parentRoute'],
+    FileRoutesByPath['/_layout/dashboard/']['id'],
+    FileRoutesByPath['/_layout/dashboard/']['path'],
+    FileRoutesByPath['/_layout/dashboard/']['fullPath']
+  >
+}
+declare module './routes/db/dashboard-invoices' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/dashboard/invoices',
+    FileRoutesByPath['/_layout/dashboard/invoices']['parentRoute'],
+    FileRoutesByPath['/_layout/dashboard/invoices']['id'],
+    FileRoutesByPath['/_layout/dashboard/invoices']['path'],
+    FileRoutesByPath['/_layout/dashboard/invoices']['fullPath']
+  >
+}
+declare module './routes/subtree/index' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/hello/',
+    FileRoutesByPath['/_layout/hello/']['parentRoute'],
+    FileRoutesByPath['/_layout/hello/']['id'],
+    FileRoutesByPath['/_layout/hello/']['path'],
+    FileRoutesByPath['/_layout/hello/']['fullPath']
+  >
+}
+declare module './routes/db/invoices-index' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/dashboard/invoices/',
+    FileRoutesByPath['/_layout/dashboard/invoices/']['parentRoute'],
+    FileRoutesByPath['/_layout/dashboard/invoices/']['id'],
+    FileRoutesByPath['/_layout/dashboard/invoices/']['path'],
+    FileRoutesByPath['/_layout/dashboard/invoices/']['fullPath']
+  >
+}
+declare module './routes/db/invoice-detail' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/dashboard/invoices/$id',
+    FileRoutesByPath['/_layout/dashboard/invoices/$id']['parentRoute'],
+    FileRoutesByPath['/_layout/dashboard/invoices/$id']['id'],
+    FileRoutesByPath['/_layout/dashboard/invoices/$id']['path'],
+    FileRoutesByPath['/_layout/dashboard/invoices/$id']['fullPath']
+  >
+}
+declare module './routes/subtree/foo/$id' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/hello/foo/$id',
+    FileRoutesByPath['/_layout/hello/foo/$id']['parentRoute'],
+    FileRoutesByPath['/_layout/hello/foo/$id']['id'],
+    FileRoutesByPath['/_layout/hello/foo/$id']['path'],
+    FileRoutesByPath['/_layout/hello/foo/$id']['fullPath']
+  >
+}
+declare module './routes/subtree/foo/index' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/hello/foo/',
+    FileRoutesByPath['/_layout/hello/foo/']['parentRoute'],
+    FileRoutesByPath['/_layout/hello/foo/']['id'],
+    FileRoutesByPath['/_layout/hello/foo/']['path'],
+    FileRoutesByPath['/_layout/hello/foo/']['fullPath']
+  >
 }
 
 // Create and export the route tree

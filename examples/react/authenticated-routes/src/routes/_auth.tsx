@@ -1,15 +1,9 @@
 import * as React from 'react'
-import {
-  Link,
-  Outlet,
-  createFileRoute,
-  redirect,
-  useRouter,
-} from '@tanstack/react-router'
+import { Link, Outlet, redirect, useRouter } from '@tanstack/react-router'
 
 import { useAuth } from '../auth'
 
-export const Route = createFileRoute('/_auth')({
+export const Route = createFileRoute({
   beforeLoad: ({ context, location }) => {
     if (!context.auth.isAuthenticated) {
       throw redirect({

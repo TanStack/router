@@ -1,12 +1,8 @@
-import {
-  createLazyFileRoute,
-  getRouteApi,
-  useSearch,
-} from '@tanstack/solid-router'
+import { getRouteApi, useSearch } from '@tanstack/solid-router'
 
 const routeApi = getRouteApi('/(group)/lazyinside')
 
-export const Route = createLazyFileRoute('/(group)/lazyinside')({
+export const Route = createLazyFileRoute({
   component: () => {
     const searchViaHook = useSearch({ from: '/(group)/lazyinside' })
     const searchViaRouteHook = Route.useSearch()

@@ -1,10 +1,5 @@
 import * as React from 'react'
-import {
-  createFileRoute,
-  redirect,
-  useRouter,
-  useRouterState,
-} from '@tanstack/react-router'
+import { redirect, useRouter, useRouterState } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { useAuth } from '../auth'
@@ -20,7 +15,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 const fallback = '/dashboard' as const
 
-export const Route = createFileRoute('/login')({
+export const Route = createFileRoute({
   validateSearch: z.object({
     redirect: z.string().optional().catch(''),
   }),

@@ -5,13 +5,13 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@radix-ui/themes": "^3.2.1",
     "@tanstack/react-router": "^1.120.3",
@@ -22,7 +22,7 @@
     "jose": "^6.0.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.3"
+    "vite": "6.1.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",

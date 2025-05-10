@@ -77,10 +77,8 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
               'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
             ].join(''),
           imports: {
-            tsrImports: () =>
-              "import { createFileRoute } from '@tanstack/react-router';",
-            tsrExportStart: (routePath) =>
-              `export const Route = createFileRoute('${routePath}')(`,
+            tsrImports: () => '',
+            tsrExportStart: () => `export const Route = createFileRoute(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -130,10 +128,8 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
               'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
             ].join(''),
           imports: {
-            tsrImports: () =>
-              "import { createFileRoute } from '@tanstack/solid-router';",
-            tsrExportStart: (routePath) =>
-              `export const Route = createFileRoute('${routePath}')(`,
+            tsrImports: () => '',
+            tsrExportStart: () => `export const Route = createFileRoute(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -158,10 +154,3 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
       throw new Error(`router-generator: Unknown target type: ${target}`)
   }
 }
-
-export const defaultAPIRouteTemplate = [
-  'import { json } from "@tanstack/react-start";\n',
-  '%%tsrImports%%',
-  '\n\n',
-  '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message:\'Hello "%%tsrPath%%"!\' }) }}%%tsrExportEnd%%\n',
-].join('')

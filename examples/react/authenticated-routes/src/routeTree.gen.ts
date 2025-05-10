@@ -8,55 +8,57 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as LoginImport } from './routes/login'
-import { Route as AuthImport } from './routes/_auth'
-import { Route as IndexImport } from './routes/index'
-import { Route as AuthInvoicesImport } from './routes/_auth.invoices'
-import { Route as AuthDashboardImport } from './routes/_auth.dashboard'
-import { Route as AuthInvoicesIndexImport } from './routes/_auth.invoices.index'
-import { Route as AuthInvoicesInvoiceIdImport } from './routes/_auth.invoices.$invoiceId'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthInvoicesRouteImport } from './routes/_auth.invoices'
+import { Route as AuthDashboardRouteImport } from './routes/_auth.dashboard'
+import { Route as AuthInvoicesIndexRouteImport } from './routes/_auth.invoices.index'
+import { Route as AuthInvoicesInvoiceIdRouteImport } from './routes/_auth.invoices.$invoiceId'
 
 // Create/Update Routes
 
-const LoginRoute = LoginImport.update({
+const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRoute,
 } as any)
 
-const AuthRoute = AuthImport.update({
+const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const AuthInvoicesRoute = AuthInvoicesImport.update({
+const AuthInvoicesRoute = AuthInvoicesRouteImport.update({
   id: '/invoices',
   path: '/invoices',
   getParentRoute: () => AuthRoute,
 } as any)
 
-const AuthDashboardRoute = AuthDashboardImport.update({
+const AuthDashboardRoute = AuthDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AuthRoute,
 } as any)
 
-const AuthInvoicesIndexRoute = AuthInvoicesIndexImport.update({
+const AuthInvoicesIndexRoute = AuthInvoicesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthInvoicesRoute,
 } as any)
 
-const AuthInvoicesInvoiceIdRoute = AuthInvoicesInvoiceIdImport.update({
+const AuthInvoicesInvoiceIdRoute = AuthInvoicesInvoiceIdRouteImport.update({
   id: '/$invoiceId',
   path: '/$invoiceId',
   getParentRoute: () => AuthInvoicesRoute,
@@ -70,52 +72,118 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/_auth': {
       id: '/_auth'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof AuthImport
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRoute
     }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
-      preLoaderRoute: typeof LoginImport
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRoute
     }
     '/_auth/dashboard': {
       id: '/_auth/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthDashboardImport
-      parentRoute: typeof AuthImport
+      preLoaderRoute: typeof AuthDashboardRouteImport
+      parentRoute: typeof AuthRouteImport
     }
     '/_auth/invoices': {
       id: '/_auth/invoices'
       path: '/invoices'
       fullPath: '/invoices'
-      preLoaderRoute: typeof AuthInvoicesImport
-      parentRoute: typeof AuthImport
+      preLoaderRoute: typeof AuthInvoicesRouteImport
+      parentRoute: typeof AuthRouteImport
     }
     '/_auth/invoices/$invoiceId': {
       id: '/_auth/invoices/$invoiceId'
       path: '/$invoiceId'
       fullPath: '/invoices/$invoiceId'
-      preLoaderRoute: typeof AuthInvoicesInvoiceIdImport
-      parentRoute: typeof AuthInvoicesImport
+      preLoaderRoute: typeof AuthInvoicesInvoiceIdRouteImport
+      parentRoute: typeof AuthInvoicesRouteImport
     }
     '/_auth/invoices/': {
       id: '/_auth/invoices/'
       path: '/'
       fullPath: '/invoices/'
-      preLoaderRoute: typeof AuthInvoicesIndexImport
-      parentRoute: typeof AuthInvoicesImport
+      preLoaderRoute: typeof AuthInvoicesIndexRouteImport
+      parentRoute: typeof AuthInvoicesRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/_auth' {
+  const createFileRoute: CreateFileRoute<
+    '/_auth',
+    FileRoutesByPath['/_auth']['parentRoute'],
+    FileRoutesByPath['/_auth']['id'],
+    FileRoutesByPath['/_auth']['path'],
+    FileRoutesByPath['/_auth']['fullPath']
+  >
+}
+declare module './routes/login' {
+  const createFileRoute: CreateFileRoute<
+    '/login',
+    FileRoutesByPath['/login']['parentRoute'],
+    FileRoutesByPath['/login']['id'],
+    FileRoutesByPath['/login']['path'],
+    FileRoutesByPath['/login']['fullPath']
+  >
+}
+declare module './routes/_auth.dashboard' {
+  const createFileRoute: CreateFileRoute<
+    '/_auth/dashboard',
+    FileRoutesByPath['/_auth/dashboard']['parentRoute'],
+    FileRoutesByPath['/_auth/dashboard']['id'],
+    FileRoutesByPath['/_auth/dashboard']['path'],
+    FileRoutesByPath['/_auth/dashboard']['fullPath']
+  >
+}
+declare module './routes/_auth.invoices' {
+  const createFileRoute: CreateFileRoute<
+    '/_auth/invoices',
+    FileRoutesByPath['/_auth/invoices']['parentRoute'],
+    FileRoutesByPath['/_auth/invoices']['id'],
+    FileRoutesByPath['/_auth/invoices']['path'],
+    FileRoutesByPath['/_auth/invoices']['fullPath']
+  >
+}
+declare module './routes/_auth.invoices.$invoiceId' {
+  const createFileRoute: CreateFileRoute<
+    '/_auth/invoices/$invoiceId',
+    FileRoutesByPath['/_auth/invoices/$invoiceId']['parentRoute'],
+    FileRoutesByPath['/_auth/invoices/$invoiceId']['id'],
+    FileRoutesByPath['/_auth/invoices/$invoiceId']['path'],
+    FileRoutesByPath['/_auth/invoices/$invoiceId']['fullPath']
+  >
+}
+declare module './routes/_auth.invoices.index' {
+  const createFileRoute: CreateFileRoute<
+    '/_auth/invoices/',
+    FileRoutesByPath['/_auth/invoices/']['parentRoute'],
+    FileRoutesByPath['/_auth/invoices/']['id'],
+    FileRoutesByPath['/_auth/invoices/']['path'],
+    FileRoutesByPath['/_auth/invoices/']['fullPath']
+  >
 }
 
 // Create and export the route tree

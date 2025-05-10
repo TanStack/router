@@ -126,6 +126,7 @@ export type {
   RouteById,
   RootRouteOptions,
   SerializerExtensions,
+  CreateFileRoute,
 } from '@tanstack/router-core'
 
 export type * from './serializer'
@@ -237,6 +238,7 @@ export type {
   RouteConstraints,
   RouteMask,
   MatchRouteOptions,
+  CreateLazyFileRoute,
 } from '@tanstack/router-core'
 export type {
   UseLinkPropsOptions,

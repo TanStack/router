@@ -1,6 +1,6 @@
 import React from 'react'
 import '@testing-library/jest-dom/vitest'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   cleanup,
   configure,
@@ -14,6 +14,7 @@ import {
   Navigate,
   Outlet,
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouteMask,
@@ -22,9 +23,20 @@ import {
   useNavigate,
   useParams,
 } from '../src'
+import type { RouterHistory } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
+  vi.clearAllMocks()
+  vi.resetAllMocks()
   cleanup()
 })
 
@@ -62,6 +74,7 @@ test('when navigating to /posts', async () => {
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -275,6 +288,7 @@ test('when navigating from /posts to ../posts/$postId', async () => {
       indexRoute,
       postsRoute.addChildren([postsIndexRoute, postRoute]),
     ]),
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -412,6 +426,7 @@ test('when navigating from /posts/$postId to /posts/$postId/info and the current
         ]),
       ]),
     ]),
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -555,6 +570,7 @@ test('when navigating from /posts/$postId to ./info and the current route is /po
         ]),
       ]),
     ]),
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -698,6 +714,7 @@ test('when navigating from /posts/$postId to ../$postId and the current route is
         ]),
       ]),
     ]),
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -849,6 +866,7 @@ test('when navigating from /posts/$postId with an index to ../$postId and the cu
         ]),
       ]),
     ]),
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -1029,6 +1047,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
         ]),
       ]),
     ]),
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -1132,6 +1151,7 @@ test('when navigating to /posts/$postId/info which is masked as /posts/$postId',
   const router = createRouter({
     routeTree,
     routeMasks: [routeMask],
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -1226,6 +1246,7 @@ test('when navigating to /posts/$postId/info which is imperatively masked as /po
 
   const router = createRouter({
     routeTree,
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -1283,6 +1304,7 @@ test('when setting search params with 2 parallel navigate calls', async () => {
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute]),
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -1327,6 +1349,7 @@ test('<Navigate> navigates only once in <StrictMode>', async () => {
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    history,
   })
 
   const navigateSpy = vi.spyOn(router, 'navigate')

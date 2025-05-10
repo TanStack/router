@@ -1,6 +1,6 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { redirect } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/$project/')({
+export const Route = createFileRoute({
   loader: ({ params }) => {
     throw redirect({
       to: '/$project/$version',

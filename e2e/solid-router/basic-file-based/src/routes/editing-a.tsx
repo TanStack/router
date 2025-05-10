@@ -1,7 +1,7 @@
-import { createFileRoute, useBlocker } from '@tanstack/solid-router'
+import { useBlocker } from '@tanstack/solid-router'
 import { createSignal } from 'solid-js'
 
-export const Route = createFileRoute('/editing-a')({
+export const Route = createFileRoute({
   component: RouteComponent,
 })
 

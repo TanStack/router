@@ -65,15 +65,18 @@
     "@tanstack/history": "workspace:^",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/start-client-core": "workspace:^",
-    "tiny-warning": "^1.0.3",
     "h3": "1.13.0",
     "isbot": "^5.1.22",
     "jsesc": "^3.1.0",
-    "unctx": "^2.4.1"
+    "tiny-invariant": "^1.3.3",
+    "tiny-warning": "^1.0.3",
+    "unctx": "^2.4.1",
+    "undici": "^7.8.0"
   },
   "devDependencies": {
     "@types/jsesc": "^3.0.3",
     "esbuild": "^0.25.0",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite": "6.1.4"
   }
 }

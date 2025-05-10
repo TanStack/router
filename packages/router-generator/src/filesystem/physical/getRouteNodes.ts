@@ -4,8 +4,6 @@ import {
   determineInitialRoutePath,
   logging,
   removeExt,
-  removeLeadingSlash,
-  removeTrailingSlash,
   replaceBackslash,
   routePathToVariable,
 } from '../../utils'
@@ -22,7 +20,16 @@ import type { Config } from '../../config'
 const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
 
 export async function getRouteNodes(
-  config: Config,
+  config: Pick<
+    Config,
+    | 'routesDirectory'
+    | 'routeFilePrefix'
+    | 'routeFileIgnorePrefix'
+    | 'routeFileIgnorePattern'
+    | 'disableLogging'
+    | 'routeToken'
+    | 'indexToken'
+  >,
   root: string,
 ): Promise<GetRouteNodesResult> {
   const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
@@ -196,7 +203,7 @@ export async function getRouteNodes(
  */
 export function getRouteMeta(
   routePath: string,
-  config: Config,
+  config: Pick<Config, 'routeToken' | 'indexToken'>,
 ): {
   // `__root` is can be more easily determined by filtering down to routePath === /${rootPathId}
   // `pathless` is needs to determined after `lazy` has been cleaned up from the routePath
@@ -215,15 +222,7 @@ export function getRouteMeta(
 } {
   let fsRouteType: FsRouteType = 'static'
 
-  if (
-    removeLeadingSlash(routePath).startsWith(
-      `${removeTrailingSlash(removeLeadingSlash(config.apiBase))}/`,
-    ) &&
-    config.__enableAPIRoutesGeneration
-  ) {
-    // api routes, i.e. `/api/foo.ts`
-    fsRouteType = 'api'
-  } else if (routePath.endsWith(`/${config.routeToken}`)) {
+  if (routePath.endsWith(`/${config.routeToken}`)) {
     // layout routes, i.e `/foo/route.tsx` or `/foo/_layout/route.tsx`
     fsRouteType = 'layout'
   } else if (routePath.endsWith('/lazy')) {
@@ -257,7 +256,7 @@ export function getRouteMeta(
 function isValidPathlessLayoutRoute(
   normalizedRoutePath: string,
   routeType: FsRouteType,
-  config: Config,
+  config: Pick<Config, 'routeToken' | 'indexToken'>,
 ): boolean {
   if (routeType === 'lazy') {
     return false

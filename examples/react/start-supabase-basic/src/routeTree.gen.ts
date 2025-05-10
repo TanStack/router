@@ -8,62 +8,64 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as SignupImport } from './routes/signup'
-import { Route as LogoutImport } from './routes/logout'
-import { Route as LoginImport } from './routes/login'
-import { Route as AuthedImport } from './routes/_authed'
-import { Route as IndexImport } from './routes/index'
-import { Route as AuthedPostsImport } from './routes/_authed/posts'
-import { Route as AuthedPostsIndexImport } from './routes/_authed/posts.index'
-import { Route as AuthedPostsPostIdImport } from './routes/_authed/posts.$postId'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LogoutRouteImport } from './routes/logout'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
+import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.index'
+import { Route as AuthedPostsPostIdRouteImport } from './routes/_authed/posts.$postId'
 
 // Create/Update Routes
 
-const SignupRoute = SignupImport.update({
+const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LogoutRoute = LogoutImport.update({
+const LogoutRoute = LogoutRouteImport.update({
   id: '/logout',
   path: '/logout',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LoginRoute = LoginImport.update({
+const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRoute,
 } as any)
 
-const AuthedRoute = AuthedImport.update({
+const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const AuthedPostsRoute = AuthedPostsImport.update({
+const AuthedPostsRoute = AuthedPostsRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => AuthedRoute,
 } as any)
 
-const AuthedPostsIndexRoute = AuthedPostsIndexImport.update({
+const AuthedPostsIndexRoute = AuthedPostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthedPostsRoute,
 } as any)
 
-const AuthedPostsPostIdRoute = AuthedPostsPostIdImport.update({
+const AuthedPostsPostIdRoute = AuthedPostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => AuthedPostsRoute,
@@ -77,59 +79,134 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/_authed': {
       id: '/_authed'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof AuthedImport
+      preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRoute
     }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
-      preLoaderRoute: typeof LoginImport
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRoute
     }
     '/logout': {
       id: '/logout'
       path: '/logout'
       fullPath: '/logout'
-      preLoaderRoute: typeof LogoutImport
+      preLoaderRoute: typeof LogoutRouteImport
       parentRoute: typeof rootRoute
     }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
-      preLoaderRoute: typeof SignupImport
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRoute
     }
     '/_authed/posts': {
       id: '/_authed/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof AuthedPostsImport
-      parentRoute: typeof AuthedImport
+      preLoaderRoute: typeof AuthedPostsRouteImport
+      parentRoute: typeof AuthedRouteImport
     }
     '/_authed/posts/$postId': {
       id: '/_authed/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof AuthedPostsPostIdImport
-      parentRoute: typeof AuthedPostsImport
+      preLoaderRoute: typeof AuthedPostsPostIdRouteImport
+      parentRoute: typeof AuthedPostsRouteImport
     }
     '/_authed/posts/': {
       id: '/_authed/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof AuthedPostsIndexImport
-      parentRoute: typeof AuthedPostsImport
+      preLoaderRoute: typeof AuthedPostsIndexRouteImport
+      parentRoute: typeof AuthedPostsRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/_authed' {
+  const createFileRoute: CreateFileRoute<
+    '/_authed',
+    FileRoutesByPath['/_authed']['parentRoute'],
+    FileRoutesByPath['/_authed']['id'],
+    FileRoutesByPath['/_authed']['path'],
+    FileRoutesByPath['/_authed']['fullPath']
+  >
+}
+declare module './routes/login' {
+  const createFileRoute: CreateFileRoute<
+    '/login',
+    FileRoutesByPath['/login']['parentRoute'],
+    FileRoutesByPath['/login']['id'],
+    FileRoutesByPath['/login']['path'],
+    FileRoutesByPath['/login']['fullPath']
+  >
+}
+declare module './routes/logout' {
+  const createFileRoute: CreateFileRoute<
+    '/logout',
+    FileRoutesByPath['/logout']['parentRoute'],
+    FileRoutesByPath['/logout']['id'],
+    FileRoutesByPath['/logout']['path'],
+    FileRoutesByPath['/logout']['fullPath']
+  >
+}
+declare module './routes/signup' {
+  const createFileRoute: CreateFileRoute<
+    '/signup',
+    FileRoutesByPath['/signup']['parentRoute'],
+    FileRoutesByPath['/signup']['id'],
+    FileRoutesByPath['/signup']['path'],
+    FileRoutesByPath['/signup']['fullPath']
+  >
+}
+declare module './routes/_authed/posts' {
+  const createFileRoute: CreateFileRoute<
+    '/_authed/posts',
+    FileRoutesByPath['/_authed/posts']['parentRoute'],
+    FileRoutesByPath['/_authed/posts']['id'],
+    FileRoutesByPath['/_authed/posts']['path'],
+    FileRoutesByPath['/_authed/posts']['fullPath']
+  >
+}
+declare module './routes/_authed/posts.$postId' {
+  const createFileRoute: CreateFileRoute<
+    '/_authed/posts/$postId',
+    FileRoutesByPath['/_authed/posts/$postId']['parentRoute'],
+    FileRoutesByPath['/_authed/posts/$postId']['id'],
+    FileRoutesByPath['/_authed/posts/$postId']['path'],
+    FileRoutesByPath['/_authed/posts/$postId']['fullPath']
+  >
+}
+declare module './routes/_authed/posts.index' {
+  const createFileRoute: CreateFileRoute<
+    '/_authed/posts/',
+    FileRoutesByPath['/_authed/posts/']['parentRoute'],
+    FileRoutesByPath['/_authed/posts/']['id'],
+    FileRoutesByPath['/_authed/posts/']['path'],
+    FileRoutesByPath['/_authed/posts/']['fullPath']
+  >
 }
 
 // Create and export the route tree

@@ -1,7 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 
-export const Route = createFileRoute('/error')({
+export const Route = createFileRoute({
   component: ErrorComponent,
   loader: async () => {
     if (Math.random() > 0.5) throw new Error('Random error!')
