@@ -171,11 +171,9 @@ For more complex use cases, you can provide a handler function via the method bu
 ```tsx
 // routes/hello.ts
 export const ServerRoute = createServerFileRoute().methods((api) => ({
-  GET: api
-    .middleware([loggerMiddleware])
-    .handler(async ({ request }) => {
-      return new Response('Hello, World! from ' + request.url)
-    }),
+  GET: api.middleware([loggerMiddleware]).handler(async ({ request }) => {
+    return new Response('Hello, World! from ' + request.url)
+  }),
 }))
 ```
 
