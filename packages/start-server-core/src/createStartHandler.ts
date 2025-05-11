@@ -1,4 +1,3 @@
-import path from 'node:path'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   flattenMiddlewares,
@@ -8,8 +7,10 @@ import {
 import {
   getMatchedRoutes,
   isRedirect,
+  joinPaths,
   processRouteTree,
   rootRouteId,
+  trimPath,
   tsrRedirectHeaderKey,
 } from '@tanstack/router-core'
 import { getResponseHeaders, requestHandler } from './h3'
@@ -82,9 +83,10 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
           // First, let's attempt to handle server functions
           // Add trailing slash to sanitise user defined TSS_SERVER_FN_BASE
-          const serverFnBase = process.env.TSS_SERVER_FN_BASE.startsWith('/')
-            ? process.env.TSS_SERVER_FN_BASE
-            : '/' + process.env.TSS_SERVER_FN_BASE
+          const serverFnBase = joinPaths([
+            '/',
+            trimPath(process.env.TSS_SERVER_FN_BASE),
+          ])
           if (href.startsWith(serverFnBase)) {
             return await handleServerAction({ request })
           }
@@ -105,7 +107,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
           // If we have a server route tree, then we try matching to see if we have a
           // server route that matches the request.
           if (serverRouteTreeModule) {
-            const [matchedRoutes, response] = await handleServerRoutes({
+            const [_matchedRoutes, response] = await handleServerRoutes({
               routeTree: serverRouteTreeModule.routeTree,
               request,
             })
