@@ -11,7 +11,7 @@
   "dependencies": {
     "@tanstack/react-router": "^1.120.4-alpha.1",
     "@tanstack/react-router-devtools": "^1.120.4-alpha.1",
-    "@tanstack/router-plugin": "^1.120.4-alpha.1",
+    "@tanstack/router-plugin": "^1.120.4-alpha.4",
     "immer": "^10.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
