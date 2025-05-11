@@ -55,6 +55,8 @@ export type {
   RootRouteId,
   AnyPathParams,
   ResolveParams,
+  ResolveOptionalParams,
+  ResolveRequiredParams,
   SearchSchemaInput,
   AnyContext,
   RouteContext,

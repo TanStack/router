@@ -153,11 +153,23 @@ export type ResolveSearchSchema<TSearchValidator> =
           ? ResolveSearchSchemaFn<TSearchValidator['parse']>
           : ResolveSearchSchemaFn<TSearchValidator>
 
-export type ResolveParams<TPath extends string, T = string> = Record<
+export type ResolveRequiredParams<TPath extends string, T> = Record<
   ParsePathParams<TPath>['required'],
   T
-> &
-  Partial<Record<ParsePathParams<TPath>['optional'], T>>
+>
+
+export type ResolveOptionalParams<TPath extends string, T> = Partial<
+  Record<ParsePathParams<TPath>['optional'], T>
+>
+
+export type ResolveParams<
+  TPath extends string,
+  T = string,
+> = ParsePathParams<TPath>['optional'] extends never
+  ? ResolveRequiredParams<TPath, T>
+  : ParsePathParams<TPath>['required'] extends never
+    ? ResolveOptionalParams<TPath, T>
+    : ResolveRequiredParams<TPath, T> & ResolveOptionalParams<TPath, T>
 
 export type ParseParamsFn<in out TPath extends string, in out TParams> = (
   rawParams: Expand<ResolveParams<TPath>>,

@@ -195,6 +195,8 @@ export type {
   RouteAddChildrenFn,
   RouteAddFileChildrenFn,
   RouteAddFileTypesFn,
+  ResolveOptionalParams,
+  ResolveRequiredParams,
 } from './route'
 
 export {
