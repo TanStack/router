@@ -232,7 +232,6 @@ const paramsPsIndexRoute = createRoute({
             <Link
               data-testid="l-to-named-prefixfoo"
               to="/params-ps/named/prefix{$foo}"
-              // @ts-expect-error
               params={{ foo: 'foo' }}
             >
               /params-ps/named/{'prefix{$foo}'}
@@ -242,7 +241,6 @@ const paramsPsIndexRoute = createRoute({
             <Link
               data-testid="l-to-named-foosuffix"
               to="/params-ps/named/{$foo}suffix"
-              // @ts-expect-error
               params={{ foo: 'foo' }}
             >
               /params-ps/named/{'{$foo}suffix'}
@@ -265,7 +263,6 @@ const paramsPsIndexRoute = createRoute({
             <Link
               data-testid="l-to-wildcard-prefixfoo"
               to="/params-ps/wildcard/prefix{$}"
-              // @ts-expect-error
               params={{ _splat: 'foo' }}
             >
               /params-ps/wildcard/{'prefix{$}'}
@@ -275,7 +272,6 @@ const paramsPsIndexRoute = createRoute({
             <Link
               data-testid="l-to-wildcard-foosuffix"
               to="/params-ps/wildcard/{$}suffix"
-              // @ts-expect-error
               params={{ _splat: 'foo' }}
             >
               /params-ps/wildcard/{'{$}suffix'}

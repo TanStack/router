@@ -473,7 +473,7 @@ export interface ServerRouteMethodHandlerCtx<
     AssignAllMethodContext<TParentRoute, TMiddlewares, TMethodMiddlewares>
   >
   request: Request
-  params: ResolveParams<TFullPath>
+  params: Expand<ResolveParams<TFullPath>>
   pathname: TFullPath
 }
 
