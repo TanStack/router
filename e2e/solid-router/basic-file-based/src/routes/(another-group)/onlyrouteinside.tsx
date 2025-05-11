@@ -1,10 +1,11 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import { getRouteApi, useSearch } from '@tanstack/solid-router'
 import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'
 
 const routeApi = getRouteApi('/(another-group)/onlyrouteinside')
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/(another-group)/onlyrouteinside')({
   validateSearch: zodValidator(z.object({ hello: z.string().optional() })),
   component: () => {
     const searchViaHook = useSearch({

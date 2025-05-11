@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import {
   Link,
@@ -12,7 +13,7 @@ import { fetchUsers } from '../utils/mockTodos'
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/users')({
   validateSearch: z.object({
     usersView: z
       .object({

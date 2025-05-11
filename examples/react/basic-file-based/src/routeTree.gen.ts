@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
@@ -148,90 +146,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof PathlessLayoutNestedLayoutRouteImport
     }
   }
-}
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/posts.route' {
-  const createFileRoute: CreateFileRoute<
-    '/posts',
-    FileRoutesByPath['/posts']['parentRoute'],
-    FileRoutesByPath['/posts']['id'],
-    FileRoutesByPath['/posts']['path'],
-    FileRoutesByPath['/posts']['fullPath']
-  >
-}
-declare module './routes/_pathlessLayout' {
-  const createFileRoute: CreateFileRoute<
-    '/_pathlessLayout',
-    FileRoutesByPath['/_pathlessLayout']['parentRoute'],
-    FileRoutesByPath['/_pathlessLayout']['id'],
-    FileRoutesByPath['/_pathlessLayout']['path'],
-    FileRoutesByPath['/_pathlessLayout']['fullPath']
-  >
-}
-declare module './routes/anchor' {
-  const createFileRoute: CreateFileRoute<
-    '/anchor',
-    FileRoutesByPath['/anchor']['parentRoute'],
-    FileRoutesByPath['/anchor']['id'],
-    FileRoutesByPath['/anchor']['path'],
-    FileRoutesByPath['/anchor']['fullPath']
-  >
-}
-declare module './routes/_pathlessLayout/_nested-layout' {
-  const createFileRoute: CreateFileRoute<
-    '/_pathlessLayout/_nested-layout',
-    FileRoutesByPath['/_pathlessLayout/_nested-layout']['parentRoute'],
-    FileRoutesByPath['/_pathlessLayout/_nested-layout']['id'],
-    FileRoutesByPath['/_pathlessLayout/_nested-layout']['path'],
-    FileRoutesByPath['/_pathlessLayout/_nested-layout']['fullPath']
-  >
-}
-declare module './routes/posts.$postId' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/$postId',
-    FileRoutesByPath['/posts/$postId']['parentRoute'],
-    FileRoutesByPath['/posts/$postId']['id'],
-    FileRoutesByPath['/posts/$postId']['path'],
-    FileRoutesByPath['/posts/$postId']['fullPath']
-  >
-}
-declare module './routes/posts.index' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/',
-    FileRoutesByPath['/posts/']['parentRoute'],
-    FileRoutesByPath['/posts/']['id'],
-    FileRoutesByPath['/posts/']['path'],
-    FileRoutesByPath['/posts/']['fullPath']
-  >
-}
-declare module './routes/_pathlessLayout/_nested-layout/route-a' {
-  const createFileRoute: CreateFileRoute<
-    '/_pathlessLayout/_nested-layout/route-a',
-    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['parentRoute'],
-    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['id'],
-    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['path'],
-    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-a']['fullPath']
-  >
-}
-declare module './routes/_pathlessLayout/_nested-layout/route-b' {
-  const createFileRoute: CreateFileRoute<
-    '/_pathlessLayout/_nested-layout/route-b',
-    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['parentRoute'],
-    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['id'],
-    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['path'],
-    FileRoutesByPath['/_pathlessLayout/_nested-layout/route-b']['fullPath']
-  >
 }
 
 // Create and export the route tree

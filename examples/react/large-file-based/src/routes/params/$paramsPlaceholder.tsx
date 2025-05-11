@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { Link } from '@tanstack/react-router'
 import { z } from 'zod'
@@ -20,7 +21,7 @@ const paramsQueryOptions = queryOptions({
   },
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/params/$paramsPlaceholder')({
   component: ParamsComponent,
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(paramsQueryOptions),

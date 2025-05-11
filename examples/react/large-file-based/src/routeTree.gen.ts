@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
@@ -133,81 +131,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof SearchRouteRouteImport
     }
   }
-}
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/params/route' {
-  const createFileRoute: CreateFileRoute<
-    '/params',
-    FileRoutesByPath['/params']['parentRoute'],
-    FileRoutesByPath['/params']['id'],
-    FileRoutesByPath['/params']['path'],
-    FileRoutesByPath['/params']['fullPath']
-  >
-}
-declare module './routes/search/route' {
-  const createFileRoute: CreateFileRoute<
-    '/search',
-    FileRoutesByPath['/search']['parentRoute'],
-    FileRoutesByPath['/search']['id'],
-    FileRoutesByPath['/search']['path'],
-    FileRoutesByPath['/search']['fullPath']
-  >
-}
-declare module './routes/absolute' {
-  const createFileRoute: CreateFileRoute<
-    '/absolute',
-    FileRoutesByPath['/absolute']['parentRoute'],
-    FileRoutesByPath['/absolute']['id'],
-    FileRoutesByPath['/absolute']['path'],
-    FileRoutesByPath['/absolute']['fullPath']
-  >
-}
-declare module './routes/linkProps' {
-  const createFileRoute: CreateFileRoute<
-    '/linkProps',
-    FileRoutesByPath['/linkProps']['parentRoute'],
-    FileRoutesByPath['/linkProps']['id'],
-    FileRoutesByPath['/linkProps']['path'],
-    FileRoutesByPath['/linkProps']['fullPath']
-  >
-}
-declare module './routes/relative' {
-  const createFileRoute: CreateFileRoute<
-    '/relative',
-    FileRoutesByPath['/relative']['parentRoute'],
-    FileRoutesByPath['/relative']['id'],
-    FileRoutesByPath['/relative']['path'],
-    FileRoutesByPath['/relative']['fullPath']
-  >
-}
-declare module './routes/params/$paramsPlaceholder' {
-  const createFileRoute: CreateFileRoute<
-    '/params/$paramsPlaceholder',
-    FileRoutesByPath['/params/$paramsPlaceholder']['parentRoute'],
-    FileRoutesByPath['/params/$paramsPlaceholder']['id'],
-    FileRoutesByPath['/params/$paramsPlaceholder']['path'],
-    FileRoutesByPath['/params/$paramsPlaceholder']['fullPath']
-  >
-}
-declare module './routes/search/searchPlaceholder' {
-  const createFileRoute: CreateFileRoute<
-    '/search/searchPlaceholder',
-    FileRoutesByPath['/search/searchPlaceholder']['parentRoute'],
-    FileRoutesByPath['/search/searchPlaceholder']['id'],
-    FileRoutesByPath['/search/searchPlaceholder']['path'],
-    FileRoutesByPath['/search/searchPlaceholder']['fullPath']
-  >
 }
 
 // Create and export the route tree

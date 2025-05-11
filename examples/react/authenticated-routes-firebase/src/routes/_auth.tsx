@@ -1,7 +1,8 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { Link, Outlet, redirect, useRouter } from '@tanstack/react-router'
 import { useAuth } from '../auth'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/_auth')({
   beforeLoad: ({ context, location }) => {
     // Check if user is authenticated
     if (!context.auth.isAuthenticated) {

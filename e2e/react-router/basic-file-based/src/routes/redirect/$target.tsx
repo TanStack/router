@@ -1,7 +1,8 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { retainSearchParams } from '@tanstack/react-router'
 import z from 'zod'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/redirect/$target')({
   params: {
     parse: (p) =>
       z

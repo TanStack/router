@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
@@ -49,27 +47,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRoute
     }
   }
-}
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/about' {
-  const createFileRoute: CreateFileRoute<
-    '/about',
-    FileRoutesByPath['/about']['parentRoute'],
-    FileRoutesByPath['/about']['id'],
-    FileRoutesByPath['/about']['path'],
-    FileRoutesByPath['/about']['fullPath']
-  >
 }
 
 // Create and export the route tree

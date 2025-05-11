@@ -1,6 +1,7 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import { Link } from '@tanstack/solid-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/redirect/preload/first')({
   component: RouteComponent,
 })
 

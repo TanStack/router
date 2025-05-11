@@ -1,8 +1,9 @@
+import { createLazyFileRoute } from '@tanstack/react-router'
 import { getRouteApi, useSearch } from '@tanstack/react-router'
 
 const routeApi = getRouteApi('/(group)/lazyinside')
 
-export const Route = createLazyFileRoute({
+export const Route = createLazyFileRoute('/(group)/lazyinside')({
   component: () => {
     const searchViaHook = useSearch({ from: '/(group)/lazyinside' })
     const searchViaRouteHook = Route.useSearch()

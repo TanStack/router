@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
 
@@ -119,69 +118,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRoute
     }
   }
-}
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/(tests)/lazy-page' {
-  const createFileRoute: CreateFileRoute<
-    '/(tests)/lazy-page',
-    FileRoutesByPath['/(tests)/lazy-page']['parentRoute'],
-    FileRoutesByPath['/(tests)/lazy-page']['id'],
-    FileRoutesByPath['/(tests)/lazy-page']['path'],
-    FileRoutesByPath['/(tests)/lazy-page']['fullPath']
-  >
-}
-declare module './routes/(tests)/lazy-page.lazy' {
-  const createLazyFileRoute: CreateLazyFileRoute<
-    FileRoutesByPath['/(tests)/lazy-page']['preLoaderRoute']
-  >
-}
-declare module './routes/(tests)/lazy-with-loader-page' {
-  const createFileRoute: CreateFileRoute<
-    '/(tests)/lazy-with-loader-page',
-    FileRoutesByPath['/(tests)/lazy-with-loader-page']['parentRoute'],
-    FileRoutesByPath['/(tests)/lazy-with-loader-page']['id'],
-    FileRoutesByPath['/(tests)/lazy-with-loader-page']['path'],
-    FileRoutesByPath['/(tests)/lazy-with-loader-page']['fullPath']
-  >
-}
-declare module './routes/(tests)/lazy-with-loader-page.lazy' {
-  const createLazyFileRoute: CreateLazyFileRoute<
-    FileRoutesByPath['/(tests)/lazy-with-loader-page']['preLoaderRoute']
-  >
-}
-declare module './routes/(tests)/normal-page' {
-  const createFileRoute: CreateFileRoute<
-    '/(tests)/normal-page',
-    FileRoutesByPath['/(tests)/normal-page']['parentRoute'],
-    FileRoutesByPath['/(tests)/normal-page']['id'],
-    FileRoutesByPath['/(tests)/normal-page']['path'],
-    FileRoutesByPath['/(tests)/normal-page']['fullPath']
-  >
-}
-declare module './routes/(tests)/page-with-search' {
-  const createFileRoute: CreateFileRoute<
-    '/(tests)/page-with-search',
-    FileRoutesByPath['/(tests)/page-with-search']['parentRoute'],
-    FileRoutesByPath['/(tests)/page-with-search']['id'],
-    FileRoutesByPath['/(tests)/page-with-search']['path'],
-    FileRoutesByPath['/(tests)/page-with-search']['fullPath']
-  >
-}
-declare module './routes/(tests)/virtual-page.lazy' {
-  const createLazyFileRoute: CreateLazyFileRoute<
-    FileRoutesByPath['/(tests)/virtual-page']['preLoaderRoute']
-  >
 }
 
 // Create and export the route tree

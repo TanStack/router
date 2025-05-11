@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -8,7 +9,7 @@ import {
   useUpdateInvoiceMutation,
 } from '../utils/queryOptions'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/invoices/$invoiceId')({
   params: {
     parse: (params) => ({
       invoiceId: z.number().int().parse(Number(params.invoiceId)),

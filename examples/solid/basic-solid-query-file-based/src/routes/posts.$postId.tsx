@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import { ErrorComponent, useRouter } from '@tanstack/solid-router'
 import { useQuery } from '@tanstack/solid-query'
 import { createEffect, createMemo } from 'solid-js'
@@ -31,7 +32,7 @@ export function PostErrorComponent({ error, reset }: ErrorComponentProps) {
   )
 }
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts/$postId')({
   loader: ({ context: { queryClient }, params: { postId } }) => {
     return queryClient.ensureQueryData(postQueryOptions(postId))
   },

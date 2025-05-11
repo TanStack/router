@@ -1,9 +1,10 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
 
 import { z } from 'zod'
 import { fetchUserById } from '../utils/mockTodos'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/users/user')({
   validateSearch: z.object({
     userId: z.number(),
   }),
