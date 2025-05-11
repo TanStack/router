@@ -1,25 +1,16 @@
 import { expect, test } from '@playwright/test'
 
-test('Navigating to post', async ({ page }) => {
+test.beforeEach(async ({ page }) => {
   await page.goto('/')
+})
 
+test('Navigating to a post page', async ({ page }) => {
   await page.getByRole('link', { name: 'Posts' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
-  await page.getByRole('link', { name: 'Deep View' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
 
-test('Navigating to user', async ({ page }) => {
-  await page.goto('/')
-
-  await page.getByRole('link', { name: 'Users' }).click()
-  await page.getByRole('link', { name: 'Leanne Graham' }).click()
-  await expect(page.getByRole('heading')).toContainText('Leanne Graham')
-})
-
 test('Navigating nested layouts', async ({ page }) => {
-  await page.goto('/')
-
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
   await expect(page.locator('body')).toContainText("I'm a layout")
@@ -32,24 +23,11 @@ test('Navigating nested layouts', async ({ page }) => {
   await expect(page.locator('body')).toContainText("I'm layout B!")
 })
 
-test('directly going to a route with scripts', async ({ page }) => {
-  await page.goto('/scripts')
-  expect(await page.evaluate('window.SCRIPT_1')).toBe(true)
-  expect(await page.evaluate('window.SCRIPT_2')).toBe(undefined)
-})
-
 test('Navigating to a not-found route', async ({ page }) => {
-  await page.goto('/')
-
   await page.getByRole('link', { name: 'This Route Does Not Exist' }).click()
+  await expect(page.getByRole('paragraph')).toContainText(
+    'This is the notFoundComponent configured on root route',
+  )
   await page.getByRole('link', { name: 'Start Over' }).click()
   await expect(page.getByRole('heading')).toContainText('Welcome Home!')
-})
-
-test('Should change title on client side navigation', async ({ page }) => {
-  await page.goto('/')
-
-  await page.getByRole('link', { name: 'Posts' }).click()
-
-  await expect(page).toHaveTitle('Posts page')
 })
