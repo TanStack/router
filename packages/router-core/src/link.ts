@@ -42,65 +42,62 @@ export type AnyParsePathParamsResult = ParsePathParamsResult<
   string
 >
 
-export type ParsePathParamsOptionalCurly<
-  TLeft extends string,
-  TRight extends string,
-  TParsedLeft extends AnyParsePathParamsResult = ParsePathParams<TLeft>,
-  TParsedRight extends AnyParsePathParamsResult = ParsePathParams<TRight>,
-> = ParsePathParamsResult<
-  TParsedLeft['required'],
-  TParsedLeft['optional'] | TParsedRight['required'],
-  ParsePathParams<TRight>['rest']
->
-
-export type ParsePathParamsCurly<T extends string> =
+export type ParsePathParamsBoundaryStart<T extends string> =
   T extends `${infer TLeft}{-${infer TRight}`
-    ? ParsePathParamsOptionalCurly<TLeft, TRight>
-    : never
+    ? ParsePathParamsResult<
+        ParsePathParams<TLeft>['required'],
+        | ParsePathParams<TLeft>['optional']
+        | ParsePathParams<TRight>['required']
+        | ParsePathParams<TRight>['optional'],
+        ParsePathParams<TRight>['rest']
+      >
+    : T extends `${infer TLeft}{${infer TRight}`
+      ? ParsePathParamsResult<
+          | ParsePathParams<TLeft>['required']
+          | ParsePathParams<TRight>['required'],
+          | ParsePathParams<TLeft>['optional']
+          | ParsePathParams<TRight>['optional'],
+          ParsePathParams<TRight>['rest']
+        >
+      : never
 
 export type ParsePathParamsSymbol<T extends string> =
-  
+  T extends `${string}$${infer TRight}`
+    ? TRight extends `${infer TParam}/${infer TRest}`
+      ? TParam extends ''
+        ? ParsePathParamsResult<
+            ParsePathParams<TRest>['required'],
+            '_splat' | ParsePathParams<TRest>['optional'],
+            ParsePathParams<TRest>['rest']
+          >
+        : ParsePathParamsResult<
+            TParam | ParsePathParams<TRest>['required'],
+            ParsePathParams<TRest>['optional'],
+            ParsePathParams<TRest>['rest']
+          >
+      : TRight extends ''
+        ? ParsePathParamsResult<never, '_splat', never>
+        : ParsePathParamsResult<TRight, never, never>
+    : never
 
-export type ParsePathParams<T extends string> = T extends `${string}{${string}`
-  ? ParsePathParamsBoundary<T>
-  : T extends `${string}$${string}` ?
+export type ParsePathParamsBoundaryEnd<T extends string> =
+  T extends `${infer TLeft}}${infer TRight}`
+    ? ParsePathParamsResult<
+        | ParsePathParams<TLeft>['required']
+        | ParsePathParams<TRight>['required'],
+        | ParsePathParams<TLeft>['optional']
+        | ParsePathParams<TRight>['optional'],
+        ParsePathParams<TRight>['rest']
+      >
+    : never
 
-
-export type IgnoreSplatParam<T> = T extends '' ? never : T
-
-export type ParseRequiredPathParams<
-  T extends string,
-  TAcc = never,
-> = T extends `${infer TLeft}$${infer TRight}`
-  ? TLeft extends `${string}{-`
-    ? ParseRequiredPathParams<TRight, TAcc>
-    : TLeft extends `${string}{`
-      ? TRight extends `${infer TParam}}${infer TRest}`
-        ? ParseRequiredPathParams<TRest, TAcc | IgnoreSplatParam<TParam>>
-        : never
-      : TRight extends `${infer TParam}/${infer TRest}`
-        ? ParseRequiredPathParams<TRest, TAcc | IgnoreSplatParam<TParam>>
-        : TAcc | IgnoreSplatParam<TRight>
-  : TAcc
-
-export type ParseOptionalPathParams<
-  T extends string,
-  TAcc = never,
-> = T extends `${infer TLeft}$${infer TRight}`
-  ? TLeft extends `${string}{-`
-    ? TRight extends `${infer TParam}}${infer TRest}`
-      ? ParseOptionalPathParams<TRest, TAcc | TParam>
+export type ParsePathParams<T extends string> = T extends `${string}}${string}`
+  ? ParsePathParamsBoundaryEnd<T>
+  : T extends `${string}{${string}`
+    ? ParsePathParamsBoundaryStart<T>
+    : T extends `${string}$${string}`
+      ? ParsePathParamsSymbol<T>
       : never
-    : TLeft extends `${string}{`
-      ? TRight extends `}${string}`
-        ? ParseOptionalPathParams<TRight, TAcc | '_splat'>
-        : ParseOptionalPathParams<TRight, TAcc>
-      : TRight extends `/${infer TRest}`
-        ? ParseOptionalPathParams<TRest, TAcc | '_splat'>
-        : TRight extends ''
-          ? TAcc | '_splat'
-          : ParseOptionalPathParams<TRight, TAcc>
-  : TAcc
 
 export type AddTrailingSlash<T> = T extends `${string}/` ? T : `${T & string}/`
 

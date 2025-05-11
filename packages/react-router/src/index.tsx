@@ -77,7 +77,6 @@ export type {
   TrimPath,
   TrimPathLeft,
   TrimPathRight,
-  SplatParams,
   StringifyParamsFn,
   ParamsOptions,
   InferAllParams,
