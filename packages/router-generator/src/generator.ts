@@ -310,6 +310,16 @@ export async function generator(config: Config, root: string) {
               `${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}`,
           )
       } else {
+        // Check if the route file has a Route export
+        if (
+          !routeCode
+            .split('\n')
+            .some((line) => line.trim().startsWith('export const Route'))
+        ) {
+          return
+        }
+
+        // Update the existing route file
         replaced = routeCode
           // fix wrong ids
           .replace(
