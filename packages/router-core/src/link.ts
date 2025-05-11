@@ -91,13 +91,31 @@ export type ParsePathParamsBoundaryEnd<T extends string> =
       >
     : never
 
-export type ParsePathParams<T extends string> = T extends `${string}}${string}`
-  ? ParsePathParamsBoundaryEnd<T>
-  : T extends `${string}{${string}`
-    ? ParsePathParamsBoundaryStart<T>
-    : T extends `${string}$${string}`
-      ? ParsePathParamsSymbol<T>
-      : never
+export type ParsePathParamsEscapeStart<T extends string> =
+  T extends `${infer TLeft}[${infer TRight}`
+    ? ParsePathParamsResult<
+        | ParsePathParams<TLeft>['required']
+        | ParsePathParams<TRight>['required'],
+        | ParsePathParams<TLeft>['optional']
+        | ParsePathParams<TRight>['optional'],
+        ParsePathParams<TRight>['rest']
+      >
+    : never
+
+export type ParsePathParamsEscapeEnd<T extends string> =
+  T extends `${string}]${infer TRight}` ? ParsePathParams<TRight> : never
+
+export type ParsePathParams<T extends string> = T extends `${string}[${string}`
+  ? ParsePathParamsEscapeStart<T>
+  : T extends `${string}]${string}`
+    ? ParsePathParamsEscapeEnd<T>
+    : T extends `${string}}${string}`
+      ? ParsePathParamsBoundaryEnd<T>
+      : T extends `${string}{${string}`
+        ? ParsePathParamsBoundaryStart<T>
+        : T extends `${string}$${string}`
+          ? ParsePathParamsSymbol<T>
+          : never
 
 export type AddTrailingSlash<T> = T extends `${string}/` ? T : `${T & string}/`
 

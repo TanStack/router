@@ -1889,3 +1889,38 @@ test('when creating a route with a nested boundary splat, optional param and req
     detailId?: string
   }>()
 })
+
+test('when creating a route with a nested boundary splat, optional param, required param and escaping', () => {
+  const rootRoute = createRootRoute()
+
+  const prefixSuffixRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'docs/$docId/before{$}after/{-detail{$detailId}suffix}[.$test]/file-{$myFile}[.]pdf/escape-param[$postId]',
+  })
+
+  const routeTree = rootRoute.addChildren([prefixSuffixRoute])
+
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(prefixSuffixRoute.useParams<typeof router>()).toEqualTypeOf<{
+    docId: string
+    _splat?: string
+    myFile: string
+    detailId?: string
+  }>()
+})
+
+test('when creating a route with escaped path param', () => {
+  const rootRoute = createRootRoute()
+
+  const prefixSuffixRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '[$postId]',
+  })
+
+  const routeTree = rootRoute.addChildren([prefixSuffixRoute])
+
+  const router = createRouter({ routeTree })
+
+  expectTypeOf(prefixSuffixRoute.useParams<typeof router>()).toEqualTypeOf<{}>()
+})
