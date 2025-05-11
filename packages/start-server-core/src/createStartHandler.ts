@@ -86,6 +86,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
           const serverFnBase = joinPaths([
             '/',
             trimPath(process.env.TSS_SERVER_FN_BASE),
+            '/',
           ])
           if (href.startsWith(serverFnBase)) {
             return await handleServerAction({ request })
