@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
@@ -105,63 +103,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof PostsRouteRouteImport
     }
   }
-}
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/posts.route' {
-  const createFileRoute: CreateFileRoute<
-    '/posts',
-    FileRoutesByPath['/posts']['parentRoute'],
-    FileRoutesByPath['/posts']['id'],
-    FileRoutesByPath['/posts']['path'],
-    FileRoutesByPath['/posts']['fullPath']
-  >
-}
-declare module './routes/explore' {
-  const createFileRoute: CreateFileRoute<
-    '/explore',
-    FileRoutesByPath['/explore']['parentRoute'],
-    FileRoutesByPath['/explore']['id'],
-    FileRoutesByPath['/explore']['path'],
-    FileRoutesByPath['/explore']['fullPath']
-  >
-}
-declare module './routes/how-it-works' {
-  const createFileRoute: CreateFileRoute<
-    '/how-it-works',
-    FileRoutesByPath['/how-it-works']['parentRoute'],
-    FileRoutesByPath['/how-it-works']['id'],
-    FileRoutesByPath['/how-it-works']['path'],
-    FileRoutesByPath['/how-it-works']['fullPath']
-  >
-}
-declare module './routes/posts.$postId' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/$postId',
-    FileRoutesByPath['/posts/$postId']['parentRoute'],
-    FileRoutesByPath['/posts/$postId']['id'],
-    FileRoutesByPath['/posts/$postId']['path'],
-    FileRoutesByPath['/posts/$postId']['fullPath']
-  >
-}
-declare module './routes/posts.index' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/',
-    FileRoutesByPath['/posts/']['parentRoute'],
-    FileRoutesByPath['/posts/']['id'],
-    FileRoutesByPath['/posts/']['path'],
-    FileRoutesByPath['/posts/']['fullPath']
-  >
 }
 
 // Create and export the route tree

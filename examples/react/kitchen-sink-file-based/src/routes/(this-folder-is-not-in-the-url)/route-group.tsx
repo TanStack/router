@@ -1,6 +1,7 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/(this-folder-is-not-in-the-url)/route-group')({
   component: RouteGroupExample,
 })
 

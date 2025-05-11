@@ -1,9 +1,10 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { Link, Outlet } from '@tanstack/react-router'
 
 import { fetchInvoices } from '../posts'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/_auth/invoices')({
   loader: async () => ({
     invoices: await fetchInvoices(),
   }),

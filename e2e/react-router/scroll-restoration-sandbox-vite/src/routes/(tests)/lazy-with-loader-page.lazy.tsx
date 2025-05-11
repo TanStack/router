@@ -1,6 +1,7 @@
+import { createLazyFileRoute } from '@tanstack/react-router'
 import { ScrollBlock } from '../-components/scroll-block'
 
-export const Route = createLazyFileRoute({
+export const Route = createLazyFileRoute('/(tests)/lazy-with-loader-page')({
   component: Component,
 })
 

@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { InvoiceFields } from '../components/InvoiceFields'
@@ -6,7 +7,7 @@ import { useMutation } from '../hooks/useMutation'
 import { postInvoice } from '../utils/mockTodos'
 import type { Invoice } from '../utils/mockTodos'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/invoices/')({
   component: InvoicesIndexComponent,
 })
 

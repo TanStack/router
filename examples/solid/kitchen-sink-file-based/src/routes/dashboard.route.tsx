@@ -1,7 +1,8 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
 import { Link, Outlet, linkOptions } from '@tanstack/solid-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard')({
   component: DashboardComponent,
   loader: () => ({
     crumb: 'Dashboard',

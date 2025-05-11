@@ -1,6 +1,7 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/_auth/profile')({
   component: ProfileComponent,
 })
 

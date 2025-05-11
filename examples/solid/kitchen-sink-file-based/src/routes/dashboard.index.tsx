@@ -1,8 +1,9 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
 
 import { fetchInvoices } from '../utils/mockTodos'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/dashboard/')({
   loader: () => fetchInvoices(),
   component: DashboardIndexComponent,
 })

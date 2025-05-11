@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
@@ -131,81 +129,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof LayoutLayout2RouteImport
     }
   }
-}
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/_layout' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout',
-    FileRoutesByPath['/_layout']['parentRoute'],
-    FileRoutesByPath['/_layout']['id'],
-    FileRoutesByPath['/_layout']['path'],
-    FileRoutesByPath['/_layout']['fullPath']
-  >
-}
-declare module './routes/posts' {
-  const createFileRoute: CreateFileRoute<
-    '/posts',
-    FileRoutesByPath['/posts']['parentRoute'],
-    FileRoutesByPath['/posts']['id'],
-    FileRoutesByPath['/posts']['path'],
-    FileRoutesByPath['/posts']['fullPath']
-  >
-}
-declare module './routes/_layout/_layout-2' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/_layout-2',
-    FileRoutesByPath['/_layout/_layout-2']['parentRoute'],
-    FileRoutesByPath['/_layout/_layout-2']['id'],
-    FileRoutesByPath['/_layout/_layout-2']['path'],
-    FileRoutesByPath['/_layout/_layout-2']['fullPath']
-  >
-}
-declare module './routes/posts.$postId' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/$postId',
-    FileRoutesByPath['/posts/$postId']['parentRoute'],
-    FileRoutesByPath['/posts/$postId']['id'],
-    FileRoutesByPath['/posts/$postId']['path'],
-    FileRoutesByPath['/posts/$postId']['fullPath']
-  >
-}
-declare module './routes/posts.index' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/',
-    FileRoutesByPath['/posts/']['parentRoute'],
-    FileRoutesByPath['/posts/']['id'],
-    FileRoutesByPath['/posts/']['path'],
-    FileRoutesByPath['/posts/']['fullPath']
-  >
-}
-declare module './routes/_layout/_layout-2/layout-a' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/_layout-2/layout-a',
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['parentRoute'],
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['id'],
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['path'],
-    FileRoutesByPath['/_layout/_layout-2/layout-a']['fullPath']
-  >
-}
-declare module './routes/_layout/_layout-2/layout-b' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/_layout-2/layout-b',
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['parentRoute'],
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
-    FileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath']
-  >
 }
 
 // Create and export the route tree

@@ -1,6 +1,7 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import { Link } from '@tanstack/solid-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/redirect/$target/')({
   component: () => {
     const preload = Route.useSearch({ select: (s) => s.preload })
     return (

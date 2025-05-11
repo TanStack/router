@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
@@ -118,72 +116,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof AuthInvoicesRouteImport
     }
   }
-}
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/_auth' {
-  const createFileRoute: CreateFileRoute<
-    '/_auth',
-    FileRoutesByPath['/_auth']['parentRoute'],
-    FileRoutesByPath['/_auth']['id'],
-    FileRoutesByPath['/_auth']['path'],
-    FileRoutesByPath['/_auth']['fullPath']
-  >
-}
-declare module './routes/login' {
-  const createFileRoute: CreateFileRoute<
-    '/login',
-    FileRoutesByPath['/login']['parentRoute'],
-    FileRoutesByPath['/login']['id'],
-    FileRoutesByPath['/login']['path'],
-    FileRoutesByPath['/login']['fullPath']
-  >
-}
-declare module './routes/_auth.dashboard' {
-  const createFileRoute: CreateFileRoute<
-    '/_auth/dashboard',
-    FileRoutesByPath['/_auth/dashboard']['parentRoute'],
-    FileRoutesByPath['/_auth/dashboard']['id'],
-    FileRoutesByPath['/_auth/dashboard']['path'],
-    FileRoutesByPath['/_auth/dashboard']['fullPath']
-  >
-}
-declare module './routes/_auth.invoices' {
-  const createFileRoute: CreateFileRoute<
-    '/_auth/invoices',
-    FileRoutesByPath['/_auth/invoices']['parentRoute'],
-    FileRoutesByPath['/_auth/invoices']['id'],
-    FileRoutesByPath['/_auth/invoices']['path'],
-    FileRoutesByPath['/_auth/invoices']['fullPath']
-  >
-}
-declare module './routes/_auth.invoices.$invoiceId' {
-  const createFileRoute: CreateFileRoute<
-    '/_auth/invoices/$invoiceId',
-    FileRoutesByPath['/_auth/invoices/$invoiceId']['parentRoute'],
-    FileRoutesByPath['/_auth/invoices/$invoiceId']['id'],
-    FileRoutesByPath['/_auth/invoices/$invoiceId']['path'],
-    FileRoutesByPath['/_auth/invoices/$invoiceId']['fullPath']
-  >
-}
-declare module './routes/_auth.invoices.index' {
-  const createFileRoute: CreateFileRoute<
-    '/_auth/invoices/',
-    FileRoutesByPath['/_auth/invoices/']['parentRoute'],
-    FileRoutesByPath['/_auth/invoices/']['id'],
-    FileRoutesByPath['/_auth/invoices/']['path'],
-    FileRoutesByPath['/_auth/invoices/']['fullPath']
-  >
 }
 
 // Create and export the route tree

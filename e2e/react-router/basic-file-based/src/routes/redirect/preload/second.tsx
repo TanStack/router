@@ -1,6 +1,7 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { redirect } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/redirect/preload/second')({
   loader: async () => {
     await new Promise((r) => setTimeout(r, 1000))
     throw redirect({ from: Route.fullPath, to: '../third' })
