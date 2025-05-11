@@ -244,7 +244,9 @@ async function generator(config: Config, root: string) {
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
     )
 
-    const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
+    const routeCode = node.fullPath
+      ? fs.readFileSync(node.fullPath, 'utf-8')
+      : ''
 
     // Ensure the boilerplate for the route exists, which can be skipped for virtual parent routes and virtual routes
     if (!node.isVirtualParentRoute && !node.isVirtual) {
