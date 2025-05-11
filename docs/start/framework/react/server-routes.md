@@ -110,7 +110,7 @@ export default createStartHandler({
 })(defaultStreamHandler)
 ```
 
-The start handler is responsible for matching an incoming request to a server route and executing the appropriate middleware, validators and handler.
+The start handler is responsible for matching an incoming request to a server route and executing the appropriate middleware and handler.
 
 Remember, if you need to customize the server handler, you can do so by creating a custom handler and then passing the event to the start handler:
 
@@ -134,7 +134,6 @@ Server routes are created by exporting a `ServerRoute` from a route file. The `S
 
 - Add route-level middleware
 - Define handlers for each HTTP method
-- Add middleware and validators to specific HTTP methods
 
 ```ts
 // routes/hello.ts
@@ -167,17 +166,13 @@ export const ServerRoute = createServerFileRoute().methods({
 
 ### Providing a handler function via the method builder object
 
-For more complex use cases, you can provide a handler function via the method builder object. This allows you to:
-
-- Add middleware to the method
-- Add a validator to the method
+For more complex use cases, you can provide a handler function via the method builder object. This allows you to add middleware to the method.
 
 ```tsx
 // routes/hello.ts
 export const ServerRoute = createServerFileRoute().methods((api) => ({
   GET: api
     .middleware([loggerMiddleware])
-    .validator(z.object({ name: z.string() }))
     .handler(async ({ request }) => {
       return new Response('Hello, World! from ' + request.url)
     }),
