@@ -684,7 +684,12 @@ function buildStartDeclarationFile({
 }: {
   serverRoutesRelativePath: string
 }) {
-  return [`import '${serverRoutesRelativePath}'`].join('\n') + '\n'
+  return (
+    [
+      '/// <reference types="vite/client" />',
+      `import '${serverRoutesRelativePath}'`,
+    ].join('\n') + '\n'
+  )
 }
 
 function removeGroups(s: string) {
