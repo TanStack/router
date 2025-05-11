@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
 
-export const Route = createFileRoute('/(this-folder-is-not-in-the-url)/route-group')({
+export const Route = createFileRoute(
+  '/(this-folder-is-not-in-the-url)/route-group',
+)({
   component: RouteGroupExample,
 })
 
