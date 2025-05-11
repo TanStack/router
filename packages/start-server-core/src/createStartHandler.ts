@@ -82,9 +82,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
           // First, let's attempt to handle server functions
           // Add trailing slash to sanitise user defined TSS_SERVER_FN_BASE
-          const serverFnBase = process.env.TSS_SERVER_FN_BASE.startsWith("/")
-            ? process.env.TSS_SERVER_FN_BASE
-            : "/" + process.env.TSS_SERVER_FN_BASE;
+          const serverFnBase = process.env.TSS_SERVER_FN_BASE.startsWith('/') ? process.env.TSS_SERVER_FN_BASE : '/' + process.env.TSS_SERVER_FN_BASE
           if (href.startsWith(serverFnBase)) {
             return await handleServerAction({ request })
           }
@@ -206,15 +204,15 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
       // Add Access-Control-Expose-Headers
       // With HTTPs the response/header objects are immutable, therefore we must clone them
-      const body = response.status === 204 ? null : (await response.clone().blob());
-      const headers = new Headers(response.headers);
-      headers.append("Access-Control-Expose-Headers", tsrRedirectHeaderKey);
+      const body = response.status === 204 ? null : (await response.clone().blob())
+      const headers = new Headers(response.headers)
+      headers.append('Access-Control-Expose-Headers', tsrRedirectHeaderKey)
 
       return new Response(body, {
         status: response.status,
         statusText: response.statusText,
         headers,
-      });
+      })
     })
   }
 }
