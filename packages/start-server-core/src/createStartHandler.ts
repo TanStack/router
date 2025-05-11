@@ -1,4 +1,3 @@
-import path from 'node:path'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   flattenMiddlewares,
