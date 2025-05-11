@@ -684,10 +684,11 @@ function buildStartDeclarationFile({
 }: {
   serverRoutesRelativePath: string
 }) {
+  const serverRoutesPath = replaceBackslash(serverRoutesRelativePath)
   return (
     [
       '/// <reference types="vite/client" />',
-      `import '${serverRoutesRelativePath}'`,
+      `import '${serverRoutesPath}'`,
     ].join('\n') + '\n'
   )
 }
