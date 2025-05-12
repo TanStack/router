@@ -7,6 +7,7 @@ import {
 import {
   getMatchedRoutes,
   isRedirect,
+  isResolvedRedirect,
   joinPaths,
   processRouteTree,
   rootRouteId,
@@ -164,11 +165,21 @@ export function createStartHandler<TRouter extends AnyRouter>({
         }
       })()
 
-      if (isResponse(response)) {
-        return response
-      }
-
       if (isRedirect(response)) {
+        if (isResolvedRedirect(response)) {
+          if (request.headers.get('x-tsr-redirect') === 'manual') {
+            return json(
+              {
+                ...response.options,
+                isSerializedRedirect: true,
+              },
+              {
+                headers: response.headers,
+              },
+            )
+          }
+          return response
+        }
         if (
           response.options.to &&
           typeof response.options.to === 'string' &&
@@ -203,7 +214,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
               isSerializedRedirect: true,
             },
             {
-              headers: redirect.headers,
+              headers: response.headers,
             },
           )
         }
