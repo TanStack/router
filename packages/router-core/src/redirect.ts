@@ -1,8 +1,6 @@
 import type { NavigateOptions } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
 
-export const tsrRedirectHeaderKey = 'X-Tanstack-Router-Redirect-Options'
-
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
 /**
