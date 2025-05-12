@@ -60,17 +60,16 @@ To install them, run:
 npm i @tanstack/solid-start @tanstack/solid-router vite
 ```
 
-You'll also need Solid and the Vite Solid plugin, so install them too:
+You'll also need Solid:
 
 ```shell
 npm i solid-js
-npm i -D vite-plugin-solid vite-tsconfig-paths
 ```
 
 and some TypeScript:
 
 ```shell
-npm i -D typescript
+npm i -D typescript vite-tsconfig-paths
 ```
 
 ## Update Configuration Files
