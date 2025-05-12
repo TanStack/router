@@ -377,7 +377,6 @@ export {
   redirect,
   isRedirect,
   isResolvedRedirect,
-  tsrRedirectHeaderKey,
   parseRedirect,
 } from './redirect'
 

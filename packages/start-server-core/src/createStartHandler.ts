@@ -12,7 +12,6 @@ import {
   processRouteTree,
   rootRouteId,
   trimPath,
-  tsrRedirectHeaderKey,
 } from '@tanstack/router-core'
 import { getResponseHeaders, requestHandler } from './h3'
 import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
@@ -222,18 +221,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
         return redirect
       }
 
-      // Add Access-Control-Expose-Headers
-      // With HTTPs the response/header objects are immutable, therefore we must clone them
-      const body =
-        response.status === 204 ? null : await response.clone().blob()
-      const headers = new Headers(response.headers)
-      headers.append('Access-Control-Expose-Headers', tsrRedirectHeaderKey)
-
-      return new Response(body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      })
+      return response
     })
   }
 }
