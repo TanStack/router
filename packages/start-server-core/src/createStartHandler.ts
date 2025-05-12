@@ -164,6 +164,10 @@ export function createStartHandler<TRouter extends AnyRouter>({
         }
       })()
 
+      if (isResponse(response)) {
+        return response
+      }
+
       if (isRedirect(response)) {
         if (
           response.options.to &&
@@ -355,5 +359,10 @@ function handleCtxResult(result: TODO) {
 }
 
 function isSpecialResponse(err: TODO) {
-  return err instanceof Response || isRedirect(err)
+  return isResponse(err) || isRedirect(err)
+}
+
+
+function isResponse(response: Response): response is Response {
+  return response instanceof Response
 }
