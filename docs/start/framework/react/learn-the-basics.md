@@ -82,13 +82,19 @@ Getting our html to the client is only half the battle. Once there, we need to h
 
 ```tsx
 // app/client.tsx
-import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/react-start'
+import { StrictMode } from 'react'
+import { hydrateRoot } from 'react-dom/client'
 import { createRouter } from './router'
 
 const router = createRouter()
 
-hydrateRoot(document, <StartClient router={router} />)
+hydrateRoot(
+  document,
+  <StrictMode>
+    <StartClient router={router} />
+  </StrictMode>,
+)
 ```
 
 This enables us to kick off client-side routing once the user's initial server request has fulfilled.
