@@ -57,12 +57,11 @@ export function TanStackStartVitePlugin(
 
         if (id === '/~start/server-entry.tsx') {
           return `
-import { toWebRequest, defineEventHandler, __setGlobalOrigin, __getAbsoluteUrl } from '@tanstack/react-start/server';
+import { toWebRequest, defineEventHandler } from '@tanstack/react-start/server';
 import serverEntry from '${options.serverEntryPath}';
 
 export default defineEventHandler(function(event) {
   const request = toWebRequest(event);
-  __setGlobalOrigin(__getAbsoluteUrl(request));
   return serverEntry({ request });
 })
 `
