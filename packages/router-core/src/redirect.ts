@@ -87,7 +87,9 @@ export function isRedirect(obj: any): obj is AnyRedirect {
   return obj instanceof Response && !!(obj as any).options
 }
 
-export function isResolvedRedirect(obj: any): obj is AnyRedirect {
+export function isResolvedRedirect(
+  obj: any,
+): obj is AnyRedirect & { options: { href: string } } {
   return isRedirect(obj) && !!obj.options.href
 }
 
