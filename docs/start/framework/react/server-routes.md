@@ -7,14 +7,14 @@ title: Server Routes
 
 Server routes are a powerful feature of TanStack Start that allow you to create server-side endpoints in your application and are useful for handling raw HTTP requests, form submissions, user authentication, and much more.
 
-Server routes can be defined in your `./app/routes` directory of your project **right alongside your TanStack Router routes** and are automatically handled by the TanStack Start server.
+Server routes can be defined in your `./src/routes` directory of your project **right alongside your TanStack Router routes** and are automatically handled by the TanStack Start server.
 
 Here's what a simple server route looks like:
 
 ```ts
 // routes/hello.ts
 
-export const ServerRoute = createServerRoute({
+export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ request }) => {
     return new Response('Hello, World!')
   },
@@ -26,9 +26,9 @@ export const ServerRoute = createServerRoute({
 Because server routes can be defined in the same directory as your app routes, you can even use the same file for both!
 
 ```tsx
-// routes/hello.ts
+// routes/hello.tsx
 
-export const ServerRoute = createServerRoute().methods({
+export const ServerRoute = createServerFileRoute().methods({
   POST: async ({ request }) => {
     const body = await request.json()
     return new Response(JSON.stringify({ message: `Hello, ${body.name}!` }))
@@ -83,7 +83,7 @@ Each route can only have a single handler file associated with it. So, if you ha
 
 ## Escaped Matching
 
-Just as with normal routes, server routes can match on escaped characters. For example, a file named `routes/users[.]ts` will create an API route at `/api/users[.]`.
+Just as with normal routes, server routes can match on escaped characters. For example, a file named `routes/users[.]json.ts` will create an API route at `/api/users[.]json`.
 
 ## Pathless Layout Routes and Break-out Routes
 
