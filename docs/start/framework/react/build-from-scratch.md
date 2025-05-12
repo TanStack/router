@@ -55,17 +55,16 @@ To install them, run:
 npm i @tanstack/react-start @tanstack/react-router vite
 ```
 
-You'll also need React and the Vite React plugin, so install them too:
+You'll also need React::
 
 ```shell
 npm i react react-dom
-npm i -D @vitejs/plugin-react vite-tsconfig-paths
 ```
 
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/react @types/react-dom
+npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths
 ```
 
 ## Update Configuration Files
