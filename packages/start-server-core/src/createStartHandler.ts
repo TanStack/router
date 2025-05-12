@@ -362,7 +362,6 @@ function isSpecialResponse(err: TODO) {
   return isResponse(err) || isRedirect(err)
 }
 
-
 function isResponse(response: Response): response is Response {
   return response instanceof Response
 }
