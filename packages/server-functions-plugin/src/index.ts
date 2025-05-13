@@ -190,7 +190,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
   }
 }
 
-export function TanStackServerFnPluginEnv(opts: {
+export interface TanStackServerFnPluginEnvOpts {
   manifestVirtualImportId: string
   client: {
     envName?: string
@@ -202,7 +202,9 @@ export function TanStackServerFnPluginEnv(opts: {
     getRuntimeCode: () => string
     replacer: ReplacerFn
   }
-}): Array<Plugin> {
+}
+
+export function TanStackServerFnPluginEnv(opts: TanStackServerFnPluginEnvOpts): Array<Plugin> {
   opts = {
     ...opts,
     client: {
@@ -259,11 +261,13 @@ export function TanStackServerFnPluginEnv(opts: {
           envLabel: 'Client',
           getRuntimeCode: opts.client.getRuntimeCode,
           replacer: opts.client.replacer,
+          envName: opts.client.envName,
         },
         server: {
           envLabel: 'Server',
           getRuntimeCode: opts.server.getRuntimeCode,
           replacer: opts.server.replacer,
+          envName: opts.server.envName,
         },
       },
     }),
