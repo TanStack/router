@@ -121,7 +121,7 @@ export function createTanStackStartOptionsSchema(
         })
         .and(pagePrerenderOptionsSchema.optional())
         .optional(),
-      shell: shellSchema.optional().default({}),
+      shell: shellSchema.optional(),
     })
     .optional()
     .default({})
