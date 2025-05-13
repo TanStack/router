@@ -26,6 +26,7 @@ export type ServerFnPluginOpts = {
   client: ServerFnPluginEnvOpts
   ssr: ServerFnPluginEnvOpts
   server: ServerFnPluginEnvOpts
+  importer?: (fn: DirectiveFn) => Promise<any>
 }
 
 const manifestFilename =
@@ -62,7 +63,8 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
             // into the manifest because it's a dynamic import. Instead, as you'll
             // see below, we augment the manifest output with a code-generated importer
             // that looks exactly like this.
-            importer: () => import(fn.extractedFilename),
+            importer: () =>
+              opts.importer ? opts.importer(fn) : import(fn.extractedFilename),
           },
         ]),
       ),
@@ -202,6 +204,7 @@ export interface TanStackServerFnPluginEnvOpts {
     getRuntimeCode: () => string
     replacer: ReplacerFn
   }
+  importer: (fn: DirectiveFn) => Promise<any>
 }
 
 export function TanStackServerFnPluginEnv(
@@ -240,7 +243,8 @@ export function TanStackServerFnPluginEnv(
             // into the manifest because it's a dynamic import. Instead, as you'll
             // see below, we augment the manifest output with a code-generated importer
             // that looks exactly like this.
-            importer: () => import(fn.extractedFilename),
+            importer: () =>
+              opts.importer ? opts.importer(fn) : import(fn.extractedFilename),
           },
         ]),
       ),
