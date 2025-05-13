@@ -30,7 +30,7 @@ export function TanStackStartVitePlugin(
       enableRouteGeneration: true,
       autoCodeSplitting: true,
     }),
-    TanStackStartVitePluginCore({framework:'solid'}, options),
+    TanStackStartVitePluginCore({ framework: 'solid' }, options),
     {
       name: 'tanstack-solid-start:resolve-entries',
       resolveId(id) {

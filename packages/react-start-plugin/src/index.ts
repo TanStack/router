@@ -30,7 +30,7 @@ export function TanStackStartVitePlugin(
       enableRouteGeneration: true,
       autoCodeSplitting: true,
     }),
-    TanStackStartVitePluginCore({framework:'react'}, options),
+    TanStackStartVitePluginCore({ framework: 'react' }, options),
     {
       name: 'tanstack-react-start:resolve-entries',
       resolveId(id) {

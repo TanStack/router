@@ -204,7 +204,9 @@ export interface TanStackServerFnPluginEnvOpts {
   }
 }
 
-export function TanStackServerFnPluginEnv(opts: TanStackServerFnPluginEnvOpts): Array<Plugin> {
+export function TanStackServerFnPluginEnv(
+  opts: TanStackServerFnPluginEnvOpts,
+): Array<Plugin> {
   opts = {
     ...opts,
     client: {
