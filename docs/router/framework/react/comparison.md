@@ -10,8 +10,8 @@ Before you commit to a new tool, it's always nice to know how it stacks up again
 Feature/Capability Key:
 
 - ✅ 1st-class, built-in, and ready to use with no added configuration or code
-- 🔵 Supported via addon package
 - 🟡 Partial Support (on a scale of 5)
+- 🟠 Supported via addon/community package
 - 🔶 Possible, but requires custom code/implementation/casting
 - 🛑 Not officially supported
 
@@ -39,9 +39,9 @@ Feature/Capability Key:
 | Ranked Routes                                  | ✅                                               | ✅                                                    | ✅                                                    |
 | Active Link Customization                      | ✅                                               | ✅                                                    | ✅                                                    |
 | Optimistic UI                                  | ✅                                               | ✅                                                    | 🔶                                                    |
-| Typesafe Absolute + Relative Navigation        | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Typesafe Absolute + Relative Navigation        | ✅                                               | 🟡 (1/5 via `buildHref` util)                         | 🟠 (IDE plugin)                                       |
 | Route Mount/Transition/Unmount Events          | ✅                                               | 🛑                                                    | 🛑                                                    |
-| Devtools                                       | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Devtools                                       | ✅                                               | 🟠                                                    | 🛑                                                    |
 | Basic Search Params                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Search Param Hooks                             | ✅                                               | ✅                                                    | ✅                                                    |
 | `<Link/>`/`useNavigate` Search Param API       | ✅                                               | 🟡 (search-string only via the `to`/`search` options) | 🟡 (search-string only via the `to`/`search` options) |
@@ -54,7 +54,7 @@ Feature/Capability Key:
 | Suspense Route Elements                        | ✅                                               | ✅                                                    | ✅                                                    |
 | Route Error Elements                           | ✅                                               | ✅                                                    | ✅                                                    |
 | Route Pending Elements                         | ✅                                               | ✅                                                    | ✅                                                    |
-| `<Block>`/`useBlocker`                         | ✅                                               | 🔶                                                    | ❓                                                    |
+| `<Block>`/`useBlocker`                         | ✅                                               | 🔶 (no hard reloads or cross-origin navigation)       | 🛑                                                    |
 | Deferred Primitives                            | ✅                                               | ✅                                                    | ✅                                                    |
 | Navigation Scroll Restoration                  | ✅                                               | ✅                                                    | ❓                                                    |
 | ElementScroll Restoration                      | ✅                                               | 🛑                                                    | 🛑                                                    |
@@ -72,7 +72,7 @@ Feature/Capability Key:
 | React Server Function Middleware               | ✅                                               | 🛑                                                    | 🛑                                                    |
 | API Routes                                     | ✅                                               | ✅                                                    | ✅                                                    |
 | API Middleware                                 | ✅                                               | 🛑                                                    | ✅                                                    |
-| React Server Components                        | 🛑                                               | 🛑                                                    | ✅                                                    |
+| React Server Components                        | 🛑                                               | 🟡 (Experimental)                                     | ✅                                                    |
 | `<Form>` API                                   | 🛑                                               | ✅                                                    | ✅                                                    |
 
 [bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router
