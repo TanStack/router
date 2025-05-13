@@ -115,7 +115,6 @@ export function TanStackStartVitePluginCore(
               'nitropack',
               '@tanstack/**',
             ],
-            external: ['undici'],
           },
           /* prettier-ignore */
           define: {
