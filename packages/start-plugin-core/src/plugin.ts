@@ -8,6 +8,7 @@ import {
 import { nitroPlugin } from './nitro/nitro-plugin'
 import { startManifestPlugin } from './routesManifestPlugin'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin'
+import { VITE_ENVIRONMENT_NAMES } from './constants'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
 import type { CompileStartFrameworkOptions } from './compilers'
@@ -46,7 +47,7 @@ export function TanStackStartVitePluginCore(
         const nitroOutputPublicDir = await (async () => {
           // Create a dummy nitro app to get the resolved public output path
           const dummyNitroApp = await createNitro({
-            preset: opts.target,
+            preset: startConfig.target,
             compatibilityDate: '2024-12-01',
           })
 
@@ -58,7 +59,7 @@ export function TanStackStartVitePluginCore(
 
         return {
           environments: {
-            client: {
+            [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
               build: {
                 manifest: true,
@@ -74,7 +75,7 @@ export function TanStackStartVitePluginCore(
                 },
               },
             },
-            server: {
+            [VITE_ENVIRONMENT_NAMES.server]: {
               consumer: 'server',
               build: {
                 ssr: true,

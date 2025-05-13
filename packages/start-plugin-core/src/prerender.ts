@@ -10,6 +10,7 @@ import type { ViteBuilder } from 'vite'
 import type { $Fetch, Nitro } from 'nitropack'
 import type { TanStackStartOutputConfig } from './plugin'
 import type { Page } from './schema'
+import { VITE_ENVIRONMENT_NAMES } from './constants'
 
 export async function prerender({
   options,
@@ -31,10 +32,12 @@ export async function prerender({
     ]
   }
 
-  const serverEnv = builder.environments['server']
+  const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
 
   if (!serverEnv) {
-    throw new Error(`Vite's "server" environment not found`)
+    throw new Error(
+      `Vite's "${VITE_ENVIRONMENT_NAMES.server}" environment not found`,
+    )
   }
 
   const prerenderOutputDir = path.resolve(

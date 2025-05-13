@@ -2,6 +2,7 @@ import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
 import { extractHtmlScripts } from '../extractHtmlScripts'
 import type { Connect, Plugin, ViteDevServer } from 'vite'
+import { VITE_ENVIRONMENT_NAMES } from '../constants'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -30,7 +31,8 @@ export function devServerPlugin(): Plugin {
         let cachedScripts: string | undefined
         viteDevServer.middlewares.use(async (req, res) => {
           const event = createEvent(req, res)
-          const serverEnv = viteDevServer.environments['server']
+          const serverEnv =
+            viteDevServer.environments[VITE_ENVIRONMENT_NAMES.server]
 
           try {
             if (!serverEnv || !isRunnableDevEnvironment(serverEnv)) {
