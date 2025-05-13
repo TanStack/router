@@ -127,6 +127,10 @@
               "to": "framework/solid/ssr"
             },
             {
+              "label": "SPA Shell",
+              "to": "framework/react/spa-shell"
+            },
+            {
               "label": "Hosting",
               "to": "framework/solid/hosting"
             },
