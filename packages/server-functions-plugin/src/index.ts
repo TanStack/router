@@ -26,6 +26,7 @@ export type ServerFnPluginOpts = {
   client: ServerFnPluginEnvOpts
   ssr: ServerFnPluginEnvOpts
   server: ServerFnPluginEnvOpts
+  importer?: (fn: DirectiveFn) => Promise<any>
 }
 
 const manifestFilename =
@@ -62,7 +63,8 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
             // into the manifest because it's a dynamic import. Instead, as you'll
             // see below, we augment the manifest output with a code-generated importer
             // that looks exactly like this.
-            importer: () => import(fn.extractedFilename),
+            importer: () =>
+              opts.importer ? opts.importer(fn) : import(fn.extractedFilename),
           },
         ]),
       ),
@@ -190,7 +192,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
   }
 }
 
-export function TanStackServerFnPluginEnv(opts: {
+export interface TanStackServerFnPluginEnvOpts {
   manifestVirtualImportId: string
   client: {
     envName?: string
@@ -202,7 +204,12 @@ export function TanStackServerFnPluginEnv(opts: {
     getRuntimeCode: () => string
     replacer: ReplacerFn
   }
-}): Array<Plugin> {
+  importer?: (fn: DirectiveFn) => Promise<any>
+}
+
+export function TanStackServerFnPluginEnv(
+  opts: TanStackServerFnPluginEnvOpts,
+): Array<Plugin> {
   opts = {
     ...opts,
     client: {
@@ -236,7 +243,8 @@ export function TanStackServerFnPluginEnv(opts: {
             // into the manifest because it's a dynamic import. Instead, as you'll
             // see below, we augment the manifest output with a code-generated importer
             // that looks exactly like this.
-            importer: () => import(fn.extractedFilename),
+            importer: () =>
+              opts.importer ? opts.importer(fn) : import(fn.extractedFilename),
           },
         ]),
       ),
@@ -259,11 +267,13 @@ export function TanStackServerFnPluginEnv(opts: {
           envLabel: 'Client',
           getRuntimeCode: opts.client.getRuntimeCode,
           replacer: opts.client.replacer,
+          envName: opts.client.envName,
         },
         server: {
           envLabel: 'Server',
           getRuntimeCode: opts.server.getRuntimeCode,
           replacer: opts.server.replacer,
+          envName: opts.server.envName,
         },
       },
     }),

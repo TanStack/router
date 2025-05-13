@@ -4,6 +4,7 @@ import { build, createNitro } from 'nitropack'
 import { dirname, resolve } from 'pathe'
 import { clientDistDir, ssrEntryFile } from '../plugin'
 import { prerender } from '../prerender'
+import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { devServerPlugin } from './dev-server-plugin'
 import { buildNitroEnvironment } from './build-nitro'
 import type { EnvironmentOptions, PluginOption, Rollup } from 'vite'
@@ -22,7 +23,7 @@ export function nitroPlugin(
     {
       name: 'tanstack-vite-plugin-nitro',
       configEnvironment(name) {
-        if (name === 'server') {
+        if (name === VITE_ENVIRONMENT_NAMES.server) {
           return {
             build: {
               commonjsOptions: {
@@ -44,8 +45,10 @@ export function nitroPlugin(
           builder: {
             sharedPlugins: true,
             async buildApp(builder) {
-              const clientEnv = builder.environments['client']
-              const serverEnv = builder.environments['server']
+              const clientEnv =
+                builder.environments[VITE_ENVIRONMENT_NAMES.client]
+              const serverEnv =
+                builder.environments[VITE_ENVIRONMENT_NAMES.server]
 
               if (!clientEnv) {
                 throw new Error('Client environment not found')

@@ -91,7 +91,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         // }
       },
       async buildStart() {
-        if (this.environment.name === 'server') {
+        if (this.environment.config.consumer === 'server') {
           // When building in environment mode, we only need to generate routes
           // for the client environment
           return

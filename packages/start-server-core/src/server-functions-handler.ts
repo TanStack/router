@@ -5,10 +5,6 @@ import { startSerializer } from '@tanstack/start-client-core'
 import _serverFnManifest from 'tanstack:server-fn-manifest'
 import { getEvent, getResponseStatus } from './h3'
 
-// NOTE: This is a dummy export to silence warnings about
-// only having a default export.
-export const dummy = 2
-
 const serverFnManifest = _serverFnManifest as Record<
   string,
   {
@@ -64,17 +60,8 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
     throw new Error('Server function info not found for ' + serverFnId)
   }
 
-  let fnModule: undefined | { [key: string]: any }
-
-  if (process.env.NODE_ENV === 'development') {
-    const serverEnv = (globalThis as any).viteDevServer.environments['server']
-    if (!serverEnv) {
-      throw new Error(`'server' vite dev environment not found`)
-    }
-    fnModule = await serverEnv.runner.import(serverFnInfo.extractedFilename)
-  } else {
-    fnModule = await serverFnInfo.importer()
-  }
+  const fnModule: undefined | { [key: string]: any } =
+    await serverFnInfo.importer()
 
   if (!fnModule) {
     console.info('serverFnInfo', serverFnInfo)

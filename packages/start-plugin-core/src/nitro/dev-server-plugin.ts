@@ -1,7 +1,8 @@
 import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
 import { extractHtmlScripts } from '../extractHtmlScripts'
-import type { Connect, Plugin, ViteDevServer } from 'vite'
+import { VITE_ENVIRONMENT_NAMES } from '../constants'
+import type { Connect, DevEnvironment, Plugin, ViteDevServer } from 'vite'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -30,11 +31,20 @@ export function devServerPlugin(): Plugin {
         let cachedScripts: string | undefined
         viteDevServer.middlewares.use(async (req, res) => {
           const event = createEvent(req, res)
-          const serverEnv = viteDevServer.environments['server']
+          const serverEnv = viteDevServer.environments[
+            VITE_ENVIRONMENT_NAMES.server
+          ] as DevEnvironment | undefined
 
           try {
-            if (!serverEnv || !isRunnableDevEnvironment(serverEnv)) {
-              throw new Error('Server environment not found')
+            if (!serverEnv) {
+              throw new Error(
+                `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
+              )
+            }
+            if (!isRunnableDevEnvironment(serverEnv)) {
+              throw new Error(
+                `Expected server environment ${VITE_ENVIRONMENT_NAMES.server} to be a RunnableDevEnvironment. This can be caused by multiple vite versions being installed in the project.`,
+              )
             }
             if (cachedScripts === undefined) {
               const templateHtml = `<html><head></head><body></body></html>`

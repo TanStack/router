@@ -6,6 +6,7 @@ import { build as buildNitro, createNitro } from 'nitropack'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { Queue } from './queue'
 import { buildNitroEnvironment } from './nitro/build-nitro'
+import { VITE_ENVIRONMENT_NAMES } from './constants'
 import type { ViteBuilder } from 'vite'
 import type { $Fetch, Nitro } from 'nitropack'
 import type { TanStackStartOutputConfig } from './plugin'
@@ -31,10 +32,12 @@ export async function prerender({
     ]
   }
 
-  const serverEnv = builder.environments['server']
+  const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
 
   if (!serverEnv) {
-    throw new Error(`Vite's "server" environment not found`)
+    throw new Error(
+      `Vite's "${VITE_ENVIRONMENT_NAMES.server}" environment not found`,
+    )
   }
 
   const prerenderOutputDir = path.resolve(

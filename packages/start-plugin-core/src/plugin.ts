@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { createNitro } from 'nitropack'
+import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import {
   createTanStackConfig,
   createTanStackStartOptionsSchema,
@@ -7,6 +8,7 @@ import {
 import { nitroPlugin } from './nitro/nitro-plugin'
 import { startManifestPlugin } from './routesManifestPlugin'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin'
+import { VITE_ENVIRONMENT_NAMES } from './constants'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
 import type { CompileStartFrameworkOptions } from './compilers'
@@ -28,12 +30,15 @@ export type TanStackStartOutputConfig = ReturnType<
 export const clientDistDir = '.tanstack-start/build/client-dist'
 export const ssrEntryFile = 'ssr.mjs'
 
+export interface TanStackStartVitePluginCoreOptions {
+  framework: CompileStartFrameworkOptions
+}
 // this needs to live outside of the TanStackStartVitePluginCore since it will be invoked multiple times by vite
 let ssrBundle: Rollup.OutputBundle
 
 export function TanStackStartVitePluginCore(
-  framework: CompileStartFrameworkOptions,
-  opts: TanStackStartOutputConfig,
+  opts: TanStackStartVitePluginCoreOptions,
+  startConfig: TanStackStartOutputConfig,
 ): Array<PluginOption> {
   return [
     {
@@ -42,7 +47,7 @@ export function TanStackStartVitePluginCore(
         const nitroOutputPublicDir = await (async () => {
           // Create a dummy nitro app to get the resolved public output path
           const dummyNitroApp = await createNitro({
-            preset: opts.target,
+            preset: startConfig.target,
             compatibilityDate: '2024-12-01',
           })
 
@@ -54,23 +59,23 @@ export function TanStackStartVitePluginCore(
 
         return {
           environments: {
-            client: {
+            [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
               build: {
                 manifest: true,
                 rollupOptions: {
                   input: {
-                    main: opts.clientEntryPath,
+                    main: startConfig.clientEntryPath,
                   },
                   output: {
-                    dir: path.resolve(opts.root, clientDistDir),
+                    dir: path.resolve(startConfig.root, clientDistDir),
                   },
                   // TODO this should be removed
                   external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
                 },
               },
             },
-            server: {
+            [VITE_ENVIRONMENT_NAMES.server]: {
               consumer: 'server',
               build: {
                 ssr: true,
@@ -118,18 +123,50 @@ export function TanStackStartVitePluginCore(
           },
           /* prettier-ignore */
           define: {
-            ...injectDefineEnv('TSS_PUBLIC_BASE', opts.public.base),
-            ...injectDefineEnv('TSS_CLIENT_BASE', opts.client.base),
-            ...injectDefineEnv('TSS_CLIENT_ENTRY', opts.clientEntryPath),
-            ...injectDefineEnv('TSS_SERVER_FN_BASE', opts.serverFns.base),
+            ...injectDefineEnv('TSS_PUBLIC_BASE', startConfig.public.base),
+            ...injectDefineEnv('TSS_CLIENT_BASE', startConfig.client.base),
+            ...injectDefineEnv('TSS_CLIENT_ENTRY', startConfig.clientEntryPath),
+            ...injectDefineEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
             ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
           },
         }
       },
     },
-    TanStackStartCompilerPlugin(framework),
-    startManifestPlugin(opts),
-    nitroPlugin(opts, () => ssrBundle),
+    // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPluginEnv
+    TanStackStartCompilerPlugin(opts.framework, {
+      client: { envName: VITE_ENVIRONMENT_NAMES.client },
+      server: { envName: VITE_ENVIRONMENT_NAMES.server },
+    }),
+    TanStackServerFnPluginEnv({
+      // This is the ID that will be available to look up and import
+      // our server function manifest and resolve its module
+      manifestVirtualImportId: 'tanstack:server-fn-manifest',
+      client: {
+        getRuntimeCode: () =>
+          `import { createClientRpc } from '@tanstack/${opts.framework}-start/server-functions-client'`,
+        replacer: (d) =>
+          `createClientRpc('${d.functionId}', '${startConfig.serverFns.base}')`,
+        envName: VITE_ENVIRONMENT_NAMES.client,
+      },
+      server: {
+        getRuntimeCode: () =>
+          `import { createServerRpc } from '@tanstack/${opts.framework}-start/server-functions-server'`,
+        replacer: (d) =>
+          `createServerRpc('${d.functionId}', '${startConfig.serverFns.base}', ${d.fn})`,
+        envName: VITE_ENVIRONMENT_NAMES.server,
+      },
+      importer: (fn) => {
+        const serverEnv = (globalThis as any).viteDevServer.environments[
+          VITE_ENVIRONMENT_NAMES.server
+        ]
+        if (!serverEnv) {
+          throw new Error(`'ssr' vite dev environment not found`)
+        }
+        return serverEnv.runner.import(fn.extractedFilename)
+      },
+    }),
+    startManifestPlugin(startConfig),
+    nitroPlugin(startConfig, () => ssrBundle),
   ]
 }
 
