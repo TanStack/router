@@ -85,7 +85,7 @@ export function nitroPlugin(
                   // and it needs to translate to this for now. But we should
                   // be cognizant of the probability that we will not use Nitro's
                   // routeRules configuration in the future.
-                  ...(options.shell.enabled && options.shell.autoRedirect
+                  ...(options.shell?.enabled && options.shell.autoRedirect
                     ? {
                         '/**': {
                           // @ts-expect-error We are using this as a marker
@@ -104,7 +104,7 @@ export function nitroPlugin(
 
               await buildNitroEnvironment(nitro, () => build(nitro))
 
-              if (options.shell.enabled) {
+              if (options.shell?.enabled) {
                 options.prerender = {
                   ...options.prerender,
                   enabled: true,
