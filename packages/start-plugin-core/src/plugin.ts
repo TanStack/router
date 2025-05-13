@@ -155,6 +155,15 @@ export function TanStackStartVitePluginCore(
           `createServerRpc('${d.functionId}', '${startConfig.serverFns.base}', ${d.fn})`,
         envName: VITE_ENVIRONMENT_NAMES.server,
       },
+      importer: (fn) => {
+        const serverEnv = (globalThis as any).viteDevServer.environments[
+          VITE_ENVIRONMENT_NAMES.server
+        ]
+        if (!serverEnv) {
+          throw new Error(`'ssr' vite dev environment not found`)
+        }
+        return serverEnv.runner.import(fn.extractedFilename)
+      },
     }),
     startManifestPlugin(startConfig),
     nitroPlugin(startConfig, () => ssrBundle),
