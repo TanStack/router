@@ -402,19 +402,35 @@ export async function generator(config: Config, root: string) {
     } else {
       routeTree.push(node)
     }
-    if (
-      node._fsRouteType === 'layout' &&
-      node.isVirtual &&
-      node.isVirtualParentRoute
-    ) {
-      node.isNonPath = node.children?.every((d) => d.isNonPath)
-    }
 
     routeNodes.push(node)
   }
 
   for (const node of onlyGeneratorRouteNodes) {
     await handleNode(node)
+  }
+
+  // Detect empty layout routes and add a virtual index route
+  const layoutRoutesWithoutIndex = routeNodes.filter((node) => {
+    if (node._fsRouteType !== 'layout') return false
+
+    if (node.children && node.children.length > 0) {
+      if (node.children.some((child) => child.cleanedPath === '/')) {
+        return false
+      }
+    }
+    return true
+  })
+
+  // Add a virtual index route to empty layout routes
+  for (const layoutRoute of layoutRoutesWithoutIndex) {
+    const virtualIndexRoute = createVirtualIndexRouteWithRedirect(layoutRoute)
+    routeNodes.push(virtualIndexRoute)
+    if (!layoutRoute.children) {
+      layoutRoute.children = []
+    }
+    layoutRoute.children.push(virtualIndexRoute)
+    virtualIndexRoute.parent = layoutRoute
   }
 
   checkRouteFullPathUniqueness(
@@ -537,6 +553,7 @@ export async function generator(config: Config, root: string) {
 
   const imports = Object.entries({
     createFileRoute: sortedRouteNodes.some((d) => d.isVirtual),
+    redirect: routeNodes.some((node) => node.isVirtualRedirectIndex),
     lazyFn: sortedRouteNodes.some(
       (node) => routePiecesByPath[node.routePath!]?.loader,
     ),
@@ -585,9 +602,14 @@ export async function generator(config: Config, root: string) {
     virtualRouteNodes.length ? '// Create Virtual Routes' : '',
     virtualRouteNodes
       .map((node) => {
-        return `const ${
-          node.variableName
-        }Import = createFileRoute('${node.routePath}')()`
+        if (node.isVirtualRedirectIndex) {
+          return `const ${node.variableName}Import = createFileRoute('${node.routePath}')({
+  loader: () => {
+    redirect({ to: '/', throw: true })
+  }
+})`
+        }
+        return `const ${node.variableName}Import = createFileRoute('${node.routePath}')()`
       })
       .join('\n'),
     '// Create/Update Routes',
@@ -843,10 +865,7 @@ function removeGroups(s: string) {
  */
 function determineNodePath(node: RouteNode) {
   return (node.path = node.parent
-    ? node.routePath?.replace(
-        node.parent.isNonPath ? '' : (node.parent.routePath ?? ''),
-        '',
-      ) || '/'
+    ? node.routePath?.replace(node.parent.routePath ?? '', '') || '/'
     : node.routePath)
 }
 
@@ -1104,4 +1123,32 @@ export function startAPIRouteSegmentsFromTSRFilePath(
   })
 
   return segments
+}
+
+/**
+ * Creates a virtual index route with a redirect to the root route.
+ *
+ * @param parentRoute - The parent layout route that does not have an index route.
+ * @returns The created virtual index route node.
+ */
+export const createVirtualIndexRouteWithRedirect = (
+  parentRoute: RouteNode,
+): RouteNode => {
+  const indexRoutePath = `${parentRoute.routePath}/`
+  const variableName = routePathToVariable(`${indexRoutePath}index`)
+
+  const virtualIndexRoute: RouteNode = {
+    filePath: '',
+    fullPath: '',
+    variableName,
+    routePath: indexRoutePath,
+    path: '/',
+    cleanedPath: '/',
+    isVirtual: true,
+    _fsRouteType: 'static',
+    isVirtualRedirectIndex: true,
+    redirectTo: '/',
+  }
+
+  return virtualIndexRoute
 }
