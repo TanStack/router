@@ -60,9 +60,8 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
     throw new Error('Server function info not found for ' + serverFnId)
   }
 
-  let fnModule: undefined | { [key: string]: any }
-
-  fnModule = await serverFnInfo.importer()
+  const fnModule: undefined | { [key: string]: any } =
+    await serverFnInfo.importer()
 
   if (!fnModule) {
     console.info('serverFnInfo', serverFnInfo)
