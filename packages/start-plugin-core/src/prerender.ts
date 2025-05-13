@@ -20,7 +20,7 @@ export async function prerender({
   nitro: Nitro
   builder: ViteBuilder
 }) {
-  nitro.logger.info('Prendering pages...')
+  console.info('Prendering pages...')
 
   // If prerender is enabled but no pages are provided, default to prerendering the root page
   if (options.prerender?.enabled && !options.pages.length) {
@@ -44,6 +44,14 @@ export async function prerender({
 
   const nodeNitro = await createNitro({
     ...nitro.options._config,
+    routeRules: {
+      // Filter out our shell redirect rule if it exists
+      ...Object.fromEntries(
+        Object.entries(nitro.options._config.routeRules ?? {}).filter(
+          ([_, value]) => !(value as any).__TSS_SHELL,
+        ),
+      ),
+    },
     preset: 'nitro-prerender',
     logLevel: 0,
     output: {
@@ -90,14 +98,14 @@ export async function prerender({
     // Crawl all pages
     const pages = await prerenderPages()
 
-    nitro.logger.info(`Prerendered ${pages.length} pages:`)
+    console.info(`Prerendered ${pages.length} pages:`)
     pages.forEach((page) => {
-      nitro.logger.info(`- ${page}`)
+      console.info(`- ${page}`)
     })
 
     // TODO: Write the prerendered pages to the output directory
   } catch (error) {
-    nitro.logger.error(error)
+    console.error(error)
   } finally {
     // Ensure server is always closed
     // server.process.kill()
@@ -123,7 +131,7 @@ export async function prerender({
     const seen = new Set<string>()
     const retriesByPath = new Map<string, number>()
     const concurrency = options.prerender?.concurrency ?? os.cpus().length
-    nitro.logger.info(`Concurrency: ${concurrency}`)
+    console.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
 
     options.pages.forEach((_page) => {
@@ -165,7 +173,7 @@ export async function prerender({
 
       // Add the task
       queue.add(async () => {
-        nitro.logger.info(`Crawling: ${page.path}`)
+        console.info(`Crawling: ${page.path}`)
         const retries = retriesByPath.get(page.path) || 0
         try {
           // Fetch the route
@@ -179,23 +187,29 @@ export async function prerender({
           )
 
           if (!res.ok) {
-            throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`)
+            throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`, {
+              cause: res,
+            })
           }
+
+          const cleanPagePath = (
+            prerenderOptions.outputPath || page.path
+          ).split(/[?#]/)[0]!
 
           // Guess route type and populate fileName
           const contentType = res.headers.get('content-type') || ''
           const isImplicitHTML =
-            !page.path.endsWith('.html') && contentType.includes('html')
+            !cleanPagePath.endsWith('.html') && contentType.includes('html')
           // &&
           // !JsonSigRx.test(dataBuff.subarray(0, 32).toString('utf8'))
-          const routeWithIndex = page.path.endsWith('/')
-            ? page.path + 'index'
-            : page.path
+          const routeWithIndex = cleanPagePath.endsWith('/')
+            ? cleanPagePath + 'index'
+            : cleanPagePath
 
           const htmlPath =
-            page.path.endsWith('/') || prerenderOptions.autoSubfolderIndex
-              ? joinURL(page.path, 'index.html')
-              : page.path + '.html'
+            cleanPagePath.endsWith('/') || prerenderOptions.autoSubfolderIndex
+              ? joinURL(cleanPagePath, 'index.html')
+              : cleanPagePath + '.html'
 
           const filename = withoutBase(
             isImplicitHTML ? htmlPath : routeWithIndex,
@@ -227,9 +241,7 @@ export async function prerender({
           }
         } catch (error) {
           if (retries < (prerenderOptions.retryCount ?? 0)) {
-            nitro.logger.warn(
-              `Encountered error, retrying: ${page.path} in 500ms`,
-            )
+            console.warn(`Encountered error, retrying: ${page.path} in 500ms`)
             await new Promise((resolve) =>
               setTimeout(resolve, prerenderOptions.retryDelay),
             )

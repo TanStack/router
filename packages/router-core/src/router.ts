@@ -844,6 +844,8 @@ export class RouterCore<
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
+  isShell = false
+
   update: UpdateFn<
     TRouteTree,
     TTrailingSlashOption,
@@ -931,6 +933,10 @@ export class RouterCore<
       this.isViewTransitionTypesSupported = window.CSS.supports(
         'selector(:active-view-transition-type(a)',
       )
+    }
+
+    if ((this.latestLocation.search as any).__TSS_SHELL) {
+      this.isShell = true
     }
   }
 

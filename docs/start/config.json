@@ -54,6 +54,10 @@
               "to": "framework/react/ssr"
             },
             {
+              "label": "SPA Shell",
+              "to": "framework/react/spa-shell"
+            },
+            {
               "label": "Hosting",
               "to": "framework/react/hosting"
             },

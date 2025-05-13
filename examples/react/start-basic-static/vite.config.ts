@@ -11,7 +11,7 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
     tanstackStart({
-      prerender: {
+      shell: {
         enabled: true,
       },
     }),

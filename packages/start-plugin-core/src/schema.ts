@@ -121,6 +121,7 @@ export function createTanStackStartOptionsSchema(
         })
         .and(pagePrerenderOptionsSchema.optional())
         .optional(),
+      shell: shellSchema.optional().default({}),
     })
     .optional()
     .default({})
@@ -170,6 +171,7 @@ const pageBaseSchema = z.object({
 
 const pagePrerenderOptionsSchema = z.object({
   enabled: z.boolean().optional(),
+  outputPath: z.string().optional(),
   autoSubfolderIndex: z.boolean().optional(),
   crawlLinks: z.boolean().optional(),
   retryCount: z.number().optional(),
@@ -184,6 +186,22 @@ const pagePrerenderOptionsSchema = z.object({
     )
     .returns(z.any())
     .optional(),
+})
+
+const shellSchema = z.object({
+  enabled: z.boolean().optional().default(true),
+  maskPath: z.string().optional().default('/'),
+  autoRedirect: z.boolean().optional().default(true),
+  prerender: pagePrerenderOptionsSchema
+    .optional()
+    .default({})
+    .transform((opts) => ({
+      outputPath: opts.outputPath ?? '/_shell',
+      crawlLinks: false,
+      retryCount: 0,
+      ...opts,
+      enabled: true,
+    })),
 })
 
 export const pageSchema = pageBaseSchema.extend({
