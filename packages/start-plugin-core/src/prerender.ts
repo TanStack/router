@@ -6,11 +6,11 @@ import { build as buildNitro, createNitro } from 'nitropack'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { Queue } from './queue'
 import { buildNitroEnvironment } from './nitro/build-nitro'
+import { VITE_ENVIRONMENT_NAMES } from './constants'
 import type { ViteBuilder } from 'vite'
 import type { $Fetch, Nitro } from 'nitropack'
 import type { TanStackStartOutputConfig } from './plugin'
 import type { Page } from './schema'
-import { VITE_ENVIRONMENT_NAMES } from './constants'
 
 export async function prerender({
   options,
