@@ -204,7 +204,7 @@ export interface TanStackServerFnPluginEnvOpts {
     getRuntimeCode: () => string
     replacer: ReplacerFn
   }
-  importer: (fn: DirectiveFn) => Promise<any>
+  importer?: (fn: DirectiveFn) => Promise<any>
 }
 
 export function TanStackServerFnPluginEnv(
