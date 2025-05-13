@@ -132,6 +132,11 @@ export function TanStackStartVitePluginCore(
         }
       },
     },
+    // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPluginEnv
+    TanStackStartCompilerPlugin(opts.framework, {
+      client: { envName: VITE_ENVIRONMENT_NAMES.client },
+      server: { envName: VITE_ENVIRONMENT_NAMES.server },
+    }),
     TanStackServerFnPluginEnv({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
@@ -151,7 +156,6 @@ export function TanStackStartVitePluginCore(
         envName: VITE_ENVIRONMENT_NAMES.server,
       },
     }),
-    TanStackStartCompilerPlugin(opts.framework),
     startManifestPlugin(startConfig),
     nitroPlugin(startConfig, () => ssrBundle),
   ]
