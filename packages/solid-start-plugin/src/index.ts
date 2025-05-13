@@ -1,5 +1,4 @@
 import path from 'node:path'
-import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import viteSolid from 'vite-plugin-solid'
 import {
@@ -31,7 +30,7 @@ export function TanStackStartVitePlugin(
       enableRouteGeneration: true,
       autoCodeSplitting: true,
     }),
-    TanStackStartVitePluginCore('solid', options),
+    TanStackStartVitePluginCore({framework:'solid'}, options),
     {
       name: 'tanstack-solid-start:resolve-entries',
       resolveId(id) {
@@ -90,23 +89,6 @@ export default createStartHandler({
         return null
       },
     },
-    TanStackServerFnPluginEnv({
-      // This is the ID that will be available to look up and import
-      // our server function manifest and resolve its module
-      manifestVirtualImportId: 'tanstack:server-fn-manifest',
-      client: {
-        getRuntimeCode: () =>
-          `import { createClientRpc } from '@tanstack/solid-start/server-functions-client'`,
-        replacer: (d) =>
-          `createClientRpc('${d.functionId}', '${options.serverFns.base}')`,
-      },
-      server: {
-        getRuntimeCode: () =>
-          `import { createServerRpc } from '@tanstack/solid-start/server-functions-server'`,
-        replacer: (d) =>
-          `createServerRpc('${d.functionId}', '${options.serverFns.base}', ${d.fn})`,
-      },
-    }),
     TanStackStartServerRoutesVite({
       ...options.tsr,
       target: 'solid',
