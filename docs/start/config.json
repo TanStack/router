@@ -119,8 +119,8 @@
               "to": "framework/solid/middleware"
             },
             {
-              "label": "API Routes",
-              "to": "framework/solid/api-routes"
+              "label": "Server Routes",
+              "to": "framework/solid/server-routes"
             },
             {
               "label": "SSR",
