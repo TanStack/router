@@ -38,20 +38,18 @@ function Deferred() {
         {person.name} - {person.randomNumber}
       </div>
       <Suspense fallback={<div>Loading person...</div>}>
-        <Await
-          promise={deferredPerson}
-          children={(data) => (
-            <div data-testid="deferred-person">
-              {data.name} - {data.randomNumber}
-            </div>
-          )}
-        />
+        <Await promise={deferredPerson}>
+					{(data) => (
+						<div data-testid="deferred-person">
+							{data.name} - {data.randomNumber}
+						</div>
+					)}
+				</Await>
       </Suspense>
       <Suspense fallback={<div>Loading stuff...</div>}>
-        <Await
-          promise={deferredStuff}
-          children={(data) => <h3 data-testid="deferred-stuff">{data}</h3>}
-        />
+        <Await promise={deferredStuff}>
+					{(data) => <h3 data-testid="deferred-stuff">{data}</h3>}
+				</Await>
       </Suspense>
       <div>Count: {count}</div>
       <div>
