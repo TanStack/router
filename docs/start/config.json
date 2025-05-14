@@ -128,7 +128,7 @@
             },
             {
               "label": "SPA Shell",
-              "to": "framework/react/spa-shell"
+              "to": "framework/solid/spa-shell"
             },
             {
               "label": "Hosting",
