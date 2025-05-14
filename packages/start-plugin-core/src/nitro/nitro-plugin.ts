@@ -83,24 +83,6 @@ export function nitroPlugin(
                 rollupConfig: {
                   plugins: [virtualBundlePlugin(getSsrBundle())],
                 },
-                routeRules: {
-                  // TODO: We need to expose *some* kind of routeRules configuration
-                  // and it needs to translate to this for now. But we should
-                  // be cognizant of the probability that we will not use Nitro's
-                  // routeRules configuration in the future.
-                  ...(options.shell?.enabled && options.shell.autoRedirect
-                    ? {
-                        '/**': {
-                          // @ts-expect-error We are using this as a marker
-                          __TSS_SHELL: true,
-                          redirect: {
-                            to: `${options.shell.prerender.outputPath.replace(/[/]{1,}$/, '')}`,
-                            statusCode: 200,
-                          },
-                        },
-                      }
-                    : {}),
-                },
               }
 
               const nitro = await createNitro(nitroConfig)

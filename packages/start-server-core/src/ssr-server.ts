@@ -105,6 +105,7 @@ export function dehydrateRouter(router: AnyRouter) {
   const dehydratedRouter: DehydratedRouter = {
     manifest: router.ssr!.manifest,
     dehydratedData: router.options.dehydrate?.(),
+    lastMatchId: router.state.matches[router.state.matches.length - 1]!.id,
   }
 
   router.serverSsr!.injectScript(

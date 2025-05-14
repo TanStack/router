@@ -191,7 +191,6 @@ const pagePrerenderOptionsSchema = z.object({
 const shellSchema = z.object({
   enabled: z.boolean().optional().default(true),
   maskPath: z.string().optional().default('/'),
-  autoRedirect: z.boolean().optional().default(true),
   prerender: pagePrerenderOptionsSchema
     .optional()
     .default({})
