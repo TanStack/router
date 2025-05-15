@@ -424,6 +424,7 @@ export type ToSubOptionsProps<
   hash?: true | Updater<string>
   state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
   from?: FromPathOption<TRouter, TFrom> & {}
+  relative?: 'route' | 'path'
 }
 
 export type ParamsReducerFn<

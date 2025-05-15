@@ -16,6 +16,7 @@ import {
   useLayoutEffect,
 } from './utils'
 
+import { useMatch } from './useMatch'
 import { useMatches } from './Matches'
 import type {
   AnyRouter,
@@ -105,11 +106,22 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  // when `from` is not supplied, use the leaf route of the current matches as the `from` location
+  // when `from` is not supplied, use the nearest parent match's full path as the `from` location
   // so relative routing works as expected
-  const from = useMatches({
-    select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
+  const nearestFrom = useMatch({
+    strict: false,
+    select: (match) => match.fullPath,
   })
+
+  const leafFrom = useMatches({
+    select: (matches) => matches[matches.length - 1]!.fullPath,
+  })
+
+  const from =
+    (options.from) ?? (options.relative === 'path'
+      ? leafFrom
+      : nearestFrom)
+
   // Use it as the default `from` location
   const _options = React.useMemo(() => ({ ...options, from }), [options, from])
 
