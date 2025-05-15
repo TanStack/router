@@ -78,9 +78,9 @@ export default defineEventHandler(function(event) {
 
         if (id === '/~start/default-client-entry.tsx') {
           return `
-import { StartClient } from '@tanstack/react-start'
 import { StrictMode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
+import { StartClient } from '@tanstack/react-start'
 import { createRouter } from ${routerImportPath}
 
 const router = createRouter()
