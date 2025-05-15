@@ -32,7 +32,7 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
 
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
-  // extract the serverFnId from the url as host/_server/:serverFnId
+  // extract the serverFnId from the url as host/_serverFn/:serverFnId
   // Define a regex to match the path and extract the :thing part
   const regex = new RegExp(
     `${sanitizeBase(process.env.TSS_SERVER_FN_BASE)}/([^/?#]+)`,

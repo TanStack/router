@@ -44,7 +44,7 @@ Each runtime replacement should be implemented by your framework. Generally, on 
 
 ```ts
 function createClientRpc(functionId: string) {
-  const url = `${process.env.YOUR_SERVER_BASE}/_server-fn/${functionId}`
+  const url = `${process.env.YOUR_SERVER_BASE}/_serverFn/${functionId}`
 
   const fn = async (...args: any[]) => {
     const res = await fetch(url, {

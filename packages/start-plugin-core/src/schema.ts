@@ -100,7 +100,7 @@ export function createTanStackStartOptionsSchema(
         .default({}),
       serverFns: z
         .object({
-          base: z.string().optional().default('/_server'),
+          base: z.string().optional().default('/_serverFn'),
         })
         .optional()
         .default({}),
@@ -129,7 +129,7 @@ export function createTanStackStartOptionsSchema(
         })
         .and(pagePrerenderOptionsSchema.optional())
         .optional(),
-      shell: shellSchema.optional(),
+      spa: spaSchema.optional(),
     })
     .optional()
     .default({})
@@ -196,7 +196,7 @@ const pagePrerenderOptionsSchema = z.object({
     .optional(),
 })
 
-const shellSchema = z.object({
+const spaSchema = z.object({
   enabled: z.boolean().optional().default(true),
   maskPath: z.string().optional().default('/'),
   prerender: pagePrerenderOptionsSchema

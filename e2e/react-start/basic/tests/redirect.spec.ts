@@ -44,7 +44,9 @@ test.describe('redirects', () => {
 
         const requestPromise = new Promise<void>((resolve) => {
           page.on('request', (request) => {
-            if (request.url().startsWith(`http://localhost:${PORT}/_server/`)) {
+            if (
+              request.url().startsWith(`http://localhost:${PORT}/_serverFn/`)
+            ) {
               requestHappened = true
               resolve()
             }

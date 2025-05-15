@@ -54,8 +54,8 @@
               "to": "framework/react/ssr"
             },
             {
-              "label": "SPA Shell",
-              "to": "framework/react/spa-shell"
+              "label": "SPA Mode",
+              "to": "framework/react/spa-mode"
             },
             {
               "label": "Hosting",
@@ -127,8 +127,8 @@
               "to": "framework/solid/ssr"
             },
             {
-              "label": "SPA Shell",
-              "to": "framework/solid/spa-shell"
+              "label": "SPA Mode",
+              "to": "framework/solid/spa-mode"
             },
             {
               "label": "Hosting",

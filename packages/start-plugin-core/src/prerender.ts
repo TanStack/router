@@ -47,14 +47,6 @@ export async function prerender({
 
   const nodeNitro = await createNitro({
     ...nitro.options._config,
-    routeRules: {
-      // Filter out our shell redirect rule if it exists
-      ...Object.fromEntries(
-        Object.entries(nitro.options._config.routeRules ?? {}).filter(
-          ([_, value]) => !(value as any).__TSS_SHELL,
-        ),
-      ),
-    },
     preset: 'nitro-prerender',
     logLevel: 0,
     output: {
