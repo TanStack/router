@@ -100,7 +100,7 @@ export function createTanStackStartOptionsSchema(
         .default({}),
       serverFns: z
         .object({
-          base: z.string().optional().default('/_server'),
+          base: z.string().optional().default('/_serverFn'),
         })
         .optional()
         .default({}),

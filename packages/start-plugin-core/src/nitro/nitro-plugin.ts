@@ -89,14 +89,14 @@ export function nitroPlugin(
 
               await buildNitroEnvironment(nitro, () => build(nitro))
 
-              if (options.shell?.enabled) {
+              if (options.spa?.enabled) {
                 options.prerender = {
                   ...options.prerender,
                   enabled: true,
                 }
 
                 const maskUrl = new URL(
-                  options.shell.maskPath,
+                  options.spa.maskPath,
                   'http://localhost',
                 )
 
@@ -104,7 +104,7 @@ export function nitroPlugin(
 
                 options.pages.push({
                   path: maskUrl.toString().replace('http://localhost', ''),
-                  prerender: options.shell.prerender,
+                  prerender: options.spa.prerender,
                   sitemap: {
                     exclude: true,
                   },

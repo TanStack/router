@@ -1,10 +1,10 @@
+import queryString from 'node:querystring'
 import { expect } from '@playwright/test'
 import combinateImport from 'combinate'
 import { derivePort, localDummyServer } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 import { test } from './fixture'
-import { Server } from 'node:http'
-import queryString from 'node:querystring'
+import type { Server } from 'node:http'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
@@ -44,7 +44,9 @@ test.describe('redirects', () => {
 
         const requestPromise = new Promise<void>((resolve) => {
           page.on('request', (request) => {
-            if (request.url().startsWith(`http://localhost:${PORT}/_server/`)) {
+            if (
+              request.url().startsWith(`http://localhost:${PORT}/_serverFn/`)
+            ) {
               requestHappened = true
               resolve()
             }
@@ -104,7 +106,7 @@ test.describe('redirects', () => {
     test(`external target: scenario: ${scenario}, thrower: ${thrower}`, async ({
       page,
     }) => {
-      let q = queryString.stringify({
+      const q = queryString.stringify({
         externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
       })
 
@@ -138,7 +140,7 @@ test.describe('redirects', () => {
         page,
       }) => {
         let fullPageLoad = false
-        let q = queryString.stringify({
+        const q = queryString.stringify({
           externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
           reloadDocument,
         })
