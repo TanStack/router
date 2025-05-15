@@ -5,6 +5,7 @@ import {
   TanStackStartServerRoutesVite,
   TanStackStartVitePluginCore,
 } from '@tanstack/start-plugin-core'
+import * as vite from 'vite'
 import { getTanStackStartOptions } from './schema'
 import type { TanStackStartInputConfig, WithReactPlugin } from './schema'
 import type { PluginOption, ResolvedConfig } from 'vite'
@@ -64,9 +65,9 @@ export function TanStackStartVitePlugin(
             '/~start/default-server-entry',
           )
             ? options.serverEntryPath
-            : path
-                .resolve(resolvedConfig.root, options.serverEntryPath)
-                .replaceAll('\\', '/')
+            : vite.normalizePath(
+                path.resolve(resolvedConfig.root, options.serverEntryPath),
+              )
 
           return `
 import { toWebRequest, defineEventHandler } from '@tanstack/react-start/server';
