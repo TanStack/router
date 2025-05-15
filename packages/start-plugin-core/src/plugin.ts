@@ -138,7 +138,7 @@ export function TanStackStartVitePluginCore(
           define: {
             ...injectDefineEnv('TSS_PUBLIC_BASE', startConfig.public.base),
             ...injectDefineEnv('TSS_CLIENT_BASE', startConfig.client.base),
-            ...injectDefineEnv('TSS_CLIENT_ENTRY', `/@fs${getClientEntryPath(startConfig)}`), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
+            ...injectDefineEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
             ...injectDefineEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
             ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
           },
