@@ -1,3 +1,4 @@
+/// <reference types="vinxi/types/client" />
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools/production'
 import {
   HeadContent,

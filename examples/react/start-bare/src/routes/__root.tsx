@@ -1,3 +1,4 @@
+/// <reference types="vinxi/types/client" />
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import {
   createRootRoute,

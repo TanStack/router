@@ -1,3 +1,4 @@
+/// <reference types="vinxi/types/client" />
 import {
   HeadContent,
   Link,
