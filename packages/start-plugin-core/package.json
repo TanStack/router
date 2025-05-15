@@ -77,7 +77,7 @@
     "@types/babel__core": "^7.20.5",
     "babel-dead-code-elimination": "^1.0.10",
     "cheerio": "^1.0.0",
-    "h3": "1.13.0",
+    "h3": "1.15.3",
     "nitropack": "^2.11.12",
     "pathe": "^2.0.3",
     "ufo": "^1.6.1",

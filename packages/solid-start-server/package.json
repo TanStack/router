@@ -68,7 +68,7 @@
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/start-client-core": "workspace:^",
     "@tanstack/start-server-core": "workspace:^",
-    "h3": "1.13.0",
+    "h3": "1.15.3",
     "isbot": "^5.1.22",
     "jsesc": "^3.1.0",
     "tiny-warning": "^1.0.3",
