@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
 import { useMatch } from './useMatch'
-import { useMatches } from './Matches'
 import type {
   AnyRouter,
   FromPathOption,
@@ -16,29 +15,29 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const { navigate } = useRouter()
+  const { navigate, state } = useRouter()
 
-  // when `from` is not supplied, use the nearest parent match's full path as the `from` location
-  // so relative routing works as expected
-  const nearestFrom = useMatch({
+  // Just get the index of the current match to avoid rerenders
+  // as much as possible
+  const matchIndex = useMatch({
     strict: false,
-    select: (match) => match.fullPath,
-  })
-
-  const leafFrom = useMatches({
-    select: (matches) => matches[matches.length - 1]!.fullPath,
+    select: (match) => match.index,
   })
 
   return React.useCallback(
     (options: NavigateOptions) => {
+      const isRelativeFromPath = options.relative === 'path'
+
       const from =
         options.from ??
         _defaultOpts?.from ??
-        (options.relative === 'path' ? leafFrom : nearestFrom)
+        (isRelativeFromPath
+          ? state.matches[state.matches.length - 1]!.fullPath
+          : state.matches[matchIndex]!.fullPath)
 
       return navigate({
         ...options,
-        from: from as any,
+        from: from,
       })
     },
     [_defaultOpts?.from, navigate],
