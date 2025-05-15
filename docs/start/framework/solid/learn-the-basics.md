@@ -49,21 +49,15 @@ The `routeTree.gen.ts` file is generated when you run TanStack Start (via `npm r
 
 Although TanStack Start is designed with client-first APIs, it is by and large, a full-stack framework. This means that all use cases, including both dynamic and static rely on a server or build-time entry to render our application's initial HTML payload.
 
-This is done via the `app/ssr.tsx` file:
+This is done via the `app/ssr.ts` file:
 
 ```tsx
-// app/ssr.tsx
-import {
-  createStartHandler,
-  defaultStreamHandler,
-} from '@tanstack/solid-start/server'
-import { getRouterManifest } from '@tanstack/solid-start/router-manifest'
-
+// app/ssr.ts
+import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
 import { createRouter } from './router'
 
 export default createStartHandler({
   createRouter,
-  getRouterManifest,
 })(defaultStreamHandler)
 ```
 

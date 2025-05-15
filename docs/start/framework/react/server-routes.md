@@ -102,11 +102,11 @@ Server route requests are handled by Start's `createStartHandler` in your `serve
 
 ```tsx
 // server.ts
-import { createStartHandler } from '@tanstack/react-start/server'
+import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
+import { createRouter } from './router'
 
 export default createStartHandler({
   createRouter,
-  getRouterManifest,
 })(defaultStreamHandler)
 ```
 

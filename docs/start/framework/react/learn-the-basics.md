@@ -49,21 +49,15 @@ The `routeTree.gen.ts` file is generated when you run TanStack Start (via `npm r
 > [!NOTE]
 > The server entry point is **optional** out of the box. If not provided, TanStack Start will automatically handle the server entry point for you using the below as a default.
 
-This is done via the `src/server.tsx` file:
+This is done via the `src/server.ts` file:
 
 ```tsx
-// src/server.tsx
-import {
-  createStartHandler,
-  defaultStreamHandler,
-} from '@tanstack/react-start/server'
-import { getRouterManifest } from '@tanstack/react-start/router-manifest'
-
+// src/server.ts
+import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
 import { createRouter } from './router'
 
 export default createStartHandler({
   createRouter,
-  getRouterManifest,
 })(defaultStreamHandler)
 ```
 
