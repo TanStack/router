@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { createNitro } from 'nitropack'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
+import * as vite from 'vite'
 import {
   createTanStackConfig,
   createTanStackStartOptionsSchema,
@@ -66,7 +67,10 @@ export function TanStackStartVitePluginCore(
             '/~start/default-client-entry',
           )
             ? startConfig.clientEntryPath
-            : path.resolve(startConfig.root, startConfig.clientEntryPath)
+            : vite.normalizePath(
+                path.resolve(startConfig.root, startConfig.clientEntryPath),
+              )
+
           return entry
         }
 
