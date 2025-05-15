@@ -7,7 +7,7 @@ import {
 } from '@tanstack/start-plugin-core'
 import { getTanStackStartOptions } from './schema'
 import type { TanStackStartInputConfig, WithReactPlugin } from './schema'
-import type { PluginOption } from 'vite'
+import type { PluginOption, ResolvedConfig } from 'vite'
 
 export type {
   TanStackStartInputConfig,
@@ -22,6 +22,8 @@ export function TanStackStartVitePlugin(
     WithReactPlugin
   const options: OptionsWithReact = getTanStackStartOptions(opts)
 
+  let resolvedConfig: ResolvedConfig
+
   return [
     tanstackRouter({
       verboseFileRoutes: false,
@@ -33,6 +35,10 @@ export function TanStackStartVitePlugin(
     TanStackStartVitePluginCore({ framework: 'react' }, options),
     {
       name: 'tanstack-react-start:resolve-entries',
+      // enforce: 'pre',
+      configResolved: (config) => {
+        resolvedConfig = config
+      },
       resolveId(id) {
         if (
           [
@@ -55,9 +61,13 @@ export function TanStackStartVitePlugin(
         )
 
         if (id === '/~start/server-entry.tsx') {
+          const ssrEntryPath = path.resolve(
+            resolvedConfig.root,
+            options.serverEntryPath,
+          )
           return `
 import { toWebRequest, defineEventHandler } from '@tanstack/react-start/server';
-import serverEntry from '${options.serverEntryPath}';
+import serverEntry from '${ssrEntryPath}';
 
 export default defineEventHandler(function(event) {
   const request = toWebRequest(event);
