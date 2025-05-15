@@ -40,6 +40,7 @@ export function useNavigate<
         from: from,
       })
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [_defaultOpts?.from, navigate],
   ) as UseNavigateResult<TDefaultFrom>
 }
@@ -66,6 +67,6 @@ export function Navigate<
       navigate(props)
       previousPropsRef.current = props
     }
-  }, [router, props])
+  }, [router, props, navigate])
   return null
 }
