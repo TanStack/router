@@ -75,7 +75,7 @@
     "@tanstack/server-functions-plugin": "workspace:^",
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
-    "babel-dead-code-elimination": "^1.0.9",
+    "babel-dead-code-elimination": "^1.0.10",
     "cheerio": "^1.0.0",
     "h3": "1.13.0",
     "nitropack": "^2.11.12",
