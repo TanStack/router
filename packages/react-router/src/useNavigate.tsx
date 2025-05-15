@@ -32,9 +32,9 @@ export function useNavigate<
   return React.useCallback(
     (options: NavigateOptions) => {
       const from =
-        (options.from ?? _defaultOpts?.from ?? 
-        (options.relative === 'path'
-          ? leafFrom: nearestFrom))
+        options.from ??
+        _defaultOpts?.from ??
+        (options.relative === 'path' ? leafFrom : nearestFrom)
 
       return navigate({
         ...options,

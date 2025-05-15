@@ -118,9 +118,7 @@ export function useLinkProps<
   })
 
   const from =
-    (options.from) ?? (options.relative === 'path'
-      ? leafFrom
-      : nearestFrom)
+    options.from ?? (options.relative === 'path' ? leafFrom : nearestFrom)
 
   // Use it as the default `from` location
   const _options = React.useMemo(() => ({ ...options, from }), [options, from])
