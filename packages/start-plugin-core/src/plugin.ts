@@ -57,6 +57,19 @@ export function TanStackStartVitePluginCore(
           return nitroOutputPublicDir
         })()
 
+        const getClientEntryPath = (startConfig: TanStackStartOutputConfig) => {
+          // when the user specifies a custom client entry path, we need to resolve it
+          // relative to the root of the project, keeping in mind that if not specified
+          // it will be /~start/default-client-entry which is a virtual path
+          // that is resolved by vite to the actual client entry path
+          const entry = startConfig.clientEntryPath.startsWith(
+            '/~start/default-client-entry',
+          )
+            ? startConfig.clientEntryPath
+            : path.resolve(startConfig.root, startConfig.clientEntryPath)
+          return entry
+        }
+
         return {
           environments: {
             [VITE_ENVIRONMENT_NAMES.client]: {
@@ -65,7 +78,7 @@ export function TanStackStartVitePluginCore(
                 manifest: true,
                 rollupOptions: {
                   input: {
-                    main: startConfig.clientEntryPath,
+                    main: getClientEntryPath(startConfig),
                   },
                   output: {
                     dir: path.resolve(startConfig.root, clientDistDir),
@@ -125,7 +138,7 @@ export function TanStackStartVitePluginCore(
           define: {
             ...injectDefineEnv('TSS_PUBLIC_BASE', startConfig.public.base),
             ...injectDefineEnv('TSS_CLIENT_BASE', startConfig.client.base),
-            ...injectDefineEnv('TSS_CLIENT_ENTRY', startConfig.clientEntryPath),
+            ...injectDefineEnv('TSS_CLIENT_ENTRY', `/@fs${getClientEntryPath(startConfig)}`), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
             ...injectDefineEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
             ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
           },

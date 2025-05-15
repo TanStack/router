@@ -48,6 +48,14 @@ export function createTanStackConfig<
           return path.join(srcDirectory, 'server.tsx')
         }
 
+        if (existsSync(path.join(srcDirectory, 'server.ts'))) {
+          return path.join(srcDirectory, 'server.ts')
+        }
+
+        if (existsSync(path.join(srcDirectory, 'server.js'))) {
+          return path.join(srcDirectory, 'server.js')
+        }
+
         return '/~start/default-server-entry'
       })()
 
