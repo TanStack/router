@@ -6127,7 +6127,7 @@ importers:
         specifier: workspace:*
         version: link:../directive-functions-plugin
       babel-dead-code-elimination:
-        specifier: ^1.0.9
+        specifier: ^1.0.10
         version: 1.0.10
       tiny-invariant:
         specifier: ^1.3.3
