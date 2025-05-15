@@ -1510,7 +1510,7 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
   test('RouteApi', () => runTest('RouteApi'))
 })
 
-describe.only('relative useNavigate', () => {
+describe('relative useNavigate', () => {
   const setupRouter = () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
