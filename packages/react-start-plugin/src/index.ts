@@ -60,10 +60,14 @@ export function TanStackStartVitePlugin(
         )
 
         if (id === '/~start/server-entry.tsx') {
-          const ssrEntryPath = path.resolve(
-            resolvedConfig.root,
-            options.serverEntryPath,
+          const ssrEntryPath = options.serverEntryPath.startsWith(
+            '/~start/default-server-entry',
           )
+            ? options.serverEntryPath
+            : path
+                .resolve(resolvedConfig.root, options.serverEntryPath)
+                .replaceAll('\\', '/')
+
           return `
 import { toWebRequest, defineEventHandler } from '@tanstack/react-start/server';
 import serverEntry from '${ssrEntryPath}';
