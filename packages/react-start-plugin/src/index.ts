@@ -35,7 +35,6 @@ export function TanStackStartVitePlugin(
     TanStackStartVitePluginCore({ framework: 'react' }, options),
     {
       name: 'tanstack-react-start:resolve-entries',
-      // enforce: 'pre',
       configResolved: (config) => {
         resolvedConfig = config
       },
