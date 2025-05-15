@@ -1536,7 +1536,7 @@ describe('relative useNavigate', () => {
     const bRoute = createRoute({
       getParentRoute: () => aRoute,
       path: 'b',
-      component: () => {
+      component: function BRoute() {
         const navigate = useNavigate()
         return (
           <>
@@ -1552,7 +1552,7 @@ describe('relative useNavigate', () => {
     const paramRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'param/$param',
-      component: () => {
+      component: function ParamRoute() {
         const navigate = useNavigate()
         return (
           <>
@@ -1567,7 +1567,7 @@ describe('relative useNavigate', () => {
     const paramARoute = createRoute({
       getParentRoute: () => paramRoute,
       path: 'a',
-      component: () => {
+      component: function ParamARoute() {
         const navigate = useNavigate()
         return (
           <>
@@ -1584,7 +1584,7 @@ describe('relative useNavigate', () => {
     const paramBRoute = createRoute({
       getParentRoute: () => paramARoute,
       path: 'b',
-      component: () => {
+      component: function ParamBRoute() {
         const navigate = useNavigate()
         return (
           <>
