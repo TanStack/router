@@ -5,6 +5,7 @@ import {
   TanStackStartServerRoutesVite,
   TanStackStartVitePluginCore,
 } from '@tanstack/start-plugin-core'
+import * as vite from 'vite'
 import { getTanStackStartOptions } from './schema'
 import type { PluginOption, ResolvedConfig } from 'vite'
 import type { TanStackStartInputConfig, WithSolidPlugin } from './schema'
@@ -57,10 +58,14 @@ export function TanStackStartVitePlugin(
         )
 
         if (id === '/~start/server-entry.tsx') {
-          const ssrEntryPath = path.resolve(
-            resolvedConfig.root,
-            options.serverEntryPath,
+          const ssrEntryPath = options.serverEntryPath.startsWith(
+            '/~start/default-server-entry',
           )
+            ? options.serverEntryPath
+            : vite.normalizePath(
+                path.resolve(resolvedConfig.root, options.serverEntryPath),
+              )
+
           return `
 import { toWebRequest, defineEventHandler } from '@tanstack/solid-start/server';
 import serverEntry from '${ssrEntryPath}';
