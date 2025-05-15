@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-start/server'
 import { createRouter } from './router'
 
-console.log('[server-entry]: using custom server entry in src/server.ts')
+console.log("[server-entry]: using custom server entry in 'src/server.ts'")
 
 export default createStartHandler({
   createRouter,

@@ -5,7 +5,7 @@ import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/react-start'
 import { createRouter } from './router'
 
-console.log('[client-entry]: using custom client entry in src/client.tsx')
+console.log("[client-entry]: using custom client entry in 'src/client.tsx'")
 
 const router = createRouter()
 
