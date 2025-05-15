@@ -11,7 +11,10 @@ TanStack Start supports server-side rendering out of the box. To enable server-s
 
 ```tsx
 // src/server.ts
-import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
+import {
+  createStartHandler,
+  defaultStreamHandler,
+} from '@tanstack/react-start/server'
 import { createRouter } from './router'
 
 export default createStartHandler({

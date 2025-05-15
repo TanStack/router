@@ -53,7 +53,10 @@ This is done via the `src/server.ts` file:
 
 ```tsx
 // src/server.ts
-import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
+import {
+  createStartHandler,
+  defaultStreamHandler,
+} from '@tanstack/react-start/server'
 import { createRouter } from './router'
 
 export default createStartHandler({
