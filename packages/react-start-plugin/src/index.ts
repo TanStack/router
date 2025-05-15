@@ -77,19 +77,21 @@ export default defineEventHandler(function(event) {
 
         if (id === '/~start/default-client-entry.tsx') {
           return `
-import { StrictMode } from 'react'
+import { StrictMode, startTransition } from 'react'
 import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/react-start'
 import { createRouter } from ${routerImportPath}
 
 const router = createRouter()
 
-hydrateRoot(
-  document,
-  <StrictMode>
-    <StartClient router={router} />
-  </StrictMode>
-)
+startTransition(() => {
+  hydrateRoot(
+    document,
+    <StrictMode>
+      <StartClient router={router} />
+    </StrictMode>
+  )
+})
 `
         }
 
