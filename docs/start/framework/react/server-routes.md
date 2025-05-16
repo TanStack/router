@@ -124,7 +124,6 @@ import { createStartHandler } from '@tanstack/react-start/server'
 export default defineHandler((event) => {
   const startHandler = createStartHandler({
     createRouter,
-    getRouterManifest,
   })(defaultStreamHandler)
 
   return startHandler(event)

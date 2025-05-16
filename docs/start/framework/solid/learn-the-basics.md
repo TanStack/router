@@ -7,11 +7,10 @@ This guide will help you learn the basics behind how TanStack Start works, regar
 
 ## Dependencies
 
-TanStack Start is powered by:
+TanStack Start is powered by [Vite](https://vite.dev/) and [TanStack Router](https://tanstack.com/router).
 
-- [**TanStack Router**](https://tanstack.com/router): A router for building web applications.
-- [**Vite**](https://vite.dev/): A build tool for building web applications.
-- [**Nitro**](https://nitro.unjs.io/): A framework for building server applications.
+- **TanStack Router**: A router for building web applications.
+- **Vite**: A build tool for bundling your application.
 
 ## It all "Starts" with the Router
 
@@ -45,18 +44,20 @@ declare module '@tanstack/solid-router' {
 
 The `routeTree.gen.ts` file is generated when you run TanStack Start (via `npm run dev` or `npm run start`) for the first time. This file contains the generated route tree and a handful of TS utilities that make TanStack Start fully type-safe.
 
-## The Server Entry Point
+## The Server Entry Point (Optional)
 
-Although TanStack Start is designed with client-first APIs, it is by and large, a full-stack framework. This means that all use cases, including both dynamic and static rely on a server or build-time entry to render our application's initial HTML payload.
+> [!NOTE]
+> The server entry point is **optional** out of the box. If not provided, TanStack Start will automatically handle the server entry point for you using the below as a default.
 
-This is done via the `app/ssr.ts` file:
+This is done via the `src/server.ts` file:
 
 ```tsx
-// app/ssr.ts
+// src/server.ts
 import {
   createStartHandler,
   defaultStreamHandler,
-} from '@tanstack/react-start/server'
+} from '@tanstack/solid-start/server'
+
 import { createRouter } from './router'
 
 export default createStartHandler({
@@ -64,13 +65,15 @@ export default createStartHandler({
 })(defaultStreamHandler)
 ```
 
-Whether we are statically generating our app or serving it dynamically, the `ssr.tsx` file is the entry point for doing all SSR-related work.
+Whether we are statically generating our app or serving it dynamically, the `server.ts` file is the entry point for doing all SSR-related work.
 
 - It's important that a new router is created for each request. This ensures that any data handled by the router is unique to the request.
-- The `getRouterManifest` function is used to generate the router manifest, which is used to determine many aspects of asset management and preloading for our application.
 - The `defaultStreamHandler` function is used to render our application to a stream, allowing us to take advantage of streaming HTML to the client. (This is the default handler, but you can also use other handlers like `defaultRenderHandler`, or even build your own)
 
-## The Client Entry Point
+## The Client Entry Point (Optional)
+
+> [!NOTE]
+> The client entry point is **optional** out of the box. If not provided, TanStack Start will automatically handle the client entry point for you using the below as a default.
 
 Getting our html to the client is only half the battle. Once there, we need to hydrate our client-side JavaScript once the route resolves to the client. We do this by hydrating the root of our application with the `StartClient` component:
 
@@ -89,7 +92,7 @@ This enables us to kick off client-side routing once the user's initial server r
 
 ## The Root of Your Application
 
-Other than the client entry point, the `__root` route of your application is the entry point for your application. The code in this file will wrap all other routes in the app, including your home page. It behaves like a pathless layout route for your whole application.
+Other than the client entry point (which is optional by default), the `__root` route of your application is the entry point for your application. The code in this file will wrap all other routes in the app, including your home page. It behaves like a pathless layout route for your whole application.
 
 Because it is **always rendered**, it is the perfect place to construct your application shell and take care of any global logic.
 
