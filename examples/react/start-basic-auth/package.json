@@ -13,7 +13,7 @@
     "@prisma/client": "5.22.0",
     "@tanstack/react-router": "^1.120.4-alpha.19",
     "@tanstack/react-router-devtools": "^1.120.4-alpha.19",
-    "@tanstack/react-start": "^1.120.4-alpha.24",
+    "@tanstack/react-start": "^1.120.4-alpha.25",
     "prisma": "^5.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
