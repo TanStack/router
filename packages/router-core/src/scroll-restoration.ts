@@ -18,12 +18,22 @@ export type ScrollRestorationOptions = {
   scrollBehavior?: ScrollToOptions['behavior']
 }
 
+function getSafeSessionStorage() {
+  try {
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.sessionStorage === 'object'
+    ) {
+      return window.sessionStorage
+    }
+  } catch {
+    return undefined
+  }
+  return undefined
+}
+
 export const storageKey = 'tsr-scroll-restoration-v1_3'
-let sessionsStorage = false
-try {
-  sessionsStorage =
-    typeof window !== 'undefined' && typeof window.sessionStorage === 'object'
-} catch {}
+
 const throttle = (fn: (...args: Array<any>) => void, wait: number) => {
   let timeout: any
   return (...args: Array<any>) => {
@@ -35,28 +45,32 @@ const throttle = (fn: (...args: Array<any>) => void, wait: number) => {
     }
   }
 }
-export const scrollRestorationCache: ScrollRestorationCache = sessionsStorage
-  ? (() => {
-      const state: ScrollRestorationByKey =
-        JSON.parse(window.sessionStorage.getItem(storageKey) || 'null') || {}
 
-      return {
-        state,
-        // This setter is simply to make sure that we set the sessionStorage right
-        // after the state is updated. It doesn't necessarily need to be a functional
-        // update.
-        set: (updater) => (
-          (scrollRestorationCache.state =
-            functionalUpdate(updater, scrollRestorationCache.state) ||
-            scrollRestorationCache.state),
-          window.sessionStorage.setItem(
-            storageKey,
-            JSON.stringify(scrollRestorationCache.state),
-          )
-        ),
-      }
-    })()
-  : (undefined as any)
+function createScrollRestorationCache(): ScrollRestorationCache | undefined {
+  const safeSessionStorage = getSafeSessionStorage()
+  if (!safeSessionStorage) {
+    return undefined
+  }
+
+  const persistedState = safeSessionStorage.getItem(storageKey)
+  let state: ScrollRestorationByKey = persistedState
+    ? JSON.parse(persistedState)
+    : {}
+
+  return {
+    state,
+    // This setter is simply to make sure that we set the sessionStorage right
+    // after the state is updated. It doesn't necessarily need to be a functional
+    // update.
+    set: (updater) => (
+      (state = functionalUpdate(updater, state) || state),
+      safeSessionStorage.setItem(storageKey, JSON.stringify(state))
+    ),
+  }
+}
+
+export const scrollRestorationCache = createScrollRestorationCache()
+
 /**
  * The default `getKey` function for `useScrollRestoration`.
  * It returns the `key` from the location state or the `href` of the location.
@@ -176,6 +190,9 @@ export function restoreScroll(
 }
 
 export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
+  if (scrollRestorationCache === undefined) {
+    return
+  }
   const shouldScrollRestoration =
     force ?? router.options.scrollRestoration ?? false
 
