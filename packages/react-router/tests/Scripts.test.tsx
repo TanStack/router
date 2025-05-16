@@ -139,7 +139,7 @@ describe('ssr HeadContent', () => {
             },
             {
               name: 'description',
-              content: loaderData.description,
+              content: loaderData?.description,
             },
             {
               name: 'image',
@@ -176,7 +176,7 @@ describe('ssr HeadContent', () => {
             },
             {
               name: 'description',
-              content: loaderData.description,
+              content: loaderData?.description,
             },
             {
               name: 'last-modified',

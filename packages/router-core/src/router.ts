@@ -1363,26 +1363,6 @@ export class RouterCore<
           ...match.__beforeLoadContext,
         }
       }
-
-      // If it's already a success, update headers and head content
-      // These may get updated again if the match is refreshed
-      // due to being stale
-      if (match.status === 'success') {
-        match.headers = route.options.headers?.({
-          loaderData: match.loaderData,
-        })
-        const assetContext = {
-          matches,
-          match,
-          params: match.params,
-          loaderData: match.loaderData,
-        }
-        const headFnContent = route.options.head?.(assetContext)
-        match.links = headFnContent?.links
-        match.headScripts = headFnContent?.scripts
-        match.meta = headFnContent?.meta
-        match.scripts = route.options.scripts?.(assetContext)
-      }
     })
 
     return matches
@@ -2508,6 +2488,35 @@ export class RouterCore<
                         !this.state.matches.find((d) => d.id === matchId),
                     }))
 
+                    const executeHead = () => {
+                      const match = this.getMatch(matchId)
+                      // in case of a redirecting match during preload, the match does not exist
+                      if (!match) {
+                        return
+                      }
+                      const assetContext = {
+                        matches,
+                        match,
+                        params: match.params,
+                        loaderData: match.loaderData,
+                      }
+                      const headFnContent = route.options.head?.(assetContext)
+                      const meta = headFnContent?.meta
+                      const links = headFnContent?.links
+                      const headScripts = headFnContent?.scripts
+
+                      const scripts = route.options.scripts?.(assetContext)
+                      const headers = route.options.headers?.(assetContext)
+                      updateMatch(matchId, (prev) => ({
+                        ...prev,
+                        meta,
+                        links,
+                        headScripts,
+                        headers,
+                        scripts,
+                      }))
+                    }
+
                     const runLoader = async () => {
                       try {
                         // If the Matches component rendered
@@ -2548,40 +2557,21 @@ export class RouterCore<
 
                           await potentialPendingMinPromise()
 
-                          const assetContext = {
-                            matches,
-                            match: this.getMatch(matchId)!,
-                            params: this.getMatch(matchId)!.params,
-                            loaderData,
-                          }
-                          const headFnContent =
-                            route.options.head?.(assetContext)
-                          const meta = headFnContent?.meta
-                          const links = headFnContent?.links
-                          const headScripts = headFnContent?.scripts
-
-                          const scripts = route.options.scripts?.(assetContext)
-                          const headers = route.options.headers?.({
-                            loaderData,
-                          })
-
                           // Last but not least, wait for the the components
                           // to be preloaded before we resolve the match
                           await route._componentsPromise
 
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            error: undefined,
-                            status: 'success',
-                            isFetching: false,
-                            updatedAt: Date.now(),
-                            loaderData,
-                            meta,
-                            links,
-                            headScripts,
-                            headers,
-                            scripts,
-                          }))
+                          batch(() => {
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              error: undefined,
+                              status: 'success',
+                              isFetching: false,
+                              updatedAt: Date.now(),
+                              loaderData,
+                            }))
+                            executeHead()
+                          })
                         } catch (e) {
                           let error = e
 
@@ -2599,12 +2589,15 @@ export class RouterCore<
                             )
                           }
 
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            error,
-                            status: 'error',
-                            isFetching: false,
-                          }))
+                          batch(() => {
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              error,
+                              status: 'error',
+                              isFetching: false,
+                            }))
+                            executeHead()
+                          })
                         }
 
                         this.serverSsr?.onMatchSettled({
@@ -2612,10 +2605,13 @@ export class RouterCore<
                           match: this.getMatch(matchId)!,
                         })
                       } catch (err) {
-                        updateMatch(matchId, (prev) => ({
-                          ...prev,
-                          loaderPromise: undefined,
-                        }))
+                        batch(() => {
+                          updateMatch(matchId, (prev) => ({
+                            ...prev,
+                            loaderPromise: undefined,
+                          }))
+                          executeHead()
+                        })
                         handleRedirectAndNotFound(this.getMatch(matchId)!, err)
                       }
                     }
@@ -2651,6 +2647,11 @@ export class RouterCore<
                       (loaderShouldRunAsync && sync)
                     ) {
                       await runLoader()
+                    } else {
+                      // if the loader did not run, still update head.
+                      // reason: parent's beforeLoad may have changed the route context
+                      // and only now do we know the route context (and that the loader would not run)
+                      executeHead()
                     }
                   }
                   if (!loaderIsRunningAsync) {
