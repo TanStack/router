@@ -9,7 +9,7 @@ import type { UnpluginFactory } from 'unplugin'
 /**
  * This plugin adds imports for createFileRoute and createLazyFileRoute to the file route.
  */
-export const unpluginRouteAutoimportFactory: UnpluginFactory<
+export const unpluginRouteAutoImportFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}) => {
   let ROOT: string = process.cwd()
