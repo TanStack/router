@@ -64,10 +64,9 @@ export default createStartHandler({
 })(defaultStreamHandler)
 ```
 
-Whether we are statically generating our app or serving it dynamically, the `server.tsx` file is the entry point for doing all SSR-related work.
+Whether we are statically generating our app or serving it dynamically, the `server.ts` file is the entry point for doing all SSR-related work.
 
 - It's important that a new router is created for each request. This ensures that any data handled by the router is unique to the request.
-- The `getRouterManifest` function is used to generate the router manifest, which is used to determine many aspects of asset management and preloading for our application.
 - The `defaultStreamHandler` function is used to render our application to a stream, allowing us to take advantage of streaming HTML to the client. (This is the default handler, but you can also use other handlers like `defaultRenderHandler`, or even build your own)
 
 ## The Client Entry Point (Optional)

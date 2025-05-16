@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { createNitro } from 'nitropack'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import {
@@ -10,6 +11,7 @@ import { nitroPlugin } from './nitro/nitro-plugin'
 import { startManifestPlugin } from './routesManifestPlugin'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
+import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/plugin'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
 import type { CompileStartFrameworkOptions } from './compilers'
@@ -42,6 +44,13 @@ export function TanStackStartVitePluginCore(
   startConfig: TanStackStartOutputConfig,
 ): Array<PluginOption> {
   return [
+    tanstackRouter({
+      verboseFileRoutes: false,
+      ...startConfig.tsr,
+      target: opts.framework,
+      enableRouteGeneration: true,
+      autoCodeSplitting: true,
+    }),
     {
       name: 'tanstack-start-core:config-client',
       async config() {
@@ -184,6 +193,10 @@ export function TanStackStartVitePluginCore(
     }),
     startManifestPlugin(startConfig),
     nitroPlugin(startConfig, () => ssrBundle),
+    TanStackStartServerRoutesVite({
+      ...startConfig.tsr,
+      target: opts.framework,
+    }),
   ]
 }
 

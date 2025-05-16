@@ -5826,9 +5826,6 @@ importers:
 
   packages/react-start-plugin:
     dependencies:
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../router-plugin
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
@@ -6290,9 +6287,6 @@ importers:
 
   packages/solid-start-plugin:
     dependencies:
-      '@tanstack/router-plugin':
-        specifier: workspace:*
-        version: link:../router-plugin
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
@@ -6394,6 +6388,9 @@ importers:
       '@tanstack/router-generator':
         specifier: workspace:*
         version: link:../router-generator
+      '@tanstack/router-plugin':
+        specifier: workspace:*
+        version: link:../router-plugin
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils

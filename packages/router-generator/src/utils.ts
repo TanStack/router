@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import * as fsp from 'node:fs/promises'
 import * as prettier from 'prettier'
 
 export function multiSortBy<T>(
@@ -212,7 +212,7 @@ export async function writeIfDifferent(
 ): Promise<boolean> {
   if (content !== incomingContent) {
     callbacks?.beforeWrite?.()
-    fs.writeFileSync(filepath, incomingContent)
+    await fsp.writeFile(filepath, incomingContent)
     callbacks?.afterWrite?.()
     return true
   }
@@ -252,4 +252,19 @@ export async function format(
 export function resetRegex(regex: RegExp) {
   regex.lastIndex = 0
   return
+}
+
+/**
+ * This function checks if a file exists.
+ *
+ * @param file The path to the file
+ * @returns Whether the file exists
+ */
+export async function checkFileExists(file: string) {
+  try {
+    await fsp.access(file, fsp.constants.F_OK)
+    return true
+  } catch {
+    return false
+  }
 }

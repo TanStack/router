@@ -1,10 +1,6 @@
 import path from 'node:path'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import viteSolid from 'vite-plugin-solid'
-import {
-  TanStackStartServerRoutesVite,
-  TanStackStartVitePluginCore,
-} from '@tanstack/start-plugin-core'
+import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
 import * as vite from 'vite'
 import { getTanStackStartOptions } from './schema'
 import type { PluginOption, ResolvedConfig } from 'vite'
@@ -26,13 +22,6 @@ export function TanStackStartVitePlugin(
   let resolvedConfig: ResolvedConfig
 
   return [
-    tanstackRouter({
-      verboseFileRoutes: false,
-      ...options.tsr,
-      target: 'solid',
-      enableRouteGeneration: true,
-      autoCodeSplitting: true,
-    }),
     TanStackStartVitePluginCore({ framework: 'solid' }, options),
     {
       name: 'tanstack-solid-start:resolve-entries',
@@ -103,10 +92,6 @@ export default createStartHandler({
         return null
       },
     },
-    TanStackStartServerRoutesVite({
-      ...options.tsr,
-      target: 'solid',
-    }),
     viteSolid({ ...options.solid, ssr: true }),
   ]
 }

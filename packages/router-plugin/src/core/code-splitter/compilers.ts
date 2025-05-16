@@ -14,27 +14,6 @@ import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
 import type { Config } from '../config'
 
-// eslint-disable-next-line unused-imports/no-unused-vars
-const debug = process.env.TSR_VITE_DEBUG
-
-type SplitModulesById = Record<
-  string,
-  { id: string; node: t.FunctionExpression }
->
-
-interface State {
-  filename: string
-  opts: {
-    minify: boolean
-    root: string
-  }
-  imported: Record<string, boolean>
-  refs: Set<any>
-  serverIndex: number
-  splitIndex: number
-  splitModulesById: SplitModulesById
-}
-
 type SplitNodeMeta = {
   routeIdent: SplitRouteIdentNodes
   splitStrategy: 'lazyFn' | 'lazyRouteComponent'
@@ -139,9 +118,7 @@ export function compileCodeSplitReferenceRoute(
 
   babel.traverse(ast, {
     Program: {
-      enter(programPath, programState) {
-        const state = programState as unknown as State
-
+      enter(programPath) {
         /**
          * If the component for the route is being imported from
          * another file, this is to track the path to that file
@@ -153,236 +130,228 @@ export function compileCodeSplitReferenceRoute(
          */
         const removableImportPaths = new Set<string>([])
 
-        programPath.traverse(
-          {
-            CallExpression: (path) => {
-              if (!t.isIdentifier(path.node.callee)) {
-                return
+        programPath.traverse({
+          CallExpression: (path) => {
+            if (!t.isIdentifier(path.node.callee)) {
+              return
+            }
+
+            if (
+              !(
+                path.node.callee.name === 'createRoute' ||
+                path.node.callee.name === 'createFileRoute'
+              )
+            ) {
+              return
+            }
+
+            function babelHandleReference(routeOptions: t.Node | undefined) {
+              const hasImportedOrDefinedIdentifier = (name: string) => {
+                return programPath.scope.hasBinding(name)
               }
 
-              if (
-                !(
-                  path.node.callee.name === 'createRoute' ||
-                  path.node.callee.name === 'createFileRoute'
-                )
-              ) {
-                return
-              }
+              if (t.isObjectExpression(routeOptions)) {
+                routeOptions.properties.forEach((prop) => {
+                  if (t.isObjectProperty(prop)) {
+                    if (t.isIdentifier(prop.key)) {
+                      // If the user has not specified a split grouping for this key
+                      // then we should not split it
+                      const codeSplitGroupingByKey = findIndexForSplitNode(
+                        prop.key.name,
+                      )
+                      if (codeSplitGroupingByKey === -1) {
+                        return
+                      }
+                      const codeSplitGroup = [
+                        ...new Set(
+                          opts.codeSplitGroupings[codeSplitGroupingByKey],
+                        ),
+                      ]
 
-              function babelHandleReference(routeOptions: t.Node | undefined) {
-                const hasImportedOrDefinedIdentifier = (name: string) => {
-                  return programPath.scope.hasBinding(name)
-                }
+                      const key = prop.key.name
+                      // find key in nodeSplitConfig
+                      const isNodeConfigAvailable = SPLIT_NODES_CONFIG.has(
+                        key as any,
+                      )
 
-                if (t.isObjectExpression(routeOptions)) {
-                  routeOptions.properties.forEach((prop) => {
-                    if (t.isObjectProperty(prop)) {
-                      if (t.isIdentifier(prop.key)) {
-                        // If the user has not specified a split grouping for this key
-                        // then we should not split it
-                        const codeSplitGroupingByKey = findIndexForSplitNode(
-                          prop.key.name,
-                        )
-                        if (codeSplitGroupingByKey === -1) {
+                      if (!isNodeConfigAvailable) {
+                        return
+                      }
+
+                      const splitNodeMeta = SPLIT_NODES_CONFIG.get(key as any)!
+
+                      // We need to extract the existing search params from the filename, if any
+                      // and add the relevant codesplitPrefix to them, then write them back to the filename
+                      const splitUrl = addSplitSearchParamToFilename(
+                        opts.filename,
+                        codeSplitGroup,
+                      )
+
+                      if (
+                        splitNodeMeta.splitStrategy === 'lazyRouteComponent'
+                      ) {
+                        const value = prop.value
+
+                        let shouldSplit = true
+
+                        if (t.isIdentifier(value)) {
+                          const existingImportPath =
+                            getImportSpecifierAndPathFromLocalName(
+                              programPath,
+                              value.name,
+                            ).path
+                          if (existingImportPath) {
+                            removableImportPaths.add(existingImportPath)
+                          }
+
+                          // exported identifiers should not be split
+                          // since they are already being imported
+                          // and need to be retained in the compiled file
+                          const isExported = hasExport(ast, value)
+                          shouldSplit = !isExported
+
+                          if (shouldSplit) {
+                            removeIdentifierLiteral(path, value)
+                          }
+                        }
+
+                        if (!shouldSplit) {
                           return
                         }
-                        const codeSplitGroup = [
-                          ...new Set(
-                            opts.codeSplitGroupings[codeSplitGroupingByKey],
-                          ),
-                        ]
 
-                        const key = prop.key.name
-                        // find key in nodeSplitConfig
-                        const isNodeConfigAvailable = SPLIT_NODES_CONFIG.has(
-                          key as any,
-                        )
-
-                        if (!isNodeConfigAvailable) {
-                          return
-                        }
-
-                        const splitNodeMeta = SPLIT_NODES_CONFIG.get(
-                          key as any,
-                        )!
-
-                        // We need to extract the existing search params from the filename, if any
-                        // and add the relevant codesplitPrefix to them, then write them back to the filename
-                        const splitUrl = addSplitSearchParamToFilename(
-                          opts.filename,
-                          codeSplitGroup,
-                        )
+                        // Prepend the import statement to the program along with the importer function
+                        // Check to see if lazyRouteComponent is already imported before attempting
+                        // to import it again
 
                         if (
-                          splitNodeMeta.splitStrategy === 'lazyRouteComponent'
+                          !hasImportedOrDefinedIdentifier(
+                            LAZY_ROUTE_COMPONENT_IDENT,
+                          )
                         ) {
-                          const value = prop.value
-
-                          let shouldSplit = true
-
-                          if (t.isIdentifier(value)) {
-                            const existingImportPath =
-                              getImportSpecifierAndPathFromLocalName(
-                                programPath,
-                                value.name,
-                              ).path
-                            if (existingImportPath) {
-                              removableImportPaths.add(existingImportPath)
-                            }
-
-                            // exported identifiers should not be split
-                            // since they are already being imported
-                            // and need to be retained in the compiled file
-                            const isExported = hasExport(ast, value)
-                            shouldSplit = !isExported
-
-                            if (shouldSplit) {
-                              removeIdentifierLiteral(path, value)
-                            }
-                          }
-
-                          if (!shouldSplit) {
-                            return
-                          }
-
-                          // Prepend the import statement to the program along with the importer function
-                          // Check to see if lazyRouteComponent is already imported before attempting
-                          // to import it again
-
-                          if (
-                            !hasImportedOrDefinedIdentifier(
-                              LAZY_ROUTE_COMPONENT_IDENT,
-                            )
-                          ) {
-                            programPath.unshiftContainer('body', [
-                              template.statement(
-                                `import { ${LAZY_ROUTE_COMPONENT_IDENT} } from '${PACKAGE}'`,
-                              )(),
-                            ])
-                          }
-
-                          // Check to see if the importer function is already defined
-                          // If not, define it with the dynamic import statement
-                          if (
-                            !hasImportedOrDefinedIdentifier(
-                              splitNodeMeta.localImporterIdent,
-                            )
-                          ) {
-                            programPath.unshiftContainer('body', [
-                              template.statement(
-                                `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
-                              )(),
-                            ])
-                          }
-
-                          // If it's a component, we need to pass the function to check the Route.ssr value
-                          if (key === 'component') {
-                            prop.value = template.expression(
-                              `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr)`,
-                            )()
-                          } else {
-                            prop.value = template.expression(
-                              `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
-                            )()
-                          }
-
-                          // add HMR handling
-                          if (opts.runtimeEnv !== 'prod') {
-                            programPath.pushContainer('body', routeHmrStatement)
-                          }
+                          programPath.unshiftContainer('body', [
+                            template.statement(
+                              `import { ${LAZY_ROUTE_COMPONENT_IDENT} } from '${PACKAGE}'`,
+                            )(),
+                          ])
                         }
 
-                        if (splitNodeMeta.splitStrategy === 'lazyFn') {
-                          const value = prop.value
+                        // Check to see if the importer function is already defined
+                        // If not, define it with the dynamic import statement
+                        if (
+                          !hasImportedOrDefinedIdentifier(
+                            splitNodeMeta.localImporterIdent,
+                          )
+                        ) {
+                          programPath.unshiftContainer('body', [
+                            template.statement(
+                              `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
+                            )(),
+                          ])
+                        }
 
-                          let shouldSplit = true
-
-                          if (t.isIdentifier(value)) {
-                            const existingImportPath =
-                              getImportSpecifierAndPathFromLocalName(
-                                programPath,
-                                value.name,
-                              ).path
-                            if (existingImportPath) {
-                              removableImportPaths.add(existingImportPath)
-                            }
-
-                            // exported identifiers should not be split
-                            // since they are already being imported
-                            // and need to be retained in the compiled file
-                            const isExported = hasExport(ast, value)
-                            shouldSplit = !isExported
-
-                            if (shouldSplit) {
-                              removeIdentifierLiteral(path, value)
-                            }
-                          }
-
-                          if (!shouldSplit) {
-                            return
-                          }
-
-                          // Prepend the import statement to the program along with the importer function
-                          if (!hasImportedOrDefinedIdentifier(LAZY_FN_IDENT)) {
-                            programPath.unshiftContainer(
-                              'body',
-                              template.smart(
-                                `import { ${LAZY_FN_IDENT} } from '${PACKAGE}'`,
-                              )(),
-                            )
-                          }
-
-                          // Check to see if the importer function is already defined
-                          // If not, define it with the dynamic import statement
-                          if (
-                            !hasImportedOrDefinedIdentifier(
-                              splitNodeMeta.localImporterIdent,
-                            )
-                          ) {
-                            programPath.unshiftContainer('body', [
-                              template.statement(
-                                `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
-                              )(),
-                            ])
-                          }
-
-                          // Add the lazyFn call with the dynamic import to the prop value
+                        // If it's a component, we need to pass the function to check the Route.ssr value
+                        if (key === 'component') {
                           prop.value = template.expression(
-                            `${LAZY_FN_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                            `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr)`,
+                          )()
+                        } else {
+                          prop.value = template.expression(
+                            `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
                           )()
                         }
+
+                        // add HMR handling
+                        if (opts.runtimeEnv !== 'prod') {
+                          programPath.pushContainer('body', routeHmrStatement)
+                        }
+                      }
+
+                      if (splitNodeMeta.splitStrategy === 'lazyFn') {
+                        const value = prop.value
+
+                        let shouldSplit = true
+
+                        if (t.isIdentifier(value)) {
+                          const existingImportPath =
+                            getImportSpecifierAndPathFromLocalName(
+                              programPath,
+                              value.name,
+                            ).path
+                          if (existingImportPath) {
+                            removableImportPaths.add(existingImportPath)
+                          }
+
+                          // exported identifiers should not be split
+                          // since they are already being imported
+                          // and need to be retained in the compiled file
+                          const isExported = hasExport(ast, value)
+                          shouldSplit = !isExported
+
+                          if (shouldSplit) {
+                            removeIdentifierLiteral(path, value)
+                          }
+                        }
+
+                        if (!shouldSplit) {
+                          return
+                        }
+
+                        // Prepend the import statement to the program along with the importer function
+                        if (!hasImportedOrDefinedIdentifier(LAZY_FN_IDENT)) {
+                          programPath.unshiftContainer(
+                            'body',
+                            template.smart(
+                              `import { ${LAZY_FN_IDENT} } from '${PACKAGE}'`,
+                            )(),
+                          )
+                        }
+
+                        // Check to see if the importer function is already defined
+                        // If not, define it with the dynamic import statement
+                        if (
+                          !hasImportedOrDefinedIdentifier(
+                            splitNodeMeta.localImporterIdent,
+                          )
+                        ) {
+                          programPath.unshiftContainer('body', [
+                            template.statement(
+                              `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
+                            )(),
+                          ])
+                        }
+
+                        // Add the lazyFn call with the dynamic import to the prop value
+                        prop.value = template.expression(
+                          `${LAZY_FN_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                        )()
                       }
                     }
+                  }
 
-                    programPath.scope.crawl()
-                  })
-                }
+                  programPath.scope.crawl()
+                })
               }
+            }
 
-              if (t.isCallExpression(path.parentPath.node)) {
-                // createFileRoute('/')({ ... })
-                const options = resolveIdentifier(
-                  path,
-                  path.parentPath.node.arguments[0],
-                )
+            if (t.isCallExpression(path.parentPath.node)) {
+              // createFileRoute('/')({ ... })
+              const options = resolveIdentifier(
+                path,
+                path.parentPath.node.arguments[0],
+              )
 
+              babelHandleReference(options)
+            } else if (t.isVariableDeclarator(path.parentPath.node)) {
+              // createFileRoute({ ... })
+              const caller = resolveIdentifier(path, path.parentPath.node.init)
+
+              if (t.isCallExpression(caller)) {
+                const options = resolveIdentifier(path, caller.arguments[0])
                 babelHandleReference(options)
-              } else if (t.isVariableDeclarator(path.parentPath.node)) {
-                // createFileRoute({ ... })
-                const caller = resolveIdentifier(
-                  path,
-                  path.parentPath.node.init,
-                )
-
-                if (t.isCallExpression(caller)) {
-                  const options = resolveIdentifier(path, caller.arguments[0])
-                  babelHandleReference(options)
-                }
               }
-            },
+            }
           },
-          state,
-        )
+        })
 
         /**
          * If the component for the route is being imported,
@@ -428,9 +397,7 @@ export function compileCodeSplitVirtualRoute(
 
   babel.traverse(ast, {
     Program: {
-      enter(programPath, programState) {
-        const state = programState as unknown as State
-
+      enter(programPath) {
         const trackedNodesToSplitByType: Record<
           SplitRouteIdentNodes,
           { node: t.Node | undefined; meta: SplitNodeMeta } | undefined
@@ -443,91 +410,85 @@ export function compileCodeSplitVirtualRoute(
         }
 
         // Find and track all the known split-able nodes
-        programPath.traverse(
-          {
-            CallExpression: (path) => {
-              if (!t.isIdentifier(path.node.callee)) {
-                return
-              }
+        programPath.traverse({
+          CallExpression: (path) => {
+            if (!t.isIdentifier(path.node.callee)) {
+              return
+            }
 
-              if (
-                !(
-                  path.node.callee.name === 'createRoute' ||
-                  path.node.callee.name === 'createFileRoute'
-                )
-              ) {
-                return
-              }
+            if (
+              !(
+                path.node.callee.name === 'createRoute' ||
+                path.node.callee.name === 'createFileRoute'
+              )
+            ) {
+              return
+            }
 
-              function babelHandleVirtual(options: t.Node | undefined) {
-                if (t.isObjectExpression(options)) {
-                  options.properties.forEach((prop) => {
-                    if (t.isObjectProperty(prop)) {
-                      // do not use `intendedSplitNodes` here
-                      // since we have special considerations that need
-                      // to be accounted for like (not splitting exported identifiers)
-                      KNOWN_SPLIT_ROUTE_IDENTS.forEach((splitType) => {
-                        if (
-                          !t.isIdentifier(prop.key) ||
-                          prop.key.name !== splitType
-                        ) {
-                          return
+            function babelHandleVirtual(options: t.Node | undefined) {
+              if (t.isObjectExpression(options)) {
+                options.properties.forEach((prop) => {
+                  if (t.isObjectProperty(prop)) {
+                    // do not use `intendedSplitNodes` here
+                    // since we have special considerations that need
+                    // to be accounted for like (not splitting exported identifiers)
+                    KNOWN_SPLIT_ROUTE_IDENTS.forEach((splitType) => {
+                      if (
+                        !t.isIdentifier(prop.key) ||
+                        prop.key.name !== splitType
+                      ) {
+                        return
+                      }
+
+                      const value = prop.value
+
+                      let isExported = false
+                      if (t.isIdentifier(value)) {
+                        isExported = hasExport(ast, value)
+                        if (isExported) {
+                          knownExportedIdents.add(value.name)
                         }
+                      }
 
-                        const value = prop.value
-
-                        let isExported = false
-                        if (t.isIdentifier(value)) {
-                          isExported = hasExport(ast, value)
-                          if (isExported) {
-                            knownExportedIdents.add(value.name)
-                          }
+                      // If the node is exported, we need to remove
+                      // the export from the split file
+                      if (isExported && t.isIdentifier(value)) {
+                        removeExports(ast, value)
+                      } else {
+                        const meta = SPLIT_NODES_CONFIG.get(splitType)!
+                        trackedNodesToSplitByType[splitType] = {
+                          node: prop.value,
+                          meta,
                         }
+                      }
+                    })
+                  }
+                })
 
-                        // If the node is exported, we need to remove
-                        // the export from the split file
-                        if (isExported && t.isIdentifier(value)) {
-                          removeExports(ast, value)
-                        } else {
-                          const meta = SPLIT_NODES_CONFIG.get(splitType)!
-                          trackedNodesToSplitByType[splitType] = {
-                            node: prop.value,
-                            meta,
-                          }
-                        }
-                      })
-                    }
-                  })
-
-                  // Remove all of the options
-                  options.properties = []
-                }
+                // Remove all of the options
+                options.properties = []
               }
+            }
 
-              if (t.isCallExpression(path.parentPath.node)) {
-                // createFileRoute('/')({ ... })
-                const options = resolveIdentifier(
-                  path,
-                  path.parentPath.node.arguments[0],
-                )
+            if (t.isCallExpression(path.parentPath.node)) {
+              // createFileRoute('/')({ ... })
+              const options = resolveIdentifier(
+                path,
+                path.parentPath.node.arguments[0],
+              )
 
+              babelHandleVirtual(options)
+            } else if (t.isVariableDeclarator(path.parentPath.node)) {
+              // createFileRoute({ ... })
+              const caller = resolveIdentifier(path, path.parentPath.node.init)
+
+              if (t.isCallExpression(caller)) {
+                const options = resolveIdentifier(path, caller.arguments[0])
                 babelHandleVirtual(options)
-              } else if (t.isVariableDeclarator(path.parentPath.node)) {
-                // createFileRoute({ ... })
-                const caller = resolveIdentifier(
-                  path,
-                  path.parentPath.node.init,
-                )
-
-                if (t.isCallExpression(caller)) {
-                  const options = resolveIdentifier(path, caller.arguments[0])
-                  babelHandleVirtual(options)
-                }
               }
-            },
+            }
           },
-          state,
-        )
+        })
 
         // Start the transformation to only exported the intended split nodes
         intendedSplitNodes.forEach((SPLIT_TYPE) => {

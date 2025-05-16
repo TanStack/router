@@ -71,6 +71,7 @@
     "@babel/types": "^7.26.8",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/router-generator": "workspace:^",
+    "@tanstack/router-plugin": "workspace:^",
     "@tanstack/router-utils": "workspace:^",
     "@tanstack/server-functions-plugin": "workspace:^",
     "@types/babel__code-frame": "^7.0.6",

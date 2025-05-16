@@ -55,7 +55,7 @@ To install them, run:
 npm i @tanstack/react-start @tanstack/react-router vite
 ```
 
-You'll also need React::
+You'll also need React:
 
 ```shell
 npm i react react-dom
@@ -69,7 +69,7 @@ npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths
 
 ## Update Configuration Files
 
-We'll then update our `package.json` to set `"type": "module"`:
+We'll then update our `package.json` to use Vite's CLI and set `"type": "module"`:
 
 ```json
 {
@@ -77,13 +77,12 @@ We'll then update our `package.json` to set `"type": "module"`:
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
-    "start": "vite start"
+    "build": "vite build"
   }
 }
 ```
 
-Then configure TanStack Start's `vite.config.ts` file:
+Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 
 ```ts
 // vite.config.ts
