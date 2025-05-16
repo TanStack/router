@@ -69,7 +69,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
         if (typeof input === 'string' && input.startsWith('/')) {
           // e.g: fetch('/api/data')
-          const url = new URL(input, 'https://localhost')
+          const url = new URL(input, 'http://localhost')
           return resolve(url, init)
         } else if (
           typeof input === 'object' &&
@@ -78,7 +78,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
           input.url.startsWith('/')
         ) {
           // e.g: fetch(new Request('/api/data'))
-          const url = new URL(input.url, 'https://localhost')
+          const url = new URL(input.url, 'http://localhost')
           return resolve(url, init)
         }
 
