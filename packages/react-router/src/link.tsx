@@ -364,8 +364,8 @@ type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
     > &
       React.RefAttributes<
         TComp extends
-          | React.FC<{ ref: infer TRef }>
-          | React.Component<{ ref: infer TRef }>
+          | React.FC<{ ref: React.Ref<infer TRef> }>
+          | React.Component<{ ref: React.Ref<infer TRef> }>
           ? TRef
           : never
       >
