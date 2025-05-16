@@ -8,6 +8,10 @@ export const Route = createFileRoute('/')({
 interface DemoProps {
   title: string;
 }
-export function TSRDummyComponent() {
-  return null;
+if (import.meta.hot) {
+  import.meta.hot.accept(newModule => {
+    if (newModule.Route && typeof newModule.Route.clone === 'function') {
+      newModule.Route.clone(Route);
+    }
+  });
 }

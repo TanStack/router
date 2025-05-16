@@ -122,7 +122,6 @@ describe('context function', () => {
       await clickButton('detail-1')
 
       await findByText('Detail page: 1')
-      console.log(mockContextFn.mock.calls)
       expect(mockContextFn).toHaveBeenCalledOnce()
       expect(mockContextFn).toHaveBeenCalledWith({ id: 1 })
       mockContextFn.mockClear()
@@ -1457,7 +1456,7 @@ describe('beforeLoad in the route definition', () => {
     }
 
     await check(1)
-    await router.invalidate()
+    await act(async () => await router.invalidate())
     await check(2)
   })
 })

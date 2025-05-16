@@ -8,34 +8,36 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router';
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root';
-import { Route as LogoutImport } from './routes/logout';
-import { Route as AuthenticatedImport } from './routes/_authenticated';
-import { Route as IndexImport } from './routes/index';
-import { Route as AuthenticatedAccountImport } from './routes/_authenticated/account';
+import { Route as LogoutRouteImport } from './routes/logout';
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated';
+import { Route as IndexRouteImport } from './routes/index';
+import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account';
 
 // Create/Update Routes
 
-const LogoutRoute = LogoutImport.update({
+const LogoutRoute = LogoutRouteImport.update({
   id: '/logout',
   path: '/logout',
   getParentRoute: () => rootRoute,
 } as any);
 
-const AuthenticatedRoute = AuthenticatedImport.update({
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRoute,
 } as any);
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any);
 
-const AuthenticatedAccountRoute = AuthenticatedAccountImport.update({
+const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   id: '/account',
   path: '/account',
   getParentRoute: () => AuthenticatedRoute,
@@ -49,31 +51,70 @@ declare module '@tanstack/react-router' {
       id: '/';
       path: '/';
       fullPath: '/';
-      preLoaderRoute: typeof IndexImport;
+      preLoaderRoute: typeof IndexRouteImport;
       parentRoute: typeof rootRoute;
     };
     '/_authenticated': {
       id: '/_authenticated';
       path: '';
       fullPath: '';
-      preLoaderRoute: typeof AuthenticatedImport;
+      preLoaderRoute: typeof AuthenticatedRouteImport;
       parentRoute: typeof rootRoute;
     };
     '/logout': {
       id: '/logout';
       path: '/logout';
       fullPath: '/logout';
-      preLoaderRoute: typeof LogoutImport;
+      preLoaderRoute: typeof LogoutRouteImport;
       parentRoute: typeof rootRoute;
     };
     '/_authenticated/account': {
       id: '/_authenticated/account';
       path: '/account';
       fullPath: '/account';
-      preLoaderRoute: typeof AuthenticatedAccountImport;
-      parentRoute: typeof AuthenticatedImport;
+      preLoaderRoute: typeof AuthenticatedAccountRouteImport;
+      parentRoute: typeof AuthenticatedRouteImport;
     };
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >;
+}
+declare module './routes/_authenticated' {
+  const createFileRoute: CreateFileRoute<
+    '/_authenticated',
+    FileRoutesByPath['/_authenticated']['parentRoute'],
+    FileRoutesByPath['/_authenticated']['id'],
+    FileRoutesByPath['/_authenticated']['path'],
+    FileRoutesByPath['/_authenticated']['fullPath']
+  >;
+}
+declare module './routes/logout' {
+  const createFileRoute: CreateFileRoute<
+    '/logout',
+    FileRoutesByPath['/logout']['parentRoute'],
+    FileRoutesByPath['/logout']['id'],
+    FileRoutesByPath['/logout']['path'],
+    FileRoutesByPath['/logout']['fullPath']
+  >;
+}
+declare module './routes/_authenticated/account' {
+  const createFileRoute: CreateFileRoute<
+    '/_authenticated/account',
+    FileRoutesByPath['/_authenticated/account']['parentRoute'],
+    FileRoutesByPath['/_authenticated/account']['id'],
+    FileRoutesByPath['/_authenticated/account']['path'],
+    FileRoutesByPath['/_authenticated/account']['fullPath']
+  >;
 }
 
 // Create and export the route tree

@@ -13,7 +13,7 @@ All other routes, other than the [Root Route](#the-root-route), are configured u
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/posts')({
+export const Route = createFileRoute({
   component: PostsComponent,
 })
 ```
@@ -71,7 +71,7 @@ Let's take a look at an `/about` route:
 // about.tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/about')({
+export const Route = createFileRoute({
   component: AboutComponent,
 })
 
@@ -93,7 +93,7 @@ Let's take a look at an index route for a `/posts` URL:
 import { createFileRoute } from '@tanstack/react-router'
 
 // Note the trailing slash, which is used to target index routes
-export const Route = createFileRoute('/posts/')({
+export const Route = createFileRoute({
   component: PostsIndexComponent,
 })
 
@@ -113,7 +113,7 @@ These params are then usable in your route's configuration and components! Let's
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/posts/$postId')({
+export const Route = createFileRoute({
   // In a loader
   loader: ({ params }) => fetchPost(params.postId),
   // Or in a component
@@ -172,7 +172,7 @@ This tree structure is used to wrap the child routes with a layout component:
 ```tsx
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/app')({
+export const Route = createFileRoute({
   component: AppLayoutComponent,
 })
 
@@ -243,7 +243,7 @@ The `_pathlessLayout.tsx` route is used to wrap the child routes with a Pathless
 ```tsx
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/_pathlessLayout')({
+export const Route = createFileRoute({
   component: PathlessLayoutComponent,
 })
 

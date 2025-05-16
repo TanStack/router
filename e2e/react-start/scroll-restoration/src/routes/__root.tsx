@@ -1,12 +1,13 @@
 import * as React from 'react'
 import {
+  HeadContent,
   Link,
   Outlet,
+  Scripts,
   createRootRoute,
   linkOptions,
-  HeadContent,
-  Scripts,
 } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -66,6 +67,7 @@ function RootComponent() {
   return (
     <RootDocument>
       <Outlet />
+      <TanStackRouterDevtools />
     </RootDocument>
   )
 }

@@ -51,6 +51,7 @@ async function setupConfig(
     disableLogging: true,
     routesDirectory: dir + '/routes',
     generatedRouteTree: dir + generatedRouteTree,
+    verboseFileRoutes: false,
     ...rest,
   })
   return config
@@ -116,11 +117,6 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
           '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
           'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
         ].join(''),
-        apiTemplate: [
-          'import { json } from "@tanstack/react-start";\n',
-          '%%tsrImports%%\n\n',
-          '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message: "Hello /api/test" }) }}%%tsrExportEnd%%\n',
-        ].join(''),
         lazyRouteTemplate: [
           'import React, { useState } from "react";\n',
           '%%tsrImports%%\n\n',
@@ -128,7 +124,6 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
           'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
         ].join(''),
       }
-      config.__enableAPIRoutesGeneration = true
       break
     default:
       break

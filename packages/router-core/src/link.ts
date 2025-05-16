@@ -30,18 +30,98 @@ import type { ParsedLocation } from './location'
 export type IsRequiredParams<TParams> =
   Record<never, never> extends TParams ? never : true
 
-export type ParsePathParams<T extends string, TAcc = never> = T &
-  `${string}$${string}` extends never
-  ? TAcc
-  : T extends `${string}$${infer TPossiblyParam}`
-    ? TPossiblyParam extends ''
-      ? TAcc
-      : TPossiblyParam & `${string}/${string}` extends never
-        ? TPossiblyParam | TAcc
-        : TPossiblyParam extends `${infer TParam}/${infer TRest}`
-          ? ParsePathParams<TRest, TParam extends '' ? TAcc : TParam | TAcc>
+export interface ParsePathParamsResult<
+  in out TRequired,
+  in out TOptional,
+  in out TRest,
+> {
+  required: TRequired
+  optional: TOptional
+  rest: TRest
+}
+
+export type AnyParsePathParamsResult = ParsePathParamsResult<
+  string,
+  string,
+  string
+>
+
+export type ParsePathParamsBoundaryStart<T extends string> =
+  T extends `${infer TLeft}{-${infer TRight}`
+    ? ParsePathParamsResult<
+        ParsePathParams<TLeft>['required'],
+        | ParsePathParams<TLeft>['optional']
+        | ParsePathParams<TRight>['required']
+        | ParsePathParams<TRight>['optional'],
+        ParsePathParams<TRight>['rest']
+      >
+    : T extends `${infer TLeft}{${infer TRight}`
+      ? ParsePathParamsResult<
+          | ParsePathParams<TLeft>['required']
+          | ParsePathParams<TRight>['required'],
+          | ParsePathParams<TLeft>['optional']
+          | ParsePathParams<TRight>['optional'],
+          ParsePathParams<TRight>['rest']
+        >
+      : never
+
+export type ParsePathParamsSymbol<T extends string> =
+  T extends `${string}$${infer TRight}`
+    ? TRight extends `${string}/${string}`
+      ? TRight extends `${infer TParam}/${infer TRest}`
+        ? TParam extends ''
+          ? ParsePathParamsResult<
+              ParsePathParams<TRest>['required'],
+              '_splat' | ParsePathParams<TRest>['optional'],
+              ParsePathParams<TRest>['rest']
+            >
+          : ParsePathParamsResult<
+              TParam | ParsePathParams<TRest>['required'],
+              ParsePathParams<TRest>['optional'],
+              ParsePathParams<TRest>['rest']
+            >
+        : never
+      : TRight extends ''
+        ? ParsePathParamsResult<never, '_splat', never>
+        : ParsePathParamsResult<TRight, never, never>
+    : never
+
+export type ParsePathParamsBoundaryEnd<T extends string> =
+  T extends `${infer TLeft}}${infer TRight}`
+    ? ParsePathParamsResult<
+        | ParsePathParams<TLeft>['required']
+        | ParsePathParams<TRight>['required'],
+        | ParsePathParams<TLeft>['optional']
+        | ParsePathParams<TRight>['optional'],
+        ParsePathParams<TRight>['rest']
+      >
+    : never
+
+export type ParsePathParamsEscapeStart<T extends string> =
+  T extends `${infer TLeft}[${infer TRight}`
+    ? ParsePathParamsResult<
+        | ParsePathParams<TLeft>['required']
+        | ParsePathParams<TRight>['required'],
+        | ParsePathParams<TLeft>['optional']
+        | ParsePathParams<TRight>['optional'],
+        ParsePathParams<TRight>['rest']
+      >
+    : never
+
+export type ParsePathParamsEscapeEnd<T extends string> =
+  T extends `${string}]${infer TRight}` ? ParsePathParams<TRight> : never
+
+export type ParsePathParams<T extends string> = T extends `${string}[${string}`
+  ? ParsePathParamsEscapeStart<T>
+  : T extends `${string}]${string}`
+    ? ParsePathParamsEscapeEnd<T>
+    : T extends `${string}}${string}`
+      ? ParsePathParamsBoundaryEnd<T>
+      : T extends `${string}{${string}`
+        ? ParsePathParamsBoundaryStart<T>
+        : T extends `${string}$${string}`
+          ? ParsePathParamsSymbol<T>
           : never
-    : TAcc
 
 export type AddTrailingSlash<T> = T extends `${string}/` ? T : `${T & string}/`
 
@@ -344,6 +424,7 @@ export type ToSubOptionsProps<
   hash?: true | Updater<string>
   state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
   from?: FromPathOption<TRouter, TFrom> & {}
+  relative?: 'route' | 'path'
 }
 
 export type ParamsReducerFn<
@@ -591,6 +672,11 @@ export interface LinkOptionsProps {
    * @default false
    */
   disabled?: boolean
+  /**
+   * When the preload strategy is set to `intent`, this controls the proximity of the link to the cursor before it is preloaded.
+   * If the user exits this proximity before this delay, the preload will be cancelled.
+   */
+  preloadIntentProximity?: number
 }
 
 export type LinkOptions<

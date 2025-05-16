@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import * as v from 'valibot'
 import { queryOptions } from '@tanstack/react-query'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
@@ -14,7 +14,7 @@ const loaderResult = v.object({
   params,
 })
 
-const middleware = createMiddleware()
+const middleware = createMiddleware({ type: 'function' })
   .validator(params)
   .client(({ next }) => {
     const context = { client: { paramsPlaceholder: 'paramsPlaceholder' } }
@@ -44,7 +44,7 @@ const paramsQueryOptions = queryOptions({
   },
 })
 
-export const Route = createFileRoute('/params/$paramsPlaceholder')({
+export const Route = createFileRoute({
   component: ParamsComponent,
   context: () => ({
     paramsQueryOptions: queryOptions({

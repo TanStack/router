@@ -5,10 +5,9 @@ import {
   ErrorComponent,
   ErrorComponentProps,
   Link,
-  createFileRoute,
 } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/(test)/foo')({
+export const Route = createFileRoute({
   loader: async ({ params: { postId } }) => ({
     postId,
     title: 'title',
@@ -39,7 +38,7 @@ function PostComponent() {
           postId: post.id,
         }}
         activeProps={{ className: 'text-black font-bold' }}
-        className="block py-1 text-blue-800 hover:text-blue-600"
+        className="inline-block py-1 text-blue-800 hover:text-blue-600"
       >
         Deep View
       </Link>

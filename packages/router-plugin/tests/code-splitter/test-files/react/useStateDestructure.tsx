@@ -159,9 +159,9 @@ export default function VersionIndex() {
             lg:text-xl lg:max-w-[600px]"
         >
           Full-document SSR, Streaming, Server Functions, bundling and more,
-          powered by <strong>TanStack Router</strong>, <strong>Vinxi</strong>,{' '}
-          <strong>Nitro</strong> and <strong>Vite</strong>. Ready to deploy to
-          your favorite hosting provider.
+          powered by <strong>TanStack Router</strong>, <strong>Nitro</strong>{' '}
+          and <strong>Vite</strong>. Ready to deploy to your favorite hosting
+          provider.
         </p>
       </div>
       <div className="space-y-8 px-4">

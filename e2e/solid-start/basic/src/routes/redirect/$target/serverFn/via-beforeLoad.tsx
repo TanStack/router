@@ -1,9 +1,6 @@
-import { createFileRoute } from '@tanstack/solid-router'
 import { throwRedirect } from '~/components/throwRedirect'
 
-export const Route = createFileRoute(
-  '/redirect/$target/serverFn/via-beforeLoad',
-)({
+export const Route = createFileRoute({
   beforeLoad: ({
     params: { target },
     search: { reloadDocument, externalHost },

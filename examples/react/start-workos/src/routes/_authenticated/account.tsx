@@ -1,8 +1,8 @@
 import { Box, Flex, Heading, Text, TextField } from '@radix-ui/themes';
-import { createFileRoute } from '@tanstack/react-router';
+import {} from '@tanstack/react-router';
 import { getAuth } from '../../authkit/serverFunctions';
 
-export const Route = createFileRoute('/_authenticated/account')({
+export const Route = createFileRoute({
   component: RouteComponent,
   loader: async ({ context }) => {
     const { user } = context;

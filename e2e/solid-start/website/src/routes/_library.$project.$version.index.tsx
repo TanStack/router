@@ -1,6 +1,6 @@
-import { Link, createFileRoute } from '@tanstack/solid-router'
+import { Link } from '@tanstack/solid-router'
 
-export const Route = createFileRoute('/_library/$project/$version/')({
+export const Route = createFileRoute({
   component: Page,
 })
 
@@ -14,7 +14,7 @@ function Page() {
       </h1>
       <p data-testid="landing-page-version">version: {params().version}</p>
       <p>
-        <Link from="/$project/$version" to="./docs">
+        <Link aria-label="Documentation" from="/$project/$version" to="./docs">
           Get started with our documentation.
         </Link>
       </p>

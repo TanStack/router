@@ -2,9 +2,9 @@ import * as fs from 'node:fs'
 import { createServerFn } from '@tanstack/solid-start'
 import { getRequestHeader } from '@tanstack/solid-start/server'
 import { createSignal } from 'solid-js'
-import { createFileRoute } from '@tanstack/solid-router'
+import {} from '@tanstack/solid-router'
 
-export const Route = createFileRoute('/dead-code-preserve')({
+export const Route = createFileRoute({
   component: RouteComponent,
 })
 

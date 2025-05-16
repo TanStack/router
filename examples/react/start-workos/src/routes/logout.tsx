@@ -1,7 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { signOut } from '../authkit/serverFunctions';
 
-export const Route = createFileRoute('/logout')({
+export const Route = createFileRoute({
   preload: false,
   loader: () => signOut(),
 });

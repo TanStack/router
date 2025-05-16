@@ -76,8 +76,7 @@ describe('detectCodeSplitGroupingsFromRoute - success', () => {
     ({ code, expectedGrouping, expectedRouteId }) => {
       const result = detectCodeSplitGroupingsFromRoute({
         code: code,
-        filename: 'test.ts',
-        root: '/src',
+        sourceFilename: 'test.ts',
       })
 
       expect(result.groupings).toEqual(expectedGrouping)
@@ -121,8 +120,7 @@ describe('detectCodeSplitGroupingsFromRoute - fail', () => {
     expect(() =>
       detectCodeSplitGroupingsFromRoute({
         code: code,
-        filename: 'test.ts',
-        root: '/src',
+        sourceFilename: 'test.ts',
       }),
     ).toThrowError()
   })

@@ -1,6 +1,5 @@
 import * as fs from 'node:fs'
 import * as prettier from 'prettier'
-import type { Config } from './config'
 
 export function multiSortBy<T>(
   arr: Array<T>,
@@ -86,7 +85,55 @@ export function removeTrailingSlash(s: string) {
 }
 
 export function determineInitialRoutePath(routePath: string) {
-  return cleanPath(`/${routePath.split('.').join('/')}`) || ''
+  const DISALLOWED_ESCAPE_CHARS = new Set([
+    '/',
+    '\\',
+    '?',
+    '#',
+    ':',
+    '*',
+    '<',
+    '>',
+    '|',
+    '!',
+    '$',
+    '%',
+  ])
+
+  const parts = routePath.split(/(?<!\[)\.(?!\])/g)
+
+  // Escape any characters that in square brackets
+  const escapedParts = parts.map((part) => {
+    // Check if any disallowed characters are used in brackets
+    const BRACKET_CONTENT_RE = /\[(.*?)\]/g
+
+    let match
+    while ((match = BRACKET_CONTENT_RE.exec(part)) !== null) {
+      const character = match[1]
+      if (character === undefined) continue
+      if (DISALLOWED_ESCAPE_CHARS.has(character)) {
+        console.error(
+          `Error: Disallowed character "${character}" found in square brackets in route path "${routePath}".\nYou cannot use any of the following characters in square brackets: ${Array.from(
+            DISALLOWED_ESCAPE_CHARS,
+          ).join(', ')}\nPlease remove and/or replace them.`,
+        )
+        process.exit(1)
+      }
+    }
+
+    // Since this split segment is safe at this point, we can
+    // remove the brackets and replace them with the content inside
+    return part.replace(/\[(.)\]/g, '$1')
+  })
+
+  // If the syntax for prefix/suffix is different, from the path
+  // matching internals of router-core, we'd perform those changes here
+  // on the `escapedParts` array before it is joined back together in
+  // `final`
+
+  const final = cleanPath(`/${escapedParts.join('/')}`) || ''
+
+  return final
 }
 
 export function replaceBackslash(s: string) {
@@ -94,15 +141,43 @@ export function replaceBackslash(s: string) {
 }
 
 export function routePathToVariable(routePath: string): string {
+  const toVariableSafeChar = (char: string): string => {
+    if (/[a-zA-Z0-9_]/.test(char)) {
+      return char // Keep alphanumeric characters and underscores as is
+    }
+
+    // Replace special characters with meaningful text equivalents
+    switch (char) {
+      case '.':
+        return 'Dot'
+      case '-':
+        return 'Dash'
+      case '@':
+        return 'At'
+      case '(':
+        return '' // Removed since route groups use parentheses
+      case ')':
+        return '' // Removed since route groups use parentheses
+      case ' ':
+        return '' // Remove spaces
+      default:
+        return `Char${char.charCodeAt(0)}` // For any other characters
+    }
+  }
+
   return (
     removeUnderscores(routePath)
       ?.replace(/\/\$\//g, '/splat/')
       .replace(/\$$/g, 'splat')
+      .replace(/\$\{\$\}/g, 'splat')
       .replace(/\$/g, '')
       .split(/[/-]/g)
       .map((d, i) => (i > 0 ? capitalize(d) : d))
       .join('')
-      .replace(/([^a-zA-Z0-9]|[.])/gm, '')
+      .split('')
+      .map(toVariableSafeChar)
+      .join('')
+      // .replace(/([^a-zA-Z0-9]|[.])/gm, '')
       .replace(/^(\d)/g, 'R$1') ?? ''
   )
 }
@@ -151,7 +226,13 @@ export async function writeIfDifferent(
  * @param config The configuration object
  * @returns The formatted content
  */
-export async function format(source: string, config: Config): Promise<string> {
+export async function format(
+  source: string,
+  config: {
+    quoteStyle: 'single' | 'double'
+    semicolons: boolean
+  },
+): Promise<string> {
   const prettierOptions: prettier.Config = {
     semi: config.semicolons,
     singleQuote: config.quoteStyle === 'single',

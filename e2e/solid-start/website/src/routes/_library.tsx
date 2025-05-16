@@ -1,12 +1,7 @@
-import {
-  Link,
-  Outlet,
-  createFileRoute,
-  useLocation,
-} from '@tanstack/solid-router'
+import { Link, Outlet, useLocation } from '@tanstack/solid-router'
 import { getProjects } from '~/server/projects'
 
-export const Route = createFileRoute('/_library')({
+export const Route = createFileRoute({
   loader: async () => {
     const projects = await getProjects()
     return {

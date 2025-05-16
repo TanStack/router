@@ -8,70 +8,72 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostsRouteImport } from './routes/posts.route'
-import { Route as BlogRouteImport } from './routes/blog.route'
-import { Route as IndexImport } from './routes/index'
-import { Route as PostsIndexImport } from './routes/posts.index'
-import { Route as BlogIndexImport } from './routes/blog.index'
-import { Route as BlogStatsImport } from './routes/blog_.stats'
-import { Route as PostsPostIdIndexImport } from './routes/posts.$postId.index'
-import { Route as BlogSlugIndexImport } from './routes/blog.$slug.index'
-import { Route as PostsPostIdDeepImport } from './routes/posts.$postId.deep'
+import { Route as PostsRouteRouteImport } from './routes/posts.route'
+import { Route as BlogRouteRouteImport } from './routes/blog.route'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as PostsIndexRouteImport } from './routes/posts.index'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogStatsRouteImport } from './routes/blog_.stats'
+import { Route as PostsPostIdIndexRouteImport } from './routes/posts.$postId.index'
+import { Route as BlogSlugIndexRouteImport } from './routes/blog.$slug.index'
+import { Route as PostsPostIdDeepRouteImport } from './routes/posts.$postId.deep'
 
 // Create/Update Routes
 
-const PostsRouteRoute = PostsRouteImport.update({
+const PostsRouteRoute = PostsRouteRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const BlogRouteRoute = BlogRouteImport.update({
+const BlogRouteRoute = BlogRouteRouteImport.update({
   id: '/blog',
   path: '/blog',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsIndexRoute = PostsIndexImport.update({
+const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRouteRoute,
 } as any)
 
-const BlogIndexRoute = BlogIndexImport.update({
+const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => BlogRouteRoute,
 } as any)
 
-const BlogStatsRoute = BlogStatsImport.update({
+const BlogStatsRoute = BlogStatsRouteImport.update({
   id: '/blog_/stats',
   path: '/blog/stats',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsPostIdIndexRoute = PostsPostIdIndexImport.update({
+const PostsPostIdIndexRoute = PostsPostIdIndexRouteImport.update({
   id: '/$postId/',
   path: '/$postId/',
   getParentRoute: () => PostsRouteRoute,
 } as any)
 
-const BlogSlugIndexRoute = BlogSlugIndexImport.update({
+const BlogSlugIndexRoute = BlogSlugIndexRouteImport.update({
   id: '/$slug/',
   path: '/$slug/',
   getParentRoute: () => BlogRouteRoute,
 } as any)
 
-const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
+const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
   id: '/$postId/deep',
   path: '/$postId/deep',
   getParentRoute: () => PostsRouteRoute,
@@ -85,66 +87,150 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/blog': {
       id: '/blog'
       path: '/blog'
       fullPath: '/blog'
-      preLoaderRoute: typeof BlogRouteImport
+      preLoaderRoute: typeof BlogRouteRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
+      preLoaderRoute: typeof PostsRouteRouteImport
       parentRoute: typeof rootRoute
     }
     '/blog_/stats': {
       id: '/blog_/stats'
       path: '/blog/stats'
       fullPath: '/blog/stats'
-      preLoaderRoute: typeof BlogStatsImport
+      preLoaderRoute: typeof BlogStatsRouteImport
       parentRoute: typeof rootRoute
     }
     '/blog/': {
       id: '/blog/'
       path: '/'
       fullPath: '/blog/'
-      preLoaderRoute: typeof BlogIndexImport
-      parentRoute: typeof BlogRouteImport
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof BlogRouteRouteImport
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsRouteImport
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRouteRouteImport
     }
     '/posts/$postId/deep': {
       id: '/posts/$postId/deep'
       path: '/$postId/deep'
       fullPath: '/posts/$postId/deep'
-      preLoaderRoute: typeof PostsPostIdDeepImport
-      parentRoute: typeof PostsRouteImport
+      preLoaderRoute: typeof PostsPostIdDeepRouteImport
+      parentRoute: typeof PostsRouteRouteImport
     }
     '/blog/$slug/': {
       id: '/blog/$slug/'
       path: '/$slug'
       fullPath: '/blog/$slug'
-      preLoaderRoute: typeof BlogSlugIndexImport
-      parentRoute: typeof BlogRouteImport
+      preLoaderRoute: typeof BlogSlugIndexRouteImport
+      parentRoute: typeof BlogRouteRouteImport
     }
     '/posts/$postId/': {
       id: '/posts/$postId/'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdIndexImport
-      parentRoute: typeof PostsRouteImport
+      preLoaderRoute: typeof PostsPostIdIndexRouteImport
+      parentRoute: typeof PostsRouteRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/blog.route' {
+  const createFileRoute: CreateFileRoute<
+    '/blog',
+    FileRoutesByPath['/blog']['parentRoute'],
+    FileRoutesByPath['/blog']['id'],
+    FileRoutesByPath['/blog']['path'],
+    FileRoutesByPath['/blog']['fullPath']
+  >
+}
+declare module './routes/posts.route' {
+  const createFileRoute: CreateFileRoute<
+    '/posts',
+    FileRoutesByPath['/posts']['parentRoute'],
+    FileRoutesByPath['/posts']['id'],
+    FileRoutesByPath['/posts']['path'],
+    FileRoutesByPath['/posts']['fullPath']
+  >
+}
+declare module './routes/blog_.stats' {
+  const createFileRoute: CreateFileRoute<
+    '/blog_/stats',
+    FileRoutesByPath['/blog_/stats']['parentRoute'],
+    FileRoutesByPath['/blog_/stats']['id'],
+    FileRoutesByPath['/blog_/stats']['path'],
+    FileRoutesByPath['/blog_/stats']['fullPath']
+  >
+}
+declare module './routes/blog.index' {
+  const createFileRoute: CreateFileRoute<
+    '/blog/',
+    FileRoutesByPath['/blog/']['parentRoute'],
+    FileRoutesByPath['/blog/']['id'],
+    FileRoutesByPath['/blog/']['path'],
+    FileRoutesByPath['/blog/']['fullPath']
+  >
+}
+declare module './routes/posts.index' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/',
+    FileRoutesByPath['/posts/']['parentRoute'],
+    FileRoutesByPath['/posts/']['id'],
+    FileRoutesByPath['/posts/']['path'],
+    FileRoutesByPath['/posts/']['fullPath']
+  >
+}
+declare module './routes/posts.$postId.deep' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/$postId/deep',
+    FileRoutesByPath['/posts/$postId/deep']['parentRoute'],
+    FileRoutesByPath['/posts/$postId/deep']['id'],
+    FileRoutesByPath['/posts/$postId/deep']['path'],
+    FileRoutesByPath['/posts/$postId/deep']['fullPath']
+  >
+}
+declare module './routes/blog.$slug.index' {
+  const createFileRoute: CreateFileRoute<
+    '/blog/$slug/',
+    FileRoutesByPath['/blog/$slug/']['parentRoute'],
+    FileRoutesByPath['/blog/$slug/']['id'],
+    FileRoutesByPath['/blog/$slug/']['path'],
+    FileRoutesByPath['/blog/$slug/']['fullPath']
+  >
+}
+declare module './routes/posts.$postId.index' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/$postId/',
+    FileRoutesByPath['/posts/$postId/']['parentRoute'],
+    FileRoutesByPath['/posts/$postId/']['id'],
+    FileRoutesByPath['/posts/$postId/']['path'],
+    FileRoutesByPath['/posts/$postId/']['fullPath']
+  >
 }
 
 // Create and export the route tree

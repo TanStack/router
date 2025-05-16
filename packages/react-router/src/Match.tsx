@@ -306,6 +306,17 @@ export const Outlet = React.memo(function OutletImpl() {
     },
   })
 
+  const pendingElement = router.options.defaultPendingComponent ? (
+    <router.options.defaultPendingComponent />
+  ) : null
+
+  if (router.isShell)
+    return (
+      <React.Suspense fallback={pendingElement}>
+        <ShellInner />
+      </React.Suspense>
+    )
+
   if (parentGlobalNotFound) {
     return renderRouteNotFound(router, route, undefined)
   }
@@ -316,10 +327,6 @@ export const Outlet = React.memo(function OutletImpl() {
 
   const nextMatch = <Match matchId={childMatchId} />
 
-  const pendingElement = router.options.defaultPendingComponent ? (
-    <router.options.defaultPendingComponent />
-  ) : null
-
   if (matchId === rootRouteId) {
     return (
       <React.Suspense fallback={pendingElement}>{nextMatch}</React.Suspense>
@@ -328,3 +335,7 @@ export const Outlet = React.memo(function OutletImpl() {
 
   return nextMatch
 })
+
+function ShellInner(): React.ReactElement {
+  throw new Error('ShellBoundaryError')
+}

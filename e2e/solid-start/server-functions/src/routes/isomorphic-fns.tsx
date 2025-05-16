@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/solid-router'
 import { createIsomorphicFn, createServerFn } from '@tanstack/solid-start'
 import { createSignal } from 'solid-js'
 
@@ -16,7 +15,7 @@ const getServerEcho = createServerFn()
   .validator((input: string) => input)
   .handler(({ data }) => getEcho(data))
 
-export const Route = createFileRoute('/isomorphic-fns')({
+export const Route = createFileRoute({
   component: RouteComponent,
   loader() {
     return {

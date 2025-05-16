@@ -9,27 +9,35 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as IndexImport } from './routes/index'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiBarRouteImport } from './routes/api/bar'
 
 // Create Virtual Routes
 
-const FooLazyImport = createFileRoute('/foo')()
+const FooLazyRouteImport = createFileRoute('/foo')()
 
 // Create/Update Routes
 
-const FooLazyRoute = FooLazyImport.update({
+const FooLazyRoute = FooLazyRouteImport.update({
   id: '/foo',
   path: '/foo',
   getParentRoute: () => rootRoute,
 } as any).lazy(() => import('./routes/foo.lazy').then((d) => d.Route))
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ApiBarRoute = ApiBarRouteImport.update({
+  id: '/api/bar',
+  path: '/api/bar',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -41,17 +49,50 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/foo': {
       id: '/foo'
       path: '/foo'
       fullPath: '/foo'
-      preLoaderRoute: typeof FooLazyImport
+      preLoaderRoute: typeof FooLazyRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/api/bar': {
+      id: '/api/bar'
+      path: '/api/bar'
+      fullPath: '/api/bar'
+      preLoaderRoute: typeof ApiBarRouteImport
       parentRoute: typeof rootRoute
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/foo.lazy' {
+  const createLazyFileRoute: CreateLazyFileRoute<
+    FileRoutesByPath['/foo']['preLoaderRoute']
+  >
+}
+declare module './routes/api/bar' {
+  const createFileRoute: CreateFileRoute<
+    '/api/bar',
+    FileRoutesByPath['/api/bar']['parentRoute'],
+    FileRoutesByPath['/api/bar']['id'],
+    FileRoutesByPath['/api/bar']['path'],
+    FileRoutesByPath['/api/bar']['fullPath']
+  >
 }
 
 // Create and export the route tree
@@ -59,36 +100,41 @@ declare module '@tanstack/react-router' {
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/foo': typeof FooLazyRoute
+  '/api/bar': typeof ApiBarRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/foo': typeof FooLazyRoute
+  '/api/bar': typeof ApiBarRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/foo': typeof FooLazyRoute
+  '/api/bar': typeof ApiBarRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/foo'
+  fullPaths: '/' | '/foo' | '/api/bar'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/foo'
-  id: '__root__' | '/' | '/foo'
+  to: '/' | '/foo' | '/api/bar'
+  id: '__root__' | '/' | '/foo' | '/api/bar'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FooLazyRoute: typeof FooLazyRoute
+  ApiBarRoute: typeof ApiBarRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FooLazyRoute: FooLazyRoute,
+  ApiBarRoute: ApiBarRoute,
 }
 
 export const routeTree = rootRoute
@@ -102,7 +148,8 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/foo"
+        "/foo",
+        "/api/bar"
       ]
     },
     "/": {
@@ -110,6 +157,9 @@ export const routeTree = rootRoute
     },
     "/foo": {
       "filePath": "foo.lazy.tsx"
+    },
+    "/api/bar": {
+      "filePath": "api/bar.tsx"
     }
   }
 }

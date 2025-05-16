@@ -4,17 +4,16 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.120.3",
-    "@tanstack/react-router-devtools": "^1.120.3",
-    "@tanstack/react-start": "^1.120.3",
+    "@tanstack/react-router": "^1.120.4-alpha.19",
+    "@tanstack/react-router-devtools": "^1.120.4-alpha.19",
+    "@tanstack/react-start": "^1.120.4-alpha.23",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "vinxi": "0.5.3"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",

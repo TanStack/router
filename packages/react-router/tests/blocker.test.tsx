@@ -1,11 +1,12 @@
 import React from 'react'
 import '@testing-library/jest-dom/vitest'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import combinate from 'combinate'
 import {
   Link,
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouter,
@@ -13,9 +14,17 @@ import {
   useBlocker,
   useNavigate,
 } from '../src'
-import type { ShouldBlockFn } from '../src'
+import type { RouterHistory, ShouldBlockFn } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
   cleanup()
@@ -91,6 +100,7 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
       fooRoute,
       barRoute,
     ]),
+    history,
   })
 
   render(<RouterProvider router={router} />)

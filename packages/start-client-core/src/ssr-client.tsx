@@ -77,15 +77,16 @@ export interface ResolvePromiseState {
 export interface DehydratedRouter {
   manifest: Manifest | undefined
   dehydratedData: any
+  lastMatchId: string
 }
 
-export function hydrate(router: AnyRouter) {
+export async function hydrate(router: AnyRouter): Promise<any> {
   invariant(
     window.__TSR_SSR__?.dehydrated,
     'Expected to find a dehydrated data on window.__TSR_SSR__.dehydrated... but we did not. Please file an issue!',
   )
 
-  const { manifest, dehydratedData } = startSerializer.parse(
+  const { manifest, dehydratedData, lastMatchId } = startSerializer.parse(
     window.__TSR_SSR__.dehydrated,
   ) as DehydratedRouter
 
@@ -116,6 +117,7 @@ export function hydrate(router: AnyRouter) {
 
   // Hydrate the router state
   const matches = router.matchRoutes(router.state.location)
+
   // kick off loading the route chunks
   const routeChunkPromise = Promise.all(
     matches.map((match) => {
@@ -123,6 +125,7 @@ export function hydrate(router: AnyRouter) {
       return router.loadRouteChunk(route)
     }),
   )
+
   // Right after hydration and before the first render, we need to rehydrate each match
   // First step is to reyhdrate loaderData and __beforeLoadContext
   matches.forEach((match) => {
@@ -130,38 +133,35 @@ export function hydrate(router: AnyRouter) {
       (d) => d.id === match.id,
     )
 
-    if (dehydratedMatch) {
-      Object.assign(match, dehydratedMatch)
-
-      // Handle beforeLoadContext
-      if (dehydratedMatch.__beforeLoadContext) {
-        match.__beforeLoadContext = router.ssr!.serializer.parse(
-          dehydratedMatch.__beforeLoadContext,
-        ) as any
-      }
-
-      // Handle loaderData
-      if (dehydratedMatch.loaderData) {
-        match.loaderData = router.ssr!.serializer.parse(
-          dehydratedMatch.loaderData,
-        )
-      }
-
-      // Handle error
-      if (dehydratedMatch.error) {
-        match.error = router.ssr!.serializer.parse(dehydratedMatch.error)
-      }
-
-      // Handle extracted
-      ;(match as unknown as SsrMatch).extracted?.forEach((ex) => {
-        deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
-      })
-    } else {
-      Object.assign(match, {
-        status: 'success',
-        updatedAt: Date.now(),
-      })
+    if (!dehydratedMatch) {
+      return
     }
+
+    Object.assign(match, dehydratedMatch)
+
+    // Handle beforeLoadContext
+    if (dehydratedMatch.__beforeLoadContext) {
+      match.__beforeLoadContext = router.ssr!.serializer.parse(
+        dehydratedMatch.__beforeLoadContext,
+      ) as any
+    }
+
+    // Handle loaderData
+    if (dehydratedMatch.loaderData) {
+      match.loaderData = router.ssr!.serializer.parse(
+        dehydratedMatch.loaderData,
+      )
+    }
+
+    // Handle error
+    if (dehydratedMatch.error) {
+      match.error = router.ssr!.serializer.parse(dehydratedMatch.error)
+    }
+
+    // Handle extracted
+    ;(match as unknown as SsrMatch).extracted?.forEach((ex) => {
+      deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
+    })
 
     return match
   })
@@ -223,6 +223,10 @@ export function hydrate(router: AnyRouter) {
     match.headScripts = headFnContent?.scripts
     match.scripts = scripts
   })
+
+  if (matches[matches.length - 1]!.id !== lastMatchId) {
+    return await Promise.all([routeChunkPromise, router.load()])
+  }
 
   return routeChunkPromise
 }

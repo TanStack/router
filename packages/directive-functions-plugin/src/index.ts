@@ -15,23 +15,28 @@ export type {
   ReplacerFn,
 } from './compilers'
 
-export type DirectiveFunctionsViteOptions = Pick<
+export type DirectiveFunctionsViteEnvOptions = Pick<
   CompileDirectivesOpts,
-  'directive' | 'directiveLabel' | 'getRuntimeCode' | 'replacer'
-  // | 'devSplitImporter'
+  'getRuntimeCode' | 'replacer'
 > & {
   envLabel: string
 }
+
+export type DirectiveFunctionsViteOptions = Pick<
+  CompileDirectivesOpts,
+  'directive' | 'directiveLabel'
+> &
+  DirectiveFunctionsViteEnvOptions & {
+    onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
+  }
 
 const createDirectiveRx = (directive: string) =>
   new RegExp(`"${directive}"|'${directive}'`, 'gm')
 
 export function TanStackDirectiveFunctionsPlugin(
-  opts: DirectiveFunctionsViteOptions & {
-    onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
-  },
+  opts: DirectiveFunctionsViteOptions,
 ): Plugin {
-  let ROOT: string = process.cwd()
+  let root: string = process.cwd()
 
   const directiveRx = createDirectiveRx(opts.directive)
 
@@ -39,36 +44,123 @@ export function TanStackDirectiveFunctionsPlugin(
     name: 'tanstack-start-directive-vite-plugin',
     enforce: 'pre',
     configResolved: (config) => {
-      ROOT = config.root
+      root = config.root
     },
     transform(code, id) {
-      const url = pathToFileURL(id)
-      url.searchParams.delete('v')
-      id = fileURLToPath(url).replace(/\\/g, '/')
-
-      if (!code.match(directiveRx)) {
-        return null
-      }
-
-      if (debug) console.info(`${opts.envLabel}: Compiling Directives: `, id)
-
-      const { compiledResult, directiveFnsById } = compileDirectives({
-        ...opts,
-        code,
-        root: ROOT,
-        filename: id,
-        // globalThis.app currently refers to Vinxi's app instance. In the future, it can just be the
-        // vite dev server instance we get from Nitro.
-      })
-
-      opts.onDirectiveFnsById?.(directiveFnsById)
-
-      if (debug) {
-        logDiff(code, compiledResult.code)
-        console.log('Output:\n', compiledResult.code + '\n\n')
-      }
-
-      return compiledResult
+      return transformCode({ ...opts, code, id, directiveRx, root })
     },
   }
+}
+
+export type DirectiveFunctionsVitePluginEnvOptions = Pick<
+  CompileDirectivesOpts,
+  'directive' | 'directiveLabel'
+> & {
+  environments: {
+    client: DirectiveFunctionsViteEnvOptions & { envName?: string }
+    server: DirectiveFunctionsViteEnvOptions & { envName?: string }
+  }
+  onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
+}
+
+export function TanStackDirectiveFunctionsPluginEnv(
+  opts: DirectiveFunctionsVitePluginEnvOptions,
+): Plugin {
+  opts = {
+    ...opts,
+    environments: {
+      client: {
+        envName: 'client',
+        ...opts.environments.client,
+      },
+      server: {
+        envName: 'server',
+        ...opts.environments.server,
+      },
+    },
+  }
+
+  let root: string = process.cwd()
+
+  const directiveRx = createDirectiveRx(opts.directive)
+
+  return {
+    name: 'tanstack-start-directive-vite-plugin',
+    enforce: 'pre',
+    buildStart() {
+      root = this.environment.config.root
+    },
+    // applyToEnvironment(env) {
+    //   return [
+    //     opts.environments.client.envName,
+    //     opts.environments.server.envName,
+    //   ].includes(env.name)
+    // },
+    transform(code, id) {
+      const envOptions = [
+        opts.environments.client,
+        opts.environments.server,
+      ].find((e) => e.envName === this.environment.name)
+
+      if (!envOptions) {
+        throw new Error(`Environment ${this.environment.name} not found`)
+      }
+
+      return transformCode({
+        ...opts,
+        ...envOptions,
+        code,
+        id,
+        directiveRx,
+        root,
+      })
+    },
+  }
+}
+
+function transformCode({
+  code,
+  id,
+  directiveRx,
+  envLabel,
+  directive,
+  directiveLabel,
+  getRuntimeCode,
+  replacer,
+  onDirectiveFnsById,
+  root,
+}: DirectiveFunctionsViteOptions & {
+  code: string
+  id: string
+  directiveRx: RegExp
+  root: string
+}) {
+  const url = pathToFileURL(id)
+  url.searchParams.delete('v')
+  id = fileURLToPath(url).replace(/\\/g, '/')
+
+  if (!code.match(directiveRx)) {
+    return null
+  }
+
+  if (debug) console.info(`${envLabel}: Compiling Directives: `, id)
+
+  const { compiledResult, directiveFnsById } = compileDirectives({
+    directive,
+    directiveLabel,
+    getRuntimeCode,
+    replacer,
+    code,
+    root,
+    filename: id,
+  })
+
+  onDirectiveFnsById?.(directiveFnsById)
+
+  if (debug) {
+    logDiff(code, compiledResult.code)
+    console.log('Output:\n', compiledResult.code + '\n\n')
+  }
+
+  return compiledResult
 }

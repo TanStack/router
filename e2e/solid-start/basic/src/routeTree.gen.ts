@@ -8,220 +8,222 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/solid-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as UsersImport } from './routes/users'
-import { Route as StreamImport } from './routes/stream'
-import { Route as SearchParamsImport } from './routes/search-params'
-import { Route as ScriptsImport } from './routes/scripts'
-import { Route as PostsImport } from './routes/posts'
-import { Route as LinksImport } from './routes/links'
-import { Route as DeferredImport } from './routes/deferred'
-import { Route as LayoutImport } from './routes/_layout'
-import { Route as NotFoundRouteImport } from './routes/not-found/route'
-import { Route as IndexImport } from './routes/index'
-import { Route as UsersIndexImport } from './routes/users.index'
-import { Route as RedirectIndexImport } from './routes/redirect/index'
-import { Route as PostsIndexImport } from './routes/posts.index'
-import { Route as NotFoundIndexImport } from './routes/not-found/index'
-import { Route as UsersUserIdImport } from './routes/users.$userId'
-import { Route as RedirectTargetImport } from './routes/redirect/$target'
-import { Route as PostsPostIdImport } from './routes/posts.$postId'
-import { Route as NotFoundViaLoaderImport } from './routes/not-found/via-loader'
-import { Route as NotFoundViaBeforeLoadImport } from './routes/not-found/via-beforeLoad'
-import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
-import { Route as RedirectTargetIndexImport } from './routes/redirect/$target/index'
-import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
-import { Route as RedirectTargetViaBeforeLoadImport } from './routes/redirect/$target/via-beforeLoad'
-import { Route as PostsPostIdDeepImport } from './routes/posts_.$postId.deep'
-import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
-import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
-import { Route as RedirectTargetServerFnIndexImport } from './routes/redirect/$target/serverFn/index'
-import { Route as RedirectTargetServerFnViaUseServerFnImport } from './routes/redirect/$target/serverFn/via-useServerFn'
-import { Route as RedirectTargetServerFnViaLoaderImport } from './routes/redirect/$target/serverFn/via-loader'
-import { Route as RedirectTargetServerFnViaBeforeLoadImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
+import { Route as UsersRouteImport } from './routes/users'
+import { Route as StreamRouteImport } from './routes/stream'
+import { Route as SearchParamsRouteImport } from './routes/search-params'
+import { Route as ScriptsRouteImport } from './routes/scripts'
+import { Route as PostsRouteImport } from './routes/posts'
+import { Route as LinksRouteImport } from './routes/links'
+import { Route as DeferredRouteImport } from './routes/deferred'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as UsersIndexRouteImport } from './routes/users.index'
+import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
+import { Route as PostsIndexRouteImport } from './routes/posts.index'
+import { Route as NotFoundIndexRouteImport } from './routes/not-found/index'
+import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
+import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
+import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
+import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
+import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
+import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
+import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
+import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as RedirectTargetServerFnIndexRouteImport } from './routes/redirect/$target/serverFn/index'
+import { Route as RedirectTargetServerFnViaUseServerFnRouteImport } from './routes/redirect/$target/serverFn/via-useServerFn'
+import { Route as RedirectTargetServerFnViaLoaderRouteImport } from './routes/redirect/$target/serverFn/via-loader'
+import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
 
 // Create/Update Routes
 
-const UsersRoute = UsersImport.update({
+const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => rootRoute,
 } as any)
 
-const StreamRoute = StreamImport.update({
+const StreamRoute = StreamRouteImport.update({
   id: '/stream',
   path: '/stream',
   getParentRoute: () => rootRoute,
 } as any)
 
-const SearchParamsRoute = SearchParamsImport.update({
+const SearchParamsRoute = SearchParamsRouteImport.update({
   id: '/search-params',
   path: '/search-params',
   getParentRoute: () => rootRoute,
 } as any)
 
-const ScriptsRoute = ScriptsImport.update({
+const ScriptsRoute = ScriptsRouteImport.update({
   id: '/scripts',
   path: '/scripts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsRoute = PostsImport.update({
+const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LinksRoute = LinksImport.update({
+const LinksRoute = LinksRouteImport.update({
   id: '/links',
   path: '/links',
   getParentRoute: () => rootRoute,
 } as any)
 
-const DeferredRoute = DeferredImport.update({
+const DeferredRoute = DeferredRouteImport.update({
   id: '/deferred',
   path: '/deferred',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LayoutRoute = LayoutImport.update({
+const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRoute,
 } as any)
 
-const NotFoundRouteRoute = NotFoundRouteImport.update({
+const NotFoundRouteRoute = NotFoundRouteRouteImport.update({
   id: '/not-found',
   path: '/not-found',
   getParentRoute: () => rootRoute,
 } as any)
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const UsersIndexRoute = UsersIndexImport.update({
+const UsersIndexRoute = UsersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => UsersRoute,
 } as any)
 
-const RedirectIndexRoute = RedirectIndexImport.update({
+const RedirectIndexRoute = RedirectIndexRouteImport.update({
   id: '/redirect/',
   path: '/redirect/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsIndexRoute = PostsIndexImport.update({
+const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const NotFoundIndexRoute = NotFoundIndexImport.update({
+const NotFoundIndexRoute = NotFoundIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
 
-const UsersUserIdRoute = UsersUserIdImport.update({
+const UsersUserIdRoute = UsersUserIdRouteImport.update({
   id: '/$userId',
   path: '/$userId',
   getParentRoute: () => UsersRoute,
 } as any)
 
-const RedirectTargetRoute = RedirectTargetImport.update({
+const RedirectTargetRoute = RedirectTargetRouteImport.update({
   id: '/redirect/$target',
   path: '/redirect/$target',
   getParentRoute: () => rootRoute,
 } as any)
 
-const PostsPostIdRoute = PostsPostIdImport.update({
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
 
-const NotFoundViaLoaderRoute = NotFoundViaLoaderImport.update({
+const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
 
-const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadImport.update({
+const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
   id: '/via-beforeLoad',
   path: '/via-beforeLoad',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
 
-const LayoutLayout2Route = LayoutLayout2Import.update({
+const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
 
-const RedirectTargetIndexRoute = RedirectTargetIndexImport.update({
+const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
 
-const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderImport.update({
+const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
 
 const RedirectTargetViaBeforeLoadRoute =
-  RedirectTargetViaBeforeLoadImport.update({
+  RedirectTargetViaBeforeLoadRouteImport.update({
     id: '/via-beforeLoad',
     path: '/via-beforeLoad',
     getParentRoute: () => RedirectTargetRoute,
   } as any)
 
-const PostsPostIdDeepRoute = PostsPostIdDeepImport.update({
+const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
   id: '/posts_/$postId/deep',
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRoute,
 } as any)
 
-const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
+const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
-const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
+const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
 const RedirectTargetServerFnIndexRoute =
-  RedirectTargetServerFnIndexImport.update({
+  RedirectTargetServerFnIndexRouteImport.update({
     id: '/serverFn/',
     path: '/serverFn/',
     getParentRoute: () => RedirectTargetRoute,
   } as any)
 
 const RedirectTargetServerFnViaUseServerFnRoute =
-  RedirectTargetServerFnViaUseServerFnImport.update({
+  RedirectTargetServerFnViaUseServerFnRouteImport.update({
     id: '/serverFn/via-useServerFn',
     path: '/serverFn/via-useServerFn',
     getParentRoute: () => RedirectTargetRoute,
   } as any)
 
 const RedirectTargetServerFnViaLoaderRoute =
-  RedirectTargetServerFnViaLoaderImport.update({
+  RedirectTargetServerFnViaLoaderRouteImport.update({
     id: '/serverFn/via-loader',
     path: '/serverFn/via-loader',
     getParentRoute: () => RedirectTargetRoute,
   } as any)
 
 const RedirectTargetServerFnViaBeforeLoadRoute =
-  RedirectTargetServerFnViaBeforeLoadImport.update({
+  RedirectTargetServerFnViaBeforeLoadRouteImport.update({
     id: '/serverFn/via-beforeLoad',
     path: '/serverFn/via-beforeLoad',
     getParentRoute: () => RedirectTargetRoute,
@@ -235,213 +237,486 @@ declare module '@tanstack/solid-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/not-found': {
       id: '/not-found'
       path: '/not-found'
       fullPath: '/not-found'
-      preLoaderRoute: typeof NotFoundRouteImport
+      preLoaderRoute: typeof NotFoundRouteRouteImport
       parentRoute: typeof rootRoute
     }
     '/_layout': {
       id: '/_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutImport
+      preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRoute
     }
     '/deferred': {
       id: '/deferred'
       path: '/deferred'
       fullPath: '/deferred'
-      preLoaderRoute: typeof DeferredImport
+      preLoaderRoute: typeof DeferredRouteImport
       parentRoute: typeof rootRoute
     }
     '/links': {
       id: '/links'
       path: '/links'
       fullPath: '/links'
-      preLoaderRoute: typeof LinksImport
+      preLoaderRoute: typeof LinksRouteImport
       parentRoute: typeof rootRoute
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRoute
     }
     '/scripts': {
       id: '/scripts'
       path: '/scripts'
       fullPath: '/scripts'
-      preLoaderRoute: typeof ScriptsImport
+      preLoaderRoute: typeof ScriptsRouteImport
       parentRoute: typeof rootRoute
     }
     '/search-params': {
       id: '/search-params'
       path: '/search-params'
       fullPath: '/search-params'
-      preLoaderRoute: typeof SearchParamsImport
+      preLoaderRoute: typeof SearchParamsRouteImport
       parentRoute: typeof rootRoute
     }
     '/stream': {
       id: '/stream'
       path: '/stream'
       fullPath: '/stream'
-      preLoaderRoute: typeof StreamImport
+      preLoaderRoute: typeof StreamRouteImport
       parentRoute: typeof rootRoute
     }
     '/users': {
       id: '/users'
       path: '/users'
       fullPath: '/users'
-      preLoaderRoute: typeof UsersImport
+      preLoaderRoute: typeof UsersRouteImport
       parentRoute: typeof rootRoute
     }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutLayout2Import
-      parentRoute: typeof LayoutImport
+      preLoaderRoute: typeof LayoutLayout2RouteImport
+      parentRoute: typeof LayoutRouteImport
     }
     '/not-found/via-beforeLoad': {
       id: '/not-found/via-beforeLoad'
       path: '/via-beforeLoad'
       fullPath: '/not-found/via-beforeLoad'
-      preLoaderRoute: typeof NotFoundViaBeforeLoadImport
-      parentRoute: typeof NotFoundRouteImport
+      preLoaderRoute: typeof NotFoundViaBeforeLoadRouteImport
+      parentRoute: typeof NotFoundRouteRouteImport
     }
     '/not-found/via-loader': {
       id: '/not-found/via-loader'
       path: '/via-loader'
       fullPath: '/not-found/via-loader'
-      preLoaderRoute: typeof NotFoundViaLoaderImport
-      parentRoute: typeof NotFoundRouteImport
+      preLoaderRoute: typeof NotFoundViaLoaderRouteImport
+      parentRoute: typeof NotFoundRouteRouteImport
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/redirect/$target': {
       id: '/redirect/$target'
       path: '/redirect/$target'
       fullPath: '/redirect/$target'
-      preLoaderRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetRouteImport
       parentRoute: typeof rootRoute
     }
     '/users/$userId': {
       id: '/users/$userId'
       path: '/$userId'
       fullPath: '/users/$userId'
-      preLoaderRoute: typeof UsersUserIdImport
-      parentRoute: typeof UsersImport
+      preLoaderRoute: typeof UsersUserIdRouteImport
+      parentRoute: typeof UsersRouteImport
     }
     '/not-found/': {
       id: '/not-found/'
       path: '/'
       fullPath: '/not-found/'
-      preLoaderRoute: typeof NotFoundIndexImport
-      parentRoute: typeof NotFoundRouteImport
+      preLoaderRoute: typeof NotFoundIndexRouteImport
+      parentRoute: typeof NotFoundRouteRouteImport
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsImport
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRouteImport
     }
     '/redirect/': {
       id: '/redirect/'
       path: '/redirect'
       fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectIndexImport
+      preLoaderRoute: typeof RedirectIndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/users/': {
       id: '/users/'
       path: '/'
       fullPath: '/users/'
-      preLoaderRoute: typeof UsersIndexImport
-      parentRoute: typeof UsersImport
+      preLoaderRoute: typeof UsersIndexRouteImport
+      parentRoute: typeof UsersRouteImport
     }
     '/_layout/_layout-2/layout-a': {
       id: '/_layout/_layout-2/layout-a'
       path: '/layout-a'
       fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutAImport
-      parentRoute: typeof LayoutLayout2Import
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2RouteImport
     }
     '/_layout/_layout-2/layout-b': {
       id: '/_layout/_layout-2/layout-b'
       path: '/layout-b'
       fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBImport
-      parentRoute: typeof LayoutLayout2Import
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
+      parentRoute: typeof LayoutLayout2RouteImport
     }
     '/posts_/$postId/deep': {
       id: '/posts_/$postId/deep'
       path: '/posts/$postId/deep'
       fullPath: '/posts/$postId/deep'
-      preLoaderRoute: typeof PostsPostIdDeepImport
+      preLoaderRoute: typeof PostsPostIdDeepRouteImport
       parentRoute: typeof rootRoute
     }
     '/redirect/$target/via-beforeLoad': {
       id: '/redirect/$target/via-beforeLoad'
       path: '/via-beforeLoad'
       fullPath: '/redirect/$target/via-beforeLoad'
-      preLoaderRoute: typeof RedirectTargetViaBeforeLoadImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRouteImport
     }
     '/redirect/$target/via-loader': {
       id: '/redirect/$target/via-loader'
       path: '/via-loader'
       fullPath: '/redirect/$target/via-loader'
-      preLoaderRoute: typeof RedirectTargetViaLoaderImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
+      parentRoute: typeof RedirectTargetRouteImport
     }
     '/redirect/$target/': {
       id: '/redirect/$target/'
       path: '/'
       fullPath: '/redirect/$target/'
-      preLoaderRoute: typeof RedirectTargetIndexImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetIndexRouteImport
+      parentRoute: typeof RedirectTargetRouteImport
     }
     '/redirect/$target/serverFn/via-beforeLoad': {
       id: '/redirect/$target/serverFn/via-beforeLoad'
       path: '/serverFn/via-beforeLoad'
       fullPath: '/redirect/$target/serverFn/via-beforeLoad'
-      preLoaderRoute: typeof RedirectTargetServerFnViaBeforeLoadImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetServerFnViaBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRouteImport
     }
     '/redirect/$target/serverFn/via-loader': {
       id: '/redirect/$target/serverFn/via-loader'
       path: '/serverFn/via-loader'
       fullPath: '/redirect/$target/serverFn/via-loader'
-      preLoaderRoute: typeof RedirectTargetServerFnViaLoaderImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetServerFnViaLoaderRouteImport
+      parentRoute: typeof RedirectTargetRouteImport
     }
     '/redirect/$target/serverFn/via-useServerFn': {
       id: '/redirect/$target/serverFn/via-useServerFn'
       path: '/serverFn/via-useServerFn'
       fullPath: '/redirect/$target/serverFn/via-useServerFn'
-      preLoaderRoute: typeof RedirectTargetServerFnViaUseServerFnImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetServerFnViaUseServerFnRouteImport
+      parentRoute: typeof RedirectTargetRouteImport
     }
     '/redirect/$target/serverFn/': {
       id: '/redirect/$target/serverFn/'
       path: '/serverFn'
       fullPath: '/redirect/$target/serverFn'
-      preLoaderRoute: typeof RedirectTargetServerFnIndexImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetServerFnIndexRouteImport
+      parentRoute: typeof RedirectTargetRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/not-found/route' {
+  const createFileRoute: CreateFileRoute<
+    '/not-found',
+    FileRoutesByPath['/not-found']['parentRoute'],
+    FileRoutesByPath['/not-found']['id'],
+    FileRoutesByPath['/not-found']['path'],
+    FileRoutesByPath['/not-found']['fullPath']
+  >
+}
+declare module './routes/_layout' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout',
+    FileRoutesByPath['/_layout']['parentRoute'],
+    FileRoutesByPath['/_layout']['id'],
+    FileRoutesByPath['/_layout']['path'],
+    FileRoutesByPath['/_layout']['fullPath']
+  >
+}
+declare module './routes/deferred' {
+  const createFileRoute: CreateFileRoute<
+    '/deferred',
+    FileRoutesByPath['/deferred']['parentRoute'],
+    FileRoutesByPath['/deferred']['id'],
+    FileRoutesByPath['/deferred']['path'],
+    FileRoutesByPath['/deferred']['fullPath']
+  >
+}
+declare module './routes/links' {
+  const createFileRoute: CreateFileRoute<
+    '/links',
+    FileRoutesByPath['/links']['parentRoute'],
+    FileRoutesByPath['/links']['id'],
+    FileRoutesByPath['/links']['path'],
+    FileRoutesByPath['/links']['fullPath']
+  >
+}
+declare module './routes/posts' {
+  const createFileRoute: CreateFileRoute<
+    '/posts',
+    FileRoutesByPath['/posts']['parentRoute'],
+    FileRoutesByPath['/posts']['id'],
+    FileRoutesByPath['/posts']['path'],
+    FileRoutesByPath['/posts']['fullPath']
+  >
+}
+declare module './routes/scripts' {
+  const createFileRoute: CreateFileRoute<
+    '/scripts',
+    FileRoutesByPath['/scripts']['parentRoute'],
+    FileRoutesByPath['/scripts']['id'],
+    FileRoutesByPath['/scripts']['path'],
+    FileRoutesByPath['/scripts']['fullPath']
+  >
+}
+declare module './routes/search-params' {
+  const createFileRoute: CreateFileRoute<
+    '/search-params',
+    FileRoutesByPath['/search-params']['parentRoute'],
+    FileRoutesByPath['/search-params']['id'],
+    FileRoutesByPath['/search-params']['path'],
+    FileRoutesByPath['/search-params']['fullPath']
+  >
+}
+declare module './routes/stream' {
+  const createFileRoute: CreateFileRoute<
+    '/stream',
+    FileRoutesByPath['/stream']['parentRoute'],
+    FileRoutesByPath['/stream']['id'],
+    FileRoutesByPath['/stream']['path'],
+    FileRoutesByPath['/stream']['fullPath']
+  >
+}
+declare module './routes/users' {
+  const createFileRoute: CreateFileRoute<
+    '/users',
+    FileRoutesByPath['/users']['parentRoute'],
+    FileRoutesByPath['/users']['id'],
+    FileRoutesByPath['/users']['path'],
+    FileRoutesByPath['/users']['fullPath']
+  >
+}
+declare module './routes/_layout/_layout-2' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2',
+    FileRoutesByPath['/_layout/_layout-2']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2']['id'],
+    FileRoutesByPath['/_layout/_layout-2']['path'],
+    FileRoutesByPath['/_layout/_layout-2']['fullPath']
+  >
+}
+declare module './routes/not-found/via-beforeLoad' {
+  const createFileRoute: CreateFileRoute<
+    '/not-found/via-beforeLoad',
+    FileRoutesByPath['/not-found/via-beforeLoad']['parentRoute'],
+    FileRoutesByPath['/not-found/via-beforeLoad']['id'],
+    FileRoutesByPath['/not-found/via-beforeLoad']['path'],
+    FileRoutesByPath['/not-found/via-beforeLoad']['fullPath']
+  >
+}
+declare module './routes/not-found/via-loader' {
+  const createFileRoute: CreateFileRoute<
+    '/not-found/via-loader',
+    FileRoutesByPath['/not-found/via-loader']['parentRoute'],
+    FileRoutesByPath['/not-found/via-loader']['id'],
+    FileRoutesByPath['/not-found/via-loader']['path'],
+    FileRoutesByPath['/not-found/via-loader']['fullPath']
+  >
+}
+declare module './routes/posts.$postId' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/$postId',
+    FileRoutesByPath['/posts/$postId']['parentRoute'],
+    FileRoutesByPath['/posts/$postId']['id'],
+    FileRoutesByPath['/posts/$postId']['path'],
+    FileRoutesByPath['/posts/$postId']['fullPath']
+  >
+}
+declare module './routes/redirect/$target' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target',
+    FileRoutesByPath['/redirect/$target']['parentRoute'],
+    FileRoutesByPath['/redirect/$target']['id'],
+    FileRoutesByPath['/redirect/$target']['path'],
+    FileRoutesByPath['/redirect/$target']['fullPath']
+  >
+}
+declare module './routes/users.$userId' {
+  const createFileRoute: CreateFileRoute<
+    '/users/$userId',
+    FileRoutesByPath['/users/$userId']['parentRoute'],
+    FileRoutesByPath['/users/$userId']['id'],
+    FileRoutesByPath['/users/$userId']['path'],
+    FileRoutesByPath['/users/$userId']['fullPath']
+  >
+}
+declare module './routes/not-found/index' {
+  const createFileRoute: CreateFileRoute<
+    '/not-found/',
+    FileRoutesByPath['/not-found/']['parentRoute'],
+    FileRoutesByPath['/not-found/']['id'],
+    FileRoutesByPath['/not-found/']['path'],
+    FileRoutesByPath['/not-found/']['fullPath']
+  >
+}
+declare module './routes/posts.index' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/',
+    FileRoutesByPath['/posts/']['parentRoute'],
+    FileRoutesByPath['/posts/']['id'],
+    FileRoutesByPath['/posts/']['path'],
+    FileRoutesByPath['/posts/']['fullPath']
+  >
+}
+declare module './routes/redirect/index' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/',
+    FileRoutesByPath['/redirect/']['parentRoute'],
+    FileRoutesByPath['/redirect/']['id'],
+    FileRoutesByPath['/redirect/']['path'],
+    FileRoutesByPath['/redirect/']['fullPath']
+  >
+}
+declare module './routes/users.index' {
+  const createFileRoute: CreateFileRoute<
+    '/users/',
+    FileRoutesByPath['/users/']['parentRoute'],
+    FileRoutesByPath['/users/']['id'],
+    FileRoutesByPath['/users/']['path'],
+    FileRoutesByPath['/users/']['fullPath']
+  >
+}
+declare module './routes/_layout/_layout-2/layout-a' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2/layout-a',
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['id'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['path'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['fullPath']
+  >
+}
+declare module './routes/_layout/_layout-2/layout-b' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2/layout-b',
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath']
+  >
+}
+declare module './routes/posts_.$postId.deep' {
+  const createFileRoute: CreateFileRoute<
+    '/posts_/$postId/deep',
+    FileRoutesByPath['/posts_/$postId/deep']['parentRoute'],
+    FileRoutesByPath['/posts_/$postId/deep']['id'],
+    FileRoutesByPath['/posts_/$postId/deep']['path'],
+    FileRoutesByPath['/posts_/$postId/deep']['fullPath']
+  >
+}
+declare module './routes/redirect/$target/via-beforeLoad' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/via-beforeLoad',
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['id'],
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['path'],
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['fullPath']
+  >
+}
+declare module './routes/redirect/$target/via-loader' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/via-loader',
+    FileRoutesByPath['/redirect/$target/via-loader']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/via-loader']['id'],
+    FileRoutesByPath['/redirect/$target/via-loader']['path'],
+    FileRoutesByPath['/redirect/$target/via-loader']['fullPath']
+  >
+}
+declare module './routes/redirect/$target/index' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/',
+    FileRoutesByPath['/redirect/$target/']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/']['id'],
+    FileRoutesByPath['/redirect/$target/']['path'],
+    FileRoutesByPath['/redirect/$target/']['fullPath']
+  >
+}
+declare module './routes/redirect/$target/serverFn/via-beforeLoad' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/serverFn/via-beforeLoad',
+    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['id'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['path'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['fullPath']
+  >
+}
+declare module './routes/redirect/$target/serverFn/via-loader' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/serverFn/via-loader',
+    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['id'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['path'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['fullPath']
+  >
+}
+declare module './routes/redirect/$target/serverFn/via-useServerFn' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/serverFn/via-useServerFn',
+    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['id'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['path'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['fullPath']
+  >
+}
+declare module './routes/redirect/$target/serverFn/index' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/serverFn/',
+    FileRoutesByPath['/redirect/$target/serverFn/']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/serverFn/']['id'],
+    FileRoutesByPath['/redirect/$target/serverFn/']['path'],
+    FileRoutesByPath['/redirect/$target/serverFn/']['fullPath']
+  >
 }
 
 // Create and export the route tree

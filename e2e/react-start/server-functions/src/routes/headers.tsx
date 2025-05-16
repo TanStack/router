@@ -1,10 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { createServerFn } from '@tanstack/react-start'
 import { getHeaders, setHeader } from '@tanstack/react-start/server'
 import type { HTTPHeaderName } from '@tanstack/react-start/server'
 
-export const Route = createFileRoute('/headers')({
+export const Route = createFileRoute({
   loader: async () => {
     return {
       testHeaders: await getTestHeaders(),
@@ -36,7 +35,7 @@ function ResponseHeaders({
   initialTestHeaders: TestHeadersResult
 }) {
   const [testHeadersResult, setTestHeadersResult] =
-    React.useState<TestHeadersResult>(initialTestHeaders)
+    React.useState<TestHeadersResult | null>(null)
 
   return (
     <div className="p-2 m-2 grid gap-2">
@@ -58,10 +57,18 @@ function ResponseHeaders({
         </button>
       </form>
       <div className="overflow-y-auto">
-        <h4>Headers:</h4>
-        <pre data-testid="test-headers-result">
-          {JSON.stringify(testHeadersResult.headers, null, 2)}
+        <h4>Initial Headers:</h4>
+        <pre data-testid="initial-headers-result">
+          {JSON.stringify(initialTestHeaders.headers, null, 2)}
         </pre>
+        {testHeadersResult && (
+          <>
+            <h4>Updated Headers:</h4>
+            <pre data-testid="updated-headers-result">
+              {JSON.stringify(testHeadersResult.headers, null, 2)}
+            </pre>
+          </>
+        )}
       </div>
     </div>
   )

@@ -3,7 +3,6 @@
  * https://github.com/TanStack/router/pull/3355
  */
 
-import { isAbsolute, join, normalize } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { logDiff } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
@@ -18,6 +17,7 @@ import {
   tsrSplit,
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
+import { debug, fileIsInRoutesDirectory } from './utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 
 import type { Config } from './config'
@@ -27,25 +27,8 @@ import type {
   TransformResult as UnpluginTransformResult,
 } from 'unplugin'
 
-const debug =
-  process.env.TSR_VITE_DEBUG &&
-  ['true', 'router-plugin'].includes(process.env.TSR_VITE_DEBUG)
-
 function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
-function fileIsInRoutesDirectory(
-  filePath: string,
-  routesDirectory: string,
-): boolean {
-  const routesDirectoryPath = isAbsolute(routesDirectory)
-    ? routesDirectory
-    : join(process.cwd(), routesDirectory)
-
-  const path = normalize(filePath)
-
-  return path.startsWith(routesDirectoryPath)
 }
 
 type BannedBeforeExternalPlugin = {
@@ -104,8 +87,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
-      root: ROOT,
-      filename: id,
     })
 
     if (fromCode.groupings) {
@@ -139,11 +120,11 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
-      root: ROOT,
-      filename: id,
       runtimeEnv: isProduction ? 'prod' : 'dev',
       codeSplitGroupings: splitGroupings,
       targetFramework: userConfig.target,
+      filename: id,
+      id,
     })
 
     if (debug) {
@@ -178,7 +159,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const result = compileCodeSplitVirtualRoute({
       code,
-      root: ROOT,
       filename: id,
       splitTargets: grouping,
     })

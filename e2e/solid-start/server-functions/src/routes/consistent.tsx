@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
 import { createServerFn } from '@tanstack/solid-start'
 
@@ -10,7 +9,7 @@ import { createServerFn } from '@tanstack/solid-start'
  * @link https://github.com/TanStack/router/issues/2481
  */
 
-export const Route = createFileRoute('/consistent')({
+export const Route = createFileRoute({
   component: ConsistentServerFnCalls,
   loader: async () => {
     const data = await cons_serverGetFn1({ data: { username: 'TEST' } })

@@ -7,13 +7,11 @@ This guide will help you learn the basics behind how TanStack Start works, regar
 
 ## Dependencies
 
-TanStack Start is (currently\*) powered by [Vinxi](https://vinxi.vercel.app/), [Nitro](https://nitro.unjs.io/) and [TanStack Router](https://tanstack.com/router).
+TanStack Start is powered by:
 
-- **TanStack Router**: A router for building web applications.
-- **Nitro**: A framework for building server applications.
-- **Vinxi**: A server framework for building web applications.
-
-> [!NOTE] Vinxi will be removed before version 1.0.0 is released and TanStack will rely only on Vite and Nitro. The commands and APIs that use Vinxi will likely be replaced with a Vite plugin.
+- [**TanStack Router**](https://tanstack.com/router): A router for building web applications.
+- [**Vite**](https://vite.dev/): A build tool for building web applications.
+- [**Nitro**](https://nitro.unjs.io/): A framework for building server applications.
 
 ## It all "Starts" with the Router
 
@@ -51,21 +49,18 @@ The `routeTree.gen.ts` file is generated when you run TanStack Start (via `npm r
 
 Although TanStack Start is designed with client-first APIs, it is by and large, a full-stack framework. This means that all use cases, including both dynamic and static rely on a server or build-time entry to render our application's initial HTML payload.
 
-This is done via the `app/ssr.tsx` file:
+This is done via the `app/ssr.ts` file:
 
 ```tsx
-// app/ssr.tsx
+// app/ssr.ts
 import {
   createStartHandler,
   defaultStreamHandler,
-} from '@tanstack/solid-start/server'
-import { getRouterManifest } from '@tanstack/solid-start/router-manifest'
-
+} from '@tanstack/react-start/server'
 import { createRouter } from './router'
 
 export default createStartHandler({
   createRouter,
-  getRouterManifest,
 })(defaultStreamHandler)
 ```
 
@@ -81,7 +76,6 @@ Getting our html to the client is only half the battle. Once there, we need to h
 
 ```tsx
 // app/client.tsx
-/// <reference types="vinxi/types/client" />
 import { hydrate } from 'solid-js/web'
 import { StartClient } from '@tanstack/solid-start'
 import { createRouter } from './router'

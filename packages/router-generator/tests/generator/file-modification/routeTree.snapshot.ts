@@ -9,21 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type {
+  CreateFileRoute,
+  CreateLazyFileRoute,
+  FileRoutesByPath,
+} from '@tanstack/react-router'
 
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as testInitiallyLazyImport } from './routes/(test)/initiallyLazy'
-import { Route as testInitiallyEmptyImport } from './routes/(test)/initiallyEmpty'
-import { Route as testFooImport } from './routes/(test)/foo'
+import { Route as testInitiallyLazyRouteImport } from './routes/(test)/initiallyLazy'
+import { Route as testInitiallyEmptyRouteImport } from './routes/(test)/initiallyEmpty'
+import { Route as testFooRouteImport } from './routes/(test)/foo'
 
 // Create Virtual Routes
 
-const testBarLazyImport = createFileRoute('/(test)/bar')()
+const testBarLazyRouteImport = createFileRoute('/(test)/bar')()
 
 // Create/Update Routes
 
-const testBarLazyRoute = testBarLazyImport
+const testBarLazyRoute = testBarLazyRouteImport
   .update({
     id: '/(test)/bar',
     path: '/bar',
@@ -31,13 +36,13 @@ const testBarLazyRoute = testBarLazyImport
   } as any)
   .lazy(() => import('./routes/(test)/bar.lazy').then((d) => d.Route))
 
-const testInitiallyLazyRoute = testInitiallyLazyImport.update({
+const testInitiallyLazyRoute = testInitiallyLazyRouteImport.update({
   id: '/(test)/initiallyLazy',
   path: '/initiallyLazy',
   getParentRoute: () => rootRoute,
 } as any)
 
-const testInitiallyEmptyRoute = testInitiallyEmptyImport
+const testInitiallyEmptyRoute = testInitiallyEmptyRouteImport
   .update({
     id: '/(test)/initiallyEmpty',
     path: '/initiallyEmpty',
@@ -47,7 +52,7 @@ const testInitiallyEmptyRoute = testInitiallyEmptyImport
     import('./routes/(test)/initiallyEmpty.lazy').then((d) => d.Route),
   )
 
-const testFooRoute = testFooImport.update({
+const testFooRoute = testFooRouteImport.update({
   id: '/(test)/foo',
   path: '/foo',
   getParentRoute: () => rootRoute,
@@ -61,31 +66,71 @@ declare module '@tanstack/react-router' {
       id: '/(test)/foo'
       path: '/foo'
       fullPath: '/foo'
-      preLoaderRoute: typeof testFooImport
+      preLoaderRoute: typeof testFooRouteImport
       parentRoute: typeof rootRoute
     }
     '/(test)/initiallyEmpty': {
       id: '/(test)/initiallyEmpty'
       path: '/initiallyEmpty'
       fullPath: '/initiallyEmpty'
-      preLoaderRoute: typeof testInitiallyEmptyImport
+      preLoaderRoute: typeof testInitiallyEmptyRouteImport
       parentRoute: typeof rootRoute
     }
     '/(test)/initiallyLazy': {
       id: '/(test)/initiallyLazy'
       path: '/initiallyLazy'
       fullPath: '/initiallyLazy'
-      preLoaderRoute: typeof testInitiallyLazyImport
+      preLoaderRoute: typeof testInitiallyLazyRouteImport
       parentRoute: typeof rootRoute
     }
     '/(test)/bar': {
       id: '/(test)/bar'
       path: '/bar'
       fullPath: '/bar'
-      preLoaderRoute: typeof testBarLazyImport
+      preLoaderRoute: typeof testBarLazyRouteImport
       parentRoute: typeof rootRoute
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/(test)/foo' {
+  const createFileRoute: CreateFileRoute<
+    '/(test)/foo',
+    FileRoutesByPath['/(test)/foo']['parentRoute'],
+    FileRoutesByPath['/(test)/foo']['id'],
+    FileRoutesByPath['/(test)/foo']['path'],
+    FileRoutesByPath['/(test)/foo']['fullPath']
+  >
+}
+declare module './routes/(test)/initiallyEmpty' {
+  const createFileRoute: CreateFileRoute<
+    '/(test)/initiallyEmpty',
+    FileRoutesByPath['/(test)/initiallyEmpty']['parentRoute'],
+    FileRoutesByPath['/(test)/initiallyEmpty']['id'],
+    FileRoutesByPath['/(test)/initiallyEmpty']['path'],
+    FileRoutesByPath['/(test)/initiallyEmpty']['fullPath']
+  >
+}
+declare module './routes/(test)/initiallyEmpty.lazy' {
+  const createLazyFileRoute: CreateLazyFileRoute<
+    FileRoutesByPath['/(test)/initiallyEmpty']['preLoaderRoute']
+  >
+}
+declare module './routes/(test)/initiallyLazy' {
+  const createFileRoute: CreateFileRoute<
+    '/(test)/initiallyLazy',
+    FileRoutesByPath['/(test)/initiallyLazy']['parentRoute'],
+    FileRoutesByPath['/(test)/initiallyLazy']['id'],
+    FileRoutesByPath['/(test)/initiallyLazy']['path'],
+    FileRoutesByPath['/(test)/initiallyLazy']['fullPath']
+  >
+}
+declare module './routes/(test)/bar.lazy' {
+  const createLazyFileRoute: CreateLazyFileRoute<
+    FileRoutesByPath['/(test)/bar']['preLoaderRoute']
+  >
 }
 
 // Create and export the route tree

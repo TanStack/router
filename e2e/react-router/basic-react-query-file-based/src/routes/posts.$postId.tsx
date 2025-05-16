@@ -1,9 +1,6 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
-import {
-  ErrorComponent,
-  createFileRoute,
-  useRouter,
-} from '@tanstack/react-router'
+import { ErrorComponent, useRouter } from '@tanstack/react-router'
 import {
   useQueryErrorResetBoundary,
   useSuspenseQuery,

@@ -8,35 +8,37 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as IndexImport } from './routes/index'
-import { Route as FooBarImport } from './routes/foo/bar'
-import { Route as fooBarDetailsImport } from './routes/foo/bar/details'
-import { Route as fooBarHomeImport } from './routes/foo/bar/home'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as FooBarRouteImport } from './routes/foo/bar'
+import { Route as fooBarDetailsRouteImport } from './routes/foo/bar/details'
+import { Route as fooBarHomeRouteImport } from './routes/foo/bar/home'
 
 // Create/Update Routes
 
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRoute,
 } as any)
 
-const FooBarRoute = FooBarImport.update({
+const FooBarRoute = FooBarRouteImport.update({
   id: '/foo/bar',
   path: '/foo/bar',
   getParentRoute: () => rootRoute,
 } as any)
 
-const fooBarDetailsRoute = fooBarDetailsImport.update({
+const fooBarDetailsRoute = fooBarDetailsRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => FooBarRoute,
 } as any)
 
-const fooBarHomeRoute = fooBarHomeImport.update({
+const fooBarHomeRoute = fooBarHomeRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => FooBarRoute,
@@ -50,31 +52,70 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRoute
     }
     '/foo/bar': {
       id: '/foo/bar'
       path: '/foo/bar'
       fullPath: '/foo/bar'
-      preLoaderRoute: typeof FooBarImport
+      preLoaderRoute: typeof FooBarRouteImport
       parentRoute: typeof rootRoute
     }
     '/foo/bar/': {
       id: '/foo/bar/'
       path: '/'
       fullPath: '/foo/bar/'
-      preLoaderRoute: typeof fooBarHomeImport
-      parentRoute: typeof FooBarImport
+      preLoaderRoute: typeof fooBarHomeRouteImport
+      parentRoute: typeof FooBarRouteImport
     }
     '/foo/bar/$id': {
       id: '/foo/bar/$id'
       path: '/$id'
       fullPath: '/foo/bar/$id'
-      preLoaderRoute: typeof fooBarDetailsImport
-      parentRoute: typeof FooBarImport
+      preLoaderRoute: typeof fooBarDetailsRouteImport
+      parentRoute: typeof FooBarRouteImport
     }
   }
+}
+
+// Add type-safety to the createFileRoute function across the route tree
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/foo/bar' {
+  const createFileRoute: CreateFileRoute<
+    '/foo/bar',
+    FileRoutesByPath['/foo/bar']['parentRoute'],
+    FileRoutesByPath['/foo/bar']['id'],
+    FileRoutesByPath['/foo/bar']['path'],
+    FileRoutesByPath['/foo/bar']['fullPath']
+  >
+}
+declare module './routes/foo/bar/home' {
+  const createFileRoute: CreateFileRoute<
+    '/foo/bar/',
+    FileRoutesByPath['/foo/bar/']['parentRoute'],
+    FileRoutesByPath['/foo/bar/']['id'],
+    FileRoutesByPath['/foo/bar/']['path'],
+    FileRoutesByPath['/foo/bar/']['fullPath']
+  >
+}
+declare module './routes/foo/bar/details' {
+  const createFileRoute: CreateFileRoute<
+    '/foo/bar/$id',
+    FileRoutesByPath['/foo/bar/$id']['parentRoute'],
+    FileRoutesByPath['/foo/bar/$id']['id'],
+    FileRoutesByPath['/foo/bar/$id']['path'],
+    FileRoutesByPath['/foo/bar/$id']['fullPath']
+  >
 }
 
 // Create and export the route tree

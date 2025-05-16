@@ -7,22 +7,18 @@ Server-side rendering (SSR) is the process of rendering your application on the 
 
 ## SSR Basics
 
-TanStack Start supports server-side rendering out of the box. To enable server-side rendering, create an `app/ssr.tsx` file in your project:
+TanStack Start supports server-side rendering out of the box. To enable server-side rendering, create an `src/server.ts` file in your project:
 
 ```tsx
-// app/ssr.tsx
-
+// src/server.ts
 import {
   createStartHandler,
   defaultStreamHandler,
 } from '@tanstack/react-start/server'
-import { getRouterManifest } from '@tanstack/react-start/router-manifest'
-
 import { createRouter } from './router'
 
 export default createStartHandler({
   createRouter,
-  getRouterManifest,
 })(defaultStreamHandler)
 ```
 

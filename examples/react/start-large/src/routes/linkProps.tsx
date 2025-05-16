@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, createFileRoute, linkOptions } from '@tanstack/react-router'
+import { Link, linkOptions } from '@tanstack/react-router'
 import {
   customRedirect,
   ListItems,
@@ -7,7 +7,7 @@ import {
   useCustomNavigate,
 } from '~/typePrimitives'
 
-export const Route = createFileRoute('/linkProps')({
+export const Route = createFileRoute({
   component: LinkPropsPage,
   loader: () => {
     throw customRedirect({

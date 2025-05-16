@@ -16,6 +16,7 @@ import {
   Link,
   Outlet,
   RouterProvider,
+  createBrowserHistory,
   createLink,
   createMemoryHistory,
   createRootRoute,
@@ -38,9 +39,11 @@ import {
   getSearchParamsFromURI,
   sleep,
 } from './utils'
+import type { RouterHistory } from '../src'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
+let history: RouterHistory
 
 beforeEach(() => {
   const io = getIntersectionObserverMock({
@@ -48,10 +51,13 @@ beforeEach(() => {
     disconnect: ioDisconnectMock,
   })
   vi.stubGlobal('IntersectionObserver', io)
-  window.history.replaceState(null, 'root', '/')
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
 })
 
 afterEach(() => {
+  history.destroy()
+  window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
   cleanup()
 })
@@ -99,6 +105,7 @@ describe('Link', () => {
       const memoedRouter = React.useMemo(() => {
         const router = createRouter({
           routeTree: memoedRouteTree,
+          history,
         })
 
         return router
@@ -148,6 +155,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -196,6 +204,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -269,6 +278,7 @@ describe('Link', () => {
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute]),
+        history,
       })
 
       render(<RouterProvider router={router} />)
@@ -345,7 +355,7 @@ describe('Link', () => {
       expect(indexFooBarLink).not.toHaveAttribute('data-status', 'active')
 
       // navigate to /?foo=bar
-      fireEvent.click(indexFooBarLink)
+      await act(() => fireEvent.click(indexFooBarLink))
 
       expect(indexExactLink).toHaveClass('inactive')
       expect(indexExactLink).not.toHaveClass('active')
@@ -441,6 +451,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -484,13 +495,14 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
     expect(postsHeading).toBeInTheDocument()
@@ -544,6 +556,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
       basepath: '/app',
     })
 
@@ -551,7 +564,7 @@ describe('Link', () => {
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
     expect(postsHeading).toBeInTheDocument()
@@ -609,6 +622,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -617,7 +631,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts?page=0')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
     expect(postsHeading).toBeInTheDocument()
@@ -680,6 +694,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -688,7 +703,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts?page=invalid')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     await waitFor(() => expect(onError).toHaveBeenCalledOnce())
 
@@ -747,6 +762,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -755,7 +771,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts?page=2')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const pageFour = await screen.findByText('Page: 4')
     expect(pageFour).toBeInTheDocument()
@@ -814,6 +830,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -822,7 +839,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts?page=2')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const errorText = await screen.findByText('Something went wrong!')
     expect(errorText).toBeInTheDocument()
@@ -880,13 +897,14 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const postsErrorText = await screen.findByText('PostsError')
     expect(postsErrorText).toBeInTheDocument()
@@ -895,9 +913,9 @@ describe('Link', () => {
     expect(postsOnError).toHaveBeenCalledWith(error)
 
     const indexLink = await screen.findByRole('link', { name: 'Index' })
-    fireEvent.click(indexLink)
+    await act(() => fireEvent.click(indexLink))
 
-    expect(screen.findByText('IndexError')).rejects.toThrow()
+    await expect(screen.findByText('IndexError')).rejects.toThrow()
     expect(indexOnError).not.toHaveBeenCalledOnce()
   })
 
@@ -941,13 +959,14 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute, authRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const authText = await screen.findByText('Auth!')
     expect(authText).toBeInTheDocument()
@@ -995,13 +1014,14 @@ describe('Link', () => {
     const router = createRouter({
       context: { userId: 'userId' },
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const userId = await screen.findByText('UserId: userId')
     expect(userId).toBeInTheDocument()
@@ -1041,13 +1061,14 @@ describe('Link', () => {
     const router = createRouter({
       context: { userId: 'userId' },
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const errorText = await screen.findByText('Oops! Something went wrong!')
     expect(errorText).toBeInTheDocument()
@@ -1089,13 +1110,14 @@ describe('Link', () => {
     const router = createRouter({
       context: { userId: 'userId' },
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Posts' })
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const errorText = await screen.findByText('Oops! Something went wrong!')
     expect(errorText).toBeInTheDocument()
@@ -1151,13 +1173,14 @@ describe('Link', () => {
         indexRoute,
         postsRoute.addChildren([postRoute]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
 
     const postLink = await screen.findByRole('link', { name: 'Post' })
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     const errorText = await screen.findByText('Oops! Something went wrong!')
     expect(errorText).toBeInTheDocument()
@@ -1183,6 +1206,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -1243,6 +1267,7 @@ describe('Link', () => {
         indexRoute,
         postsRoute.addChildren([postRoute]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -1253,7 +1278,7 @@ describe('Link', () => {
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     const paramText = await screen.findByText('Params: id1')
     expect(paramText).toBeInTheDocument()
@@ -1330,6 +1355,7 @@ describe('Link', () => {
         indexRoute,
         postsRoute.addChildren([postsIndexRoute, postRoute]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -1338,7 +1364,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const postsText = await screen.findByText('Posts Index')
     expect(postsText).toBeInTheDocument()
@@ -1349,7 +1375,7 @@ describe('Link', () => {
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     const paramText = await screen.findByText('Params: id1')
     expect(paramText).toBeInTheDocument()
@@ -1428,6 +1454,7 @@ describe('Link', () => {
         indexRoute,
         postsRoute.addChildren([postsIndexRoute, postRoute]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -1436,7 +1463,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const postsIndexText = await screen.findByText('Posts Index')
     expect(postsIndexText).toBeInTheDocument()
@@ -1447,7 +1474,7 @@ describe('Link', () => {
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     const paramText = await screen.findByText('Params: id1')
     expect(paramText).toBeInTheDocument()
@@ -1556,6 +1583,7 @@ describe('Link', () => {
           ]),
         ]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -1564,7 +1592,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const paramsText1 = await screen.findByText('Params: id1')
     expect(paramsText1).toBeInTheDocument()
@@ -1577,7 +1605,7 @@ describe('Link', () => {
 
     expect(informationLink).toHaveAttribute('href', '/posts/id1/info')
 
-    fireEvent.click(informationLink)
+    await act(() => fireEvent.click(informationLink))
 
     const informationText = await screen.findByText('Information')
     expect(informationText).toBeInTheDocument()
@@ -1693,6 +1721,7 @@ describe('Link', () => {
           ]),
         ]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -1701,7 +1730,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const paramsText1 = await screen.findByText('Params: id1')
     expect(paramsText1).toBeInTheDocument()
@@ -1714,7 +1743,7 @@ describe('Link', () => {
 
     expect(informationLink).toHaveAttribute('href', '/posts/id1/info')
 
-    fireEvent.click(informationLink)
+    await act(() => fireEvent.click(informationLink))
 
     const informationText = await screen.findByText('Information')
     expect(informationText).toBeInTheDocument()
@@ -1830,6 +1859,7 @@ describe('Link', () => {
           ]),
         ]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -1838,7 +1868,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const paramsText1 = await screen.findByText('Params: id1')
     expect(paramsText1).toBeInTheDocument()
@@ -1851,7 +1881,7 @@ describe('Link', () => {
 
     expect(informationLink).toHaveAttribute('href', '/posts/id1/info')
 
-    fireEvent.click(informationLink)
+    await act(() => fireEvent.click(informationLink))
 
     const informationText = await screen.findByText('Information')
     expect(informationText).toBeInTheDocument()
@@ -1955,6 +1985,7 @@ describe('Link', () => {
           postsRoute.addChildren([postRoute.addChildren([detailsRoute])]),
         ]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -1963,7 +1994,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const paramsText1 = await screen.findByText('Params: id1')
     expect(paramsText1).toBeInTheDocument()
@@ -1976,7 +2007,7 @@ describe('Link', () => {
 
     expect(rootLink).toHaveAttribute('href', '/')
 
-    fireEvent.click(rootLink)
+    await act(() => fireEvent.click(rootLink))
 
     const indexText = await screen.findByText('Index')
     expect(indexText).toBeInTheDocument()
@@ -2099,6 +2130,7 @@ describe('Link', () => {
           ]),
         ]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -2107,7 +2139,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details?page=2')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const paramsText1 = await screen.findByText('Params: id1')
     expect(paramsText1).toBeInTheDocument()
@@ -2123,7 +2155,7 @@ describe('Link', () => {
       '/posts/id1/info?page=2&more=true',
     )
 
-    fireEvent.click(informationLink)
+    await act(() => fireEvent.click(informationLink))
 
     const informationText = await screen.findByText('Information')
     expect(informationText).toBeInTheDocument()
@@ -2239,6 +2271,7 @@ describe('Link', () => {
           ]),
         ]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -2247,7 +2280,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const paramsText1 = await screen.findByText('Params: id1')
     expect(paramsText1).toBeInTheDocument()
@@ -2260,7 +2293,7 @@ describe('Link', () => {
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     const postsText = await screen.findByText('Posts')
     expect(postsText).toBeInTheDocument()
@@ -2383,6 +2416,7 @@ describe('Link', () => {
           ]),
         ]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -2391,7 +2425,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const paramsText1 = await screen.findByText('Params: id1')
     expect(paramsText1).toBeInTheDocument()
@@ -2404,7 +2438,7 @@ describe('Link', () => {
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     const postsText = await screen.findByText('Posts')
     expect(postsText).toBeInTheDocument()
@@ -2540,6 +2574,7 @@ describe('Link', () => {
           ]),
         ]),
       ]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -2548,7 +2583,7 @@ describe('Link', () => {
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const invoicesErrorText = await screen.findByText(
       'Invariant failed: Could not find match for from: /invoices',
@@ -2633,6 +2668,7 @@ describe('Link', () => {
     const router = createRouter({
       routeTree,
       routeMasks: [routeMask],
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -2720,6 +2756,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree,
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -2838,6 +2875,7 @@ describe('Link', () => {
     const router = createRouter({
       routeTree,
       defaultPreload: 'intent',
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -2848,13 +2886,13 @@ describe('Link', () => {
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.mouseOver(postLink)
+    await act(() => fireEvent.mouseOver(postLink))
 
     await waitFor(() => expect(loaderFn).toHaveBeenCalled())
 
     await waitFor(() => expect(search).toHaveBeenCalledWith({ postPage: 0 }))
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     const loginText = await screen.findByText('Login!')
     expect(loginText).toBeInTheDocument()
@@ -2926,7 +2964,7 @@ describe('Link', () => {
     })
 
     const LoginComponent = () => {
-      return <>Login!</>
+      return <div data-testid="login">Login!</div>
     }
 
     const loginRoute = createRoute({
@@ -2944,6 +2982,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree,
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -2954,10 +2993,9 @@ describe('Link', () => {
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
-    const loginText = await screen.findByText('Login!')
-    expect(loginText).toBeInTheDocument()
+    expect(await screen.findByTestId('login')).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -3044,6 +3082,7 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree,
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -3054,7 +3093,7 @@ describe('Link', () => {
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     const loginText = await screen.findByText('Login!')
     expect(loginText).toBeInTheDocument()
@@ -3139,6 +3178,7 @@ describe('Link', () => {
     const router = createRouter({
       routeTree,
       defaultPreload: 'intent',
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -3149,11 +3189,11 @@ describe('Link', () => {
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.mouseOver(postLink)
+    await act(() => fireEvent.mouseOver(postLink))
 
     await waitFor(() => expect(search).toHaveBeenCalledWith({ postPage: 0 }))
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     const loginText = await screen.findByText('Login!')
     expect(loginText).toBeInTheDocument()
@@ -3240,6 +3280,7 @@ describe('Link', () => {
     const router = createRouter({
       routeTree,
       defaultPreload: 'intent',
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -3250,11 +3291,11 @@ describe('Link', () => {
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
-    fireEvent.mouseOver(postLink)
+    await act(() => fireEvent.mouseOver(postLink))
 
     await waitFor(() => expect(search).toHaveBeenCalledWith({ postPage: 0 }))
 
-    fireEvent.click(postLink)
+    await act(() => fireEvent.click(postLink))
 
     const loginText = await screen.findByText('Login!')
     expect(loginText).toBeInTheDocument()
@@ -3332,13 +3373,14 @@ describe('Link', () => {
 
     const router = createRouter({
       routeTree,
+      history,
     })
 
     render(<RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'Go to posts' })
 
-    fireEvent.click(postsLink)
+    await act(() => fireEvent.click(postsLink))
 
     const fromPostsLink = await screen.findByRole('link', {
       name: 'From posts',
@@ -3350,7 +3392,7 @@ describe('Link', () => {
       name: 'To invoices',
     })
 
-    fireEvent.click(toInvoicesLink)
+    await act(() => fireEvent.click(toInvoicesLink))
 
     const fromInvoicesLink = await screen.findByRole('link', {
       name: 'From invoices',
@@ -3364,7 +3406,7 @@ describe('Link', () => {
       name: 'To posts',
     })
 
-    fireEvent.click(toPostsLink)
+    await act(() => fireEvent.click(toPostsLink))
 
     const onPostsText = await screen.findByText('On Posts')
     expect(onPostsText).toBeInTheDocument()
@@ -3402,7 +3444,7 @@ describe('Link', () => {
     })
 
     const routeTree = rootRoute.addChildren([indexRoute, postRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
 
     render(<RouterProvider router={router} />)
 
@@ -3464,7 +3506,7 @@ describe('Link', () => {
     })
 
     const routeTree = rootRoute.addChildren([indexRoute, postRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
 
     render(<RouterProvider router={router} />)
 
@@ -3528,7 +3570,7 @@ describe('Link', () => {
     })
 
     const routeTree = rootRoute.addChildren([indexRoute, postRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
 
     render(<RouterProvider router={router} />)
 
@@ -3597,7 +3639,7 @@ describe('Link', () => {
     })
 
     const routeTree = rootRoute.addChildren([indexRoute, postRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
 
     render(<RouterProvider router={router} />)
 
@@ -3633,6 +3675,7 @@ describe('Link', () => {
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute]),
         defaultPreload: preload,
+        history,
       })
 
       render(<RouterProvider router={router} />)
@@ -3665,6 +3708,7 @@ describe('Link', () => {
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute]),
         defaultPreload: preload,
+        history,
       })
 
       render(<RouterProvider router={router} />)
@@ -3692,6 +3736,7 @@ describe('Link', () => {
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute]),
       defaultPreload: 'viewport',
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -3736,6 +3781,7 @@ describe('Link', () => {
     const router = createRouter({
       routeTree: rootRoute.addChildren([aboutRoute, indexRoute]),
       defaultPreload: 'render',
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -3776,6 +3822,7 @@ describe('Link', () => {
       defaultPreload: 'intent',
       defaultPendingMs: 200,
       defaultPendingComponent: () => <p>Loading...</p>,
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -3889,6 +3936,7 @@ describe('Link', () => {
       const router = createRouter({
         routeTree,
         defaultPreload: 'intent',
+        history,
       })
 
       render(<RouterProvider router={router} />)
@@ -3940,6 +3988,7 @@ describe('createLink', () => {
     })
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -3969,6 +4018,7 @@ describe('createLink', () => {
     })
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -4048,6 +4098,7 @@ describe('createLink', () => {
     })
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -4309,6 +4360,7 @@ describe('search middleware', () => {
         postsRoute.addChildren([postsNewRoute]),
         invoicesRoute,
       ]),
+      history,
     })
 
     window.history.replaceState(null, 'root', '/?root=abc')
@@ -4400,6 +4452,7 @@ describe('search middleware', () => {
           indexRoute,
           postsRoute.addChildren([postRoute]),
         ]),
+        history,
       })
 
       render(<RouterProvider router={router} />)
@@ -4408,5 +4461,210 @@ describe('search middleware', () => {
 
       expect(postLink).toHaveAttribute('href', '/posts/id1')
     })
+  })
+})
+
+describe('relative links', () => {
+  const setupRouter = () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return <h1>Index Route</h1>
+      },
+    })
+    const aRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'a',
+      component: () => {
+        return (
+          <>
+            <h1>A Route</h1>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const bRoute = createRoute({
+      getParentRoute: () => aRoute,
+      path: 'b',
+      component: () => {
+        return (
+          <>
+            <h1>B Route</h1>
+            <Link to="..">Link to Parent</Link>
+          </>
+        )
+      },
+    })
+
+    const paramRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'param/$param',
+      component: () => {
+        return (
+          <>
+            <h1>Param Route</h1>
+            <Link to="./a">Link to ./a</Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const paramARoute = createRoute({
+      getParentRoute: () => paramRoute,
+      path: 'a',
+      component: () => {
+        return (
+          <>
+            <h1>Param A Route</h1>
+            <Link to="..">Link to .. from /param/foo/a</Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const paramBRoute = createRoute({
+      getParentRoute: () => paramARoute,
+      path: 'b',
+      component: () => {
+        return (
+          <>
+            <h1>Param B Route</h1>
+            <Link to="..">Link to Parent</Link>
+            <Link to=".." params={{ param: 'bar' }}>
+              Link to Parent with param:bar
+            </Link>
+            <paramBRoute.Link
+              to=".."
+              params={(prev) => ({ ...prev, param: 'bar' })}
+            >
+              Link to Parent with param:bar functional
+            </paramBRoute.Link>
+          </>
+        )
+      },
+    })
+
+    return createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        aRoute.addChildren([bRoute]),
+        paramRoute.addChildren([paramARoute, paramBRoute]),
+      ]),
+      history,
+    })
+  }
+
+  test('should navigate to the parent route', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    // Navigate to /a/b
+    await act(async () => {
+      history.push('/a/b')
+    })
+
+    // Inspect the link to go up a parent
+    const parentLink = await screen.findByText('Link to Parent')
+    expect(parentLink.getAttribute('href')).toBe('/a')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(parentLink)
+    })
+
+    expect(window.location.pathname).toBe('/a')
+  })
+
+  test('should navigate to the parent route and keep params', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    // Navigate to /param/oldParamValue/a/b
+    await act(async () => {
+      history.push('/param/foo/a/b')
+    })
+
+    // Inspect the link to go up a parent and keep the params
+    const parentLink = await screen.findByText('Link to Parent')
+    expect(parentLink.getAttribute('href')).toBe('/param/foo/a')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(parentLink)
+    })
+
+    expect(window.location.pathname).toBe('/param/foo/a')
+  })
+
+  test('should navigate to the parent route and change params', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    // Navigate to /param/oldParamValue/a/b
+    await act(async () => {
+      history.push('/param/foo/a/b')
+    })
+
+    // Inspect the link to go up a parent and keep the params
+    const parentLink = await screen.findByText('Link to Parent with param:bar')
+    expect(parentLink.getAttribute('href')).toBe('/param/bar/a')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(parentLink)
+    })
+
+    expect(window.location.pathname).toBe('/param/bar/a')
+  })
+
+  test('should navigate to a relative link based on render location', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/param/foo/a/b')
+    })
+
+    // Inspect the relative link to ./a
+    const relativeLink = await screen.findByText('Link to ./a')
+    expect(relativeLink.getAttribute('href')).toBe('/param/foo/a')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/param/foo/a')
+  })
+
+  test('should navigate to a parent link based on render location', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/param/foo/a/b')
+    })
+
+    // Inspect the relative link to ./a
+    const relativeLink = await screen.findByText('Link to .. from /param/foo/a')
+    expect(relativeLink.getAttribute('href')).toBe('/param/foo')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/param/foo')
   })
 })

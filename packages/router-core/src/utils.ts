@@ -169,6 +169,20 @@ export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
     : 'Function is not serializable'
   : { [K in keyof T]: ValidateJSON<T[K]> }
 
+export type LooseReturnType<T> = T extends (
+  ...args: Array<any>
+) => infer TReturn
+  ? TReturn
+  : never
+
+export type LooseAsyncReturnType<T> = T extends (
+  ...args: Array<any>
+) => infer TReturn
+  ? TReturn extends Promise<infer TReturn>
+    ? TReturn
+    : TReturn
+  : never
+
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
 }
