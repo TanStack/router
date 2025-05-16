@@ -53,7 +53,47 @@ export function createStartHandler<TRouter extends AnyRouter>({
   createRouter: () => TRouter
 }): CustomizeStartHandler<TRouter> {
   return (cb) => {
-    return requestHandler(async ({ request }) => {
+    const originalFetch = globalThis.fetch
+
+    const startRequestResolver: RequestHandler = async ({ request }) => {
+      // Patching fetch function to use our request resolver
+      // if the input starts with `/` which is a common pattern for
+      // client-side routing.
+      // When we encounter similar requests, we can assume that the
+      // user wants to use the same origin as the current request.
+      globalThis.fetch = async function (input, init) {
+        function resolve(url: URL, requestOptions: RequestInit | undefined) {
+          const fetchRequest = new Request(url, requestOptions)
+          return startRequestResolver({ request: fetchRequest })
+        }
+
+        function getOrigin() {
+          return (
+            request.headers.get('Origin') ||
+            request.headers.get('Referer') ||
+            'http://localhost'
+          )
+        }
+
+        if (typeof input === 'string' && input.startsWith('/')) {
+          // e.g: fetch('/api/data')
+          const url = new URL(input, getOrigin())
+          return resolve(url, init)
+        } else if (
+          typeof input === 'object' &&
+          'url' in input &&
+          typeof input.url === 'string' &&
+          input.url.startsWith('/')
+        ) {
+          // e.g: fetch(new Request('/api/data'))
+          const url = new URL(input.url, getOrigin())
+          return resolve(url, init)
+        }
+
+        // If not, it should just use the original fetch
+        return originalFetch(input, init)
+      }
+
       const url = new URL(request.url)
       const href = url.href.replace(url.origin, '')
 
@@ -222,7 +262,9 @@ export function createStartHandler<TRouter extends AnyRouter>({
       }
 
       return response
-    })
+    }
+
+    return requestHandler(startRequestResolver)
   }
 }
 
