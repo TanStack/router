@@ -90,7 +90,7 @@ export function nitroPlugin(
               await buildNitroEnvironment(nitro, () => build(nitro))
 
               // If the user has not set a prerender option, we need to set it to true
-              // if the pages array is not empty and has sub options required for prerendering
+              // if the pages array is not empty and has sub options requiring for prerendering
               if (options.prerender?.enabled !== false) {
                 options.prerender = {
                   ...options.prerender,
