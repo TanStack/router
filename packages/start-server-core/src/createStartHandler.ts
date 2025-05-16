@@ -67,9 +67,17 @@ export function createStartHandler<TRouter extends AnyRouter>({
           return startRequestResolver({ request: fetchRequest })
         }
 
+        function getOrigin() {
+          return (
+            request.headers.get('Origin') ||
+            request.headers.get('Referer') ||
+            'http://localhost'
+          )
+        }
+
         if (typeof input === 'string' && input.startsWith('/')) {
           // e.g: fetch('/api/data')
-          const url = new URL(input, 'http://localhost')
+          const url = new URL(input, getOrigin())
           return resolve(url, init)
         } else if (
           typeof input === 'object' &&
@@ -78,7 +86,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
           input.url.startsWith('/')
         ) {
           // e.g: fetch(new Request('/api/data'))
-          const url = new URL(input.url, 'http://localhost')
+          const url = new URL(input.url, getOrigin())
           return resolve(url, init)
         }
 
