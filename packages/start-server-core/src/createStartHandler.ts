@@ -60,8 +60,9 @@ export function createStartHandler<TRouter extends AnyRouter>({
     }) => {
       // Patching fetch function to use our request resolver
       // if the input starts with `/` which is a common pattern for
-      // client-side routing and we can assume that the user want to
-      // use the same origin as the current request
+      // client-side routing.
+      // When we encounter similar requests, we can assume that the
+      // user wants to use the same origin as the current request.
       globalThis.fetch = async function (input, init) {
         function resolve(url: URL, requestOptions: RequestInit | undefined) {
           const fetchRequest = new Request(url, requestOptions)
@@ -69,7 +70,6 @@ export function createStartHandler<TRouter extends AnyRouter>({
         }
 
         if (typeof input === 'string' && input.startsWith('/')) {
-          // input is a string and starts with `/`
           // e.g: fetch('/api/data')
           const url = new URL(input, 'https://localhost')
           return resolve(url, init)
@@ -79,7 +79,6 @@ export function createStartHandler<TRouter extends AnyRouter>({
           typeof input.url === 'string' &&
           input.url.startsWith('/')
         ) {
-          // input is of type Request or RequestInfo object
           // e.g: fetch(new Request('/api/data'))
           const url = new URL(input.url, 'https://localhost')
           return resolve(url, init)
