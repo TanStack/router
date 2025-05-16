@@ -1363,7 +1363,6 @@ export class RouterCore<
           ...match.__beforeLoadContext,
         }
       }
-
     })
 
     return matches
@@ -2500,8 +2499,7 @@ export class RouterCore<
                         params: match.params,
                         loaderData: match.loaderData,
                       }
-                      const headFnContent =
-                        route.options.head?.(assetContext)
+                      const headFnContent = route.options.head?.(assetContext)
                       const meta = headFnContent?.meta
                       const links = headFnContent?.links
                       const headScripts = headFnContent?.scripts
@@ -2563,14 +2561,14 @@ export class RouterCore<
                           await route._componentsPromise
 
                           batch(() => {
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            error: undefined,
-                            status: 'success',
-                            isFetching: false,
-                            updatedAt: Date.now(),
-                            loaderData,
-                          }))
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              error: undefined,
+                              status: 'success',
+                              isFetching: false,
+                              updatedAt: Date.now(),
+                              loaderData,
+                            }))
                             executeHead()
                           })
                         } catch (e) {
@@ -2591,12 +2589,12 @@ export class RouterCore<
                           }
 
                           batch(() => {
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            error,
-                            status: 'error',
-                            isFetching: false,
-                          }))
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              error,
+                              status: 'error',
+                              isFetching: false,
+                            }))
                             executeHead()
                           })
                         }
@@ -2607,10 +2605,10 @@ export class RouterCore<
                         })
                       } catch (err) {
                         batch(() => {
-                        updateMatch(matchId, (prev) => ({
-                          ...prev,
-                          loaderPromise: undefined,
-                        }))
+                          updateMatch(matchId, (prev) => ({
+                            ...prev,
+                            loaderPromise: undefined,
+                          }))
                           executeHead()
                         })
                         handleRedirectAndNotFound(this.getMatch(matchId)!, err)
@@ -2648,8 +2646,7 @@ export class RouterCore<
                       (loaderShouldRunAsync && sync)
                     ) {
                       await runLoader()
-                    }
-                    else {
+                    } else {
                       // if the loader did not run, still update head.
                       // reason: parent's beforeLoad may have changed the route context
                       // and only now do we know the route context (and that the loader would not run)

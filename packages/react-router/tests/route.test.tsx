@@ -283,7 +283,6 @@ describe('route.head', () => {
     ])
   })
 
-
   test('meta is set when loader throws notFound', async () => {
     const rootRoute = createRootRoute({
       head: () => ({
