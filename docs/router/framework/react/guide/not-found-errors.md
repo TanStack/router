@@ -16,7 +16,7 @@ There are 2 uses for not-found errors in TanStack Router:
     - Attempting to access `/posts/1/edit` when the route tree only handles `/posts/$postId`
 - **Missing resources**: When a resource cannot be found, such as a post with a given ID or any asynchronous data that is not available or does not exist
   - **You, the developer** must throw a not-found error when a resource cannot be found. This can be done in the `beforeLoad` or `loader` functions using the `notFound` utility.
-  - Will be handled by the nearest parent route with a `notFoundComponent` or the root route
+  - Will be handled by the nearest parent route with a `notFoundComponent` (when `notFound` is called within `loader`) or the root route.
   - Examples:
     - Attempting to access `/posts/1` when the post with ID 1 does not exist
     - Attempting to access `/docs/path/to/document` when the document does not exist
