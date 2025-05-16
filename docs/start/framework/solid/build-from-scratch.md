@@ -48,11 +48,7 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 
 ## Install Dependencies
 
-TanStack Start is powered by:
-
-- [**TanStack Router**](https://tanstack.com/router) - A router for building web applications.
-- [**Vite**](https://vite.dev/) - A build tool for building web applications.
-- [**Nitro**](https://nitro.unjs.io/) - A framework for building server applications.
+TanStack Start is powered by [Vite](https://vite.dev/) and [TanStack Router](https://tanstack.com/router) and requires them as dependencies.
 
 To install them, run:
 
@@ -82,8 +78,7 @@ We'll then update our `package.json` to use Vite's CLI and set `"type": "module"
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
-    "start": "vite start"
+    "build": "vite build"
   }
 }
 ```
@@ -106,25 +101,22 @@ export default defineConfig({
 
 ## Add the Basic Templating
 
-There are four required files for TanStack Start usage:
+There are 2 required files for TanStack Start usage:
 
 1. The router configuration
-2. The server entry point
-3. The client entry point
-4. The root of your application
+2. The root of your application
 
 Once configuration is done, we'll have a file tree that looks like the following:
 
 ```
 .
-├── app/
+├── src/
 │   ├── routes/
 │   │   └── `__root.tsx`
-│   ├── `client.tsx`
 │   ├── `router.tsx`
 │   ├── `routeTree.gen.ts`
 ├── `.gitignore`
-├── `app.config.ts`
+├── `vite.config.ts`
 ├── `package.json`
 └── `tsconfig.json`
 ```
@@ -138,7 +130,7 @@ from the default [preloading functionality](/router/latest/docs/framework/solid/
 > You won't have a `routeTree.gen.ts` file yet. This file will be generated when you run TanStack Start for the first time.
 
 ```tsx
-// app/router.tsx
+// src/router.tsx
 import { createRouter as createTanStackRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
 
@@ -166,7 +158,7 @@ declare module '@tanstack/solid-router' {
 Finally, we need to create the root of our application. This is the entry point for all other routes. The code in this file will wrap all other routes in the application.
 
 ```tsx
-// app/routes/__root.tsx
+// src/routes/__root.tsx
 import {
   Outlet,
   createRootRoute,
@@ -202,7 +194,7 @@ function RootComponent() {
 Now that we have the basic templating setup, we can write our first route. This is done by creating a new file in the `app/routes` directory.
 
 ```tsx
-// app/routes/index.tsx
+// src/routes/index.tsx
 import * as fs from 'node:fs'
 import { useRouter } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
