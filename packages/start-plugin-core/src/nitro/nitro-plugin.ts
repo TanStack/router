@@ -89,6 +89,18 @@ export function nitroPlugin(
 
               await buildNitroEnvironment(nitro, () => build(nitro))
 
+              // If the user has not set a prerender option, we need to set it to true
+              // if the pages array is not empty and has sub options required for prerendering
+              if (options.prerender?.enabled !== false) {
+                options.prerender = {
+                  ...options.prerender,
+                  enabled: options.pages.some((d) =>
+                    typeof d === 'string' ? false : !!d.prerender?.enabled,
+                  ),
+                }
+              }
+
+              // Setup the options for prerendering the SPA shell (i.e `src/routes/__root.tsx`)
               if (options.spa?.enabled) {
                 options.prerender = {
                   ...options.prerender,
@@ -111,12 +123,8 @@ export function nitroPlugin(
                 })
               }
 
-              if (
-                options.prerender?.enabled ||
-                options.pages.some((d) =>
-                  typeof d === 'string' ? false : !!d.prerender?.enabled,
-                )
-              ) {
+              // Start prerendering!!!
+              if (options.prerender.enabled) {
                 await prerender({
                   options,
                   nitro,
