@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import * as fsp from 'node:fs/promises'
 import * as prettier from 'prettier'
 
 export function multiSortBy<T>(
@@ -212,7 +212,7 @@ export async function writeIfDifferent(
 ): Promise<boolean> {
   if (content !== incomingContent) {
     callbacks?.beforeWrite?.()
-    fs.writeFileSync(filepath, incomingContent)
+    await fsp.writeFile(filepath, incomingContent)
     callbacks?.afterWrite?.()
     return true
   }
