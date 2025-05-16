@@ -253,3 +253,18 @@ export function resetRegex(regex: RegExp) {
   regex.lastIndex = 0
   return
 }
+
+/**
+ * This function checks if a file exists.
+ *
+ * @param file The path to the file
+ * @returns Whether the file exists
+ */
+export async function checkFileExists(file: string) {
+  try {
+    await fsp.access(file, fsp.constants.F_OK)
+    return true
+  } catch {
+    return false
+  }
+}
