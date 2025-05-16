@@ -55,9 +55,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
   return (cb) => {
     const originalFetch = globalThis.fetch
 
-    const startRequestResolver: ReturnType<typeof requestHandler> = async ({
-      request,
-    }) => {
+    const startRequestResolver: RequestHandler = async ({ request }) => {
       // Patching fetch function to use our request resolver
       // if the input starts with `/` which is a common pattern for
       // client-side routing.
