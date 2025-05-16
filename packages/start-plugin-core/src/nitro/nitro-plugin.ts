@@ -111,7 +111,12 @@ export function nitroPlugin(
                 })
               }
 
-              if (options.prerender?.enabled) {
+              if (
+                options.prerender?.enabled ||
+                options.pages.some((d) =>
+                  typeof d === 'string' ? false : !!d.prerender?.enabled,
+                )
+              ) {
                 await prerender({
                   options,
                   nitro,
