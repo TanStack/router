@@ -14,27 +14,6 @@ import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
 import type { Config } from '../config'
 
-// eslint-disable-next-line unused-imports/no-unused-vars
-const debug = process.env.TSR_VITE_DEBUG
-
-type SplitModulesById = Record<
-  string,
-  { id: string; node: t.FunctionExpression }
->
-
-interface State {
-  filename: string
-  opts: {
-    minify: boolean
-    root: string
-  }
-  imported: Record<string, boolean>
-  refs: Set<any>
-  serverIndex: number
-  splitIndex: number
-  splitModulesById: SplitModulesById
-}
-
 type SplitNodeMeta = {
   routeIdent: SplitRouteIdentNodes
   splitStrategy: 'lazyFn' | 'lazyRouteComponent'
@@ -139,8 +118,7 @@ export function compileCodeSplitReferenceRoute(
 
   babel.traverse(ast, {
     Program: {
-      enter(programPath, programState) {
-        const state = programState as unknown as State
+      enter(programPath) {
 
         /**
          * If the component for the route is being imported from
@@ -381,7 +359,6 @@ export function compileCodeSplitReferenceRoute(
               }
             },
           },
-          state,
         )
 
         /**
@@ -428,9 +405,7 @@ export function compileCodeSplitVirtualRoute(
 
   babel.traverse(ast, {
     Program: {
-      enter(programPath, programState) {
-        const state = programState as unknown as State
-
+      enter(programPath) {
         const trackedNodesToSplitByType: Record<
           SplitRouteIdentNodes,
           { node: t.Node | undefined; meta: SplitNodeMeta } | undefined
@@ -526,7 +501,6 @@ export function compileCodeSplitVirtualRoute(
               }
             },
           },
-          state,
         )
 
         // Start the transformation to only exported the intended split nodes
