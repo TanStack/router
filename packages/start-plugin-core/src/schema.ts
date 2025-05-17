@@ -2,7 +2,7 @@ import path from 'node:path'
 import { existsSync } from 'node:fs'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-generator'
-import { NitroConfig } from 'nitropack'
+import type { NitroConfig } from 'nitropack'
 
 const tsrConfig = configSchema.partial().extend({
   srcDirectory: z.string().optional().default('src'),
