@@ -21,7 +21,8 @@ type RootMatch = RouteMatch<
   RootRoute['types']['fullSearchSchema'],
   RootRoute['types']['loaderData'],
   RootRoute['types']['allContext'],
-  RootRoute['types']['loaderDeps']
+  RootRoute['types']['loaderDeps'],
+  RootRoute['types']['fullStateSchema']
 >
 
 const indexRoute = createRoute({
@@ -38,7 +39,8 @@ type IndexMatch = RouteMatch<
   IndexRoute['types']['fullSearchSchema'],
   IndexRoute['types']['loaderData'],
   IndexRoute['types']['allContext'],
-  IndexRoute['types']['loaderDeps']
+  IndexRoute['types']['loaderDeps'],
+  IndexRoute['types']['fullStateSchema']
 >
 
 const invoicesRoute = createRoute({
@@ -54,7 +56,8 @@ type InvoiceMatch = RouteMatch<
   InvoiceRoute['types']['fullSearchSchema'],
   InvoiceRoute['types']['loaderData'],
   InvoiceRoute['types']['allContext'],
-  InvoiceRoute['types']['loaderDeps']
+  InvoiceRoute['types']['loaderDeps'],
+  InvoiceRoute['types']['fullStateSchema']
 >
 
 type InvoicesRoute = typeof invoicesRoute
@@ -66,7 +69,8 @@ type InvoicesMatch = RouteMatch<
   InvoicesRoute['types']['fullSearchSchema'],
   InvoicesRoute['types']['loaderData'],
   InvoicesRoute['types']['allContext'],
-  InvoicesRoute['types']['loaderDeps']
+  InvoicesRoute['types']['loaderDeps'],
+  InvoicesRoute['types']['fullStateSchema']
 >
 
 const invoicesIndexRoute = createRoute({
@@ -83,7 +87,8 @@ type InvoicesIndexMatch = RouteMatch<
   InvoicesIndexRoute['types']['fullSearchSchema'],
   InvoicesIndexRoute['types']['loaderData'],
   InvoicesIndexRoute['types']['allContext'],
-  InvoicesIndexRoute['types']['loaderDeps']
+  InvoicesIndexRoute['types']['loaderDeps'],
+  InvoicesIndexRoute['types']['fullStateSchema']
 >
 
 const invoiceRoute = createRoute({
@@ -108,7 +113,8 @@ type LayoutMatch = RouteMatch<
   LayoutRoute['types']['fullSearchSchema'],
   LayoutRoute['types']['loaderData'],
   LayoutRoute['types']['allContext'],
-  LayoutRoute['types']['loaderDeps']
+  LayoutRoute['types']['loaderDeps'],
+  LayoutRoute['types']['fullStateSchema']
 >
 
 const commentsRoute = createRoute({
@@ -131,7 +137,8 @@ type CommentsMatch = RouteMatch<
   CommentsRoute['types']['fullSearchSchema'],
   CommentsRoute['types']['loaderData'],
   CommentsRoute['types']['allContext'],
-  CommentsRoute['types']['loaderDeps']
+  CommentsRoute['types']['loaderDeps'],
+  CommentsRoute['types']['fullStateSchema']
 >
 
 const routeTree = rootRoute.addChildren([

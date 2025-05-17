@@ -360,6 +360,11 @@ export type {
 
 export type { UseSearchResult, ResolveUseSearch } from './useSearch'
 
+export type {
+  UseHistoryStateResult,
+  ResolveUseHistoryState,
+} from './useHistoryState'
+
 export type { UseParamsResult, ResolveUseParams } from './useParams'
 
 export type { UseNavigateResult } from './useNavigate'
@@ -395,6 +400,7 @@ export type {
   ValidateToPath,
   ValidateSearch,
   ValidateParams,
+  ValidateHistoryState,
   InferFrom,
   InferTo,
   InferMaskTo,
@@ -409,4 +415,5 @@ export type {
   InferSelected,
   ValidateUseSearchResult,
   ValidateUseParamsResult,
+  ValidateUseHistoryStateResult,
 } from './typePrimitives'
