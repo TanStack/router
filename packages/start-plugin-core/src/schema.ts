@@ -83,6 +83,7 @@ export function createTanStackStartOptionsSchema(
     .object({
       root: z.string().optional().default(process.cwd()),
       target: z.custom<NitroConfig['preset']>().optional(),
+      unenv: z.custom<NitroConfig['unenv']>().optional(),
       ...frameworkPlugin,
       tsr: tsrConfig.optional().default({}),
       client: z

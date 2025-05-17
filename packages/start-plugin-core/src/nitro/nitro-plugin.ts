@@ -18,6 +18,8 @@ export function nitroPlugin(
   const buildPreset =
     process.env['START_TARGET'] ?? (options.target as string | undefined)
 
+  const unenv = options.unenv
+
   return [
     devServerPlugin(),
     {
@@ -80,6 +82,7 @@ export function nitroPlugin(
                 },
                 prerender: undefined,
                 renderer: ssrEntryFile,
+                unenv: unenv,
                 rollupConfig: {
                   plugins: [virtualBundlePlugin(getSsrBundle())],
                 },
