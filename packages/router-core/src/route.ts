@@ -499,7 +499,10 @@ export type ResolveFullPath<
   TPrefixed = RoutePrefix<TParentRoute['fullPath'], TPath>,
 > = TPrefixed extends RootRouteId ? '/' : TPrefixed
 
-export interface RouteExtensions<TId, TFullPath> {}
+export interface RouteExtensions<in out TId, in out TFullPath> {
+  id: TId
+  fullPath: TFullPath
+}
 
 export type RouteLazyFn<TRoute extends AnyRoute> = (
   lazyFn: () => Promise<LazyRoute>,
@@ -628,9 +631,7 @@ export interface Route<
   in out TChildren,
   in out TFileRouteTypes,
 > extends RouteExtensions<TId, TFullPath> {
-  fullPath: TFullPath
   path: TPath
-  id: TId
   parentRoute: TParentRoute
   children?: TChildren
   types: RouteTypes<
@@ -1040,7 +1041,7 @@ type AssetFnContextOptions<
     TLoaderDeps
   >
   params: ResolveAllParamsFromParent<TParentRoute, TParams>
-  loaderData: ResolveLoaderData<TLoaderFn>
+  loaderData?: ResolveLoaderData<TLoaderFn>
 }
 
 export interface DefaultUpdatableRouteOptionsExtensions {
@@ -1154,9 +1155,20 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >,
   ) => void
-  headers?: (ctx: {
-    loaderData: ResolveLoaderData<TLoaderFn>
-  }) => Record<string, string>
+  headers?: (
+    ctx: AssetFnContextOptions<
+      TRouteId,
+      TFullPath,
+      TParentRoute,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps
+    >,
+  ) => Record<string, string>
   head?: (
     ctx: AssetFnContextOptions<
       TRouteId,

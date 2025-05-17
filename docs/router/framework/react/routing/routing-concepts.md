@@ -318,6 +318,50 @@ The following table shows which component will be rendered based on the URL:
 - The `posts.$postId.tsx` route is nested as normal under the `posts.tsx` route and will render `<Posts><Post>`.
 - The `posts_.$postId.edit.tsx` route **does not share** the same `posts` prefix as the other routes and therefore will be treated as if it is a top-level route and will render `<PostEditor>`.
 
+## Excluding Files and Folders from Routes
+
+Files and folders can be excluded from route generation with a `-` prefix attached to the file name. This gives you the ability to colocate logic in the route directories.
+
+Consider the following route tree:
+
+```
+routes/
+├── posts.tsx
+├── -posts-table.tsx // 👈🏼 ignored
+├── -components/ // 👈🏼 ignored
+│   ├── header.tsx // 👈🏼 ignored
+│   ├── footer.tsx // 👈🏼 ignored
+│   ├── ...
+```
+
+We can import from the excluded files into our posts route
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { PostsTable } from './-posts-table'
+import { PostsHeader } from './-components/header'
+import { PostsFooter } from './-components/footer'
+
+export const Route = createFileRoute('/posts')({
+  loader: () => fetchPosts(),
+  component: PostComponent,
+})
+
+function PostComponent() {
+  const posts = Route.useLoaderData()
+
+  return (
+    <div>
+      <PostsHeader />
+      <PostsTable posts={posts} />
+      <PostsFooter />
+    </div>
+  )
+}
+```
+
+The excluded files will not be added to `routeTree.gen.ts`.
+
 ## Pathless Route Group Directories
 
 Pathless route group directories use `()` as a way to group routes files together regardless of their path. They are purely organizational and do not affect the route tree or component tree in any way.

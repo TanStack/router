@@ -7,7 +7,7 @@ API Routes are a powerful feature of TanStack Start that allow you to create ser
 
 By default, API Routes are defined in your `./app/routes/api` directory of your project and are automatically handled by the TanStack Start server.
 
-> 🧠 This means that by default, your API Routes will be prefixed with `/api` and will be served from the same server as your application. You can customize this base path by changing the `server.apiBaseURL` in your TanStack Start config.
+> 🧠 This means that by default, your API Routes will be prefixed with `/api` and will be served from the same server as your application. You can customize this base path by changing the `tsr.apiBase` in your TanStack Start config.
 
 ## File Route Conventions
 

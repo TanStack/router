@@ -38,7 +38,7 @@ export const TanStackRouterDevtoolsPanel: React.FC<DevtoolsPanelOptions> = (
   props,
 ): React.ReactElement | null => {
   const { router: propsRouter, ...rest } = props
-  const hookRouter = useRouter({ warn: propsRouter !== undefined })
+  const hookRouter = useRouter({ warn: false })
   const activeRouter = propsRouter ?? hookRouter
   const activeRouterState = useRouterState({ router: activeRouter })
 

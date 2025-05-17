@@ -24,9 +24,7 @@ import type {
   MakeDifferenceOptional,
   NoInfer,
   NonNullableUpdater,
-  PickRequired,
   Updater,
-  WithoutEmpty,
 } from './utils'
 import type { ParsedLocation } from './location'
 
@@ -481,11 +479,11 @@ type MakeRequiredParamsReducer<
 > =
   | (string extends TFrom
       ? never
-      : ResolveFromParams<TRouter, TParamVariant, TFrom> extends WithoutEmpty<
-            PickRequired<
-              ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
-            >
-          >
+      : ResolveFromParams<
+            TRouter,
+            TParamVariant,
+            TFrom
+          > extends ResolveRelativeToParams<TRouter, TParamVariant, TFrom, TTo>
         ? true
         : never)
   | (ParamsReducer<TRouter, TParamVariant, TFrom, TTo> & {})
