@@ -83,6 +83,7 @@ export function nitroPlugin(
                 rollupConfig: {
                   plugins: [virtualBundlePlugin(getSsrBundle())],
                 },
+                ...options.nitro,
               }
 
               const nitro = await createNitro(nitroConfig)

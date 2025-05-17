@@ -2,7 +2,7 @@ import path from 'node:path'
 import { existsSync } from 'node:fs'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-generator'
-import type { NitroConfig } from 'nitropack'
+import { NitroConfig } from 'nitropack'
 
 const tsrConfig = configSchema.partial().extend({
   srcDirectory: z.string().optional().default('src'),
@@ -130,6 +130,7 @@ export function createTanStackStartOptionsSchema(
         .and(pagePrerenderOptionsSchema.optional())
         .optional(),
       spa: spaSchema.optional(),
+      nitro: z.custom<NitroConfig>().optional(),
     })
     .optional()
     .default({})
