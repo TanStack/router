@@ -16,8 +16,3 @@ const SplitLoader = ({
   return dummyPost.postData;
 };
 export { SplitLoader as loader };
-export { SplitComponent as component };
-const SplitNotFoundComponent = () => {
-  return <NotFound>Post not found</NotFound>;
-};
-export { SplitNotFoundComponent as notFoundComponent };

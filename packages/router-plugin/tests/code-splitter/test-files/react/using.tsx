@@ -7,9 +7,4 @@ export const Route = createFileRoute({
     using dummyPost = DummyPostResource(postId)
     return dummyPost.postData
   },
-  errorComponent: PostErrorComponent,
-  component: PostComponent,
-  notFoundComponent: () => {
-    return <NotFound>Post not found</NotFound>
-  },
 })
