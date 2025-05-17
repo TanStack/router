@@ -1162,6 +1162,7 @@ export interface UpdatableRouteOptions<
       TParentRoute,
       TParams,
       TSearchValidator,
+      TStateValidator,
       TLoaderFn,
       TRouterContext,
       TRouteContextFn,
