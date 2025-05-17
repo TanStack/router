@@ -13,7 +13,7 @@ export function parseAst({
   ...opts
 }: ParseAstOptions): ParseResult<_babel_types.File> {
   return parse(code, {
-    plugins: ['jsx', 'typescript'],
+    plugins: ['jsx', 'typescript','explicitResourceManagement'],
     sourceType: 'module',
     ...opts,
   })
