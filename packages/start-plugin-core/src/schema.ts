@@ -130,6 +130,7 @@ export function createTanStackStartOptionsSchema(
         .and(pagePrerenderOptionsSchema.optional())
         .optional(),
       spa: spaSchema.optional(),
+      nitro: z.custom<NitroConfig>().optional(),
     })
     .optional()
     .default({})
