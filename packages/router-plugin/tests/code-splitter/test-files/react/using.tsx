@@ -6,5 +6,5 @@ export const Route = createFileRoute({
   loader: ({ params: { postId } }) => {
     using dummyPost = DummyPostResource(postId)
     return dummyPost.postData
-  }
+  },
 })
