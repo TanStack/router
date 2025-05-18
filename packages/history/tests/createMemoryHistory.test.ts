@@ -79,27 +79,27 @@ describe('createMemoryHistory', () => {
 
   test('entries', () => {
     const history = createMemoryHistory()
-    const initialEntry = history.entries()[0]
-    expect(initialEntry.index).toBe(0)
+    const initialEntry = history.entries[0]
+    expect(initialEntry?.index).toBe(0)
     history.push('/a', { i: 1 })
-    const entryA = history.entries()[1]
-    expect(entryA.index).toBe(1)
-    expect(entryA.getState()['i']).toBe(1)
+    const entryA = history.entries[1]
+    expect(entryA?.index).toBe(1)
+    expect((entryA?.getState() as any)?.['i']).toBe(1)
     history.replace('/b', { i: 2 })
-    const entryB = history.entries()[1]
-    expect(entryB.index).toBe(1)
-    expect(entryB.getState()['i']).toBe(2)
-    expect(entryA.index).toBe(-1)
+    const entryB = history.entries[1]
+    expect(entryB?.index).toBe(1)
+    expect((entryB?.getState() as any)?.['i']).toBe(2)
+    expect(entryA?.index).toBe(-1)
     history.back()
     history.push('/c', { i: 3 })
-    const entryC = history.entries()[1]
-    expect(entryC.index).toBe(1)
-    expect(entryC.getState()['i']).toBe(3)
-    expect(entryB.index).toBe(-1)
+    const entryC = history.entries[1]
+    expect(entryC?.index).toBe(1)
+    expect((entryC?.getState() as any)?.['i']).toBe(3)
+    expect(entryB?.index).toBe(-1)
     history.push('/d', { i: 4 })
-    const entryD = history.entries()[2]
-    expect(entryD.index).toBe(2)
-    expect(entryD.getState()['i']).toBe(4)
-    expect(entryC.index).toBe(1)
+    const entryD = history.entries[2]
+    expect(entryD?.index).toBe(2)
+    expect((entryD?.getState() as any)?.['i']).toBe(4)
+    expect(entryC?.index).toBe(1)
   })
 })
