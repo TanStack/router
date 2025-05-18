@@ -42,10 +42,15 @@ const TanStackRouterCodeSplitterVite = createVitePlugin(
  * })
  * ```
  */
-const TanStackRouterVite = createVitePlugin(unpluginRouterComposedFactory)
-const tanstackRouter = TanStackRouterVite
+const tanstackRouter = createVitePlugin(unpluginRouterComposedFactory)
 
-export default TanStackRouterVite
+
+/**
+ * @deprecated Use `tanstackRouter` instead.
+ */
+const TanStackRouterVite = tanstackRouter
+
+export default tanstackRouter
 export {
   configSchema,
   TanStackRouterGeneratorVite,
