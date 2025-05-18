@@ -312,7 +312,8 @@ export function createBrowserHistory(opts?: {
   const originalPushState = win.history.pushState
   const originalReplaceState = win.history.replaceState
 
-  let entriesCache = createHistoryEntriesSessionCache() || createHistoryEntriesMemoryCache()
+  let entriesCache =
+    createHistoryEntriesSessionCache() || createHistoryEntriesMemoryCache()
   let rollbackEntriesCache: HistoryEntriesCache | undefined = undefined
 
   let blockers: Array<NavigationBlocker> = []
@@ -615,23 +616,28 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
 }
 
 export function createMemoryHistory(
-    opts: {
-      initialEntries: Array<string>
-      initialIndex?: number
-    } = {
-      initialEntries: ['/'],
-    },
+  opts: {
+    initialEntries: Array<string>
+    initialIndex?: number
+  } = {
+    initialEntries: ['/'],
+  },
 ): RouterHistory {
   let index = opts.initialIndex
-      ? Math.min(Math.max(opts.initialIndex, 0), opts.initialEntries.length - 1)
-      : opts.initialEntries.length - 1
-  const entriesCache = createHistoryEntriesMemoryCache(opts.initialEntries.map((href, index) => {
-    const { state, ...path} = parseHref(href, assignKeyAndIndex(index, undefined))
-    return {
-      path,
-      state
-    } as CachedHistoryEntry
-  }))
+    ? Math.min(Math.max(opts.initialIndex, 0), opts.initialEntries.length - 1)
+    : opts.initialEntries.length - 1
+  const entriesCache = createHistoryEntriesMemoryCache(
+    opts.initialEntries.map((href, index) => {
+      const { state, ...path } = parseHref(
+        href,
+        assignKeyAndIndex(index, undefined),
+      )
+      return {
+        path,
+        state,
+      } as CachedHistoryEntry
+    }),
+  )
 
   const getLocation = () => {
     const entry = entriesCache.get()[index]!
@@ -694,8 +700,8 @@ export function parseHref(
 function getSafeSessionStorage() {
   try {
     if (
-        typeof window !== 'undefined' &&
-        typeof window.sessionStorage === 'object'
+      typeof window !== 'undefined' &&
+      typeof window.sessionStorage === 'object'
     ) {
       return window.sessionStorage
     }
@@ -708,23 +714,35 @@ function getSafeSessionStorage() {
 const entriesStorageKey = 'tsr-history-entries-v1'
 
 function createHistoryEntriesCache(opts: {
-  get: () => Array<CachedHistoryEntry>,
-  set: (entries: Array<CachedHistoryEntry>) => void,
-  clone: () => HistoryEntriesCache,
-  flush?: () => void,
+  get: () => Array<CachedHistoryEntry>
+  set: (entries: Array<CachedHistoryEntry>) => void
+  clone: () => HistoryEntriesCache
+  flush?: () => void
 }): HistoryEntriesCache {
   return {
-    get: () => opts.get().map(entry => ({ key: entry.state.key!, path: entry.path })).map(entry => ({
-        key: entry.key,
-        get index() {
-          return opts.get().findIndex(cmpEntry => cmpEntry.state.key === entry.key)
-        },
-        path: {...entry.path},
-        getState: () => {
-          const state = opts.get().find(cmpEntry => cmpEntry.state.key === entry.key)?.state
-          return state ? (typeof structuredClone === 'function' ? structuredClone(state) : {...state}) : undefined
-        },
-      })),
+    get: () =>
+      opts
+        .get()
+        .map((entry) => ({ key: entry.state.key!, path: entry.path }))
+        .map((entry) => ({
+          key: entry.key,
+          get index() {
+            return opts
+              .get()
+              .findIndex((cmpEntry) => cmpEntry.state.key === entry.key)
+          },
+          path: { ...entry.path },
+          getState: () => {
+            const state = opts
+              .get()
+              .find((cmpEntry) => cmpEntry.state.key === entry.key)?.state
+            return state
+              ? typeof structuredClone === 'function'
+                ? structuredClone(state)
+                : { ...state }
+              : undefined
+          },
+        })),
     push: (location) => {
       const index = location.state[stateIndexKey]
       let entries = opts.get()
@@ -733,25 +751,31 @@ function createHistoryEntriesCache(opts: {
       } else {
         entries = [...entries]
       }
-      const { state, ...path} = location
+      const { state, ...path } = location
       entries.push({
         path,
-        state
+        state,
       })
       opts.set(entries)
     },
     replace: (location) => {
       const index = location.state[stateIndexKey]
       const entries = opts.get()
-      const { state, ...path} = location
-      opts.set([...entries.slice(0, index), { path, state }, ...entries.slice(index + 1)])
+      const { state, ...path } = location
+      opts.set([
+        ...entries.slice(0, index),
+        { path, state },
+        ...entries.slice(index + 1),
+      ])
     },
     clone: opts.clone,
     flush: () => opts.flush?.(),
   }
 }
 
-function createHistoryEntriesSessionCache(initialEntries?: Array<CachedHistoryEntry>): HistoryEntriesCache | undefined {
+function createHistoryEntriesSessionCache(
+  initialEntries?: Array<CachedHistoryEntry>,
+): HistoryEntriesCache | undefined {
   const safeSessionStorage = getSafeSessionStorage()
   if (!safeSessionStorage) {
     return undefined
@@ -765,19 +789,26 @@ function createHistoryEntriesSessionCache(initialEntries?: Array<CachedHistoryEn
         return cachedEntries
       }
       const persistedStates = safeSessionStorage.getItem(entriesStorageKey)
-      return cachedEntries = persistedStates ? JSON.parse(persistedStates) : []
+      return (cachedEntries = persistedStates
+        ? JSON.parse(persistedStates)
+        : [])
     },
     set: (entries: Array<CachedHistoryEntry>) => {
       cachedEntries = entries
     },
     clone: () => createHistoryEntriesSessionCache(cachedEntries)!,
     flush: () => {
-      safeSessionStorage.setItem(entriesStorageKey, JSON.stringify(cachedEntries))
-    }
+      safeSessionStorage.setItem(
+        entriesStorageKey,
+        JSON.stringify(cachedEntries),
+      )
+    },
   })
 }
 
-function createHistoryEntriesMemoryCache(initialEntries?: Array<CachedHistoryEntry>): HistoryEntriesCache {
+function createHistoryEntriesMemoryCache(
+  initialEntries?: Array<CachedHistoryEntry>,
+): HistoryEntriesCache {
   let cachedEntries: Array<CachedHistoryEntry> = initialEntries || []
 
   return createHistoryEntriesCache({
