@@ -4,7 +4,7 @@ export {
   resolveConfigPath,
   baseConfigSchema,
 } from './config'
-export type { Config, BaseConfig } from './config'
+export type { Config, BaseConfig, ConfigOptions } from './config'
 
 export { generator } from './generator'
 

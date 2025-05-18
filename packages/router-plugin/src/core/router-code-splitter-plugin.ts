@@ -18,9 +18,9 @@ import {
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
 import { debug, fileIsInRoutesDirectory } from './utils'
+import type { Config, ConfigOptions  } from './config'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 
-import type { Config } from './config'
 import type {
   UnpluginContextMeta,
   UnpluginFactory,
@@ -49,7 +49,7 @@ const bannedBeforeExternalPlugins: Array<BannedBeforeExternalPlugin> = [
 
 class FoundPluginInBeforeCode extends Error {
   constructor(externalPlugin: BannedBeforeExternalPlugin, framework: string) {
-    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
+    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again:
 e.g.
 plugins: [
   TanStackRouter${capitalizeFirst(framework)}(), // Place this before ${externalPlugin.usage}
@@ -62,7 +62,7 @@ plugins: [
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  ConfigOptions | undefined
 > = (options = {}, { framework }) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config

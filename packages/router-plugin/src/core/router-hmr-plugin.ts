@@ -2,7 +2,7 @@ import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { getConfig } from './config'
 import { routeHmrStatement } from './route-hmr-statement'
 import { debug, fileIsInRoutesDirectory } from './utils'
-import type { Config } from './config'
+import type { Config, ConfigOptions } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
 /**
@@ -11,7 +11,7 @@ import type { UnpluginFactory } from 'unplugin'
  * handles HMR for code-split routes itself.
  */
 export const unpluginRouterHmrFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  ConfigOptions | undefined
 > = (options = {}) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config
