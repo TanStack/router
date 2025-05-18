@@ -1,11 +1,11 @@
 import { unpluginRouterGeneratorFactory } from './router-generator-plugin'
 import { unpluginRouterCodeSplitterFactory } from './router-code-splitter-plugin'
+import type { ConfigOptions } from './config'
 
-import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
 export const unpluginRouterComposedFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  ConfigOptions | undefined
 > = (options = {}, meta) => {
   const routerGenerator = unpluginRouterGeneratorFactory(options, meta)
 

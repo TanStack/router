@@ -3,6 +3,7 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
+import type { ConfigOptions as GeneratorConfigOptions } from '@tanstack/router-generator';
 import type { RegisteredRouter, RouteIds } from '@tanstack/router-core'
 import type { CodeSplitGroupings } from './constants'
 
@@ -62,6 +63,18 @@ const codeSplittingOptionsSchema = z.object({
   defaultBehavior: splitGroupingsSchema.optional(),
 })
 
+export interface ConfigOptions extends GeneratorConfigOptions {
+  /**
+   * Enables route generation.
+   * @default true
+   */
+  enableRouteGeneration?: boolean
+  /**
+   * Additional fine grained control for splitting.
+   */
+  codeSplittingOptions?: CodeSplittingOptions
+}
+
 export const configSchema = generatorConfigSchema.extend({
   enableRouteGeneration: z.boolean().optional(),
   codeSplittingOptions: z
@@ -69,9 +82,9 @@ export const configSchema = generatorConfigSchema.extend({
       return codeSplittingOptionsSchema.parse(v)
     })
     .optional(),
-})
+}) satisfies z.ZodType<ConfigOptions>
 
-export const getConfig = (inlineConfig: Partial<Config>, root: string) => {
+export const getConfig = (inlineConfig: ConfigOptions, root: string) => {
   const config = getGeneratorConfig(inlineConfig, root)
 
   return configSchema.parse({ ...config, ...inlineConfig })

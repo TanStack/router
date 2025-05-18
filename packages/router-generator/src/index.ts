@@ -1,5 +1,5 @@
 export { configSchema, getConfig, resolveConfigPath } from './config'
-export type { Config } from './config'
+export type { Config, ConfigOptions } from './config'
 
 export {
   generator,

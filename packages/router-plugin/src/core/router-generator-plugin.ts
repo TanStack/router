@@ -2,9 +2,9 @@ import { isAbsolute, join, normalize, resolve } from 'node:path'
 import { generator, resolveConfigPath } from '@tanstack/router-generator'
 
 import { getConfig } from './config'
+import type { Config, ConfigOptions } from './config';
 import type { FSWatcher } from 'chokidar'
 import type { UnpluginFactory } from 'unplugin'
-import type { Config } from './config'
 
 let lock = false
 const checkLock = () => lock
@@ -15,9 +15,10 @@ const setLock = (bool: boolean) => {
 const PLUGIN_NAME = 'unplugin:router-generator'
 
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  ConfigOptions | undefined
 > = (options = {}) => {
   let ROOT: string = process.cwd()
+   
   let userConfig = options as Config
 
   const getRoutesDirectoryPath = () => {
