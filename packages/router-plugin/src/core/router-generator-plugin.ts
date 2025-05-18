@@ -18,7 +18,6 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
   ConfigOptions | undefined
 > = (options = {}) => {
   let ROOT: string = process.cwd()
-   
   let userConfig = options as Config
 
   const getRoutesDirectoryPath = () => {
