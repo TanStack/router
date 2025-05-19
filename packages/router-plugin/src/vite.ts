@@ -4,32 +4,34 @@ import { configSchema } from './core/config'
 import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-plugin'
 import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
-
+import { unpluginRouteAutoImportFactory } from './core/route-autoimport-plugin'
 import type { Config } from './core/config'
 
-/**
- * @example
- * ```ts
- * export default defineConfig({
- *   plugins: [TanStackRouterGeneratorVite()],
- *   // ...
- * })
- * ```
- */
-const TanStackRouterGeneratorVite = createVitePlugin(
-  unpluginRouterGeneratorFactory,
+const tanstackRouterAutoImport = createVitePlugin(
+  unpluginRouteAutoImportFactory,
 )
 
 /**
  * @example
  * ```ts
  * export default defineConfig({
- *   plugins: [TanStackRouterCodeSplitterVite()],
+ *   plugins: [tanstackRouterGenerator()],
  *   // ...
  * })
  * ```
  */
-const TanStackRouterCodeSplitterVite = createVitePlugin(
+const tanstackRouterGenerator = createVitePlugin(unpluginRouterGeneratorFactory)
+
+/**
+ * @example
+ * ```ts
+ * export default defineConfig({
+ *   plugins: [tanStackRouterCodeSplitter()],
+ *   // ...
+ * })
+ * ```
+ */
+const tanStackRouterCodeSplitter = createVitePlugin(
   unpluginRouterCodeSplitterFactory,
 )
 
@@ -37,19 +39,24 @@ const TanStackRouterCodeSplitterVite = createVitePlugin(
  * @example
  * ```ts
  * export default defineConfig({
- *   plugins: [TanStackRouterVite()],
+ *   plugins: [tanstackRouter()],
  *   // ...
  * })
  * ```
  */
-const TanStackRouterVite = createVitePlugin(unpluginRouterComposedFactory)
-const tanstackRouter = TanStackRouterVite
+const tanstackRouter = createVitePlugin(unpluginRouterComposedFactory)
 
-export default TanStackRouterVite
+/**
+ * @deprecated Use `tanstackRouter` instead.
+ */
+const TanStackRouterVite = tanstackRouter
+
+export default tanstackRouter
 export {
   configSchema,
-  TanStackRouterGeneratorVite,
-  TanStackRouterCodeSplitterVite,
+  tanstackRouterAutoImport,
+  tanStackRouterCodeSplitter,
+  tanstackRouterGenerator,
   TanStackRouterVite,
   tanstackRouter,
 }
