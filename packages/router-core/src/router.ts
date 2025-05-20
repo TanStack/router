@@ -2488,7 +2488,7 @@ export class RouterCore<
                         !this.state.matches.find((d) => d.id === matchId),
                     }))
 
-                    const executeHead = () => {
+                    const executeHead = async () => {
                       const match = this.getMatch(matchId)
                       // in case of a redirecting match during preload, the match does not exist
                       if (!match) {
@@ -2500,21 +2500,17 @@ export class RouterCore<
                         params: match.params,
                         loaderData: match.loaderData,
                       }
-                      const headFnContent = route.options.head?.(assetContext)
+                      const headFnContent =
+                        await route.options.head?.(assetContext)
                       const meta = headFnContent?.meta
                       const links = headFnContent?.links
                       const headScripts = headFnContent?.scripts
 
-                      const scripts = route.options.scripts?.(assetContext)
-                      const headers = route.options.headers?.(assetContext)
-                      updateMatch(matchId, (prev) => ({
-                        ...prev,
-                        meta,
-                        links,
-                        headScripts,
-                        headers,
-                        scripts,
-                      }))
+                      const scripts =
+                        await route.options.scripts?.(assetContext)
+                      const headers =
+                        await route.options.headers?.(assetContext)
+                      return { meta, links, headScripts, headers, scripts }
                     }
 
                     const runLoader = async () => {
@@ -2561,17 +2557,19 @@ export class RouterCore<
                           // to be preloaded before we resolve the match
                           await route._componentsPromise
 
-                          batch(() => {
-                            updateMatch(matchId, (prev) => ({
-                              ...prev,
-                              error: undefined,
-                              status: 'success',
-                              isFetching: false,
-                              updatedAt: Date.now(),
-                              loaderData,
-                            }))
-                            executeHead()
-                          })
+                          updateMatch(matchId, (prev) => ({
+                            ...prev,
+                            error: undefined,
+                            status: 'success',
+                            isFetching: false,
+                            updatedAt: Date.now(),
+                            loaderData,
+                          }))
+                          const head = await executeHead()
+                          updateMatch(matchId, (prev) => ({
+                            ...prev,
+                            ...head,
+                          }))
                         } catch (e) {
                           let error = e
 
@@ -2588,16 +2586,14 @@ export class RouterCore<
                               onErrorError,
                             )
                           }
-
-                          batch(() => {
-                            updateMatch(matchId, (prev) => ({
-                              ...prev,
-                              error,
-                              status: 'error',
-                              isFetching: false,
-                            }))
-                            executeHead()
-                          })
+                          const head = await executeHead()
+                          updateMatch(matchId, (prev) => ({
+                            ...prev,
+                            error,
+                            status: 'error',
+                            isFetching: false,
+                            ...head,
+                          }))
                         }
 
                         this.serverSsr?.onMatchSettled({
@@ -2605,13 +2601,13 @@ export class RouterCore<
                           match: this.getMatch(matchId)!,
                         })
                       } catch (err) {
-                        batch(() => {
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            loaderPromise: undefined,
-                          }))
-                          executeHead()
-                        })
+                        const head = await executeHead()
+
+                        updateMatch(matchId, (prev) => ({
+                          ...prev,
+                          loaderPromise: undefined,
+                          ...head,
+                        }))
                         handleRedirectAndNotFound(this.getMatch(matchId)!, err)
                       }
                     }
@@ -2651,7 +2647,11 @@ export class RouterCore<
                       // if the loader did not run, still update head.
                       // reason: parent's beforeLoad may have changed the route context
                       // and only now do we know the route context (and that the loader would not run)
-                      executeHead()
+                      const head = await executeHead()
+                      updateMatch(matchId, (prev) => ({
+                        ...prev,
+                        ...head,
+                      }))
                     }
                   }
                   if (!loaderIsRunningAsync) {
