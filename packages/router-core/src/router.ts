@@ -2570,7 +2570,6 @@ export class RouterCore<
                             ...prev,
                             ...head,
                           }))
-
                         } catch (e) {
                           let error = e
 
