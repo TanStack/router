@@ -2488,7 +2488,7 @@ export class RouterCore<
                         !this.state.matches.find((d) => d.id === matchId),
                     }))
 
-                    const executeHead = async () => {
+                    const executeHead = async (loaderData?: any) => {
                       const match = this.getMatch(matchId)
                       // in case of a redirecting match during preload, the match does not exist
                       if (!match) {
@@ -2498,7 +2498,7 @@ export class RouterCore<
                         matches,
                         match,
                         params: match.params,
-                        loaderData: match.loaderData,
+                        loaderData: match.loaderData || loaderData,
                       }
                       const headFnContent =
                         await route.options.head?.(assetContext)
@@ -2557,7 +2557,7 @@ export class RouterCore<
                           // to be preloaded before we resolve the match
                           await route._componentsPromise
 
-                          const head = await executeHead()
+                          const head = await executeHead(loaderData)
                           updateMatch(matchId, (prev) => ({
                             ...prev,
                             error: undefined,
