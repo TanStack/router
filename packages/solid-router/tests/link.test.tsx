@@ -2544,6 +2544,8 @@ describe('Link', () => {
       ]),
     })
 
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
     render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'To first post' })
@@ -2552,10 +2554,11 @@ describe('Link', () => {
 
     fireEvent.click(postsLink)
 
-    const invoicesErrorText = await screen.findByText(
-      'Invariant failed: Could not find match for from: /invoices',
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Could not find match for from: /invoices',
     )
-    expect(invoicesErrorText).toBeInTheDocument()
+
+    consoleWarn.mockRestore()
   })
 
   test('when navigating to /posts/$postId/info which is declaratively masked as /posts/$postId', async () => {

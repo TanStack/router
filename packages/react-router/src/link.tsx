@@ -293,10 +293,14 @@ export function useLinkProps<
         return
       }
 
-      eventTarget.preloadTimeout = setTimeout(() => {
-        eventTarget.preloadTimeout = null
+      if (!preloadDelay) {
         doPreload()
-      }, preloadDelay)
+      } else {
+        eventTarget.preloadTimeout = setTimeout(() => {
+          eventTarget.preloadTimeout = null
+          doPreload()
+        }, preloadDelay)
+      }
     }
   }
 
