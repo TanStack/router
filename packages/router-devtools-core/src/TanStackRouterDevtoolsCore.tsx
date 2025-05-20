@@ -4,7 +4,6 @@ import { ShadowDomTargetContext } from './context'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Signal } from 'solid-js'
 
-
 interface DevtoolsOptions {
   /**
    * Set this true if you want the dev tools to default to being open
