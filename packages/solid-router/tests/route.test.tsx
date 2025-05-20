@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@solidjs/testing-library'
 
 import {
-  RouterHistory,
   RouterProvider,
   createBrowserHistory,
   createRootRoute,
@@ -10,6 +9,8 @@ import {
   createRouter,
   getRouteApi,
 } from '../src'
+
+import type { RouterHistory } from '../src'
 
 let history: RouterHistory
 
