@@ -17,6 +17,7 @@ import type { AnyRouter, RegisteredRouter } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
   Assign,
+  Awaitable,
   Constrain,
   Expand,
   IntersectAssign,
@@ -1083,7 +1084,7 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => Record<string, string>
+  ) => Awaitable<Record<string, string>>
   head?: (
     ctx: AssetFnContextOptions<
       TRouteId,
@@ -1097,11 +1098,11 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => {
+  ) => Awaitable<{
     links?: AnyRouteMatch['links']
     scripts?: AnyRouteMatch['headScripts']
     meta?: AnyRouteMatch['meta']
-  }
+  }>
   scripts?: (
     ctx: AssetFnContextOptions<
       TRouteId,
@@ -1115,7 +1116,7 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => AnyRouteMatch['scripts']
+  ) => Awaitable<AnyRouteMatch['scripts']>
   ssr?: boolean
   codeSplitGroupings?: Array<
     Array<
