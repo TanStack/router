@@ -1,7 +1,6 @@
 import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { create } from 'xmlbuilder2'
-import type { Nitro } from 'nitropack'
 import type { TanStackStartOutputConfig } from './plugin'
 import type { XMLBuilder } from 'xmlbuilder2/lib/interfaces'
 
@@ -124,10 +123,10 @@ function jsonToXml(sitemapData: SitemapData): string {
 
 export async function buildSitemap({
   options,
-  nitro,
+  publicDir,
 }: {
   options: TanStackStartOutputConfig
-  nitro: Nitro
+  publicDir: string
 }) {
   let sitemapOptions = options.sitemap
 
@@ -170,9 +169,8 @@ export async function buildSitemap({
   const sitemapData = buildSitemapJson(pages, host)
 
   // Generate output paths
-  const outputDir = nitro.options.output.publicDir
-  const xmlOutputPath = path.join(outputDir, outputPath)
-  const pagesOutputPath = path.join(outputDir, 'pages.json')
+  const xmlOutputPath = path.join(publicDir, outputPath)
+  const pagesOutputPath = path.join(publicDir, 'pages.json')
 
   try {
     // Write XML sitemap

@@ -136,7 +136,7 @@ export function nitroPlugin(
               if (options.pages.length) {
                 await buildSitemap({
                   options,
-                  nitro,
+                  publicDir: nitro.options.output.publicDir,
                 })
               }
 
