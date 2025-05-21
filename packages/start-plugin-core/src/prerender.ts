@@ -129,15 +129,7 @@ export async function prerender({
     console.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
 
-    options.pages.forEach((_page) => {
-      let page = _page as Page
-
-      if (typeof _page === 'string') {
-        page = { path: _page }
-      }
-
-      addCrawlPageTask(page)
-    })
+    options.pages.forEach((page) => addCrawlPageTask(page))
 
     await queue.start()
 

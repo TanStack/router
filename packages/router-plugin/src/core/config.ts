@@ -78,3 +78,5 @@ export const getConfig = (inlineConfig: Partial<Config>, root: string) => {
 }
 
 export type Config = z.infer<typeof configSchema>
+export type ConfigInput = z.input<typeof configSchema>
+export type ConfigOutput = z.output<typeof configSchema>
