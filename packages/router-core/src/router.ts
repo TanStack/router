@@ -2763,18 +2763,7 @@ export class RouterCore<
       return matches
     } catch (err) {
       if (isRedirect(err)) {
-        const isExternal =
-          err.options.reloadDocument ||
-          (() => {
-            try {
-              new URL(`${err.options.href}`)
-              return true
-            } catch {
-              return false
-            }
-          })()
-
-        if (isExternal) {
+        if (err.options.reloadDocument) {
           return undefined
         }
 
