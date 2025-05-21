@@ -590,7 +590,7 @@ export const Route = createRootRoute({
       ({search, next}) => {
         const result = next(search)
         return {
-          rootValue: search.rootValue
+          rootValue: search.rootValue,
           ...result
         }
       }
