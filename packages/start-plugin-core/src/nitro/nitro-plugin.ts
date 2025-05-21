@@ -80,10 +80,11 @@ export function nitroPlugin(
                 },
                 prerender: undefined,
                 renderer: ssrEntryFile,
+                ...options.nitro,
                 rollupConfig: {
                   plugins: [virtualBundlePlugin(getSsrBundle())],
+                  ...options.nitro.rollupConfig,
                 },
-                ...options.nitro,
               }
 
               const nitro = await createNitro(nitroConfig)
