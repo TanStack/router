@@ -243,7 +243,6 @@ export type {
   ControllablePromise,
   InjectedHtmlEntry,
   RouterErrorSerializer,
-  MatchedRoutesResult,
   EmitFn,
   LoadFn,
   GetMatchFn,
