@@ -26,7 +26,7 @@ export function useNavigate<
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      const isRelativeFromPath = options.relative === 'path'
+      const isRelativeFromPath = options.unsafeRelative === 'path'
 
       const from =
         options.from ??

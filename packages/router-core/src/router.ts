@@ -2763,9 +2763,21 @@ export class RouterCore<
       return matches
     } catch (err) {
       if (isRedirect(err)) {
-        if (err.options.reloadDocument) {
+        const isExternal =
+          err.options.reloadDocument ||
+          (() => {
+            try {
+              new URL(`${err.options.href}`)
+              return true
+            } catch {
+              return false
+            }
+          })()
+
+        if (isExternal) {
           return undefined
         }
+
         return await this.preloadRoute({
           ...err.options,
           _fromLocation: next,

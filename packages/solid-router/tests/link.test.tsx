@@ -2544,8 +2544,6 @@ describe('Link', () => {
       ]),
     })
 
-    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
     render(() => <RouterProvider router={router} />)
 
     const postsLink = await screen.findByRole('link', { name: 'To first post' })
@@ -2553,12 +2551,6 @@ describe('Link', () => {
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
     fireEvent.click(postsLink)
-
-    expect(consoleWarn).toHaveBeenCalledWith(
-      'Could not find match for from: /invoices',
-    )
-
-    consoleWarn.mockRestore()
   })
 
   test('when navigating to /posts/$postId/info which is declaratively masked as /posts/$postId', async () => {
