@@ -1428,9 +1428,9 @@ export class RouterCore<
       }
 
       // From search should always use the current location
-      const fromSearch = last(allFromMatches)!.search
+      const fromSearch = lastMatch.search
       // Same with params. It can't hurt to provide as many as possible
-      const fromParams = { ...last(allFromMatches)!.params }
+      const fromParams = { ...lastMatch.params }
 
       // Resolve the next to
       const nextTo = dest.to
