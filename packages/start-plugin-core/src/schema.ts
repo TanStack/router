@@ -111,13 +111,12 @@ export function createTanStackStartOptionsSchema(
         })
         .optional()
         .default({}),
-      pages: z
-        .array(z.union([z.string(), pageSchema]))
-        .optional()
-        .default([]),
-      sitemap: pagePrerenderOptionsSchema
-        .extend({
+      pages: z.array(pageSchema).optional().default([]),
+      sitemap: z
+        .object({
+          enabled: z.boolean().optional().default(true),
           host: z.string().optional(),
+          outputPath: z.string().optional().default('sitemap.xml'),
         })
         .optional(),
       prerender: z
