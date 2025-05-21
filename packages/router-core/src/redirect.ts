@@ -64,6 +64,14 @@ export function redirect<
   opts: RedirectOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
   opts.statusCode = opts.statusCode || opts.code || 307
+
+  if (!opts.reloadDocument) {
+    try {
+      new URL(`${opts.href}`)
+      opts.reloadDocument = true
+    } catch {}
+  }
+
   const headers = new Headers(opts.headers || {})
 
   const response = new Response(null, {

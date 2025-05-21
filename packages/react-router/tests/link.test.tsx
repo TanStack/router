@@ -2449,6 +2449,8 @@ describe('Link', () => {
   })
 
   test('when navigating from /invoices to ./invoiceId and the current route is /posts/$postId/details', async () => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn')
+
     const rootRoute = createRootRoute()
 
     const indexRoute = createRoute({
@@ -2579,16 +2581,19 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'To first post' })
+    const postsLink = await screen.findByRole('link', {
+      name: 'To first post',
+    })
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
     await act(() => fireEvent.click(postsLink))
 
-    const invoicesErrorText = await screen.findByText(
-      'Invariant failed: Could not find match for from: /invoices',
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Could not find match for from: /invoices',
     )
-    expect(invoicesErrorText).toBeInTheDocument()
+
+    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating to /posts/$postId/info which is declaratively masked as /posts/$postId', async () => {
@@ -3215,7 +3220,11 @@ describe('Link', () => {
         return (
           <>
             <h1>Index</h1>
-            <Link to="/posts/$postId" params={{ postId: 'id1' }}>
+            <Link
+              to="/posts/$postId"
+              params={{ postId: 'id1' }}
+              preloadDelay={0}
+            >
               To first post
             </Link>
           </>

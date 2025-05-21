@@ -26,7 +26,7 @@ export function useNavigate<
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      const isRelativeFromPath = options.relative === 'path'
+      const isRelativeFromPath = options.unsafeRelative === 'path'
 
       const from =
         options.from ??
@@ -37,7 +37,7 @@ export function useNavigate<
 
       return navigate({
         ...options,
-        from: from,
+        from,
       })
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
