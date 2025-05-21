@@ -83,7 +83,7 @@ export function nitroPlugin(
                 ...options.nitro,
                 rollupConfig: {
                   plugins: [virtualBundlePlugin(getSsrBundle())],
-                  ...options.nitro.rollupConfig,
+                  ...options.nitro?.rollupConfig,
                 },
               }
 
