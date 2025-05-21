@@ -84,7 +84,7 @@ export function createTanStackStartOptionsSchema(
       root: z.string().optional().default(process.cwd()),
       target: z.custom<NitroConfig['preset']>().optional(),
       ...frameworkPlugin,
-      tsr: tsrConfig.optional().default({}),
+      tsr: tsrConfig.omit({ autoCodeSplitting: true }).optional().default({}),
       client: z
         .object({
           entry: z.string().optional(),
