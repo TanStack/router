@@ -4517,6 +4517,12 @@ describe('relative links', () => {
           <>
             <h1>Param Route</h1>
             <Link to="./a">Link to ./a</Link>
+            <Link to="c" unsafeRelative="path">
+              Link to c
+            </Link>
+            <Link to="../c" unsafeRelative="path">
+              Link to ../c
+            </Link>
             <Outlet />
           </>
         )
@@ -4559,11 +4565,21 @@ describe('relative links', () => {
       },
     })
 
+    const paramCRoute = createRoute({
+      getParentRoute: () => paramARoute,
+      path: 'c',
+      component: () => {
+        return <h1>Param C Route</h1>
+      },
+    })
+
     return createRouter({
       routeTree: rootRoute.addChildren([
         indexRoute,
         aRoute.addChildren([bRoute]),
-        paramRoute.addChildren([paramARoute, paramBRoute]),
+        paramRoute.addChildren([
+          paramARoute.addChildren([paramBRoute, paramCRoute]),
+        ]),
       ]),
       history,
     })
@@ -4675,5 +4691,47 @@ describe('relative links', () => {
     })
 
     expect(window.location.pathname).toBe('/param/foo')
+  })
+
+  test.only('should navigate to a child link based on pathname', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/param/foo/a/b')
+    })
+
+    // Inspect the relative link to ./a
+    const relativeLink = await screen.findByText('Link to c')
+    expect(relativeLink.getAttribute('href')).toBe('/param/foo/a/b/c')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/param/foo/a/b/c')
+  })
+
+  test.only('should navigate to a relative link based on pathname', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/param/foo/a/b')
+    })
+
+    // Inspect the relative link to ./a
+    const relativeLink = await screen.findByText('Link to ../c')
+    expect(relativeLink.getAttribute('href')).toBe('/param/foo/a/c')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/param/foo/a/c')
   })
 })
