@@ -4,9 +4,12 @@ import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-generator'
 import type { NitroConfig } from 'nitropack'
 
-const tsrConfig = configSchema.partial().extend({
-  srcDirectory: z.string().optional().default('src'),
-})
+const tsrConfig = configSchema
+  .omit({ autoCodeSplitting: true })
+  .partial()
+  .extend({
+    srcDirectory: z.string().optional().default('src'),
+  })
 
 export function createTanStackConfig<
   TFrameworkPlugin extends Record<string, unknown>,
@@ -84,7 +87,7 @@ export function createTanStackStartOptionsSchema(
       root: z.string().optional().default(process.cwd()),
       target: z.custom<NitroConfig['preset']>().optional(),
       ...frameworkPlugin,
-      tsr: tsrConfig.omit({ autoCodeSplitting: true }).optional().default({}),
+      tsr: tsrConfig.optional().default({}),
       client: z
         .object({
           entry: z.string().optional(),
