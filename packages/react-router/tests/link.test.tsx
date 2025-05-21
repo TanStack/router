@@ -4693,7 +4693,7 @@ describe('relative links', () => {
     expect(window.location.pathname).toBe('/param/foo')
   })
 
-  test.only('should navigate to a child link based on pathname', async () => {
+  test('should navigate to a child link based on pathname', async () => {
     const router = setupRouter()
 
     render(<RouterProvider router={router} />)
@@ -4714,7 +4714,7 @@ describe('relative links', () => {
     expect(window.location.pathname).toBe('/param/foo/a/b/c')
   })
 
-  test.only('should navigate to a relative link based on pathname', async () => {
+  test('should navigate to a relative link based on pathname', async () => {
     const router = setupRouter()
 
     render(<RouterProvider router={router} />)
