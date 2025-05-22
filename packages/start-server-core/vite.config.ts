@@ -20,7 +20,7 @@ export default mergeConfig(
     srcDir: './src',
     entry: './src/index.tsx',
     externalDeps: [
-      'tanstack:server-fn-manifest',
+      'tanstack-server-fn-manifest:module',
       'tanstack:start-manifest',
       'tanstack:server-routes',
     ],

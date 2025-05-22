@@ -1,18 +1,8 @@
 import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import { startSerializer } from '@tanstack/start-client-core'
-// @ts-expect-error
-import _serverFnManifest from 'tanstack:server-fn-manifest'
+import serverFnManifest from 'tanstack-server-fn-manifest:module'
 import { getEvent, getResponseStatus } from './h3'
-
-const serverFnManifest = _serverFnManifest as Record<
-  string,
-  {
-    functionName: string
-    extractedFilename: string
-    importer: () => Promise<any>
-  }
->
 
 function sanitizeBase(base: string | undefined) {
   if (!base) {
