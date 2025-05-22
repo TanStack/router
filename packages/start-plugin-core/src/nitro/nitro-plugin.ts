@@ -5,6 +5,7 @@ import { dirname, resolve } from 'pathe'
 import { clientDistDir, ssrEntryFile } from '../plugin'
 import { prerender } from '../prerender'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
+import { buildSitemap } from '../build-sitemap'
 import { devServerPlugin } from './dev-server-plugin'
 import { buildNitroEnvironment } from './build-nitro'
 import type { EnvironmentOptions, PluginOption, Rollup } from 'vite'
@@ -132,19 +133,14 @@ export function nitroPlugin(
                 })
               }
 
-              // if (nitroConfig.prerender?.routes?.length && options.sitemap) {
-              //   console.log('Building Sitemap...')
-              //   // sitemap needs to be built after all directories are built
-              //   await buildSitemap({
-              //     host: options.sitemap.host,
-              //     routes: nitroConfig.prerender.routes,
-              //     outputDir: resolve(options.root, 'dist/public'),
-              //   })
-              // }
+              if (options.pages.length) {
+                await buildSitemap({
+                  options,
+                  publicDir: nitro.options.output.publicDir,
+                })
+              }
 
-              // console.log(
-              //   `\n\n✅ Client and server bundles successfully built.`,
-              // )
+              console.log(`\n✅ Client and server bundles successfully built.`)
             },
           },
         }

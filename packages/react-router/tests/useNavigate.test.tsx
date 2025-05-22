@@ -1050,6 +1050,8 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
     history,
   })
 
+  const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
   render(<RouterProvider router={router} />)
 
   const postsButton = await screen.findByRole('button', {
@@ -1064,7 +1066,11 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
 
   fireEvent.click(invoicesButton)
 
-  expect(await screen.findByText('Something went wrong!')).toBeInTheDocument()
+  expect(consoleWarn).toHaveBeenCalledWith(
+    'Could not find match for from: /invoices',
+  )
+
+  consoleWarn.mockRestore()
 })
 
 test('when navigating to /posts/$postId/info which is masked as /posts/$postId', async () => {
@@ -1558,6 +1564,11 @@ describe('relative useNavigate', () => {
           <>
             <h1>Param Route</h1>
             <button onClick={() => navigate({ to: './a' })}>Link to ./a</button>
+            <button
+              onClick={() => navigate({ params: { param: 'bar' } as any })}
+            >
+              Link to . with param:bar
+            </button>
             <Outlet />
           </>
         )
@@ -1718,5 +1729,23 @@ describe('relative useNavigate', () => {
     })
 
     expect(window.location.pathname).toBe('/param/foo')
+  })
+
+  test('should navigate to same route with different params', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/param/foo/a/b')
+    })
+
+    const parentLink = await screen.findByText('Link to . with param:bar')
+
+    await act(async () => {
+      fireEvent.click(parentLink)
+    })
+
+    expect(window.location.pathname).toBe('/param/bar/a/b')
   })
 })
