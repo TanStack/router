@@ -57,9 +57,7 @@ export function TanStackStartVitePlugin(
             : undefined
 
           return serverEntryPath
-            ? `
-export * from '${serverEntryPath}';
-`
+            ? `export * from '${serverEntryPath}';`
             : `
 import { toWebRequest, createStartHandler, defaultStreamHandler, defineEventHandler } from '@tanstack/react-start/server';
 import { createRouter } from ${routerImportPath};
