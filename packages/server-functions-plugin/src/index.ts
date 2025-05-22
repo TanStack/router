@@ -22,15 +22,28 @@ declare global {
 }
 
 export type ServerFnPluginOpts = {
+  /**
+   * The virtual import ID that will be used to import the server function manifest.
+   * This virtual import ID will be used in the server build to import the manifest
+   * and its modules.
+   */
   manifestVirtualImportId: string
+  /**
+   * The path to the manifest file that will be created during the build process.
+   * This file will be used to import the modules for the server functions in your
+   * server handler.
+   *
+   * @default 'node_modules/.tanstack-start/server-functions-manifest.json'
+   */
+  manifestOutputFilename?: string
   client: ServerFnPluginEnvOpts
   ssr: ServerFnPluginEnvOpts
   server: ServerFnPluginEnvOpts
   importer?: (fn: DirectiveFn) => Promise<any>
 }
 
-const manifestFilename =
-  '.tanstack-start/build/server/server-functions-manifest.json'
+const defaultManifestFilename =
+  'node_modules/.tanstack-start/server-functions-manifest.json'
 
 export type ServerFnPluginEnvOpts = {
   getRuntimeCode: () => string
@@ -70,6 +83,9 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
       ),
     )
   }
+
+  const manifestFilename =
+    opts.manifestOutputFilename || defaultManifestFilename
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -201,7 +217,20 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
 }
 
 export interface TanStackServerFnPluginEnvOpts {
+  /**
+   * The virtual import ID that will be used to import the server function manifest.
+   * This virtual import ID will be used in the server build to import the manifest
+   * and its modules.
+   */
   manifestVirtualImportId: string
+  /**
+   * The path to the manifest file that will be created during the build process.
+   * This file will be used to import the modules for the server functions in your
+   * server handler.
+   *
+   * @default 'node_modules/.tanstack-start/server-functions-manifest.json'
+   */
+  manifestOutputFilename?: string
   client: {
     envName?: string
     getRuntimeCode: () => string
@@ -258,6 +287,9 @@ export function TanStackServerFnPluginEnv(
       ),
     )
   }
+
+  const manifestFilename =
+    opts.manifestOutputFilename || defaultManifestFilename
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
