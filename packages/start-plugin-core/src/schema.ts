@@ -59,7 +59,7 @@ export function createTanStackConfig<
           return path.join(srcDirectory, 'server.js')
         }
 
-        return '/~start/default-server-entry'
+        return undefined
       })()
 
       return {
@@ -132,6 +132,7 @@ export function createTanStackStartOptionsSchema(
         .and(pagePrerenderOptionsSchema.optional())
         .optional(),
       spa: spaSchema.optional(),
+      nitro: z.custom<NitroConfig>().optional(),
     })
     .optional()
     .default({})
