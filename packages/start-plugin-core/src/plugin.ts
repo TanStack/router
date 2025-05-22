@@ -141,7 +141,7 @@ export function TanStackStartVitePluginCore(
               '@tanstack/start-router-manifest',
               '@tanstack/start-config',
               '@tanstack/server-functions-plugin',
-              'tanstack:start-manifest',
+              'tanstack-start-router-manifest:v',
               'tanstack-server-fn-manifest:module',
               'nitropack',
               '@tanstack/**',
