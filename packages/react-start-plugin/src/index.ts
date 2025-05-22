@@ -50,17 +50,23 @@ export function TanStackStartVitePlugin(
         )
 
         if (id === '/~start/server-entry.tsx') {
-          const ssrEntryPath = options.serverEntryPath.startsWith(
-            '/~start/default-server-entry',
-          )
-            ? options.serverEntryPath
-            : vite.normalizePath(
+          const serverEntryPath = options.serverEntryPath
+            ? vite.normalizePath(
                 path.resolve(resolvedConfig.root, options.serverEntryPath),
               )
+            : undefined
 
-          return `
-import { toWebRequest, defineEventHandler } from '@tanstack/react-start/server';
-import serverEntry from '${ssrEntryPath}';
+          return serverEntryPath
+            ? `
+export * from '${serverEntryPath}';
+`
+            : `
+import { toWebRequest, createStartHandler, defaultStreamHandler, defineEventHandler } from '@tanstack/react-start/server';
+import { createRouter } from ${routerImportPath};
+
+const serverEntry = createStartHandler({
+  createRouter,
+})(defaultStreamHandler)
 
 export default defineEventHandler(function(event) {
   const request = toWebRequest(event);
@@ -86,17 +92,6 @@ startTransition(() => {
     </StrictMode>
   )
 })
-`
-        }
-
-        if (id === '/~start/default-server-entry.tsx') {
-          return `
-import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
-import { createRouter } from ${routerImportPath}
-
-export default createStartHandler({
-  createRouter,
-})(defaultStreamHandler)
 `
         }
 
