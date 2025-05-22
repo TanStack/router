@@ -5,7 +5,7 @@ declare module 'tanstack-start-router-manifest:v' {
 }
 
 declare module 'tanstack-start-server-fn-manifest:v' {
-  export default {} as Record<
+  const manifest: Record<
     string,
     {
       functionName: string
@@ -13,4 +13,6 @@ declare module 'tanstack-start-server-fn-manifest:v' {
       importer: () => Promise<any>
     }
   >
+
+  export default manifest
 }
