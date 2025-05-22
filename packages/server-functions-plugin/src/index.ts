@@ -141,9 +141,17 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         // so the manifest is like a serialized state from the client build to the server build
         name: 'tanstack-start-server-fn-vite-plugin-manifest-server',
         enforce: 'pre',
-        resolveId: (id) => (id === opts.manifestVirtualImportId ? id : null),
+        resolveId(id) {
+          if (id === opts.manifestVirtualImportId) {
+            return resolveViteId(id)
+          }
+
+          return undefined
+        },
         load(id) {
-          if (id !== opts.manifestVirtualImportId) return null
+          if (id !== resolveViteId(opts.manifestVirtualImportId)) {
+            return undefined
+          }
 
           // In development, we **can** use the in-memory manifest, and we should
           // since it will be incrementally updated as we use the app and dynamic
@@ -255,7 +263,6 @@ export function TanStackServerFnPluginEnv(
   const directiveLabel = 'Server Function'
 
   return [
-    // client: [
     // The client plugin is used to compile the client directives
     // and save them so we can create a manifest
     TanStackDirectiveFunctionsPluginEnv({
@@ -325,9 +332,17 @@ export function TanStackServerFnPluginEnv(
       // applyToEnvironment(environment) {
       //   return environment.name === opts.server.envName
       // },
-      resolveId: (id) => (id === opts.manifestVirtualImportId ? id : null),
+      resolveId(id) {
+        if (id === opts.manifestVirtualImportId) {
+          return resolveViteId(id)
+        }
+
+        return undefined
+      },
       load(id) {
-        if (id !== opts.manifestVirtualImportId) return null
+        if (id !== resolveViteId(opts.manifestVirtualImportId)) {
+          return undefined
+        }
 
         // In development, we **can** use the in-memory manifest, and we should
         // since it will be incrementally updated as we use the app and dynamic
@@ -360,6 +375,9 @@ export function TanStackServerFnPluginEnv(
         return manifestWithImports
       },
     },
-    // ],
   ]
+}
+
+function resolveViteId(id: string) {
+  return `\0${id}`
 }

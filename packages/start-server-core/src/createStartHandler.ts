@@ -135,10 +135,10 @@ export function createStartHandler<TRouter extends AnyRouter>({
           // Then move on to attempting to load server routes
           const serverRouteTreeModule = await (async () => {
             try {
-              // @ts-expect-error
-              return (await import('tanstack:server-routes')) as {
-                routeTree: AnyServerRoute
-              }
+              return (await import(
+                // @ts-expect-error
+                'tanstack-start-server-routes-manifest:v'
+              )) as { routeTree: AnyServerRoute }
             } catch (e) {
               console.log(e)
               return undefined
@@ -347,7 +347,7 @@ async function handleServerRoutes({
 function handlerToMiddleware(
   handler: AnyServerRouteWithTypes['options']['methods'][string],
 ) {
-  return async ({ next, ...rest }: TODO) => ({
+  return async ({ next: _next, ...rest }: TODO) => ({
     response: await handler(rest),
   })
 }

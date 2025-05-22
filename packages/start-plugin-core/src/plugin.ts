@@ -141,8 +141,8 @@ export function TanStackStartVitePluginCore(
               '@tanstack/start-router-manifest',
               '@tanstack/start-config',
               '@tanstack/server-functions-plugin',
-              'tanstack:start-manifest',
-              'tanstack:server-fn-manifest',
+              'tanstack-start-router-manifest:v',
+              'tanstack-start-server-fn-manifest:v',
               'nitropack',
               '@tanstack/**',
             ],
@@ -166,7 +166,7 @@ export function TanStackStartVitePluginCore(
     TanStackServerFnPluginEnv({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
-      manifestVirtualImportId: 'tanstack:server-fn-manifest',
+      manifestVirtualImportId: 'tanstack-start-server-fn-manifest:v',
       client: {
         getRuntimeCode: () =>
           `import { createClientRpc } from '@tanstack/${opts.framework}-start/server-functions-client'`,

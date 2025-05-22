@@ -1,4 +1,4 @@
-import { tsrStartManifest } from 'tanstack:start-manifest'
+import { tsrStartManifest } from 'tanstack-start-router-manifest:v'
 import { rootRouteId } from '@tanstack/router-core'
 
 declare global {

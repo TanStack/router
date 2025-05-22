@@ -30,6 +30,7 @@ const setLock = (bool: boolean) => {
 
 export function TanStackStartServerRoutesVite(config: Config): Plugin {
   let ROOT: string = process.cwd()
+  const moduleId = 'tanstack-start-server-routes-manifest:v'
 
   const getRoutesDirectoryPath = () => {
     return isAbsolute(config.routesDirectory)
@@ -80,7 +81,7 @@ export function TanStackStartServerRoutesVite(config: Config): Plugin {
     },
     sharedDuringBuild: true,
     resolveId(id) {
-      if (id === 'tanstack:server-routes') {
+      if (id === moduleId) {
         const generatedRouteTreePath = getGeneratedRouteTreePath(ROOT)
         return generatedRouteTreePath
       }
