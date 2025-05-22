@@ -76,7 +76,11 @@ import type {
   NavigateFn,
 } from './RouterProvider'
 import type { Manifest } from './manifest'
-import type { StartSerializer } from './serializer'
+import type {
+  Serializer,
+  SerovalSerializer,
+  StartSerializer,
+} from './serializer'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
@@ -119,6 +123,7 @@ export interface RouterOptions<
   TDefaultStructuralSharingOption extends boolean = false,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
+  TSerializer extends Serializer = SerovalSerializer<unknown>,
 > extends RouterOptionsExtensions {
   /**
    * The history object that will be used to manage the browser history.
@@ -399,6 +404,8 @@ export interface RouterOptions<
    * @default ['window']
    */
   scrollToTopSelectors?: Array<string>
+
+  serializer?: TSerializer
 }
 
 export interface RouterState<
@@ -498,19 +505,26 @@ export type RouterContextOptions<TRouteTree extends AnyRoute> =
         context: InferRouterContext<TRouteTree>
       }
 
+export type InferSerializer<TRouter extends AnyRouter> =
+  unknown extends NonNullable<TRouter['options']['serializer']>
+    ? SerovalSerializer<unknown>
+    : NonNullable<TRouter['options']['serializer']>
+
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
+  TSerializer extends Serializer,
 > = Omit<
   RouterOptions<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory,
-    TDehydrated
+    TDehydrated,
+    TSerializer
   >,
   'context'
 > &
@@ -580,13 +594,15 @@ export type UpdateFn<
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
+  TSerializer extends Serializer,
 > = (
   newOptions: RouterConstructorOptions<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory,
-    TDehydrated
+    TDehydrated,
+    TSerializer
   >,
 ) => void
 
@@ -672,10 +688,11 @@ export type AnyRouterWithContext<TContext> = RouterCore<
   any,
   any,
   any,
+  any,
   any
 >
 
-export type AnyRouter = RouterCore<any, any, any, any, any>
+export type AnyRouter = RouterCore<any, any, any, any, any, any>
 
 export interface ViewTransitionOptions {
   types:
@@ -751,6 +768,7 @@ export type CreateRouterFn = <
   TDefaultStructuralSharingOption extends boolean = false,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
+  TSerializer extends Serializer = SerovalSerializer<unknown>,
 >(
   options: undefined extends number
     ? 'strictNullChecks must be enabled in tsconfig.json'
@@ -759,14 +777,16 @@ export type CreateRouterFn = <
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
         TRouterHistory,
-        TDehydrated
+        TDehydrated,
+        TSerializer
       >,
 ) => RouterCore<
   TRouteTree,
   TTrailingSlashOption,
   TDefaultStructuralSharingOption,
   TRouterHistory,
-  TDehydrated
+  TDehydrated,
+  TSerializer
 >
 
 export class RouterCore<
@@ -775,6 +795,7 @@ export class RouterCore<
   in out TDefaultStructuralSharingOption extends boolean,
   in out TRouterHistory extends RouterHistory = RouterHistory,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
+  in out TSerializer extends Serializer = SerovalSerializer<unknown>,
 > {
   // Option-independent properties
   tempLocationKey: string | undefined = `${Math.round(
@@ -796,7 +817,8 @@ export class RouterCore<
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
       TRouterHistory,
-      TDehydrated
+      TDehydrated,
+      TSerializer
     >,
     'stringifySearch' | 'parseSearch' | 'context'
   >
@@ -819,7 +841,8 @@ export class RouterCore<
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
       TRouterHistory,
-      TDehydrated
+      TDehydrated,
+      TSerializer
     >,
   ) {
     this.update({
@@ -851,7 +874,8 @@ export class RouterCore<
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory,
-    TDehydrated
+    TDehydrated,
+    TSerializer
   > = (newOptions) => {
     if (newOptions.notFoundRoute) {
       console.warn(

@@ -35,16 +35,17 @@ export {
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
+  serovalSerializer,
 } from '@tanstack/router-core'
 
 export type {
   AnyRoute,
   StartSerializer,
-  Serializable,
-  SerializerParse,
-  SerializerParseBy,
-  SerializerStringify,
-  SerializerStringifyBy,
+  DefaultTypeSerializable,
+  TypeSerializerParse,
+  TypeSerializerParseBy,
+  TypeSerializerStringify,
+  TypeSerializerStringifyBy,
   DeferredPromiseState,
   DeferredPromise,
   ParsedLocation,

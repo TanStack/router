@@ -67,13 +67,18 @@ export type {
 
 export type {
   StartSerializer,
-  Serializable,
-  SerializerParse,
-  SerializerParseBy,
-  SerializerStringify,
-  SerializerStringifyBy,
+  TypeSerializerParse,
+  TypeSerializerParseBy,
+  TypeSerializerStringify,
+  TypeSerializerStringifyBy,
   SerializerExtensions,
+  DefaultTypeSerializable,
+  DefaultTypeSerializer,
+  Serializer,
+  SerovalSerializer,
 } from './serializer'
+
+export { serovalSerializer } from './serializer'
 
 export type { ParsedLocation } from './location'
 export type { Manifest, RouterManagedTag } from './manifest'
@@ -257,6 +262,7 @@ export type {
   ServerSrr,
   ClearCacheFn,
   CreateRouterFn,
+  InferSerializer,
 } from './router'
 
 export type {

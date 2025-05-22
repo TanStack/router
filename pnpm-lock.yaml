@@ -4166,6 +4166,12 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
+      seroval:
+        specifier: ^1.3.1
+        version: 1.3.1
+      seroval-plugins:
+        specifier: ^1.3.1
+        version: 1.3.1(seroval@1.3.1)
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -5922,6 +5928,9 @@ importers:
       '@tanstack/store':
         specifier: ^0.7.0
         version: 0.7.0
+      seroval:
+        specifier: ^1.3.1
+        version: 1.3.1
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -13395,14 +13404,14 @@ packages:
   serialize-javascript@6.0.2:
     resolution: {integrity: sha512-Saa1xPByTTq2gdeFZYLLo+RFE35NHZkAbqZeWNd3BpzppeVisAqpDjcp8dyf6uIvEqJRd46jemmyA4iFIeVk8g==}
 
-  seroval-plugins@1.2.0:
-    resolution: {integrity: sha512-hULTbfzSe81jGWLH8TAJjkEvw6JWMqOo9Uq+4V4vg+HNq53hyHldM9ZOfjdzokcFysiTp9aFdV2vJpZFqKeDjQ==}
+  seroval-plugins@1.3.1:
+    resolution: {integrity: sha512-dOlUoiI3fgZbQIcj6By+l865pzeWdP3XCSLdI3xlKnjCk5983yLWPsXytFOUI0BUZKG9qwqbj78n9yVcVwUqaQ==}
     engines: {node: '>=10'}
     peerDependencies:
       seroval: ^1.0
 
-  seroval@1.2.0:
-    resolution: {integrity: sha512-GURoU99ko2UiAgUC3qDCk59Jb3Ss4Po8VIMGkG8j5PFo2Q7y0YSMP8QG9NuL/fJCoTz9V1XZUbpNIMXPOfaGpA==}
+  seroval@1.3.1:
+    resolution: {integrity: sha512-F+T9EQPdLzgdewgxnBh4mSc+vde+EOkU6dC9BDuu/bfGb+UyUlqM6t8znFCTPQSuai/ZcfFg0gu79h+bVW2O0w==}
     engines: {node: '>=10'}
 
   serve-index@1.9.1:
@@ -21994,11 +22003,11 @@ snapshots:
     dependencies:
       randombytes: 2.1.0
 
-  seroval-plugins@1.2.0(seroval@1.2.0):
+  seroval-plugins@1.3.1(seroval@1.3.1):
     dependencies:
-      seroval: 1.2.0
+      seroval: 1.3.1
 
-  seroval@1.2.0: {}
+  seroval@1.3.1: {}
 
   serve-index@1.9.1:
     dependencies:
@@ -22119,8 +22128,8 @@ snapshots:
   solid-js@1.9.5:
     dependencies:
       csstype: 3.1.3
-      seroval: 1.2.0
-      seroval-plugins: 1.2.0(seroval@1.2.0)
+      seroval: 1.3.1
+      seroval-plugins: 1.3.1(seroval@1.3.1)
 
   solid-refresh@0.6.3(solid-js@1.9.5):
     dependencies:
