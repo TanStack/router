@@ -3,16 +3,3 @@ declare module 'tanstack-start-router-manifest:v' {
 
   export const tsrStartManifest: () => Manifest
 }
-
-declare module 'tanstack-start-server-fn-manifest:v' {
-  const manifest: Record<
-    string,
-    {
-      functionName: string
-      extractedFilename: string
-      importer: () => Promise<any>
-    }
-  >
-
-  export default manifest
-}
