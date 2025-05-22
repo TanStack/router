@@ -198,6 +198,7 @@ export type {
   RouteAddChildrenFn,
   RouteAddFileChildrenFn,
   RouteAddFileTypesFn,
+  RootRoute,
 } from './route'
 
 export {
