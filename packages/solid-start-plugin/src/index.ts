@@ -54,7 +54,7 @@ export function TanStackStartVitePlugin(
             : undefined
 
           return serverEntryPath
-            ? `export * as default from '${serverEntryPath}';`
+            ? `export { default } from from '${serverEntryPath}';`
             : `
 import { toWebRequest, createStartHandler, defaultStreamHandler, defineEventHandler } from '@tanstack/solid-start/server';
 import { createRouter } from ${routerImportPath};
