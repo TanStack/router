@@ -1,7 +1,7 @@
 import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import { startSerializer } from '@tanstack/start-client-core'
-import serverFnManifest from 'tanstack-server-fn-manifest:module'
+import serverFnManifest from 'tanstack-start-server-fn-manifest:v'
 import { getEvent, getResponseStatus } from './h3'
 
 function sanitizeBase(base: string | undefined) {
