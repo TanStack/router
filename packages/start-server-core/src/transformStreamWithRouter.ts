@@ -171,8 +171,6 @@ export function transformStreamWithRouter(
       const text = decodeChunk(chunk.value)
 
       let chunkString = leftover + text
-      const bodyEndMatch = chunkString.match(patternBodyEnd)
-      const htmlEndMatch = chunkString.match(patternHtmlEnd)
 
       if (!bodyStarted) {
         const bodyStartMatch = chunkString.match(patternBodyStart)
@@ -201,6 +199,9 @@ export function transformStreamWithRouter(
         leftover = ''
         return
       }
+
+      const bodyEndMatch = chunkString.match(patternBodyEnd)
+      const htmlEndMatch = chunkString.match(patternHtmlEnd)
 
       // If either the body end or html end is in the chunk,
       // We need to get all of our data in asap
