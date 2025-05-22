@@ -587,15 +587,15 @@ export const Route = createRootRoute({
   validateSearch: zodValidator(searchSchema),
   search: {
     middlewares: [
-      ({search, next}) => {
+      ({ search, next }) => {
         const result = next(search)
         return {
           rootValue: search.rootValue,
-          ...result
+          ...result,
         }
-      }
-    ]
-  }
+      },
+    ],
+  },
 })
 ```
 
