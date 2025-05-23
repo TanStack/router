@@ -433,8 +433,9 @@ export interface BuildNextOptions {
     unmaskOnReload?: boolean
   }
   from?: string
-  _fromLocation?: ParsedLocation
   href?: string
+  _fromLocation?: ParsedLocation
+  unsafeRelative?: 'path'
 }
 
 type NavigationEventInfo = {
@@ -1411,20 +1412,23 @@ export class RouterCore<
 
       // First let's find the starting pathname
       // By default, start with the current location
-      let fromId = lastMatch.fullPath
+      let fromPath = lastMatch.fullPath
 
       // If there is a to, it means we are changing the path in some way
       // So we need to find the relative fromPath
-      if (dest.to && dest.from) {
-        fromId = dest.from
-      }
+      if (dest.unsafeRelative === 'path') {
+        fromPath = currentLocation.pathname
+      } else if (dest.to && dest.from) {
+        fromPath = dest.from
+        const existingFrom = [...allFromMatches].reverse().find((d) => {
+          return (
+            d.fullPath === fromPath || d.fullPath === joinPaths([fromPath, '/'])
+          )
+        })
 
-      const existingFrom = [...allFromMatches].reverse().find((d) => {
-        return d.fullPath === fromId || d.fullPath === joinPaths([fromId, '/'])
-      })
-
-      if (!existingFrom) {
-        console.warn(`Could not find match for from: ${dest.from}`)
+        if (!existingFrom) {
+          console.warn(`Could not find match for from: ${dest.from}`)
+        }
       }
 
       // From search should always use the current location
@@ -1434,8 +1438,8 @@ export class RouterCore<
 
       // Resolve the next to
       const nextTo = dest.to
-        ? this.resolvePathWithBase(fromId, `${dest.to}`)
-        : fromId
+        ? this.resolvePathWithBase(fromPath, `${dest.to}`)
+        : fromPath
 
       // Resolve the next params
       let nextParams =

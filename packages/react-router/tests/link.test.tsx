@@ -4573,6 +4573,27 @@ describe('relative links', () => {
       },
     })
 
+    const splatRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'splat/$',
+      component: () => {
+        return (
+          <>
+            <h1>Splat Route</h1>
+            <Link to=".." unsafeRelative="path">
+              Unsafe link to ..
+            </Link>
+            <Link to="." unsafeRelative="path">
+              Unsafe link to .
+            </Link>
+            <Link to="./child" unsafeRelative="path">
+              Unsafe link to ./child
+            </Link>
+          </>
+        )
+      },
+    })
+
     return createRouter({
       routeTree: rootRoute.addChildren([
         indexRoute,
@@ -4580,6 +4601,7 @@ describe('relative links', () => {
         paramRoute.addChildren([
           paramARoute.addChildren([paramBRoute, paramCRoute]),
         ]),
+        splatRoute,
       ]),
       history,
     })
@@ -4733,5 +4755,65 @@ describe('relative links', () => {
     })
 
     expect(window.location.pathname).toBe('/param/foo/a/c')
+  })
+
+  test('should navigate to parent inside of splat route based on pathname', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/splat/a/b/c/d')
+    })
+
+    const relativeLink = await screen.findByText('Unsafe link to ..')
+    expect(relativeLink.getAttribute('href')).toBe('/splat/a/b/c')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/splat/a/b/c')
+  })
+
+  test('should navigate to same route inside of splat route based on pathname', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/splat/a/b/c')
+    })
+
+    const relativeLink = await screen.findByText('Unsafe link to .')
+    expect(relativeLink.getAttribute('href')).toBe('/splat/a/b/c')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/splat/a/b/c')
+  })
+
+  test('should navigate to child route inside of splat route based on pathname', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/splat/a/b/c')
+    })
+
+    const relativeLink = await screen.findByText('Unsafe link to ./child')
+    expect(relativeLink.getAttribute('href')).toBe('/splat/a/b/c/child')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/splat/a/b/c/child')
   })
 })

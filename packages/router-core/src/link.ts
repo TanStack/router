@@ -424,7 +424,7 @@ export type ToSubOptionsProps<
   hash?: true | Updater<string>
   state?: true | NonNullableUpdater<ParsedHistoryState, HistoryState>
   from?: FromPathOption<TRouter, TFrom> & {}
-  unsafeRelative?: 'route' | 'path'
+  unsafeRelative?: 'path'
 }
 
 export type ParamsReducerFn<
