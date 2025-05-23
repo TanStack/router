@@ -14,6 +14,10 @@ export const Route = createFileRoute('/_layout')({
 export const SIDEBAR_WIDTH = '150px';
 export const SIDEBAR_MINI_WIDTH = '80px';
 const ASIDE_WIDTH = '250px';
-export function TSRDummyComponent() {
-  return null;
+if (import.meta.hot) {
+  import.meta.hot.accept(newModule => {
+    if (newModule.Route && typeof newModule.Route.clone === 'function') {
+      newModule.Route.clone(Route);
+    }
+  });
 }
