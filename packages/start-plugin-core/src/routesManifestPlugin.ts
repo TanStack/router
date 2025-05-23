@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { joinURL } from 'ufo'
 import { rootRouteId } from '@tanstack/router-core'
+import { resolveViteId } from './utils'
 import type {
   PluginOption,
   ResolvedConfig,
@@ -16,6 +17,9 @@ export function startManifestPlugin(
 ): PluginOption {
   let config: ResolvedConfig
 
+  const moduleId = 'tanstack-start-router-manifest:v'
+  const resolvedModuleId = resolveViteId(moduleId)
+
   return {
     name: 'tsr-routes-manifest',
     enforce: 'pre',
@@ -27,13 +31,13 @@ export function startManifestPlugin(
     //   config = envConfig.
     // },
     resolveId(id) {
-      if (id === 'tanstack:start-manifest') {
-        return id
+      if (id === moduleId) {
+        return resolvedModuleId
       }
       return
     },
     load(id) {
-      if (id === 'tanstack:start-manifest') {
+      if (id === resolvedModuleId) {
         if (this.environment.config.consumer !== 'server') {
           // this will ultimately fail the build if the plugin is used outside the server environment
           // TODO: do we need special handling for `serve`?

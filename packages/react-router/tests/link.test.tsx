@@ -2449,6 +2449,8 @@ describe('Link', () => {
   })
 
   test('when navigating from /invoices to ./invoiceId and the current route is /posts/$postId/details', async () => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn')
+
     const rootRoute = createRootRoute()
 
     const indexRoute = createRoute({
@@ -2579,16 +2581,19 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'To first post' })
+    const postsLink = await screen.findByRole('link', {
+      name: 'To first post',
+    })
 
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
     await act(() => fireEvent.click(postsLink))
 
-    const invoicesErrorText = await screen.findByText(
-      'Invariant failed: Could not find match for from: /invoices',
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'Could not find match for from: /invoices',
     )
-    expect(invoicesErrorText).toBeInTheDocument()
+
+    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating to /posts/$postId/info which is declaratively masked as /posts/$postId', async () => {
@@ -3215,7 +3220,11 @@ describe('Link', () => {
         return (
           <>
             <h1>Index</h1>
-            <Link to="/posts/$postId" params={{ postId: 'id1' }}>
+            <Link
+              to="/posts/$postId"
+              params={{ postId: 'id1' }}
+              preloadDelay={0}
+            >
               To first post
             </Link>
           </>
@@ -4508,6 +4517,12 @@ describe('relative links', () => {
           <>
             <h1>Param Route</h1>
             <Link to="./a">Link to ./a</Link>
+            <Link to="c" unsafeRelative="path">
+              Link to c
+            </Link>
+            <Link to="../c" unsafeRelative="path">
+              Link to ../c
+            </Link>
             <Outlet />
           </>
         )
@@ -4550,11 +4565,43 @@ describe('relative links', () => {
       },
     })
 
+    const paramCRoute = createRoute({
+      getParentRoute: () => paramARoute,
+      path: 'c',
+      component: () => {
+        return <h1>Param C Route</h1>
+      },
+    })
+
+    const splatRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'splat/$',
+      component: () => {
+        return (
+          <>
+            <h1>Splat Route</h1>
+            <Link to=".." unsafeRelative="path">
+              Unsafe link to ..
+            </Link>
+            <Link to="." unsafeRelative="path">
+              Unsafe link to .
+            </Link>
+            <Link to="./child" unsafeRelative="path">
+              Unsafe link to ./child
+            </Link>
+          </>
+        )
+      },
+    })
+
     return createRouter({
       routeTree: rootRoute.addChildren([
         indexRoute,
         aRoute.addChildren([bRoute]),
-        paramRoute.addChildren([paramARoute, paramBRoute]),
+        paramRoute.addChildren([
+          paramARoute.addChildren([paramBRoute, paramCRoute]),
+        ]),
+        splatRoute,
       ]),
       history,
     })
@@ -4666,5 +4713,107 @@ describe('relative links', () => {
     })
 
     expect(window.location.pathname).toBe('/param/foo')
+  })
+
+  test('should navigate to a child link based on pathname', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/param/foo/a/b')
+    })
+
+    // Inspect the relative link to ./a
+    const relativeLink = await screen.findByText('Link to c')
+    expect(relativeLink.getAttribute('href')).toBe('/param/foo/a/b/c')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/param/foo/a/b/c')
+  })
+
+  test('should navigate to a relative link based on pathname', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/param/foo/a/b')
+    })
+
+    // Inspect the relative link to ./a
+    const relativeLink = await screen.findByText('Link to ../c')
+    expect(relativeLink.getAttribute('href')).toBe('/param/foo/a/c')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/param/foo/a/c')
+  })
+
+  test('should navigate to parent inside of splat route based on pathname', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/splat/a/b/c/d')
+    })
+
+    const relativeLink = await screen.findByText('Unsafe link to ..')
+    expect(relativeLink.getAttribute('href')).toBe('/splat/a/b/c')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/splat/a/b/c')
+  })
+
+  test('should navigate to same route inside of splat route based on pathname', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/splat/a/b/c')
+    })
+
+    const relativeLink = await screen.findByText('Unsafe link to .')
+    expect(relativeLink.getAttribute('href')).toBe('/splat/a/b/c')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/splat/a/b/c')
+  })
+
+  test('should navigate to child route inside of splat route based on pathname', async () => {
+    const router = setupRouter()
+
+    render(<RouterProvider router={router} />)
+
+    await act(async () => {
+      history.push('/splat/a/b/c')
+    })
+
+    const relativeLink = await screen.findByText('Unsafe link to ./child')
+    expect(relativeLink.getAttribute('href')).toBe('/splat/a/b/c/child')
+
+    // Click the link and ensure the new location
+    await act(async () => {
+      fireEvent.click(relativeLink)
+    })
+
+    expect(window.location.pathname).toBe('/splat/a/b/c/child')
   })
 })

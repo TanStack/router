@@ -2,7 +2,7 @@ import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import { startSerializer } from '@tanstack/start-client-core'
 // @ts-expect-error
-import _serverFnManifest from 'tanstack:server-fn-manifest'
+import _serverFnManifest from 'tanstack-start-server-fn-manifest:v'
 import { getEvent, getResponseStatus } from './h3'
 
 const serverFnManifest = _serverFnManifest as Record<

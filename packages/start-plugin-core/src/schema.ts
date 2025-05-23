@@ -4,9 +4,12 @@ import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-generator'
 import type { NitroConfig } from 'nitropack'
 
-const tsrConfig = configSchema.partial().extend({
-  srcDirectory: z.string().optional().default('src'),
-})
+const tsrConfig = configSchema
+  .omit({ autoCodeSplitting: true })
+  .partial()
+  .extend({
+    srcDirectory: z.string().optional().default('src'),
+  })
 
 export function createTanStackConfig<
   TFrameworkPlugin extends Record<string, unknown>,
@@ -111,13 +114,12 @@ export function createTanStackStartOptionsSchema(
         })
         .optional()
         .default({}),
-      pages: z
-        .array(z.union([z.string(), pageSchema]))
-        .optional()
-        .default([]),
-      sitemap: pagePrerenderOptionsSchema
-        .extend({
+      pages: z.array(pageSchema).optional().default([]),
+      sitemap: z
+        .object({
+          enabled: z.boolean().optional().default(true),
           host: z.string().optional(),
+          outputPath: z.string().optional().default('sitemap.xml'),
         })
         .optional(),
       prerender: z

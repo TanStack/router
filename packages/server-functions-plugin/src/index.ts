@@ -22,15 +22,28 @@ declare global {
 }
 
 export type ServerFnPluginOpts = {
+  /**
+   * The virtual import ID that will be used to import the server function manifest.
+   * This virtual import ID will be used in the server build to import the manifest
+   * and its modules.
+   */
   manifestVirtualImportId: string
+  /**
+   * The path to the manifest file that will be created during the build process.
+   * This file will be used to import the modules for the server functions in your
+   * server handler.
+   *
+   * @default 'node_modules/.tanstack-start/server-functions-manifest.json'
+   */
+  manifestOutputFilename?: string
   client: ServerFnPluginEnvOpts
   ssr: ServerFnPluginEnvOpts
   server: ServerFnPluginEnvOpts
   importer?: (fn: DirectiveFn) => Promise<any>
 }
 
-const manifestFilename =
-  '.tanstack-start/build/server/server-functions-manifest.json'
+const defaultManifestFilename =
+  'node_modules/.tanstack-start/server-functions-manifest.json'
 
 export type ServerFnPluginEnvOpts = {
   getRuntimeCode: () => string
@@ -70,6 +83,9 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
       ),
     )
   }
+
+  const manifestFilename =
+    opts.manifestOutputFilename || defaultManifestFilename
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -141,9 +157,17 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         // so the manifest is like a serialized state from the client build to the server build
         name: 'tanstack-start-server-fn-vite-plugin-manifest-server',
         enforce: 'pre',
-        resolveId: (id) => (id === opts.manifestVirtualImportId ? id : null),
+        resolveId(id) {
+          if (id === opts.manifestVirtualImportId) {
+            return resolveViteId(id)
+          }
+
+          return undefined
+        },
         load(id) {
-          if (id !== opts.manifestVirtualImportId) return null
+          if (id !== resolveViteId(opts.manifestVirtualImportId)) {
+            return undefined
+          }
 
           // In development, we **can** use the in-memory manifest, and we should
           // since it will be incrementally updated as we use the app and dynamic
@@ -193,7 +217,20 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
 }
 
 export interface TanStackServerFnPluginEnvOpts {
+  /**
+   * The virtual import ID that will be used to import the server function manifest.
+   * This virtual import ID will be used in the server build to import the manifest
+   * and its modules.
+   */
   manifestVirtualImportId: string
+  /**
+   * The path to the manifest file that will be created during the build process.
+   * This file will be used to import the modules for the server functions in your
+   * server handler.
+   *
+   * @default 'node_modules/.tanstack-start/server-functions-manifest.json'
+   */
+  manifestOutputFilename?: string
   client: {
     envName?: string
     getRuntimeCode: () => string
@@ -251,11 +288,13 @@ export function TanStackServerFnPluginEnv(
     )
   }
 
+  const manifestFilename =
+    opts.manifestOutputFilename || defaultManifestFilename
+
   const directive = 'use server'
   const directiveLabel = 'Server Function'
 
   return [
-    // client: [
     // The client plugin is used to compile the client directives
     // and save them so we can create a manifest
     TanStackDirectiveFunctionsPluginEnv({
@@ -325,9 +364,17 @@ export function TanStackServerFnPluginEnv(
       // applyToEnvironment(environment) {
       //   return environment.name === opts.server.envName
       // },
-      resolveId: (id) => (id === opts.manifestVirtualImportId ? id : null),
+      resolveId(id) {
+        if (id === opts.manifestVirtualImportId) {
+          return resolveViteId(id)
+        }
+
+        return undefined
+      },
       load(id) {
-        if (id !== opts.manifestVirtualImportId) return null
+        if (id !== resolveViteId(opts.manifestVirtualImportId)) {
+          return undefined
+        }
 
         // In development, we **can** use the in-memory manifest, and we should
         // since it will be incrementally updated as we use the app and dynamic
@@ -360,6 +407,9 @@ export function TanStackServerFnPluginEnv(
         return manifestWithImports
       },
     },
-    // ],
   ]
+}
+
+function resolveViteId(id: string) {
+  return `\0${id}`
 }

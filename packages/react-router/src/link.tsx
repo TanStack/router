@@ -17,7 +17,6 @@ import {
 } from './utils'
 
 import { useMatch } from './useMatch'
-import { useMatches } from './Matches'
 import type {
   AnyRouter,
   Constrain,
@@ -106,39 +105,28 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  const isRelativeFromPath = options.relative === 'path'
-
-  // when `from` is not supplied, use the nearest parent match's full path as the `from` location
-  // so relative routing works as expected. Try to stay out of rerenders as much as possible.
   const nearestFrom = useMatch({
     strict: false,
-    select: (match) => (isRelativeFromPath ? undefined : match.fullPath),
+    select: (match) => match.fullPath,
   })
 
-  // When no from and relative is path, use the leaf match as the from location
-  // Avoid rerenders as much as possible.
-  const leafFrom = useMatches({
-    select: (matches) =>
-      isRelativeFromPath ? matches[matches.length - 1]!.fullPath : undefined,
-  })
-
-  const from = options.from ?? (isRelativeFromPath ? leafFrom : nearestFrom)
+  const from = options.from ?? nearestFrom
 
   // Use it as the default `from` location
-  const _options = React.useMemo(() => ({ ...options, from }), [options, from])
+  options = { ...options, from }
 
   const next = React.useMemo(
-    () => router.buildLocation(_options as any),
+    () => router.buildLocation(options as any),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [router, _options, currentSearch],
+    [router, options, currentSearch],
   )
 
   const preload = React.useMemo(() => {
-    if (_options.reloadDocument) {
+    if (options.reloadDocument) {
       return false
     }
     return userPreload ?? router.options.defaultPreload
-  }, [router.options.defaultPreload, userPreload, _options.reloadDocument])
+  }, [router.options.defaultPreload, userPreload, options.reloadDocument])
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
@@ -189,11 +177,11 @@ export function useLinkProps<
   })
 
   const doPreload = React.useCallback(() => {
-    router.preloadRoute(_options as any).catch((err) => {
+    router.preloadRoute(options as any).catch((err) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
-  }, [_options, router])
+  }, [options, router])
 
   const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
@@ -263,14 +251,14 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       return router.navigate({
-        ..._options,
+        ...options,
         replace,
         resetScroll,
         hashScrollIntoView,
         startTransition,
         viewTransition,
         ignoreBlocker,
-      } as any)
+      })
     }
   }
 
@@ -293,10 +281,14 @@ export function useLinkProps<
         return
       }
 
-      eventTarget.preloadTimeout = setTimeout(() => {
-        eventTarget.preloadTimeout = null
+      if (!preloadDelay) {
         doPreload()
-      }, preloadDelay)
+      } else {
+        eventTarget.preloadTimeout = setTimeout(() => {
+          eventTarget.preloadTimeout = null
+          doPreload()
+        }, preloadDelay)
+      }
     }
   }
 
