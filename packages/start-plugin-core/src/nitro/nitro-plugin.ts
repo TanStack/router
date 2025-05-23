@@ -110,12 +110,14 @@ export function nitroPlugin(
 async function buildNitroApp(
   builder: ViteBuilder,
   nitro: Nitro,
-  startOptions: TanStackStartOutputConfig,
+  options: TanStackStartOutputConfig,
 ) {
+  // Cleans the public and server directories for a fresh build
+  // i.e the `.output/public` and `.output/server` directories
   await prepare(nitro)
-  await copyPublicAssets(nitro)
 
-  const options = { ...startOptions }
+  // Creates the `.output/public` directory and copies the public assets
+  await copyPublicAssets(nitro)
 
   // If the user has not set a prerender option, we need to set it to true
   // if the pages array is not empty and has sub options requiring for prerendering
@@ -169,13 +171,13 @@ async function buildNitroApp(
   await build(nitro)
 
   // Cleanup the vite public directory
-  // As a part of the build process, the `.vite/` directory
+  // As a part of the build process, a `.vite/` directory
   // is copied over from `.tanstack-start/build/client-dist/`
-  // to the `publicDir` (e.g. `.output/public/`).
-  // This directory (containing the vite manifest) should not be
-  // included in the final build, so we remove it here.
-  const publicDir = nitro.options.output.publicDir
-  const viteDir = path.resolve(publicDir, '.vite')
+  // to the nitro `publicDir` (e.g. `.output/public/`).
+  // This directory (and its contents including the vite client manifest)
+  // should not be included in the final build, so we remove it.
+  const nitroPublicDir = nitro.options.output.publicDir
+  const viteDir = path.resolve(nitroPublicDir, '.vite')
   if (await fsp.stat(viteDir).catch(() => false)) {
     await fsp.rm(viteDir, { recursive: true, force: true })
   }
