@@ -214,9 +214,19 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
   const array = isPlainArray(prev) && isPlainArray(next)
 
   if (array || (isPlainObject(prev) && isPlainObject(next))) {
-    const prevItems = array ? prev : Object.keys(prev)
+    const prevItems = array
+      ? prev
+      : [
+          ...Object.getOwnPropertyNames(prev),
+          ...Object.getOwnPropertySymbols(prev),
+        ]
     const prevSize = prevItems.length
-    const nextItems = array ? next : Object.keys(next)
+    const nextItems = array
+      ? next
+      : [
+          ...Object.getOwnPropertyNames(next),
+          ...Object.getOwnPropertySymbols(next),
+        ]
     const nextSize = nextItems.length
     const copy: any = array ? [] : {}
 

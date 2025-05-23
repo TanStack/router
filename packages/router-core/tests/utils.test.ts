@@ -29,6 +29,59 @@ describe('replaceEqualDeep', () => {
     expect(result).toStrictEqual(obj2)
   })
 
+  describe('symbol properties', () => {
+    it('should look at symbol properties in the object comparison', () => {
+      const propertyKey = Symbol('property')
+      const obj1 = { a: 1, [propertyKey]: 2 }
+      const obj2 = { a: 1, [propertyKey]: 3 }
+      const result = replaceEqualDeep(obj1, obj2)
+      // without this PR:
+      // expect(result).toBe(obj1)
+      // with this PR:
+      expect(result).toStrictEqual(obj2)
+    })
+
+    it('should copy over symbol properties when creating a new object', () => {
+      const propertyKey = Symbol('property')
+      const obj1 = { a: 1, [propertyKey]: 2 }
+      const obj2 = { a: 3, [propertyKey]: 2 }
+      const result = replaceEqualDeep(obj1, obj2)
+      // without this PR:
+      // expect(result).toStrictEqual({ a: 3 })
+      // with this PR:
+      expect(result).toStrictEqual(obj2)
+    })
+  })
+
+  describe('non-enumerable properties', () => {
+    it('should look at non-enumerable properties in the object comparison', () => {
+      const obj1: { a: number; b?: number } = { a: 1 }
+      Object.defineProperty(obj1, 'b', { enumerable: false, value: 2 })
+      const obj2: { a: number; b?: number } = { a: 1 }
+      Object.defineProperty(obj2, 'b', { enumerable: false, value: 3 })
+      const result = replaceEqualDeep(obj1, obj2)
+      // without this PR:
+      // expect(result).toBe(obj1)
+      // expect(result.b).toBe(2)
+      // with this PR:
+      expect(result).not.toBe(obj1)
+      expect(result).toStrictEqual({ a: 1, b: 3 })
+    })
+
+    it('should copy over non-enumerable properties when creating a new object', () => {
+      const obj1: { a: number; b?: number } = { a: 1 }
+      Object.defineProperty(obj1, 'b', { enumerable: false, value: 2 })
+      const obj2: { a: number; b?: number } = { a: 3 }
+      Object.defineProperty(obj2, 'b', { enumerable: false, value: 2 })
+      const result = replaceEqualDeep(obj1, obj2)
+      // without this PR:
+      // expect(result).toStrictEqual({ a: 3 })
+      // expect(result.b).toBe(undefined)
+      // with this PR:
+      expect(result).toStrictEqual({ a: 3, b: 2 })
+    })
+  })
+
   it('should properly handle non-existent keys', () => {
     const obj1 = { a: 2, c: 123 }
     const obj2 = { a: 2, c: 123, b: undefined }
