@@ -213,20 +213,18 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
 
   const array = isPlainArray(prev) && isPlainArray(next)
 
-  if (array || (isPlainObject(prev) && isPlainObject(next))) {
+  if (array || (isSimplePlainObject(prev) && isSimplePlainObject(next))) {
     const prevItems = array
       ? prev
-      : [
-          ...Object.getOwnPropertyNames(prev),
-          ...Object.getOwnPropertySymbols(prev),
-        ]
+      : (Object.keys(prev) as Array<unknown>).concat(
+          Object.getOwnPropertySymbols(prev),
+        )
     const prevSize = prevItems.length
     const nextItems = array
       ? next
-      : [
-          ...Object.getOwnPropertyNames(next),
-          ...Object.getOwnPropertySymbols(next),
-        ]
+      : (Object.keys(next) as Array<unknown>).concat(
+          Object.getOwnPropertySymbols(next),
+        )
     const nextSize = nextItems.length
     const copy: any = array ? [] : {}
 
@@ -253,6 +251,19 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
   }
 
   return next
+}
+
+/**
+ * A wrapper around `isPlainObject` with additional checks to ensure that it is not
+ * only a plain object, but also one that is "clone-friendly" (doesn't have any
+ * non-enumerable properties).
+ */
+function isSimplePlainObject(o: any) {
+  return (
+    // all the checks from isPlainObject are more likely to hit so we perform them first
+    isPlainObject(o) &&
+    Object.getOwnPropertyNames(o).length === Object.keys(o).length
+  )
 }
 
 // Copied from: https://github.com/jonschlinkert/is-plain-object

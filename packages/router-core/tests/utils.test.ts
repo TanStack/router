@@ -54,7 +54,7 @@ describe('replaceEqualDeep', () => {
   })
 
   describe('non-enumerable properties', () => {
-    it('should look at non-enumerable properties in the object comparison', () => {
+    it('should treat objects with non-enumerable properties as non-plain (no need for property comparisons)', () => {
       const obj1: { a: number; b?: number } = { a: 1 }
       Object.defineProperty(obj1, 'b', { enumerable: false, value: 2 })
       const obj2: { a: number; b?: number } = { a: 1 }
@@ -64,11 +64,10 @@ describe('replaceEqualDeep', () => {
       // expect(result).toBe(obj1)
       // expect(result.b).toBe(2)
       // with this PR:
-      expect(result).not.toBe(obj1)
-      expect(result).toStrictEqual({ a: 1, b: 3 })
+      expect(result).toBe(obj2)
     })
 
-    it('should copy over non-enumerable properties when creating a new object', () => {
+    it("should treat objects with non-enumerable properties as non-plain (copying doesn't happen)", () => {
       const obj1: { a: number; b?: number } = { a: 1 }
       Object.defineProperty(obj1, 'b', { enumerable: false, value: 2 })
       const obj2: { a: number; b?: number } = { a: 3 }
@@ -78,7 +77,7 @@ describe('replaceEqualDeep', () => {
       // expect(result).toStrictEqual({ a: 3 })
       // expect(result.b).toBe(undefined)
       // with this PR:
-      expect(result).toStrictEqual({ a: 3, b: 2 })
+      expect(result).toBe(obj2)
     })
   })
 
