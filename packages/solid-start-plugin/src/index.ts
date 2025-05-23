@@ -1,9 +1,7 @@
-import path from 'node:path'
 import viteSolid from 'vite-plugin-solid'
 import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
-import * as vite from 'vite'
 import { getTanStackStartOptions } from './schema'
-import type { PluginOption, ResolvedConfig } from 'vite'
+import type { PluginOption } from 'vite'
 import type { TanStackStartInputConfig, WithSolidPlugin } from './schema'
 
 export type {
@@ -19,79 +17,42 @@ export function TanStackStartVitePlugin(
     WithSolidPlugin
   const options: OptionsWithSolid = getTanStackStartOptions(opts)
 
-  let resolvedConfig: ResolvedConfig
-
   return [
-    TanStackStartVitePluginCore({ framework: 'solid' }, options),
-    {
-      name: 'tanstack-solid-start:resolve-entries',
-      configResolved: (config) => {
-        resolvedConfig = config
-      },
-      resolveId(id) {
-        if (
-          [
-            '/~start/server-entry',
-            '/~start/default-server-entry',
-            '/~start/default-client-entry',
-          ].includes(id)
-        ) {
-          return `${id}.tsx`
-        }
-
-        return null
-      },
-      load(id) {
-        const routerImportPath = JSON.stringify(
-          path.resolve(options.root, options.tsr.srcDirectory, 'router'),
-        )
-
-        if (id === '/~start/server-entry.tsx') {
-          const ssrEntryPath = options.serverEntryPath.startsWith(
-            '/~start/default-server-entry',
-          )
-            ? options.serverEntryPath
-            : vite.normalizePath(
-                path.resolve(resolvedConfig.root, options.serverEntryPath),
-              )
-
+    TanStackStartVitePluginCore(
+      {
+        framework: 'solid',
+        getVirtualServerHandlerEntry(ctx) {
           return `
 import { toWebRequest, defineEventHandler } from '@tanstack/solid-start/server';
-import serverEntry from '${ssrEntryPath}';
+import serverEntry from '${ctx.ssrEntryFilepath}';
 
 export default defineEventHandler(function(event) {
   const request = toWebRequest(event);
   return serverEntry({ request });
-})
-`
-        }
-
-        if (id === '/~start/default-client-entry.tsx') {
+});`
+        },
+        getVirtualClientEntry(ctx) {
           return `
-import { hydrate } from 'solid-js/web'
-import { StartClient } from '@tanstack/solid-start'
-import { createRouter } from ${routerImportPath}
+import { hydrate } from 'solid-js/web';
+import { StartClient } from '@tanstack/solid-start';
+import { createRouter } from '${ctx.routerFilepath}';
 
-const router = createRouter()
+const router = createRouter();
 
-hydrate(() => <StartClient router={router} />, document.body)
-`
-        }
-
-        if (id === '/~start/default-server-entry.tsx') {
+hydrate(() => <StartClient router={router} />, document.body);`
+        },
+        getVirtualSsrEntry(ctx) {
           return `
-import { createStartHandler, defaultStreamHandler } from '@tanstack/solid-start/server'
-import { createRouter } from ${routerImportPath}
+import { createStartHandler, defaultStreamHandler } from '@tanstack/solid-start/server';
+import { createRouter } from '${ctx.routerFilepath}';
 
 export default createStartHandler({
   createRouter,
-})(defaultStreamHandler)
-`
-        }
-
-        return null
+})(defaultStreamHandler);`
+        },
       },
-    },
+      options,
+    ),
     viteSolid({ ...options.solid, ssr: true }),
   ]
 }

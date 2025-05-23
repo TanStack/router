@@ -35,6 +35,12 @@ export const ssrEntryFile = 'ssr.mjs'
 
 export interface TanStackStartVitePluginCoreOptions {
   framework: CompileStartFrameworkOptions
+  getVirtualServerHandlerEntry: (ctx: {
+    routerFilepath: string
+    ssrEntryFilepath: string
+  }) => string
+  getVirtualSsrEntry: (ctx: { routerFilepath: string }) => string
+  getVirtualClientEntry: (ctx: { routerFilepath: string }) => string
 }
 // this needs to live outside of the TanStackStartVitePluginCore since it will be invoked multiple times by vite
 let ssrBundle: Rollup.OutputBundle
@@ -51,6 +57,7 @@ export function TanStackStartVitePluginCore(
       enableRouteGeneration: true,
       autoCodeSplitting: true,
     }),
+    resolveVirtualEntriesPlugin(opts, startConfig),
     {
       name: 'tanstack-start-core:config-client',
       async config() {
@@ -203,6 +210,65 @@ export function TanStackStartVitePluginCore(
       target: opts.framework,
     }),
   ]
+}
+
+function resolveVirtualEntriesPlugin(
+  opts: TanStackStartVitePluginCoreOptions,
+  startConfig: TanStackStartOutputConfig,
+): PluginOption {
+  let resolvedConfig: vite.ResolvedConfig
+
+  const modules = new Set<string>([
+    '/~start/server-entry',
+    '/~start/default-server-entry',
+    '/~start/default-client-entry',
+  ])
+
+  return {
+    name: 'tanstack-start-core:resolve-virtual-entries',
+    configResolved(config) {
+      resolvedConfig = config
+    },
+    resolveId(id) {
+      if (modules.has(id)) {
+        return `${id}.tsx`
+      }
+
+      return undefined
+    },
+    load(id) {
+      const routerFilepath = path.resolve(
+        startConfig.root,
+        startConfig.tsr.srcDirectory,
+        'router',
+      )
+
+      if (id === '/~start/server-entry.tsx') {
+        const ssrEntryFilepath = startConfig.serverEntryPath.startsWith(
+          '/~start/default-server-entry',
+        )
+          ? startConfig.serverEntryPath
+          : vite.normalizePath(
+              path.resolve(resolvedConfig.root, startConfig.serverEntryPath),
+            )
+
+        return opts.getVirtualServerHandlerEntry({
+          routerFilepath,
+          ssrEntryFilepath,
+        })
+      }
+
+      if (id === '/~start/default-client-entry.tsx') {
+        return opts.getVirtualClientEntry({ routerFilepath })
+      }
+
+      if (id === '/~start/default-server-entry.tsx') {
+        return opts.getVirtualSsrEntry({ routerFilepath })
+      }
+
+      return undefined
+    },
+  }
 }
 
 function injectDefineEnv<TKey extends string, TValue extends string>(
