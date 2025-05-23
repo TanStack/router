@@ -1683,18 +1683,27 @@ export class BaseRootRoute<
 export function routeOptionsHeadUnexpectedKeysWarning(result: unknown): void {
   if (process.env.NODE_ENV === 'development') {
     const keys = Object.keys(result as HeadResult)
-    const unexpectedKeys = keys.filter(key => !headExpectedKeys.includes(key as HeadExpectedKey))
+    const unexpectedKeys = keys.filter(
+      (key) => !headExpectedKeys.includes(key as HeadExpectedKey),
+    )
 
     if (unexpectedKeys.length === 0) {
       return
     }
 
-    console.warn(`Route head option result has unexpected keys: "${unexpectedKeys.join('", "')}".`, 'Only "links", "scripts", and "meta" are allowed');
+    console.warn(
+      `Route head option result has unexpected keys: "${unexpectedKeys.join('", "')}".`,
+      'Only "links", "scripts", and "meta" are allowed',
+    )
   }
 }
 
 type HeadExpectedKey = keyof Required<HeadResult>
-const headExpectedKeys = ['links', 'scripts', 'meta'] satisfies Array<HeadExpectedKey>
+const headExpectedKeys = [
+  'links',
+  'scripts',
+  'meta',
+] satisfies Array<HeadExpectedKey>
 
 type HeadResult = {
   links?: AnyRouteMatch['links']

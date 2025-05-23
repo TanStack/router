@@ -19,7 +19,7 @@ describe('routeOptionsHeadUnexpectedKeysWarning', () => {
     const validResult = {
       links: [],
       scripts: [],
-      meta: []
+      meta: [],
     }
 
     routeOptionsHeadUnexpectedKeysWarning(validResult)
@@ -32,13 +32,13 @@ describe('routeOptionsHeadUnexpectedKeysWarning', () => {
       links: [],
       scripts: [],
       meta: [],
-      unexpectedKey: 'value'
+      unexpectedKey: 'value',
     }
 
     routeOptionsHeadUnexpectedKeysWarning(invalidResult)
     expect(console.warn).toHaveBeenCalledWith(
       'Route head option result has unexpected keys: "unexpectedKey".',
-      'Only "links", "scripts", and "meta" are allowed'
+      'Only "links", "scripts", and "meta" are allowed',
     )
   })
 
@@ -48,7 +48,7 @@ describe('routeOptionsHeadUnexpectedKeysWarning', () => {
       links: [],
       scripts: [],
       meta: [],
-      unexpectedKey: 'value'
+      unexpectedKey: 'value',
     }
 
     routeOptionsHeadUnexpectedKeysWarning(invalidResult)
@@ -58,7 +58,7 @@ describe('routeOptionsHeadUnexpectedKeysWarning', () => {
   it('should not warn when missing expected keys', () => {
     process.env.NODE_ENV = 'development'
     const partialResult = {
-      links: []
+      links: [],
       // missing scripts and meta
     }
 
@@ -70,13 +70,13 @@ describe('routeOptionsHeadUnexpectedKeysWarning', () => {
     process.env.NODE_ENV = 'development'
     const allInvalidResult = {
       invalidKey1: 'value1',
-      invalidKey2: 'value2'
+      invalidKey2: 'value2',
     } as any
 
     routeOptionsHeadUnexpectedKeysWarning(allInvalidResult)
     expect(console.warn).toHaveBeenCalledWith(
       'Route head option result has unexpected keys: "invalidKey1", "invalidKey2".',
-      'Only "links", "scripts", and "meta" are allowed'
+      'Only "links", "scripts", and "meta" are allowed',
     )
   })
-}) 
+})
