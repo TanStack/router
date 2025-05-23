@@ -1,10 +1,7 @@
 import type { NavigateOptions, ToOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RoutePaths } from './routeInfo'
-import type {
-  RegisteredRouter,
-  ViewTransitionOptions,
-} from './router'
+import type { RegisteredRouter, ViewTransitionOptions } from './router'
 
 export interface MatchLocation {
   to?: string | number | null
