@@ -1,15 +1,20 @@
 import path from 'node:path'
 import { rmSync } from 'node:fs'
-import { build, createNitro } from 'nitropack'
+import * as fsp from 'node:fs/promises'
+import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
 import { clientDistDir, ssrEntryFile } from '../plugin'
 import { prerender } from '../prerender'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { buildSitemap } from '../build-sitemap'
 import { devServerPlugin } from './dev-server-plugin'
-import { buildNitroEnvironment } from './build-nitro'
-import type { EnvironmentOptions, PluginOption, Rollup } from 'vite'
-import type { NitroConfig } from 'nitropack'
+import type {
+  EnvironmentOptions,
+  PluginOption,
+  Rollup,
+  ViteBuilder,
+} from 'vite'
+import type { Nitro, NitroConfig } from 'nitropack'
 import type { TanStackStartOutputConfig } from '../plugin'
 
 export function nitroPlugin(
@@ -88,65 +93,100 @@ export function nitroPlugin(
 
               const nitro = await createNitro(nitroConfig)
 
-              await buildNitroEnvironment(nitro, () => build(nitro))
-
-              // If the user has not set a prerender option, we need to set it to true
-              // if the pages array is not empty and has sub options requiring for prerendering
-              if (options.prerender?.enabled !== false) {
-                options.prerender = {
-                  ...options.prerender,
-                  enabled: options.pages.some((d) =>
-                    typeof d === 'string' ? false : !!d.prerender?.enabled,
-                  ),
-                }
-              }
-
-              // Setup the options for prerendering the SPA shell (i.e `src/routes/__root.tsx`)
-              if (options.spa?.enabled) {
-                options.prerender = {
-                  ...options.prerender,
-                  enabled: true,
-                }
-
-                const maskUrl = new URL(
-                  options.spa.maskPath,
-                  'http://localhost',
-                )
-
-                maskUrl.searchParams.set('__TSS_SHELL', 'true')
-
-                options.pages.push({
-                  path: maskUrl.toString().replace('http://localhost', ''),
-                  prerender: options.spa.prerender,
-                  sitemap: {
-                    exclude: true,
-                  },
-                })
-              }
-
-              // Start prerendering!!!
-              if (options.prerender.enabled) {
-                await prerender({
-                  options,
-                  nitro,
-                  builder,
-                })
-              }
-
-              if (options.pages.length) {
-                await buildSitemap({
-                  options,
-                  publicDir: nitro.options.output.publicDir,
-                })
-              }
-
-              console.log(`\n✅ Client and server bundles successfully built.`)
+              await buildNitroApp(builder, nitro, options)
             },
           },
         }
       },
     },
   ]
+}
+
+/**
+ * Correctly co-ordinates the nitro app build process to make sure that the
+ * app is built, while also correctly handling the prerendering and sitemap
+ * generation and including their outputs in the final build.
+ */
+async function buildNitroApp(
+  builder: ViteBuilder,
+  nitro: Nitro,
+  options: TanStackStartOutputConfig,
+) {
+  // Cleans the public and server directories for a fresh build
+  // i.e the `.output/public` and `.output/server` directories
+  await prepare(nitro)
+
+  // Creates the `.output/public` directory and copies the public assets
+  await copyPublicAssets(nitro)
+
+  // If the user has not set a prerender option, we need to set it to true
+  // if the pages array is not empty and has sub options requiring for prerendering
+  if (options.prerender?.enabled !== false) {
+    options.prerender = {
+      ...options.prerender,
+      enabled: options.pages.some((d) =>
+        typeof d === 'string' ? false : !!d.prerender?.enabled,
+      ),
+    }
+  }
+
+  // Setup the options for prerendering the SPA shell (i.e `src/routes/__root.tsx`)
+  if (options.spa?.enabled) {
+    options.prerender = {
+      ...options.prerender,
+      enabled: true,
+    }
+
+    const maskUrl = new URL(options.spa.maskPath, 'http://localhost')
+
+    maskUrl.searchParams.set('__TSS_SHELL', 'true')
+
+    options.pages.push({
+      path: maskUrl.toString().replace('http://localhost', ''),
+      prerender: options.spa.prerender,
+      sitemap: {
+        exclude: true,
+      },
+    })
+  }
+
+  // Run the prerendering process
+  if (options.prerender.enabled) {
+    await prerender({
+      options,
+      nitro,
+      builder,
+    })
+  }
+
+  // Run the sitemap build process
+  if (options.pages.length) {
+    buildSitemap({
+      options,
+      publicDir: nitro.options.output.publicDir,
+    })
+  }
+
+  // Build the nitro app
+  await build(nitro)
+
+  // Cleanup the vite public directory
+  // As a part of the build process, a `.vite/` directory
+  // is copied over from `.tanstack-start/build/client-dist/`
+  // to the nitro `publicDir` (e.g. `.output/public/`).
+  // This directory (and its contents including the vite client manifest)
+  // should not be included in the final build, so we remove it.
+  const nitroPublicDir = nitro.options.output.publicDir
+  const viteDir = path.resolve(nitroPublicDir, '.vite')
+  if (await fsp.stat(viteDir).catch(() => false)) {
+    await fsp.rm(viteDir, { recursive: true, force: true })
+  }
+
+  // Close the nitro instance
+  await nitro.close()
+  nitro.logger.success(
+    'Client and Server bundles for TanStack Start have been successfully built.',
+  )
 }
 
 function virtualBundlePlugin(ssrBundle: Rollup.OutputBundle): Rollup.Plugin {
