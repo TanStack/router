@@ -121,7 +121,7 @@ function jsonToXml(sitemapData: SitemapData): string {
   return sitemap.end({ prettyPrint: true })
 }
 
-export async function buildSitemap({
+export function buildSitemap({
   options,
   publicDir,
 }: {

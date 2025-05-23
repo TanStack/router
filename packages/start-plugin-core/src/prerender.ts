@@ -5,7 +5,6 @@ import { getRollupConfig } from 'nitropack/rollup'
 import { build as buildNitro, createNitro } from 'nitropack'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { Queue } from './queue'
-import { buildNitroEnvironment } from './nitro/build-nitro'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import type { ViteBuilder } from 'vite'
 import type { $Fetch, Nitro } from 'nitropack'
@@ -72,7 +71,7 @@ export async function prerender({
     },
   }
 
-  await buildNitroEnvironment(nodeNitro, () => buildNitro(nodeNitro))
+  await buildNitro(nodeNitro)
 
   // Import renderer entry
   const serverFilename =
