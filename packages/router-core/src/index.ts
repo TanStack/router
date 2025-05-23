@@ -116,7 +116,7 @@ export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
 
-export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
+export { BaseRoute, BaseRouteApi, BaseRootRoute, routeOptionsHeadUnexpectedKeysWarning } from './route'
 export type {
   AnyPathParams,
   SearchSchemaInput,

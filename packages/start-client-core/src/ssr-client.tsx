@@ -10,6 +10,7 @@ import type {
   MakeRouteMatch,
   Manifest,
   RouteContextOptions,
+  routeOptionsHeadUnexpectedKeysWarning,
 } from '@tanstack/router-core'
 
 declare global {
@@ -153,7 +154,7 @@ export function hydrate(router: AnyRouter) {
       }
 
       // Handle extracted
-      ;(match as unknown as SsrMatch).extracted?.forEach((ex) => {
+      ; (match as unknown as SsrMatch).extracted?.forEach((ex) => {
         deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
       })
     } else {
@@ -215,6 +216,7 @@ export function hydrate(router: AnyRouter) {
       loaderData: match.loaderData,
     }
     const headFnContent = route.options.head?.(assetContext)
+    routeOptionsHeadUnexpectedKeysWarning(headFnContent)
 
     const scripts = route.options.scripts?.(assetContext)
 
@@ -230,7 +232,7 @@ export function hydrate(router: AnyRouter) {
 function deepMutableSetByPath<T>(obj: T, path: Array<string>, value: any) {
   // mutable set by path retaining array and object references
   if (path.length === 1) {
-    ;(obj as any)[path[0]!] = value
+    ; (obj as any)[path[0]!] = value
   }
 
   const [key, ...rest] = path
