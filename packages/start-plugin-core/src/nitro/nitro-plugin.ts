@@ -184,7 +184,9 @@ async function buildNitroApp(
 
   // Close the nitro instance
   await nitro.close()
-  nitro.logger.success(`Client and server bundles successfully built.`)
+  nitro.logger.success(
+    'Client and Server bundles for TanStack Start have been successfully built.',
+  )
 }
 
 function virtualBundlePlugin(ssrBundle: Rollup.OutputBundle): Rollup.Plugin {
