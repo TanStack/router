@@ -35,9 +35,6 @@ describe('replaceEqualDeep', () => {
       const obj1 = { a: 1, [propertyKey]: 2 }
       const obj2 = { a: 1, [propertyKey]: 3 }
       const result = replaceEqualDeep(obj1, obj2)
-      // without this PR:
-      // expect(result).toBe(obj1)
-      // with this PR:
       expect(result).toStrictEqual(obj2)
     })
 
@@ -46,9 +43,6 @@ describe('replaceEqualDeep', () => {
       const obj1 = { a: 1, [propertyKey]: 2 }
       const obj2 = { a: 3, [propertyKey]: 2 }
       const result = replaceEqualDeep(obj1, obj2)
-      // without this PR:
-      // expect(result).toStrictEqual({ a: 3 })
-      // with this PR:
       expect(result).toStrictEqual(obj2)
     })
   })
@@ -60,10 +54,6 @@ describe('replaceEqualDeep', () => {
       const obj2: { a: number; b?: number } = { a: 1 }
       Object.defineProperty(obj2, 'b', { enumerable: false, value: 3 })
       const result = replaceEqualDeep(obj1, obj2)
-      // without this PR:
-      // expect(result).toBe(obj1)
-      // expect(result.b).toBe(2)
-      // with this PR:
       expect(result).toBe(obj2)
     })
 
@@ -73,10 +63,6 @@ describe('replaceEqualDeep', () => {
       const obj2: { a: number; b?: number } = { a: 3 }
       Object.defineProperty(obj2, 'b', { enumerable: false, value: 2 })
       const result = replaceEqualDeep(obj1, obj2)
-      // without this PR:
-      // expect(result).toStrictEqual({ a: 3 })
-      // expect(result.b).toBe(undefined)
-      // with this PR:
       expect(result).toBe(obj2)
     })
   })
