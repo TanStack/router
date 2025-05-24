@@ -38,20 +38,20 @@ The `RouterState` type contains all of the properties that are available on the 
 
 ### `matches` property
 
-- Type: [`Array<RouteMatch>`](./RouteMatchType.md)
+- Type: [`Array<RouteMatch>`](../RouteMatchType.md)
 - An array of all of the route matches that have been resolved and are currently active.
 
 ### `pendingMatches` property
 
-- Type: [`Array<RouteMatch>`](./RouteMatchType.md)
+- Type: [`Array<RouteMatch>`](../RouteMatchType.md)
 - An array of all of the route matches that are currently pending.
 
 ### `location` property
 
-- Type: [`ParsedLocation`](./ParsedLocationType.md)
+- Type: [`ParsedLocation`](../ParsedLocationType.md)
 - The latest location that the router has parsed from the browser history. This location may not be resolved and loaded yet.
 
 ### `resolvedLocation` property
 
-- Type: [`ParsedLocation`](./ParsedLocationType.md)
+- Type: [`ParsedLocation`](../ParsedLocationType.md)
 - The location that the router has resolved and loaded.

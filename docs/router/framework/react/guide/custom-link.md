@@ -2,7 +2,7 @@
 title: Custom Link
 ---
 
-While repeating yourself can be acceptable in many situations, you might find that you do it too often. At times, you may want to create cross-cutting components with additional behavior or styles. You might also consider using third-party libraries in combination with TanStack Router’s type safety.
+While repeating yourself can be acceptable in many situations, you might find that you do it too often. At times, you may want to create cross-cutting components with additional behavior or styles. You might also consider using third-party libraries in combination with TanStack Router's type safety.
 
 ## `createLink` for cross-cutting concerns
 
@@ -53,9 +53,9 @@ Here are some examples of how you can use `createLink` with third-party librarie
 
 ### React Aria Components example
 
-React Aria Components’
+React Aria Components'
 [Link](https://react-spectrum.adobe.com/react-aria/Link.html) component does not support the standard `onMouseEnter` and `onMouseLeave` events.
-Therefore, you cannot use it directly with TanStack Router’s `preload (intent)` prop.
+Therefore, you cannot use it directly with TanStack Router's `preload (intent)` prop.
 
 Explanation for this can be found here:
 
@@ -146,7 +146,7 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
 
 ### MUI example
 
-There is an [example](../examples/start-material-ui) available which uses these patterns.
+There is an [example](https://github.com/TanStack/router/tree/main/examples/react/start-material-ui) available which uses these patterns.
 
 #### `Link`
 

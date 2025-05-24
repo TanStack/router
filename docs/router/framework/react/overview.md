@@ -44,7 +44,7 @@ It's probably no surprise at this point that picking a router is so important th
 
 TanStack Router itself is not a "framework" in the traditional sense, since it doesn't address a few other common full-stack concerns. However TanStack Router has been designed to be upgradable to a full-stack framework when used in conjunction with other tools that address bundling, deployments, and server-side-specific functionality. This is why we are currently developing [TanStack Start](https://tanstack.com/start), a full-stack framework that is built on top of TanStack Router and Vite.
 
-For a deeper dive on the history of TanStack Router, feel free to read [TanStack Router's History](./decisions-on-dx.md#tanstack-routers-origin-story).
+For a deeper dive on the history of TanStack Router, feel free to read [TanStack Router's History](../decisions-on-dx.md#tanstack-routers-origin-story).
 
 ## Why TanStack Router?
 

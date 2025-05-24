@@ -28,4 +28,4 @@ An instance of the `Route` has the following properties and methods:
 
 ### ...`RouteApi` methods
 
-- All of the methods from [`RouteApi`](./RouteApiType.md) are available.
+- All of the methods from [`RouteApi`](../RouteApiType.md) are available.

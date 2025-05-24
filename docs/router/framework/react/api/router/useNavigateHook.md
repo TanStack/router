@@ -27,7 +27,7 @@ The `navigate` function is a function that can be used to navigate to a new loca
 
 The `navigate` function accepts a single argument, an `options` object.
 
-- Type: [`NavigateOptions`](./NavigateOptionsType.md)
+- Type: [`NavigateOptions`](../NavigateOptionsType.md)
 
 ### navigate function returns
 

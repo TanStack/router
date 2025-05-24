@@ -13,7 +13,7 @@ export type Redirect = {
 } & NavigateOptions
 ```
 
-- [`NavigateOptions`](./NavigateOptionsType.md)
+- [`NavigateOptions`](../NavigateOptionsType.md)
 
 ## Redirect properties
 

@@ -72,7 +72,7 @@ This is the easiest and most powerful way to code split your route files.
 When using the `autoCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
 
 > [!IMPORTANT]
-> The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](../routing/file-based-routing.md#getting-started-with-file-based-routing).
+> The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](../../routing/file-based-routing.md#getting-started-with-file-based-routing).
 > This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
 
 To enable automatic code-splitting, you just need to add the following to the configuration of your TanStack Router Bundler Plugin:
@@ -96,7 +96,7 @@ export default defineConfig({
 
 That's it! TanStack Router will automatically code-split all your route files by their critical and non-critical route configurations.
 
-If you want more control over the code-splitting process, head over to the [Automatic Code Splitting](./automatic-code-splitting.md) guide to learn more about the options available.
+If you want more control over the code-splitting process, head over to the [Automatic Code Splitting](../automatic-code-splitting.md) guide to learn more about the options available.
 
 ## Using the `.lazy.tsx` suffix
 
