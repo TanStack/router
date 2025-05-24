@@ -27,6 +27,7 @@ afterEach(() => {
 })
 
 const WAIT_TIME = 100
+const LOADER_WAIT_TIME = 1000
 
 describe('loaders are being called', () => {
   configure({ reactStrictMode: true })
@@ -324,4 +325,69 @@ test('throw error from beforeLoad when navigating to route', async () => {
 
   const indexElement = await screen.findByText('fooErrorComponent')
   expect(indexElement).toBeInTheDocument()
+})
+
+test('reproducer #4245', async () => {
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async () => {
+      await sleep(LOADER_WAIT_TIME)
+      return 'index'
+    },
+    component: () => {
+      const data = indexRoute.useLoaderData()
+      return (
+        <div>
+          <Link to="/foo">foo</Link>
+          {data}
+        </div>
+      )
+    },
+  })
+
+  const fooRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/foo',
+    component: () => <Link to="/">index</Link>,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute, fooRoute])
+  const router = createRouter({ routeTree })
+
+  render(<RouterProvider router={router} />)
+
+  // We wait for the initial loader to complete
+  const fooLink = await screen.findByRole('link', { name: 'foo' }, { timeout: LOADER_WAIT_TIME + WAIT_TIME })
+  expect(fooLink).toBeInTheDocument()
+
+  // We navigate to the foo route
+  fireEvent.click(fooLink)
+
+  // We immediately see the content of the foo route
+  const indexLink = await screen.findByRole('link', { name: 'index' }, { timeout: WAIT_TIME })
+  expect(indexLink).toBeInTheDocument()
+
+  // We navigate to the index route
+  fireEvent.click(indexLink)
+
+  // We immediately see the content of the index route because the stale data is still available
+  const fooLink2 = await screen.findByRole('link', { name: 'foo' }, { timeout: WAIT_TIME })
+  expect(fooLink2).toBeInTheDocument()
+
+  // We navigate to the foo route again
+  fireEvent.click(fooLink2)
+
+  // We immediately see the content of the foo route
+  const indexLink2 = await screen.findByRole('link', { name: 'index' }, { timeout: WAIT_TIME })
+  expect(indexLink2).toBeInTheDocument()
+
+  // We navigate to the index route again
+  fireEvent.click(indexLink2)
+
+  // We now should see the content of the index route immediately because the stale data is still available
+  const fooLink3 = await screen.findByRole('link', { name: 'foo' }, { timeout: WAIT_TIME })
+  expect(fooLink3).toBeInTheDocument()
 })
