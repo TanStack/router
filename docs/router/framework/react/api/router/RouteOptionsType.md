@@ -65,13 +65,13 @@ The `RouteOptions` type accepts an object with the following properties:
 - Search middlewares are functions that transform the search parameters when generating new links for a route or its descendants.
 - A search middleware is passed in the current search (if it is the first middleware to run) or is invoked by the previous middleware calling `next`.
 
-### `parseParams` method (⚠️ deprecated)
+### `parseParams` method (⚠️ deprecated, use `params.parse` instead)
 
 - Type: `(rawParams: Record<string, string>) => TParams`
 - Optional
 - A function that will be called when this route is matched and passed the raw params from the current location and return valid parsed params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's params and the return type will be inferred into the rest of the router.
 
-### `stringifyParams` method (⚠️ deprecated)
+### `stringifyParams` method (⚠️ deprecated, use `params.stringify` instead)
 
 - Type: `(params: TParams) => Record<string, string>`
 - Required if `parseParams` is provided
