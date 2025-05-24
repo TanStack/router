@@ -237,10 +237,8 @@ function resolveVirtualEntriesPlugin(
       return undefined
     },
     load(id) {
-      const routerFilepath = path.resolve(
-        startConfig.root,
-        startConfig.tsr.srcDirectory,
-        'router',
+      const routerFilepath = vite.normalizePath(
+        path.resolve(startConfig.root, startConfig.tsr.srcDirectory, 'router'),
       )
 
       if (id === '/~start/server-entry.tsx') {
