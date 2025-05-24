@@ -359,6 +359,8 @@ test('reproducer #4245', async () => {
 
   render(<RouterProvider router={router} />)
 
+  await router.load()
+
   // We wait for the initial loader to complete
   const fooLink = await screen.findByRole('link', { name: 'foo' }, { timeout: LOADER_WAIT_TIME + WAIT_TIME })
   expect(fooLink).toBeInTheDocument()
