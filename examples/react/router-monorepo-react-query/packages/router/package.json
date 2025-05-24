@@ -9,21 +9,21 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@tanstack/history": "^1.115.0",
-    "@tanstack/react-query": "^5.66.0",
+    "@tanstack/react-query": "^5.77.0",
     "@tanstack/react-router": "^1.120.10",
     "@tanstack/router-plugin": "^1.120.10",
     "@router-mono-react-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",
-    "zod": "^3.24.2",
+    "zod": "^3.25.28",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^4.5.0",
     "typescript": "^5.7.2",
     "vite": "^6.1.0",
-    "vite-plugin-dts": "^4.5.0"
+    "vite-plugin-dts": "^4.5.4"
   }
 }
