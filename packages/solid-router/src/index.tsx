@@ -39,11 +39,11 @@ export {
 
 export type {
   StartSerializer,
-  Serializable,
-  SerializerParse,
-  SerializerParseBy,
-  SerializerStringify,
-  SerializerStringifyBy,
+  DefaultTypeSerializable,
+  TypeSerializerParse,
+  TypeSerializerParseBy,
+  TypeSerializerStringify,
+  TypeSerializerStringifyBy,
   DeferredPromiseState,
   DeferredPromise,
   ParsedLocation,

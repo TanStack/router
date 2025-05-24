@@ -5,33 +5,41 @@ import type {
   ServerFnTypeOrTypeFn,
 } from './createServerFn'
 import type {
+  AnyRouter,
   Assign,
   Constrain,
   Expand,
+  InferSerializer,
   IntersectAssign,
+  RegisteredRouter,
   ResolveValidatorInput,
   ResolveValidatorOutput,
-  SerializerStringify,
+  TypeSerializerStringify,
 } from '@tanstack/router-core'
 
-export function createMiddleware<TType extends MiddlewareType>(
+export function createMiddleware<
+  TType extends MiddlewareType,
+  TRouter extends AnyRouter = RegisteredRouter,
+>(
   options: {
     type: TType
     validateClient?: boolean
   },
   __opts?: FunctionMiddlewareOptions<
+    TRouter,
     unknown,
     undefined,
     undefined,
     undefined,
     ServerFnResponseType
   >,
-): CreateMiddlewareResult<TType> {
+): CreateMiddlewareResult<TRouter, TType> {
   // const resolvedOptions = (__opts || options) as MiddlewareOptions<
   const resolvedOptions = {
     type: 'function',
     ...(__opts ||
       (options as FunctionMiddlewareOptions<
+        TRouter,
         unknown,
         undefined,
         undefined,
@@ -66,31 +74,44 @@ export function createMiddleware<TType extends MiddlewareType>(
         Object.assign(resolvedOptions, { server }),
       ) as any
     },
-  } as unknown as CreateMiddlewareResult<TType>
+  } as unknown as CreateMiddlewareResult<TRouter, TType>
 }
 
 export type MiddlewareType = 'request' | 'function'
 
-export type CreateMiddlewareResult<TType extends MiddlewareType> =
-  'function' extends TType
-    ? FunctionMiddleware<ServerFnResponseType>
-    : RequestMiddleware
+export type CreateMiddlewareResult<
+  TRouter extends AnyRouter,
+  TType extends MiddlewareType,
+> = 'function' extends TType
+  ? FunctionMiddleware<TRouter, ServerFnResponseType>
+  : RequestMiddleware
 
 export interface FunctionMiddleware<
+  TRouter extends AnyRouter,
   TServerFnResponseType extends ServerFnResponseType,
-> extends FunctionMiddlewareAfterMiddleware<unknown, TServerFnResponseType> {
+> extends FunctionMiddlewareAfterMiddleware<
+    TRouter,
+    unknown,
+    TServerFnResponseType
+  > {
   middleware: <const TNewMiddlewares = undefined>(
     middlewares: Constrain<
       TNewMiddlewares,
       ReadonlyArray<AnyFunctionMiddleware>
     >,
-  ) => FunctionMiddlewareAfterMiddleware<TNewMiddlewares, TServerFnResponseType>
+  ) => FunctionMiddlewareAfterMiddleware<
+    TRouter,
+    TNewMiddlewares,
+    TServerFnResponseType
+  >
 }
 
 export interface FunctionMiddlewareAfterMiddleware<
+  TRouter extends AnyRouter,
   TMiddlewares,
   TServerFnResponseType extends ServerFnResponseType,
 > extends FunctionMiddlewareWithTypes<
+      TRouter,
       TMiddlewares,
       undefined,
       undefined,
@@ -100,16 +121,23 @@ export interface FunctionMiddlewareAfterMiddleware<
       TServerFnResponseType
     >,
     FunctionMiddlewareServer<
+      TRouter,
       TMiddlewares,
       undefined,
       undefined,
       undefined,
       TServerFnResponseType
     >,
-    FunctionMiddlewareClient<TMiddlewares, undefined, TServerFnResponseType>,
-    FunctionMiddlewareValidator<TMiddlewares, TServerFnResponseType> {}
+    FunctionMiddlewareClient<
+      TRouter,
+      TMiddlewares,
+      undefined,
+      TServerFnResponseType
+    >,
+    FunctionMiddlewareValidator<TRouter, TMiddlewares, TServerFnResponseType> {}
 
 export interface FunctionMiddlewareWithTypes<
+  TRouter extends AnyRouter,
   TMiddlewares,
   TValidator,
   TServerContext,
@@ -127,6 +155,7 @@ export interface FunctionMiddlewareWithTypes<
     TClientSendContext
   >
   options: FunctionMiddlewareOptions<
+    TRouter,
     TMiddlewares,
     TValidator,
     TServerContext,
@@ -211,6 +240,7 @@ export type IntersectAllMiddleware<
   : TAcc
 
 export type AnyFunctionMiddleware = FunctionMiddlewareWithTypes<
+  any,
   any,
   any,
   any,
@@ -308,6 +338,7 @@ export type AssignAllClientSendContext<
     >
 
 export interface FunctionMiddlewareOptions<
+  in out TRouter extends AnyRouter,
   in out TMiddlewares,
   in out TValidator,
   in out TServerContext,
@@ -318,6 +349,7 @@ export interface FunctionMiddlewareOptions<
   middleware?: TMiddlewares
   validator?: ConstrainValidator<TValidator>
   client?: FunctionMiddlewareClientFn<
+    TRouter,
     TMiddlewares,
     TValidator,
     TServerContext,
@@ -325,6 +357,7 @@ export interface FunctionMiddlewareOptions<
     TServerFnResponseType
   >
   server?: FunctionMiddlewareServerFn<
+    TRouter,
     TMiddlewares,
     TValidator,
     TServerContext,
@@ -334,18 +367,22 @@ export interface FunctionMiddlewareOptions<
   >
 }
 
-export type FunctionMiddlewareClientNextFn<TMiddlewares> = <
-  TSendContext = undefined,
-  TNewClientContext = undefined,
->(ctx?: {
+export type FunctionMiddlewareClientNextFn<
+  TRouter extends AnyRouter,
+  TMiddlewares,
+> = <TSendContext = undefined, TNewClientContext = undefined>(ctx?: {
   context?: TNewClientContext
-  sendContext?: SerializerStringify<TSendContext>
+  sendContext?: TypeSerializerStringify<
+    InferSerializer<TRouter>['~types']['serializer'],
+    TSendContext
+  >
   headers?: HeadersInit
 }) => Promise<
   FunctionClientResultWithContext<TMiddlewares, TSendContext, TNewClientContext>
 >
 
 export interface FunctionMiddlewareServer<
+  TRouter extends AnyRouter,
   TMiddlewares,
   TValidator,
   TServerSendContext,
@@ -354,6 +391,7 @@ export interface FunctionMiddlewareServer<
 > {
   server: <TNewServerContext = undefined, TSendContext = undefined>(
     server: FunctionMiddlewareServerFn<
+      TRouter,
       TMiddlewares,
       TValidator,
       TServerSendContext,
@@ -362,6 +400,7 @@ export interface FunctionMiddlewareServer<
       TServerFnResponseType
     >,
   ) => FunctionMiddlewareAfterServer<
+    TRouter,
     TMiddlewares,
     TValidator,
     TNewServerContext,
@@ -371,7 +410,9 @@ export interface FunctionMiddlewareServer<
     ServerFnResponseType
   >
 }
+
 export type FunctionMiddlewareServerFn<
+  TRouter extends AnyRouter,
   TMiddlewares,
   TValidator,
   TServerSendContext,
@@ -380,6 +421,7 @@ export type FunctionMiddlewareServerFn<
   TServerFnResponseType extends ServerFnResponseType,
 > = (
   options: FunctionMiddlewareServerFnOptions<
+    TRouter,
     TMiddlewares,
     TValidator,
     TServerSendContext,
@@ -393,23 +435,32 @@ export type FunctionMiddlewareServerFn<
 >
 
 export interface RequestMiddlewareServerFnOptions<
+  in out TRouter extends AnyRouter,
   in out TMiddlewares,
   in out TServerSendContext,
 > {
   request: Request
   context: Expand<AssignAllServerContext<TMiddlewares, TServerSendContext>>
-  next: FunctionMiddlewareServerNextFn<TMiddlewares, TServerSendContext>
+  next: FunctionMiddlewareServerNextFn<
+    TRouter,
+    TMiddlewares,
+    TServerSendContext
+  >
   response: Response
   method: Method
   signal: AbortSignal
 }
 
-export type FunctionMiddlewareServerNextFn<TMiddlewares, TServerSendContext> = <
-  TNewServerContext = undefined,
-  TSendContext = undefined,
->(ctx?: {
+export type FunctionMiddlewareServerNextFn<
+  TRouter extends AnyRouter,
+  TMiddlewares,
+  TServerSendContext,
+> = <TNewServerContext = undefined, TSendContext = undefined>(ctx?: {
   context?: TNewServerContext
-  sendContext?: SerializerStringify<TSendContext>
+  sendContext?: TypeSerializerStringify<
+    InferSerializer<TRouter>['~types']['serializer'],
+    TSendContext
+  >
 }) => Promise<
   FunctionServerResultWithContext<
     TMiddlewares,
@@ -437,6 +488,7 @@ export type FunctionServerResultWithContext<
 }
 
 export interface FunctionMiddlewareServerFnOptions<
+  in out TRouter extends AnyRouter,
   in out TMiddlewares,
   in out TValidator,
   in out TServerSendContext,
@@ -444,7 +496,11 @@ export interface FunctionMiddlewareServerFnOptions<
 > {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
   context: Expand<AssignAllServerContext<TMiddlewares, TServerSendContext>>
-  next: FunctionMiddlewareServerNextFn<TMiddlewares, TServerSendContext>
+  next: FunctionMiddlewareServerNextFn<
+    TRouter,
+    TMiddlewares,
+    TServerSendContext
+  >
   response: TServerFnResponseType
   method: Method
   filename: string
@@ -474,6 +530,7 @@ export type FunctionMiddlewareServerFnResult<
     >
 
 export interface FunctionMiddlewareAfterServer<
+  TRouter extends AnyRouter,
   TMiddlewares,
   TValidator,
   TServerContext,
@@ -482,6 +539,7 @@ export interface FunctionMiddlewareAfterServer<
   TClientSendContext,
   TServerFnResponseType extends ServerFnResponseType,
 > extends FunctionMiddlewareWithTypes<
+    TRouter,
     TMiddlewares,
     TValidator,
     TServerContext,
@@ -492,12 +550,14 @@ export interface FunctionMiddlewareAfterServer<
   > {}
 
 export interface FunctionMiddlewareClient<
+  TRouter extends AnyRouter,
   TMiddlewares,
   TValidator,
   TServerFnResponseType extends ServerFnResponseType,
 > {
   client: <TSendServerContext = undefined, TNewClientContext = undefined>(
     client: FunctionMiddlewareClientFn<
+      TRouter,
       TMiddlewares,
       TValidator,
       TSendServerContext,
@@ -505,6 +565,7 @@ export interface FunctionMiddlewareClient<
       TServerFnResponseType
     >,
   ) => FunctionMiddlewareAfterClient<
+    TRouter,
     TMiddlewares,
     TValidator,
     TSendServerContext,
@@ -514,6 +575,7 @@ export interface FunctionMiddlewareClient<
 }
 
 export type FunctionMiddlewareClientFn<
+  TRouter extends AnyRouter,
   TMiddlewares,
   TValidator,
   TSendContext,
@@ -521,6 +583,7 @@ export type FunctionMiddlewareClientFn<
   TServerFnResponseType extends ServerFnResponseType,
 > = (
   options: FunctionMiddlewareClientFnOptions<
+    TRouter,
     TMiddlewares,
     TValidator,
     TServerFnResponseType
@@ -532,6 +595,7 @@ export type FunctionMiddlewareClientFn<
 >
 
 export interface FunctionMiddlewareClientFnOptions<
+  in out TRouter extends AnyRouter,
   in out TMiddlewares,
   in out TValidator,
   in out TServerFnResponseType extends ServerFnResponseType,
@@ -542,7 +606,7 @@ export interface FunctionMiddlewareClientFnOptions<
   method: Method
   response: TServerFnResponseType
   signal: AbortSignal
-  next: FunctionMiddlewareClientNextFn<TMiddlewares>
+  next: FunctionMiddlewareClientNextFn<TRouter, TMiddlewares>
   filename: string
   functionId: string
   type: ServerFnTypeOrTypeFn<
@@ -579,12 +643,14 @@ export type FunctionClientResultWithContext<
 }
 
 export interface FunctionMiddlewareAfterClient<
+  TRouter extends AnyRouter,
   TMiddlewares,
   TValidator,
   TServerSendContext,
   TClientContext,
   TServerFnResponseType extends ServerFnResponseType,
 > extends FunctionMiddlewareWithTypes<
+      TRouter,
       TMiddlewares,
       TValidator,
       undefined,
@@ -594,6 +660,7 @@ export interface FunctionMiddlewareAfterClient<
       TServerFnResponseType
     >,
     FunctionMiddlewareServer<
+      TRouter,
       TMiddlewares,
       TValidator,
       TServerSendContext,
@@ -602,12 +669,14 @@ export interface FunctionMiddlewareAfterClient<
     > {}
 
 export interface FunctionMiddlewareValidator<
+  TRouter extends AnyRouter,
   TMiddlewares,
   TServerFnResponseType extends ServerFnResponseType,
 > {
   validator: <TNewValidator>(
     input: ConstrainValidator<TNewValidator>,
   ) => FunctionMiddlewareAfterValidator<
+    TRouter,
     TMiddlewares,
     TNewValidator,
     TServerFnResponseType
@@ -615,10 +684,12 @@ export interface FunctionMiddlewareValidator<
 }
 
 export interface FunctionMiddlewareAfterValidator<
+  TRouter extends AnyRouter,
   TMiddlewares,
   TValidator,
   TServerFnResponseType extends ServerFnResponseType,
 > extends FunctionMiddlewareWithTypes<
+      TRouter,
       TMiddlewares,
       TValidator,
       undefined,
@@ -628,13 +699,19 @@ export interface FunctionMiddlewareAfterValidator<
       ServerFnResponseType
     >,
     FunctionMiddlewareServer<
+      TRouter,
       TMiddlewares,
       TValidator,
       undefined,
       undefined,
       TServerFnResponseType
     >,
-    FunctionMiddlewareClient<TMiddlewares, TValidator, ServerFnResponseType> {}
+    FunctionMiddlewareClient<
+      TRouter,
+      TMiddlewares,
+      TValidator,
+      ServerFnResponseType
+    > {}
 
 export interface RequestMiddleware
   extends RequestMiddlewareAfterMiddleware<undefined> {
