@@ -6,8 +6,8 @@ TanStack Router uses a nested route tree to match up the URL with the correct co
 
 To build a route tree, TanStack Router supports:
 
-- [File-Based Routing](./file-based-routing.md)
-- [Code-Based Routing](./code-based-routing.md)
+- [File-Based Routing](../file-based-routing.md)
+- [Code-Based Routing](../code-based-routing.md)
 
 Both methods support the exact same core features and functionality, but **file-based routing requires less code for the same or better results**. For this reason, **file-based routing is the preferred and recommended way** to configure TanStack Router. Most of the documentation is written from the perspective of file-based routing.
 
@@ -58,10 +58,10 @@ The above is a valid route tree configuration that can be used with TanStack Rou
 
 Route trees can be configured using a few different ways:
 
-- [Flat Routes](./file-based-routing.md#flat-routes)
-- [Directories](./file-based-routing.md#directory-routes)
-- [Mixed Flat Routes and Directories](./file-based-routing.md#mixed-flat-and-directory-routes)
-- [Virtual File Routes](./virtual-file-routes.md)
-- [Code-Based Routes](./code-based-routing.md)
+- [Flat Routes](../file-based-routing.md#flat-routes)
+- [Directories](../file-based-routing.md#directory-routes)
+- [Mixed Flat Routes and Directories](../file-based-routing.md#mixed-flat-and-directory-routes)
+- [Virtual File Routes](../virtual-file-routes.md)
+- [Code-Based Routes](../code-based-routing.md)
 
 Please be sure to check out the full documentation links above for each type of route tree, or just proceed to the next section to get started with file-based routing.

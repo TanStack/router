@@ -3,7 +3,7 @@ id: createLazyFileRouteFunction
 title: createLazyFileRoute function
 ---
 
-The `createLazyFileRoute` function is used for creating a partial file-based route route instance that is lazily loaded when matched. This route instance can only be used to configure the [non-critical properties](../../guide/code-splitting.md#how-does-tanstack-router-split-code) of the route, such as `component`, `pendingComponent`, `errorComponent`, and the `notFoundComponent`.
+The `createLazyFileRoute` function is used for creating a partial file-based route route instance that is lazily loaded when matched. This route instance can only be used to configure the [non-critical properties](../../../guide/code-splitting.md#how-does-tanstack-router-split-code) of the route, such as `component`, `pendingComponent`, `errorComponent`, and the `notFoundComponent`.
 
 ## createLazyFileRoute options
 
@@ -17,7 +17,7 @@ The `createLazyFileRoute` function accepts a single argument of type `string` th
 
 ### createLazyFileRoute returns
 
-A new function that accepts a single argument of partial of the type [`RouteOptions`](./RouteOptionsType.md) that will be used to configure the file [`Route`](./RouteType.md) instance.
+A new function that accepts a single argument of partial of the type [`RouteOptions`](../RouteOptionsType.md) that will be used to configure the file [`Route`](../RouteType.md) instance.
 
 - Type:
 
@@ -28,7 +28,7 @@ Pick<
 >
 ```
 
-- [`RouteOptions`](./RouteOptionsType.md)
+- [`RouteOptions`](../RouteOptionsType.md)
 
 > ⚠️ Note: For `tsr generate` and `tsr watch` to work properly, the file route instance must be exported from the file using the `Route` identifier.
 

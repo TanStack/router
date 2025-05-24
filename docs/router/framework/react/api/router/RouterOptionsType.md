@@ -141,7 +141,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Type: `boolean | ViewTransitionOptions`
 - Optional
 - If `true`, route navigations will be called using `document.startViewTransition()`.
-- If [`ViewTransitionOptions`](./ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})`
+- If [`ViewTransitionOptions`](../ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})`
   where `types` will be the strings array passed with `ViewTransitionOptions["types"]`. If the browser does not support viewTransition types,
   the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
 - If the browser does not support this api, this option will be ignored.
@@ -174,7 +174,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 ### `context` property
 
 - Type: `any`
-- Optional or required if the root route was created with [`createRootRouteWithContext()`](./createRootRouteWithContextFunction.md).
+- Optional or required if the root route was created with [`createRootRouteWithContext()`](../createRootRouteWithContextFunction.md).
 - The root context that will be provided to all routes in the route tree. This can be used to provide a context to all routes in the tree without having to provide it to each route individually.
 
 ### `dehydrate` method
@@ -251,7 +251,7 @@ const router = createRouter({
 - Type: `'root' | 'fuzzy'`
 - Optional
 - Defaults to `'fuzzy'`
-- This property controls how TanStack Router will handle scenarios where it cannot find a route to match the current location. See the [Not Found Errors guide](../../guide/not-found-errors.md) for more information.
+- This property controls how TanStack Router will handle scenarios where it cannot find a route to match the current location. See the [Not Found Errors guide](../../../guide/not-found-errors.md) for more information.
 
 ### `notFoundRoute` property
 
@@ -295,7 +295,7 @@ const router = createRouter({
 - Optional
 - Defaults to `false`
 - Configures whether structural sharing is enabled by default for fine-grained selectors.
-- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+- See the [Render Optimizations guide](../../../guide/render-optimizations.md) for more information.
 
 ### `defaultRemountDeps` property
 
