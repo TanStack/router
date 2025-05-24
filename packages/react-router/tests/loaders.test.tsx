@@ -362,34 +362,54 @@ test('reproducer #4245', async () => {
   await router.load()
 
   // We wait for the initial loader to complete
-  const fooLink = await screen.findByRole('link', { name: 'foo' }, { timeout: LOADER_WAIT_TIME + WAIT_TIME })
+  const fooLink = await screen.findByRole(
+    'link',
+    { name: 'foo' },
+    { timeout: LOADER_WAIT_TIME + WAIT_TIME },
+  )
   expect(fooLink).toBeInTheDocument()
 
   // We navigate to the foo route
   fireEvent.click(fooLink)
 
   // We immediately see the content of the foo route
-  const indexLink = await screen.findByRole('link', { name: 'index' }, { timeout: WAIT_TIME })
+  const indexLink = await screen.findByRole(
+    'link',
+    { name: 'index' },
+    { timeout: WAIT_TIME },
+  )
   expect(indexLink).toBeInTheDocument()
 
   // We navigate to the index route
   fireEvent.click(indexLink)
 
   // We immediately see the content of the index route because the stale data is still available
-  const fooLink2 = await screen.findByRole('link', { name: 'foo' }, { timeout: WAIT_TIME })
+  const fooLink2 = await screen.findByRole(
+    'link',
+    { name: 'foo' },
+    { timeout: WAIT_TIME },
+  )
   expect(fooLink2).toBeInTheDocument()
 
   // We navigate to the foo route again
   fireEvent.click(fooLink2)
 
   // We immediately see the content of the foo route
-  const indexLink2 = await screen.findByRole('link', { name: 'index' }, { timeout: WAIT_TIME })
+  const indexLink2 = await screen.findByRole(
+    'link',
+    { name: 'index' },
+    { timeout: WAIT_TIME },
+  )
   expect(indexLink2).toBeInTheDocument()
 
   // We navigate to the index route again
   fireEvent.click(indexLink2)
 
   // We now should see the content of the index route immediately because the stale data is still available
-  const fooLink3 = await screen.findByRole('link', { name: 'foo' }, { timeout: WAIT_TIME })
+  const fooLink3 = await screen.findByRole(
+    'link',
+    { name: 'foo' },
+    { timeout: WAIT_TIME },
+  )
   expect(fooLink3).toBeInTheDocument()
 })
