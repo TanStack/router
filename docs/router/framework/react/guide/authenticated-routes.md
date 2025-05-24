@@ -83,9 +83,9 @@ If your authentication flow relies on interactions with React context and/or hoo
 > [!IMPORTANT]
 > React hooks are not meant to be consumed outside of React components. If you need to use a hook outside of a React component, you need to extract the returned state from the hook in a component that wraps your `<RouterProvider />` and then pass the returned value down to TanStack Router.
 
-We'll cover the `router.context` options in-detail in the [Router Context](./router-context.md) section.
+We'll cover the `router.context` options in-detail in the [Router Context](../router-context.md) section.
 
-Here's an example that uses React context and hooks for protecting authenticated routes in TanStack Router. See the entire working setup in the [Authenticated Routes example](../examples/authenticated-routes).
+Here's an example that uses React context and hooks for protecting authenticated routes in TanStack Router. See the entire working setup in the [Authenticated Routes example](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes).
 
 - `src/routes/__root.tsx`
 

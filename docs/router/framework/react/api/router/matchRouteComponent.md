@@ -11,7 +11,7 @@ The `MatchRoute` component accepts the same options as the `useMatchRoute` hook 
 
 ### `...props` prop
 
-- Type: [`UseMatchRouteOptions`](./UseMatchRouteOptionsType.md)
+- Type: [`UseMatchRouteOptions`](../UseMatchRouteOptionsType.md)
 
 ### `children` prop
 

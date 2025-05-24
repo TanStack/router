@@ -18,7 +18,7 @@ const router = createRouter({
 
 You'll probably notice quickly that the `Router` constructor requires a `routeTree` option. This is the route tree that the router will use to match routes and render components.
 
-Whether you used [file-based routing](../routing/file-based-routing.md) or [code-based routing](../routing/code-based-routing.md), you'll need to pass your route tree to the `createRouter` function:
+Whether you used [file-based routing](../../routing/file-based-routing.md) or [code-based routing](../../routing/code-based-routing.md), you'll need to pass your route tree to the `createRouter` function:
 
 ### Filesystem Route Tree
 
@@ -73,4 +73,4 @@ export const Route = createRootRoute({
 
 ## Other Options
 
-There are many other options that can be passed to the `Router` constructor. You can find a full list of them in the [API Reference](../api/router/RouterOptionsType.md).
+There are many other options that can be passed to the `Router` constructor. You can find a full list of them in the [API Reference](../../api/router/RouterOptionsType.md).

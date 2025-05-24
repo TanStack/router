@@ -14,7 +14,7 @@ The `useCanGoBack` hook returns a boolean representing if the router history can
 
 ## Limitations
 
-The router history index is reset after a navigation with [`reloadDocument`](./NavigateOptionsType.md#reloaddocument) set as `true`. This causes the router history to consider the new location as the initial one and will cause `useCanGoBack` to return `false`.
+The router history index is reset after a navigation with [`reloadDocument`](../NavigateOptionsType.md#reloaddocument) set as `true`. This causes the router history to consider the new location as the initial one and will cause `useCanGoBack` to return `false`.
 
 ## Examples
 

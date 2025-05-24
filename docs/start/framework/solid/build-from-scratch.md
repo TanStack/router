@@ -297,4 +297,4 @@ That's it! 🤯 You've now set up a TanStack Start project and written your firs
 
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
 
-You want to deploy your application? Check out the [hosting guide](./hosting.md).
+You want to deploy your application? Check out the [hosting guide](../hosting.md).

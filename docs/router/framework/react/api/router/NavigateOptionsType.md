@@ -50,7 +50,7 @@ The `NavigateOptions` object accepts the following properties:
 - Optional
 - Defaults to `false`.
 - If `true`, navigation will be called using `document.startViewTransition()`.
-- If [`ViewTransitionOptions`](./ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})` where `types` will be the strings array passed with `ViewTransitionOptions["types"]`. If the browser does not support viewTransition types, the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
+- If [`ViewTransitionOptions`](../ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})` where `types` will be the strings array passed with `ViewTransitionOptions["types"]`. If the browser does not support viewTransition types, the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
 - If the browser does not support this api, this option will be ignored.
 - See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) for more information on how this function works.
 - See [Google](https://developer.chrome.com/docs/web-platform/view-transitions/same-document#view-transition-types) for more information on viewTransition types
@@ -75,4 +75,4 @@ The `NavigateOptions` object accepts the following properties:
 - Optional
 - This can be used instead of `to` to navigate to a fully built href, e.g. pointing to an external target.
 
-- [`ToOptions`](./ToOptionsType.md)
+- [`ToOptions`](../ToOptionsType.md)

@@ -9,7 +9,7 @@ The `redirect` function returns a new `Redirect` object that can be either retur
 
 The `redirect` function accepts a single argument, the `options` to determine the redirect behavior.
 
-- Type: [`Redirect`](./RedirectType.md)
+- Type: [`Redirect`](../RedirectType.md)
 - Required
 
 ## redirect returns

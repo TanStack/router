@@ -12,7 +12,7 @@ The `Link` component accepts the following props:
 ### `...props`
 
 - Type: `LinkProps & React.RefAttributes<HTMLAnchorElement>`
-- [`LinkProps`](./LinkPropsType.md)
+- [`LinkProps`](../LinkPropsType.md)
 
 ## Link returns
 
