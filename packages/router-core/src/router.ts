@@ -26,6 +26,7 @@ import {
 } from './path'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
+import { routeOptionsHeadUnexpectedKeysWarning } from './route'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, isResolvedRedirect } from './redirect'
@@ -2602,6 +2603,8 @@ export class RouterCore<
                         loaderData: match.loaderData,
                       }
                       const headFnContent = route.options.head?.(assetContext)
+                      routeOptionsHeadUnexpectedKeysWarning(headFnContent)
+
                       const meta = headFnContent?.meta
                       const links = headFnContent?.links
                       const headScripts = headFnContent?.scripts

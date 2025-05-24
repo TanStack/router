@@ -10,6 +10,7 @@ import type {
   MakeRouteMatch,
   Manifest,
   RouteContextOptions,
+  routeOptionsHeadUnexpectedKeysWarning,
 } from '@tanstack/router-core'
 
 declare global {
@@ -215,6 +216,7 @@ export function hydrate(router: AnyRouter) {
       loaderData: match.loaderData,
     }
     const headFnContent = route.options.head?.(assetContext)
+    routeOptionsHeadUnexpectedKeysWarning(headFnContent)
 
     const scripts = route.options.scripts?.(assetContext)
 
