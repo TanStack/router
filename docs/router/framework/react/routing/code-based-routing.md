@@ -214,7 +214,7 @@ export interface MyRouterContext {
 const rootRoute = createRootRouteWithContext<MyRouterContext>()
 ```
 
-To learn more about Context in TanStack Router, see the ../../guide/router-context.md guide.
+To learn more about Context in TanStack Router, see the [Router Context](../../guide/router-context.md) guide.
 
 ## Basic Routes
 

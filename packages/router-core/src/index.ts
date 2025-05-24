@@ -197,6 +197,7 @@ export type {
   RouteAddFileTypesFn,
   ResolveOptionalParams,
   ResolveRequiredParams,
+  RootRoute,
 } from './route'
 
 export {
