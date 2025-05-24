@@ -106,7 +106,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       const router = createRouter()
 
       // Attach the server-side SSR utils to the client-side router
-      attachRouterServerSsrUtils(router, getStartManifest())
+      attachRouterServerSsrUtils(router, await getStartManifest())
 
       // Update the client-side router with the history and context
       router.update({
