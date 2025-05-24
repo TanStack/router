@@ -1,18 +1,7 @@
 import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import { startSerializer } from '@tanstack/start-client-core'
-// @ts-expect-error
-import _serverFnManifest from 'tanstack-start-server-fn-manifest:v'
 import { getEvent, getResponseStatus } from './h3'
-
-const serverFnManifest = _serverFnManifest as Record<
-  string,
-  {
-    functionName: string
-    extractedFilename: string
-    importer: () => Promise<any>
-  }
->
 
 function sanitizeBase(base: string | undefined) {
   if (!base) {
@@ -53,6 +42,19 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
   }
 
+  const { default: _serverFnManifest } = await import(
+    // @ts-expect-error
+    'tanstack-start-server-fn-manifest:v'
+  )
+
+  const serverFnManifest = _serverFnManifest as Record<
+    string,
+    {
+      functionName: string
+      extractedFilename: string
+      importer: () => Promise<any>
+    }
+  >
   const serverFnInfo = serverFnManifest[serverFnId]
 
   if (!serverFnInfo) {

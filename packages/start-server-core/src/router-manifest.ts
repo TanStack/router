@@ -1,4 +1,3 @@
-import { tsrStartManifest } from 'tanstack-start-router-manifest:v'
 import { rootRouteId } from '@tanstack/router-core'
 
 declare global {
@@ -12,7 +11,8 @@ declare global {
  * special assets that are needed for the client. It does not include relationships
  * between routes or any other data that is not needed for the client.
  */
-export function getStartManifest() {
+export async function getStartManifest() {
+  const { tsrStartManifest } = await import('tanstack-start-router-manifest:v')
   const startManifest = tsrStartManifest()
 
   const rootRoute = (startManifest.routes[rootRouteId] =
