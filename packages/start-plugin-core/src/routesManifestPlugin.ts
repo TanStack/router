@@ -12,6 +12,32 @@ import type {
 import type { Manifest, RouterManagedTag } from '@tanstack/router-core'
 import type { TanStackStartOutputConfig } from './plugin'
 
+const getCSSRecursively = (file: ViteManifestChunk, filesByRouteFilePath: ViteManifest) => {
+  const result: Array<RouterManagedTag> = []
+
+  // Get all css imports from the file
+  for (const cssFile of file.css ?? []) {
+    result.push({
+      tag: 'link',
+      attrs: {
+        rel: 'stylesheet',
+        href: joinURL('/', cssFile),
+        type: 'text/css',
+      },
+    })
+  }
+
+  // Recursively get CSS from imports
+  for (const imp of file.imports ?? []) {
+    const importInfo = filesByRouteFilePath[imp];
+    if (importInfo) {
+      result.push(...getCSSRecursively(importInfo, filesByRouteFilePath));
+    }
+  }
+
+  return result;
+};
+
 export function startManifestPlugin(
   opts: TanStackStartOutputConfig,
 ): PluginOption {
@@ -115,7 +141,7 @@ export function startManifestPlugin(
         Object.entries(routes).forEach(([k, v]) => {
           const file =
             filesByRouteFilePath[
-              path.join(routesDirectoryFromRoot, v.filePath as string)
+            path.join(routesDirectoryFromRoot, v.filePath as string)
             ]
 
           if (file) {
@@ -127,17 +153,7 @@ export function startManifestPlugin(
               preloads.unshift(path.join('/', file.file))
             }
 
-            const cssFiles = file.css ?? []
-            const cssAssetsList: Array<RouterManagedTag> = cssFiles.map(
-              (cssFile) => ({
-                tag: 'link',
-                attrs: {
-                  rel: 'stylesheet',
-                  href: joinURL('/', cssFile),
-                  type: 'text/css',
-                },
-              }),
-            )
+            const cssAssetsList = getCSSRecursively(file, filesByRouteFilePath);
 
             routes[k] = {
               ...v,
@@ -157,17 +173,7 @@ export function startManifestPlugin(
 
           // Gather all the CSS files from the entry file in
           // the `css` key and add them to the root route
-          const entryCssFiles = entryFile.css ?? []
-          const entryCssAssetsList: Array<RouterManagedTag> = entryCssFiles.map(
-            (cssFile) => ({
-              tag: 'link',
-              attrs: {
-                rel: 'stylesheet',
-                href: joinURL('/', cssFile),
-                type: 'text/css',
-              },
-            }),
-          )
+          const entryCssAssetsList = getCSSRecursively(entryFile, filesByRouteFilePath)
 
           routes[rootRouteId]!.assets = [
             ...(routes[rootRouteId]!.assets || []),
