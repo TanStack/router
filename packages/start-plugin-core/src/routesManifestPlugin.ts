@@ -12,7 +12,10 @@ import type {
 import type { Manifest, RouterManagedTag } from '@tanstack/router-core'
 import type { TanStackStartOutputConfig } from './plugin'
 
-const getCSSRecursively = (file: ViteManifestChunk, filesByRouteFilePath: ViteManifest) => {
+const getCSSRecursively = (
+  file: ViteManifestChunk,
+  filesByRouteFilePath: ViteManifest,
+) => {
   const result: Array<RouterManagedTag> = []
 
   // Get all css imports from the file
@@ -29,14 +32,14 @@ const getCSSRecursively = (file: ViteManifestChunk, filesByRouteFilePath: ViteMa
 
   // Recursively get CSS from imports
   for (const imp of file.imports ?? []) {
-    const importInfo = filesByRouteFilePath[imp];
+    const importInfo = filesByRouteFilePath[imp]
     if (importInfo) {
-      result.push(...getCSSRecursively(importInfo, filesByRouteFilePath));
+      result.push(...getCSSRecursively(importInfo, filesByRouteFilePath))
     }
   }
 
-  return result;
-};
+  return result
+}
 
 export function startManifestPlugin(
   opts: TanStackStartOutputConfig,
@@ -141,7 +144,7 @@ export function startManifestPlugin(
         Object.entries(routes).forEach(([k, v]) => {
           const file =
             filesByRouteFilePath[
-            path.join(routesDirectoryFromRoot, v.filePath as string)
+              path.join(routesDirectoryFromRoot, v.filePath as string)
             ]
 
           if (file) {
@@ -153,7 +156,7 @@ export function startManifestPlugin(
               preloads.unshift(path.join('/', file.file))
             }
 
-            const cssAssetsList = getCSSRecursively(file, filesByRouteFilePath);
+            const cssAssetsList = getCSSRecursively(file, filesByRouteFilePath)
 
             routes[k] = {
               ...v,
@@ -173,7 +176,10 @@ export function startManifestPlugin(
 
           // Gather all the CSS files from the entry file in
           // the `css` key and add them to the root route
-          const entryCssAssetsList = getCSSRecursively(entryFile, filesByRouteFilePath)
+          const entryCssAssetsList = getCSSRecursively(
+            entryFile,
+            filesByRouteFilePath,
+          )
 
           routes[rootRouteId]!.assets = [
             ...(routes[rootRouteId]!.assets || []),
