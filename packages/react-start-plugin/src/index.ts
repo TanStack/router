@@ -21,10 +21,10 @@ export function TanStackStartVitePlugin(
     TanStackStartVitePluginCore(
       {
         framework: 'react',
-        getVirtualServerHandlerEntry(ctx) {
+        getVirtualServerRootHandler(ctx) {
           return `
 import { toWebRequest, defineEventHandler } from '@tanstack/react-start/server';
-import serverEntry from '${ctx.ssrEntryFilepath}';
+import serverEntry from '${ctx.serverEntryFilepath}';
 
 export default defineEventHandler(function(event) {
   const request = toWebRequest(event);
@@ -49,7 +49,7 @@ startTransition(() => {
   );
 });`
         },
-        getVirtualSsrEntry(ctx) {
+        getVirtualServerEntry(ctx) {
           return `
 import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server';
 import { createRouter } from '${ctx.routerFilepath}';
