@@ -21,10 +21,10 @@ export function TanStackStartVitePlugin(
     TanStackStartVitePluginCore(
       {
         framework: 'solid',
-        getVirtualServerHandlerEntry(ctx) {
+        getVirtualServerRootHandler(ctx) {
           return `
 import { toWebRequest, defineEventHandler } from '@tanstack/solid-start/server';
-import serverEntry from '${ctx.ssrEntryFilepath}';
+import serverEntry from '${ctx.serverEntryFilepath}';
 
 export default defineEventHandler(function(event) {
   const request = toWebRequest(event);
@@ -41,7 +41,7 @@ const router = createRouter();
 
 hydrate(() => <StartClient router={router} />, document.body);`
         },
-        getVirtualSsrEntry(ctx) {
+        getVirtualServerEntry(ctx) {
           return `
 import { createStartHandler, defaultStreamHandler } from '@tanstack/solid-start/server';
 import { createRouter } from '${ctx.routerFilepath}';

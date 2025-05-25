@@ -35,11 +35,11 @@ export const ssrEntryFile = 'ssr.mjs'
 
 export interface TanStackStartVitePluginCoreOptions {
   framework: CompileStartFrameworkOptions
-  getVirtualServerHandlerEntry: (ctx: {
+  getVirtualServerRootHandler: (ctx: {
     routerFilepath: string
-    ssrEntryFilepath: string
+    serverEntryFilepath: string
   }) => string
-  getVirtualSsrEntry: (ctx: { routerFilepath: string }) => string
+  getVirtualServerEntry: (ctx: { routerFilepath: string }) => string
   getVirtualClientEntry: (ctx: { routerFilepath: string }) => string
 }
 // this needs to live outside of the TanStackStartVitePluginCore since it will be invoked multiple times by vite
@@ -250,9 +250,9 @@ function resolveVirtualEntriesPlugin(
               path.resolve(resolvedConfig.root, startConfig.serverEntryPath),
             )
 
-        return opts.getVirtualServerHandlerEntry({
+        return opts.getVirtualServerRootHandler({
           routerFilepath,
-          ssrEntryFilepath,
+          serverEntryFilepath: ssrEntryFilepath,
         })
       }
 
@@ -261,7 +261,7 @@ function resolveVirtualEntriesPlugin(
       }
 
       if (id === '/~start/default-server-entry.tsx') {
-        return opts.getVirtualSsrEntry({ routerFilepath })
+        return opts.getVirtualServerEntry({ routerFilepath })
       }
 
       return undefined

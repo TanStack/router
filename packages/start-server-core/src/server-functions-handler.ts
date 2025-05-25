@@ -42,19 +42,20 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
   }
 
-  const { default: _serverFnManifest } = await import(
+  const { default: serverFnManifest } = (await import(
     // @ts-expect-error
     'tanstack-start-server-fn-manifest:v'
-  )
+  )) as {
+    default: Record<
+      string,
+      {
+        functionName: string
+        extractedFilename: string
+        importer: () => Promise<any>
+      }
+    >
+  }
 
-  const serverFnManifest = _serverFnManifest as Record<
-    string,
-    {
-      functionName: string
-      extractedFilename: string
-      importer: () => Promise<any>
-    }
-  >
   const serverFnInfo = serverFnManifest[serverFnId]
 
   if (!serverFnInfo) {

@@ -72,7 +72,7 @@ export function nitroPlugin(
 
               const nitroConfig: NitroConfig = {
                 dev: false,
-                // TODO do we need this? should this be made configurable?
+                // TODO: do we need this? should this be made configurable?
                 compatibilityDate: '2024-11-19',
                 logLevel: 3,
                 preset: buildPreset,
@@ -86,8 +86,16 @@ export function nitroPlugin(
                 },
                 prerender: undefined,
                 renderer: ssrEntryFile,
+                plugins: [], // Nitro's plugins
+                appConfigFiles: [],
+                scanDirs: [],
+                imports: false, // unjs/unimport for global/magic imports
                 rollupConfig: {
                   plugins: [virtualBundlePlugin(getSsrBundle())],
+                },
+                virtual: {
+                  // This is Nitro's way of defining virtual modules
+                  // Should we define the ones for TanStack Start's here as well?
                 },
               }
 
