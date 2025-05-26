@@ -1,4 +1,5 @@
 import { expectTypeOf, test } from 'vitest'
+import React from 'react'
 import {
   Link,
   createLink,
@@ -9,6 +10,7 @@ import {
 } from '../src'
 import type {
   CreateLinkProps,
+  LinkComponent,
   ResolveRelativePath,
   SearchSchemaInput,
 } from '../src'
@@ -4003,6 +4005,33 @@ test('when passing a component with props to createLink and navigating to the ro
     }>()
 
   createLink((props) => expectTypeOf(props).toEqualTypeOf<CreateLinkProps>())
+})
+
+test('that createLink refs forward correctly', () => {
+  // copied from: https://tanstack.com/router/latest/docs/framework/react/guide/custom-link#basic-example
+  interface BasicLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {}
+  const BasicLinkComponent = React.forwardRef<HTMLAnchorElement, BasicLinkProps>((props, ref) => {
+    return <a ref={ref} {...props} className={'block px-3 py-2 text-blue-700'} />
+  })
+  const CreatedLinkComponent = createLink(BasicLinkComponent)
+  const CustomLink: LinkComponent<typeof BasicLinkComponent> = (props) => {
+    return <CreatedLinkComponent preload={'intent'} {...props} />
+  }
+
+  expectTypeOf(BasicLinkComponent)
+    .parameter(0)
+    .toHaveProperty('ref')
+    .toEqualTypeOf<React.Ref<HTMLAnchorElement> | undefined>()
+  
+  expectTypeOf(CreatedLinkComponent)
+    .parameter(0)
+    .toHaveProperty('ref')
+    .toEqualTypeOf<Parameters<typeof BasicLinkComponent>[0]['ref']>()
+  
+  expectTypeOf(CustomLink)
+    .parameter(0)
+    .toHaveProperty('ref')
+    .toEqualTypeOf<Parameters<typeof BasicLinkComponent>[0]['ref']>()
 })
 
 test('ResolveRelativePath', () => {
