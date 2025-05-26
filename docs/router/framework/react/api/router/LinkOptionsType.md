@@ -3,7 +3,7 @@ id: LinkOptionsType
 title: LinkOptions type
 ---
 
-The `LinkOptions` type extends the [`NavigateOptions`](./NavigateOptionsType.md) type and contains additional options that can be used by TanStack Router when handling actual anchor element attributes.
+The `LinkOptions` type extends the [`NavigateOptions`](../NavigateOptionsType.md) type and contains additional options that can be used by TanStack Router when handling actual anchor element attributes.
 
 ```tsx
 type LinkOptions = NavigateOptions & {
@@ -36,7 +36,7 @@ The `LinkOptions` object accepts/contains the following properties:
 - Type: `false | 'intent' | 'viewport' | 'render'`
 - Optional
 - If set, the link's preloading strategy will be set to this value.
-- See the [Preloading guide](../../guide/preloading.md) for more information.
+- See the [Preloading guide](../../../guide/preloading.md) for more information.
 
 ### `preloadDelay`
 
