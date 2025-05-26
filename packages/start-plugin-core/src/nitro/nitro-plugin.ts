@@ -80,7 +80,7 @@ export function nitroPlugin(
                 publicAssets: [
                   {
                     dir: path.resolve(options.root, clientDistDir),
-                    baseURL: globalThis.TSS_APP_BASE,
+                    baseURL: '/',
                   },
                 ],
                 typescript: {
@@ -93,7 +93,7 @@ export function nitroPlugin(
                 scanDirs: [],
                 imports: false, // unjs/unimport for global/magic imports
                 rollupConfig: {
-                  plugins: [virtualBundlePlugin(getSsrBundle())],
+                  plugins: [virtualBundlePlugin(getSsrBundle()) as any],
                 },
                 virtual: {
                   // This is Nitro's way of defining virtual modules
