@@ -47,7 +47,7 @@ See the example below:
 | ┄ ʦ `route-b.tsx`       | `/route-b`                | `<Root><PathlessLayout><RouteB>`  |
 | 📂 `files`              |                           |                                   |
 | ┄ ʦ `$.tsx`             | `/files/$`                | `<Root><Files>`                   |
-| 📂 `account`            |                           |                                   |   
+| 📂 `account`            |                           |                                   |
 | ┄ ʦ `route.tsx`         | `/account`                | `<Root><Account>`                 |
 | ┄ ʦ `overview.tsx`      | `/account/overview`       | `<Root><Account><Overview>`       |
 
