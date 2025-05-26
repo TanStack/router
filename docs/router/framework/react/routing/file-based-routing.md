@@ -75,6 +75,8 @@ See the example below:
 | ʦ `_pathlessLayout.route-a.tsx` | `/route-a`                | `<Root><PathlessLayout><RouteA>`  |
 | ʦ `_pathlessLayout.route-b.tsx` | `/route-b`                | `<Root><PathlessLayout><RouteB>`  |
 | ʦ `files.$.tsx`                 | `/files/$`                | `<Root><Files>`                   |
+| ʦ `account.tsx`                 | `/account`                | `<Root><Account>`                 |
+| ʦ `account.overview.tsx`        | `/account/overview`       | `<Root><Account><Overview>`       |
 
 ## Mixed Flat and Directory Routes
 
@@ -95,6 +97,8 @@ See the example below:
 | ʦ `settings.tsx`               | `/settings`               | `<Root><Settings>`                |
 | ʦ `settings.profile.tsx`       | `/settings/profile`       | `<Root><Settings><Profile>`       |
 | ʦ `settings.notifications.tsx` | `/settings/notifications` | `<Root><Settings><Notifications>` |
+| ʦ `account.tsx`                | `/account`                | `<Root><Account>`                 |
+| ʦ `account.overview.tsx`       | `/account/overview`       | `<Root><Account><Overview>`       |
 
 Both flat and directory routes can be mixed together to create a route tree that uses the best of both worlds where it makes sense.
 
