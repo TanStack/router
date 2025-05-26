@@ -9,6 +9,7 @@ export {
   serverOnly,
   clientOnly,
   json,
+  createStart,
 } from '@tanstack/start-client-core'
 export {
   type DehydratedRouter,
@@ -60,6 +61,7 @@ export {
   type FunctionMiddlewareServerFnOptions,
   type FunctionMiddlewareServerNextFn,
   type FunctionServerResultWithContext,
+  type Register,
 } from '@tanstack/start-client-core'
 export { Meta } from './Meta'
 export { Scripts } from './Scripts'

@@ -4,7 +4,7 @@ import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
 import { serovalSerializer } from '@tanstack/react-router'
 import { FormDataPlugin, HeadersPlugin } from 'seroval-plugins/web'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, createStart } from '@tanstack/react-start'
 
 const fn = createServerFn().handler(() => {
   return {
@@ -20,12 +20,19 @@ export function createRouter() {
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,
     scrollRestoration: true,
-    serializer: serovalSerializer({
-      plugins: [FormDataPlugin, HeadersPlugin],
-    }),
   })
 
   return router
+}
+
+const start = createStart({
+  serializer: serovalSerializer({ plugins: [FormDataPlugin, HeadersPlugin] }),
+})
+
+declare module '@tanstack/react-start' {
+  interface Register {
+    start: typeof start
+  }
 }
 
 declare module '@tanstack/react-router' {

@@ -261,7 +261,6 @@ export type {
   ServerSrr,
   ClearCacheFn,
   CreateRouterFn,
-  InferSerializer,
 } from './router'
 
 export type {
@@ -423,3 +422,13 @@ export type {
   ValidateUseSearchResult,
   ValidateUseParamsResult,
 } from './typePrimitives'
+
+export type {
+  CreateStartConfig,
+  StartConfig,
+  StartConfigTypes,
+  DefaultStartRegister,
+  StartRegister,
+  AnyStartConfig,
+  InferSerializer,
+} from './start'

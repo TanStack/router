@@ -505,11 +505,6 @@ export type RouterContextOptions<TRouteTree extends AnyRoute> =
         context: InferRouterContext<TRouteTree>
       }
 
-export type InferSerializer<TRouter extends AnyRouter> =
-  unknown extends NonNullable<TRouter['options']['serializer']>
-    ? SerovalSerializer<unknown>
-    : NonNullable<TRouter['options']['serializer']>
-
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
