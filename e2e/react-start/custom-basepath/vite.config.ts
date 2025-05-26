@@ -3,6 +3,7 @@ import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
 export default defineConfig({
+  base: '/custom/basepath',
   server: {
     port: 3000,
   },

@@ -3,7 +3,7 @@ import { derivePort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
 const PORT = derivePort(packageJson.name)
-const baseURL = `http://localhost:${PORT}`
+const baseURL = `http://localhost:${PORT}/custom/basepath`
 
 /**
  * See https://playwright.dev/docs/test-configuration.

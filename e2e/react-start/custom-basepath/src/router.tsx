@@ -10,6 +10,7 @@ export function createRouter() {
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,
     scrollRestoration: true,
+    basepath: '/custom/basepath',
   })
 
   return router
