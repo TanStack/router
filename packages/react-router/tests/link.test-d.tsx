@@ -4009,9 +4009,15 @@ test('when passing a component with props to createLink and navigating to the ro
 
 test('that createLink refs forward correctly', () => {
   // copied from: https://tanstack.com/router/latest/docs/framework/react/guide/custom-link#basic-example
-  interface BasicLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {}
-  const BasicLinkComponent = React.forwardRef<HTMLAnchorElement, BasicLinkProps>((props, ref) => {
-    return <a ref={ref} {...props} className={'block px-3 py-2 text-blue-700'} />
+  interface BasicLinkProps
+    extends React.AnchorHTMLAttributes<HTMLAnchorElement> {}
+  const BasicLinkComponent = React.forwardRef<
+    HTMLAnchorElement,
+    BasicLinkProps
+  >((props, ref) => {
+    return (
+      <a ref={ref} {...props} className={'block px-3 py-2 text-blue-700'} />
+    )
   })
   const CreatedLinkComponent = createLink(BasicLinkComponent)
   const CustomLink: LinkComponent<typeof BasicLinkComponent> = (props) => {
@@ -4022,12 +4028,12 @@ test('that createLink refs forward correctly', () => {
     .parameter(0)
     .toHaveProperty('ref')
     .toEqualTypeOf<React.Ref<HTMLAnchorElement> | undefined>()
-  
+
   expectTypeOf(CreatedLinkComponent)
     .parameter(0)
     .toHaveProperty('ref')
     .toEqualTypeOf<Parameters<typeof BasicLinkComponent>[0]['ref']>()
-  
+
   expectTypeOf(CustomLink)
     .parameter(0)
     .toHaveProperty('ref')
