@@ -1,13 +1,13 @@
+import * as React from 'react'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import {
-  createRootRoute,
   HeadContent,
   Link,
   Outlet,
   Scripts,
+  createRootRoute,
 } from '@tanstack/react-router'
 import appCss from '~/styles/app.css?url'
-import * as React from 'react'
 
 export const Route = createRootRoute({
   head: () => ({
