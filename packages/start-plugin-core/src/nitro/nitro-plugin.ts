@@ -3,6 +3,7 @@ import { rmSync } from 'node:fs'
 import * as fsp from 'node:fs/promises'
 import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
+import { joinURL } from 'ufo'
 import { clientDistDir, ssrEntryFile } from '../plugin'
 import { prerender } from '../prerender'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
@@ -23,7 +24,6 @@ export function nitroPlugin(
 ): Array<PluginOption> {
   const buildPreset =
     process.env['START_TARGET'] ?? (options.target as string | undefined)
-
   return [
     devServerPlugin(),
     {
@@ -76,9 +76,11 @@ export function nitroPlugin(
                 compatibilityDate: '2024-11-19',
                 logLevel: 3,
                 preset: buildPreset,
+                // baseURL: globalThis.TSS_APP_BASE,
                 publicAssets: [
                   {
                     dir: path.resolve(options.root, clientDistDir),
+                    baseURL: globalThis.TSS_APP_BASE,
                   },
                 ],
                 typescript: {
@@ -175,6 +177,8 @@ async function buildNitroApp(
     })
   }
 
+  await copyPublicAssets(nitro)
+
   // Build the nitro app
   await build(nitro)
 
@@ -185,9 +189,13 @@ async function buildNitroApp(
   // This directory (and its contents including the vite client manifest)
   // should not be included in the final build, so we remove it.
   const nitroPublicDir = nitro.options.output.publicDir
-  const viteDir = path.resolve(nitroPublicDir, '.vite')
-  if (await fsp.stat(viteDir).catch(() => false)) {
-    await fsp.rm(viteDir, { recursive: true, force: true })
+  const viteHiddenDir = path.resolve(
+    joinURL(nitroPublicDir, globalThis.TSS_APP_BASE),
+    '.vite',
+  )
+
+  if (await fsp.stat(viteHiddenDir).catch(() => false)) {
+    await fsp.rm(viteHiddenDir, { recursive: true, force: true })
   }
 
   // Close the nitro instance

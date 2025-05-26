@@ -124,7 +124,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
           // First, let's attempt to handle server functions
           // Add trailing slash to sanitise user defined TSS_SERVER_FN_BASE
           const serverFnBase = joinPaths([
-            '/',
+            process.env.TSS_APP_BASE || '/',
             trimPath(process.env.TSS_SERVER_FN_BASE),
             '/',
           ])
@@ -294,7 +294,7 @@ async function handleServerRoutes({
   const { matchedRoutes, foundRoute, routeParams } =
     getMatchedRoutes<AnyServerRouteWithTypes>({
       pathname: history.location.pathname,
-      basepath: '/',
+      basepath: process.env.TSS_APP_BASE || '/',
       caseSensitive: true,
       routesByPath,
       routesById,

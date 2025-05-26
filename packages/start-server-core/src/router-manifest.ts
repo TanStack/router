@@ -1,4 +1,4 @@
-import { rootRouteId } from '@tanstack/router-core'
+import { joinPaths, rootRouteId } from '@tanstack/router-core'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -45,7 +45,12 @@ export async function getStartManifest() {
     //   )
     // }
 
-    const script = `${globalThis.TSS_INJECTED_HEAD_SCRIPTS ? globalThis.TSS_INJECTED_HEAD_SCRIPTS + '; ' : ''}import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
+    const clientEntry = joinPaths([
+      process.env.TSS_APP_BASE,
+      process.env.TSS_CLIENT_ENTRY,
+    ])
+
+    const script = `${globalThis.TSS_INJECTED_HEAD_SCRIPTS ? globalThis.TSS_INJECTED_HEAD_SCRIPTS + '; ' : ''}import('${clientEntry}')`
 
     rootRoute.assets.push({
       tag: 'script',

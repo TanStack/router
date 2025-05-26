@@ -30,6 +30,11 @@ export type TanStackStartOutputConfig = ReturnType<
   typeof getTanStackStartOptions
 >
 
+declare global {
+  // eslint-disable-next-line no-var
+  var TSS_APP_BASE: string
+}
+
 export const clientDistDir = '.tanstack-start/build/client-dist'
 export const ssrEntryFile = 'ssr.mjs'
 
@@ -60,7 +65,10 @@ export function TanStackStartVitePluginCore(
     resolveVirtualEntriesPlugin(opts, startConfig),
     {
       name: 'tanstack-start-core:config-client',
-      async config() {
+      async config(viteConfig) {
+        const viteAppBase = viteConfig.base || '/'
+        globalThis.TSS_APP_BASE = viteAppBase
+
         const nitroOutputPublicDir = await (async () => {
           // Create a dummy nitro app to get the resolved public output path
           const dummyNitroApp = await createNitro({
@@ -164,6 +172,7 @@ export function TanStackStartVitePluginCore(
             ...injectDefineEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
             ...injectDefineEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
             ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
+            ...injectDefineEnv('TSS_APP_BASE', viteAppBase)
           },
         }
       },
