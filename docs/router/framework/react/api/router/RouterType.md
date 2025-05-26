@@ -16,15 +16,15 @@ An instance of the `Router` has the following properties and methods:
 
 ### `state` property
 
-- Type: [`RouterState`](./RouterStateType.md)
+- Type: [`RouterState`](../RouterStateType.md)
 - The current state of the router.
 
-> ⚠️⚠️⚠️ **`router.state` is always up to date, but NOT REACTIVE. If you use `router.state` in a component, the component will not re-render when the router state changes. To get a reactive version of the router state, use the [`useRouterState`](./useRouterStateHook.md) hook.**
+> ⚠️⚠️⚠️ **`router.state` is always up to date, but NOT REACTIVE. If you use `router.state` in a component, the component will not re-render when the router state changes. To get a reactive version of the router state, use the [`useRouterState`](../useRouterStateHook.md) hook.**
 
 ### `.subscribe` method
 
 - Type: `(eventType: TType, fn: ListenerFn<RouterEvents[TType]>) => (event: RouterEvent) => void`
-- Subscribes to a [`RouterEvent`](./RouterEventsType.md).
+- Subscribes to a [`RouterEvent`](../RouterEventsType.md).
 - Returns a function that can be used to unsubscribe from the event.
 - The callback provided to the returned function will be called with the event that was emitted.
 
@@ -100,7 +100,7 @@ Commits a new location object to the browser history.
   ```
 - Properties
   - `location`
-    - Type: [`ParsedLocation`](./ParsedLocationType.md)
+    - Type: [`ParsedLocation`](../ParsedLocationType.md)
     - Required
     - The location to commit to the browser history.
   - `replace`

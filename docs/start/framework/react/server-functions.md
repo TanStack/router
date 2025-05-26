@@ -7,7 +7,7 @@ title: Server Functions
 
 Server functions allow you to specify logic that can be invoked almost anywhere (even the client), but run **only** on the server. In fact, they are not so different from an API Route, but with a few key differences:
 
-- They do not have stable public URL (but you'll be able to do this very soon!)
+- They do not have stable public URL
 - They can be called from anywhere in your application, including loaders, hooks, components, etc., but cannot be called from API Routes.
 
 However, they are similar to regular API Routes in that:
@@ -32,7 +32,7 @@ Server functions can be defined anywhere in your application, but must be define
 
 ## Server Function Middleware
 
-Server functions can use middleware to share logic, context, common operations, prerequisites, and much more. To learn more about server function middleware, be sure to read about them in the [Middleware guide](./middleware.md).
+Server functions can use middleware to share logic, context, common operations, prerequisites, and much more. To learn more about server function middleware, be sure to read about them in the [Middleware guide](../middleware.md).
 
 ## Defining Server Functions
 

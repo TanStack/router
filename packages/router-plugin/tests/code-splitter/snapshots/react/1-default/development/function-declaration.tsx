@@ -7,6 +7,10 @@ export const Route = createFileRoute('/posts')({
   loader: fetchPosts,
   component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)
 });
-export function TSRDummyComponent() {
-  return null;
+if (import.meta.hot) {
+  import.meta.hot.accept(newModule => {
+    if (newModule.Route && typeof newModule.Route.clone === 'function') {
+      newModule.Route.clone(Route);
+    }
+  });
 }

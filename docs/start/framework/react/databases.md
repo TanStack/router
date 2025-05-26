@@ -41,9 +41,9 @@ While TanStack Start is designed to work with any database provider, we highly r
 
 <a href="https://neon.tech?utm_source=tanstack" alt="Neon Logo">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-dark.svg" width="280">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-light.svg" width="280">
-    <img alt="Neon logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/neon-light.svg" width="280">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-dark.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-light.svg" width="280">
+    <img alt="Neon logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-light.svg" width="280">
   </picture>
 </a>
 
@@ -57,17 +57,18 @@ Key features that make Neon stand out:
 - Point-in-time restore
 - Web-based SQL editor
 - Bottomless storage
-
+  <br />
+  <br />
 - To learn more about Neon, visit the [Neon website](https://neon.tech?utm_source=tanstack)
-- To sign up, visit the [Neon dashboard](https://console.neon.tech/sign_up?utm_source=tanstack)
+- To sign up, visit the [Neon dashboard](https://console.neon.tech/signup?utm_source=tanstack)
 
 ## What is Convex?
 
 <a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-white.svg" width="280">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" width="280">
-    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/convex-color.svg" width="280">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-white.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-color.svg" width="280">
+    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-color.svg" width="280">
   </picture>
 </a>
 
