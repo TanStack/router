@@ -114,7 +114,7 @@ export function TanStackStartVitePluginCore(
                   output: {
                     dir: path.resolve(startConfig.root, clientDistDir),
                   },
-                  // TODO this should be removed
+                  // TODO: this should be removed
                   external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
                 },
               },
@@ -134,8 +134,8 @@ export function TanStackStartVitePluginCore(
                   plugins: [
                     {
                       name: 'capture-output',
-                      generateBundle(options, bundle) {
-                        // TODO can this hook be called more than once?
+                      generateBundle(_options, bundle) {
+                        // TODO: can this hook be called more than once?
                         ssrBundle = bundle
                       },
                     },

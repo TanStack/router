@@ -76,7 +76,7 @@ export function nitroPlugin(
                 compatibilityDate: '2024-11-19',
                 logLevel: 3,
                 preset: buildPreset,
-                // baseURL: globalThis.TSS_APP_BASE,
+                baseURL: globalThis.TSS_APP_BASE,
                 publicAssets: [
                   {
                     dir: path.resolve(options.root, clientDistDir),
@@ -176,8 +176,6 @@ async function buildNitroApp(
       publicDir: nitro.options.output.publicDir,
     })
   }
-
-  await copyPublicAssets(nitro)
 
   // Build the nitro app
   await build(nitro)
