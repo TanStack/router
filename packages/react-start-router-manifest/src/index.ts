@@ -52,7 +52,7 @@ export function getFullRouterManifest() {
     attrs: {
       type: 'module',
       suppressHydrationWarning: true,
-      async: true,
+      defer: true,
     },
     children: `${script}import("${importPath}")`,
   })
