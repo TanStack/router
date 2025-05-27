@@ -245,9 +245,6 @@ export function startManifestPlugin(
           routes: routeTreeRoutes,
         }
 
-        console.log('Generated routes manifest:')
-        console.dir(routesManifest, { depth: Infinity })
-
         return `export const tsrStartManifest = () => (${JSON.stringify(routesManifest)})`
       }
       return
