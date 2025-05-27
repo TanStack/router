@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFile } from 'node:fs'
 import path from 'node:path'
 import { joinURL } from 'ufo'
 import { rootRouteId } from '@tanstack/router-core'
@@ -245,9 +245,39 @@ export function startManifestPlugin(
           routes: routeTreeRoutes,
         }
 
+        try {
+          const routesManifestOutputDirPath = path.resolve(
+            opts.root,
+            '.tanstack-start/build/routes-manifest',
+          )
+          rmSync(routesManifestOutputDirPath, {
+            recursive: true,
+            force: true,
+          })
+          mkdirSync(routesManifestOutputDirPath, { recursive: true })
+          writeFile(
+            path.join(routesManifestOutputDirPath, 'manifest.json'),
+            JSON.stringify(routesManifest),
+            (err) => {
+              if (err) {
+                console.error(
+                  'There was an error writing the routes manifest to disk.\nYou can ignore this error. It does not affect the runtime of your application.',
+                )
+                console.error(err)
+              }
+            },
+          )
+        } catch (err) {
+          console.error(
+            'There was an error writing the routes manifest to disk.\nYou can ignore this error. It does not affect the runtime of your application.',
+          )
+          console.error(err)
+        }
+
         return `export const tsrStartManifest = () => (${JSON.stringify(routesManifest)})`
       }
-      return
+
+      return undefined
     },
   }
 }
