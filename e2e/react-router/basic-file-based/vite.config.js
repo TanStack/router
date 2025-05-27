@@ -4,6 +4,6 @@ import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  root: "./src",
+  root: './src',
   plugins: [TanStackRouterVite({ target: 'react' }), react()],
 })
