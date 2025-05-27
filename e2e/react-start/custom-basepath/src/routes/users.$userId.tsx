@@ -4,11 +4,12 @@ import type { ErrorComponentProps } from '@tanstack/react-router'
 
 import type { User } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
+import { basepath } from '~/utils/basepath'
 
 export const Route = createFileRoute({
   loader: async ({ params: { userId } }) => {
     return await axios
-      .get<User>('/api/users/' + userId)
+      .get<User>(basepath + '/api/users/' + userId)
       .then((r) => r.data)
       .catch(() => {
         throw new Error('Failed to fetch user')
