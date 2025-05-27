@@ -2190,6 +2190,64 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
+  e2e/solid-start/custom-basepath:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../../../packages/solid-start
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      vite:
+        specifier: 6.3.5
+        version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      zod:
+        specifier: ^3.24.2
+        version: 3.24.2
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.52.0
+        version: 1.52.0
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.13.4
+      autoprefixer:
+        specifier: ^10.4.20
+        version: 10.4.20(postcss@8.5.3)
+      combinate:
+        specifier: ^1.1.11
+        version: 1.1.11
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.3
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.2
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.8.2)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
   e2e/solid-start/scroll-restoration:
     dependencies:
       '@tanstack/solid-router':
