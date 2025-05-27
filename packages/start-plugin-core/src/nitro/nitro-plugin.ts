@@ -1,6 +1,5 @@
 import path from 'node:path'
 import { rmSync } from 'node:fs'
-import * as fsp from 'node:fs/promises'
 import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
 import { clientDistDir, ssrEntryFile } from '../plugin'
@@ -178,19 +177,6 @@ async function buildNitroApp(
 
   // Build the nitro app
   await build(nitro)
-
-  // Cleanup the vite public directory
-  // As a part of the build process, a `.vite/` directory
-  // is copied over from `.tanstack-start/build/client-dist/`
-  // to the nitro `publicDir` (e.g. `.output/public/`).
-  // This directory (and its contents including the vite client manifest)
-  // should not be included in the final build, so we remove it.
-  const nitroPublicDir = nitro.options.output.publicDir
-  const viteHiddenDir = path.resolve(nitroPublicDir, '.vite')
-
-  if (await fsp.stat(viteHiddenDir).catch(() => false)) {
-    await fsp.rm(viteHiddenDir, { recursive: true, force: true })
-  }
 
   // Close the nitro instance
   await nitro.close()
