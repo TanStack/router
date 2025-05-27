@@ -79,7 +79,6 @@ export function startManifestPlugin(
         // If we're in development, return a dummy manifest
         if (config.command === 'serve') {
           return `export const tsrStartManifest = () => ({
-            entry: "$${process.env.TSS_CLIENT_BASE}/",
             routes: {}
           })`
         }
