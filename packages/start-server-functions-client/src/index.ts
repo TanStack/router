@@ -9,11 +9,7 @@ export const createClientRpc: CreateRpcFn = (functionId, serverBase) => {
   const sanitizedAppBase = sanitizeBase(process.env.TSS_APP_BASE || '/')
   const sanitizedServerBase = sanitizeBase(serverBase)
 
-  const appBase = sanitizedAppBase.endsWith('/')
-    ? sanitizedAppBase.slice(0, -1)
-    : sanitizedAppBase
-
-  const url = `/${appBase}/${sanitizedServerBase}/${functionId}`
+  const url = `${sanitizedAppBase ? `/${sanitizedAppBase}` : ``}/${sanitizedServerBase}/${functionId}`
 
   const clientFn = (...args: Array<any>) => {
     return serverFnFetcher(url, args, fetch)
