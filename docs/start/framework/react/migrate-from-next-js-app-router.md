@@ -26,7 +26,7 @@ This guide helps you migrate a Next.js App Router project to TanStack Start. You
 To get started, use this Next.js App Router starter template:
 
 ```shell
-npx gitpick nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-basic next.js-start-er
+npx gitpick nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start next.js-start-er
 ```
 
 > [!Important]
