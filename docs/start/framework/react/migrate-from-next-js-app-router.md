@@ -279,6 +279,8 @@ The following sections provide example code snippets for common migration tasks.
   }
   ```
 
+  Similarly, you can get `searchParams` like `const { page, filter, sort } = Route.useSearch()`.
+
   Also try, [Splat / Catch-All Routes](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts#splat--catch-all-routes)
 
 - ### [Link](https://github.com/TanStack/router/blob/alpha/docs/start/framework/react/learn-the-basics.md#navigation)
