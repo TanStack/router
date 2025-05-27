@@ -103,6 +103,7 @@ export function TanStackStartVitePluginCore(
         }
 
         return {
+          base: viteAppBase,
           environments: {
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
