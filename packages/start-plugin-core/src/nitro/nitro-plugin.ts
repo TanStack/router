@@ -79,6 +79,7 @@ export function nitroPlugin(
                   {
                     dir: path.resolve(options.root, clientDistDir),
                     baseURL: '/',
+                    maxAge: 31536000, // 1 year
                   },
                 ],
                 typescript: {
