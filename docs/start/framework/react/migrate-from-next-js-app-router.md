@@ -274,7 +274,7 @@ The following sections provide example code snippets for common migration tasks.
 
 - ### [Server ~Actions~ Functions](https://github.com/TanStack/router/blob/alpha/docs/start/framework/react/server-functions.md)
 
-  Refer the link above for more details on how to get searchParams, body, validation and more.
+  Refer the link above for more details on how to add searchParams, body, validation and more.
 
   ```diff
   - 'use server'
