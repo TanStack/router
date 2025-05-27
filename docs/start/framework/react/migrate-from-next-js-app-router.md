@@ -28,7 +28,7 @@ npx gitpick nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-basic next
 ```
 
 > [!Important]
-> For advanced features like API routes, links, params, paths, and more, refer to the [Next Steps (Advanced)](#next-steps-advanced) section at the end of this guide.
+> For advanced features like dynamic routes, links, server actions, route handlers and more, refer to the [Next Steps (Advanced)](#next-steps-advanced) section at the end of this guide.
 
 ## Uninstall Next.js
 
@@ -80,9 +80,9 @@ Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 ```ts
 // vite.config.ts
 
-import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { tanstackStart } from "@tanstack/react-start/plugin/vite"
+import { defineConfig } from "vite"
+import tsConfigPaths from "vite-tsconfig-paths"
 
 export default defineConfig({
   server: {
@@ -93,7 +93,7 @@ export default defineConfig({
     tanstackStart({
       tsr: {
         // Use "src/app" instead of the default "src/routes"
-        routesDirectory: 'src/app',
+        routesDirectory: "src/app",
       },
     }),
   ],
@@ -110,7 +110,7 @@ To work with Tailwind CSS V4, create a `postcss.config.ts` file in the root of y
 
 export default {
   plugins: {
-    '@tailwindcss/postcss': {},
+    "@tailwindcss/postcss": {},
   },
 }
 ```
@@ -221,8 +221,8 @@ One last thing to do is to create `src/router.tsx`. This is the file that will d
 ```tsx
 // src/router.tsx
 
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
+import { createRouter as createTanStackRouter } from "@tanstack/react-router"
+import { routeTree } from "./routeTree.gen"
 
 export function createRouter() {
   const router = createTanStackRouter({
@@ -233,7 +233,7 @@ export function createRouter() {
   return router
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
     router: ReturnType<typeof createRouter>
   }
