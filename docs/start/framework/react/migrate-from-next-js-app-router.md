@@ -216,7 +216,7 @@ Create or rename `page.tsx` to `index.tsx` and update the content. This file wil
 
 ## Are we migrated yet?
 
-One last thing to do is to create `src/router.tsx`. This is the file that will dictate the behavior of TanStack Router used within Start. Here, you can configure everything from the default [preloading functionality](https://github.com/TanStack/router/blob/alpha/router/latest/docs/framework/react/guide/preloading) to [caching staleness](https://github.com/TanStack/router/blob/alpha/router/latest/docs/framework/react/guide/data-loading).
+One last thing to do is to create `src/router.tsx`. This is the file that will dictate the behavior of TanStack Router used within Start. Here, you can configure everything from the default [preloading functionality](https://tanstack.com/router/latest/docs/framework/react/guide/preloading) to [caching staleness](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading).
 
 ```tsx
 // src/router.tsx
@@ -284,7 +284,7 @@ The following sections provide example code snippets for common migration tasks.
 
   Also try, [Splat / Catch-All Routes](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts#splat--catch-all-routes).
 
-- ### [Link](https://github.com/TanStack/router/blob/alpha/docs/start/framework/react/learn-the-basics.md#navigation)
+- ### [Link](https://tanstack.com/start/latest/docs/framework/react/learn-the-basics.md#navigation)
 
   ```diff
   - import Link from "next/link"
@@ -296,7 +296,7 @@ The following sections provide example code snippets for common migration tasks.
   }
   ```
 
-- ### [Server ~Actions~ Functions](https://github.com/TanStack/router/blob/alpha/docs/start/framework/react/server-functions.md)
+- ### [Server ~Actions~ Functions](https://tanstack.com/start/latest/docs/framework/react/server-functions.md)
 
   Refer the link above for more details on how to add searchParams, body, validation and more.
 
@@ -311,9 +311,9 @@ The following sections provide example code snippets for common migration tasks.
   + })
   ```
 
-  Also try, [Static Server Functions](https://github.com/TanStack/router/blob/alpha/docs/start/framework/react/static-server-functions.md).
+  Also try, [Static Server Functions](https://tanstack.com/start/latest/docs/framework/react/static-server-functions.md).
 
-- ### [Server Routes ~Handlers~](https://github.com/TanStack/router/blob/alpha/docs/start/framework/react/server-routes.md)
+- ### [Server Routes ~Handlers~](https://tanstack.com/start/latest/docs/framework/react/server-routes.md)
 
   ```diff
   - export async function GET() {
