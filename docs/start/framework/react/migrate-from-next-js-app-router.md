@@ -17,6 +17,7 @@ title: Migrate from Next.js App Router
   - [Link](#link)
   - [Server ~Actions~ Functions](#server-actions-functions)
   - [Server Routes ~Handlers~](#server-routes-handlers)
+  - [Font](#font)
 
 # Migrate from Next.js App Router (Basics)
 
