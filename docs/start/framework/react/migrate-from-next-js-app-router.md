@@ -336,3 +336,45 @@ The following sections provide example code snippets for common migration tasks.
     }
   + })
   ```
+
+- ### Font
+
+  Instead of using the `next/font` package, use recommended Tailwind CSS V4 approach i.e. CSS-first configuration.
+
+  ```diff
+  - import { Inter } from "next/font/google"
+
+  - const inter = Inter({
+  -   subsets: ["latin"],
+  -   display: "swap",
+  - })
+
+  - export default function Page() {
+  -   return <p className={inter.className}>Font Sans</p>
+  - }
+  ```
+
+  Select the required local fonts (e.g. from [Fontsource](https://github.com/fontsource/fontsource)) and install them as dev dependencies:
+
+  ```shell
+  npm i -D @fontsource-variable/dm-sans @fontsource-variable/jetbrains-mono
+  ```
+
+  Then, update your `globals.css` to include the font imports:
+
+  ```css
+  /* src/app/globals.css */
+
+  @import 'tailwindcss';
+
+  @import '@fontsource-variable/dm-sans';
+  @import '@fontsource-variable/jetbrains-mono';
+
+  @theme inline {
+    --font-sans: 'DM Sans Variable', sans-serif;
+    --font-mono: 'JetBrains Mono Variable', monospace;
+    /* ... */
+  }
+
+  /* ... */
+  ```
