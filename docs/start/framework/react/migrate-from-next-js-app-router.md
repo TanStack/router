@@ -261,6 +261,17 @@ The following sections provide example code snippets for common migration tasks.
 > [!Note]
 > For more details and advanced usage, refer to the linked documentation in each header.
 
+- ### [Routing Concepts](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts)
+
+  | Path       | Next.js                         | TanStack Start            |
+  | ---------- | ------------------------------- | ------------------------- |
+  | /          | `src/app/page.tsx`              | `src/app/index.tsx`       |
+  | /posts     | `src/app/posts/page.tsx`        | `src/app/posts.tsx`       |
+  | /posts/xyz | `src/app/posts/[slug]/page.tsx` | `src/app/posts/$slug.tsx` |
+  | /api/hello | `src/app/api/hello/route.ts`    | `src/app/api/hello.ts`    |
+
+  Learn more about [routing concepts](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts).
+
 - ### [Dynamic Routes](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts#dynamic-route-segments)
 
   ```diff
