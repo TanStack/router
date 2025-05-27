@@ -12,6 +12,7 @@ title: Migrate from Next.js App Router
   - [Are we migrated yet?](#are-we-migrated-yet)
   - [Test Your Migration](#test-your-migration)
 - [Next Steps (Advanced)](#next-steps-advanced)
+  - [Routing Concepts](#routing-concepts)
   - [Dynamic Routes](#dynamic-routes)
   - [Link](#link)
   - [Server ~Actions~ Functions](#server-actions-functions)
@@ -80,9 +81,9 @@ Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 ```ts
 // vite.config.ts
 
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
+import { tanstackStart } from "@tanstack/react-start/plugin/vite"
+import { defineConfig } from "vite"
+import tsConfigPaths from "vite-tsconfig-paths"
 
 export default defineConfig({
   server: {
@@ -93,7 +94,7 @@ export default defineConfig({
     tanstackStart({
       tsr: {
         // Use "src/app" instead of the default "src/routes"
-        routesDirectory: 'src/app',
+        routesDirectory: "src/app",
       },
     }),
   ],
@@ -110,7 +111,7 @@ To work with Tailwind CSS V4, create a `postcss.config.ts` file in the root of y
 
 export default {
   plugins: {
-    '@tailwindcss/postcss': {},
+    "@tailwindcss/postcss": {},
   },
 }
 ```
@@ -221,8 +222,8 @@ One last thing to do is to create `src/router.tsx`. This is the file that will d
 ```tsx
 // src/router.tsx
 
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
+import { createRouter as createTanStackRouter } from "@tanstack/react-router"
+import { routeTree } from "./routeTree.gen"
 
 export function createRouter() {
   const router = createTanStackRouter({
@@ -233,7 +234,7 @@ export function createRouter() {
   return router
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface Register {
     router: ReturnType<typeof createRouter>
   }
