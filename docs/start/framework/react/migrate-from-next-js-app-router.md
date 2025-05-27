@@ -266,6 +266,7 @@ The following sections provide example code snippets for common migration tasks.
 
   | Path       | Next.js                         | TanStack Start            |
   | ---------- | ------------------------------- | ------------------------- |
+  | RootLayout | `src/app/layout.tsx`            | `src/app/__root.tsx`      |
   | /          | `src/app/page.tsx`              | `src/app/index.tsx`       |
   | /posts     | `src/app/posts/page.tsx`        | `src/app/posts.tsx`       |
   | /posts/xyz | `src/app/posts/[slug]/page.tsx` | `src/app/posts/$slug.tsx` |
