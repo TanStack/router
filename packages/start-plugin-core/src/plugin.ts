@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { createNitro } from 'nitropack'
+import { trimPathRight } from '@tanstack/router-core'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
@@ -29,6 +30,11 @@ export function getTanStackStartOptions(opts?: TanStackStartInputConfig) {
 export type TanStackStartOutputConfig = ReturnType<
   typeof getTanStackStartOptions
 >
+
+declare global {
+  // eslint-disable-next-line no-var
+  var TSS_APP_BASE: string
+}
 
 export const clientDistDir = '.tanstack-start/build/client-dist'
 export const ssrEntryFile = 'ssr.mjs'
@@ -60,7 +66,10 @@ export function TanStackStartVitePluginCore(
     resolveVirtualEntriesPlugin(opts, startConfig),
     {
       name: 'tanstack-start-core:config-client',
-      async config() {
+      async config(viteConfig) {
+        const viteAppBase = trimPathRight(viteConfig.base || '/')
+        globalThis.TSS_APP_BASE = viteAppBase
+
         const nitroOutputPublicDir = await (async () => {
           // Create a dummy nitro app to get the resolved public output path
           const dummyNitroApp = await createNitro({
@@ -94,6 +103,7 @@ export function TanStackStartVitePluginCore(
         }
 
         return {
+          base: viteAppBase,
           environments: {
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
@@ -106,7 +116,7 @@ export function TanStackStartVitePluginCore(
                   output: {
                     dir: path.resolve(startConfig.root, clientDistDir),
                   },
-                  // TODO this should be removed
+                  // TODO: this should be removed
                   external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
                 },
               },
@@ -126,8 +136,8 @@ export function TanStackStartVitePluginCore(
                   plugins: [
                     {
                       name: 'capture-output',
-                      generateBundle(options, bundle) {
-                        // TODO can this hook be called more than once?
+                      generateBundle(_options, bundle) {
+                        // TODO: can this hook be called more than once?
                         ssrBundle = bundle
                       },
                     },
@@ -164,6 +174,7 @@ export function TanStackStartVitePluginCore(
             ...injectDefineEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
             ...injectDefineEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
             ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
+            ...injectDefineEnv('TSS_APP_BASE', viteAppBase)
           },
         }
       },

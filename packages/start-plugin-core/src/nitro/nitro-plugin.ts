@@ -1,6 +1,5 @@
 import path from 'node:path'
 import { rmSync } from 'node:fs'
-import * as fsp from 'node:fs/promises'
 import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
 import { clientDistDir, ssrEntryFile } from '../plugin'
@@ -23,7 +22,6 @@ export function nitroPlugin(
 ): Array<PluginOption> {
   const buildPreset =
     process.env['START_TARGET'] ?? (options.target as string | undefined)
-
   return [
     devServerPlugin(),
     {
@@ -76,9 +74,12 @@ export function nitroPlugin(
                 compatibilityDate: '2024-11-19',
                 logLevel: 3,
                 preset: buildPreset,
+                baseURL: globalThis.TSS_APP_BASE,
                 publicAssets: [
                   {
                     dir: path.resolve(options.root, clientDistDir),
+                    baseURL: '/',
+                    maxAge: 31536000, // 1 year
                   },
                 ],
                 typescript: {
@@ -91,7 +92,7 @@ export function nitroPlugin(
                 scanDirs: [],
                 imports: false, // unjs/unimport for global/magic imports
                 rollupConfig: {
-                  plugins: [virtualBundlePlugin(getSsrBundle())],
+                  plugins: [virtualBundlePlugin(getSsrBundle()) as any],
                 },
                 virtual: {
                   // This is Nitro's way of defining virtual modules
@@ -177,18 +178,6 @@ async function buildNitroApp(
 
   // Build the nitro app
   await build(nitro)
-
-  // Cleanup the vite public directory
-  // As a part of the build process, a `.vite/` directory
-  // is copied over from `.tanstack-start/build/client-dist/`
-  // to the nitro `publicDir` (e.g. `.output/public/`).
-  // This directory (and its contents including the vite client manifest)
-  // should not be included in the final build, so we remove it.
-  const nitroPublicDir = nitro.options.output.publicDir
-  const viteDir = path.resolve(nitroPublicDir, '.vite')
-  if (await fsp.stat(viteDir).catch(() => false)) {
-    await fsp.rm(viteDir, { recursive: true, force: true })
-  }
 
   // Close the nitro instance
   await nitro.close()

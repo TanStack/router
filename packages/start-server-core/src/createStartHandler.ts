@@ -102,11 +102,14 @@ export function createStartHandler<TRouter extends AnyRouter>({
         initialEntries: [href],
       })
 
+      const APP_BASE = process.env.TSS_APP_BASE || '/'
+
       // Create the client-side router
       const router = createRouter()
 
       // Attach the server-side SSR utils to the client-side router
-      attachRouterServerSsrUtils(router, await getStartManifest())
+      const startRoutesManifest = await getStartManifest({ basePath: APP_BASE })
+      attachRouterServerSsrUtils(router, startRoutesManifest)
 
       // Update the client-side router with the history and context
       router.update({
@@ -124,7 +127,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
           // First, let's attempt to handle server functions
           // Add trailing slash to sanitise user defined TSS_SERVER_FN_BASE
           const serverFnBase = joinPaths([
-            '/',
+            APP_BASE,
             trimPath(process.env.TSS_SERVER_FN_BASE),
             '/',
           ])
@@ -151,6 +154,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
             const [_matchedRoutes, response] = await handleServerRoutes({
               routeTree: serverRouteTreeModule.routeTree,
               request,
+              basePath: APP_BASE,
             })
 
             if (response) return response
@@ -271,9 +275,11 @@ export function createStartHandler<TRouter extends AnyRouter>({
 async function handleServerRoutes({
   routeTree,
   request,
+  basePath,
 }: {
   routeTree: AnyServerRouteWithTypes
   request: Request
+  basePath: string
 }) {
   const { flatRoutes, routesById, routesByPath } = processRouteTree({
     routeTree,
@@ -294,7 +300,7 @@ async function handleServerRoutes({
   const { matchedRoutes, foundRoute, routeParams } =
     getMatchedRoutes<AnyServerRouteWithTypes>({
       pathname: history.location.pathname,
-      basepath: '/',
+      basepath: basePath,
       caseSensitive: true,
       routesByPath,
       routesById,

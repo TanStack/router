@@ -1,4 +1,4 @@
-import { rootRouteId } from '@tanstack/router-core'
+import { joinPaths, rootRouteId } from '@tanstack/router-core'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -11,7 +11,7 @@ declare global {
  * special assets that are needed for the client. It does not include relationships
  * between routes or any other data that is not needed for the client.
  */
-export async function getStartManifest() {
+export async function getStartManifest(opts: { basePath: string }) {
   const { tsrStartManifest } = await import('tanstack-start-router-manifest:v')
   const startManifest = tsrStartManifest()
 
@@ -45,7 +45,9 @@ export async function getStartManifest() {
     //   )
     // }
 
-    const script = `${globalThis.TSS_INJECTED_HEAD_SCRIPTS ? globalThis.TSS_INJECTED_HEAD_SCRIPTS + '; ' : ''}import(${JSON.stringify(process.env.TSS_CLIENT_ENTRY)})`
+    const clientEntry = joinPaths([opts.basePath, process.env.TSS_CLIENT_ENTRY])
+
+    const script = `${globalThis.TSS_INJECTED_HEAD_SCRIPTS ? globalThis.TSS_INJECTED_HEAD_SCRIPTS + '; ' : ''}import('${clientEntry}')`
 
     rootRoute.assets.push({
       tag: 'script',

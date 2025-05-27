@@ -71,7 +71,7 @@ export async function prerender({
       ...nodeNitroRollupOptions.output,
       sourcemap: undefined,
     },
-  }
+  } as any
 
   await buildNitro(nodeNitro)
 

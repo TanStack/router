@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFile } from 'node:fs'
 import path from 'node:path'
 import { joinURL } from 'ufo'
 import { rootRouteId } from '@tanstack/router-core'
@@ -15,6 +15,7 @@ import type { TanStackStartOutputConfig } from './plugin'
 const getCSSRecursively = (
   file: ViteManifestChunk,
   filesByRouteFilePath: ViteManifest,
+  basePath: string,
 ) => {
   const result: Array<RouterManagedTag> = []
 
@@ -24,7 +25,7 @@ const getCSSRecursively = (
       tag: 'link',
       attrs: {
         rel: 'stylesheet',
-        href: joinURL('/', cssFile),
+        href: joinURL(basePath, cssFile),
         type: 'text/css',
       },
     })
@@ -34,7 +35,9 @@ const getCSSRecursively = (
   for (const imp of file.imports ?? []) {
     const importInfo = filesByRouteFilePath[imp]
     if (importInfo) {
-      result.push(...getCSSRecursively(importInfo, filesByRouteFilePath))
+      result.push(
+        ...getCSSRecursively(importInfo, filesByRouteFilePath, basePath),
+      )
     }
   }
 
@@ -72,14 +75,16 @@ export function startManifestPlugin(
           // TODO: do we need special handling for `serve`?
           return `export default {}`
         }
-        // If we're in development, return a dummy manifest
 
+        // If we're in development, return a dummy manifest
         if (config.command === 'serve') {
           return `export const tsrStartManifest = () => ({
-            entry: "$${process.env.TSS_CLIENT_BASE}/",
             routes: {}
           })`
         }
+
+        // This is the basepath for the application
+        const APP_BASE = globalThis.TSS_APP_BASE
 
         const clientViteManifestPath = path.resolve(
           opts.root,
@@ -119,8 +124,12 @@ export function startManifestPlugin(
           )?.[1] || '{ routes: {} }',
         ) as Manifest
 
-        const routes = routerManifest.routes
+        // This the manifest pulled from the generated route tree and later used by the Router.
+        // i.e what's located in `src/generatedRouteTree.gen.ts`
+        const routeTreeRoutes = routerManifest.routes
 
+        // This is where hydration will start, from when the SSR'd page reaches the browser.
+        // By default, this'd be the virtual entry of `/~start/default-client-entry.tsx`, unless a custom entry is provided.
         let entryFile: ViteManifestChunk | undefined
 
         const filesByRouteFilePath: ViteManifest = Object.fromEntries(
@@ -141,24 +150,34 @@ export function startManifestPlugin(
         )
 
         // Add preloads to the routes from the vite manifest
-        Object.entries(routes).forEach(([k, v]) => {
+        Object.entries(routeTreeRoutes).forEach(([routeId, v]) => {
           const file =
             filesByRouteFilePath[
               path.join(routesDirectoryFromRoot, v.filePath as string)
             ]
 
           if (file) {
-            const preloads = (file.imports ?? []).map((d) =>
-              path.join('/', viteManifest[d]!.file),
-            )
+            // Map the relevant imports to their route paths,
+            // so that it can be imported in the browser.
+            const preloads = (file.imports ?? []).map((d) => {
+              const assetPath = joinURL(APP_BASE, viteManifest[d]!.file)
+              return assetPath
+            })
 
+            // Since this is the most important JS entry for the route,
+            // it should be moved to the front of the preloads so that
+            // it has the best chance of being loaded first.
             if (file.file) {
-              preloads.unshift(path.join('/', file.file))
+              preloads.unshift(path.join(APP_BASE, file.file))
             }
 
-            const cssAssetsList = getCSSRecursively(file, filesByRouteFilePath)
+            const cssAssetsList = getCSSRecursively(
+              file,
+              filesByRouteFilePath,
+              APP_BASE,
+            )
 
-            routes[k] = {
+            routeTreeRoutes[routeId] = {
               ...v,
               assets: [...(v.assets || []), ...cssAssetsList],
               preloads,
@@ -167,10 +186,10 @@ export function startManifestPlugin(
         })
 
         if (entryFile) {
-          routes[rootRouteId]!.preloads = [
-            path.join('/', entryFile.file),
+          routeTreeRoutes[rootRouteId]!.preloads = [
+            joinURL(APP_BASE, entryFile.file),
             ...(entryFile.imports?.map((d) =>
-              path.join('/', viteManifest[d]!.file),
+              joinURL(APP_BASE, viteManifest[d]!.file),
             ) || []),
           ]
 
@@ -179,15 +198,16 @@ export function startManifestPlugin(
           const entryCssAssetsList = getCSSRecursively(
             entryFile,
             filesByRouteFilePath,
+            APP_BASE,
           )
 
-          routes[rootRouteId]!.assets = [
-            ...(routes[rootRouteId]!.assets || []),
+          routeTreeRoutes[rootRouteId]!.assets = [
+            ...(routeTreeRoutes[rootRouteId]!.assets || []),
             ...entryCssAssetsList,
             {
               tag: 'script',
               attrs: {
-                src: joinURL('/', entryFile.file),
+                src: joinURL(APP_BASE, entryFile.file),
                 type: 'module',
               },
             },
@@ -211,22 +231,52 @@ export function startManifestPlugin(
 
           if (route.children) {
             route.children.forEach((child) => {
-              const childRoute = routes[child]!
+              const childRoute = routeTreeRoutes[child]!
               recurseRoute(childRoute, { ...seenPreloads })
             })
           }
         }
 
         // @ts-expect-error
-        recurseRoute(routes[rootRouteId])
+        recurseRoute(routeTreeRoutes[rootRouteId])
 
         const routesManifest = {
-          routes,
+          routes: routeTreeRoutes,
+        }
+
+        try {
+          const routesManifestOutputDirPath = path.resolve(
+            opts.root,
+            '.tanstack-start/build/routes-manifest',
+          )
+          rmSync(routesManifestOutputDirPath, {
+            recursive: true,
+            force: true,
+          })
+          mkdirSync(routesManifestOutputDirPath, { recursive: true })
+          writeFile(
+            path.join(routesManifestOutputDirPath, 'manifest.json'),
+            JSON.stringify(routesManifest),
+            (err) => {
+              if (err) {
+                console.error(
+                  'There was an error writing the routes manifest to disk.\nYou can ignore this error. It does not affect the runtime of your application.',
+                )
+                console.error(err)
+              }
+            },
+          )
+        } catch (err) {
+          console.error(
+            'There was an error writing the routes manifest to disk.\nYou can ignore this error. It does not affect the runtime of your application.',
+          )
+          console.error(err)
         }
 
         return `export const tsrStartManifest = () => (${JSON.stringify(routesManifest)})`
       }
-      return
+
+      return undefined
     },
   }
 }
