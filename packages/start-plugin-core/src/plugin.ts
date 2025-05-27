@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { createNitro } from 'nitropack'
+import { trimPathRight } from '@tanstack/router-core'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
@@ -66,7 +67,7 @@ export function TanStackStartVitePluginCore(
     {
       name: 'tanstack-start-core:config-client',
       async config(viteConfig) {
-        const viteAppBase = viteConfig.base || '/'
+        const viteAppBase = trimPathRight(viteConfig.base || '/')
         globalThis.TSS_APP_BASE = viteAppBase
 
         const nitroOutputPublicDir = await (async () => {
