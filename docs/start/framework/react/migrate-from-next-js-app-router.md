@@ -80,7 +80,7 @@ npm i -D @tailwindcss/postcss postcss tailwindcss vite-tsconfig-paths
   })
   ```
 
-  By default, `routesDirectory` is set to `src/routes`. If you want to maintain consistency with Next.js App Router conventions, you can set it to `src/app` instead.
+By default, `routesDirectory` is set to `src/routes`. If you want to maintain consistency with Next.js App Router conventions, you can set it to `src/app` instead.
 
 - `postcss.config.ts`
 
@@ -94,7 +94,7 @@ npm i -D @tailwindcss/postcss postcss tailwindcss vite-tsconfig-paths
 
 ### 4. Adapt the Root Layout
 
-> **TanStack Start** uses routing adjacent to Next.js, but with a [different structure](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts).
+> **TanStack Start** uses a routing adjacent to Remix, but with some changes to make compatible with nested structures and support special features using tokens. You can see all on changes in the [Routing Concepts](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts) guide.
 
 Instead of `layout.tsx`, you will create a file named `__root.tsx` in the `src/app` directory. This file will serve as the root layout for your application.
 
@@ -156,7 +156,7 @@ Instead of `layout.tsx`, you will create a file named `__root.tsx` in the `src/a
 
 ### 5. Adapt the Home Page
 
-> **TanStack Start** uses routing adjacent to Next.js, but with a [different structure](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts).
+> TODO: Should we callout that it is this way since you are referencing the index route and not the layout route. Hence why the index token is being used.
 
 Instead of `page.tsx`, you will create an `index.tsx` file for the `/` route.
 
