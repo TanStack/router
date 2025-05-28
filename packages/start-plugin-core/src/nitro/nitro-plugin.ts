@@ -49,16 +49,14 @@ export function nitroPlugin(
           builder: {
             sharedPlugins: true,
             async buildApp(builder) {
-              const clientEnv =
-                builder.environments[VITE_ENVIRONMENT_NAMES.client]
-              const serverEnv =
-                builder.environments[VITE_ENVIRONMENT_NAMES.server]
+              const client = builder.environments[VITE_ENVIRONMENT_NAMES.client]
+              const server = builder.environments[VITE_ENVIRONMENT_NAMES.server]
 
-              if (!clientEnv) {
+              if (!client) {
                 throw new Error('Client environment not found')
               }
 
-              if (!serverEnv) {
+              if (!server) {
                 throw new Error('SSR environment not found')
               }
 
@@ -66,10 +64,10 @@ export function nitroPlugin(
               // i.e client entry file with `hydrateRoot(...)`
               const clientOutputDir = resolve(options.root, clientDistDir)
               rmSync(clientOutputDir, { recursive: true, force: true })
-              await builder.build(clientEnv)
+              await builder.build(client)
 
               // Build the SSR bundle
-              await builder.build(serverEnv)
+              await builder.build(server)
 
               const nitroConfig: NitroConfig = {
                 dev: false,
