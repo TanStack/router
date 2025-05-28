@@ -1,5 +1,5 @@
 import * as vite from 'vite'
-import type { TanStackStartOutputConfig } from '../../plugin'
+import type { TanStackStartOutputConfig } from '../plugin'
 
 export function loadEnvPlugin(
   startOpts: TanStackStartOutputConfig,

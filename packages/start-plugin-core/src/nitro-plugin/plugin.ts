@@ -3,10 +3,10 @@ import { rmSync } from 'node:fs'
 import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
 import {
-  VITE_ENVIRONMENT_NAMES,
   CLIENT_DIST_DIR,
   SSR_ENTRY_FILE,
-} from '../../constants'
+  VITE_ENVIRONMENT_NAMES,
+} from '../constants'
 import { buildSitemap } from './build-sitemap'
 import { prerender } from './prerender'
 import type {
@@ -16,7 +16,7 @@ import type {
   ViteBuilder,
 } from 'vite'
 import type { Nitro, NitroConfig } from 'nitropack'
-import type { TanStackStartOutputConfig } from '../../plugin'
+import type { TanStackStartOutputConfig } from '../plugin'
 
 export function nitroPlugin(
   options: TanStackStartOutputConfig,

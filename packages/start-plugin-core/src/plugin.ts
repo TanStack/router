@@ -5,8 +5,8 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { createTanStackConfig } from './schema'
-import { nitroPlugin } from './plugins/nitro/plugin'
-import { startRoutesManifestPlugin } from './plugins/start-routes-manifest/plugin'
+import { nitroPlugin } from './nitro-plugin/plugin'
+import { startRoutesManifestPlugin } from './start-routes-manifest-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin'
 import {
   CLIENT_DIST_DIR,
@@ -14,9 +14,9 @@ import {
   VITE_ENVIRONMENT_NAMES,
 } from './constants'
 import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/plugin'
-import { loadEnvPlugin } from './plugins/load-env/plugin'
-import { devServerPlugin } from './plugins/dev-server/plugin'
-import { resolveVirtualEntriesPlugin } from './plugins/resolve-virtual-entries/plugin'
+import { loadEnvPlugin } from './load-env-plugin/plugin'
+import { devServerPlugin } from './dev-server-plugin/plugin'
+import { resolveVirtualEntriesPlugin } from './resolve-virtual-entries-plugin/plugin'
 import type { createTanStackStartOptionsSchema } from './schema'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'

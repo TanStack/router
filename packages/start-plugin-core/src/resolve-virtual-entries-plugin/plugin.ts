@@ -3,7 +3,7 @@ import * as vite from 'vite'
 import type {
   TanStackStartOutputConfig,
   TanStackStartVitePluginCoreOptions,
-} from '../../plugin'
+} from '../plugin'
 
 export function resolveVirtualEntriesPlugin(
   opts: TanStackStartVitePluginCoreOptions,
