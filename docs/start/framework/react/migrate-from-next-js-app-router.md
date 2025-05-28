@@ -257,7 +257,7 @@ Getting dynamic route parameters in **TanStack Start** is straightforward.
 -   params: Promise<{ slug: string }>
 - }) {
 + export const Route = createFileRoute({
-+   component: Home,
++   component: Page,
 + })
 
 + function Page() {
