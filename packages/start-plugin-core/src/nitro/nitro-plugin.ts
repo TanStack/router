@@ -2,6 +2,7 @@ import path from 'node:path'
 import { rmSync } from 'node:fs'
 import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
+import { loadEnv } from 'vite'
 import { clientDistDir, ssrEntryFile } from '../plugin'
 import { prerender } from '../prerender'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
@@ -16,6 +17,19 @@ import type {
 import type { Nitro, NitroConfig } from 'nitropack'
 import type { TanStackStartOutputConfig } from '../plugin'
 
+function setupLoadEnv(startOpts: TanStackStartOutputConfig): PluginOption {
+  return {
+    name: 'tanstack-vite-plugin-nitro-load-env',
+    enforce: 'pre',
+    config(userConfig, envConfig) {
+      Object.assign(
+        process.env,
+        loadEnv(envConfig.mode, userConfig.root ?? startOpts.root, ''),
+      )
+    },
+  }
+}
+
 export function nitroPlugin(
   options: TanStackStartOutputConfig,
   getSsrBundle: () => Rollup.OutputBundle,
@@ -23,6 +37,7 @@ export function nitroPlugin(
   const buildPreset =
     process.env['START_TARGET'] ?? (options.target as string | undefined)
   return [
+    setupLoadEnv(options),
     devServerPlugin(),
     {
       name: 'tanstack-vite-plugin-nitro',
