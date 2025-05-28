@@ -178,6 +178,10 @@ async function buildNitroApp(
   }
 
   // Build the nitro app
+  // We only build the nitro app, once we've prepared the public assets,
+  // prerendered the pages and built the sitemap.
+  // If we try to do this earlier, then the public assets may not be available
+  // in the production build.
   await build(nitro)
 
   // Close the nitro instance
