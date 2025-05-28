@@ -168,11 +168,11 @@ export function TanStackStartVitePluginCore(
           define: {
             // define is an esbuild function that replaces the any instances of given keys with the given values
             // i.e: __FRAMEWORK_NAME__ can be replaced with JSON.stringify("TanStack Start")
-            
-            ...injectDefineEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
-            ...injectDefineEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
-            ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
-            ...injectDefineEnv('TSS_APP_BASE', viteAppBase)
+
+            ...defineReplaceEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
+            ...defineReplaceEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
+            ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
+            ...defineReplaceEnv('TSS_APP_BASE', viteAppBase)
           },
         }
       },
@@ -278,7 +278,7 @@ function resolveVirtualEntriesPlugin(
   }
 }
 
-function injectDefineEnv<TKey extends string, TValue extends string>(
+function defineReplaceEnv<TKey extends string, TValue extends string>(
   key: TKey,
   value: TValue,
 ): { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue } {
