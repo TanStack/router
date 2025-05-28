@@ -4,3 +4,6 @@ export const VITE_ENVIRONMENT_NAMES = {
   server: 'ssr',
   client: 'client',
 } as const
+
+export const CLIENT_DIST_DIR = '.tanstack-start/build/client-dist'
+export const SSR_ENTRY_FILE = 'ssr.mjs'

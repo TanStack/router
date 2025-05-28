@@ -2,10 +2,13 @@ import path from 'node:path'
 import { rmSync } from 'node:fs'
 import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
-import { clientDistDir, ssrEntryFile } from '../plugin'
-import { prerender } from '../prerender'
-import { VITE_ENVIRONMENT_NAMES } from '../constants'
-import { buildSitemap } from '../build-sitemap'
+import {
+  VITE_ENVIRONMENT_NAMES,
+  CLIENT_DIST_DIR,
+  SSR_ENTRY_FILE,
+} from '../../constants'
+import { buildSitemap } from './build-sitemap'
+import { prerender } from './prerender'
 import type {
   EnvironmentOptions,
   PluginOption,
@@ -13,7 +16,7 @@ import type {
   ViteBuilder,
 } from 'vite'
 import type { Nitro, NitroConfig } from 'nitropack'
-import type { TanStackStartOutputConfig } from '../plugin'
+import type { TanStackStartOutputConfig } from '../../plugin'
 
 export function nitroPlugin(
   options: TanStackStartOutputConfig,
@@ -60,7 +63,7 @@ export function nitroPlugin(
 
               // Build the client bundle
               // i.e client entry file with `hydrateRoot(...)`
-              const clientOutputDir = resolve(options.root, clientDistDir)
+              const clientOutputDir = resolve(options.root, CLIENT_DIST_DIR)
               rmSync(clientOutputDir, { recursive: true, force: true })
               await builder.build(client)
 
@@ -76,7 +79,7 @@ export function nitroPlugin(
                 baseURL: globalThis.TSS_APP_BASE,
                 publicAssets: [
                   {
-                    dir: path.resolve(options.root, clientDistDir),
+                    dir: path.resolve(options.root, CLIENT_DIST_DIR),
                     baseURL: '/',
                     maxAge: 31536000, // 1 year
                   },
@@ -85,7 +88,7 @@ export function nitroPlugin(
                   generateTsConfig: false,
                 },
                 prerender: undefined,
-                renderer: ssrEntryFile,
+                renderer: SSR_ENTRY_FILE,
                 plugins: [], // Nitro's plugins
                 appConfigFiles: [],
                 scanDirs: [],
