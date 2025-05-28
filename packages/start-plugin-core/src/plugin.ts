@@ -166,8 +166,9 @@ export function TanStackStartVitePluginCore(
           },
           /* prettier-ignore */
           define: {
-            ...injectDefineEnv('TSS_PUBLIC_BASE', startConfig.public.base),
-            ...injectDefineEnv('TSS_CLIENT_BASE', startConfig.client.base),
+            // define is an esbuild function that replaces the any instances of given keys with the given values
+            // i.e: __FRAMEWORK_NAME__ can be replaced with JSON.stringify("TanStack Start")
+            
             ...injectDefineEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
             ...injectDefineEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
             ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
