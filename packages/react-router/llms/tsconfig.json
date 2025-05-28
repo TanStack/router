@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM"],
+    "declaration": true
+  },
+  "include": ["index.ts", "rules/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
