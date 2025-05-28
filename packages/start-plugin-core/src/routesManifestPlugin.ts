@@ -247,7 +247,7 @@ export function startManifestPlugin(
         try {
           const routesManifestOutputDirPath = path.resolve(
             opts.root,
-            '.tanstack-start/build/routes-manifest',
+            '.tanstack-start/build/route-assets-manifest',
           )
           rmSync(routesManifestOutputDirPath, {
             recursive: true,
