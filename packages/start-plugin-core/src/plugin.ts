@@ -4,22 +4,19 @@ import { trimPathRight } from '@tanstack/router-core'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
-import {
-  createTanStackConfig,
-  createTanStackStartOptionsSchema,
-} from './schema'
+import { createTanStackConfig } from './schema'
 import { nitroPlugin } from './nitro/nitro-plugin'
 import { startManifestPlugin } from './routesManifestPlugin'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/plugin'
+import type { createTanStackStartOptionsSchema } from './schema'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
 import type { CompileStartFrameworkOptions } from './compilers'
 
-const TanStackStartOptionsSchema = createTanStackStartOptionsSchema()
 export type TanStackStartInputConfig = z.input<
-  typeof TanStackStartOptionsSchema
+  ReturnType<typeof createTanStackStartOptionsSchema>
 >
 
 const defaultConfig = createTanStackConfig()
