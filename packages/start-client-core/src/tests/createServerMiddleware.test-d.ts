@@ -442,7 +442,7 @@ test('createMiddleware merges server context and client context, sends server co
           fromClient3: string
           fromClient4: string
         }
-        sendContext: { toServer1: 'toServer1' }
+        sendContext: { toServer1: string }
         headers: HeadersInit
       }>()
 
@@ -453,7 +453,7 @@ test('createMiddleware merges server context and client context, sends server co
         fromServer1: string
         fromServer2: string
         fromServer3: string
-        toServer1: 'toServer1'
+        toServer1: string
       }>()
 
       const result = await options.next({
@@ -468,7 +468,7 @@ test('createMiddleware merges server context and client context, sends server co
             fromServer4: string
           }
           sendContext: {
-            toClient1: 'toClient1'
+            toClient1: string
           }
         }
         context: {
@@ -476,9 +476,9 @@ test('createMiddleware merges server context and client context, sends server co
           fromServer2: string
           fromServer3: string
           fromServer4: string
-          toServer1: 'toServer1'
+          toServer1: string
         }
-        sendContext: { toClient1: 'toClient1' }
+        sendContext: { toClient1: string }
       }>()
 
       return result
@@ -507,9 +507,9 @@ test('createMiddleware merges server context and client context, sends server co
           fromClient3: string
           fromClient4: string
           fromClient5: string
-          toClient1: 'toClient1'
+          toClient1: string
         }
-        sendContext: { toServer1: 'toServer1'; toServer2: 'toServer2' }
+        sendContext: { toServer1: string; toServer2: string }
         headers: HeadersInit
       }>()
 
@@ -521,8 +521,8 @@ test('createMiddleware merges server context and client context, sends server co
         fromServer2: string
         fromServer3: string
         fromServer4: string
-        toServer1: 'toServer1'
-        toServer2: 'toServer2'
+        toServer1: string
+        toServer2: string
       }>()
 
       const result = await options.next({
@@ -537,7 +537,7 @@ test('createMiddleware merges server context and client context, sends server co
             fromServer5: string
           }
           sendContext: {
-            toClient2: 'toClient2'
+            toClient2: string
           }
         }
         context: {
@@ -546,10 +546,10 @@ test('createMiddleware merges server context and client context, sends server co
           fromServer3: string
           fromServer4: string
           fromServer5: string
-          toServer1: 'toServer1'
-          toServer2: 'toServer2'
+          toServer1: string
+          toServer2: string
         }
-        sendContext: { toClient1: 'toClient1'; toClient2: 'toClient2' }
+        sendContext: { toClient1: string; toClient2: string }
       }>()
 
       return result

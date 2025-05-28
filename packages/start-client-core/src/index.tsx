@@ -86,3 +86,9 @@ export {
   serverFnStaticCache,
   executeMiddleware,
 } from './createServerFn'
+
+export type { StartRegister as Register } from '@tanstack/router-core'
+
+export type { CreateStartConfig, StartConfig } from './createStart'
+
+export { createStart } from './createStart'

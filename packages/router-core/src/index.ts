@@ -67,13 +67,18 @@ export type {
 
 export type {
   StartSerializer,
-  Serializable,
-  SerializerParse,
-  SerializerParseBy,
-  SerializerStringify,
-  SerializerStringifyBy,
+  TypeSerializerParse,
+  TypeSerializerParseBy,
+  TypeSerializerStringify,
+  TypeSerializerStringifyBy,
   SerializerExtensions,
+  DefaultTypeSerializable,
+  DefaultTypeSerializer,
+  Serializer,
+  SerovalSerializer,
 } from './serializer'
+
+export { serovalSerializer } from './serializer'
 
 export type { ParsedLocation } from './location'
 export type { Manifest, RouterManagedTag } from './manifest'
@@ -418,3 +423,13 @@ export type {
   ValidateUseSearchResult,
   ValidateUseParamsResult,
 } from './typePrimitives'
+
+export type {
+  CreateStartConfig,
+  StartConfig,
+  StartConfigTypes,
+  DefaultStartRegister,
+  StartRegister,
+  AnyStartConfig,
+  InferSerializer,
+} from './start'
