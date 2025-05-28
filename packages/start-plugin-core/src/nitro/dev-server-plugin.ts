@@ -29,8 +29,12 @@ export function devServerPlugin(): Plugin {
       return () => {
         remove_html_middlewares(viteDevServer.middlewares)
         let cachedScripts: string | undefined
+
         viteDevServer.middlewares.use(async (req, res) => {
+          // Create an H3Event to have it passed into the server entry
+          // i.e: event => defineEventHandler(event)
           const event = createEvent(req, res)
+
           const serverEnv = viteDevServer.environments[
             VITE_ENVIRONMENT_NAMES.server
           ] as DevEnvironment | undefined
@@ -41,11 +45,14 @@ export function devServerPlugin(): Plugin {
                 `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
               )
             }
+
             if (!isRunnableDevEnvironment(serverEnv)) {
               throw new Error(
                 `Expected server environment ${VITE_ENVIRONMENT_NAMES.server} to be a RunnableDevEnvironment. This can be caused by multiple vite versions being installed in the project.`,
               )
             }
+
+            // Extract the scripts that Vite plugins would inject into the initial HTML
             if (cachedScripts === undefined) {
               const templateHtml = `<html><head></head><body></body></html>`
               const transformedHtml = await viteDevServer.transformIndexHtml(
@@ -57,6 +64,9 @@ export function devServerPlugin(): Plugin {
                 .map((script) => script.content ?? '')
                 .join(';')
             }
+
+            // Import and resolve the request by running the server entry point
+            // i.e export default defineEventHandler((event) => { ... })
             const serverEntry = await serverEnv.runner.import(
               '/~start/server-entry',
             )

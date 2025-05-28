@@ -49,24 +49,25 @@ export function nitroPlugin(
           builder: {
             sharedPlugins: true,
             async buildApp(builder) {
-              const clientEnv =
-                builder.environments[VITE_ENVIRONMENT_NAMES.client]
-              const serverEnv =
-                builder.environments[VITE_ENVIRONMENT_NAMES.server]
+              const client = builder.environments[VITE_ENVIRONMENT_NAMES.client]
+              const server = builder.environments[VITE_ENVIRONMENT_NAMES.server]
 
-              if (!clientEnv) {
+              if (!client) {
                 throw new Error('Client environment not found')
               }
 
-              if (!serverEnv) {
+              if (!server) {
                 throw new Error('SSR environment not found')
               }
 
+              // Build the client bundle
+              // i.e client entry file with `hydrateRoot(...)`
               const clientOutputDir = resolve(options.root, clientDistDir)
               rmSync(clientOutputDir, { recursive: true, force: true })
-              await builder.build(clientEnv)
+              await builder.build(client)
 
-              await builder.build(serverEnv)
+              // Build the SSR bundle
+              await builder.build(server)
 
               const nitroConfig: NitroConfig = {
                 dev: false,
@@ -92,7 +93,7 @@ export function nitroPlugin(
                 scanDirs: [],
                 imports: false, // unjs/unimport for global/magic imports
                 rollupConfig: {
-                  plugins: [virtualBundlePlugin(getSsrBundle()) as any],
+                  plugins: [virtualBundlePlugin(getSsrBundle())],
                 },
                 virtual: {
                   // This is Nitro's way of defining virtual modules
@@ -177,6 +178,10 @@ async function buildNitroApp(
   }
 
   // Build the nitro app
+  // We only build the nitro app, once we've prepared the public assets,
+  // prerendered the pages and built the sitemap.
+  // If we try to do this earlier, then the public assets may not be available
+  // in the production build.
   await build(nitro)
 
   // Close the nitro instance
@@ -186,7 +191,13 @@ async function buildNitroApp(
   )
 }
 
-function virtualBundlePlugin(ssrBundle: Rollup.OutputBundle): Rollup.Plugin {
+type NitroRollupPluginOption = NonNullable<
+  NitroConfig['rollupConfig']
+>['plugins']
+
+function virtualBundlePlugin(
+  ssrBundle: Rollup.OutputBundle,
+): NitroRollupPluginOption {
   type VirtualModule = { code: string; map: string | null }
   const _modules = new Map<string, VirtualModule>()
 

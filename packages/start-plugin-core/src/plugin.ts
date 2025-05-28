@@ -4,22 +4,19 @@ import { trimPathRight } from '@tanstack/router-core'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
-import {
-  createTanStackConfig,
-  createTanStackStartOptionsSchema,
-} from './schema'
+import { createTanStackConfig } from './schema'
 import { nitroPlugin } from './nitro/nitro-plugin'
 import { startManifestPlugin } from './routesManifestPlugin'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/plugin'
+import type { createTanStackStartOptionsSchema } from './schema'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
 import type { CompileStartFrameworkOptions } from './compilers'
 
-const TanStackStartOptionsSchema = createTanStackStartOptionsSchema()
 export type TanStackStartInputConfig = z.input<
-  typeof TanStackStartOptionsSchema
+  ReturnType<typeof createTanStackStartOptionsSchema>
 >
 
 const defaultConfig = createTanStackConfig()
@@ -169,12 +166,14 @@ export function TanStackStartVitePluginCore(
           },
           /* prettier-ignore */
           define: {
-            ...injectDefineEnv('TSS_PUBLIC_BASE', startConfig.public.base),
-            ...injectDefineEnv('TSS_CLIENT_BASE', startConfig.client.base),
-            ...injectDefineEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
-            ...injectDefineEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
-            ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
-            ...injectDefineEnv('TSS_APP_BASE', viteAppBase)
+            // define is an esbuild function that replaces the any instances of given keys with the given values
+            // i.e: __FRAMEWORK_NAME__ can be replaced with JSON.stringify("TanStack Start")
+            // This is not the same as injecting environment variables.
+
+            ...defineReplaceEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
+            ...defineReplaceEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
+            ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
+            ...defineReplaceEnv('TSS_APP_BASE', viteAppBase)
           },
         }
       },
@@ -280,7 +279,7 @@ function resolveVirtualEntriesPlugin(
   }
 }
 
-function injectDefineEnv<TKey extends string, TValue extends string>(
+function defineReplaceEnv<TKey extends string, TValue extends string>(
   key: TKey,
   value: TValue,
 ): { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue } {
