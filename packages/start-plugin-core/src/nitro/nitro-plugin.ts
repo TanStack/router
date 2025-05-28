@@ -62,10 +62,13 @@ export function nitroPlugin(
                 throw new Error('SSR environment not found')
               }
 
+              // Build the client bundle
+              // i.e client entry file with `hydrateRoot(...)`
               const clientOutputDir = resolve(options.root, clientDistDir)
               rmSync(clientOutputDir, { recursive: true, force: true })
               await builder.build(clientEnv)
 
+              // Build the SSR bundle
               await builder.build(serverEnv)
 
               const nitroConfig: NitroConfig = {
@@ -92,7 +95,7 @@ export function nitroPlugin(
                 scanDirs: [],
                 imports: false, // unjs/unimport for global/magic imports
                 rollupConfig: {
-                  plugins: [virtualBundlePlugin(getSsrBundle()) as any],
+                  plugins: [virtualBundlePlugin(getSsrBundle())],
                 },
                 virtual: {
                   // This is Nitro's way of defining virtual modules
@@ -186,7 +189,13 @@ async function buildNitroApp(
   )
 }
 
-function virtualBundlePlugin(ssrBundle: Rollup.OutputBundle): Rollup.Plugin {
+type NitroRollupPluginOption = NonNullable<
+  NitroConfig['rollupConfig']
+>['plugins']
+
+function virtualBundlePlugin(
+  ssrBundle: Rollup.OutputBundle,
+): NitroRollupPluginOption {
   type VirtualModule = { code: string; map: string | null }
   const _modules = new Map<string, VirtualModule>()
 
