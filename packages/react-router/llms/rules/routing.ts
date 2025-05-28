@@ -1931,6 +1931,6 @@ Or you can define the virtual routes directly in the configuration, while much l
 }
 \`\`\`
 
-`;
+`
 
-export default content;
+export default content

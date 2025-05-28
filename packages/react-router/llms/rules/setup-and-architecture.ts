@@ -926,6 +926,6 @@ function PathlessLayoutRouteComponent() {
 
 </details>
 
-`;
+`
 
-export default content;
+export default content
