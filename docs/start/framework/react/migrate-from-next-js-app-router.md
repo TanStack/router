@@ -5,44 +5,44 @@ title: Migrate from Next.js App Router
 
 This guide provides a step-by-step process to migrate a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth and professional as possible.
 
-# Step-by-Step (Basics)
+## Step-by-Step (Basics)
 
-- ## Prerequisites
+### Prerequisites
 
-  You can clone the following [starter template](https://github.com/nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start) to follow along with this guide:
+You can clone the following [starter template](https://github.com/nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start) to follow along with this guide:
 
-  ```shell
-  npx gitpick nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start next.js-start-er
-  ```
+```shell
+npx gitpick nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start next.js-start-er
+```
 
-  This starter is a basic Next.js application using the App Router, which we will migrate to **TanStack Start**.
+This starter is a basic Next.js application using the App Router, which we will migrate to **TanStack Start**.
 
-1. ## Remove Next.js
+### 1. Remove Next.js
 
-   First, uninstall Next.js and remove adjacent configuration files:
+First, uninstall Next.js and remove adjacent configuration files:
 
-   ```shell
-   npm uninstall next
-   rm next.config.* postcss.config.*
-   ```
+```shell
+npm uninstall next
+rm next.config.* postcss.config.*
+```
 
-2. ## Install Required Dependencies
+### 2. Install Required Dependencies
 
-   **TanStack Start** leverages Vite and TanStack Router:
+**TanStack Start** leverages Vite and TanStack Router:
 
-   ```shell
-   npm i @tanstack/react-router@alpha @tanstack/react-start@alpha vite
-   ```
+```shell
+npm i @tanstack/react-router@alpha @tanstack/react-start@alpha vite
+```
 
-   For TypeScript support and Tailwind CSS:
+For TypeScript support and Tailwind CSS:
 
-   ```shell
-   npm i -D @tailwindcss/postcss postcss tailwindcss vite-tsconfig-paths
-   ```
+```shell
+npm i -D @tailwindcss/postcss postcss tailwindcss vite-tsconfig-paths
+```
 
-   > Note: We use `@alpha` tags until the packages reach stability.
+> Note: We use `@alpha` tags until the packages reach stability.
 
-3. ## Update Project Configuration
+### 3. Update Project Configuration
 
 - `package.json`
 
@@ -92,11 +92,11 @@ This guide provides a step-by-step process to migrate a project from the Next.js
   }
   ```
 
-4. ## Adapt the Root Layout
+### 4. Adapt the Root Layout
 
-   > **TanStack Start** uses routing adjacent to Next.js, but with a [different structure](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts).
+> **TanStack Start** uses routing adjacent to Next.js, but with a [different structure](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts).
 
-   Instead of `layout.tsx`, you will create a file named `__root.tsx` in the `src/app` directory. This file will serve as the root layout for your application.
+Instead of `layout.tsx`, you will create a file named `__root.tsx` in the `src/app` directory. This file will serve as the root layout for your application.
 
 - `src/app/layout.tsx` to `src/app/__root.tsx`
 
@@ -154,11 +154,11 @@ This guide provides a step-by-step process to migrate a project from the Next.js
   }
   ```
 
-5. ## Adapt the Home Page
+### 5. Adapt the Home Page
 
-   > **TanStack Start** uses routing adjacent to Next.js, but with a [different structure](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts).
+> **TanStack Start** uses routing adjacent to Next.js, but with a [different structure](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts).
 
-   Instead of `page.tsx`, you will create an `index.tsx` file for the `/` route.
+Instead of `page.tsx`, you will create an `index.tsx` file for the `/` route.
 
 - `src/app/page.tsx` to `src/app/index.tsx`
 
@@ -191,9 +191,9 @@ This guide provides a step-by-step process to migrate a project from the Next.js
   }
   ```
 
-6. ## Are we migrated yet?
+### 6. Are we migrated yet?
 
-   One last thing before we can run the development server, we need to create a router file that will dictate the behavior of TanStack Router used within **TanStack Start**.
+One last thing before we can run the development server, we need to create a router file that will dictate the behavior of TanStack Router used within **TanStack Start**.
 
 - `src/app/router.ts`
 
@@ -219,135 +219,135 @@ This guide provides a step-by-step process to migrate a project from the Next.js
 
   > Here you can configure everything from the default [preloading functionality](https://tanstack.com/router/latest/docs/framework/react/guide/preloading) to [caching staleness](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading).
 
-7. ## Verify the Migration
+### 7. Verify the Migration
 
-   Run the development server:
+Run the development server:
 
-   ```shell
-   npm run dev
-   ```
+```shell
+npm run dev
+```
 
-   Then visit http://localhost:3000. You should see the **TanStack Start** welcome page with its logo and documentation link.
+Then visit http://localhost:3000. You should see the **TanStack Start** welcome page with its logo and documentation link.
 
-   > If you encounter issues, review the steps above and ensure file names and paths match exactly. For reference implementation, see the [after migration repository](https://github.com/nrjdalal/next-to-start).
+> If you encounter issues, review the steps above and ensure file names and paths match exactly. For reference implementation, see the [after migration repository](https://github.com/nrjdalal/next-to-start).
 
-# Next Steps (Advanced)
+## Next Steps (Advanced)
 
-- ## Routing Concepts
+### Routing Concepts
 
-  | Route Example               | Next.js                         | TanStack Start            |
-  | --------------------------- | ------------------------------- | ------------------------- |
-  | Root Layout                 | `src/app/layout.tsx`            | `src/app/__root.tsx`      |
-  | `/` (Home Page)             | `src/app/page.tsx`              | `src/app/index.tsx`       |
-  | `/posts` (Static Route)     | `src/app/posts/page.tsx`        | `src/app/posts.tsx`       |
-  | `/posts/:slug` (Dynamic)    | `src/app/posts/[slug]/page.tsx` | `src/app/posts/$slug.tsx` |
-  | `/api/endpoint` (API Route) | `src/app/api/endpoint/route.ts` | `src/app/api/endpoint.ts` |
+| Route Example               | Next.js                         | TanStack Start            |
+| --------------------------- | ------------------------------- | ------------------------- |
+| Root Layout                 | `src/app/layout.tsx`            | `src/app/__root.tsx`      |
+| `/` (Home Page)             | `src/app/page.tsx`              | `src/app/index.tsx`       |
+| `/posts` (Static Route)     | `src/app/posts/page.tsx`        | `src/app/posts.tsx`       |
+| `/posts/:slug` (Dynamic)    | `src/app/posts/[slug]/page.tsx` | `src/app/posts/$slug.tsx` |
+| `/api/endpoint` (API Route) | `src/app/api/endpoint/route.ts` | `src/app/api/endpoint.ts` |
 
-  Learn more about the [Routing Concepts](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts).
+Learn more about the [Routing Concepts](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts).
 
-- ## Dynamic and Catch-All Routes
+### Dynamic and Catch-All Routes
 
-  Getting dynamic route parameters in **TanStack Start** is straightforward.
+Getting dynamic route parameters in **TanStack Start** is straightforward.
 
-  ```diff
-  - export default async function Page({
-  -   params,
-  - }: {
-  -   params: Promise<{ slug: string }>
-  - }) {
-  + export const Route = createFileRoute({
-  +   component: Home,
-  + })
+```diff
+- export default async function Page({
+-   params,
+- }: {
+-   params: Promise<{ slug: string }>
+- }) {
++ export const Route = createFileRoute({
++   component: Home,
++ })
 
-  + function Page() {
-  -   const { slug } = await params
-  +   const { slug } = Route.useParams()
-    return <div>My Post: {slug}</div>
++ function Page() {
+-   const { slug } = await params
++   const { slug } = Route.useParams()
+  return <div>My Post: {slug}</div>
+}
+```
+
+Similarly, you can get `searchParams` like `const { page, filter, sort } = Route.useSearch()`.
+
+Learn more about the [Dynamic and Catch-All Routes](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts#dynamic-route-segments).
+
+### Links
+
+```diff
+- import Link from "next/link"
++ import { Link } from "@tanstack/react-router"
+
+function Component() {
+-   return <Link href="/dashboard">Dashboard</Link>
++   return <Link to="/dashboard">Dashboard</Link>
+}
+```
+
+Learn more about the [Links](https://tanstack.com/start/latest/docs/framework/react/learn-the-basics#navigation).
+
+### Server ~Actions~ Functions
+
+```diff
+- 'use server'
++ import { createServerFn } from '@tanstack/react-start'
+
+- export const create = async () => {
++ export const create = createServerFn().handler(async () => {
+  return true
+- }
++ })
+```
+
+Learn more about the [Server Functions](https://tanstack.com/start/latest/docs/framework/react/server-functions).
+
+### Server Routes ~Handlers~
+
+```diff
+- export async function GET() {
++ export const ServerRoute = createServerFileRoute().methods({
++   GET: async () => {
+    return Response.json("Hello, World!")
   }
-  ```
++ })
+```
 
-  Similarly, you can get `searchParams` like `const { page, filter, sort } = Route.useSearch()`.
+Learn more about the [Server Routes](https://tanstack.com/start/latest/docs/framework/react/server-routes).
 
-  Learn more about the [Dynamic and Catch-All Routes](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts#dynamic-route-segments).
+### Fonts
 
-- ## Links
+```diff
+- import { Inter } from "next/font/google"
 
-  ```diff
-  - import Link from "next/link"
-  + import { Link } from "@tanstack/react-router"
+- const inter = Inter({
+-   subsets: ["latin"],
+-   display: "swap",
+- })
 
-  function Component() {
-  -   return <Link href="/dashboard">Dashboard</Link>
-  +   return <Link to="/dashboard">Dashboard</Link>
-  }
-  ```
+- export default function Page() {
+-   return <p className={inter.className}>Font Sans</p>
+- }
+```
 
-  Learn more about the [Links](https://tanstack.com/start/latest/docs/framework/react/learn-the-basics#navigation).
+Instead of next/font, use Tailwind CSS’s CSS-first approach. Install fonts (e.g. from [Fontsource](https://github.com/fontsource/fontsource)):
 
-- ## Server ~Actions~ Functions
+```shell
+npm i -D @fontsource-variable/dm-sans @fontsource-variable/jetbrains-mono
+```
 
-  ```diff
-  - 'use server'
-  + import { createServerFn } from '@tanstack/react-start'
+Add to `src/app/globals.css`:
 
-  - export const create = async () => {
-  + export const create = createServerFn().handler(async () => {
-    return true
-  - }
-  + })
-  ```
+```css
+/* src/app/globals.css */
 
-  Learn more about the [Server Functions](https://tanstack.com/start/latest/docs/framework/react/server-functions).
+@import 'tailwindcss';
 
-- ## Server Routes ~Handlers~
+@import '@fontsource-variable/dm-sans';
+@import '@fontsource-variable/jetbrains-mono';
 
-  ```diff
-  - export async function GET() {
-  + export const ServerRoute = createServerFileRoute().methods({
-  +   GET: async () => {
-      return Response.json("Hello, World!")
-    }
-  + })
-  ```
-
-  Learn more about the [Server Routes](https://tanstack.com/start/latest/docs/framework/react/server-routes).
-
-- ## Fonts
-
-  ```diff
-  - import { Inter } from "next/font/google"
-
-  - const inter = Inter({
-  -   subsets: ["latin"],
-  -   display: "swap",
-  - })
-
-  - export default function Page() {
-  -   return <p className={inter.className}>Font Sans</p>
-  - }
-  ```
-
-  Instead of next/font, use Tailwind CSS’s CSS-first approach. Install fonts (e.g. from [Fontsource](https://github.com/fontsource/fontsource)):
-
-  ```shell
-  npm i -D @fontsource-variable/dm-sans @fontsource-variable/jetbrains-mono
-  ```
-
-  Add to `src/app/globals.css`:
-
-  ```css
-  /* src/app/globals.css */
-
-  @import 'tailwindcss';
-
-  @import '@fontsource-variable/dm-sans';
-  @import '@fontsource-variable/jetbrains-mono';
-
-  @theme inline {
-    --font-sans: 'DM Sans Variable', sans-serif;
-    --font-mono: 'JetBrains Mono Variable', monospace;
-    /* ... */
-  }
-
+@theme inline {
+  --font-sans: 'DM Sans Variable', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', monospace;
   /* ... */
-  ```
+}
+
+/* ... */
+```
