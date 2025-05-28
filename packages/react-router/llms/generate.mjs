@@ -13,6 +13,13 @@ function extractFrontMatter(content) {
   return { frontMatter, bodyContent }
 }
 
+function convertMarkdownToTypeScript(markdownContent) {
+  const sanitizedContent = markdownContent
+    .replace(/`/g, '\\`')
+    .replace(/\$\{/g, '\\${')
+  return `const content = \`${sanitizedContent}\`;\n\nexport default content;\n`
+}
+
 function mergeFiles(files, outputFile) {
   let mergedContent = ''
   for (const file of files) {
@@ -21,7 +28,11 @@ function mergeFiles(files, outputFile) {
     const title = frontMatter.match(/title:\s*(.+)/)[1].trim()
     mergedContent += `# ${title}\n\n${bodyContent}\n\n`
   }
-  fs.writeFileSync(outputFile, mergedContent, 'utf-8')
+  fs.writeFileSync(
+    outputFile,
+    convertMarkdownToTypeScript(mergedContent),
+    'utf-8',
+  )
 }
 
 const docs = {
@@ -34,7 +45,7 @@ for (const key of Object.keys(docs)) {
   const files = fs.readdirSync(docs[key]).filter((file) => file.endsWith('.md'))
   mergeFiles(
     files.map((file) => path.join(docs[key], file)),
-    `./packages/react-router/llms/rules/${key}.md`,
+    `./llms/rules/${key}.ts`,
   )
 }
 
@@ -47,20 +58,5 @@ mergeFiles(
     '../../docs/router/framework/react/migrate-from-react-location.md',
     '../../docs/router/framework/react/faq.md',
   ],
-  './llms/rules/setup-and-architecture.md',
+  './llms/rules/setup-and-architecture.ts',
 )
-
-function convertMarkdownToTypeScript(mdFilePath) {
-  const content = fs.readFileSync(mdFilePath, 'utf-8')
-  const sanitizedContent = content.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')
-  const tsContent = `const content = \`${sanitizedContent}\`;\n\nexport default content;\n`
-  const tsFilePath = mdFilePath.replace(/\.md$/, '.ts')
-  fs.writeFileSync(tsFilePath, tsContent, 'utf-8')
-}
-
-const llmsDir = './llms/rules'
-const mdFiles = fs.readdirSync(llmsDir).filter((file) => file.endsWith('.md'))
-
-for (const mdFile of mdFiles) {
-  convertMarkdownToTypeScript(path.join(llmsDir, mdFile))
-}
