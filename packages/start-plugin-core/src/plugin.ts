@@ -9,13 +9,14 @@ import { nitroPlugin } from './plugins/nitro/plugin'
 import { startRoutesManifestPlugin } from './plugins/start-routes-manifest/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin'
 import {
-  VITE_ENVIRONMENT_NAMES,
   CLIENT_DIST_DIR,
   SSR_ENTRY_FILE,
+  VITE_ENVIRONMENT_NAMES,
 } from './constants'
 import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/plugin'
 import { loadEnvPlugin } from './plugins/load-env/plugin'
 import { devServerPlugin } from './plugins/dev-server/plugin'
+import { resolveVirtualEntriesPlugin } from './plugins/resolve-virtual-entries/plugin'
 import type { createTanStackStartOptionsSchema } from './schema'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
@@ -225,63 +226,6 @@ export function TanStackStartVitePluginCore(
       target: opts.framework,
     }),
   ]
-}
-
-function resolveVirtualEntriesPlugin(
-  opts: TanStackStartVitePluginCoreOptions,
-  startConfig: TanStackStartOutputConfig,
-): PluginOption {
-  let resolvedConfig: vite.ResolvedConfig
-
-  const modules = new Set<string>([
-    '/~start/server-entry',
-    '/~start/default-server-entry',
-    '/~start/default-client-entry',
-  ])
-
-  return {
-    name: 'tanstack-start-core:resolve-virtual-entries',
-    configResolved(config) {
-      resolvedConfig = config
-    },
-    resolveId(id) {
-      if (modules.has(id)) {
-        return `${id}.tsx`
-      }
-
-      return undefined
-    },
-    load(id) {
-      const routerFilepath = vite.normalizePath(
-        path.resolve(startConfig.root, startConfig.tsr.srcDirectory, 'router'),
-      )
-
-      if (id === '/~start/server-entry.tsx') {
-        const ssrEntryFilepath = startConfig.serverEntryPath.startsWith(
-          '/~start/default-server-entry',
-        )
-          ? startConfig.serverEntryPath
-          : vite.normalizePath(
-              path.resolve(resolvedConfig.root, startConfig.serverEntryPath),
-            )
-
-        return opts.getVirtualServerRootHandler({
-          routerFilepath,
-          serverEntryFilepath: ssrEntryFilepath,
-        })
-      }
-
-      if (id === '/~start/default-client-entry.tsx') {
-        return opts.getVirtualClientEntry({ routerFilepath })
-      }
-
-      if (id === '/~start/default-server-entry.tsx') {
-        return opts.getVirtualServerEntry({ routerFilepath })
-      }
-
-      return undefined
-    },
-  }
 }
 
 function defineReplaceEnv<TKey extends string, TValue extends string>(
