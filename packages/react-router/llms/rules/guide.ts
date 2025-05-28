@@ -6259,6 +6259,6 @@ const { enable, disable, navigate } = useConditionalNavigate({
 })
 \`\`\`
 
-`;
+`
 
-export default content;
+export default content

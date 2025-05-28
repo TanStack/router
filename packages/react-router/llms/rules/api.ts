@@ -4237,6 +4237,6 @@ function Component() {
 }
 \`\`\`
 
-`;
+`
 
-export default content;
+export default content
