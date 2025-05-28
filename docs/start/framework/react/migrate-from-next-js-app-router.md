@@ -196,7 +196,7 @@ Instead of `page.tsx`, you will create an `index.tsx` file for the `/` route.
 
 One last thing before we can run the development server, we need to create a router file that will dictate the behavior of TanStack Router used within **TanStack Start**.
 
-- `src/app/router.ts`
+- `src/router.tsx`
 
   ```tsx
   import { createRouter as createTanStackRouter } from '@tanstack/react-router'
