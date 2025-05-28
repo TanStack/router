@@ -58,7 +58,11 @@
         "default": "./dist/cjs/index.cjs"
       }
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./llms": {
+      "default": "./dist/llms/index.js",
+      "types": "./dist/llms/index.d.ts"
+    }
   },
   "sideEffects": false,
   "files": [
