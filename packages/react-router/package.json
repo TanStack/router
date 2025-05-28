@@ -40,8 +40,7 @@
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "pnpm run build:lib && pnpm run build:llm",
     "build:lib": "vite build",
-    "build:llm": "tsc -p ./llms/tsconfig.json",
-    "llm": "node ./llms/generate.mjs && pnpm run build:llm"
+    "build:llm": "tsc -p ./llms/tsconfig.json"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",

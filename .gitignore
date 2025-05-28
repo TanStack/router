@@ -78,5 +78,4 @@ app.config.ts.timestamp_*
 /.vscode/
 !/examples/react/**/.vscode/settings.json
 
-**/llms/**/*.js
-**/llms/**/*.d.ts
+**/llms
