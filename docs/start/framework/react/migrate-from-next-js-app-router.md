@@ -40,7 +40,8 @@ For TypeScript support and Tailwind CSS:
 npm i -D @tailwindcss/postcss postcss tailwindcss vite-tsconfig-paths
 ```
 
-> Note: We use `@alpha` tags until the packages reach stability.
+> [!NOTE]  
+> We use `@alpha` tags until the packages reach stability.
 
 ### 3. Update Project Configuration
 
