@@ -10,6 +10,8 @@ import { startManifestPlugin } from './routesManifestPlugin'
 import { TanStackStartCompilerPlugin } from './start-compiler-plugin'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/plugin'
+import { loadEnvPlugin } from './load-env-plugin'
+import { devServerPlugin } from './dev-server-plugin'
 import type { createTanStackStartOptionsSchema } from './schema'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
@@ -213,7 +215,9 @@ export function TanStackStartVitePluginCore(
         return serverEnv.runner.import(fn.extractedFilename)
       },
     }),
+    loadEnvPlugin(startConfig),
     startManifestPlugin(startConfig),
+    devServerPlugin(),
     nitroPlugin(startConfig, () => ssrBundle),
     TanStackStartServerRoutesVite({
       ...startConfig.tsr,

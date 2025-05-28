@@ -1,7 +1,7 @@
 import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
-import { extractHtmlScripts } from '../extractHtmlScripts'
-import { VITE_ENVIRONMENT_NAMES } from '../constants'
+import { extractHtmlScripts } from './extractHtmlScripts'
+import { VITE_ENVIRONMENT_NAMES } from './constants'
 import type { Connect, DevEnvironment, Plugin, ViteDevServer } from 'vite'
 
 declare global {
