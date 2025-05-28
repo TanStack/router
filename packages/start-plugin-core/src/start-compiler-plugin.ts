@@ -24,7 +24,7 @@ const transformFuncs = [
 
 const tokenRegex = new RegExp(transformFuncs.join('|'))
 
-export function TanStackStartCompilerPlugin(
+export function startCompilerPlugin(
   framework: CompileStartFrameworkOptions,
   inputOpts?: {
     client?: {

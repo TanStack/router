@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, rmSync, writeFile } from 'node:fs'
 import path from 'node:path'
 import { joinURL } from 'ufo'
 import { rootRouteId } from '@tanstack/router-core'
-import { resolveViteId } from './utils'
+import { resolveViteId } from '../utils'
 import type {
   PluginOption,
   ResolvedConfig,
@@ -10,7 +10,7 @@ import type {
   ManifestChunk as ViteManifestChunk,
 } from 'vite'
 import type { Manifest, RouterManagedTag } from '@tanstack/router-core'
-import type { TanStackStartOutputConfig } from './plugin'
+import type { TanStackStartOutputConfig } from '../plugin'
 
 const getCSSRecursively = (
   file: ViteManifestChunk,
@@ -44,7 +44,7 @@ const getCSSRecursively = (
   return result
 }
 
-export function startManifestPlugin(
+export function startRoutesManifestPlugin(
   opts: TanStackStartOutputConfig,
 ): PluginOption {
   let config: ResolvedConfig

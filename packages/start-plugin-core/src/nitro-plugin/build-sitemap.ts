@@ -1,8 +1,8 @@
 import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { create } from 'xmlbuilder2'
-import { createLogger } from './utils'
-import type { TanStackStartOutputConfig } from './plugin'
+import { createLogger } from '../utils'
+import type { TanStackStartOutputConfig } from '../plugin'
 import type { XMLBuilder } from 'xmlbuilder2/lib/interfaces'
 
 export type SitemapUrl = {

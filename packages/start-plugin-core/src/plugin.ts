@@ -5,11 +5,18 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { createTanStackConfig } from './schema'
-import { nitroPlugin } from './nitro/nitro-plugin'
-import { startManifestPlugin } from './routesManifestPlugin'
-import { TanStackStartCompilerPlugin } from './start-compiler-plugin'
-import { VITE_ENVIRONMENT_NAMES } from './constants'
+import { nitroPlugin } from './nitro-plugin/plugin'
+import { startRoutesManifestPlugin } from './start-routes-manifest-plugin/plugin'
+import { startCompilerPlugin } from './start-compiler-plugin'
+import {
+  CLIENT_DIST_DIR,
+  SSR_ENTRY_FILE,
+  VITE_ENVIRONMENT_NAMES,
+} from './constants'
 import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/plugin'
+import { loadEnvPlugin } from './load-env-plugin/plugin'
+import { devServerPlugin } from './dev-server-plugin/plugin'
+import { resolveVirtualEntriesPlugin } from './resolve-virtual-entries-plugin/plugin'
 import type { createTanStackStartOptionsSchema } from './schema'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
@@ -32,9 +39,6 @@ declare global {
   // eslint-disable-next-line no-var
   var TSS_APP_BASE: string
 }
-
-export const clientDistDir = '.tanstack-start/build/client-dist'
-export const ssrEntryFile = 'ssr.mjs'
 
 export interface TanStackStartVitePluginCoreOptions {
   framework: CompileStartFrameworkOptions
@@ -111,7 +115,7 @@ export function TanStackStartVitePluginCore(
                     main: getClientEntryPath(startConfig),
                   },
                   output: {
-                    dir: path.resolve(startConfig.root, clientDistDir),
+                    dir: path.resolve(startConfig.root, CLIENT_DIST_DIR),
                   },
                   // TODO: this should be removed
                   external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
@@ -128,7 +132,7 @@ export function TanStackStartVitePluginCore(
                 copyPublicDir: false,
                 rollupOptions: {
                   output: {
-                    entryFileNames: ssrEntryFile,
+                    entryFileNames: SSR_ENTRY_FILE,
                   },
                   plugins: [
                     {
@@ -179,7 +183,7 @@ export function TanStackStartVitePluginCore(
       },
     },
     // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPluginEnv
-    TanStackStartCompilerPlugin(opts.framework, {
+    startCompilerPlugin(opts.framework, {
       client: { envName: VITE_ENVIRONMENT_NAMES.client },
       server: { envName: VITE_ENVIRONMENT_NAMES.server },
     }),
@@ -213,70 +217,15 @@ export function TanStackStartVitePluginCore(
         return serverEnv.runner.import(fn.extractedFilename)
       },
     }),
-    startManifestPlugin(startConfig),
+    loadEnvPlugin(startConfig),
+    startRoutesManifestPlugin(startConfig),
+    devServerPlugin(),
     nitroPlugin(startConfig, () => ssrBundle),
     TanStackStartServerRoutesVite({
       ...startConfig.tsr,
       target: opts.framework,
     }),
   ]
-}
-
-function resolveVirtualEntriesPlugin(
-  opts: TanStackStartVitePluginCoreOptions,
-  startConfig: TanStackStartOutputConfig,
-): PluginOption {
-  let resolvedConfig: vite.ResolvedConfig
-
-  const modules = new Set<string>([
-    '/~start/server-entry',
-    '/~start/default-server-entry',
-    '/~start/default-client-entry',
-  ])
-
-  return {
-    name: 'tanstack-start-core:resolve-virtual-entries',
-    configResolved(config) {
-      resolvedConfig = config
-    },
-    resolveId(id) {
-      if (modules.has(id)) {
-        return `${id}.tsx`
-      }
-
-      return undefined
-    },
-    load(id) {
-      const routerFilepath = vite.normalizePath(
-        path.resolve(startConfig.root, startConfig.tsr.srcDirectory, 'router'),
-      )
-
-      if (id === '/~start/server-entry.tsx') {
-        const ssrEntryFilepath = startConfig.serverEntryPath.startsWith(
-          '/~start/default-server-entry',
-        )
-          ? startConfig.serverEntryPath
-          : vite.normalizePath(
-              path.resolve(resolvedConfig.root, startConfig.serverEntryPath),
-            )
-
-        return opts.getVirtualServerRootHandler({
-          routerFilepath,
-          serverEntryFilepath: ssrEntryFilepath,
-        })
-      }
-
-      if (id === '/~start/default-client-entry.tsx') {
-        return opts.getVirtualClientEntry({ routerFilepath })
-      }
-
-      if (id === '/~start/default-server-entry.tsx') {
-        return opts.getVirtualServerEntry({ routerFilepath })
-      }
-
-      return undefined
-    },
-  }
 }
 
 function defineReplaceEnv<TKey extends string, TValue extends string>(
