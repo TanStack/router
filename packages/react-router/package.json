@@ -81,6 +81,7 @@
     "combinate": "^1.1.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "unhead": "^2.0.8",
     "zod": "^3.24.2"
   },
   "peerDependencies": {

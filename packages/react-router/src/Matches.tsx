@@ -7,6 +7,7 @@ import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
+import type { LinkWithoutEvents, Meta } from 'unhead/types'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -31,8 +32,19 @@ import type {
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
-    meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
-    links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
+    meta?: Array<
+      | (React.JSX.IntrinsicElements['meta'] &
+          Omit<Meta, 'http-equiv' | 'charset'> & {
+            charSet?: Meta['charset']
+            httpEquiv?: Meta['http-equiv']
+          })
+      | undefined
+    >
+    links?: Array<
+      | (React.JSX.IntrinsicElements['link'] &
+          Omit<LinkWithoutEvents, 'referrerpolicy'>)
+      | undefined
+    >
     scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
     headScripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
   }

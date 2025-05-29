@@ -4,6 +4,33 @@ import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+const isTruthy = (val?: string | boolean) => val === '' || val === true
+const WEIGHT_MAP = {
+  meta: {
+    'content-security-policy': -30,
+    charset: -20,
+    viewport: -15,
+  },
+  link: {
+    preconnect: 20,
+    stylesheet: 60,
+    preload: 70,
+    modulepreload: 70,
+    prefetch: 90,
+    'dns-prefetch': 90,
+    prerender: 90,
+  },
+  script: {
+    async: 30,
+    defer: 80,
+    sync: 50,
+  },
+  style: {
+    imported: 40,
+    sync: 60,
+  },
+} as const
+
 export const useTags = () => {
   const router = useRouter()
 
@@ -133,9 +160,61 @@ export const useTags = () => {
  */
 export function HeadContent() {
   const tags = useTags()
-  return tags.map((tag) => (
-    <Asset {...tag} key={`tsr-meta-${JSON.stringify(tag)}`} />
-  ))
+  return tags
+    .map(weightTags)
+    .sort((a, b) => a.weight - b.weight)
+    .map((tag) => <Asset {...tag} key={`tsr-meta-${JSON.stringify(tag)}`} />)
+}
+
+function weightTags(tag: RouterManagedTag) {
+  let weight = 100
+
+  if (tag.tag === 'title') {
+    weight = 10
+  } else if (tag.tag === 'meta') {
+    const metaType =
+      tag.attrs?.httpEquiv === 'content-security-policy'
+        ? 'content-security-policy'
+        : tag.attrs?.charSet
+          ? 'charset'
+          : tag.attrs?.name === 'viewport'
+            ? 'viewport'
+            : null
+
+    if (metaType) {
+      weight = WEIGHT_MAP.meta[metaType]
+    }
+  } else if (tag.tag === 'link' && tag.attrs?.rel) {
+    weight =
+      tag.attrs.rel in WEIGHT_MAP.link
+        ? WEIGHT_MAP.link[tag.attrs.rel as keyof typeof WEIGHT_MAP.link]
+        : weight
+  } else if (tag.tag === 'script') {
+    if (isTruthy(tag.attrs?.async)) {
+      weight = WEIGHT_MAP.script.async
+    } else if (
+      tag.attrs?.src &&
+      !isTruthy(tag.attrs.defer) &&
+      !isTruthy(tag.attrs.async) &&
+      tag.attrs.type !== 'module' &&
+      !tag.attrs.type?.endsWith('json')
+    ) {
+      weight = WEIGHT_MAP.script.sync
+    } else if (
+      isTruthy(tag.attrs?.defer) &&
+      tag.attrs.src &&
+      !isTruthy(tag.attrs.async)
+    ) {
+      weight = WEIGHT_MAP.script.defer
+    }
+  } else if (tag.tag === 'style') {
+    weight = tag.children ? WEIGHT_MAP.style.imported : WEIGHT_MAP.style.sync
+  }
+
+  return {
+    ...tag,
+    weight,
+  }
 }
 
 function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {

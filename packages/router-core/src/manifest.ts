@@ -1,3 +1,5 @@
+import type { LinkWithoutEvents, Meta } from 'unhead/types'
+
 export type Manifest = {
   routes: Record<
     string,
@@ -16,8 +18,19 @@ export type RouterManagedTag =
       children: string
     }
   | {
-      tag: 'meta' | 'link'
-      attrs?: Record<string, any>
+      tag: 'meta'
+      attrs?:
+        | (Record<string, any> &
+            Omit<Meta, 'http-equiv' | 'charset' | 'content'> & {
+              charSet?: Meta['charset']
+              httpEquiv?: Meta['http-equiv']
+            })
+        | undefined
+      children?: never
+    }
+  | {
+      tag: 'link'
+      attrs?: Record<string, any> & Omit<LinkWithoutEvents, 'referrerpolicy'>
       children?: never
     }
   | {

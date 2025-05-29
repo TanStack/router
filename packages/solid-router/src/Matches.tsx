@@ -7,6 +7,7 @@ import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
+import type { LinkWithoutEvents, Meta } from 'unhead/types'
 import type {
   AnyRouter,
   DeepPartial,
@@ -26,8 +27,19 @@ import type {
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
-    meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
-    links?: Array<Solid.JSX.IntrinsicElements['link'] | undefined>
+    meta?: Array<
+      | (Solid.JSX.IntrinsicElements['meta'] &
+          Omit<Meta, 'http-equiv' | 'charset'> & {
+            charSet?: Meta['charset']
+            httpEquiv?: Meta['http-equiv']
+          })
+      | undefined
+    >
+    links?: Array<
+      | (Solid.JSX.IntrinsicElements['link'] &
+          Omit<LinkWithoutEvents, 'referrerpolicy'>)
+      | undefined
+    >
     scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
     headScripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
   }
