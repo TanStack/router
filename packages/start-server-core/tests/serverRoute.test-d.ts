@@ -12,7 +12,7 @@ test('createServerFileRoute with methods with no middleware', () => {
     Path,
     Path,
     unknown
-  > = defaultCreateServerFileRoute
+  > = defaultCreateServerFileRoute as never
 
   const serverFileRoute = createServerFileRoute()
 
@@ -58,7 +58,7 @@ test('createServerFileRoute with methods and route middleware context', () => {
     Path,
     Path,
     unknown
-  > = defaultCreateServerFileRoute
+  > = defaultCreateServerFileRoute as never
 
   const routeMiddleware = createMiddleware({ type: 'request' }).server(
     ({ next }) => next({ context: { a: 'a' } }),
@@ -105,7 +105,7 @@ test('createServerFileRoute with methods middleware and route middleware', () =>
     Path,
     Path,
     unknown
-  > = defaultCreateServerFileRoute
+  > = defaultCreateServerFileRoute as never
 
   const routeMiddleware = createMiddleware({ type: 'request' }).server(
     ({ next }) => next({ context: { a: 'a' } }),
@@ -140,7 +140,7 @@ test('createServerFileRoute with a parent middleware context', () => {
     'details',
     'details',
     unknown
-  > = defaultCreateServerFileRoute
+  > = defaultCreateServerFileRoute as never
 
   const routeMiddleware1 = createMiddleware({ type: 'request' }).server(
     ({ next }) => {
@@ -158,7 +158,7 @@ test('createServerFileRoute with a parent middleware context', () => {
     '$detailId',
     'details/$detailId',
     unknown
-  > = defaultCreateServerFileRoute
+  > = defaultCreateServerFileRoute as never
 
   const routeMiddleware2 = createMiddleware({ type: 'request' }).server(
     ({ next }) => {
@@ -210,7 +210,7 @@ test('createServerFileRoute with parent middleware params', () => {
     '$userId',
     '$userId',
     unknown
-  > = defaultCreateServerFileRoute
+  > = defaultCreateServerFileRoute as never
 
   const _detailsServerRoute = createDetailsServerFileRoute()
 
@@ -220,7 +220,7 @@ test('createServerFileRoute with parent middleware params', () => {
     '$detailId',
     '$userId/$detailId',
     unknown
-  > = defaultCreateServerFileRoute
+  > = defaultCreateServerFileRoute as never
 
   createDetailServerFileRoute().methods({
     GET: (ctx) => {
@@ -256,7 +256,7 @@ test('createServerFileRoute with no params', () => {
     'details',
     'details',
     unknown
-  > = defaultCreateServerFileRoute
+  > = defaultCreateServerFileRoute as never
 
   createDetailsServerFileRoute().methods({
     GET: (ctx) => {
