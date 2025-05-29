@@ -123,7 +123,11 @@ export type SerovalTypeSerializable<TPlugins> =
   | RegExp
   | Date
   | undefined
+  | string
+  | number
+  | bigint
   | Error
+  | null
   | SerovalPluginsTypeSerializable<TPlugins>
 
 export type SerovalTypeSetStringify<TPlugins, T> =

@@ -2,12 +2,13 @@ import type {
   AnyContext,
   AnyPathParams,
   AnyRoute,
-  FileBaseRouteOptions,
+  LifecycleRouteOptions,
   ResolveParams,
   Route,
   RouteConstraints,
   UpdatableRouteOptions,
 } from './route'
+import type { DefaultStartRegister, StartRegister } from './start'
 import type { AnyValidator } from './validators'
 
 export interface FileRouteTypes {
@@ -33,6 +34,7 @@ export interface FileRoutesByPath {
 }
 
 export interface FileRouteOptions<
+  TStart extends DefaultStartRegister,
   TFilePath extends string,
   TParentRoute extends AnyRoute,
   TId extends RouteConstraints['TId'],
@@ -44,7 +46,8 @@ export interface FileRouteOptions<
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
-> extends FileBaseRouteOptions<
+> extends LifecycleRouteOptions<
+      TStart,
       TParentRoute,
       TId,
       TPath,
@@ -76,6 +79,7 @@ export type CreateFileRoute<
   TPath extends RouteConstraints['TPath'],
   TFullPath extends RouteConstraints['TFullPath'],
 > = <
+  TStart extends DefaultStartRegister = StartRegister,
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
   TRouteContextFn = AnyContext,
@@ -84,6 +88,7 @@ export type CreateFileRoute<
   TLoaderFn = undefined,
 >(
   options?: FileRouteOptions<
+    TStart,
     TFilePath,
     TParentRoute,
     TId,
@@ -97,6 +102,7 @@ export type CreateFileRoute<
     TLoaderFn
   >,
 ) => Route<
+  TStart,
   TParentRoute,
   TPath,
   TFullPath,

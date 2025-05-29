@@ -18,6 +18,7 @@ import type {
   AnyRoute,
   AnyRouter,
   ConstrainLiteral,
+  DefaultStartRegister,
   ErrorComponentProps,
   NotFoundError,
   NotFoundRouteProps,
@@ -35,6 +36,7 @@ import type {
   RouteOptions,
   RouteTypesById,
   RouterCore,
+  StartRegister,
   ToMaskOptions,
   UseNavigateResult,
 } from '@tanstack/router-core'
@@ -150,6 +152,7 @@ export class RouteApi<
 }
 
 export class Route<
+    in out TStart extends DefaultStartRegister = StartRegister,
     in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
     in out TPath extends RouteConstraints['TPath'] = '/',
     in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -173,6 +176,7 @@ export class Route<
     in out TFileRouteTypes = unknown,
   >
   extends BaseRoute<
+    TStart,
     TParentRoute,
     TPath,
     TFullPath,
@@ -190,6 +194,7 @@ export class Route<
   >
   implements
     RouteCore<
+      TStart,
       TParentRoute,
       TPath,
       TFullPath,
@@ -211,6 +216,7 @@ export class Route<
    */
   constructor(
     options?: RouteOptions<
+      TStart,
       TParentRoute,
       TId,
       TCustomId,
@@ -283,6 +289,7 @@ export class Route<
 }
 
 export function createRoute<
+  TStart extends DefaultStartRegister = StartRegister,
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
   TPath extends RouteConstraints['TPath'] = '/',
   TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -304,6 +311,7 @@ export function createRoute<
   TChildren = unknown,
 >(
   options: RouteOptions<
+    TStart,
     TParentRoute,
     TId,
     TCustomId,
@@ -318,6 +326,7 @@ export function createRoute<
     TBeforeLoadFn
   >,
 ): Route<
+  TStart,
   TParentRoute,
   TPath,
   TFullPath,
@@ -333,6 +342,7 @@ export function createRoute<
   TChildren
 > {
   return new Route<
+    TStart,
     TParentRoute,
     TPath,
     TFullPath,
@@ -353,6 +363,7 @@ export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any, any>
 
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
+    TStart extends DefaultStartRegister = StartRegister,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TSearchValidator = undefined,
@@ -360,6 +371,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     TLoaderFn = undefined,
   >(
     options?: RootRouteOptions<
+      TStart,
       TSearchValidator,
       TRouterContext,
       TRouteContextFn,
@@ -369,6 +381,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     >,
   ) => {
     return createRootRoute<
+      TStart,
       TSearchValidator,
       TRouterContext,
       TRouteContextFn,
@@ -385,6 +398,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
+    in out TStart extends DefaultStartRegister = StartRegister,
     in out TSearchValidator = undefined,
     in out TRouterContext = {},
     in out TRouteContextFn = AnyContext,
@@ -395,6 +409,7 @@ export class RootRoute<
     in out TFileRouteTypes = unknown,
   >
   extends BaseRootRoute<
+    TStart,
     TSearchValidator,
     TRouterContext,
     TRouteContextFn,
@@ -406,6 +421,7 @@ export class RootRoute<
   >
   implements
     RootRouteCore<
+      TStart,
       TSearchValidator,
       TRouterContext,
       TRouteContextFn,
@@ -421,6 +437,7 @@ export class RootRoute<
    */
   constructor(
     options?: RootRouteOptions<
+      TStart,
       TSearchValidator,
       TRouterContext,
       TRouteContextFn,
@@ -487,6 +504,7 @@ export class RootRoute<
 }
 
 export function createRootRoute<
+  TStart extends DefaultStartRegister = StartRegister,
   TSearchValidator = undefined,
   TRouterContext = {},
   TRouteContextFn = AnyContext,
@@ -495,6 +513,7 @@ export function createRootRoute<
   TLoaderFn = undefined,
 >(
   options?: RootRouteOptions<
+    TStart,
     TSearchValidator,
     TRouterContext,
     TRouteContextFn,
@@ -503,6 +522,7 @@ export function createRootRoute<
     TLoaderFn
   >,
 ): RootRoute<
+  TStart,
   TSearchValidator,
   TRouterContext,
   TRouteContextFn,
@@ -513,6 +533,7 @@ export function createRootRoute<
   unknown
 > {
   return new RootRoute<
+    TStart,
     TSearchValidator,
     TRouterContext,
     TRouteContextFn,
@@ -551,6 +572,7 @@ export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
 export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
 
 export class NotFoundRoute<
+  TStart extends DefaultStartRegister,
   TParentRoute extends AnyRootRoute,
   TRouterContext = AnyContext,
   TRouteContextFn = AnyContext,
@@ -560,6 +582,7 @@ export class NotFoundRoute<
   TLoaderFn = undefined,
   TChildren = unknown,
 > extends Route<
+  TStart,
   TParentRoute,
   '/404',
   '/404',
@@ -577,6 +600,7 @@ export class NotFoundRoute<
   constructor(
     options: Omit<
       RouteOptions<
+        TStart,
         TParentRoute,
         string,
         string,

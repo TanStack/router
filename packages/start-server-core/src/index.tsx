@@ -20,3 +20,9 @@ export * from './h3'
 
 export { createServerRoute, createServerFileRoute } from './serverRoute'
 export type { CreateServerFileRoute } from './serverRoute'
+
+declare module '@tanstack/router-core' {
+  export interface StartRegister {
+    ssr: true
+  }
+}

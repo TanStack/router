@@ -17,7 +17,7 @@ import type {
   AnyRouter,
   Constrain,
   ConstrainLiteral,
-  FileBaseRouteOptions,
+  LifecycleRouteOptions,
   FileRoutesByPath,
   LazyRouteOptions,
   RegisteredRouter,
@@ -29,6 +29,8 @@ import type {
   RouteLoaderFn,
   UpdatableRouteOptions,
   UseNavigateResult,
+  DefaultStartRegister,
+  StartRegister,
 } from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
@@ -76,6 +78,7 @@ export class FileRoute<
   }
 
   createRoute = <
+    TStart extends DefaultStartRegister = StartRegister,
     TSearchValidator = undefined,
     TParams = ResolveParams<TPath>,
     TRouteContextFn = AnyContext,
@@ -84,7 +87,8 @@ export class FileRoute<
     TLoaderFn = undefined,
     TChildren = unknown,
   >(
-    options?: FileBaseRouteOptions<
+    options?: LifecycleRouteOptions<
+      TStart,
       TParentRoute,
       TId,
       TPath,
@@ -109,6 +113,7 @@ export class FileRoute<
         TBeforeLoadFn
       >,
   ): Route<
+    TStart,
     TParentRoute,
     TPath,
     TFullPath,
