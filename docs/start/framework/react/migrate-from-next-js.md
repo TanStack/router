@@ -24,8 +24,8 @@ This guide provides a step-by-step process to migrate a project from the Next.js
   First, uninstall Next.js and remove adjacent configuration files:
 
   ```shell
-  npm uninstall next
-  rm next.config.* postcss.config.*
+  npm uninstall @tailwindcss/postcss next
+  rm postcss.config.* next.config.*
   ```
 
 - ### 2. Install Required Dependencies
@@ -39,7 +39,7 @@ This guide provides a step-by-step process to migrate a project from the Next.js
   For TypeScript support and Tailwind CSS:
 
   ```shell
-  npm i -D @tailwindcss/postcss postcss tailwindcss vite-tsconfig-paths
+  npm i -D @tailwindcss/vite tailwindcss vite-tsconfig-paths
   ```
 
   > Note: We use `@alpha` tags until the packages reach stability.
@@ -62,6 +62,7 @@ This guide provides a step-by-step process to migrate a project from the Next.js
 - `vite.config.ts`
 
   ```ts
+  import tailwindcss from '@tailwindcss/vite'
   import { tanstackStart } from '@tanstack/react-start/plugin/vite'
   import { defineConfig } from 'vite'
   import tsConfigPaths from 'vite-tsconfig-paths'
@@ -71,6 +72,7 @@ This guide provides a step-by-step process to migrate a project from the Next.js
       port: 3000,
     },
     plugins: [
+      tailwindcss(),
       tsConfigPaths(),
       tanstackStart({
         tsr: {
@@ -83,16 +85,6 @@ This guide provides a step-by-step process to migrate a project from the Next.js
   ```
 
   By default, `routesDirectory` is set to `src/routes`. If you want to maintain consistency with Next.js App Router conventions, you can set it to `src/app` instead.
-
-- `postcss.config.ts`
-
-  ```ts
-  export default {
-    plugins: {
-      '@tailwindcss/postcss': {},
-    },
-  }
-  ```
 
 - ### 4. Adapt the Root Layout
 
