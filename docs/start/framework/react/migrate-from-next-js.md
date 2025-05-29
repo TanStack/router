@@ -232,13 +232,14 @@ Now that you have migrated the basic structure of your Next.js application to **
 
 ### Routing Concepts
 
-| Route Example               | Next.js                         | TanStack Start            |
-| --------------------------- | ------------------------------- | ------------------------- |
-| Root Layout                 | `src/app/layout.tsx`            | `src/app/__root.tsx`      |
-| `/` (Home Page)             | `src/app/page.tsx`              | `src/app/index.tsx`       |
-| `/posts` (Static Route)     | `src/app/posts/page.tsx`        | `src/app/posts.tsx`       |
-| `/posts/:slug` (Dynamic)    | `src/app/posts/[slug]/page.tsx` | `src/app/posts/$slug.tsx` |
-| `/api/endpoint` (API Route) | `src/app/api/endpoint/route.ts` | `src/app/api/endpoint.ts` |
+| Route Example                  | Next.js                            | TanStack Start            |
+| ------------------------------ | ---------------------------------- | ------------------------- |
+| Root Layout                    | `src/app/layout.tsx`               | `src/app/__root.tsx`      |
+| `/` (Home Page)                | `src/app/page.tsx`                 | `src/app/index.tsx`       |
+| `/posts` (Static Route)        | `src/app/posts/page.tsx`           | `src/app/posts.tsx`       |
+| `/posts/[slug]` (Dynamic)      | `src/app/posts/[slug]/page.tsx`    | `src/app/posts/$slug.tsx` |
+| `/posts/[...slug]` (Catch-All) | `src/app/posts/[...slug]/page.tsx` | `src/app/posts/$.tsx`     |
+| `/api/endpoint` (API Route)    | `src/app/api/endpoint/route.ts`    | `src/app/api/endpoint.ts` |
 
 Learn more about the [Routing Concepts](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts).
 
@@ -262,6 +263,8 @@ Getting dynamic route parameters in **TanStack Start** is straightforward.
   return <div>My Post: {slug}</div>
 }
 ```
+
+> Note: If you've made a catch-all route, you can access the parameters via `const { _splat } = await params`.
 
 Similarly, you can get `searchParams` like `const { page, filter, sort } = Route.useSearch()`.
 
