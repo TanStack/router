@@ -8,8 +8,8 @@ Create a new instance of the plugin with the following options:
 
 ```ts
 const TanStackServerFnsPlugin = createTanStackServerFnPlugin({
-  // This is the ID that will be available to look up and import
-  // our server function manifest and resolve its module
+  // This is the ID (virtual module) that will be made available to look up
+  // and import our server function manifest and resolve its modules.
   manifestVirtualImportId: 'tanstack:server-fn-manifest',
   client: {
     getRuntimeCode: () =>
@@ -86,5 +86,5 @@ export const handler = async (req: Request) => {
   const args = await req.json()
 
   return await fnModule(...args)
-
+}
 ```

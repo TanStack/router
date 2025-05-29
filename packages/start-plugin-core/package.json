@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-plugin-core",
-  "version": "1.121.0-alpha.6",
+  "version": "1.121.0-alpha.19",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -79,7 +79,7 @@
     "babel-dead-code-elimination": "^1.0.9",
     "cheerio": "^1.0.0",
     "h3": "1.13.0",
-    "nitropack": "^2.11.8",
+    "nitropack": "^2.11.12",
     "pathe": "^2.0.3",
     "ufo": "^1.5.4",
     "xmlbuilder2": "^3.1.1",

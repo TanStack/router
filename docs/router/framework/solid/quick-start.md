@@ -61,7 +61,7 @@ export default defineConfig({
 ```
 
 > [!TIP]
-> If you are not using Vite, or any of the supported bundlers, you can check out the [TanStack Router CLI](./routing/installation-with-router-cli.md) guide for more info.
+> If you are not using Vite, or any of the supported bundlers, you can check out the [TanStack Router CLI](../routing/installation-with-router-cli.md) guide for more info.
 
 Create the following files:
 

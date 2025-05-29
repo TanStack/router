@@ -117,7 +117,7 @@ Once configuration is done, we'll have a file tree that looks like the following
 ## The Router Configuration
 
 This is the file that will dictate the behavior of TanStack Router used within Start for both the server and the client. Here, you can configure everything
-from the default [preloading functionality](./preloading.md) to [caching staleness](./data-loading.md).
+from the default [preloading functionality](../preloading.md) to [caching staleness](../data-loading.md).
 
 ```tsx
 // app/router.tsx

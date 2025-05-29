@@ -26,14 +26,10 @@ export function useNavigate<
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      const isRelativeFromPath = options.unsafeRelative === 'path'
-
       const from =
         options.from ??
         _defaultOpts?.from ??
-        (isRelativeFromPath
-          ? state.matches[state.matches.length - 1]!.fullPath
-          : state.matches[matchIndex]!.fullPath)
+        state.matches[matchIndex]!.fullPath
 
       return navigate({
         ...options,

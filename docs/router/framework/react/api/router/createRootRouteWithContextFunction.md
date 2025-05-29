@@ -17,8 +17,8 @@ The `createRootRouteWithContext` function accepts a single generic argument:
 
 ## createRootRouteWithContext returns
 
-- A factory function that can be used to create a new [`createRootRoute`](./createRootRouteFunction.md) instance.
-- It accepts a single argument, the same as the [`createRootRoute`](./createRootRouteFunction.md) function.
+- A factory function that can be used to create a new [`createRootRoute`](../createRootRouteFunction.md) instance.
+- It accepts a single argument, the same as the [`createRootRoute`](../createRootRouteFunction.md) function.
 
 ## Examples
 

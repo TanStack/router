@@ -1,7 +1,8 @@
 import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { create } from 'xmlbuilder2'
-import type { TanStackStartOutputConfig } from './plugin'
+import { createLogger } from '../utils'
+import type { TanStackStartOutputConfig } from '../plugin'
 import type { XMLBuilder } from 'xmlbuilder2/lib/interfaces'
 
 export type SitemapUrl = {
@@ -121,13 +122,15 @@ function jsonToXml(sitemapData: SitemapData): string {
   return sitemap.end({ prettyPrint: true })
 }
 
-export async function buildSitemap({
+export function buildSitemap({
   options,
   publicDir,
 }: {
   options: TanStackStartOutputConfig
   publicDir: string
 }) {
+  const logger = createLogger('sitemap')
+
   let sitemapOptions = options.sitemap
 
   if (!sitemapOptions && options.pages.length) {
@@ -142,7 +145,7 @@ export async function buildSitemap({
 
   if (!host) {
     if (!options.sitemap) {
-      console.info(
+      logger.info(
         'Hint: Pages found, but no sitemap host has been set. To enable sitemap generation, set the `sitemap.host` option.',
       )
       return
@@ -159,11 +162,11 @@ export async function buildSitemap({
   const { pages } = options
 
   if (!pages.length) {
-    console.log('No pages were found to build the sitemap. Skipping...')
+    logger.info('No pages were found to build the sitemap. Skipping...')
     return
   }
 
-  console.log('Building Sitemap...')
+  logger.info('Building Sitemap...')
 
   // Build the sitemap data
   const sitemapData = buildSitemapJson(pages, host)
@@ -174,11 +177,11 @@ export async function buildSitemap({
 
   try {
     // Write XML sitemap
-    console.log(`Writing sitemap XML at ${xmlOutputPath}`)
+    logger.info(`Writing sitemap XML at ${xmlOutputPath}`)
     writeFileSync(xmlOutputPath, jsonToXml(sitemapData))
 
     // Write pages data for runtime use
-    console.log(`Writing pages data at ${pagesOutputPath}`)
+    logger.info(`Writing pages data at ${pagesOutputPath}`)
     writeFileSync(
       pagesOutputPath,
       JSON.stringify(
@@ -192,7 +195,7 @@ export async function buildSitemap({
       ),
     )
   } catch (e) {
-    console.error(`Unable to write sitemap files`, e)
+    logger.error(`Unable to write sitemap files`, e)
   }
 }
 

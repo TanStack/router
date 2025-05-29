@@ -5,7 +5,7 @@ title: Quick Start
 
 ## Impatient?
 
-If you're impatient, you can clone and run the [Basic](../examples/start-basic) example right away with the following commands:
+If you're impatient, you can clone and run the [Basic](https://github.com/TanStack/router/tree/main/examples/solid/start-basic) example right away with the following commands:
 
 ```bash
 npx degit https://github.com/tanstack/router/examples/solid/start-basic start-basic
@@ -22,8 +22,8 @@ Once you've cloned the example you want, head back to the [Learn the Basics](../
 
 TanStack Start has load of examples to get you started. Pick one of the examples below to get started!
 
-- [Basic](../examples/start-basic) (start-basic)
-- [Bare](../examples/start-bare) (start-bare)
+- [Basic](https://github.com/TanStack/router/tree/main/examples/solid/start-basic) (start-basic)
+- [Bare](https://github.com/TanStack/router/tree/main/examples/solid/start-bare) (start-bare)
 
 ### Stackblitz
 

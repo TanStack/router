@@ -1,24 +1,29 @@
 import path from 'node:path'
 import { createNitro } from 'nitropack'
+import { trimPathRight } from '@tanstack/router-core'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
+import { createTanStackConfig } from './schema'
+import { nitroPlugin } from './nitro-plugin/plugin'
+import { startRoutesManifestPlugin } from './start-routes-manifest-plugin/plugin'
+import { startCompilerPlugin } from './start-compiler-plugin'
 import {
-  createTanStackConfig,
-  createTanStackStartOptionsSchema,
-} from './schema'
-import { nitroPlugin } from './nitro/nitro-plugin'
-import { startManifestPlugin } from './routesManifestPlugin'
-import { TanStackStartCompilerPlugin } from './start-compiler-plugin'
-import { VITE_ENVIRONMENT_NAMES } from './constants'
+  CLIENT_DIST_DIR,
+  SSR_ENTRY_FILE,
+  VITE_ENVIRONMENT_NAMES,
+} from './constants'
 import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/plugin'
+import { loadEnvPlugin } from './load-env-plugin/plugin'
+import { devServerPlugin } from './dev-server-plugin/plugin'
+import { resolveVirtualEntriesPlugin } from './resolve-virtual-entries-plugin/plugin'
+import type { createTanStackStartOptionsSchema } from './schema'
 import type { PluginOption, Rollup } from 'vite'
 import type { z } from 'zod'
 import type { CompileStartFrameworkOptions } from './compilers'
 
-const TanStackStartOptionsSchema = createTanStackStartOptionsSchema()
 export type TanStackStartInputConfig = z.input<
-  typeof TanStackStartOptionsSchema
+  ReturnType<typeof createTanStackStartOptionsSchema>
 >
 
 const defaultConfig = createTanStackConfig()
@@ -30,11 +35,19 @@ export type TanStackStartOutputConfig = ReturnType<
   typeof getTanStackStartOptions
 >
 
-export const clientDistDir = '.tanstack-start/build/client-dist'
-export const ssrEntryFile = 'ssr.mjs'
+declare global {
+  // eslint-disable-next-line no-var
+  var TSS_APP_BASE: string
+}
 
 export interface TanStackStartVitePluginCoreOptions {
   framework: CompileStartFrameworkOptions
+  getVirtualServerRootHandler: (ctx: {
+    routerFilepath: string
+    serverEntryFilepath: string
+  }) => string
+  getVirtualServerEntry: (ctx: { routerFilepath: string }) => string
+  getVirtualClientEntry: (ctx: { routerFilepath: string }) => string
 }
 // this needs to live outside of the TanStackStartVitePluginCore since it will be invoked multiple times by vite
 let ssrBundle: Rollup.OutputBundle
@@ -51,9 +64,13 @@ export function TanStackStartVitePluginCore(
       enableRouteGeneration: true,
       autoCodeSplitting: true,
     }),
+    resolveVirtualEntriesPlugin(opts, startConfig),
     {
       name: 'tanstack-start-core:config-client',
-      async config() {
+      async config(viteConfig) {
+        const viteAppBase = trimPathRight(viteConfig.base || '/')
+        globalThis.TSS_APP_BASE = viteAppBase
+
         const nitroOutputPublicDir = await (async () => {
           // Create a dummy nitro app to get the resolved public output path
           const dummyNitroApp = await createNitro({
@@ -77,13 +94,17 @@ export function TanStackStartVitePluginCore(
           )
             ? startConfig.clientEntryPath
             : vite.normalizePath(
-                path.resolve(startConfig.root, startConfig.clientEntryPath),
+                path.join(
+                  '/@fs',
+                  path.resolve(startConfig.root, startConfig.clientEntryPath),
+                ),
               )
 
           return entry
         }
 
         return {
+          base: viteAppBase,
           environments: {
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
@@ -94,9 +115,9 @@ export function TanStackStartVitePluginCore(
                     main: getClientEntryPath(startConfig),
                   },
                   output: {
-                    dir: path.resolve(startConfig.root, clientDistDir),
+                    dir: path.resolve(startConfig.root, CLIENT_DIST_DIR),
                   },
-                  // TODO this should be removed
+                  // TODO: this should be removed
                   external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
                 },
               },
@@ -111,13 +132,13 @@ export function TanStackStartVitePluginCore(
                 copyPublicDir: false,
                 rollupOptions: {
                   output: {
-                    entryFileNames: ssrEntryFile,
+                    entryFileNames: SSR_ENTRY_FILE,
                   },
                   plugins: [
                     {
                       name: 'capture-output',
-                      generateBundle(options, bundle) {
-                        // TODO can this hook be called more than once?
+                      generateBundle(_options, bundle) {
+                        // TODO: can this hook be called more than once?
                         ssrBundle = bundle
                       },
                     },
@@ -141,32 +162,37 @@ export function TanStackStartVitePluginCore(
               '@tanstack/start-router-manifest',
               '@tanstack/start-config',
               '@tanstack/server-functions-plugin',
-              'tanstack:start-manifest',
-              'tanstack:server-fn-manifest',
+              'tanstack-start-router-manifest:v',
+              'tanstack-start-server-fn-manifest:v',
               'nitropack',
               '@tanstack/**',
             ],
           },
           /* prettier-ignore */
           define: {
-            ...injectDefineEnv('TSS_PUBLIC_BASE', startConfig.public.base),
-            ...injectDefineEnv('TSS_CLIENT_BASE', startConfig.client.base),
-            ...injectDefineEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
-            ...injectDefineEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
-            ...injectDefineEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
+            // define is an esbuild function that replaces the any instances of given keys with the given values
+            // i.e: __FRAMEWORK_NAME__ can be replaced with JSON.stringify("TanStack Start")
+            // This is not the same as injecting environment variables.
+
+            ...defineReplaceEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
+            ...defineReplaceEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
+            ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
+            ...defineReplaceEnv('TSS_APP_BASE', viteAppBase)
           },
         }
       },
     },
     // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPluginEnv
-    TanStackStartCompilerPlugin(opts.framework, {
+    startCompilerPlugin(opts.framework, {
       client: { envName: VITE_ENVIRONMENT_NAMES.client },
       server: { envName: VITE_ENVIRONMENT_NAMES.server },
     }),
     TanStackServerFnPluginEnv({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
-      manifestVirtualImportId: 'tanstack:server-fn-manifest',
+      manifestVirtualImportId: 'tanstack-start-server-fn-manifest:v',
+      manifestOutputFilename:
+        '.tanstack-start/build/server/server-functions-manifest.json',
       client: {
         getRuntimeCode: () =>
           `import { createClientRpc } from '@tanstack/${opts.framework}-start/server-functions-client'`,
@@ -191,7 +217,9 @@ export function TanStackStartVitePluginCore(
         return serverEnv.runner.import(fn.extractedFilename)
       },
     }),
-    startManifestPlugin(startConfig),
+    loadEnvPlugin(startConfig),
+    startRoutesManifestPlugin(startConfig),
+    devServerPlugin(),
     nitroPlugin(startConfig, () => ssrBundle),
     TanStackStartServerRoutesVite({
       ...startConfig.tsr,
@@ -200,7 +228,7 @@ export function TanStackStartVitePluginCore(
   ]
 }
 
-function injectDefineEnv<TKey extends string, TValue extends string>(
+function defineReplaceEnv<TKey extends string, TValue extends string>(
   key: TKey,
   value: TValue,
 ): { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue } {

@@ -27,8 +27,8 @@ Clerk is a modern authentication platform that provides a full suite of authenti
 
 - To learn more about Clerk, visit the [Clerk website](https://go.clerk.com/wOwHtuJ)
 - To sign up, visit the [Clerk dashboard](https://go.clerk.com/PrSDXti)
-- To get started with Clerk, check out our [official Start + Clerk examples!](../examples/start-clerk-basic/)
+- To get started with Clerk, check out our [official Start + Clerk examples!](https://github.com/TanStack/router/tree/main/examples/react/start-clerk-basic)
 
 ## Documentation & APIs
 
-Documentation for implementing your own authentication logic with TanStack Start is coming soon! In the meantime, you can check out any of the `-auth` prefixed [examples](../examples) for a starting point.
+Documentation for implementing your own authentication logic with TanStack Start is coming soon! In the meantime, you can check out any of the `-auth` prefixed [examples](https://github.com/TanStack/router/tree/main/examples/react) for a starting point.

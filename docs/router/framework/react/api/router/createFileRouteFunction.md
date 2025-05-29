@@ -17,7 +17,7 @@ The `createFileRoute` function accepts a single argument of type `string` that r
 
 ## createFileRoute returns
 
-A new function that accepts a single argument of type [`RouteOptions`](./RouteOptionsType.md) that will be used to configure the file [`Route`](./RouteType.md) instance.
+A new function that accepts a single argument of type [`RouteOptions`](../RouteOptionsType.md) that will be used to configure the file [`Route`](../RouteType.md) instance.
 
 > ⚠️ Note: For `tsr generate` and `tsr watch` to work properly, the file route instance must be exported from the file using the `Route` identifier.
 

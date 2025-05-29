@@ -3,7 +3,7 @@ id: useLoaderDataHook
 title: useLoaderData hook
 ---
 
-The `useLoaderData` hook returns the loader data from the closest [`RouteMatch`](./RouteMatchType.md) in the component tree.
+The `useLoaderData` hook returns the loader data from the closest [`RouteMatch`](../RouteMatchType.md) in the component tree.
 
 ## useLoaderData options
 
@@ -34,7 +34,7 @@ The `useLoaderData` hook accepts an `options` object.
 - Type: `boolean`
 - Optional
 - Configures whether structural sharing is enabled for the value returned by `select`.
-- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+- See the [Render Optimizations guide](../../../guide/render-optimizations.md) for more information.
 
 ## useLoaderData returns
 

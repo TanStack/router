@@ -1,10 +1,8 @@
-import path from 'node:path'
 import viteReact from '@vitejs/plugin-react'
 import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
-import * as vite from 'vite'
 import { getTanStackStartOptions } from './schema'
 import type { TanStackStartInputConfig, WithReactPlugin } from './schema'
-import type { PluginOption, ResolvedConfig } from 'vite'
+import type { PluginOption } from 'vite'
 
 export type {
   TanStackStartInputConfig,
@@ -19,64 +17,28 @@ export function TanStackStartVitePlugin(
     WithReactPlugin
   const options: OptionsWithReact = getTanStackStartOptions(opts)
 
-  let resolvedConfig: ResolvedConfig
-
   return [
-    TanStackStartVitePluginCore({ framework: 'react' }, options),
-    {
-      name: 'tanstack-react-start:resolve-entries',
-      configResolved: (config) => {
-        resolvedConfig = config
-      },
-      resolveId(id) {
-        if (
-          [
-            '/~start/server-entry',
-            '/~start/default-server-entry',
-            '/~start/default-client-entry',
-          ].includes(id)
-        ) {
-          return `${id}.tsx`
-        }
-        if (id === '/~start/server-entry.tsx') {
-          return id
-        }
-
-        return null
-      },
-      load(id) {
-        const routerImportPath = JSON.stringify(
-          path.resolve(options.root, options.tsr.srcDirectory, 'router'),
-        )
-
-        if (id === '/~start/server-entry.tsx') {
-          const ssrEntryPath = options.serverEntryPath.startsWith(
-            '/~start/default-server-entry',
-          )
-            ? options.serverEntryPath
-            : vite.normalizePath(
-                path.resolve(resolvedConfig.root, options.serverEntryPath),
-              )
-
+    TanStackStartVitePluginCore(
+      {
+        framework: 'react',
+        getVirtualServerRootHandler(ctx) {
           return `
 import { toWebRequest, defineEventHandler } from '@tanstack/react-start/server';
-import serverEntry from '${ssrEntryPath}';
+import serverEntry from '${ctx.serverEntryFilepath}';
 
 export default defineEventHandler(function(event) {
   const request = toWebRequest(event);
   return serverEntry({ request });
-})
-`
-        }
-
-        if (id === '/~start/default-client-entry.tsx') {
+});`
+        },
+        getVirtualClientEntry(ctx) {
           return `
-import { StrictMode, startTransition } from 'react'
-import { hydrateRoot } from 'react-dom/client'
-import { StartClient } from '@tanstack/react-start'
-import { createRouter } from ${routerImportPath}
+import { StrictMode, startTransition } from 'react';
+import { hydrateRoot } from 'react-dom/client';
+import { StartClient } from '@tanstack/react-start';
+import { createRouter } from '${ctx.routerFilepath}';
 
-const router = createRouter()
+const router = createRouter();
 
 startTransition(() => {
   hydrateRoot(
@@ -84,25 +46,21 @@ startTransition(() => {
     <StrictMode>
       <StartClient router={router} />
     </StrictMode>
-  )
-})
-`
-        }
-
-        if (id === '/~start/default-server-entry.tsx') {
+  );
+});`
+        },
+        getVirtualServerEntry(ctx) {
           return `
-import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server'
-import { createRouter } from ${routerImportPath}
+import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server';
+import { createRouter } from '${ctx.routerFilepath}';
 
 export default createStartHandler({
   createRouter,
-})(defaultStreamHandler)
-`
-        }
-
-        return null
+})(defaultStreamHandler);`
+        },
       },
-    },
+      options,
+    ),
     viteReact(options.react),
   ]
 }

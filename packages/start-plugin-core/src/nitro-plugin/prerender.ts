@@ -4,13 +4,13 @@ import path from 'node:path'
 import { getRollupConfig } from 'nitropack/rollup'
 import { build as buildNitro, createNitro } from 'nitropack'
 import { joinURL, withBase, withoutBase } from 'ufo'
+import { VITE_ENVIRONMENT_NAMES } from '../constants'
+import { createLogger } from '../utils'
 import { Queue } from './queue'
-import { buildNitroEnvironment } from './nitro/build-nitro'
-import { VITE_ENVIRONMENT_NAMES } from './constants'
 import type { ViteBuilder } from 'vite'
 import type { $Fetch, Nitro } from 'nitropack'
-import type { TanStackStartOutputConfig } from './plugin'
-import type { Page } from './schema'
+import type { TanStackStartOutputConfig } from '../plugin'
+import type { Page } from '../schema'
 
 export async function prerender({
   options,
@@ -21,7 +21,8 @@ export async function prerender({
   nitro: Nitro
   builder: ViteBuilder
 }) {
-  console.info('Prendering pages...')
+  const logger = createLogger('prerender')
+  logger.info('Prendering pages...')
 
   // If prerender is enabled but no pages are provided, default to prerendering the root page
   if (options.prerender?.enabled && !options.pages.length) {
@@ -72,7 +73,7 @@ export async function prerender({
     },
   }
 
-  await buildNitroEnvironment(nodeNitro, () => buildNitro(nodeNitro))
+  await buildNitro(nodeNitro)
 
   // Import renderer entry
   const serverFilename =
@@ -93,14 +94,14 @@ export async function prerender({
     // Crawl all pages
     const pages = await prerenderPages()
 
-    console.info(`Prerendered ${pages.length} pages:`)
+    logger.info(`Prerendered ${pages.length} pages:`)
     pages.forEach((page) => {
-      console.info(`- ${page}`)
+      logger.info(`- ${page}`)
     })
 
     // TODO: Write the prerendered pages to the output directory
   } catch (error) {
-    console.error(error)
+    logger.error(error)
   } finally {
     // Ensure server is always closed
     // server.process.kill()
@@ -126,7 +127,7 @@ export async function prerender({
     const seen = new Set<string>()
     const retriesByPath = new Map<string, number>()
     const concurrency = options.prerender?.concurrency ?? os.cpus().length
-    console.info(`Concurrency: ${concurrency}`)
+    logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
 
     options.pages.forEach((page) => addCrawlPageTask(page))
@@ -160,7 +161,7 @@ export async function prerender({
 
       // Add the task
       queue.add(async () => {
-        console.info(`Crawling: ${page.path}`)
+        logger.info(`Crawling: ${page.path}`)
         const retries = retriesByPath.get(page.path) || 0
         try {
           // Fetch the route
@@ -228,7 +229,7 @@ export async function prerender({
           }
         } catch (error) {
           if (retries < (prerenderOptions.retryCount ?? 0)) {
-            console.warn(`Encountered error, retrying: ${page.path} in 500ms`)
+            logger.warn(`Encountered error, retrying: ${page.path} in 500ms`)
             await new Promise((resolve) =>
               setTimeout(resolve, prerenderOptions.retryDelay),
             )
