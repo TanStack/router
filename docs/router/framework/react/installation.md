@@ -33,3 +33,19 @@ TypeScript is _optional_, but **HIGHLY** recommended! If you are using it, pleas
 
 > [!IMPORTANT]
 > We aim to support the last five minor versions of TypeScript. If you are using an older version, you may run into issues. Please upgrade to the latest version of TypeScript to ensure compatibility. We may drop support for older versions of TypeScript, outside of the range mentioned above, without warning in a minor or patch release.
+
+### Vibe Coding Support
+
+All of our documentation for TanStack React Router is integrated into the NPM module and can be easily installed as Vibe coding rules. You can integrate Vibe coding rules into the editor of your choice using [vibe-rules](https://www.npmjs.com/package/vibe-rules).
+
+```bash
+pnpm add -g vibe-rules
+```
+
+Then run `vibe-rules` with the editor of your choice. Here is an example for Cursor:
+
+```bash
+vibe-rules install cursor
+```
+
+But you can also use `windsurf`, `claude-code`, etc. Check the [vibe-rules](https://www.npmjs.com/package/vibe-rules) documentation for more information.
