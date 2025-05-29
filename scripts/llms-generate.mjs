@@ -2,34 +2,38 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+const DOCS_DIR = '../../docs'
+const LLMS_DIR = './llms'
+const RULES_DIR = './llms/rules'
+
 const packages = {
-  './packages/react-router': [
+  'react-router': [
     {
-      paths: ['./docs/router/framework/react/api/router'],
+      paths: [`${DOCS_DIR}/router/framework/react/api/router`],
       description: 'TanStack Router: API',
       name: 'api',
       globs: ['src/**/*.ts', 'src/**/*.tsx'],
     },
     {
-      paths: ['./docs/router/framework/react/guide'],
+      paths: [`${DOCS_DIR}/router/framework/react/guide`],
       description: 'TanStack Router: Guide',
       name: 'guide',
       globs: ['src/**/*.ts', 'src/**/*.tsx'],
     },
     {
-      paths: ['./docs/router/framework/react/routing'],
+      paths: [`${DOCS_DIR}/router/framework/react/routing`],
       description: 'TanStack Router: Routing',
       name: 'routing',
       globs: ['src/**/*.ts', 'src/**/*.tsx'],
     },
     {
       paths: [
-        './docs/router/framework/react/overview.md',
-        './docs/router/framework/react/quick-start.md',
-        './docs/router/framework/react/devtools.md',
-        './docs/router/framework/react/migrate-from-react-router.md',
-        './docs/router/framework/react/migrate-from-react-location.md',
-        './docs/router/framework/react/faq.md',
+        `${DOCS_DIR}/router/framework/react/overview.md`,
+        `${DOCS_DIR}/router/framework/react/quick-start.md`,
+        `${DOCS_DIR}/router/framework/react/devtools.md`,
+        `${DOCS_DIR}/router/framework/react/migrate-from-react-router.md`,
+        `${DOCS_DIR}/router/framework/react/migrate-from-react-location.md`,
+        `${DOCS_DIR}/router/framework/react/faq.md`,
       ],
       description: 'TanStack Router: Setup and Architecture',
       name: 'setup-and-architecture',
@@ -42,6 +46,16 @@ const packages = {
       ],
     },
   ],
+}
+
+const pkg = process.argv[2]
+if (!pkg) {
+  console.error('Usage: node scripts/llms-generate.mjs <package-name>')
+  process.exit(1)
+}
+if (!packages[pkg]) {
+  console.error(`Package '${pkg}' not found`)
+  process.exit(1)
 }
 
 function camelCase(str) {
@@ -77,44 +91,41 @@ function mergeFiles(files, outputFile) {
   )
 }
 
-for (const pkg of Object.keys(packages)) {
-  const llmsDir = path.join(pkg, 'llms')
-  const rulesDir = path.join(llmsDir, 'rules')
-  if (!fs.existsSync(rulesDir)) {
-    fs.mkdirSync(rulesDir, { recursive: true })
-  }
+if (!fs.existsSync(RULES_DIR)) {
+  fs.mkdirSync(RULES_DIR, { recursive: true })
+}
 
-  // Create the rules files
-  const imports = []
-  const rules = []
-  for (const { paths, name, description, globs } of packages[pkg]) {
-    const files = []
-    for (const p of paths) {
-      if (fs.existsSync(p) && fs.statSync(p).isDirectory()) {
-        files.push(
-          ...fs
-            .readdirSync(p)
-            .filter((file) => file.endsWith('.md'))
-            .map((file) => path.join(p, file)),
-        )
-      } else {
-        files.push(p)
-      }
+// Create the rules files
+const imports = []
+const rules = []
+for (const { paths, name, description, globs } of packages[pkg]) {
+  const files = []
+  for (const p of paths) {
+    if (fs.existsSync(p) && fs.statSync(p).isDirectory()) {
+      files.push(
+        ...fs
+          .readdirSync(p)
+          .filter((file) => file.endsWith('.md'))
+          .map((file) => path.join(p, file)),
+      )
+    } else {
+      files.push(p)
     }
-    mergeFiles(files.flat(), path.join(rulesDir, `${name}.ts`))
-    imports.push(`import ${camelCase(name)} from './rules/${name}.js'`)
-    rules.push(`{
+  }
+  mergeFiles(files.flat(), path.join(RULES_DIR, `${name}.ts`))
+  imports.push(`import ${camelCase(name)} from './rules/${name}.js'`)
+  rules.push(`{
   name: '${name}',
   description: '${description}',
   rule: ${camelCase(name)},
   alwaysApply: false,
   globs: [${globs.map((glob) => `'${glob}'`).join(', ')}],
 }`)
-  }
+}
 
-  // Create the index.ts file
-  const indexFile = path.join(llmsDir, 'index.ts')
-  const indexContent = `${imports.join('\n')}
+// Create the index.ts file
+const indexFile = path.join(LLMS_DIR, 'index.ts')
+const indexContent = `${imports.join('\n')}
 
 import type { PackageRuleItem } from 'vibe-rules'
 
@@ -124,25 +135,24 @@ const rules: Array<PackageRuleItem> = [
 
 export default rules
 `
-  fs.writeFileSync(indexFile, indexContent, 'utf-8')
+fs.writeFileSync(indexFile, indexContent, 'utf-8')
 
-  fs.writeFileSync(
-    path.join(llmsDir, 'tsconfig.json'),
-    JSON.stringify(
-      {
-        compilerOptions: {
-          module: 'ESNext',
-          moduleResolution: 'bundler',
-          target: 'ESNext',
-          lib: ['ESNext', 'DOM'],
-          declaration: true,
-        },
-        include: ['index.ts', 'rules/*.ts'],
-        exclude: ['node_modules', 'dist'],
+fs.writeFileSync(
+  path.join(LLMS_DIR, 'tsconfig.json'),
+  JSON.stringify(
+    {
+      compilerOptions: {
+        module: 'ESNext',
+        moduleResolution: 'bundler',
+        target: 'ESNext',
+        lib: ['ESNext', 'DOM'],
+        declaration: true,
       },
-      null,
-      2,
-    ),
-    'utf-8',
-  )
-}
+      include: ['index.ts', 'rules/*.ts'],
+      exclude: ['node_modules', 'dist'],
+    },
+    null,
+    2,
+  ),
+  'utf-8',
+)
