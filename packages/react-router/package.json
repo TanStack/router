@@ -59,8 +59,8 @@
     },
     "./package.json": "./package.json",
     "./llms": {
-      "types": "./llms/index.d.ts",
-      "default": "./llms/index.js"
+      "types": "./dist/llms/index.d.ts",
+      "default": "./dist/llms/index.js"
     }
   },
   "sideEffects": false,
