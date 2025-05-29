@@ -371,3 +371,9 @@ This guide provides a step-by-step process to migrate a project from the Next.js
     )
   }
   ```
+
+## Contributing
+
+If you have suggestions or improvements for this migration guide, please feel free to contribute.
+
+> You can open an issue or submit a pull request at the upstream [next-to-start](https://github.com/nrjdalal/next-to-start) repository.
