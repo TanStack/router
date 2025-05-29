@@ -228,6 +228,8 @@ This guide provides a step-by-step process to migrate a project from the Next.js
 
 ## Next Steps (Advanced)
 
+<br />
+
 ### Routing Concepts
 
 | Route Example               | Next.js                         | TanStack Start            |
