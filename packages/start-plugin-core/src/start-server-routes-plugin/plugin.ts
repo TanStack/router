@@ -245,7 +245,8 @@ async function generator(config: Config, root: string) {
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
     )
 
-    const routeCode = node.fullPath
+    const stats = fs.statSync(node.fullPath)
+    const routeCode = stats.isFile()
       ? fs.readFileSync(node.fullPath, 'utf-8')
       : ''
 
