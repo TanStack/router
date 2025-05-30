@@ -4,13 +4,13 @@ title: Migrate from Next.js
 ---
 
 > [!IMPORTANT]
-> This guide is based off the upcoming work in the `alpha` branch for **TanStack Start**. We are actively working on super upcoming cool and exciting changes, and the guide will be updated soon.
+> This guide is based on the upcoming work in the `alpha` branch for **TanStack Start**. We are actively working on some super cool and exciting changes, and the guide will be updated soon.
 
-This guide provides a step-by-step process to migrate a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth and professional as possible.
+This guide provides a step-by-step process for migrating a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth and professional as possible.
 
 ## Step-by-Step (Basics)
 
-This step-by-step guide should give you an overview of how to migrate your Next.js App Router project to TanStack Start by migrating a starter template. The goal is to help you understand the basic steps involved in the migration process, so you can adapt them to your specific project needs.
+This step-by-step guide should give you an overview of how to migrate your Next.js App Router project to TanStack Start by migrating a starter template. The goal is to help you understand the basic steps involved in the migration process so you can adapt them to your specific project needs.
 
 ### Prerequisites
 
@@ -36,7 +36,7 @@ rm postcss.config.* next.config.*
 TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
 
 > [!NOTE]
-> We're using the `alpha` version of TanStack Start and TanStack Router. This'll change soon once the've been merged into `main`.
+> We're using the `alpha` version of TanStack Start and TanStack Router. This will change soon once they've been merged into `main`.
 
 ```sh
 npm i @tanstack/react-router@alpha @tanstack/react-start@alpha vite
@@ -96,9 +96,9 @@ By default, `routesDirectory` is set to `src/routes`. If you want to maintain co
 
 ### 4. Adapt the Root Layout
 
-> TanStack Start uses a routing adjacent to Remix, but with some changes to make compatible with nested structures and support special features using tokens. You can see all on changes in the [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts) guide.
+> TanStack Start uses routing adjacent to Remix, but with some changes to make it compatible with nested structures and support special features using tokens. You can see all the changes in the [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts) guide.
 
-Instead of `layout.tsx`, you will create a file named `__root.tsx` in the `src/app` directory. This file will serve as the root layout for your application.
+Instead of `layout.tsx`, you should create a file named `__root.tsx` in the `src/app` directory. This file will serve as the root layout for your application.
 
 - `src/app/layout.tsx` to `src/app/__root.tsx`
 
@@ -193,7 +193,7 @@ Instead of `page.tsx`, you will create an `index.tsx` file for the `/` route.
 
 ### 6. Are we migrated yet?
 
-One last thing before we can run the development server, we need to create a router file that will dictate the behavior of TanStack Router used within TanStack Start.
+One last step before we run the development server, we need to create a router file that will dictate the behavior of TanStack Router used within TanStack Start.
 
 - `src/router.tsx`
 
