@@ -202,7 +202,7 @@ describe('ssr HeadContent', () => {
       <RouterProvider router={router} />,
     )
     expect(html).toEqual(
-      `<title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/><!--$--><!--/$-->`,
+      `<meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/><!--$--><!--/$-->`,
     )
   })
 })
