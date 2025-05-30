@@ -4,6 +4,29 @@ import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+const defaultMeta: Array<{
+  key: 'charSet' | 'viewport'
+  tag: 'meta'
+  matcher: (m: any) => boolean
+  attrs: Record<string, string>
+}> = [
+  {
+    key: 'charSet',
+    tag: 'meta',
+    matcher: (m) => m?.charSet != null,
+    attrs: { charSet: 'utf-8' },
+  },
+  {
+    key: 'viewport',
+    tag: 'meta',
+    matcher: (m) => m?.name === 'viewport',
+    attrs: {
+      name: 'viewport',
+      content: 'width=device-width, initial-scale=1',
+    },
+  },
+]
+
 export const useTags = () => {
   const router = useRouter()
 
@@ -17,6 +40,14 @@ export const useTags = () => {
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
+
+    defaultMeta.forEach(({ key, matcher, tag, attrs }) => {
+      const already = routeMeta.flat(1).some(matcher)
+      if (!already) {
+        resultMeta.push({ tag, attrs })
+        metaByAttribute[key] = true
+      }
+    })
     ;[...routeMeta].reverse().forEach((metas) => {
       ;[...metas].reverse().forEach((m) => {
         if (!m) return
