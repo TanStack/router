@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { applyDefaultMeta } from '@tanstack/router-core'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -17,6 +18,8 @@ export const useTags = () => {
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
+
+    applyDefaultMeta(routeMeta, resultMeta, metaByAttribute)
     ;[...routeMeta].reverse().forEach((metas) => {
       ;[...metas].reverse().forEach((m) => {
         if (!m) return
