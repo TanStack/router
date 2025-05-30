@@ -9,8 +9,8 @@ const defaultMeta: Array<{
   {
     key: 'charSet',
     tag: 'meta',
-    matcher: (m) => m?.charSet != null,
-    attrs: { charSet: 'utf-8' },
+    matcher: (m) => m?.charset != null || m?.charSet != null,
+    attrs: { charset: 'utf-8' },
   },
   {
     key: 'viewport',
