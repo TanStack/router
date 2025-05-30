@@ -117,6 +117,7 @@ describe('ssr HeadContent', () => {
       head: ({ loaderData }) => {
         return {
           meta: [
+            { charSet: 'ascii' },
             {
               title: 'Root',
             },
@@ -186,6 +187,7 @@ describe('ssr HeadContent', () => {
     await router.load()
 
     expect(router.state.matches.map((d) => d.meta).flat(1)).toEqual([
+      { charSet: 'ascii' },
       { title: 'Root' },
       { name: 'description', content: 'Root' },
       { name: 'image', content: 'image.jpg' },

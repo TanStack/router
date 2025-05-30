@@ -418,3 +418,5 @@ export type {
   ValidateUseSearchResult,
   ValidateUseParamsResult,
 } from './typePrimitives'
+
+export { applyDefaultMeta } from './defaultMeta'
