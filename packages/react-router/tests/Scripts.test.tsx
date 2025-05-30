@@ -118,6 +118,7 @@ describe('ssr HeadContent', () => {
       head: ({ loaderData }) => {
         return {
           meta: [
+            { charSet: 'ascii' },
             {
               title: 'Root',
             },
@@ -187,6 +188,7 @@ describe('ssr HeadContent', () => {
     await router.load()
 
     expect(router.state.matches.map((d) => d.meta).flat(1)).toEqual([
+      { charSet: 'ascii' },
       { title: 'Root' },
       { name: 'description', content: 'Root' },
       { name: 'image', content: 'image.jpg' },
@@ -202,7 +204,7 @@ describe('ssr HeadContent', () => {
       <RouterProvider router={router} />,
     )
     expect(html).toEqual(
-      `<meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/><!--$--><!--/$-->`,
+      `<meta charSet="ascii"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/><!--$--><!--/$-->`,
     )
   })
 })
