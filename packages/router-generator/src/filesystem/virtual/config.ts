@@ -38,8 +38,8 @@ const virtualRouteNodeSchema = z.union([
   physicalSubTreeSchema,
 ])
 
-export const virtualRootRouteSchema: z.ZodType<VirtualRootRoute> = z.object({
+export const virtualRootRouteSchema = z.object({
   type: z.literal('root'),
   file: z.string(),
   children: z.array(virtualRouteNodeSchema).optional(),
-})
+}) satisfies z.ZodType<VirtualRootRoute>;
