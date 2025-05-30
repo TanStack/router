@@ -4,9 +4,9 @@ title: Migrate from Next.js
 ---
 
 > [!IMPORTANT]
-> This guide is based off the upcoming work in the `alpha` branch for **TanStack Start**. We are actively working on super upcoming cool and exciting changes, and the guide will be updated soon.
+> This guide is based on the upcoming work in the `alpha` branch of **TanStack Start**. We are actively working on exciting new features, and this guide will be updated soon.
 
-This guide provides a step-by-step process to migrate a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth and professional as possible.
+This guide provides a step-by-step process to migrate a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth as possible.
 
 ## Step-by-Step (Basics)
 
