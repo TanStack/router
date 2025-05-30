@@ -1,4 +1,4 @@
-import type { RouterManagedTag } from '.'
+import type { RouterManagedTag } from './manifest'
 
 const defaultMeta: Array<{
   key: string
