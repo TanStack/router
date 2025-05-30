@@ -8,7 +8,6 @@ import {
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { tsrSplit } from '../constants'
 import { routeHmrStatement } from '../route-hmr-statement'
-import { routeHmrStatement } from '../route-hmr-statement'
 import { createIdentifier } from './path-ids'
 import { getFrameworkOptions } from './framework-options'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
