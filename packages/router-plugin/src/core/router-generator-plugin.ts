@@ -17,7 +17,7 @@ const PLUGIN_NAME = 'unplugin:router-generator'
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}) => {
-  let ROOT: string = process.cwd()
+  const ROOT = process.cwd()
   let userConfig = options as Config
 
   const getRoutesDirectoryPath = () => {
@@ -82,8 +82,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       })
     },
     vite: {
-      async configResolved(config) {
-        ROOT = config.root
+      async configResolved() {
         userConfig = getConfig(options, ROOT)
 
         await run(generate)
