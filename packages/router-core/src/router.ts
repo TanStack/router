@@ -398,7 +398,7 @@ export interface RouterOptions<
    *
    * @default ['window']
    */
-  scrollToTopSelectors?: Array<string>
+  scrollToTopSelectors?: Array<string | (() => Element | null | undefined)>
 }
 
 export interface RouterState<

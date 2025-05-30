@@ -80,6 +80,10 @@
             {
               "label": "Path Aliases",
               "to": "framework/react/path-aliases"
+            },
+            {
+              "label": "Migrate from Next.js",
+              "to": "framework/react/migrate-from-next-js"
             }
           ]
         },

@@ -217,7 +217,7 @@ If you are using code-based routing, you can still code-split your routes using 
 Create a lazy route using the `createLazyRoute` function.
 
 ```tsx
-// src/posts.tsx
+// src/posts.lazy.tsx
 export const Route = createLazyRoute('/posts')({
   component: MyComponent,
 })

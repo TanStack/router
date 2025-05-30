@@ -105,7 +105,9 @@ export function restoreScroll(
   key: string | undefined,
   behavior: ScrollToOptions['behavior'] | undefined,
   shouldScrollRestoration: boolean | undefined,
-  scrollToTopSelectors: Array<string> | undefined,
+  scrollToTopSelectors:
+    | Array<string | (() => Element | null | undefined)>
+    | undefined,
 ) {
   let byKey: ScrollRestorationByKey
 
@@ -174,7 +176,11 @@ export function restoreScroll(
       ...(scrollToTopSelectors?.filter((d) => d !== 'window') ?? []),
     ].forEach((selector) => {
       const element =
-        selector === 'window' ? window : document.querySelector(selector)
+        selector === 'window'
+          ? window
+          : typeof selector === 'function'
+            ? selector()
+            : document.querySelector(selector)
       if (element) {
         element.scrollTo({
           top: 0,
