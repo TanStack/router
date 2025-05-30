@@ -76,6 +76,10 @@
             {
               "label": "Path Aliases",
               "to": "framework/react/path-aliases"
+            },
+            {
+              "label": "Migrate from Next.js",
+              "to": "framework/react/migrate-from-next-js"
             }
           ]
         },
@@ -145,21 +149,6 @@
             {
               "label": "Path Aliases",
               "to": "framework/solid/path-aliases"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "label": "Guides",
-      "children": [],
-      "frameworks": [
-        {
-          "label": "react",
-          "children": [
-            {
-              "label": "Migrate from Next.js",
-              "to": "framework/react/migrate-from-next-js"
             }
           ]
         }
