@@ -1,4 +1,4 @@
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type { RouterManagedTag } from '.'
 
 const defaultMeta: Array<{
   key: string
