@@ -8,6 +8,7 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createFileRoute } from '@tanstack/react-router'
 import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 // Import Routes
@@ -43,6 +44,12 @@ import { Route as RedirectTargetServerFnIndexRouteImport } from './routes/redire
 import { Route as RedirectTargetServerFnViaUseServerFnRouteImport } from './routes/redirect/$target/serverFn/via-useServerFn'
 import { Route as RedirectTargetServerFnViaLoaderRouteImport } from './routes/redirect/$target/serverFn/via-loader'
 import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
+import { Route as FooBarQuxHereRouteImport } from './routes/foo/$bar/$qux/_here'
+import { Route as FooBarQuxHereIndexRouteImport } from './routes/foo/$bar/$qux/_here/index'
+
+// Create Virtual Routes
+
+const FooBarQuxRouteImport = createFileRoute('/foo/$bar/$qux')()
 
 // Create/Update Routes
 
@@ -164,6 +171,12 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   getParentRoute: () => LayoutRoute,
 } as any)
 
+const FooBarQuxRoute = FooBarQuxRouteImport.update({
+  id: '/foo/$bar/$qux',
+  path: '/foo/$bar/$qux',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -228,6 +241,17 @@ const RedirectTargetServerFnViaBeforeLoadRoute =
     path: '/serverFn/via-beforeLoad',
     getParentRoute: () => RedirectTargetRoute,
   } as any)
+
+const FooBarQuxHereRoute = FooBarQuxHereRouteImport.update({
+  id: '/_here',
+  getParentRoute: () => FooBarQuxRoute,
+} as any)
+
+const FooBarQuxHereIndexRoute = FooBarQuxHereIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => FooBarQuxHereRoute,
+} as any)
 
 // Populate the FileRoutesByPath interface
 
@@ -415,6 +439,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTargetIndexRouteImport
       parentRoute: typeof RedirectTargetRouteImport
     }
+    '/foo/$bar/$qux': {
+      id: '/foo/$bar/$qux'
+      path: '/foo/$bar/$qux'
+      fullPath: '/foo/$bar/$qux'
+      preLoaderRoute: typeof FooBarQuxRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/foo/$bar/$qux/_here': {
+      id: '/foo/$bar/$qux/_here'
+      path: '/foo/$bar/$qux'
+      fullPath: '/foo/$bar/$qux'
+      preLoaderRoute: typeof FooBarQuxHereRouteImport
+      parentRoute: typeof FooBarQuxRoute
+    }
     '/redirect/$target/serverFn/via-beforeLoad': {
       id: '/redirect/$target/serverFn/via-beforeLoad'
       path: '/serverFn/via-beforeLoad'
@@ -442,6 +480,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/redirect/$target/serverFn'
       preLoaderRoute: typeof RedirectTargetServerFnIndexRouteImport
       parentRoute: typeof RedirectTargetRouteImport
+    }
+    '/foo/$bar/$qux/_here/': {
+      id: '/foo/$bar/$qux/_here/'
+      path: '/'
+      fullPath: '/foo/$bar/$qux/'
+      preLoaderRoute: typeof FooBarQuxHereIndexRouteImport
+      parentRoute: typeof FooBarQuxHereRouteImport
     }
   }
 }
@@ -682,6 +727,16 @@ declare module './routes/redirect/$target/index' {
     FileRoutesByPath['/redirect/$target/']['fullPath']
   >
 }
+
+declare module './routes/foo/$bar/$qux/_here' {
+  const createFileRoute: CreateFileRoute<
+    '/foo/$bar/$qux/_here',
+    FileRoutesByPath['/foo/$bar/$qux/_here']['parentRoute'],
+    FileRoutesByPath['/foo/$bar/$qux/_here']['id'],
+    FileRoutesByPath['/foo/$bar/$qux/_here']['path'],
+    FileRoutesByPath['/foo/$bar/$qux/_here']['fullPath']
+  >
+}
 declare module './routes/redirect/$target/serverFn/via-beforeLoad' {
   const createFileRoute: CreateFileRoute<
     '/redirect/$target/serverFn/via-beforeLoad',
@@ -716,6 +771,15 @@ declare module './routes/redirect/$target/serverFn/index' {
     FileRoutesByPath['/redirect/$target/serverFn/']['id'],
     FileRoutesByPath['/redirect/$target/serverFn/']['path'],
     FileRoutesByPath['/redirect/$target/serverFn/']['fullPath']
+  >
+}
+declare module './routes/foo/$bar/$qux/_here/index' {
+  const createFileRoute: CreateFileRoute<
+    '/foo/$bar/$qux/_here/',
+    FileRoutesByPath['/foo/$bar/$qux/_here/']['parentRoute'],
+    FileRoutesByPath['/foo/$bar/$qux/_here/']['id'],
+    FileRoutesByPath['/foo/$bar/$qux/_here/']['path'],
+    FileRoutesByPath['/foo/$bar/$qux/_here/']['fullPath']
   >
 }
 
@@ -812,6 +876,30 @@ const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
   RedirectTargetRouteChildren,
 )
 
+interface FooBarQuxHereRouteChildren {
+  FooBarQuxHereIndexRoute: typeof FooBarQuxHereIndexRoute
+}
+
+const FooBarQuxHereRouteChildren: FooBarQuxHereRouteChildren = {
+  FooBarQuxHereIndexRoute: FooBarQuxHereIndexRoute,
+}
+
+const FooBarQuxHereRouteWithChildren = FooBarQuxHereRoute._addFileChildren(
+  FooBarQuxHereRouteChildren,
+)
+
+interface FooBarQuxRouteChildren {
+  FooBarQuxHereRoute: typeof FooBarQuxHereRouteWithChildren
+}
+
+const FooBarQuxRouteChildren: FooBarQuxRouteChildren = {
+  FooBarQuxHereRoute: FooBarQuxHereRouteWithChildren,
+}
+
+const FooBarQuxRouteWithChildren = FooBarQuxRoute._addFileChildren(
+  FooBarQuxRouteChildren,
+)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/not-found': typeof NotFoundRouteRouteWithChildren
@@ -838,10 +926,12 @@ export interface FileRoutesByFullPath {
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/foo/$bar/$qux': typeof FooBarQuxHereRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
   '/redirect/$target/serverFn': typeof RedirectTargetServerFnIndexRoute
+  '/foo/$bar/$qux/': typeof FooBarQuxHereIndexRoute
 }
 
 export interface FileRoutesByTo {
@@ -866,6 +956,7 @@ export interface FileRoutesByTo {
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
+  '/foo/$bar/$qux': typeof FooBarQuxHereIndexRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
@@ -900,10 +991,13 @@ export interface FileRoutesById {
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/foo/$bar/$qux': typeof FooBarQuxRouteWithChildren
+  '/foo/$bar/$qux/_here': typeof FooBarQuxHereRouteWithChildren
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
   '/redirect/$target/serverFn/': typeof RedirectTargetServerFnIndexRoute
+  '/foo/$bar/$qux/_here/': typeof FooBarQuxHereIndexRoute
 }
 
 export interface FileRouteTypes {
@@ -934,10 +1028,12 @@ export interface FileRouteTypes {
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/redirect/$target/'
+    | '/foo/$bar/$qux'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
     | '/redirect/$target/serverFn'
+    | '/foo/$bar/$qux/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -961,6 +1057,7 @@ export interface FileRouteTypes {
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/redirect/$target'
+    | '/foo/$bar/$qux'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
@@ -993,10 +1090,13 @@ export interface FileRouteTypes {
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
     | '/redirect/$target/'
+    | '/foo/$bar/$qux'
+    | '/foo/$bar/$qux/_here'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
     | '/redirect/$target/serverFn/'
+    | '/foo/$bar/$qux/_here/'
   fileRoutesById: FileRoutesById
 }
 
@@ -1014,6 +1114,7 @@ export interface RootRouteChildren {
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
+  FooBarQuxRoute: typeof FooBarQuxRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -1030,6 +1131,7 @@ const rootRouteChildren: RootRouteChildren = {
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
+  FooBarQuxRoute: FooBarQuxRouteWithChildren,
 }
 
 export const routeTree = rootRoute
@@ -1054,7 +1156,8 @@ export const routeTree = rootRoute
         "/users",
         "/redirect/$target",
         "/redirect/",
-        "/posts_/$postId/deep"
+        "/posts_/$postId/deep",
+        "/foo/$bar/$qux"
       ]
     },
     "/": {
@@ -1177,6 +1280,19 @@ export const routeTree = rootRoute
       "filePath": "redirect/$target/index.tsx",
       "parent": "/redirect/$target"
     },
+    "/foo/$bar/$qux": {
+      "filePath": "foo/$bar/$qux",
+      "children": [
+        "/foo/$bar/$qux/_here"
+      ]
+    },
+    "/foo/$bar/$qux/_here": {
+      "filePath": "foo/$bar/$qux/_here.tsx",
+      "parent": "/foo/$bar/$qux",
+      "children": [
+        "/foo/$bar/$qux/_here/"
+      ]
+    },
     "/redirect/$target/serverFn/via-beforeLoad": {
       "filePath": "redirect/$target/serverFn/via-beforeLoad.tsx",
       "parent": "/redirect/$target"
@@ -1192,6 +1308,10 @@ export const routeTree = rootRoute
     "/redirect/$target/serverFn/": {
       "filePath": "redirect/$target/serverFn/index.tsx",
       "parent": "/redirect/$target"
+    },
+    "/foo/$bar/$qux/_here/": {
+      "filePath": "foo/$bar/$qux/_here/index.tsx",
+      "parent": "/foo/$bar/$qux/_here"
     }
   }
 }
