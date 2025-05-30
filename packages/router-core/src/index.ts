@@ -419,4 +419,4 @@ export type {
   ValidateUseParamsResult,
 } from './typePrimitives'
 
-export { applyDefaultMeta } from './defaultMeta'
+export { applyDefaultMeta } from './head-content'
