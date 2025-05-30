@@ -36,7 +36,7 @@ rm postcss.config.* next.config.*
 TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
 
 > [!NOTE]
-> We're using the `alpha` version of TanStack Start and TanStack Router. This'll change soon once the've been merged into `main`.
+> We're using the `alpha` version of TanStack Start and TanStack Router. This will change once they are merged into main.
 
 ```sh
 npm i @tanstack/react-router@alpha @tanstack/react-start@alpha vite
@@ -96,7 +96,7 @@ By default, `routesDirectory` is set to `src/routes`. If you want to maintain co
 
 ### 4. Adapt the Root Layout
 
-> TanStack Start uses a routing adjacent to Remix, but with some changes to make compatible with nested structures and support special features using tokens. You can see all on changes in the [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts) guide.
+> TanStack Start uses routing adjacent to Remix, with some changes to make it compatible with nested structures and support special features using tokens. Learn more about it at [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts) guide.
 
 Instead of `layout.tsx`, you will create a file named `__root.tsx` in the `src/app` directory. This file will serve as the root layout for your application.
 
