@@ -65,7 +65,7 @@ TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
 npm i @tanstack/react-router@alpha @tanstack/react-start@alpha vite
 ```
 
-For TypeScript support and Tailwind CSS:
+For Tailwind CSS and resolving imports using path aliases:
 
 ```sh
 npm i -D @tailwindcss/vite tailwindcss vite-tsconfig-paths
