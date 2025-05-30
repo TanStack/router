@@ -4,9 +4,9 @@ title: Migrate from Next.js
 ---
 
 > [!IMPORTANT]
-> This guide is based off the upcoming work in the `alpha` branch for **TanStack Start**. We are actively working on super upcoming cool and exciting changes, and the guide will be updated soon.
+> This guide is based on the upcoming work in the `alpha` branch of **TanStack Start**. We are actively working on exciting new features, and this guide will be updated soon.
 
-This guide provides a step-by-step process to migrate a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth and professional as possible.
+This guide provides a step-by-step process to migrate a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth as possible.
 
 ## Step-by-Step (Basics)
 
@@ -36,7 +36,7 @@ rm postcss.config.* next.config.*
 TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
 
 > [!NOTE]
-> We're using the `alpha` version of TanStack Start and TanStack Router. This'll change soon once the've been merged into `main`.
+> We're using the `alpha` version of TanStack Start and TanStack Router. This will change once they are merged into main.
 
 ```sh
 npm i @tanstack/react-router@alpha @tanstack/react-start@alpha vite
@@ -96,7 +96,7 @@ By default, `routesDirectory` is set to `src/routes`. If you want to maintain co
 
 ### 4. Adapt the Root Layout
 
-> TanStack Start uses a routing adjacent to Remix, but with some changes to make compatible with nested structures and support special features using tokens. You can see all on changes in the [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts) guide.
+> TanStack Start uses routing adjacent to Remix, with some changes to make it compatible with nested structures and support special features using tokens. Learn more about it at [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts) guide.
 
 Instead of `layout.tsx`, you will create a file named `__root.tsx` in the `src/app` directory. This file will serve as the root layout for your application.
 
