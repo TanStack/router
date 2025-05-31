@@ -64,7 +64,7 @@
   "dependencies": {
     "@tanstack/router-core": "workspace:^",
     "@tanstack/start-server-core": "workspace:^",
-    "vinxi": "0.5.3"
+    "vinxi": "0.5.6"
   },
   "devDependencies": {
     "typescript": "^5.7.2"
