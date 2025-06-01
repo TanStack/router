@@ -94,11 +94,11 @@ export function TanStackStartVitePluginCore(
           )
             ? startConfig.clientEntryPath
             : vite.normalizePath(
-              path.join(
-                '/@fs',
-                path.resolve(startConfig.root, startConfig.clientEntryPath),
-              ),
-            )
+                path.join(
+                  '/@fs',
+                  path.resolve(startConfig.root, startConfig.clientEntryPath),
+                ),
+              )
 
           return entry
         }
