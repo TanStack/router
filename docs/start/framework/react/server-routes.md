@@ -46,10 +46,13 @@ function HelloComponent() {
     <div>
       <button
         onClick={() => {
-          ServerRoute.methods
-            .post({
-              body: JSON.stringify({ name: 'John' }),
-            })
+          fetch('/api/hello', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: 'Tanner' }),
+          })
             .then((res) => res.json())
             .then((data) => setReply(data.message))
         }}
