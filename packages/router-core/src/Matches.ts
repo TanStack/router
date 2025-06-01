@@ -170,7 +170,7 @@ export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
   TRoute['types']['loaderData'],
   TRoute['types']['allContext'],
   TRoute['types']['loaderDeps'],
-  TRoute['types']['stateSchema']
+  TRoute['types']['fullStateSchema']
 >
 
 export type MakeRouteMatch<
@@ -195,7 +195,7 @@ export type MakeRouteMatch<
   RouteById<TRouteTree, TRouteId>['types']['loaderDeps'],
   TStrict extends false
     ? FullStateSchema<TRouteTree>
-    : RouteById<TRouteTree, TRouteId>['types']['stateSchema']
+    : RouteById<TRouteTree, TRouteId>['types']['fullStateSchema']
 >
 
 export type AnyRouteMatch = RouteMatch<any, any, any, any, any, any, any, any>
@@ -212,7 +212,7 @@ export type MakeRouteMatchUnion<
       TRoute['types']['loaderData'],
       TRoute['types']['allContext'],
       TRoute['types']['loaderDeps'],
-      TRoute['types']['stateSchema']
+      TRoute['types']['fullStateSchema']
     >
   : never
 
