@@ -1,11 +1,7 @@
 import type { NavigateOptions, ToOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RoutePaths } from './routeInfo'
-import type {
-  AnyRouter,
-  RegisteredRouter,
-  ViewTransitionOptions,
-} from './router'
+import type { RegisteredRouter, ViewTransitionOptions } from './router'
 
 export interface MatchLocation {
   to?: string | number | null
@@ -37,7 +33,7 @@ export type NavigateFn = <
 ) => Promise<void> | void
 
 export type BuildLocationFn = <
-  TRouter extends AnyRouter,
+  TRouter extends RegisteredRouter,
   TTo extends string | undefined,
   TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
   TMaskFrom extends RoutePaths<TRouter['routeTree']> | string = TFrom,

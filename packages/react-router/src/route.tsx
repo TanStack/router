@@ -26,9 +26,11 @@ import type {
   ResolveFullPath,
   ResolveId,
   ResolveParams,
+  RootRoute as RootRouteCore,
   RootRouteId,
   RootRouteOptions,
   RouteConstraints,
+  Route as RouteCore,
   RouteIds,
   RouteMask,
   RouteOptions,
@@ -160,45 +162,65 @@ export class RouteApi<
 }
 
 export class Route<
-  in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
-  in out TPath extends RouteConstraints['TPath'] = '/',
-  in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
-    TParentRoute,
-    TPath
-  >,
-  in out TCustomId extends RouteConstraints['TCustomId'] = string,
-  in out TId extends RouteConstraints['TId'] = ResolveId<
-    TParentRoute,
-    TCustomId,
-    TPath
-  >,
-  in out TSearchValidator = undefined,
-  in out TStateValidator = undefined,
+    in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
+    in out TPath extends RouteConstraints['TPath'] = '/',
+    in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
+      TParentRoute,
+      TPath
+    >,
+    in out TCustomId extends RouteConstraints['TCustomId'] = string,
+    in out TId extends RouteConstraints['TId'] = ResolveId<
+      TParentRoute,
+      TCustomId,
+      TPath
+    >,
+    in out TSearchValidator = undefined,
+    in out TStateValidator = undefined,
   in out TParams = ResolveParams<TPath>,
-  in out TRouterContext = AnyContext,
-  in out TRouteContextFn = AnyContext,
-  in out TBeforeLoadFn = AnyContext,
-  in out TLoaderDeps extends Record<string, any> = {},
-  in out TLoaderFn = undefined,
-  in out TChildren = unknown,
-  in out TFileRouteTypes = unknown,
-> extends BaseRoute<
-  TParentRoute,
-  TPath,
-  TFullPath,
-  TCustomId,
-  TId,
-  TSearchValidator,
-  TStateValidator,
+    in out TRouterContext = AnyContext,
+    in out TRouteContextFn = AnyContext,
+    in out TBeforeLoadFn = AnyContext,
+    in out TLoaderDeps extends Record<string, any> = {},
+    in out TLoaderFn = undefined,
+    in out TChildren = unknown,
+    in out TFileRouteTypes = unknown,
+  >
+  extends BaseRoute<
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TStateValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren,
+    TFileRouteTypes
+  >
+  implements
+    RouteCore<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TStateValidator,
   TParams,
-  TRouterContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
-  TLoaderDeps,
-  TLoaderFn,
-  TChildren,
-  TFileRouteTypes
-> {
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+{
   /**
    * @deprecated Use the `createRoute` function instead.
    */

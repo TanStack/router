@@ -65,13 +65,13 @@ The `RouteOptions` type accepts an object with the following properties:
 - Search middlewares are functions that transform the search parameters when generating new links for a route or its descendants.
 - A search middleware is passed in the current search (if it is the first middleware to run) or is invoked by the previous middleware calling `next`.
 
-### `parseParams` method (⚠️ deprecated)
+### `parseParams` method (⚠️ deprecated, use `params.parse` instead)
 
 - Type: `(rawParams: Record<string, string>) => TParams`
 - Optional
 - A function that will be called when this route is matched and passed the raw params from the current location and return valid parsed params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's params and the return type will be inferred into the rest of the router.
 
-### `stringifyParams` method (⚠️ deprecated)
+### `stringifyParams` method (⚠️ deprecated, use `params.stringify` instead)
 
 - Type: `(params: TParams) => Record<string, string>`
 - Required if `parseParams` is provided
@@ -109,13 +109,13 @@ type beforeLoad = (
 ```
 
 - Optional
-- [`ParsedLocation`](./ParsedLocationType.md)
+- [`ParsedLocation`](../ParsedLocationType.md)
 - This async function is called before a route is loaded. If an error is thrown here, the route's loader will not be called and the route will not render. If thrown during a navigation, the navigation will be canceled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TRouteContext` object, that object will be merged into the route's context and be made available in the `loader` and other related route components/methods.
 - It's common to use this function to check if a user is authenticated and redirect them to a login page if they are not. To do this, you can either return or throw a `redirect` object from this function.
 
-> 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](./redirectFunction.md).
+> 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](../redirectFunction.md).
 
 ### `loader` method
 
@@ -124,26 +124,27 @@ type beforeLoad = (
 ```tsx
 type loader = (
   opts: RouteMatch & {
-    search: TFullSearchSchema
     abortController: AbortController
-    preload: boolean
-    params: TAllParams
-    context: TAllContext
-    location: ParsedLocation
-    navigate: NavigateFn<AnyRoute> // @deprecated
-    buildLocation: BuildLocationFn<AnyRoute>
     cause: 'enter' | 'stay'
+    context: TAllContext
+    deps: TLoaderDeps
+    location: ParsedLocation
+    params: TAllParams
+    preload: boolean
+    parentMatchPromise: Promise<MakeRouteMatchFromRoute<TParentRoute>>
+    navigate: NavigateFn<AnyRoute> // @deprecated
   },
 ) => Promise<TLoaderData> | TLoaderData | void
 ```
 
 - Optional
-- [`ParsedLocation`](./ParsedLocationType.md)
+- [`ParsedLocation`](../ParsedLocationType.md)
 - This async function is called when a route is matched and passed the route's match object. If an error is thrown here, the route will be put into an error state and the error will be thrown during render. If thrown during a navigation, the navigation will be canceled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TLoaderData` object, that object will be stored on the route match until the route match is no longer active. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
+- Deps must be returned by your `loaderDeps` function in order to appear.
 
-> 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](./redirectFunction.md).
+> 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](../redirectFunction.md).
 
 ### `loaderDeps` method
 
@@ -241,7 +242,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Type: `(error: any) => void`
 - Optional
 - A function that will be called when an error is thrown during a navigation or preload event.
-- If this function throws a [`redirect`](./redirectFunction.md), then the router will process and apply the redirect immediately.
+- If this function throws a [`redirect`](../redirectFunction.md), then the router will process and apply the redirect immediately.
 
 ### `onEnter` property
 
@@ -292,7 +293,7 @@ interface RemountDepsOptions<
 - The return value needs to be JSON serializable.
 - By default, a route component will not be remounted if it stays active after a navigation.
 
-Example:  
+Example:
 If you want to configure to remount a route component upon `params` change, use:
 
 ```tsx

@@ -5,7 +5,7 @@ title: RootRoute class
 
 > [!CAUTION]
 > This class has been deprecated and will be removed in the next major version of TanStack Router.
-> Please use the [`createRootRoute`](./createRootRouteFunction.md) function instead.
+> Please use the [`createRootRoute`](../createRootRouteFunction.md) function instead.
 
 The `RootRoute` class extends the `Route` class and can be used to create a root route instance. A root route instance can then be used to create a route tree.
 
@@ -31,12 +31,12 @@ Omit<
 >
 ```
 
-- [`RouteOptions`](./RouteOptionsType.md)
+- [`RouteOptions`](../RouteOptionsType.md)
 - Optional
 
 ## Constructor returns
 
-A new [`Route`](./RouteType.md) instance.
+A new [`Route`](../RouteType.md) instance.
 
 ## Examples
 

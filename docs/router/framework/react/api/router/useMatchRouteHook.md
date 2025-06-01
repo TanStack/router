@@ -17,7 +17,7 @@ The `matchRoute` function is a function that can be used to match a route agains
 
 The `matchRoute` function accepts a single argument, an `options` object.
 
-- Type: [`UseMatchRouteOptions`](./UseMatchRouteOptionsType.md)
+- Type: [`UseMatchRouteOptions`](../UseMatchRouteOptionsType.md)
 
 ### matchRoute function returns
 

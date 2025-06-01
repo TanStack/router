@@ -4,9 +4,7 @@ type FrameworkOptions = {
     createFileRoute: string
     lazyFn: string
     lazyRouteComponent: string
-    dummyHMRComponent: string
   }
-  dummyHMRComponent: string
 }
 
 export function getFrameworkOptions(framework: string): FrameworkOptions {
@@ -20,9 +18,7 @@ export function getFrameworkOptions(framework: string): FrameworkOptions {
           createFileRoute: 'createFileRoute',
           lazyFn: 'lazyFn',
           lazyRouteComponent: 'lazyRouteComponent',
-          dummyHMRComponent: 'TSRDummyComponent',
         },
-        dummyHMRComponent: `export function TSRDummyComponent() { return null }`,
       }
       break
     case 'solid':
@@ -32,9 +28,7 @@ export function getFrameworkOptions(framework: string): FrameworkOptions {
           createFileRoute: 'createFileRoute',
           lazyFn: 'lazyFn',
           lazyRouteComponent: 'lazyRouteComponent',
-          dummyHMRComponent: 'TSRDummyComponent',
         },
-        dummyHMRComponent: `export function TSRDummyComponent() { return null }`,
       }
       break
     default:

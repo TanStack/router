@@ -17,6 +17,19 @@ const router = createRouter({
 })
 ```
 
+For complex selectors that cannot be simply resolved using `document.querySelector(selector)`, you can pass functions that return HTML elements to `routerOptions.scrollToTopSelectors`:
+
+```tsx
+const selector = () =>
+  document
+    .querySelector('#shadowRootParent')
+    ?.shadowRoot?.querySelector('#main-scrollable-area')
+
+const router = createRouter({
+  scrollToTopSelectors: [selector],
+})
+```
+
 These selectors are handled **in addition to `window`** which cannot be disabled currently.
 
 ## Scroll Restoration

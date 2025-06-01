@@ -688,7 +688,25 @@ export interface Route<
       TBeforeLoadFn
     >,
   ) => this
-  lazy: RouteLazyFn<this>
+  lazy: RouteLazyFn<
+    Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TStateValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+  >
   addChildren: RouteAddChildrenFn<
     TParentRoute,
     TPath,
@@ -1374,25 +1392,7 @@ export class BaseRoute<
   in out TLoaderFn = undefined,
   in out TChildren = unknown,
   in out TFileRouteTypes = unknown,
-> implements
-    Route<
-      TParentRoute,
-      TPath,
-      TFullPath,
-      TCustomId,
-      TId,
-      TSearchValidator,
-      TStateValidator,
-      TParams,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      TLoaderDeps,
-      TLoaderFn,
-      TChildren,
-      TFileRouteTypes
-    >
-{
+> {
   isRoot: TParentRoute extends AnyRoute ? true : false
   options: RouteOptions<
     TParentRoute,
@@ -1558,6 +1558,16 @@ export class BaseRoute<
     this._ssr = options?.ssr ?? opts.defaultSsr ?? true
   }
 
+  clone = (other: typeof this) => {
+    this._path = other._path
+    this._id = other._id
+    this._fullPath = other._fullPath
+    this._to = other._to
+    this._ssr = other._ssr
+    this.options.getParentRoute = other.options.getParentRoute
+    this.children = other.children
+  }
+
   addChildren: RouteAddChildrenFn<
     TParentRoute,
     TPath,
@@ -1676,7 +1686,25 @@ export class BaseRoute<
     return this
   }
 
-  lazy: RouteLazyFn<this> = (lazyFn) => {
+  lazy: RouteLazyFn<
+    Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TStateValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+  > = (lazyFn) => {
     this.lazyFn = lazyFn
     return this
   }
@@ -1693,6 +1721,34 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
     return notFound({ routeId: this.id as string, ...opts })
   }
 }
+
+export interface RootRoute<
+  in out TSearchValidator = undefined,
+  in out TStateValidator = undefined,
+  in out TRouterContext = {},
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+> extends Route<
+    any, // TParentRoute
+    '/', // TPath
+    '/', // TFullPath
+    string, // TCustomId
+    RootRouteId, // TId
+    TSearchValidator, // TSearchValidator
+    TStateValidator, // TStateValidator
+    {}, // TParams
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren, // TChildren
+    TFileRouteTypes
+  > {}
 
 export class BaseRootRoute<
   in out TSearchValidator = undefined,

@@ -62,7 +62,7 @@ function PostIdComponent() {
 ```
 
 > [!TIP]
-> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `Route` configuration to get access to the typed `useLoaderData()` hook.
+> If your component is code-split, you can use the [getRouteApi function](../code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `Route` configuration to get access to the typed `useLoaderData()` hook.
 
 The `Await` component resolves the promise by triggering the nearest suspense boundary until it is resolved, after which it renders the component's `children` as a function with the resolved data.
 
@@ -77,7 +77,7 @@ If the promise is rejected, the `Await` component will throw the serialized erro
 
 ## Deferred Data Loading with External libraries
 
-When your strategy for fetching information for the route relies on [External Data Loading](./external-data-loading.md) with an external library like [TanStack Query](https://tanstack.com/query), deferred data loading works a bit differently, as the library handles the data fetching and caching for you outside of TanStack Router.
+When your strategy for fetching information for the route relies on [External Data Loading](../external-data-loading.md) with an external library like [TanStack Query](https://tanstack.com/query), deferred data loading works a bit differently, as the library handles the data fetching and caching for you outside of TanStack Router.
 
 So, instead of using `defer` and `Await`, you'll instead want to use the Route's `loader` to kick off the data fetching and then use the library's hooks to access the data in your components.
 
@@ -139,7 +139,7 @@ Streamed promises follow the same lifecycle as the loader data they are associat
 
 **Streaming requires a server that supports it and for TanStack Router to be configured to use it properly.**
 
-Please read the entire [Streaming SSR Guide](./ssr.md#streaming-ssr) for step by step instructions on how to set up your server for streaming.
+Please read the entire [Streaming SSR Guide](../ssr.md#streaming-ssr) for step by step instructions on how to set up your server for streaming.
 
 ## SSR Streaming Lifecycle
 

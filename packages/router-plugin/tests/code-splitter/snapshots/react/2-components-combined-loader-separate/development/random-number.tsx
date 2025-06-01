@@ -26,6 +26,10 @@ export const Route = createFileRoute('/')({
   loader: lazyFn($$splitLoaderImporter, 'loader'),
   component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)
 });
-export function TSRDummyComponent() {
-  return null;
+if (import.meta.hot) {
+  import.meta.hot.accept(newModule => {
+    if (newModule.Route && typeof newModule.Route.clone === 'function') {
+      newModule.Route.clone(Route);
+    }
+  });
 }

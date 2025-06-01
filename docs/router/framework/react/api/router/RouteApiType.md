@@ -17,7 +17,7 @@ The `RouteApi` has the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the [`useMatch`](./useMatchHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useMatch`](../useMatchHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -27,7 +27,7 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `boolean`
     - Configures whether structural sharing is enabled for the value returned by `select`.
-    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+    - See the [Render Optimizations guide](../../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `RouteMatch` object or a loosened version of the `RouteMatch` object if `opts.strict` is `false`.
@@ -40,7 +40,7 @@ The `RouteApi` has the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the [`useRouteContext`](./useRouteContextHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useRouteContext`](../useRouteContextHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -58,7 +58,7 @@ The `RouteApi` has the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the [`useSearch`](./useSearchHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useSearch`](../useSearchHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -68,7 +68,7 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `boolean`
     - Configures whether structural sharing is enabled for the value returned by `select`.
-    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+    - See the [Render Optimizations guide](../../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TFullSearchSchema` object or a loosened version of the `TFullSearchSchema` object if `opts.strict` is `false`.
@@ -81,7 +81,7 @@ The `RouteApi` has the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the [`useParams`](./useParamsHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useParams`](../useParamsHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -91,7 +91,7 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `boolean`
     - Configures whether structural sharing is enabled for the value returned by `select`.
-    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+    - See the [Render Optimizations guide](../../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TAllParams` object or a loosened version of the `TAllParams` object if `opts.strict` is `false`.
@@ -104,7 +104,7 @@ The `RouteApi` has the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the [`useLoaderData`](./useLoaderDataHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useLoaderData`](../useLoaderDataHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -114,7 +114,7 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `boolean`
     - Configures whether structural sharing is enabled for the value returned by `select`.
-    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+    - See the [Render Optimizations guide](../../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TLoaderData` object or a loosened version of the `TLoaderData` object if `opts.strict` is `false`.
@@ -127,7 +127,7 @@ The `RouteApi` has the following properties and methods:
   }): TSelected
 ```
 
-- A type-safe version of the [`useLoaderDeps`](./useLoaderDepsHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of the [`useLoaderDeps`](../useLoaderDepsHook.md) hook that is pre-bound to the route ID that the `RouteApi` instance was created with.
 - Options
   - `opts.select`
     - Optional
@@ -137,7 +137,7 @@ The `RouteApi` has the following properties and methods:
     - Optional
     - `boolean`
     - Configures whether structural sharing is enabled for the value returned by `select`.
-    - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+    - See the [Render Optimizations guide](../../../guide/render-optimizations.md) for more information.
 - Returns
   - If a `select` function is provided, the return value of the `select` function.
   - If no `select` function is provided, the `TLoaderDeps` object.
@@ -148,4 +148,4 @@ The `RouteApi` has the following properties and methods:
   useNavigate(): // navigate function
 ```
 
-- A type-safe version of [`useNavigate`](./useNavigateHook.md) that is pre-bound to the route ID that the `RouteApi` instance was created with.
+- A type-safe version of [`useNavigate`](../useNavigateHook.md) that is pre-bound to the route ID that the `RouteApi` instance was created with.

@@ -75,4 +75,4 @@ When using the TanStack Router Plugin with Webpack for File-based routing, it co
 
 If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by editing the configuration object passed into the `TanStackRouterWebpack` function.
 
-You can find all the available configuration options in the [File-based Routing API Reference](../../../api/file-based-routing.md).
+You can find all the available configuration options in the [File-based Routing API Reference](../../../../api/file-based-routing.md).
