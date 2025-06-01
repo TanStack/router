@@ -168,6 +168,13 @@ export function TanStackStartVitePluginCore(
               '@tanstack/**',
             ],
           },
+          optimizeDeps: {
+            exclude: [
+              'tanstack-start-server-fn-manifest:v',
+              'tanstack-start-router-manifest:v',
+              'tanstack-start-server-routes-manifest:v',
+            ],
+          },
           /* prettier-ignore */
           define: {
             // define is an esbuild function that replaces the any instances of given keys with the given values
