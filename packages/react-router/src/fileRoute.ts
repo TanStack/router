@@ -29,7 +29,6 @@ import type {
   RouteLoaderFn,
   UpdatableRouteOptions,
   UseNavigateResult,
-  DefaultStartRegister,
   StartRegister,
 } from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
@@ -78,7 +77,7 @@ export class FileRoute<
   }
 
   createRoute = <
-    TStart extends DefaultStartRegister = StartRegister,
+    TStart = StartRegister,
     TSearchValidator = undefined,
     TParams = ResolveParams<TPath>,
     TRouteContextFn = AnyContext,
@@ -86,6 +85,7 @@ export class FileRoute<
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
     TChildren = unknown,
+    TLifecycleSerialization = unknown,
   >(
     options?: LifecycleRouteOptions<
       TStart,
@@ -98,7 +98,8 @@ export class FileRoute<
       TLoaderFn,
       AnyContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      TLifecycleSerialization
     > &
       UpdatableRouteOptions<
         TParentRoute,
@@ -127,7 +128,8 @@ export class FileRoute<
     TLoaderDeps,
     TLoaderFn,
     TChildren,
-    unknown
+    unknown,
+    TLifecycleSerialization
   > => {
     warning(
       this.silent,

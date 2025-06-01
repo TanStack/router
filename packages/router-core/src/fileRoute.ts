@@ -8,7 +8,7 @@ import type {
   RouteConstraints,
   UpdatableRouteOptions,
 } from './route'
-import type { DefaultStartRegister, StartRegister } from './start'
+import type { StartRegister } from './start'
 import type { AnyValidator } from './validators'
 
 export interface FileRouteTypes {
@@ -34,7 +34,7 @@ export interface FileRoutesByPath {
 }
 
 export interface FileRouteOptions<
-  TStart extends DefaultStartRegister,
+  TStart,
   TFilePath extends string,
   TParentRoute extends AnyRoute,
   TId extends RouteConstraints['TId'],
@@ -46,6 +46,7 @@ export interface FileRouteOptions<
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
+  TLifecycleSerialization = unknown,
 > extends LifecycleRouteOptions<
       TStart,
       TParentRoute,
@@ -57,7 +58,9 @@ export interface FileRouteOptions<
       TLoaderFn,
       AnyContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      AnyContext,
+      TLifecycleSerialization
     >,
     UpdatableRouteOptions<
       TParentRoute,
@@ -79,7 +82,8 @@ export type CreateFileRoute<
   TPath extends RouteConstraints['TPath'],
   TFullPath extends RouteConstraints['TFullPath'],
 > = <
-  TStart extends DefaultStartRegister = StartRegister,
+  TLifecycleSerialization,
+  TStart = StartRegister,
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
   TRouteContextFn = AnyContext,
@@ -99,7 +103,8 @@ export type CreateFileRoute<
     TRouteContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
-    TLoaderFn
+    TLoaderFn,
+    TLifecycleSerialization
   >,
 ) => Route<
   TStart,
@@ -116,7 +121,8 @@ export type CreateFileRoute<
   TLoaderDeps,
   TLoaderFn,
   unknown,
-  unknown
+  unknown,
+  TLifecycleSerialization
 >
 
 export type LazyRouteOptions = Pick<

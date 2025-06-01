@@ -18,7 +18,6 @@ import type {
   AnyRoute,
   AnyRouter,
   ConstrainLiteral,
-  DefaultStartRegister,
   ErrorComponentProps,
   NotFoundError,
   NotFoundRouteProps,
@@ -152,7 +151,7 @@ export class RouteApi<
 }
 
 export class Route<
-    in out TStart extends DefaultStartRegister = StartRegister,
+    in out TStart = StartRegister,
     in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
     in out TPath extends RouteConstraints['TPath'] = '/',
     in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -174,6 +173,7 @@ export class Route<
     in out TLoaderFn = undefined,
     in out TChildren = unknown,
     in out TFileRouteTypes = unknown,
+    in out TLifecycleSerialization = unknown,
   >
   extends BaseRoute<
     TStart,
@@ -190,7 +190,8 @@ export class Route<
     TLoaderDeps,
     TLoaderFn,
     TChildren,
-    TFileRouteTypes
+    TFileRouteTypes,
+    TLifecycleSerialization
   >
   implements
     RouteCore<
@@ -208,7 +209,8 @@ export class Route<
       TLoaderDeps,
       TLoaderFn,
       TChildren,
-      TFileRouteTypes
+      TFileRouteTypes,
+      TLifecycleSerialization
     >
 {
   /**
@@ -228,7 +230,8 @@ export class Route<
       TLoaderFn,
       TRouterContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      TLifecycleSerialization
     >,
   ) {
     super(options)
@@ -289,7 +292,7 @@ export class Route<
 }
 
 export function createRoute<
-  TStart extends DefaultStartRegister = StartRegister,
+  TStart = StartRegister,
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
   TPath extends RouteConstraints['TPath'] = '/',
   TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -309,6 +312,7 @@ export function createRoute<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TChildren = unknown,
+  TLifecycleSerialization = unknown,
 >(
   options: RouteOptions<
     TStart,
@@ -323,7 +327,8 @@ export function createRoute<
     TLoaderFn,
     AnyContext,
     TRouteContextFn,
-    TBeforeLoadFn
+    TBeforeLoadFn,
+    TLifecycleSerialization
   >,
 ): Route<
   TStart,
@@ -339,7 +344,8 @@ export function createRoute<
   TBeforeLoadFn,
   TLoaderDeps,
   TLoaderFn,
-  TChildren
+  TChildren,
+  TLifecycleSerialization
 > {
   return new Route<
     TStart,
@@ -355,20 +361,32 @@ export function createRoute<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TChildren
+    TChildren,
+    TLifecycleSerialization
   >(options)
 }
 
-export type AnyRootRoute = RootRoute<any, any, any, any, any, any, any, any>
+export type AnyRootRoute = RootRoute<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+>
 
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
-    TStart extends DefaultStartRegister = StartRegister,
+    TStart = StartRegister,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TSearchValidator = undefined,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
+    TLifecycleSerialization = unknown,
   >(
     options?: RootRouteOptions<
       TStart,
@@ -377,7 +395,8 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TRouteContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
-      TLoaderFn
+      TLoaderFn,
+      TLifecycleSerialization
     >,
   ) => {
     return createRootRoute<
@@ -387,7 +406,8 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TRouteContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
-      TLoaderFn
+      TLoaderFn,
+      TLifecycleSerialization
     >(options as any)
   }
 }
@@ -398,7 +418,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-    in out TStart extends DefaultStartRegister = StartRegister,
+    in out TStart = StartRegister,
     in out TSearchValidator = undefined,
     in out TRouterContext = {},
     in out TRouteContextFn = AnyContext,
@@ -407,6 +427,7 @@ export class RootRoute<
     in out TLoaderFn = undefined,
     in out TChildren = unknown,
     in out TFileRouteTypes = unknown,
+    in out TLifecycleSerialization = unknown,
   >
   extends BaseRootRoute<
     TStart,
@@ -417,7 +438,8 @@ export class RootRoute<
     TLoaderDeps,
     TLoaderFn,
     TChildren,
-    TFileRouteTypes
+    TFileRouteTypes,
+    TLifecycleSerialization
   >
   implements
     RootRouteCore<
@@ -429,7 +451,8 @@ export class RootRoute<
       TLoaderDeps,
       TLoaderFn,
       TChildren,
-      TFileRouteTypes
+      TFileRouteTypes,
+      TLifecycleSerialization
     >
 {
   /**
@@ -443,7 +466,8 @@ export class RootRoute<
       TRouteContextFn,
       TBeforeLoadFn,
       TLoaderDeps,
-      TLoaderFn
+      TLoaderFn,
+      TLifecycleSerialization
     >,
   ) {
     super(options)
@@ -504,13 +528,14 @@ export class RootRoute<
 }
 
 export function createRootRoute<
-  TStart extends DefaultStartRegister = StartRegister,
+  TStart = StartRegister,
   TSearchValidator = undefined,
   TRouterContext = {},
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
+  TLifecycleSerialization = unknown,
 >(
   options?: RootRouteOptions<
     TStart,
@@ -519,7 +544,8 @@ export function createRootRoute<
     TRouteContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
-    TLoaderFn
+    TLoaderFn,
+    TLifecycleSerialization
   >,
 ): RootRoute<
   TStart,
@@ -530,7 +556,8 @@ export function createRootRoute<
   TLoaderDeps,
   TLoaderFn,
   unknown,
-  unknown
+  unknown,
+  TLifecycleSerialization
 > {
   return new RootRoute<
     TStart,
@@ -539,7 +566,10 @@ export function createRootRoute<
     TRouteContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
-    TLoaderFn
+    TLoaderFn,
+    unknown,
+    unknown,
+    TLifecycleSerialization
   >(options)
 }
 
@@ -572,7 +602,7 @@ export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
 export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
 
 export class NotFoundRoute<
-  TStart extends DefaultStartRegister,
+  TStart,
   TParentRoute extends AnyRootRoute,
   TRouterContext = AnyContext,
   TRouteContextFn = AnyContext,
@@ -581,6 +611,7 @@ export class NotFoundRoute<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TChildren = unknown,
+  TLifecycleSerialization = unknown,
 > extends Route<
   TStart,
   TParentRoute,
@@ -612,7 +643,8 @@ export class NotFoundRoute<
         TLoaderFn,
         TRouterContext,
         TRouteContextFn,
-        TBeforeLoadFn
+        TBeforeLoadFn,
+        TLifecycleSerialization
       >,
       | 'caseSensitive'
       | 'parseParams'
