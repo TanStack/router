@@ -94,11 +94,11 @@ export function TanStackStartVitePluginCore(
           )
             ? startConfig.clientEntryPath
             : vite.normalizePath(
-                path.join(
-                  '/@fs',
-                  path.resolve(startConfig.root, startConfig.clientEntryPath),
-                ),
-              )
+              path.join(
+                '/@fs',
+                path.resolve(startConfig.root, startConfig.clientEntryPath),
+              ),
+            )
 
           return entry
         }
@@ -166,6 +166,13 @@ export function TanStackStartVitePluginCore(
               'tanstack-start-server-fn-manifest:v',
               'nitropack',
               '@tanstack/**',
+            ],
+          },
+          optimizeDeps: {
+            exclude: [
+              'tanstack-start-server-fn-manifest:v',
+              'tanstack-start-router-manifest:v',
+              'tanstack-start-server-routes-manifest:v',
             ],
           },
           /* prettier-ignore */
