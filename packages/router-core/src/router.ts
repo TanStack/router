@@ -24,7 +24,7 @@ import {
   trimPathLeft,
   trimPathRight,
 } from './path'
-import { isNotFound } from './not-found'
+import { isNotFound, isVariantNotFoundError } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
@@ -2251,14 +2251,16 @@ export class RouterCore<
       return !!(allPreload && !this.state.matches.find((d) => d.id === matchId))
     }
 
-    const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
+    const handleRouteError = (match: AnyRouteMatch, err: any) => {
       if (isResolvedRedirect(err)) {
         if (!err.reloadDocument) {
           throw err
         }
       }
 
-      if (isRedirect(err) || isNotFound(err)) {
+      const isError =
+        err && err instanceof Error && !isVariantNotFoundError(err)
+      if (isRedirect(err) || isNotFound(err) || isError) {
         updateMatch(match.id, (prev) => ({
           ...prev,
           status: isRedirect(err)
@@ -2272,8 +2274,8 @@ export class RouterCore<
           loaderPromise: undefined,
         }))
 
-        if (!(err as any).routeId) {
-          ;(err as any).routeId = match.routeId
+        if (!err.routeId) {
+          err.routeId = match.routeId
         }
 
         match.beforeLoadPromise?.resolve()
@@ -2293,6 +2295,11 @@ export class RouterCore<
             match: this.getMatch(match.id)!,
           })
           throw err
+        } else if (isError) {
+          this.serverSsr?.onMatchSettled({
+            router: this,
+            match: this.getMatch(match.id)!,
+          })
         }
       }
     }
@@ -2318,13 +2325,13 @@ export class RouterCore<
 
               err.routerCode = routerCode
               firstBadMatchIndex = firstBadMatchIndex ?? index
-              handleRedirectAndNotFound(this.getMatch(matchId)!, err)
+              handleRouteError(this.getMatch(matchId)!, err)
 
               try {
                 route.options.onError?.(err)
               } catch (errorHandlerErr) {
                 err = errorHandlerErr
-                handleRedirectAndNotFound(this.getMatch(matchId)!, err)
+                handleRouteError(this.getMatch(matchId)!, err)
               }
 
               updateMatch(matchId, (prev) => {
@@ -2523,7 +2530,7 @@ export class RouterCore<
                     await prevLoaderPromise
                     const match = this.getMatch(matchId)!
                     if (match.error) {
-                      handleRedirectAndNotFound(match, match.error)
+                      handleRouteError(match, match.error)
                     }
                   } else {
                     const parentMatchPromise = matchPromises[index - 1] as any
@@ -2643,10 +2650,7 @@ export class RouterCore<
                           const loaderData =
                             await route.options.loader?.(getLoaderContext())
 
-                          handleRedirectAndNotFound(
-                            this.getMatch(matchId)!,
-                            loaderData,
-                          )
+                          handleRouteError(this.getMatch(matchId)!, loaderData)
 
                           // Lazy option can modify the route options,
                           // so we need to wait for it to resolve before
@@ -2675,13 +2679,13 @@ export class RouterCore<
 
                           await potentialPendingMinPromise()
 
-                          handleRedirectAndNotFound(this.getMatch(matchId)!, e)
+                          handleRouteError(this.getMatch(matchId)!, e)
 
                           try {
                             route.options.onError?.(e)
                           } catch (onErrorError) {
                             error = onErrorError
-                            handleRedirectAndNotFound(
+                            handleRouteError(
                               this.getMatch(matchId)!,
                               onErrorError,
                             )
@@ -2710,7 +2714,7 @@ export class RouterCore<
                           }))
                           executeHead()
                         })
-                        handleRedirectAndNotFound(this.getMatch(matchId)!, err)
+                        handleRouteError(this.getMatch(matchId)!, err)
                       }
                     }
 
@@ -3088,10 +3092,15 @@ export class RouterCore<
     }
 
     // Ensure we have a notFoundComponent
-    invariant(
-      routeCursor.options.notFoundComponent,
-      'No notFoundComponent found. Please set a notFoundComponent on your route or provide a defaultNotFoundComponent to the router.',
-    )
+    // generic Error instead of a NotFoundError when notFoundComponent doesn't exist, is this a bug?
+    try {
+      invariant(
+        routeCursor.options.notFoundComponent,
+        'No notFoundComponent found. Please set a notFoundComponent on your route or provide a defaultNotFoundComponent to the router.',
+      )
+    } catch (error) {
+      ;(error as any).invariantSource = 'notFound'
+    }
 
     // Find the match for this route
     const matchForRoute = matchesByRouteId[routeCursor.id]

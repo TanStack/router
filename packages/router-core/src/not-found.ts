@@ -27,3 +27,12 @@ export function notFound(options: NotFoundError = {}) {
 export function isNotFound(obj: any): obj is NotFoundError {
   return !!obj?.isNotFound
 }
+
+export function isVariantNotFoundError(error: any) {
+  return (
+    error &&
+    typeof error === 'object' &&
+    'invariantSource' in error &&
+    error.invariantSource === 'notFound'
+  )
+}
