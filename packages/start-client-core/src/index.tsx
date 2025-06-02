@@ -76,6 +76,7 @@ export type {
   Method,
   StaticCachedResult,
   OptionalFetcher,
+  RequiredFetcher,
 } from './createServerFn'
 export {
   applyMiddleware,
