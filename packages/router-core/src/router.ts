@@ -3100,6 +3100,7 @@ export class RouterCore<
       )
     } catch (error) {
       ;(error as any).invariantSource = 'notFound'
+      throw error
     }
 
     // Find the match for this route
