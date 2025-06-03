@@ -200,7 +200,7 @@ Updated project structure:
 
 ```txt
 .
-├── .env // [!code ++]
+├── .env
 ├── drizzle.config.ts // [!code ++]
 ├── package.json
 ├── README.md
