@@ -6,7 +6,7 @@ title: Integrate Better Auth
 > [!IMPORTANT]
 > This guide is based on the upcoming work in the `alpha` branch of **TanStack Start**. We are actively working on exciting new features, and this guide will be updated soon.
 
-This guide provides a step-by-step process to integrate Better Auth with **TanStack Start**. We respect the powerful features of Better Auth and aim to make this implementation as smooth as possible.
+This guide provides a step-by-step process to integrate [Better Auth](https://better-auth.com) with **TanStack Start**. We respect the powerful features of Better Auth and aim to make this implementation as smooth as possible.
 
 ## Step-by-Step
 
