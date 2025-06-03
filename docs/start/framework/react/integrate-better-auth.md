@@ -6,7 +6,7 @@ title: Integrate Better Auth
 > [!IMPORTANT]
 > This guide is based on the upcoming work in the `alpha` branch of **TanStack Start**. We are actively working on exciting new features, and this guide will be updated soon.
 
-This guide provides a step-by-step process to integrate Better Auth with **TanStack Start**. We respect the powerful features of Better Auth and aim to make this implementation as smooth as possible.
+This guide provides a step-by-step process to integrate [Better Auth](https://better-auth.com) with **TanStack Start**. We respect the powerful features of Better Auth and aim to make this implementation as smooth as possible.
 
 ## Step-by-Step
 
@@ -61,6 +61,8 @@ POSTGRES_URL=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 ```
+
+<!-- CAN CALLOUT NEON AS SPONSER TO DEPLOY POSTGRES IN PRODUCTION -->
 
 Updated project structure:
 
@@ -478,4 +480,4 @@ Visit `http://localhost:3000` in your browser. You should see the TanStack Start
 
 You can also visit `http://localhost:3000/dashboard` directly, but you will be redirected to the home page if you are not logged in and vice versa.
 
-> If you encounter issues, review the steps above and ensure that file names and paths match exactly. For a reference implementation, see the [post-migration repository](https://github.com/nrjdalal/better-start).
+> If you encounter issues, review the steps above and ensure that file names and paths match exactly. For a reference implementation, see the [post-migration repository](https://github.com/nrjdalal/better-start) or try the app itself at [https://better-start.vercel.app](https://better-start.vercel.app).
