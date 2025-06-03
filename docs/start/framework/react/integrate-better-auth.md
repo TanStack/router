@@ -1,212 +1,384 @@
 ---
-id: migrate-from-next-js
-title: Migrate from Next.js
+id: integrate-better-auth
+title: Integrate Better Auth
 ---
 
 > [!IMPORTANT]
 > This guide is based on the upcoming work in the `alpha` branch of **TanStack Start**. We are actively working on exciting new features, and this guide will be updated soon.
 
-This guide provides a step-by-step process to migrate a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth as possible.
+This guide provides a step-by-step process to integrate Better Auth with **TanStack Start**. We respect the powerful features of Better Auth and aim to make this implementation as smooth as possible.
 
-## Step-by-Step (Basics)
+## Step-by-Step
 
-This step-by-step guide provides an overview of how to migrate your Next.js App Router project to TanStack Start using a starter template. The goal is to help you understand the basic steps involved in the migration process so you can adapt them to your specific project needs.
+This step-by-step guide provides an overview of how to integrate Better Auth with TanStack Start using a starter template. The goal is to help you understand the basic steps involved in the implementation process so you can adapt them to your specific project needs.
 
 ### Prerequisites
 
 Before we begin, this guide assumes your project structure looks like this:
 
-```
+```txt
 .
-├── next.config.ts
 ├── package.json
-├── postcss.config.mjs
-├── tsconfig.json
 ├── README.md
-├── public/
-│   ├── file.svg
-│   ├── globe.svg
-│   ├── next.svg
-│   ├── vercel.svg
-│   └── window.svg
-└── src/
-    └── app/
-        ├── favicon.ico
+├── tsconfig.json
+├── vite.config.ts
+└──  src/
+    ├── router.tsx
+    └── routes/
+        ├── __root.tsx
         ├── globals.css
-        ├── layout.tsx
-        └── page.tsx
+        └── index.tsx
 ```
 
-Alternatively, you can follow along by cloning the following [starter template](https://github.com/nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start):
+Alternatively, you can follow along by cloning the following [starter template](https://github.com/nrjdalal/awesome-templates/tree/main/tanstack-apps/tanstack-start):
 
 ```sh
-npx gitpick nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start next.js-start-er
+npx gitpick nrjdalal/awesome-templates/tree/main/tanstack-apps/tanstack-start better-start
 ```
 
-This structure or starter is a basic Next.js application using the App Router, which we will migrate to TanStack Start.
+This structure or starter is a basic TanStack Start application, which we will integrate with TanStack Start.
 
-### 1. Remove Next.js
+![Image](https://github.com/user-attachments/assets/322f37b9-1af1-4082-bc88-56d270d684c5)
 
-First, uninstall Next.js and remove related configuration files:
+### 1. Install Required Dependencies
 
 ```sh
-npm uninstall @tailwindcss/postcss next
-rm postcss.config.* next.config.*
+npm i better-auth drizzle-orm postgres
+npm i -D drizzle-kit
 ```
 
-### 2. Install Required Dependencies
+### 2. Configure Environment Variables
 
-TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
+```env
+# .env
 
-> [!NOTE]
-> We're using the `alpha` version of TanStack Start and TanStack Router. This will change once they are merged into main.
+BETTER_AUTH_URL=http://localhost:3000
+# can be generated using `npx nanoid`
+BETTER_AUTH_SECRET=
+# can be generated using `npx pglaunch`
+POSTGRES_URL=
 
-```sh
-npm i @tanstack/react-router@alpha @tanstack/react-start@alpha vite
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
 ```
 
-For Tailwind CSS and resolving imports using path aliases:
+Updated project structure:
 
-```sh
-npm i -D @tailwindcss/vite tailwindcss vite-tsconfig-paths
+```txt
+.
+├── .env // [!code ++]
+├── package.json
+├── README.md
+├── tsconfig.json
+├── vite.config.ts
+└──  src/
+    ├── router.tsx
+    └── routes/
+        ├── __root.tsx
+        ├── globals.css
+        └── index.tsx
 ```
 
-### 3. Update Project Configuration
-
-Now that you've installed the necessary dependencies, update your project configuration files to work with TanStack Start.
-
-- `package.json`
-
-```json
-{
-  "type": "module",
-  "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "start": "node .output/server/index.mjs"
-  }
-}
-```
-
-- `vite.config.ts`
+### 3. Configure Drizzle ORM
 
 ```ts
-// vite.config.ts
-import tailwindcss from '@tailwindcss/vite'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import { defineConfig } from 'vite'
-import tsconfigPaths from 'vite-tsconfig-paths'
+// drizzle.config.ts
+
+import { defineConfig } from "drizzle-kit"
 
 export default defineConfig({
-  server: {
-    port: 3000,
+  dialect: "postgresql",
+  dbCredentials: {
+    url: process.env.POSTGRES_URL!,
   },
-  plugins: [
-    tailwindcss(),
-    // Enables Vite to resolve imports using path aliases.
-    tsconfigPaths(),
-    tanstackStart({
-      tsr: {
-        // Specifies the directory TanStack Router uses for your routes.
-        routesDirectory: 'src/app', // Defaults to "src/routes"
-      },
-    }),
-  ],
+  schema: "src/db/schema",
+  out: "src/db/drizzle",
 })
 ```
 
-By default, `routesDirectory` is set to `src/routes`. To maintain consistency with Next.js App Router conventions, you can set it to `src/app` instead.
+```ts
+// src/db/index.ts
 
-### 4. Adapt the Root Layout
+import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js"
+import postgres from "postgres"
 
-> TanStack Start uses a routing approach similar to Remix, with some changes to support nested structures and special features using tokens. Learn more about it at [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts) guide.
+declare global {
+  var db: PostgresJsDatabase
+}
 
-Instead of `layout.tsx`, create a file named `__root.tsx` in the `src/app` directory. This file will serve as the root layout for your application.
+let db: PostgresJsDatabase
 
-- `src/app/layout.tsx` to `src/app/__root.tsx`
-
-```tsx
-- import type { Metadata } from "next" // [!code --]
-import {
-  Outlet,
-  createRootRoute,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router"
-import "./globals.css"
-
-- export const metadata: Metadata = { // [!code --]
--   title: "Create Next App", // [!code --]
--   description: "Generated by create next app", // [!code --]
-- } // [!code --]
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
+if (process.env.NODE_ENV === "production") {
+  db = drizzle({
+    client: postgres(process.env.POSTGRES_URL!, {
+      ssl: {
+        rejectUnauthorized: true,
       },
-      { title: "TanStack Start Starter" }
-    ],
-  }),
-  component: RootLayout,
+    }),
+  })
+} else {
+  if (!global.db) {
+    global.db = drizzle({
+      client: postgres(process.env.POSTGRES_URL!),
+    })
+  }
+  db = global.db
+}
+
+export { db }
+```
+
+```ts
+// src/db/schema/auth.ts
+
+import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified")
+    .$defaultFn(() => false)
+    .notNull(),
+  image: text("image"),
+  createdAt: timestamp("created_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+    .$defaultFn(() => /* @__PURE__ */ new Date())
+    .notNull(),
 })
 
-- export default function RootLayout({ // [!code --]
--   children, // [!code --]
-- }: Readonly<{ // [!code --]
--   children: React.ReactNode // [!code --]
-- }>) { // [!code --]
--   return ( // [!code --]
--     <html lang="en"> // [!code --]
--       <body>{children}</body> // [!code --]
--     </html> // [!code --]
--   ) // [!code --]
-- } // [!code --]
-function RootLayout() {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <Outlet />
-        <Scripts />
-      </body>
-    </html>
+export const session = pgTable("session", {
+  id: text("id").primaryKey(),
+  expiresAt: timestamp("expires_at").notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+})
+
+export const account = pgTable("account", {
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: timestamp("access_token_expires_at"),
+  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+})
+
+export const verification = pgTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").$defaultFn(() => /* @__PURE__ */ new Date()),
+  updatedAt: timestamp("updated_at").$defaultFn(() => /* @__PURE__ */ new Date()),
+})
+```
+
+Updated project structure:
+
+```txt
+.
+├── .env // [!code ++]
+├── drizzle.config.ts // [!code ++]
+├── package.json
+├── README.md
+├── tsconfig.json
+├── vite.config.ts
+└──  src/
+    ├── router.tsx
+    ├── db/
+    │   ├── index.ts // [!code ++]
+    │   └── schema/
+    │       └── auth.ts // [!code ++]
+    └── routes/
+        ├── __root.tsx
+        ├── globals.css
+        └── index.tsx
+```
+
+### 4. Configure Better Auth
+
+```ts
+// src/lib/auth/index.ts
+
+import { db } from "@/db"
+import { account, session, user, verification } from "@/db/schema/auth"
+import { betterAuth } from "better-auth"
+import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { reactStartCookies } from "better-auth/react-start"
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema: {
+      user,
+      session,
+      account,
+      verification,
+    },
+  }),
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    },
+  },
+  plugins: [reactStartCookies()],
+})
+```
+
+```ts
+// src/lib/auth/client.ts
+
+import { createAuthClient } from "better-auth/react"
+
+export const { signIn, signOut, useSession } = createAuthClient()
+```
+
+```ts
+// src/routes/api/auth/$.ts
+
+import { auth } from "@/lib/auth"
+
+export const ServerRoute = createServerFileRoute().methods({
+  GET: ({ request }) => {
+    return auth.handler(request)
+  },
+  POST: ({ request }) => {
+    return auth.handler(request)
+  },
+})
+```
+
+```tsx
+// src/components/auth-button.tsx
+
+import { signIn, signOut, useSession } from "@/lib/auth/client"
+import { useLocation, useNavigate } from "@tanstack/react-router"
+
+export default function Component() {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const { data: session } = useSession()
+
+  if (session && pathname === "/") navigate({ to: "/dashboard" })
+  if (!session && pathname === "/dashboard") navigate({ to: "/" })
+
+  return session ? (
+    <>
+      <p>Welcome, {session.user.name}.</p>
+      <button
+        className="cursor-pointer rounded-full border px-4 py-1 text-gray-100 hover:opacity-80"
+        onClick={async () => {
+          await signOut()
+          navigate({ to: "/" })
+        }}
+      >
+        Log Out
+      </button>
+    </>
+  ) : (
+    <>
+      <p>Please log in to continue.</p>
+      <button
+        className="cursor-pointer rounded-full border px-4 py-1 text-gray-100 hover:opacity-80"
+        onClick={async () =>
+          await signIn.social({
+            provider: "github",
+            callbackURL: "/dashboard",
+          })
+        }
+      >
+        Login with Github
+      </button>
+    </>
   )
 }
 ```
 
-> [!NOTE]
-> When using `import "./globals.css"` directly, you may notice a flicker on the initial load. This is expected behavior during development and does not occur in production. It will be addressed in a future update. Alternatively, for now you can refer to this [example](https://tanstack.com/start/latest/docs/framework/react/examples/start-basic) for now to address this issue.
+Updated project structure:
 
-### 5. Adapt the Home Page
+```txt
+.
+├── .env
+├── drizzle.config.ts
+├── package.json
+├── README.md
+├── tsconfig.json
+├── vite.config.ts
+└──  src/
+    ├── router.tsx
+    ├── db/
+    │   ├── index.ts
+    │   └── schema/
+    │       └── auth.ts
+    ├── lib/
+    │   ├── auth/
+    │   │   ├── client.ts // [!code ++]
+    │   │   └── index.ts // [!code ++]
+    └── routes/
+        ├── api/
+        │   └── auth/
+        │       └── $.ts // [!code ++]
+        ├── components/
+        │   └── auth-button.tsx // [!code ++]
+        ├── __root.tsx
+        ├── globals.css
+        └── index.tsx
+```
 
-Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
+### 5. Generate Database Schema
 
-- `src/app/page.tsx` to `src/app/index.tsx`
+```sh
+npx drizzle-kit push
+
+# [✓] Pulling schema from database...
+# [✓] Changes applied
+```
+
+### 6. Add Auth Button Existing and New Routes
 
 ```tsx
-- export default function Home() { // [!code --]
-+ export const Route = createFileRoute({ // [!code ++]
-+   component: Home, // [!code ++]
-+ }) // [!code ++]
+// src/routes/index.tsx
 
-+ function Home() { // [!code ++]
+import AuthButton from "@/components/auth-button" // [!code ++]
+
+export const Route = createFileRoute({
+  component: Component,
+})
+
+function Component() {
   return (
-    <main className="min-h-dvh w-screen flex items-center justify-center flex-col gap-y-4 p-4">
+    <main className="bg-radial flex min-h-dvh flex-col items-center justify-center gap-y-4 from-cyan-950 to-black p-4 text-gray-100">
       <img
-        className="max-w-sm w-full"
-        src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/splash-dark.png"
+        className="aspect-square w-full max-w-sm"
+        src="https://tanstack.com/assets/splash-dark-8nwlc0Nt.png"
         alt="TanStack Logo"
       />
-      <h1>
-        <span className="line-through">Next.js</span> TanStack Start
+      <h1 className="text-2xl">
+        <span className="font-semibold">TanStack</span>
+        &nbsp;
+        <span className="text-cyan-500">Start</span>
       </h1>
+      <AuthButton /> // [!code ++]
       <a
-        className="bg-foreground text-background rounded-full px-4 py-1 hover:opacity-90"
+        className="rounded-full bg-gray-100 px-4 py-1 text-gray-900 hover:opacity-80"
         href="https://tanstack.com/start/latest"
         target="_blank"
       >
@@ -217,37 +389,80 @@ Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
 }
 ```
 
-### 6. Are we migrated yet?
+![Image](https://github.com/user-attachments/assets/776a43d6-cb24-403b-8923-d839386d576a)
 
-Before you can run the development server, you need to create a router file that will define the behavior of TanStack Router within TanStack Start.
-
-- `src/router.tsx`
+Just copy `src/routes/index.tsx` to `src/routes/dashboard.tsx`.
 
 ```tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
+// src/routes/dashboard.tsx
 
-export function createRouter() {
-  const router = createTanStackRouter({
-    routeTree,
-    scrollRestoration: true,
-  })
+import AuthButton from "@/components/auth-button"
 
-  return router
-}
+export const Route = createFileRoute({
+  component: Component,
+})
 
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: ReturnType<typeof createRouter>
-  }
+function Component() {
+  return (
+    <main className="bg-radial flex min-h-dvh flex-col items-center justify-center gap-y-4 from-cyan-950 to-black p-4 text-gray-100">
+      <img
+        className="aspect-square w-full max-w-sm"
+        src="https://tanstack.com/assets/splash-dark-8nwlc0Nt.png"
+        alt="TanStack Logo"
+      />
+      <h1 className="text-2xl">
+        <span className="font-semibold">TanStack</span>
+        &nbsp;
+        <span className="text-cyan-500">Start</span>
+      </h1>
+      <AuthButton />
+      <a
+        className="rounded-full bg-gray-100 px-4 py-1 text-gray-900 hover:opacity-80"
+        href="https://tanstack.com/start/latest"
+        target="_blank"
+      >
+        Docs
+      </a>
+    </main>
+  )
 }
 ```
 
-> 🧠 Here you can configure everything from the default [preloading functionality](/router/latest/docs/framework/react/guide/preloading) to [caching staleness](/router/latest/docs/framework/react/guide/data-loading).
+![Image](https://github.com/user-attachments/assets/7dc6acc1-9b65-4196-8c37-89a01d1eda84)
 
-Don't worry if you see some TypeScript errors at this point; the next step will resolve them.
+Updated project structure:
 
-### 7. Verify the Migration
+```txt
+.
+├── .env
+├── drizzle.config.ts
+├── package.json
+├── README.md
+├── tsconfig.json
+├── vite.config.ts
+└──  src/
+    ├── router.tsx
+    ├── db/
+    │   ├── index.ts
+    │   └── schema/
+    │       └── auth.ts
+    ├── lib/
+    │   ├── auth/
+    │   │   ├── client.ts
+    │   │   └── index.ts
+    ├── components/
+    │   └── auth-button.tsx
+    └── routes/
+        ├── api/
+        │   └── auth/
+        │       └── $.ts
+        ├── __root.tsx
+        ├── globals.css
+        ├── index.tsx
+        └── dashboard.tsx // [!code ++]
+```
+
+### 7. Verify the Implementation
 
 Run the development server:
 
@@ -255,157 +470,8 @@ Run the development server:
 npm run dev
 ```
 
-Then, visit `http://localhost:3000`. You should see the TanStack Start welcome page with its logo and a documentation link.
+Visit `http://localhost:3000` in your browser. You should see the TanStack Start splash page with a "Login with Github" button. Clicking this button will redirect you to the Github login page, and upon successful login, you will be redirected back to the dashboard.
 
-> If you encounter issues, review the steps above and ensure that file names and paths match exactly. For a reference implementation, see the [post-migration repository](https://github.com/nrjdalal/next-to-start).
+You can also visit `http://localhost:3000/dashboard` directly, but you will be redirected to the home page if you are not logged in and vice versa.
 
-## Next Steps (Advanced)
-
-Now that you have migrated the basic structure of your Next.js application to TanStack Start, you can explore more advanced features and concepts.
-
-### Routing Concepts
-
-| Route Example                  | Next.js                            | TanStack Start            |
-| ------------------------------ | ---------------------------------- | ------------------------- |
-| Root Layout                    | `src/app/layout.tsx`               | `src/app/__root.tsx`      |
-| `/` (Home Page)                | `src/app/page.tsx`                 | `src/app/index.tsx`       |
-| `/posts` (Static Route)        | `src/app/posts/page.tsx`           | `src/app/posts.tsx`       |
-| `/posts/[slug]` (Dynamic)      | `src/app/posts/[slug]/page.tsx`    | `src/app/posts/$slug.tsx` |
-| `/posts/[...slug]` (Catch-All) | `src/app/posts/[...slug]/page.tsx` | `src/app/posts/$.tsx`     |
-| `/api/endpoint` (API Route)    | `src/app/api/endpoint/route.ts`    | `src/app/api/endpoint.ts` |
-
-Learn more about the [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts).
-
-### Dynamic and Catch-All Routes
-
-Retrieving dynamic route parameters in TanStack Start is straightforward.
-
-```tsx
-- export default async function Page({ // [!code --]
--   params, // [!code --]
-- }: { // [!code --]
--   params: Promise<{ slug: string }> // [!code --]
-- }) { // [!code --]
-+ export const Route = createFileRoute({ // [!code ++]
-+   component: Page, // [!code ++]
-+ }) // [!code ++]
-
-+ function Page() { // [!code ++]
--   const { slug } = await params // [!code --]
-+   const { slug } = Route.useParams() // [!code ++]
-  return <div>My Post: {slug}</div>
-}
-```
-
-> Note: If you've made a catch-all route (like `src/app/posts/$.tsx`), you can access the parameters via `const { _splat } = Route.useParams()`.
-
-Similarly, you can access `searchParams` using `const { page, filter, sort } = Route.useSearch()`.
-
-Learn more about the [Dynamic and Catch-All Routes](/router/latest/docs/framework/react/routing/routing-concepts#dynamic-route-segments).
-
-### Links
-
-```tsx
-- import Link from "next/link" // [!code --]
-+ import { Link } from "@tanstack/react-router" // [!code ++]
-
-function Component() {
--   return <Link href="/dashboard">Dashboard</Link> // [!code --]
-+   return <Link to="/dashboard">Dashboard</Link> // [!code ++]
-}
-```
-
-Learn more about the [Links](../learn-the-basics.md#navigation).
-
-### Server ~Actions~ Functions
-
-```tsx
-- 'use server' // [!code --]
-+ import { createServerFn } from "@tanstack/react-start" // [!code ++]
-
-- export const create = async () => { // [!code --]
-+ export const create = createServerFn().handler(async () => { // [!code ++]
-  return true
-- } // [!code --]
-+ }) // [!code ++]
-```
-
-Learn more about the [Server Functions](./server-functions.md).
-
-### Server Routes ~Handlers~
-
-```ts
-- export async function GET() { // [!code --]
-+ export const ServerRoute = createServerFileRoute().methods({ // [!code ++]
-+   GET: async () => { // [!code ++]
-    return Response.json("Hello, World!")
-  }
-+ }) // [!code ++]
-```
-
-Learn more about the [Server Routes](./server-routes.md).
-
-### Fonts
-
-```tsx
-- import { Inter } from "next/font/google" // [!code --]
-
-- const inter = Inter({ // [!code --]
--   subsets: ["latin"], // [!code --]
--   display: "swap", // [!code --]
-- }) // [!code --]
-
-- export default function Page() { // [!code --]
--   return <p className={inter.className}>Font Sans</p> // [!code --]
-- } // [!code --]
-```
-
-Instead of `next/font`, use Tailwind CSS’s CSS-first approach. Install fonts (for example, from [Fontsource](https://github.com/fontsource/fontsource)):
-
-```sh
-npm i -D @fontsource-variable/dm-sans @fontsource-variable/jetbrains-mono
-```
-
-Add the following to `src/app/globals.css`:
-
-```css
-@import 'tailwindcss';
-
-@import '@fontsource-variable/dm-sans'; /* [!code ++] */
-@import '@fontsource-variable/jetbrains-mono'; /* [!code ++] */
-
-@theme inline {
-  --font-sans: 'DM Sans Variable', sans-serif; /* [!code ++] */
-  --font-mono: 'JetBrains Mono Variable', monospace; /* [!code ++] */
-  /* ... */
-}
-
-/* ... */
-```
-
-### Fetching Data
-
-```tsx
-- export default async function Page() { // [!code --]
-+ export const Route = createFileRoute({ // [!code ++]
-+   component: Page, // [!code ++]
-+   loader: async () => { // [!code ++]
-+     const res = await fetch('https://api.vercel.app/blog') // [!code ++]
-+     return res.json() // [!code ++]
-+   }, // [!code ++]
-+ }) // [!code ++]
-
-+ function Page() { // [!code ++]
--   const data = await fetch('https://api.vercel.app/blog') // [!code --]
--   const posts = await data.json() // [!code --]
-+   const posts = Route.useLoaderData() // [!code ++]
-
-  return (
-    <ul>
-      {posts.map((post) => (
-        <li key={post.id}>{post.title}</li>
-      ))}
-    </ul>
-  )
-}
-```
+> If you encounter issues, review the steps above and ensure that file names and paths match exactly. For a reference implementation, see the [post-migration repository](https://github.com/nrjdalal/better-start) or website [demo](https://better-start.vercel.app).
