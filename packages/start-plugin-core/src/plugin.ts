@@ -165,7 +165,7 @@ export function TanStackStartVitePluginCore(
               'tanstack-start-router-manifest:v',
               'tanstack-start-server-fn-manifest:v',
               'nitropack',
-              '@tanstack/**',
+              '@tanstack/**start**',
             ],
           },
           optimizeDeps: {
