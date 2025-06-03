@@ -1,0 +1,29 @@
+{
+  "name": "tanstack-start-styled-components",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start"
+  },
+  "dependencies": {
+    "@tanstack/react-router-devtools": "^1.120.15",
+    "@tanstack/react-router": "^1.120.15",
+    "@tanstack/react-start": "^1.120.15",
+    "react-dom": "^19.0.0",
+    "react": "^19.0.0",
+    "styled-components": "^6.1.18",
+    "vinxi": "0.5.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "@types/react-dom": "^19.0.3",
+    "@types/react": "^19.0.8",
+    "@vitejs/plugin-react": "^4.5.1",
+    "babel-plugin-styled-components": "^2.1.4",
+    "typescript": "^5.7.2",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}
