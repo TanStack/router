@@ -358,7 +358,7 @@ npx drizzle-kit push
 # [✓] Changes applied
 ```
 
-### 6. Add Auth Button Existing and New Routes
+### 6. Add Auth Button to Existing and New Routes
 
 ```tsx
 // src/routes/index.tsx
