@@ -104,4 +104,10 @@ describe('decode function', () => {
     const decodedObj = decode(queryString)
     expect(decodedObj).toEqual({ q: 'red+yellow orange' })
   })
+
+  it('should decode once percent characters (%) encoded twice', () => {
+    const queryString = 'q=%2540'
+    const decodedObj = decode(queryString)
+    expect(decodedObj).toEqual({ q: '%40' })
+  })
 })

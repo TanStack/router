@@ -7,7 +7,6 @@
  * (namely URLSearchParams) and TypeScript while still
  * maintaining the original functionality and interface.
  */
-import { hasUriEncodedChars } from './utils'
 
 /**
  * Encodes an object into a query string.
@@ -42,11 +41,8 @@ export function encode(obj: any, pfx?: string) {
  * // Example input: toValue("123")
  * // Expected output: 123
  */
-function toValue(mix: any) {
-  if (!mix) return ''
-  const str = hasUriEncodedChars(mix)
-    ? decodeURIComponent(mix)
-    : decodeURIComponent(encodeURIComponent(mix))
+function toValue(str: unknown) {
+  if (!str) return ''
 
   if (str === 'false') return false
   if (str === 'true') return true
