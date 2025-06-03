@@ -84,23 +84,23 @@ Updated project structure:
 ```ts
 // drizzle.config.ts
 
-import { defineConfig } from "drizzle-kit"
+import { defineConfig } from 'drizzle-kit'
 
 export default defineConfig({
-  dialect: "postgresql",
+  dialect: 'postgresql',
   dbCredentials: {
     url: process.env.POSTGRES_URL!,
   },
-  schema: "src/db/schema",
-  out: "src/db/drizzle",
+  schema: 'src/db/schema',
+  out: 'src/db/drizzle',
 })
 ```
 
 ```ts
 // src/db/index.ts
 
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import postgres from "postgres"
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
 
 declare global {
   var db: PostgresJsDatabase
@@ -108,7 +108,7 @@ declare global {
 
 let db: PostgresJsDatabase
 
-if (process.env.NODE_ENV === "production") {
+if (process.env.NODE_ENV === 'production') {
   db = drizzle({
     client: postgres(process.env.POSTGRES_URL!, {
       ssl: {
@@ -131,62 +131,66 @@ export { db }
 ```ts
 // src/db/schema/auth.ts
 
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified")
+export const user = pgTable('user', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  emailVerified: boolean('email_verified')
     .$defaultFn(() => false)
     .notNull(),
-  image: text("image"),
-  createdAt: timestamp("created_at")
+  image: text('image'),
+  createdAt: timestamp('created_at')
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
-  updatedAt: timestamp("updated_at")
+  updatedAt: timestamp('updated_at')
     .$defaultFn(() => /* @__PURE__ */ new Date())
     .notNull(),
 })
 
-export const session = pgTable("session", {
-  id: text("id").primaryKey(),
-  expiresAt: timestamp("expires_at").notNull(),
-  token: text("token").notNull().unique(),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-  userId: text("user_id")
+export const session = pgTable('session', {
+  id: text('id').primaryKey(),
+  expiresAt: timestamp('expires_at').notNull(),
+  token: text('token').notNull().unique(),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  userId: text('user_id')
     .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
+    .references(() => user.id, { onDelete: 'cascade' }),
 })
 
-export const account = pgTable("account", {
-  id: text("id").primaryKey(),
-  accountId: text("account_id").notNull(),
-  providerId: text("provider_id").notNull(),
-  userId: text("user_id")
+export const account = pgTable('account', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  userId: text('user_id')
     .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  accessToken: text("access_token"),
-  refreshToken: text("refresh_token"),
-  idToken: text("id_token"),
-  accessTokenExpiresAt: timestamp("access_token_expires_at"),
-  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
-  scope: text("scope"),
-  password: text("password"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
+    .references(() => user.id, { onDelete: 'cascade' }),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at'),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull(),
 })
 
-export const verification = pgTable("verification", {
-  id: text("id").primaryKey(),
-  identifier: text("identifier").notNull(),
-  value: text("value").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").$defaultFn(() => /* @__PURE__ */ new Date()),
-  updatedAt: timestamp("updated_at").$defaultFn(() => /* @__PURE__ */ new Date()),
+export const verification = pgTable('verification', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').$defaultFn(
+    () => /* @__PURE__ */ new Date(),
+  ),
+  updatedAt: timestamp('updated_at').$defaultFn(
+    () => /* @__PURE__ */ new Date(),
+  ),
 })
 ```
 
@@ -217,15 +221,15 @@ Updated project structure:
 ```ts
 // src/lib/auth/index.ts
 
-import { db } from "@/db"
-import { account, session, user, verification } from "@/db/schema/auth"
-import { betterAuth } from "better-auth"
-import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { reactStartCookies } from "better-auth/react-start"
+import { db } from '@/db'
+import { account, session, user, verification } from '@/db/schema/auth'
+import { betterAuth } from 'better-auth'
+import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { reactStartCookies } from 'better-auth/react-start'
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
-    provider: "pg",
+    provider: 'pg',
     schema: {
       user,
       session,
@@ -246,7 +250,7 @@ export const auth = betterAuth({
 ```ts
 // src/lib/auth/client.ts
 
-import { createAuthClient } from "better-auth/react"
+import { createAuthClient } from 'better-auth/react'
 
 export const { signIn, signOut, useSession } = createAuthClient()
 ```
@@ -254,7 +258,7 @@ export const { signIn, signOut, useSession } = createAuthClient()
 ```ts
 // src/routes/api/auth/$.ts
 
-import { auth } from "@/lib/auth"
+import { auth } from '@/lib/auth'
 
 export const ServerRoute = createServerFileRoute().methods({
   GET: ({ request }) => {
@@ -269,16 +273,16 @@ export const ServerRoute = createServerFileRoute().methods({
 ```tsx
 // src/components/auth-button.tsx
 
-import { signIn, signOut, useSession } from "@/lib/auth/client"
-import { useLocation, useNavigate } from "@tanstack/react-router"
+import { signIn, signOut, useSession } from '@/lib/auth/client'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 
 export default function Component() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { data: session } = useSession()
 
-  if (session && pathname === "/") navigate({ to: "/dashboard" })
-  if (!session && pathname === "/dashboard") navigate({ to: "/" })
+  if (session && pathname === '/') navigate({ to: '/dashboard' })
+  if (!session && pathname === '/dashboard') navigate({ to: '/' })
 
   return session ? (
     <>
@@ -287,7 +291,7 @@ export default function Component() {
         className="cursor-pointer rounded-full border px-4 py-1 text-gray-100 hover:opacity-80"
         onClick={async () => {
           await signOut()
-          navigate({ to: "/" })
+          navigate({ to: '/' })
         }}
       >
         Log Out
@@ -300,8 +304,8 @@ export default function Component() {
         className="cursor-pointer rounded-full border px-4 py-1 text-gray-100 hover:opacity-80"
         onClick={async () =>
           await signIn.social({
-            provider: "github",
-            callbackURL: "/dashboard",
+            provider: 'github',
+            callbackURL: '/dashboard',
           })
         }
       >
@@ -357,7 +361,7 @@ npx drizzle-kit push
 ```tsx
 // src/routes/index.tsx
 
-import AuthButton from "@/components/auth-button" // [!code ++]
+import AuthButton from '@/components/auth-button' // [!code ++]
 
 export const Route = createFileRoute({
   component: Component,
@@ -396,7 +400,7 @@ Just copy `src/routes/index.tsx` to `src/routes/dashboard.tsx`.
 ```tsx
 // src/routes/dashboard.tsx
 
-import AuthButton from "@/components/auth-button"
+import AuthButton from '@/components/auth-button'
 
 export const Route = createFileRoute({
   component: Component,
