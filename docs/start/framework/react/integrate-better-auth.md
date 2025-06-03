@@ -22,7 +22,7 @@ Before we begin, this guide assumes your project structure looks like this:
 ├── README.md
 ├── tsconfig.json
 ├── vite.config.ts
-└──  src/
+└── src/
     ├── router.tsx
     └── routes/
         ├── __root.tsx
@@ -73,7 +73,7 @@ Updated project structure:
 ├── README.md
 ├── tsconfig.json
 ├── vite.config.ts
-└──  src/
+└── src/
     ├── router.tsx
     └── routes/
         ├── __root.tsx
@@ -206,7 +206,7 @@ Updated project structure:
 ├── README.md
 ├── tsconfig.json
 ├── vite.config.ts
-└──  src/
+└── src/
     ├── router.tsx
     ├── db/
     │   ├── index.ts // [!code ++]
@@ -328,25 +328,25 @@ Updated project structure:
 ├── README.md
 ├── tsconfig.json
 ├── vite.config.ts
-└──  src/
+└── src/
     ├── router.tsx
+    ├── components/
+    │   └── auth-button.tsx // [!code ++]
     ├── db/
     │   ├── index.ts
     │   └── schema/
     │       └── auth.ts
     ├── lib/
-    │   ├── auth/
-    │   │   ├── client.ts // [!code ++]
-    │   │   └── index.ts // [!code ++]
+    │   └── auth/
+    │       ├── client.ts // [!code ++]
+    │       └── index.ts // [!code ++]
     └── routes/
-        ├── api/
-        │   └── auth/
-        │       └── $.ts // [!code ++]
-        ├── components/
-        │   └── auth-button.tsx // [!code ++]
         ├── __root.tsx
         ├── globals.css
-        └── index.tsx
+        ├── index.tsx
+        └── api/
+            └── auth/
+                └── $.ts // [!code ++]
 ```
 
 ### 5. Generate Database Schema
@@ -446,26 +446,26 @@ Updated project structure:
 ├── README.md
 ├── tsconfig.json
 ├── vite.config.ts
-└──  src/
+└── src/
     ├── router.tsx
+    ├── components/
+    │   └── auth-button.tsx
     ├── db/
     │   ├── index.ts
     │   └── schema/
     │       └── auth.ts
     ├── lib/
-    │   ├── auth/
-    │   │   ├── client.ts
-    │   │   └── index.ts
-    ├── components/
-    │   └── auth-button.tsx
+    │   └── auth/
+    │       ├── client.ts
+    │       └── index.ts
     └── routes/
-        ├── api/
-        │   └── auth/
-        │       └── $.ts
         ├── __root.tsx
         ├── dashboard.tsx // [!code ++]
         ├── globals.css
-        └── index.tsx
+        ├── index.tsx
+        └── api/
+            └── auth/
+                └── $.ts
 ```
 
 ### 7. Verify the Implementation
