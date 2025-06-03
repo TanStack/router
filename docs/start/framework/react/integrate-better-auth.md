@@ -292,8 +292,14 @@ export default function Component() {
       <button
         className="cursor-pointer rounded-full border px-4 py-1 text-gray-100 hover:opacity-80"
         onClick={async () => {
-          await signOut()
-          navigate({ to: '/' })
+          await signOut(
+            {},
+            {
+              onSuccess: () => {
+                navigate({ to: '/' })
+              },
+            },
+          )
         }}
       >
         Log Out
