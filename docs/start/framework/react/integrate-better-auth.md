@@ -49,7 +49,7 @@ npm i -D drizzle-kit
 
 ### 2. Configure Environment Variables
 
-```env
+```txt
 # .env
 
 BETTER_AUTH_URL=http://localhost:3000
