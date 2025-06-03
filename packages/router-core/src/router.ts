@@ -1963,6 +1963,13 @@ export class RouterCore<
     let redirect: ResolvedRedirect | undefined
     let notFound: NotFoundError | undefined
 
+    // Wait for any in-progress loads to finish before triggering another.
+    while (
+      (this.latestLoadPromise as any)
+    ) {
+      await this.latestLoadPromise
+    }
+
     let loadPromise: Promise<void>
 
     // eslint-disable-next-line prefer-const
