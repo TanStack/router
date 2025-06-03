@@ -463,9 +463,9 @@ Updated project structure:
         │   └── auth/
         │       └── $.ts
         ├── __root.tsx
+        ├── dashboard.tsx // [!code ++]
         ├── globals.css
-        ├── index.tsx
-        └── dashboard.tsx // [!code ++]
+        └── index.tsx
 ```
 
 ### 7. Verify the Implementation
