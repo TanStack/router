@@ -112,20 +112,25 @@ function _resolveBlockerOpts(
     }
   }
 
-  const shouldBlock = Boolean(opts.condition ?? true)
-  const fn = opts.blockerFn
+  const shouldBlock = Solid.createMemo(() => Boolean(opts.condition ?? true))
 
   const _customBlockerFn = async () => {
-    if (shouldBlock && fn !== undefined) {
-      return await fn()
+    if (shouldBlock() && opts.blockerFn !== undefined) {
+      return await opts.blockerFn()
     }
-    return shouldBlock
+    return shouldBlock()
   }
 
   return {
-    shouldBlockFn: _customBlockerFn,
-    enableBeforeUnload: shouldBlock,
-    withResolver: fn === undefined,
+    get shouldBlockFn() {
+      return _customBlockerFn
+    },
+    get enableBeforeUnload() {
+      return shouldBlock()
+    },
+    get withResolver() {
+      return opts.blockerFn === undefined
+    },
   }
 }
 
@@ -155,15 +160,16 @@ export function useBlocker(
   opts?: UseBlockerOpts | LegacyBlockerOpts | LegacyBlockerFn,
   condition?: boolean | any,
 ): Solid.Accessor<BlockerResolver> | void {
-  const {
-    shouldBlockFn,
-    enableBeforeUnload = true,
-    disabled = false,
-    withResolver = false,
-  } = _resolveBlockerOpts(opts, condition)
+  const props = Solid.mergeProps(
+    {
+      enableBeforeUnload: true,
+      disabled: false,
+      withResolver: false,
+    },
+    _resolveBlockerOpts(opts, condition),
+  )
 
   const router = useRouter()
-  const { history } = router
 
   const [resolver, setResolver] = Solid.createSignal<BlockerResolver>({
     status: 'idle',
@@ -196,12 +202,12 @@ export function useBlocker(
       const current = getLocation(blockerFnArgs.currentLocation)
       const next = getLocation(blockerFnArgs.nextLocation)
 
-      const shouldBlock = await shouldBlockFn({
+      const shouldBlock = await props.shouldBlockFn({
         action: blockerFnArgs.action,
         current,
         next,
       })
-      if (!withResolver) {
+      if (!props.withResolver) {
         return shouldBlock
       }
 
@@ -233,9 +239,14 @@ export function useBlocker(
       return canNavigateAsync
     }
 
-    return disabled
+    const disposeBlock = props.disabled
       ? undefined
-      : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
+      : router.history.block({
+          blockerFn: blockerFnComposed,
+          enableBeforeUnload: props.enableBeforeUnload,
+        })
+
+    Solid.onCleanup(() => disposeBlock?.())
   })
 
   return resolver
@@ -245,23 +256,26 @@ const _resolvePromptBlockerArgs = (
   props: PromptProps | LegacyPromptProps,
 ): UseBlockerOpts => {
   if ('shouldBlockFn' in props) {
-    return { ...props }
+    return props
   }
 
-  const shouldBlock = Boolean(props.condition ?? true)
-  const fn = props.blockerFn
+  const shouldBlock = Solid.createMemo(() => Boolean(props.condition ?? true))
 
   const _customBlockerFn = async () => {
-    if (shouldBlock && fn !== undefined) {
-      return await fn()
+    if (shouldBlock() && props.blockerFn !== undefined) {
+      return await props.blockerFn()
     }
     return shouldBlock
   }
 
   return {
     shouldBlockFn: _customBlockerFn,
-    enableBeforeUnload: shouldBlock,
-    withResolver: fn === undefined,
+    get enableBeforeUnload() {
+      return shouldBlock()
+    },
+    get withResolver() {
+      return props.blockerFn === undefined
+    },
   }
 }
 
@@ -276,15 +290,17 @@ export function Block<
 export function Block(opts: LegacyPromptProps): SolidNode
 
 export function Block(opts: PromptProps | LegacyPromptProps): SolidNode {
-  const { children, ...rest } = opts
+  const [propsWithChildren, rest] = Solid.splitProps(opts, ['children'])
   const args = _resolvePromptBlockerArgs(rest)
 
   const resolver = useBlocker(args)
-  return children
-    ? typeof children === 'function'
-      ? children(resolver as any)
-      : children
-    : null
+  const children = Solid.createMemo(() => {
+    const child = propsWithChildren.children
+    if (resolver && typeof child === 'function') return child(resolver())
+    return child
+  })
+
+  return <>{children()}</>
 }
 
 type LegacyPromptProps = {

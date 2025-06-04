@@ -169,12 +169,12 @@ export function MatchRoute<
       {(_) => {
         const matchRoute = useMatchRoute()
         const params = matchRoute(props as any)() as boolean
-
-        if (typeof props.children === 'function') {
-          return (props.children as any)(params)
+        const child = props.children;
+        if (typeof child === 'function') {
+          return (child as any)(params)
         }
 
-        return params ? props.children : null
+        return params ? child : null
       }}
     </Solid.Show>
   )
