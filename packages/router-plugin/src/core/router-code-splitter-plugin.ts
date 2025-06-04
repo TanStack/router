@@ -1,36 +1,34 @@
-import { isAbsolute, join, normalize } from 'node:path'
+/**
+ * It is important to familiarize yourself with how the code-splitting works in this plugin.
+ * https://github.com/TanStack/router/pull/3355
+ */
 
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { logDiff } from '../logger'
-import { getConfig } from './config'
+import { logDiff } from '@tanstack/router-utils'
+import { getConfig, splitGroupingsSchema } from './config'
 import {
   compileCodeSplitReferenceRoute,
   compileCodeSplitVirtualRoute,
+  detectCodeSplitGroupingsFromRoute,
 } from './code-splitter/compilers'
-import { splitPrefix } from './constants'
+import {
+  defaultCodeSplitGroupings,
+  splitRouteIdentNodes,
+  tsrSplit,
+} from './constants'
+import { decodeIdentifier } from './code-splitter/path-ids'
+import { debug, fileIsInRoutesDirectory } from './utils'
+import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 
 import type { Config } from './config'
-import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin'
-
-const debug =
-  process.env.TSR_VITE_DEBUG &&
-  ['true', 'router-plugin'].includes(process.env.TSR_VITE_DEBUG)
+import type {
+  UnpluginContextMeta,
+  UnpluginFactory,
+  TransformResult as UnpluginTransformResult,
+} from 'unplugin'
 
 function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
-function fileIsInRoutesDirectory(
-  filePath: string,
-  routesDirectory: string,
-): boolean {
-  const routesDirectoryPath = isAbsolute(routesDirectory)
-    ? routesDirectory
-    : join(process.cwd(), routesDirectory)
-
-  const path = normalize(filePath)
-
-  return path.startsWith(routesDirectoryPath)
 }
 
 type BannedBeforeExternalPlugin = {
@@ -69,30 +67,66 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   let ROOT: string = process.cwd()
   let userConfig = options as Config
 
-  const handleSplittingFile = (code: string, id: string) => {
-    if (debug) console.info('Splitting Route: ', id)
+  const isProduction = process.env.NODE_ENV === 'production'
 
-    const compiledVirtualRoute = compileCodeSplitVirtualRoute({
+  const getGlobalCodeSplitGroupings = () => {
+    return (
+      userConfig.codeSplittingOptions?.defaultBehavior ||
+      defaultCodeSplitGroupings
+    )
+  }
+  const getShouldSplitFn = () => {
+    return userConfig.codeSplittingOptions?.splitBehavior
+  }
+
+  const handleCompilingReferenceFile = (
+    code: string,
+    id: string,
+  ): UnpluginTransformResult => {
+    if (debug) console.info('Compiling Route: ', id)
+
+    const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
       root: ROOT,
       filename: id,
     })
 
-    if (debug) {
-      logDiff(code, compiledVirtualRoute.code)
-      console.log('Output:\n', compiledVirtualRoute.code)
+    if (fromCode.groupings) {
+      const res = splitGroupingsSchema.safeParse(fromCode.groupings)
+      if (!res.success) {
+        const message = res.error.errors.map((e) => e.message).join('. ')
+        throw new Error(
+          `The groupings for the route "${id}" are invalid.\n${message}`,
+        )
+      }
     }
 
-    return compiledVirtualRoute
-  }
+    const userShouldSplitFn = getShouldSplitFn()
 
-  const handleCompilingFile = (code: string, id: string) => {
-    if (debug) console.info('Compiling Route: ', id)
+    const pluginSplitBehavior = userShouldSplitFn?.({
+      routeId: fromCode.routeId,
+    }) as CodeSplitGroupings | undefined
+
+    if (pluginSplitBehavior) {
+      const res = splitGroupingsSchema.safeParse(pluginSplitBehavior)
+      if (!res.success) {
+        const message = res.error.errors.map((e) => e.message).join('. ')
+        throw new Error(
+          `The groupings returned when using \`splitBehavior\` for the route "${id}" are invalid.\n${message}`,
+        )
+      }
+    }
+
+    const splitGroupings: CodeSplitGroupings =
+      fromCode.groupings || pluginSplitBehavior || getGlobalCodeSplitGroupings()
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
       root: ROOT,
       filename: id,
+      runtimeEnv: isProduction ? 'prod' : 'dev',
+      codeSplitGroupings: splitGroupings,
+      targetFramework: userConfig.target,
     })
 
     if (debug) {
@@ -101,6 +135,43 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     }
 
     return compiledReferenceRoute
+  }
+
+  const handleCompilingVirtualFile = (
+    code: string,
+    id: string,
+  ): UnpluginTransformResult => {
+    if (debug) console.info('Splitting Route: ', id)
+
+    const [_, ...pathnameParts] = id.split('?')
+
+    const searchParams = new URLSearchParams(pathnameParts.join('?'))
+    const splitValue = searchParams.get(tsrSplit)
+
+    if (!splitValue) {
+      throw new Error(
+        `The split value for the virtual route "${id}" was not found.`,
+      )
+    }
+
+    const rawGrouping = decodeIdentifier(splitValue)
+    const grouping = [...new Set(rawGrouping)].filter((p) =>
+      splitRouteIdentNodes.includes(p as any),
+    ) as Array<SplitRouteIdentNodes>
+
+    const result = compileCodeSplitVirtualRoute({
+      code,
+      root: ROOT,
+      filename: id,
+      splitTargets: grouping,
+    })
+
+    if (debug) {
+      logDiff(code, result.code)
+      console.log('Output:\n', result.code + '\n\n')
+    }
+
+    return result
   }
 
   return {
@@ -116,8 +187,8 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       url.searchParams.delete('v')
       id = fileURLToPath(url).replace(/\\/g, '/')
 
-      if (id.includes(splitPrefix)) {
-        return handleSplittingFile(code, id)
+      if (id.includes(tsrSplit)) {
+        return handleCompilingVirtualFile(code, id)
       } else if (
         fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
         (code.includes('createRoute(') || code.includes('createFileRoute('))
@@ -132,7 +203,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           }
         }
 
-        return handleCompilingFile(code, id)
+        return handleCompilingReferenceFile(code, id)
       }
 
       return null
@@ -145,7 +216,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       if (
         fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
-        id.includes(splitPrefix)
+        id.includes(tsrSplit)
       ) {
         return true
       }
@@ -160,7 +231,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       },
     },
 
-    rspack(compiler) {
+    rspack(_compiler) {
       ROOT = process.cwd()
       userConfig = getConfig(options, ROOT)
     },

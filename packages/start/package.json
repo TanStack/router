@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start",
-  "version": "1.97.18",
+  "version": "1.120.15",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -30,6 +30,7 @@
     "build": "vite build"
   },
   "type": "module",
+  "types": "dist/esm/client.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -142,17 +143,14 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/start-client": "workspace:^",
-    "@tanstack/start-server": "workspace:^",
+    "@tanstack/react-start-client": "workspace:^",
+    "@tanstack/react-start-server": "workspace:^",
     "@tanstack/start-config": "workspace:^",
-    "@tanstack/start-router-manifest": "workspace:^",
+    "@tanstack/react-start-router-manifest": "workspace:^",
     "@tanstack/start-server-functions-client": "workspace:^",
     "@tanstack/start-server-functions-server": "workspace:^",
     "@tanstack/start-server-functions-handler": "workspace:^",
     "@tanstack/start-server-functions-ssr": "workspace:^",
     "@tanstack/start-api-routes": "workspace:^"
-  },
-  "devDependencies": {
-    "esbuild": "^0.24.2"
   }
 }

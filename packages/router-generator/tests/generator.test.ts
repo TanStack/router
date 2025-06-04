@@ -71,6 +71,9 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'no-manifest':
       config.disableManifestGeneration = true
       break
+    case 'no-formatted-route-tree':
+      config.enableRouteTreeFormatting = false
+      break
     case 'custom-tokens':
       config.indexToken = '_1nd3x'
       config.routeToken = '_r0ut3_'
@@ -114,11 +117,18 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
           'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
         ].join(''),
         apiTemplate: [
-          'import { json } from "@tanstack/start";\n',
+          'import { json } from "@tanstack/react-start";\n',
           '%%tsrImports%%\n\n',
           '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message: "Hello /api/test" }) }}%%tsrExportEnd%%\n',
         ].join(''),
+        lazyRouteTemplate: [
+          'import React, { useState } from "react";\n',
+          '%%tsrImports%%\n\n',
+          '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+          'function RouteComponent() { return "Hello %%tsrPath%%!" };\n',
+        ].join(''),
       }
+      config.__enableAPIRoutesGeneration = true
       break
     default:
       break

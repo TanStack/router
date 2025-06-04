@@ -24,7 +24,15 @@ export const sortRules = [
   [['beforeLoad'], ['loader']],
   [
     ['loader'],
-    ['onEnter', 'onStay', 'onLeave', 'meta', 'links', 'scripts', 'headers'],
+    [
+      'onEnter',
+      'onStay',
+      'onLeave',
+      'head',
+      'scripts',
+      'headers',
+      'remountDeps',
+    ],
   ],
 ] as const
 

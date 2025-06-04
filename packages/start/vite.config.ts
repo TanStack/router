@@ -25,10 +25,10 @@ export default mergeConfig(
       './src/api.tsx',
     ],
     externalDeps: [
-      '@tanstack/start-client',
-      '@tanstack/start-server',
+      '@tanstack/react-start-client',
+      '@tanstack/react-start-server',
       '@tanstack/start-config',
-      '@tanstack/start-router-manifest',
+      '@tanstack/react-start-router-manifest',
       '@tanstack/start-server-functions-client',
       '@tanstack/start-server-functions-server',
       '@tanstack/start-server-functions-ssr',

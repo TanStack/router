@@ -7,5 +7,7 @@ export default {
   bundle: true,
   format: 'esm',
   target: ['esnext'],
-  plugins: [TanStackRouterEsbuild()],
+  plugins: [
+    TanStackRouterEsbuild({ target: 'react', autoCodeSplitting: true }),
+  ],
 }

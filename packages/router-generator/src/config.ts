@@ -3,22 +3,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 
-const defaultTemplate = {
-  routeTemplate: [
-    '%%tsrImports%%',
-    '\n\n',
-    '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
-    'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
-  ].join(''),
-  apiTemplate: [
-    'import { json } from "@tanstack/start";\n',
-    '%%tsrImports%%',
-    '\n\n',
-    '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message:\'Hello "%%tsrPath%%"!\' }) }}%%tsrExportEnd%%\n',
-  ].join(''),
-}
-
 export const configSchema = z.object({
+  target: z.enum(['react', 'solid']).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
@@ -31,6 +17,8 @@ export const configSchema = z.object({
   addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
   disableManifestGeneration: z.boolean().optional().default(false),
+  enableRouteTreeFormatting: z.boolean().optional().default(true),
+  __enableAPIRoutesGeneration: z.boolean().optional(), // Internal flag to be turned on for TanStack Start
   apiBase: z.string().optional().default('/api'),
   routeTreeFileHeader: z
     .array(z.string())
@@ -49,17 +37,14 @@ export const configSchema = z.object({
     .optional(),
   customScaffolding: z
     .object({
-      routeTemplate: z
-        .string()
-        .optional()
-        .default(defaultTemplate.routeTemplate),
-      apiTemplate: z.string().optional().default(defaultTemplate.apiTemplate),
+      routeTemplate: z.string().optional(),
+      lazyRouteTemplate: z.string().optional(),
+      apiTemplate: z.string().optional(),
     })
-    .optional()
-    .default(defaultTemplate),
+    .optional(),
   experimental: z
     .object({
-      // TODO: Remove this option in the next major release (v2).
+      // TODO: This has been made stable and is now "autoCodeSplitting". Remove in next major version.
       enableCodeSplitting: z.boolean().optional(),
     })
     .optional(),

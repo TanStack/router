@@ -7,57 +7,31 @@ import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
+import { useRouter } from './useRouter'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
-import type { Constrain } from './utils'
 import type {
   AnyContext,
-  AnyPathParams,
   AnyRoute,
+  AnyRouter,
+  Constrain,
+  ConstrainLiteral,
   FileBaseRouteOptions,
+  FileRoutesByPath,
+  LazyRouteOptions,
+  RegisteredRouter,
   ResolveParams,
-  RootRoute,
   Route,
+  RouteById,
   RouteConstraints,
+  RouteIds,
   RouteLoaderFn,
   UpdatableRouteOptions,
-} from './route'
-import type { RegisteredRouter } from './router'
-import type { RouteById, RouteIds } from './routeInfo'
-import type { AnyValidator } from './validators'
+} from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseRouteContextRoute } from './useRouteContext'
-
-export interface FileRoutesByPath {
-  // '/': {
-  //   parentRoute: typeof rootRoute
-  // }
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: any
-  fullPaths: any
-  to: any
-  fileRoutesByTo: any
-  id: any
-  fileRoutesById: any
-}
-
-export type InferFileRouteTypes<TRouteTree extends AnyRoute> =
-  TRouteTree extends RootRoute<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    infer TFileRouteTypes extends FileRouteTypes
-  >
-    ? TFileRouteTypes
-    : never
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
@@ -141,7 +115,8 @@ export class FileRoute<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TChildren
+    TChildren,
+    unknown
   > => {
     warning(
       this.silent,
@@ -184,22 +159,6 @@ export function FileRouteLoader<
   return (loaderFn) => loaderFn as any
 }
 
-export type LazyRouteOptions = Pick<
-  UpdatableRouteOptions<
-    AnyRoute,
-    string,
-    string,
-    AnyPathParams,
-    AnyValidator,
-    {},
-    AnyContext,
-    AnyContext,
-    AnyContext,
-    AnyContext
-  >,
-  'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
->
-
 export class LazyRoute<TRoute extends AnyRoute> {
   options: {
     id: string
@@ -230,19 +189,21 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.options.id,
-    } as any)
+    } as any) as any
   }
 
   useParams: UseParamsRoute<TRoute['id']> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.options.id,
-    } as any)
+    } as any) as any
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TRoute['id']> = (opts) => {
@@ -254,16 +215,21 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useNavigate = () => {
-    return useNavigate({ from: this.options.id })
+    const router = useRouter()
+    return useNavigate({ from: router.routesById[this.options.id].fullPath })
   }
 }
 
 export function createLazyRoute<
-  TId extends RouteIds<RegisteredRouter['routeTree']>,
-  TRoute extends AnyRoute = RouteById<RegisteredRouter['routeTree'], TId>,
->(id: TId) {
+  TRouter extends AnyRouter = RegisteredRouter,
+  TId extends string = string,
+  TRoute extends AnyRoute = RouteById<TRouter['routeTree'], TId>,
+>(id: ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>) {
   return (opts: LazyRouteOptions) => {
-    return new LazyRoute<TRoute>({ id: id as any, ...opts })
+    return new LazyRoute<TRoute>({
+      id: id,
+      ...opts,
+    })
   }
 }
 

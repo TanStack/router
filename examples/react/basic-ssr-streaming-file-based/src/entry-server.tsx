@@ -1,7 +1,7 @@
 import {
   createRequestHandler,
   defaultStreamHandler,
-} from '@tanstack/start/server'
+} from '@tanstack/react-start/server'
 import { createRouter } from './router'
 import type express from 'express'
 

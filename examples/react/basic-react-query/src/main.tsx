@@ -10,7 +10,7 @@ import {
   createRouter,
   useRouter,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import {
   QueryClient,
@@ -20,6 +20,7 @@ import {
 } from '@tanstack/react-query'
 import { NotFoundError, postQueryOptions, postsQueryOptions } from './posts'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+import './styles.css'
 
 const rootRoute = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -57,12 +58,12 @@ function RootComponent() {
           Posts
         </Link>{' '}
         <Link
-          to="/layout-a"
+          to="/route-a"
           activeProps={{
             className: 'font-bold',
           }}
         >
-          Layout
+          Pathless Layout
         </Link>{' '}
         <Link
           // @ts-expect-error
@@ -96,7 +97,7 @@ function IndexRouteComponent() {
   )
 }
 
-const postsRoute = createRoute({
+const postsLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
   loader: ({ context: { queryClient } }) =>
@@ -104,7 +105,7 @@ const postsRoute = createRoute({
 }).lazy(() => import('./posts.lazy').then((d) => d.Route))
 
 const postsIndexRoute = createRoute({
-  getParentRoute: () => postsRoute,
+  getParentRoute: () => postsLayoutRoute,
   path: '/',
   component: PostsIndexRouteComponent,
 })
@@ -114,7 +115,7 @@ function PostsIndexRouteComponent() {
 }
 
 const postRoute = createRoute({
-  getParentRoute: () => postsRoute,
+  getParentRoute: () => postsLayoutRoute,
   path: '$postId',
   errorComponent: PostErrorComponent,
   loader: ({ context: { queryClient }, params: { postId } }) =>
@@ -160,16 +161,16 @@ function PostRouteComponent() {
   )
 }
 
-const layoutRoute = createRoute({
+const pathlessLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  id: '_layout',
-  component: LayoutComponent,
+  id: '_pathlessLayout',
+  component: PathlessLayoutComponent,
 })
 
-function LayoutComponent() {
+function PathlessLayoutComponent() {
   return (
     <div className="p-2">
-      <div className="border-b">I'm a layout</div>
+      <div className="border-b">I'm a pathless layout</div>
       <div>
         <Outlet />
       </div>
@@ -177,32 +178,32 @@ function LayoutComponent() {
   )
 }
 
-const layout2Route = createRoute({
-  getParentRoute: () => layoutRoute,
-  id: '_layout-2',
+const nestedPathlessLayoutRoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  id: '_nestedPathlessLayout',
   component: Layout2Component,
 })
 
 function Layout2Component() {
   return (
     <div>
-      <div>I'm a nested layout</div>
+      <div>I'm a nested pathless layout</div>
       <div className="flex gap-2 border-b">
         <Link
-          to="/layout-a"
+          to="/route-a"
           activeProps={{
             className: 'font-bold',
           }}
         >
-          Layout A
+          Go to route A
         </Link>
         <Link
-          to="/layout-b"
+          to="/route-b"
           activeProps={{
             className: 'font-bold',
           }}
         >
-          Layout B
+          Go to route B
         </Link>
       </div>
       <div>
@@ -212,30 +213,33 @@ function Layout2Component() {
   )
 }
 
-const layoutARoute = createRoute({
-  getParentRoute: () => layout2Route,
-  path: '/layout-a',
-  component: LayoutAComponent,
+const pathlessLayoutARoute = createRoute({
+  getParentRoute: () => nestedPathlessLayoutRoute,
+  path: '/route-a',
+  component: PathlessLayoutAComponent,
 })
 
-function LayoutAComponent() {
+function PathlessLayoutAComponent() {
   return <div>I'm layout A!</div>
 }
 
-const layoutBRoute = createRoute({
-  getParentRoute: () => layout2Route,
-  path: '/layout-b',
-  component: LayoutBComponent,
+const pathlessLayoutBRoute = createRoute({
+  getParentRoute: () => nestedPathlessLayoutRoute,
+  path: '/route-b',
+  component: PathlessLayoutBComponent,
 })
 
-function LayoutBComponent() {
+function PathlessLayoutBComponent() {
   return <div>I'm layout B!</div>
 }
 
 const routeTree = rootRoute.addChildren([
-  postsRoute.addChildren([postRoute, postsIndexRoute]),
-  layoutRoute.addChildren([
-    layout2Route.addChildren([layoutARoute, layoutBRoute]),
+  postsLayoutRoute.addChildren([postRoute, postsIndexRoute]),
+  pathlessLayoutRoute.addChildren([
+    nestedPathlessLayoutRoute.addChildren([
+      pathlessLayoutARoute,
+      pathlessLayoutBRoute,
+    ]),
   ]),
   indexRoute,
 ])
@@ -249,6 +253,7 @@ const router = createRouter({
   // Since we're using React Query, we don't want loader calls to ever be stale
   // This will ensure that the loader is always called when the route is preloaded or visited
   defaultPreloadStaleTime: 0,
+  scrollRestoration: true,
   context: {
     queryClient,
   },

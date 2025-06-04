@@ -12,10 +12,11 @@ import {
   useNavigate,
   useRouterState,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import axios from 'redaxios'
 import * as Dialog from '@radix-ui/react-dialog'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+import './styles.css'
 
 type PhotoType = {
   id: string
@@ -131,7 +132,7 @@ const indexRoute = createRoute({
     )
   },
 })
-const photosRoute = createRoute({
+const photosLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'photos',
   loader: fetchPhotos,
@@ -139,7 +140,7 @@ const photosRoute = createRoute({
 })
 
 function PhotosRoute() {
-  const photos = photosRoute.useLoaderData()
+  const photos = photosLayoutRoute.useLoaderData()
 
   return (
     <div className="p-2 space-y-2">
@@ -208,7 +209,7 @@ function PhotoComponent() {
 }
 
 const photoModalRoute = createRoute({
-  getParentRoute: () => photosRoute,
+  getParentRoute: () => photosLayoutRoute,
   path: '$photoId/modal',
   loader: async ({ params: { photoId } }) => fetchPhoto(photoId),
   errorComponent: PhotoModalErrorComponent,
@@ -224,7 +225,7 @@ function PhotoModalErrorComponent({ error }: ErrorComponentProps) {
       onOpenChange={(open) => {
         if (!open) {
           navigate({
-            to: photosRoute.to,
+            to: photosLayoutRoute.to,
           })
         }
       }}
@@ -249,7 +250,7 @@ function PhotoModalPendingComponent() {
       onOpenChange={(open) => {
         if (!open) {
           navigate({
-            to: photosRoute.to,
+            to: photosLayoutRoute.to,
           })
         }
       }}
@@ -270,7 +271,7 @@ function PhotoModalComponent() {
       onOpenChange={(open) => {
         if (!open) {
           navigate({
-            to: photosRoute.to,
+            to: photosLayoutRoute.to,
           })
         }
       }}
@@ -302,7 +303,7 @@ function Photo({ photo }: { photo: PhotoType }) {
 
 const routeTree = rootRoute.addChildren([
   photoRoute,
-  photosRoute.addChildren([photoModalRoute]),
+  photosLayoutRoute.addChildren([photoModalRoute]),
   indexRoute,
 ])
 
@@ -318,6 +319,7 @@ const router = createRouter({
   routeTree,
   routeMasks: [photoModalToPhotoMask],
   defaultPreload: 'intent',
+  scrollRestoration: true,
 })
 
 // Register things for typesafety

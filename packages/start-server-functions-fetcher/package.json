@@ -1,13 +1,13 @@
 {
   "name": "@tanstack/start-server-functions-fetcher",
-  "version": "1.97.18",
-  "description": "Modern and scalable routing for React applications",
+  "version": "1.120.15",
+  "description": "Modern and scalable routing for applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/start"
+    "directory": "packages/start-server-functions-fetcher"
   },
   "homepage": "https://tanstack.com/start",
   "funding": {
@@ -29,16 +29,17 @@
     "test:unit": "exit 0; vitest",
     "test:eslint": "eslint ./src",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts52": "node ../../node_modules/typescript52/lib/tsc.js",
     "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
     "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
     "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
-    "test:types:ts57": "tsc",
+    "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
+    "test:types:ts58": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
   "type": "module",
+  "types": "dist/esm/index.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -61,17 +62,10 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/start-client": "workspace:^",
-    "@vitejs/plugin-react": "^4.3.4"
+    "@tanstack/router-core": "workspace:^",
+    "@tanstack/start-client-core": "workspace:^"
   },
   "devDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "typescript": "^5.7.2"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0 || >=19.0.0",
-    "react-dom": ">=18.0.0 || >=19.0.0"
   }
 }

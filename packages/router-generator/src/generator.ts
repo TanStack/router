@@ -1,15 +1,16 @@
 import path from 'node:path'
 import * as fs from 'node:fs'
 import * as fsp from 'node:fs/promises'
-import * as prettier from 'prettier'
 import {
   determineInitialRoutePath,
+  format,
   logging,
   multiSortBy,
   removeExt,
   removeTrailingSlash,
   removeUnderscores,
   replaceBackslash,
+  resetRegex,
   routePathToVariable,
   trimPathLeft,
   writeIfDifferent,
@@ -17,11 +18,16 @@ import {
 import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
 import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
-import type { GetRouteNodesResult, RouteNode } from './types'
+import {
+  defaultAPIRouteTemplate,
+  fillTemplate,
+  getTargetTemplate,
+} from './template'
+import type { FsRouteType, GetRouteNodesResult, RouteNode } from './types'
 import type { Config } from './config'
 
 export const CONSTANTS = {
-  // When changing this, you'll want to update the import in `start/api/index.ts#defaultAPIFileRouteHandler`
+  // When changing this, you'll want to update the import in `start-api-routes/src/index.ts#defaultAPIFileRouteHandler`
   APIRouteExportVariable: 'APIRoute',
 }
 
@@ -41,6 +47,7 @@ type RouteSubNode = {
 }
 
 export async function generator(config: Config, root: string) {
+  const ROUTE_TEMPLATE = getTargetTemplate(config.target)
   const logger = logging({ disabled: config.disableLogging })
   logger.log('')
 
@@ -69,11 +76,9 @@ export async function generator(config: Config, root: string) {
 
   const TYPES_DISABLED = config.disableTypes
 
-  const prettierOptions: prettier.Options = {
-    semi: config.semicolons,
-    singleQuote: config.quoteStyle === 'single',
-    parser: 'typescript',
-  }
+  // Controls whether API Routes are generated for TanStack Start
+  const ENABLED_API_ROUTES_GENERATION =
+    config.__enableAPIRoutesGeneration ?? false
 
   let getRouteNodesResult: GetRouteNodesResult
 
@@ -112,6 +117,30 @@ export async function generator(config: Config, root: string) {
   const routeTree: Array<RouteNode> = []
   const routePiecesByPath: Record<string, RouteSubNode> = {}
 
+  // Filtered API Route nodes
+  const onlyAPIRouteNodes = preRouteNodes.filter((d) => {
+    if (!ENABLED_API_ROUTES_GENERATION) {
+      return false
+    }
+
+    if (d._fsRouteType !== 'api') {
+      return false
+    }
+
+    return true
+  })
+
+  // Filtered Generator Route nodes
+  const onlyGeneratorRouteNodes = preRouteNodes.filter((d) => {
+    if (ENABLED_API_ROUTES_GENERATION) {
+      if (d._fsRouteType === 'api') {
+        return false
+      }
+    }
+
+    return true
+  })
+
   // Loop over the flat list of routeNodes and
   // build up a tree based on the routeNodes' routePath
   const routeNodes: Array<RouteNode> = []
@@ -130,27 +159,23 @@ export async function generator(config: Config, root: string) {
     const routeCode = fs.readFileSync(node.fullPath, 'utf-8')
 
     if (!routeCode) {
-      const replaced = fillTemplate(
-        [
-          'import * as React from "react"\n',
-          '%%tsrImports%%',
-          '\n\n',
-          '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
-          'function RootComponent() { return (<React.Fragment><div>Hello "%%tsrPath%%"!</div><Outlet /></React.Fragment>) };\n',
-        ].join(''),
-        {
-          tsrImports:
-            "import { Outlet, createRootRoute } from '@tanstack/react-router';",
-          tsrPath: rootPathId,
-          tsrExportStart: `export const Route = createRootRoute(`,
-          tsrExportEnd: ');',
-        },
-      )
+      const _rootTemplate = ROUTE_TEMPLATE.rootRoute
+      const replaced = await fillTemplate(config, _rootTemplate.template(), {
+        tsrImports: _rootTemplate.imports.tsrImports(),
+        tsrPath: rootPathId,
+        tsrExportStart: _rootTemplate.imports.tsrExportStart(),
+        tsrExportEnd: _rootTemplate.imports.tsrExportEnd(),
+      })
 
-      logger.log(`🟡 Creating ${node.fullPath}`)
-      fs.writeFileSync(
+      await writeIfDifferent(
         node.fullPath,
-        await prettier.format(replaced, prettierOptions),
+        '', // Empty string because the file doesn't exist yet
+        replaced,
+        {
+          beforeWrite: () => {
+            logger.log(`🟡 Creating ${node.fullPath}`)
+          },
+        },
       )
     }
   }
@@ -158,6 +183,11 @@ export async function generator(config: Config, root: string) {
   await handleRootNode(rootRouteNode)
 
   const handleNode = async (node: RouteNode) => {
+    // Do not remove this as we need to set the lastIndex to 0 as it
+    // is necessary to reset the regex's index when using the global flag
+    // otherwise it might not match the next time it's used
+    resetRegex(routeGroupPatternRegex)
+
     let parentRoute = hasParentRoute(routeNodes, node, node.routePath)
 
     // if the parent route is a virtual parent route, we need to find the real parent route
@@ -198,80 +228,106 @@ export async function generator(config: Config, root: string) {
 
       let replaced = routeCode
 
+      const tRouteTemplate = ROUTE_TEMPLATE.route
+      const tLazyRouteTemplate = ROUTE_TEMPLATE.lazyRoute
+
       if (!routeCode) {
-        if (node.isLazy) {
-          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
-            tsrImports:
-              "import { createLazyFileRoute } from '@tanstack/react-router';",
-            tsrPath: escapedRoutePath,
-            tsrExportStart: `export const Route = createLazyFileRoute('${escapedRoutePath}')(`,
-            tsrExportEnd: ');',
-          })
+        // Creating a new lazy route file
+        if (node._fsRouteType === 'lazy') {
+          // Check by default check if the user has a specific lazy route template
+          // If not, check if the user has a route template and use that instead
+          replaced = await fillTemplate(
+            config,
+            (config.customScaffolding?.lazyRouteTemplate ||
+              config.customScaffolding?.routeTemplate) ??
+              tLazyRouteTemplate.template(),
+            {
+              tsrImports: tLazyRouteTemplate.imports.tsrImports(),
+              tsrPath: escapedRoutePath,
+              tsrExportStart:
+                tLazyRouteTemplate.imports.tsrExportStart(escapedRoutePath),
+              tsrExportEnd: tLazyRouteTemplate.imports.tsrExportEnd(),
+            },
+          )
         } else if (
-          node.isRoute ||
-          (!node.isComponent &&
-            !node.isErrorComponent &&
-            !node.isPendingComponent &&
-            !node.isLoader)
+          // Creating a new normal route file
+          (['layout', 'static'] satisfies Array<FsRouteType>).some(
+            (d) => d === node._fsRouteType,
+          ) ||
+          (
+            [
+              'component',
+              'pendingComponent',
+              'errorComponent',
+              'loader',
+            ] satisfies Array<FsRouteType>
+          ).every((d) => d !== node._fsRouteType)
         ) {
-          replaced = fillTemplate(config.customScaffolding.routeTemplate, {
-            tsrImports:
-              "import { createFileRoute } from '@tanstack/react-router';",
-            tsrPath: escapedRoutePath,
-            tsrExportStart: `export const Route = createFileRoute('${escapedRoutePath}')(`,
-            tsrExportEnd: ');',
-          })
+          replaced = await fillTemplate(
+            config,
+            config.customScaffolding?.routeTemplate ??
+              tRouteTemplate.template(),
+            {
+              tsrImports: tRouteTemplate.imports.tsrImports(),
+              tsrPath: escapedRoutePath,
+              tsrExportStart:
+                tRouteTemplate.imports.tsrExportStart(escapedRoutePath),
+              tsrExportEnd: tRouteTemplate.imports.tsrExportEnd(),
+            },
+          )
         }
       } else {
+        // Update the existing route file
         replaced = routeCode
           .replace(
             /(FileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
             (_, p1, __, p3) => `${p1}${escapedRoutePath}${p3}`,
           )
           .replace(
-            /(import\s*\{.*)(create(Lazy)?FileRoute)(.*\}\s*from\s*['"]@tanstack\/react-router['"])/gs,
+            new RegExp(
+              `(import\\s*\\{.*)(create(Lazy)?FileRoute)(.*\\}\\s*from\\s*['"]@tanstack\\/${ROUTE_TEMPLATE.subPkg}['"])`,
+              'gs',
+            ),
             (_, p1, __, ___, p4) =>
-              `${p1}${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
+              `${p1}${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p4}`,
           )
           .replace(
             /create(Lazy)?FileRoute(\(\s*['"])([^\s]*)(['"],?\s*\))/g,
             (_, __, p2, ___, p4) =>
-              `${node.isLazy ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
+              `${node._fsRouteType === 'lazy' ? 'createLazyFileRoute' : 'createFileRoute'}${p2}${escapedRoutePath}${p4}`,
           )
       }
 
-      await writeIfDifferent(
-        node.fullPath,
-        prettierOptions,
-        routeCode,
-        replaced,
-        {
-          beforeWrite: () => {
-            logger.log(`🟡 Updating ${node.fullPath}`)
-          },
+      await writeIfDifferent(node.fullPath, routeCode, replaced, {
+        beforeWrite: () => {
+          logger.log(`🟡 Updating ${node.fullPath}`)
         },
-      )
+      })
     }
 
     if (
       !node.isVirtual &&
-      (node.isLoader ||
-        node.isComponent ||
-        node.isErrorComponent ||
-        node.isPendingComponent ||
-        node.isLazy)
+      (
+        [
+          'lazy',
+          'loader',
+          'component',
+          'pendingComponent',
+          'errorComponent',
+        ] satisfies Array<FsRouteType>
+      ).some((d) => d === node._fsRouteType)
     ) {
       routePiecesByPath[node.routePath!] =
         routePiecesByPath[node.routePath!] || {}
 
       routePiecesByPath[node.routePath!]![
-        node.isLazy
+        node._fsRouteType === 'lazy'
           ? 'lazy'
-          : node.isLoader
+          : node._fsRouteType === 'loader'
             ? 'loader'
-            : node.isErrorComponent
+            : node._fsRouteType === 'errorComponent'
               ? 'errorComponent'
-              : node.isPendingComponent
+              : node._fsRouteType === 'pendingComponent'
                 ? 'pendingComponent'
                 : 'component'
       ] = node
@@ -282,20 +338,21 @@ export async function generator(config: Config, root: string) {
         await handleNode({
           ...node,
           isVirtual: true,
-          isLazy: false,
-          isLoader: false,
-          isComponent: false,
-          isErrorComponent: false,
-          isPendingComponent: false,
+          _fsRouteType: 'static',
         })
       }
       return
     }
 
     const cleanedPathIsEmpty = (node.cleanedPath || '').length === 0
-    const nonPathRoute = node.isRoute && node.isNonPath
+    const nonPathRoute =
+      node._fsRouteType === 'pathless_layout' && node.isNonPath
+
     node.isVirtualParentRequired =
-      node.isLayout || nonPathRoute ? !cleanedPathIsEmpty : false
+      node._fsRouteType === 'pathless_layout' || nonPathRoute
+        ? !cleanedPathIsEmpty
+        : false
+
     if (!node.isVirtual && node.isVirtualParentRequired) {
       const parentRoutePath = removeLastSegmentFromPath(node.routePath) || '/'
       const parentVariableName = routePathToVariable(parentRoutePath)
@@ -305,7 +362,7 @@ export async function generator(config: Config, root: string) {
       )
 
       if (!anchorRoute) {
-        const parentNode = {
+        const parentNode: RouteNode = {
           ...node,
           path: removeLastSegmentFromPath(node.path) || '/',
           filePath: removeLastSegmentFromPath(node.filePath) || '/',
@@ -313,7 +370,7 @@ export async function generator(config: Config, root: string) {
           routePath: parentRoutePath,
           variableName: parentVariableName,
           isVirtual: true,
-          isLayout: false,
+          _fsRouteType: 'layout', // layout since this route will wrap other routes
           isVirtualParentRoute: true,
           isVirtualParentRequired: false,
         }
@@ -323,7 +380,7 @@ export async function generator(config: Config, root: string) {
 
         node.parent = parentNode
 
-        if (node.isLayout) {
+        if (node._fsRouteType === 'pathless_layout') {
           // since `node.path` is used as the `id` on the route definition, we need to update it
           node.path = determineNodePath(node)
         }
@@ -349,18 +406,22 @@ export async function generator(config: Config, root: string) {
     routeNodes.push(node)
   }
 
-  for (const node of preRouteNodes.filter((d) => !d.isAPIRoute)) {
+  for (const node of onlyGeneratorRouteNodes) {
     await handleNode(node)
   }
   checkRouteFullPathUniqueness(
     preRouteNodes.filter(
-      (d) => !d.isAPIRoute && d.children === undefined && d.isLazy !== true,
+      (d) =>
+        d.children === undefined &&
+        (['api', 'lazy'] satisfies Array<FsRouteType>).every(
+          (type) => type !== d._fsRouteType,
+        ),
     ),
     config,
   )
 
   const startAPIRouteNodes: Array<RouteNode> = checkStartAPIRoutes(
-    preRouteNodes.filter((d) => d.isAPIRoute),
+    onlyAPIRouteNodes,
     config,
   )
 
@@ -370,22 +431,31 @@ export async function generator(config: Config, root: string) {
     const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
     if (!routeCode) {
-      const replaced = fillTemplate(config.customScaffolding.apiTemplate, {
-        tsrImports: "import { createAPIFileRoute } from '@tanstack/start/api';",
-        tsrPath: escapedRoutePath,
-        tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
-        tsrExportEnd: ');',
-      })
+      const replaced = await fillTemplate(
+        config,
+        config.customScaffolding?.apiTemplate ?? defaultAPIRouteTemplate,
+        {
+          tsrImports:
+            "import { createAPIFileRoute } from '@tanstack/react-start/api';",
+          tsrPath: escapedRoutePath,
+          tsrExportStart: `export const ${CONSTANTS.APIRouteExportVariable} = createAPIFileRoute('${escapedRoutePath}')(`,
+          tsrExportEnd: ');',
+        },
+      )
 
-      logger.log(`🟡 Creating ${node.fullPath}`)
-      fs.writeFileSync(
+      await writeIfDifferent(
         node.fullPath,
-        await prettier.format(replaced, prettierOptions),
+        '', // Empty string because the file doesn't exist yet
+        replaced,
+        {
+          beforeWrite: () => {
+            logger.log(`🟡 Creating ${node.fullPath}`)
+          },
+        },
       )
     } else {
       await writeIfDifferent(
         node.fullPath,
-        prettierOptions,
         routeCode,
         routeCode.replace(
           /(createAPIFileRoute\(\s*['"])([^\s]*)(['"],?\s*\))/g,
@@ -400,17 +470,20 @@ export async function generator(config: Config, root: string) {
     }
   }
 
-  for (const node of startAPIRouteNodes) {
-    await handleAPINode(node)
+  // Handle the API routes for TanStack Start
+  if (ENABLED_API_ROUTES_GENERATION) {
+    for (const node of startAPIRouteNodes) {
+      await handleAPINode(node)
+    }
   }
 
   function buildRouteTreeConfig(nodes: Array<RouteNode>, depth = 1): string {
     const children = nodes.map((node) => {
-      if (node.isRoot) {
+      if (node._fsRouteType === '__root') {
         return
       }
 
-      if (node.isLayout && !node.children?.length) {
+      if (node._fsRouteType === 'pathless_layout' && !node.children?.length) {
         return
       }
 
@@ -488,7 +561,7 @@ export async function generator(config: Config, root: string) {
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.`,
     imports.length
-      ? `import { ${imports.join(', ')} } from '@tanstack/react-router'\n`
+      ? `import { ${imports.join(', ')} } from '${ROUTE_TEMPLATE.fullPkg}'\n`
       : '',
     '// Import Routes',
     [
@@ -588,7 +661,7 @@ export async function generator(config: Config, root: string) {
       ? []
       : [
           '// Populate the FileRoutesByPath interface',
-          `declare module '@tanstack/react-router' {
+          `declare module '${ROUTE_TEMPLATE.fullPkg}' {
   interface FileRoutesByPath {
     ${routeNodes
       .map((routeNode) => {
@@ -687,15 +760,17 @@ export async function generator(config: Config, root: string) {
     )
   }
 
-  const routeConfigFileContent = config.disableManifestGeneration
-    ? routeImports
-    : [
-        routeImports,
-        '\n',
-        '/* ROUTE_MANIFEST_START',
-        createRouteManifest(),
-        'ROUTE_MANIFEST_END */',
-      ].join('\n')
+  const includeManifest = ['react', 'solid']
+  const routeConfigFileContent =
+    config.disableManifestGeneration || !includeManifest.includes(config.target)
+      ? routeImports
+      : [
+          routeImports,
+          '\n',
+          '/* ROUTE_MANIFEST_START',
+          createRouteManifest(),
+          'ROUTE_MANIFEST_END */',
+        ].join('\n')
 
   if (!checkLatest()) return
 
@@ -721,9 +796,12 @@ export async function generator(config: Config, root: string) {
   // Write the route tree file, if it has changed
   const routeTreeWriteResult = await writeIfDifferent(
     path.resolve(config.generatedRouteTree),
-    prettierOptions,
-    existingRouteTreeContent,
-    routeConfigFileContent,
+    config.enableRouteTreeFormatting
+      ? await format(existingRouteTreeContent, config)
+      : existingRouteTreeContent,
+    config.enableRouteTreeFormatting
+      ? await format(routeConfigFileContent, config)
+      : routeConfigFileContent,
     {
       beforeWrite: () => {
         logger.log(`🟡 Updating ${config.generatedRouteTree}`)
@@ -1015,13 +1093,4 @@ export function startAPIRouteSegmentsFromTSRFilePath(
   })
 
   return segments
-}
-
-type TemplateTag = 'tsrImports' | 'tsrPath' | 'tsrExportStart' | 'tsrExportEnd'
-
-function fillTemplate(template: string, values: Record<TemplateTag, string>) {
-  return template.replace(
-    /%%(\w+)%%/g,
-    (_, key) => values[key as TemplateTag] || '',
-  )
 }

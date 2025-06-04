@@ -9,22 +9,21 @@
     "start": "vinxi start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.97.18",
-    "@tanstack/router-devtools": "^1.97.18",
-    "@tanstack/start": "^1.97.18",
+    "@tanstack/react-router": "^1.120.15",
+    "@tanstack/react-router-devtools": "^1.120.15",
+    "@tanstack/react-start": "^1.120.15",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.5.5",
-    "vinxi": "0.5.1"
+    "tailwind-merge": "^2.6.0",
+    "vinxi": "0.5.3"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.16",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"
   }

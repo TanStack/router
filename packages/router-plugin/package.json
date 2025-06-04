@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-plugin",
-  "version": "1.97.18",
+  "version": "1.120.15",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -31,16 +31,17 @@
     "test:unit:dev": "vitest --watch",
     "test:eslint": "eslint ./src",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts52": "node ../../node_modules/typescript52/lib/tsc.js",
     "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
     "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
     "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
-    "test:types:ts57": "tsc",
+    "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
+    "test:types:ts58": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
   "type": "module",
+  "types": "dist/esm/index.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -103,38 +104,42 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@babel/core": "^7.26.0",
-    "@babel/generator": "^7.26.3",
-    "@babel/parser": "^7.26.3",
+    "@babel/core": "^7.26.8",
     "@babel/plugin-syntax-jsx": "^7.25.9",
     "@babel/plugin-syntax-typescript": "^7.25.9",
-    "@babel/template": "^7.25.9",
-    "@babel/traverse": "^7.26.4",
-    "@babel/types": "^7.26.3",
+    "@babel/template": "^7.26.8",
+    "@babel/traverse": "^7.26.8",
+    "@babel/types": "^7.26.8",
+    "@tanstack/router-core": "workspace:^",
     "@tanstack/router-generator": "workspace:^",
+    "@tanstack/router-utils": "workspace:^",
     "@tanstack/virtual-file-routes": "workspace:^",
     "@types/babel__core": "^7.20.5",
-    "@types/babel__generator": "^7.6.8",
     "@types/babel__template": "^7.4.4",
     "@types/babel__traverse": "^7.20.6",
-    "@types/diff": "^6.0.0",
-    "babel-dead-code-elimination": "^1.0.8",
-    "chalk": "^5.3.0",
+    "babel-dead-code-elimination": "^1.0.10",
     "chokidar": "^3.6.0",
-    "diff": "^7.0.0",
-    "unplugin": "^1.16.0",
-    "zod": "^3.24.1"
+    "unplugin": "^2.1.2",
+    "zod": "^3.24.2"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2",
+    "@tanstack/react-router": "workspace:^",
     "vite": ">=5.0.0 || >=6.0.0",
+    "vite-plugin-solid": "^2.11.2",
     "webpack": ">=5.92.0"
   },
   "peerDependenciesMeta": {
     "@rsbuild/core": {
       "optional": true
     },
+    "@tanstack/react-router": {
+      "optional": true
+    },
     "vite": {
+      "optional": true
+    },
+    "vite-plugin-solid": {
       "optional": true
     },
     "webpack": {

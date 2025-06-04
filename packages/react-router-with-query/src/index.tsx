@@ -5,6 +5,7 @@ import {
   hashKey,
   hydrate,
 } from '@tanstack/react-query'
+import { isRedirect } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/react-router'
 import type {
   QueryClient,
@@ -12,17 +13,33 @@ import type {
   UseQueryOptions,
 } from '@tanstack/react-query'
 
-export function routerWithQueryClient<TRouter extends AnyRouter>(
-  router: TRouter['options']['context'] extends { queryClient: QueryClient }
+type AdditionalOptions = {
+  WrapProvider?: (props: { children: any }) => React.JSX.Element
+  /**
+   * If `true`, the QueryClient will handle errors thrown by `redirect()` inside of mutations and queries.
+   *
+   * @default true
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction)
+   */
+  handleRedirects?: boolean
+}
+
+export type ValidateRouter<TRouter extends AnyRouter> =
+  NonNullable<TRouter['options']['context']> extends {
+    queryClient: QueryClient
+  }
     ? TRouter
-    : never,
+    : never
+
+export function routerWithQueryClient<TRouter extends AnyRouter>(
+  router: ValidateRouter<TRouter>,
   queryClient: QueryClient,
+  additionalOpts?: AdditionalOptions,
 ): TRouter {
   const seenQueryKeys = new Set<string>()
   const streamedQueryKeys = new Set<string>()
 
   const ogClientOptions = queryClient.getDefaultOptions()
-
   queryClient.setDefaultOptions({
     ...ogClientOptions,
     queries: {
@@ -94,6 +111,47 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     } as any,
   })
 
+  if (additionalOpts?.handleRedirects ?? true) {
+    const ogMutationCacheConfig = queryClient.getMutationCache().config
+    queryClient.getMutationCache().config = {
+      ...ogMutationCacheConfig,
+      onError: (error, _variables, _context, _mutation) => {
+        if (isRedirect(error)) {
+          return router.navigate(
+            router.resolveRedirect({
+              ...error,
+              _fromLocation: router.state.location,
+            }),
+          )
+        }
+
+        return ogMutationCacheConfig.onError?.(
+          error,
+          _variables,
+          _context,
+          _mutation,
+        )
+      },
+    }
+
+    const ogQueryCacheConfig = queryClient.getQueryCache().config
+    queryClient.getQueryCache().config = {
+      ...ogQueryCacheConfig,
+      onError: (error, _query) => {
+        if (isRedirect(error)) {
+          return router.navigate(
+            router.resolveRedirect({
+              ...error,
+              _fromLocation: router.state.location,
+            }),
+          )
+        }
+
+        return ogQueryCacheConfig.onError?.(error, _query)
+      },
+    }
+  }
+
   const ogOptions = router.options
   router.options = {
     ...router.options,
@@ -116,11 +174,14 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     },
     // Wrap the app in a QueryClientProvider
     Wrap: ({ children }) => {
+      const OuterWrapper = additionalOpts?.WrapProvider || Fragment
       const OGWrap = ogOptions.Wrap || Fragment
       return (
-        <QueryClientProvider client={queryClient}>
-          <OGWrap>{children}</OGWrap>
-        </QueryClientProvider>
+        <OuterWrapper>
+          <QueryClientProvider client={queryClient}>
+            <OGWrap>{children}</OGWrap>
+          </QueryClientProvider>
+        </OuterWrapper>
       )
     },
   }

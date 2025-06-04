@@ -12,7 +12,7 @@ import {
 } from '../src'
 import { getSearchParamsFromURI } from './utils'
 import type { AnyRouter } from '../src'
-import type { SearchMiddleware } from '../src/route'
+import type { SearchMiddleware } from '@tanstack/router-core'
 
 afterEach(() => {
   vi.resetAllMocks()

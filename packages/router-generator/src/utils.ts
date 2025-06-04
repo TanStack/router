@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as prettier from 'prettier'
+import type { Config } from './config'
 
 export function multiSortBy<T>(
   arr: Array<T>,
@@ -123,7 +124,6 @@ export function removeExt(d: string, keepExtension: boolean = false) {
  * This function writes to a file if the content is different.
  *
  * @param filepath The path to the file
- * @param prettierOptions Prettier options
  * @param content Original content
  * @param incomingContent New content
  * @param callbacks Callbacks to run before and after writing
@@ -131,22 +131,44 @@ export function removeExt(d: string, keepExtension: boolean = false) {
  */
 export async function writeIfDifferent(
   filepath: string,
-  prettierOptions: prettier.Options,
   content: string,
   incomingContent: string,
   callbacks?: { beforeWrite?: () => void; afterWrite?: () => void },
 ): Promise<boolean> {
-  const [formattedContent, updatedContent] = await Promise.all([
-    prettier.format(content, prettierOptions),
-    prettier.format(incomingContent, prettierOptions),
-  ])
-
-  if (formattedContent !== updatedContent) {
+  if (content !== incomingContent) {
     callbacks?.beforeWrite?.()
-    fs.writeFileSync(filepath, updatedContent)
+    fs.writeFileSync(filepath, incomingContent)
     callbacks?.afterWrite?.()
     return true
   }
-
   return false
+}
+
+/**
+ * This function formats the source code using the default formatter (Prettier).
+ *
+ * @param source The content to format
+ * @param config The configuration object
+ * @returns The formatted content
+ */
+export async function format(source: string, config: Config): Promise<string> {
+  const prettierOptions: prettier.Config = {
+    semi: config.semicolons,
+    singleQuote: config.quoteStyle === 'single',
+    parser: 'typescript',
+  }
+  return prettier.format(source, prettierOptions)
+}
+
+/**
+ * This function resets the regex index to 0 so that it can be reused
+ * without having to create a new regex object or worry about the last
+ * state when using the global flag.
+ *
+ * @param regex The regex object to reset
+ * @returns
+ */
+export function resetRegex(regex: RegExp) {
+  regex.lastIndex = 0
+  return
 }

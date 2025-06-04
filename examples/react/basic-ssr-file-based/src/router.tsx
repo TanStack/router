@@ -9,6 +9,7 @@ export function createRouter() {
       head: '',
     },
     defaultPreload: 'intent',
+    scrollRestoration: true,
   })
 }
 

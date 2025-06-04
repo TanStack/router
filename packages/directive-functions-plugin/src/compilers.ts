@@ -1,16 +1,12 @@
 import * as babel from '@babel/core'
-import _generate from '@babel/generator'
-import { parse } from '@babel/parser'
 import { isIdentifier, isVariableDeclarator } from '@babel/types'
 import { codeFrameColumns } from '@babel/code-frame'
-import { deadCodeElimination } from 'babel-dead-code-elimination'
-import type { ParseResult } from '@babel/parser'
-
-let generate = _generate
-
-if ('default' in generate) {
-  generate = generate.default as typeof generate
-}
+import {
+  deadCodeElimination,
+  findReferencedIdentifiers,
+} from 'babel-dead-code-elimination'
+import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
 export interface DirectiveFn {
   nodePath: SupportedFunctionPath
@@ -46,33 +42,19 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   // devSplitImporter: string
 }
 
-export type ParseAstOptions = {
-  code: string
-  filename: string
-  root: string
-}
-
-export function parseAst(opts: ParseAstOptions): ParseResult<babel.types.File> {
-  return parse(opts.code, {
-    plugins: ['jsx', 'typescript'],
-    sourceType: 'module',
-    ...{
-      root: opts.root,
-      filename: opts.filename,
-      sourceMaps: true,
-    },
-  })
-}
-
 function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
   return `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}`
 }
 
-export function compileDirectives(opts: CompileDirectivesOpts) {
+export function compileDirectives(opts: CompileDirectivesOpts): {
+  compiledResult: GeneratorResult
+  directiveFnsById: Record<string, DirectiveFn>
+} {
   const directiveSplitParam = buildDirectiveSplitParam(opts)
   const isDirectiveSplitParam = opts.filename.includes(directiveSplitParam)
 
   const ast = parseAst(opts)
+  const refIdents = findReferencedIdentifiers(ast)
   const directiveFnsById = findDirectives(ast, {
     ...opts,
     directiveSplitParam,
@@ -121,11 +103,12 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
     )
   }
 
-  deadCodeElimination(ast)
+  deadCodeElimination(ast, refIdents)
 
-  const compiledResult = generate(ast, {
+  const compiledResult = generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
+    filename: opts.filename,
   })
 
   return {
@@ -248,7 +231,7 @@ export function findDirectives(
     replacer?: ReplacerFn
     directiveSplitParam: string
   },
-) {
+): Record<string, DirectiveFn> {
   const directiveFnsById: Record<string, DirectiveFn> = {}
   const functionNameSet: Set<string> = new Set()
 
@@ -281,30 +264,43 @@ export function findDirectives(
           compileDirective(path.get('declaration') as SupportedFunctionPath)
         }
       },
+      ExportDeclaration(path) {
+        if (
+          babel.types.isExportNamedDeclaration(path.node) &&
+          babel.types.isVariableDeclaration(path.node.declaration) &&
+          (babel.types.isFunctionExpression(
+            path.node.declaration.declarations[0]?.init,
+          ) ||
+            babel.types.isArrowFunctionExpression(
+              path.node.declaration.declarations[0]?.init,
+            ))
+        ) {
+          compileDirective(
+            path.get(
+              'declaration.declarations.0.init',
+            ) as SupportedFunctionPath,
+          )
+        }
+      },
     })
   } else {
     // Find all directives
     babel.traverse(ast, {
       DirectiveLiteral(nodePath) {
         if (nodePath.node.value === opts.directive) {
-          const directiveFn = nodePath.findParent((p) => p.isFunction()) as
-            | SupportedFunctionPath
-            | undefined
+          const directiveFn = nodePath.findParent((p) => p.isFunction())
 
           if (!directiveFn) return
 
           // Handle class and object methods which are not supported
-          const isGenerator =
-            directiveFn.isFunction() && directiveFn.node.generator
-
           const isClassMethod = directiveFn.isClassMethod()
           const isObjectMethod = directiveFn.isObjectMethod()
 
-          if (isClassMethod || isObjectMethod || isGenerator) {
+          if (isClassMethod || isObjectMethod) {
             throw codeFrameError(
               opts.code,
               directiveFn.node.loc,
-              `"${opts.directive}" in ${isClassMethod ? 'class' : isObjectMethod ? 'object method' : 'generator function'} not supported`,
+              `"${opts.directive}" in ${isClassMethod ? 'class' : isObjectMethod ? 'object method' : ''} not supported`,
             )
           }
 
@@ -571,6 +567,15 @@ const safeRemoveExports = (ast: babel.types.File) => {
         const insertIndex = programBody.findIndex(
           (node) => node === path.node.declaration,
         )
+        // do not remove export if it is an anonymous function / class, otherwise this would produce a syntax error
+        if (
+          babel.types.isFunctionDeclaration(path.node.declaration) ||
+          babel.types.isClassDeclaration(path.node.declaration)
+        ) {
+          if (!path.node.declaration.id) {
+            return
+          }
+        }
         programBody.splice(insertIndex, 0, path.node.declaration as any)
       }
     }

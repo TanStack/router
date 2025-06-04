@@ -50,22 +50,19 @@ test('when there is no loaders', () => {
     .parameter(0)
     .toHaveProperty('select')
     .parameter(0)
-    .toMatchTypeOf<{
-      loaderData?: {}
-    }>()
+    .toMatchTypeOf<undefined>()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/'>)
     .parameter(0)
     .toHaveProperty('select')
     .returns.toEqualTypeOf<unknown>()
 
-  expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
-
   expectTypeOf(
-    useLoaderData<DefaultRouter, '/', false>({
-      strict: false,
-    }),
-  ).toEqualTypeOf<{}>
+    useLoaderData<DefaultRouter, '/'>,
+  ).returns.toEqualTypeOf<undefined>()
+
+  expectTypeOf(useLoaderData<DefaultRouter, '/', false>({ strict: false }))
+    .toEqualTypeOf<undefined>
 })
 
 test('when there is one loader', () => {
@@ -120,7 +117,7 @@ test('when there is one loader', () => {
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{ data?: Array<string> }>()
+  ).returns.toEqualTypeOf<{ data?: Array<string> } | undefined>()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -184,7 +181,7 @@ test('when there is one loader that is async', () => {
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{ data?: Array<string> }>()
+  ).returns.toEqualTypeOf<{ data?: Array<string> } | undefined>()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -234,7 +231,9 @@ test('when there are multiple loaders', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
+  expectTypeOf(
+    useLoaderData<DefaultRouter, '/'>,
+  ).returns.toEqualTypeOf<undefined>()
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices'>,
@@ -249,12 +248,15 @@ test('when there are multiple loaders', () => {
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', false>,
-  ).returns.toEqualTypeOf<{
-    data?:
-      | readonly ['invoice1', 'invoice2']
-      | readonly ['post1', 'post2']
-      | undefined
-  }>()
+  ).returns.toEqualTypeOf<
+    | {
+        data?:
+          | readonly ['invoice1', 'invoice2']
+          | readonly ['post1', 'post2']
+          | undefined
+      }
+    | undefined
+  >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)
     .parameter(0)
@@ -265,12 +267,15 @@ test('when there are multiple loaders', () => {
     .parameter(0)
     .toHaveProperty('select')
     .parameter(0)
-    .toEqualTypeOf<{
-      data?:
-        | readonly ['invoice1', 'invoice2']
-        | readonly ['post1', 'post2']
-        | undefined
-    }>()
+    .toEqualTypeOf<
+      | {
+          data?:
+            | readonly ['invoice1', 'invoice2']
+            | readonly ['post1', 'post2']
+            | undefined
+        }
+      | undefined
+    >()
 
   expectTypeOf(
     useLoaderData<DefaultRouter, '/invoices', true, { func: () => void }>,
@@ -306,6 +311,7 @@ test('when there are multiple loaders', () => {
     .toHaveProperty('structuralSharing')
     .toEqualTypeOf<false | undefined>()
 
+  // eslint-disable-next-line unused-imports/no-unused-vars
   const routerWithStructuralSharing = createRouter({
     routeTree,
     defaultStructuralSharing: true,
@@ -382,7 +388,9 @@ test('when there are multiple loaders of objects and primtives', () => {
 
   type DefaultRouter = typeof defaultRouter
 
-  expectTypeOf(useLoaderData<DefaultRouter, '/'>).returns.toEqualTypeOf<{}>()
+  expectTypeOf(
+    useLoaderData<DefaultRouter, '/'>,
+  ).returns.toEqualTypeOf<undefined>()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices'>).returns.toEqualTypeOf<
     readonly ['invoice1', 'invoice2']
@@ -411,6 +419,7 @@ test('when there are multiple loaders of objects and primtives', () => {
             }
           | undefined
       }
+    | undefined
   >()
 
   expectTypeOf(useLoaderData<DefaultRouter, '/invoices', false>)
@@ -427,5 +436,6 @@ test('when there are multiple loaders of objects and primtives', () => {
               }
             | undefined
         }
+      | undefined
     >()
 })

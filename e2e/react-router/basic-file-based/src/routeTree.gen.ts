@@ -36,6 +36,7 @@ import { Route as RedirectPreloadFirstImport } from './routes/redirect/preload/f
 import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
 import { Route as RedirectTargetViaBeforeLoadImport } from './routes/redirect/$target/via-beforeLoad'
 import { Route as PostsPostIdEditImport } from './routes/posts_.$postId.edit'
+import { Route as ParamsSingleValueImport } from './routes/params.single.$value'
 import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as groupSubfolderInsideImport } from './routes/(group)/subfolder/inside'
@@ -188,6 +189,12 @@ const RedirectTargetViaBeforeLoadRoute =
 const PostsPostIdEditRoute = PostsPostIdEditImport.update({
   id: '/posts_/$postId/edit',
   path: '/posts/$postId/edit',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ParamsSingleValueRoute = ParamsSingleValueImport.update({
+  id: '/params/single/$value',
+  path: '/params/single/$value',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -366,6 +373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2LayoutBImport
       parentRoute: typeof LayoutLayout2Import
     }
+    '/params/single/$value': {
+      id: '/params/single/$value'
+      path: '/params/single/$value'
+      fullPath: '/params/single/$value'
+      preLoaderRoute: typeof ParamsSingleValueImport
+      parentRoute: typeof rootRoute
+    }
     '/posts_/$postId/edit': {
       id: '/posts_/$postId/edit'
       path: '/posts/$postId/edit'
@@ -520,6 +534,7 @@ export interface FileRoutesByFullPath {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
@@ -546,6 +561,7 @@ export interface FileRoutesByTo {
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
@@ -578,6 +594,7 @@ export interface FileRoutesById {
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params/single/$value': typeof ParamsSingleValueRoute
   '/posts_/$postId/edit': typeof PostsPostIdEditRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
   '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
@@ -608,6 +625,7 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/params/single/$value'
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
@@ -633,6 +651,7 @@ export interface FileRouteTypes {
     | '/subfolder/inside'
     | '/layout-a'
     | '/layout-b'
+    | '/params/single/$value'
     | '/posts/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
@@ -663,6 +682,7 @@ export interface FileRouteTypes {
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
+    | '/params/single/$value'
     | '/posts_/$postId/edit'
     | '/redirect/$target/via-beforeLoad'
     | '/redirect/$target/via-loader'
@@ -685,6 +705,7 @@ export interface RootRouteChildren {
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
+  ParamsSingleValueRoute: typeof ParamsSingleValueRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
   RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
   RedirectPreloadSecondRoute: typeof RedirectPreloadSecondRoute
@@ -703,6 +724,7 @@ const rootRouteChildren: RootRouteChildren = {
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
   RedirectIndexRoute: RedirectIndexRoute,
+  ParamsSingleValueRoute: ParamsSingleValueRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
   RedirectPreloadFirstRoute: RedirectPreloadFirstRoute,
   RedirectPreloadSecondRoute: RedirectPreloadSecondRoute,
@@ -730,6 +752,7 @@ export const routeTree = rootRoute
         "/redirect/$target",
         "/structural-sharing/$enabled",
         "/redirect/",
+        "/params/single/$value",
         "/posts_/$postId/edit",
         "/redirect/preload/first",
         "/redirect/preload/second",
@@ -833,6 +856,9 @@ export const routeTree = rootRoute
     "/_layout/_layout-2/layout-b": {
       "filePath": "_layout/_layout-2/layout-b.tsx",
       "parent": "/_layout/_layout-2"
+    },
+    "/params/single/$value": {
+      "filePath": "params.single.$value.tsx"
     },
     "/posts_/$postId/edit": {
       "filePath": "posts_.$postId.edit.tsx"

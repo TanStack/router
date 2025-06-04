@@ -1,4 +1,4 @@
-import { defineEventHandler, toWebRequest } from '@tanstack/start/server'
+import { defineEventHandler, toWebRequest } from '@tanstack/react-start/server'
 import { initTRPC } from '@trpc/server'
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
 
@@ -23,7 +23,7 @@ const appRouter = t.router({
     await new Promise((resolve) => setTimeout(resolve, 1000))
     return POSTS
   }),
-  post: t.procedure.validator(String).query(async (req) => {
+  post: t.procedure.input(String).query(async (req) => {
     await new Promise((resolve) => setTimeout(resolve, 500))
     return POSTS.find((p) => p.id === req.input)
   }),
@@ -33,6 +33,9 @@ export type AppRouter = typeof appRouter
 
 export default defineEventHandler((event) => {
   const request = toWebRequest(event)
+  if (!request) {
+    return new Response('No request', { status: 400 })
+  }
 
   return fetchRequestHandler({
     endpoint: '/trpc',

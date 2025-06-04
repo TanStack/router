@@ -1,7 +1,7 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { logDiff } from '@tanstack/router-utils'
 import { compileDirectives } from './compilers'
-import { logDiff } from './logger'
 import type { CompileDirectivesOpts, DirectiveFn } from './compilers'
 import type { Plugin } from 'vite'
 

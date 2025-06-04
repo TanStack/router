@@ -11,23 +11,23 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as PostsImport } from './routes/posts'
 import { Route as ErrorImport } from './routes/error'
+import { Route as PostsRouteImport } from './routes/posts/route'
 import { Route as IndexImport } from './routes/index'
 import { Route as PostsIndexImport } from './routes/posts/index'
 import { Route as PostsPostIdImport } from './routes/posts/$postId'
 
 // Create/Update Routes
 
-const PostsRoute = PostsImport.update({
-  id: '/posts',
-  path: '/posts',
-  getParentRoute: () => rootRoute,
-} as any)
-
 const ErrorRoute = ErrorImport.update({
   id: '/error',
   path: '/error',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const PostsRouteRoute = PostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -40,13 +40,13 @@ const IndexRoute = IndexImport.update({
 const PostsIndexRoute = PostsIndexImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => PostsRoute,
+  getParentRoute: () => PostsRouteRoute,
 } as any)
 
 const PostsPostIdRoute = PostsPostIdImport.update({
   id: '/$postId',
   path: '/$postId',
-  getParentRoute: () => PostsRoute,
+  getParentRoute: () => PostsRouteRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -60,6 +60,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRoute
+    }
     '/error': {
       id: '/error'
       path: '/error'
@@ -67,48 +74,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ErrorImport
       parentRoute: typeof rootRoute
     }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsImport
-      parentRoute: typeof rootRoute
-    }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdImport
-      parentRoute: typeof PostsImport
+      parentRoute: typeof PostsRouteImport
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
       preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsImport
+      parentRoute: typeof PostsRouteImport
     }
   }
 }
 
 // Create and export the route tree
 
-interface PostsRouteChildren {
+interface PostsRouteRouteChildren {
   PostsPostIdRoute: typeof PostsPostIdRoute
   PostsIndexRoute: typeof PostsIndexRoute
 }
 
-const PostsRouteChildren: PostsRouteChildren = {
+const PostsRouteRouteChildren: PostsRouteRouteChildren = {
   PostsPostIdRoute: PostsPostIdRoute,
   PostsIndexRoute: PostsIndexRoute,
 }
 
-const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
+const PostsRouteRouteWithChildren = PostsRouteRoute._addFileChildren(
+  PostsRouteRouteChildren,
+)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/posts': typeof PostsRouteRouteWithChildren
   '/error': typeof ErrorRoute
-  '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
 }
@@ -123,31 +125,31 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/posts': typeof PostsRouteRouteWithChildren
   '/error': typeof ErrorRoute
-  '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/error' | '/posts' | '/posts/$postId' | '/posts/'
+  fullPaths: '/' | '/posts' | '/error' | '/posts/$postId' | '/posts/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/error' | '/posts/$postId' | '/posts'
-  id: '__root__' | '/' | '/error' | '/posts' | '/posts/$postId' | '/posts/'
+  id: '__root__' | '/' | '/posts' | '/error' | '/posts/$postId' | '/posts/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PostsRouteRoute: typeof PostsRouteRouteWithChildren
   ErrorRoute: typeof ErrorRoute
-  PostsRoute: typeof PostsRouteWithChildren
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PostsRouteRoute: PostsRouteRouteWithChildren,
   ErrorRoute: ErrorRoute,
-  PostsRoute: PostsRouteWithChildren,
 }
 
 export const routeTree = rootRoute
@@ -161,22 +163,22 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
-        "/error",
-        "/posts"
+        "/posts",
+        "/error"
       ]
     },
     "/": {
       "filePath": "index.tsx"
     },
-    "/error": {
-      "filePath": "error.tsx"
-    },
     "/posts": {
-      "filePath": "posts.tsx",
+      "filePath": "posts/route.tsx",
       "children": [
         "/posts/$postId",
         "/posts/"
       ]
+    },
+    "/error": {
+      "filePath": "error.tsx"
     },
     "/posts/$postId": {
       "filePath": "posts/$postId.tsx",

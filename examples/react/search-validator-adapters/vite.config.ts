@@ -11,6 +11,8 @@ export default defineConfig({
     environment: 'jsdom',
     typecheck: { enabled: true },
   },
-  // TODO remove `any` when vitest supports vite 6
-  plugins: [TanStackRouterVite(), react() as any],
+  plugins: [
+    TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
+    react(),
+  ],
 })

@@ -1,6 +1,6 @@
-import { eventHandler, toWebRequest } from '@tanstack/start-server'
+import { eventHandler, toWebRequest } from '@tanstack/start-server-core'
 import vinxiFileRoutes from 'vinxi/routes'
-import type { ResolveParams } from '@tanstack/react-router'
+import type { ResolveParams } from '@tanstack/router-core'
 
 export type StartAPIHandlerCallback = (ctx: {
   request: Request

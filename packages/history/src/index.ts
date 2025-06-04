@@ -8,7 +8,7 @@ export interface NavigateOptions {
 
 type SubscriberHistoryAction =
   | {
-      type: HistoryAction
+      type: Exclude<HistoryAction, 'GO'>
     }
   | {
       type: 'GO'
@@ -301,6 +301,17 @@ export function createBrowserHistory(opts?: {
         win.history.state,
       ))
 
+  // Ensure there is always a key to start
+  if (!win.history.state?.key) {
+    win.history.replaceState(
+      {
+        [stateIndexKey]: 0,
+        key: createRandomKey(),
+      },
+      '',
+    )
+  }
+
   let currentLocation = parseLocation()
   let rollbackLocation: HistoryLocation | undefined
 
@@ -535,7 +546,13 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
   return createBrowserHistory({
     window: win,
     parseLocation: () => {
-      const hashHref = win.location.hash.split('#').slice(1).join('#') ?? '/'
+      const hashSplit = win.location.hash.split('#').slice(1)
+      const pathPart = hashSplit[0] ?? '/'
+      const searchPart = win.location.search
+      const hashEntries = hashSplit.slice(1)
+      const hashPart =
+        hashEntries.length === 0 ? '' : `#${hashEntries.join('#')}`
+      const hashHref = `${pathPart}${searchPart}${hashPart}`
       return parseHref(hashHref, win.history.state)
     },
     createHref: (href) =>
@@ -615,7 +632,7 @@ export function parseHref(
       searchIndex > -1
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
-    state: state || { [stateIndexKey]: 0 },
+    state: state || { [stateIndexKey]: 0, key: createRandomKey() },
   }
 }
 

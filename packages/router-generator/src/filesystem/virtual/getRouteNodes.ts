@@ -6,6 +6,7 @@ import {
   routePathToVariable,
 } from '../../utils'
 import { getRouteNodes as getRouteNodesPhysical } from '../physical/getRouteNodes'
+import { rootPathId } from '../physical/rootPathId'
 import { virtualRootRouteSchema } from './config'
 import { loadConfigFile } from './loadConfigFile'
 import type {
@@ -64,8 +65,8 @@ export async function getRouteNodes(
     filePath: virtualRouteConfig.file,
     fullPath: join(fullDir, virtualRouteConfig.file),
     variableName: 'rootRoute',
-    routePath: '/',
-    isRoot: true,
+    routePath: `/${rootPathId}`,
+    _fsRouteType: '__root',
   })
 
   const rootRouteNode = allNodes[0]
@@ -150,7 +151,7 @@ export async function getRouteNodesRecursive(
         return { filePath, variableName, fullPath }
       }
       const parentRoutePath = removeTrailingSlash(parent?.routePath ?? '/')
-      const isLayout = node.type === 'layout'
+
       switch (node.type) {
         case 'index': {
           const { filePath, variableName, fullPath } = getFile(node.file)
@@ -160,7 +161,7 @@ export async function getRouteNodesRecursive(
             fullPath,
             variableName,
             routePath,
-            isLayout,
+            _fsRouteType: 'static',
           } satisfies RouteNode
         }
 
@@ -176,7 +177,7 @@ export async function getRouteNodesRecursive(
               fullPath,
               variableName,
               routePath,
-              isLayout,
+              _fsRouteType: 'static',
             }
           } else {
             routeNode = {
@@ -184,8 +185,8 @@ export async function getRouteNodesRecursive(
               fullPath: '',
               variableName: routePathToVariable(routePath),
               routePath,
-              isLayout,
               isVirtual: true,
+              _fsRouteType: 'static',
             }
           }
 
@@ -198,6 +199,9 @@ export async function getRouteNodesRecursive(
               routeNode,
             )
             routeNode.children = children
+
+            // If the route has children, it should be a layout
+            routeNode._fsRouteType = 'layout'
           }
           return routeNode
         }
@@ -216,10 +220,10 @@ export async function getRouteNodesRecursive(
 
           const routeNode: RouteNode = {
             fullPath,
-            isLayout,
             filePath,
             variableName,
             routePath,
+            _fsRouteType: 'pathless_layout',
           }
 
           if (node.children !== undefined) {
