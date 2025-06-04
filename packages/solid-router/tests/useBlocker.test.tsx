@@ -428,17 +428,17 @@ describe('useBlocker', () => {
   test('<Block /> disabled property is reactive', async () => {
     const rootRoute = createRootRoute()
 
-    let _setDisabled: Setter<boolean> = null!;
+    let _setDisabled: Setter<boolean> = null!
 
     const IndexComponent = () => {
       const navigate = useNavigate()
 
       const [disabled, setDisabled] = createSignal(false)
-      _setDisabled = setDisabled;
+      _setDisabled = setDisabled
 
       return (
         <>
-          <Block shouldBlockFn={() => true } disabled={disabled()}/>
+          <Block shouldBlockFn={() => true} disabled={disabled()} />
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>

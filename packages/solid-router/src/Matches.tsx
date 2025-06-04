@@ -169,7 +169,7 @@ export function MatchRoute<
       {(_) => {
         const matchRoute = useMatchRoute()
         const params = matchRoute(props as any)() as boolean
-        const child = props.children;
+        const child = props.children
         if (typeof child === 'function') {
           return (child as any)(params)
         }
