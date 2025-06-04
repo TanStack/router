@@ -28,11 +28,13 @@ export function isNotFound(obj: any): obj is NotFoundError {
   return !!obj?.isNotFound
 }
 
+export const INVARIANT_SOURCE_NOT_FOUND = 'notFound'
+
 export function isVariantNotFoundError(error: any) {
   return (
     error &&
     typeof error === 'object' &&
     'invariantSource' in error &&
-    error.invariantSource === 'notFound'
+    error.invariantSource === INVARIANT_SOURCE_NOT_FOUND
   )
 }

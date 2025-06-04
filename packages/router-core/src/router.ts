@@ -24,7 +24,11 @@ import {
   trimPathLeft,
   trimPathRight,
 } from './path'
-import { isNotFound, isVariantNotFoundError } from './not-found'
+import {
+  INVARIANT_SOURCE_NOT_FOUND,
+  isNotFound,
+  isVariantNotFoundError,
+} from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
@@ -3099,7 +3103,7 @@ export class RouterCore<
         'No notFoundComponent found. Please set a notFoundComponent on your route or provide a defaultNotFoundComponent to the router.',
       )
     } catch (error) {
-      ;(error as any).invariantSource = 'notFound'
+      ;(error as any).invariantSource = INVARIANT_SOURCE_NOT_FOUND
       throw error
     }
 
