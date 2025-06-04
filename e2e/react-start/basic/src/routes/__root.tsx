@@ -87,7 +87,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <div className="flex gap-2 p-2 text-lg">
           <Link
             to="/"
             activeProps={{
@@ -153,6 +153,22 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             }}
           >
             This Route Does Not Exist
+          </Link>
+          <Link
+            to="/error-handling/via-beforeLoad"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Error Handling (beforeLoad)
+          </Link>
+          <Link
+            to="/error-handling/via-loader"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Error Handling (loader)
           </Link>
         </div>
         <hr />
