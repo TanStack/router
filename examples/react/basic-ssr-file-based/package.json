@@ -11,10 +11,10 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.120.15",
-    "@tanstack/react-router-devtools": "^1.120.15",
-    "@tanstack/router-plugin": "^1.120.15",
-    "@tanstack/react-start": "^1.120.15",
+    "@tanstack/react-router": "^1.120.16",
+    "@tanstack/react-router-devtools": "^1.120.16",
+    "@tanstack/router-plugin": "^1.120.16",
+    "@tanstack/react-start": "^1.120.16",
     "get-port": "^7.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
