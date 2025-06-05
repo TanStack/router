@@ -40,7 +40,7 @@
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "pnpm run build:lib && pnpm run build:llm",
     "build:lib": "vite build",
-    "build:llm": "node ../../scripts/llms-generate.mjs react-router && tsc -p ./llms/tsconfig.json"
+    "build:llm": "node ../../scripts/llms-generate.mjs react-router"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",
@@ -60,8 +60,12 @@
     "./package.json": "./package.json",
     "./llms": {
       "import": {
-        "types": "./dist/llms/index.d.ts",
-        "default": "./dist/llms/index.js"
+        "types": "./dist/llms/esm/index.d.ts",
+        "default": "./dist/llms/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/llms/cjs/index.d.cts",
+        "default": "./dist/llms/cjs/index.cjs"
       }
     }
   },

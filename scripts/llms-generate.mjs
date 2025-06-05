@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs'
 import path from 'node:path'
+import { execSync } from 'node:child_process'
 
 const DOCS_DIR = '../../docs'
 const LLMS_DIR = './llms'
@@ -138,7 +139,7 @@ export default rules
 fs.writeFileSync(indexFile, indexContent, 'utf-8')
 
 fs.writeFileSync(
-  path.join(LLMS_DIR, 'tsconfig.json'),
+  path.join(LLMS_DIR, 'tsconfig.esm.json'),
   JSON.stringify(
     {
       compilerOptions: {
@@ -147,7 +148,7 @@ fs.writeFileSync(
         target: 'ESNext',
         lib: ['ESNext', 'DOM'],
         declaration: true,
-        outDir: '../dist/llms',
+        outDir: '../dist/llms/esm',
       },
       include: ['./index.ts', './rules/*.ts'],
       exclude: ['node_modules', 'dist'],
@@ -157,3 +158,30 @@ fs.writeFileSync(
   ),
   'utf-8',
 )
+
+fs.writeFileSync(
+  path.join(LLMS_DIR, 'tsconfig.cjs.json'),
+  JSON.stringify(
+    {
+      compilerOptions: {
+        module: 'CommonJS',
+        moduleResolution: 'node',
+        target: 'ESNext',
+        lib: ['ESNext', 'DOM'],
+        declaration: true,
+        outDir: '../dist/llms/cjs',
+        allowSyntheticDefaultImports: false,
+      },
+      include: ['./index.ts', './rules/*.ts'],
+      exclude: ['node_modules', 'dist'],
+    },
+    null,
+    2,
+  ),
+  'utf-8',
+)
+
+execSync('tsc -p ./llms/tsconfig.cjs.json')
+execSync('tsc -p ./llms/tsconfig.esm.json')
+fs.renameSync('./dist/llms/cjs/index.d.ts', './dist/llms/cjs/index.d.cts')
+fs.renameSync('./dist/llms/cjs/index.js', './dist/llms/cjs/index.cjs')
