@@ -723,72 +723,74 @@ describe('encoding: URL path segment', () => {
   it.each([
     {
       input: '/path-segment/%C3%A9',
-      output: '/path-segment/é',
+      output: '/path-segment/%25C3%25A9',
       type: 'encoded',
     },
     {
       input: '/path-segment/é',
-      output: '/path-segment/é',
-      type: 'not encoded',
+      output: '/path-segment/%C3%A9',
+      type: 'encoded',
     },
     {
-      input: '/path-segment/100%25', // `%25` = `%`
-      output: '/path-segment/100%25',
-      type: 'not encoded',
+      input: '/path-segment/100%25',
+      output: '/path-segment/100%2525',
+      type: 'encoded',
     },
     {
       input: '/path-segment/100%25%25',
-      output: '/path-segment/100%25%25',
-      type: 'not encoded',
+      output: '/path-segment/100%2525%2525',
+      type: 'encoded',
     },
     {
-      input: '/path-segment/100%26', // `%26` = `&`
-      output: '/path-segment/100%26',
-      type: 'not encoded',
+      input: '/path-segment/100%26',
+      output: '/path-segment/100%2526',
+      type: 'encoded',
     },
     {
       input: '/path-segment/%F0%9F%9A%80',
-      output: '/path-segment/🚀',
+      output: '/path-segment/%25F0%259F%259A%2580',
       type: 'encoded',
     },
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon',
+      output: '/path-segment/%25F0%259F%259A%2580to%252Fthe%252Fmoon',
       type: 'encoded',
     },
     {
       input: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/%25🚀to%2Fthe%2Fmoon',
+      output: '/path-segment/%2525%25F0%259F%259A%2580to%252Fthe%252Fmoon',
       type: 'encoded',
     },
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon%25',
+      output: '/path-segment/%25F0%259F%259A%2580to%252Fthe%252Fmoon%2525',
       type: 'encoded',
     },
     {
       input:
         '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon%25🚀to%2Fthe%2Fmoon',
+      output:
+        '/path-segment/%25F0%259F%259A%2580to%252Fthe%252Fmoon%2525%25F0%259F%259A%2580to%252Fthe%252Fmoon',
       type: 'encoded',
     },
     {
       input: '/path-segment/🚀',
-      output: '/path-segment/🚀',
-      type: 'not encoded',
+      output: '/path-segment/%F0%9F%9A%80',
+      type: 'encoded',
     },
     {
       input: '/path-segment/🚀to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon',
-      type: 'not encoded',
+      output: '/path-segment/%F0%9F%9A%80to%252Fthe%252Fmoon',
+      type: 'encoded',
     },
   ])(
     'should resolve $input to $output when the path segment is $type',
     async ({ input, output }) => {
       const { router } = createTestRouter({
-        history: createMemoryHistory({ initialEntries: [input] }),
+        history: createMemoryHistory({
+          initialEntries: [input.split('/').map(encodeURIComponent).join('/')], // In browser, the path is encoded by default
+        }),
       })
-
       render(<RouterProvider router={router} />)
       await act(() => router.load())
 
