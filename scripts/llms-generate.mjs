@@ -1,11 +1,23 @@
 #!/usr/bin/env node
 import fs from 'node:fs'
 import path from 'node:path'
-import { execSync } from 'node:child_process'
+
+/*
+This script generates LLM rules in CJS and ESM formats in the dist/llms directory.
+
+It takes a package name as an argument and generates the rules for that package.
+
+We generate the files directly without compilation because we couldn't get TSC to generate the correct CJS format directly.
+We have to generate both the ESM version and the CJS version because our publint requires that we support both formats,
+even though the `vibe-rules` package only really supports CJS.
+*/
 
 const DOCS_DIR = '../../docs'
-const LLMS_DIR = './llms'
-const RULES_DIR = './llms/rules'
+
+const LLMS_DIR = './dist/llms'
+const ESM_DIR = './esm'
+const CJS_DIR = './cjs'
+const RULES_DIR = './rules'
 
 const packages = {
   'react-router': [
@@ -70,14 +82,19 @@ function extractFrontMatter(content) {
   return { frontMatter, bodyContent }
 }
 
-function convertMarkdownToTypeScript(markdownContent) {
-  const sanitizedContent = markdownContent
-    .replace(/`/g, '\\`')
-    .replace(/\$\{/g, '\\${')
-  return `const content = \`${sanitizedContent}\`;\n\nexport default content;\n`
+function sanitizeMarkdown(markdownContent) {
+  return markdownContent.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')
 }
 
-function mergeFiles(files, outputFile) {
+function convertMarkdownToTypeScriptESM(markdownContent) {
+  return `export default \`${sanitizeMarkdown(markdownContent)}\`;`
+}
+
+function convertMarkdownToTypeScriptCJS(markdownContent) {
+  return `module.exports = \`${sanitizeMarkdown(markdownContent)}\`;`
+}
+
+function mergeFiles(files, outputFile, esm = true) {
   let mergedContent = ''
   for (const file of files) {
     const content = fs.readFileSync(file, 'utf-8')
@@ -87,17 +104,23 @@ function mergeFiles(files, outputFile) {
   }
   fs.writeFileSync(
     outputFile,
-    convertMarkdownToTypeScript(mergedContent),
+    esm
+      ? convertMarkdownToTypeScriptESM(mergedContent)
+      : convertMarkdownToTypeScriptCJS(mergedContent),
     'utf-8',
   )
 }
 
-if (!fs.existsSync(RULES_DIR)) {
-  fs.mkdirSync(RULES_DIR, { recursive: true })
+if (!fs.existsSync(path.join(LLMS_DIR, ESM_DIR, RULES_DIR))) {
+  fs.mkdirSync(path.join(LLMS_DIR, ESM_DIR, RULES_DIR), { recursive: true })
+}
+if (!fs.existsSync(path.join(LLMS_DIR, CJS_DIR, RULES_DIR))) {
+  fs.mkdirSync(path.join(LLMS_DIR, CJS_DIR, RULES_DIR), { recursive: true })
 }
 
 // Create the rules files
-const imports = []
+const esm_imports = []
+const cjs_imports = []
 const rules = []
 for (const { paths, name, description, globs } of packages[pkg]) {
   const files = []
@@ -113,8 +136,28 @@ for (const { paths, name, description, globs } of packages[pkg]) {
       files.push(p)
     }
   }
-  mergeFiles(files.flat(), path.join(RULES_DIR, `${name}.ts`))
-  imports.push(`import ${camelCase(name)} from './rules/${name}.js'`)
+
+  // Create the ESM rule files
+  mergeFiles(
+    files.flat(),
+    path.join(LLMS_DIR, ESM_DIR, RULES_DIR, `${name}.js`),
+    true,
+  )
+
+  // Create the CJS rule files
+  mergeFiles(
+    files.flat(),
+    path.join(LLMS_DIR, CJS_DIR, RULES_DIR, `${name}.cjs`),
+    false,
+  )
+  fs.writeFileSync(
+    path.join(LLMS_DIR, CJS_DIR, RULES_DIR, `${name}.d.cts`),
+    '',
+    'utf-8',
+  )
+
+  esm_imports.push(`import ${camelCase(name)} from './rules/${name}.js'`)
+  cjs_imports.push(`const ${camelCase(name)} = require('./rules/${name}.cjs')`)
   rules.push(`{
   name: '${name}',
   description: '${description}',
@@ -124,64 +167,37 @@ for (const { paths, name, description, globs } of packages[pkg]) {
 }`)
 }
 
-// Create the index.ts file
-const indexFile = path.join(LLMS_DIR, 'index.ts')
-const indexContent = `${imports.join('\n')}
+// Create the ESM index.js file
+const indexFile = path.join(LLMS_DIR, ESM_DIR, 'index.js')
+const esm_indexContent = `${esm_imports.join('\n')}
 
-import type { PackageRuleItem } from 'vibe-rules'
-
-const rules: Array<PackageRuleItem> = [
+const rules = [
   ${rules.join(',\n')}
 ]
 
 export default rules
 `
-fs.writeFileSync(indexFile, indexContent, 'utf-8')
+fs.writeFileSync(indexFile, esm_indexContent, 'utf-8')
 
+// Create the ESM index.d.cts file
+const esm_dtsFile = path.join(LLMS_DIR, ESM_DIR, 'index.d.ts')
+const esm_dtsContent = `import type { PackageRuleItem } from 'vibe-rules';
+declare const rules: Array<PackageRuleItem>;
+export default rules;`
+fs.writeFileSync(esm_dtsFile, esm_dtsContent, 'utf-8')
+
+// Create the CJS index.cjs file
+const cjs_indexContent = `${cjs_imports.join('\n')}
+
+const rules = [
+  ${rules.join(',\n')}
+]
+
+module.exports = rules
+`
 fs.writeFileSync(
-  path.join(LLMS_DIR, 'tsconfig.esm.json'),
-  JSON.stringify(
-    {
-      compilerOptions: {
-        module: 'ESNext',
-        moduleResolution: 'bundler',
-        target: 'ESNext',
-        lib: ['ESNext', 'DOM'],
-        declaration: true,
-        outDir: '../dist/llms/esm',
-      },
-      include: ['./index.ts', './rules/*.ts'],
-      exclude: ['node_modules', 'dist'],
-    },
-    null,
-    2,
-  ),
+  path.join(LLMS_DIR, CJS_DIR, 'index.cjs'),
+  cjs_indexContent,
   'utf-8',
 )
-
-fs.writeFileSync(
-  path.join(LLMS_DIR, 'tsconfig.cjs.json'),
-  JSON.stringify(
-    {
-      compilerOptions: {
-        module: 'CommonJS',
-        moduleResolution: 'node',
-        target: 'ESNext',
-        lib: ['ESNext', 'DOM'],
-        declaration: true,
-        outDir: '../dist/llms/cjs',
-        allowSyntheticDefaultImports: false,
-      },
-      include: ['./index.ts', './rules/*.ts'],
-      exclude: ['node_modules', 'dist'],
-    },
-    null,
-    2,
-  ),
-  'utf-8',
-)
-
-execSync('tsc -p ./llms/tsconfig.cjs.json')
-execSync('tsc -p ./llms/tsconfig.esm.json')
-fs.renameSync('./dist/llms/cjs/index.d.ts', './dist/llms/cjs/index.d.cts')
-fs.renameSync('./dist/llms/cjs/index.js', './dist/llms/cjs/index.cjs')
+fs.writeFileSync(path.join(LLMS_DIR, CJS_DIR, 'index.d.cts'), '{}', 'utf-8')
