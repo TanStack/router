@@ -153,9 +153,7 @@ export function startRoutesManifestPlugin(
         Object.entries(routeTreeRoutes).forEach(([routeId, v]) => {
           const file =
             filesByRouteFilePath[
-              path
-                .join(routesDirectoryFromRoot, v.filePath as string)
-                .replaceAll('\\', '/')
+              path.posix.join(routesDirectoryFromRoot, v.filePath as string)
             ]
 
           if (file) {
