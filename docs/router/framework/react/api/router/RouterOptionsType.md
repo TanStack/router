@@ -121,7 +121,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Type: `number`
 - Optional
 - Defaults to `routerOptions.defaultGcTime`, which defaults to 30 minutes.
-- The default `preloadGcTime` a route should use if no preloadGcTime is provided.
+- The default `defaultPreloadGcTime` a route should use if no preloadGcTime is provided.
 
 ### `defaultGcTime` property
 
