@@ -7,6 +7,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  notFound,
 } from '../src'
 import type { ErrorComponentProps } from '../src'
 
@@ -130,3 +131,69 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
     })
   },
 )
+
+describe('notFoundComponent is rendered when an error is thrown in params.parse', () => {
+  test('displays notFoundComponent when error is thrown in params.parse', async () => {
+    const rootRoute = createRootRoute({
+      component: function Root() {
+        return <div>Root</div>
+      },
+      notFoundComponent: function NotFound() {
+        return <div>Not Found</div>
+      },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: function Home() {
+        return (
+          <div>
+            <Link to="/pizza/rotten">link to rotten pizza</Link>
+          </div>
+        )
+      },
+    })
+
+    const pizzaRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/pizza/:pizzaType',
+      component: function Pizza() {
+        return <div>Pizza</div>
+      },
+      params: {
+        parse: (p) => {
+          if (p.pizzaType === 'rotten') {
+            throw new Error('404 No rotten pizzas')
+          }
+          return { pizzaType: p.pizzaType }
+        },
+        stringify: (p) => ({ pizzaType: p.pizzaType }),
+      },
+      onError: () => {
+        throw notFound()
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, pizzaRoute])
+
+    const router = createRouter({
+      routeTree,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const linkToRottenPizza = await screen.findByRole('link', {
+      name: 'link to rotten pizza',
+    })
+
+    expect(linkToRottenPizza).toBeInTheDocument()
+    fireEvent.mouseOver(linkToRottenPizza)
+    fireEvent.click(linkToRottenPizza)
+
+    const notFoundComponent = await screen.findByText('Not Found', undefined, {
+      timeout: 750,
+    })
+    expect(notFoundComponent).toBeInTheDocument()
+  })
+})
