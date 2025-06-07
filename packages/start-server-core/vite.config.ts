@@ -2,6 +2,9 @@ import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/config/vite'
 import packageJson from './package.json'
 import minifyScriptPlugin from './vite-minify-plugin'
+// this needs to be imported from the actual file instead of from 'index.tsx'
+// so we don't trigger the import of a `?script-string` import before the minifyScriptPlugin is setup
+import { VIRTUAL_MODULES } from './src/virtual-modules'
 import type { ViteUserConfig } from 'vitest/config'
 
 const config = defineConfig({
@@ -19,10 +22,6 @@ export default mergeConfig(
   tanstackViteConfig({
     srcDir: './src',
     entry: './src/index.tsx',
-    externalDeps: [
-      'tanstack-start-server-fn-manifest:v',
-      'tanstack-start-router-manifest:v',
-      'tanstack-start-server-routes-manifest:v',
-    ],
+    externalDeps: [...Object.values(VIRTUAL_MODULES)],
   }),
 )
