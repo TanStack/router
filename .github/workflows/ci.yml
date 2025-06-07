@@ -16,7 +16,6 @@ concurrency:
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   SERVER_PRESET: 'node-server'
-  TSR_TMP_DIR: ${{ github.workspace }}/tmp
 
 permissions:
   contents: write
@@ -27,6 +26,8 @@ jobs:
     name: Test & Publish
     if: github.repository_owner == 'TanStack'
     runs-on: ubuntu-latest
+    env:
+      TSR_TMP_DIR: ${{ github.workspace }}/tmp
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
