@@ -422,7 +422,20 @@ export class RootRoute<
   TLoaderFn,
   TChildren,
   TFileRouteTypes
-> {
+  >
+  implements
+    RootRouteCore<
+      TSearchValidator,
+      TStateValidator,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+{
   /**
    * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
    */

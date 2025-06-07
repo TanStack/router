@@ -176,7 +176,7 @@ export class Route<
     >,
     in out TSearchValidator = undefined,
     in out TStateValidator = undefined,
-  in out TParams = ResolveParams<TPath>,
+    in out TParams = ResolveParams<TPath>,
     in out TRouterContext = AnyContext,
     in out TRouteContextFn = AnyContext,
     in out TBeforeLoadFn = AnyContext,
@@ -426,7 +426,7 @@ export class RootRoute<
   in out TLoaderFn = undefined,
   in out TChildren = unknown,
   in out TFileRouteTypes = unknown,
-> extends BaseRootRoute<
+  > extends BaseRootRoute<
   TSearchValidator,
   TStateValidator,
   TRouterContext,
@@ -436,7 +436,20 @@ export class RootRoute<
   TLoaderFn,
   TChildren,
   TFileRouteTypes
-> {
+  >
+  implements
+    RootRouteCore<
+      TSearchValidator,
+      TStateValidator,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+{
   /**
    * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.
    */
