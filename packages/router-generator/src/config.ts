@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { tmpdir } from 'node:os'
-import { existsSync, mkdir, mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import type { GeneratorPlugin } from './plugin/types'
