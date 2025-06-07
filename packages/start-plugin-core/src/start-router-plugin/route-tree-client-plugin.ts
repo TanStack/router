@@ -2,10 +2,10 @@ import path from 'node:path'
 import * as t from '@babel/types'
 import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { normalizePath } from 'vite'
+import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { debug } from '../debug'
 import type { Plugin } from 'vite'
 import type { Config } from '@tanstack/router-generator'
-import { deadCodeElimination } from 'babel-dead-code-elimination'
 
 /**
  * This removes the server part from the generated route tree so that it can be used on the client.

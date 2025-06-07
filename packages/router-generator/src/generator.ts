@@ -4,7 +4,6 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import crypto from 'node:crypto'
 import {
-  createControlledPromise,
   deepEqual,
   rootRouteId,
 } from '@tanstack/router-core'
@@ -47,7 +46,6 @@ import type {
   GeneratorPlugin,
   GeneratorPluginWithTransform,
 } from './plugin/types'
-import type { ControlledPromise } from '@tanstack/router-core'
 import type { TargetTemplate } from './template'
 import type {
   FsRouteType,

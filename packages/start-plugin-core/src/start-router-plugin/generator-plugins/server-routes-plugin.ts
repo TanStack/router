@@ -6,8 +6,8 @@ import {
 
 import type {
   GeneratorPluginWithTransform,
-  TransformImportsConfig,
   ImportDeclaration,
+  TransformImportsConfig,
 } from '@tanstack/router-generator'
 
 export function serverRoutesPlugin(): GeneratorPluginWithTransform {

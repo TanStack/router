@@ -1,4 +1,4 @@
-import { Manifest } from '@tanstack/router-core'
+import type { Manifest } from '@tanstack/router-core'
 
 /* eslint-disable no-var */
 declare global {

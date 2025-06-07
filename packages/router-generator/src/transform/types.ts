@@ -1,6 +1,6 @@
+import type { ImportDeclaration } from '../types'
 import type { types } from 'recast'
 import type { Config } from '../config'
-import { ImportDeclaration } from '../types'
 
 export interface TransformOptions {
   source: string

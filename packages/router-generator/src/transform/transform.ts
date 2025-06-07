@@ -1,14 +1,14 @@
 import { parseAst } from '@tanstack/router-utils'
 import { parse, print, types, visit } from 'recast'
 import { SourceMapConsumer } from 'source-map'
+import { mergeImportDeclarations } from '../utils'
+import type { ImportDeclaration } from '../types'
 import type { RawSourceMap } from 'source-map'
 import type {
   TransformOptions,
   TransformPlugin,
   TransformResult,
 } from './types'
-import { ImportDeclaration } from '../types'
-import { mergeImportDeclarations } from '../utils'
 
 const b = types.builders
 
