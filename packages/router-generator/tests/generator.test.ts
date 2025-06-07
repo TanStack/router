@@ -191,7 +191,7 @@ async function postprocess(folderName: string) {
               'utf-8',
             )
             await expect(text).toMatchFileSnapshot(
-              join('generator', folderName, 'snapshot', routeFile),
+              join('generator', folderName, 'snapshots', routeFile),
             )
           }),
       )
@@ -205,7 +205,7 @@ async function postprocess(folderName: string) {
           await expect(
             await fs.readFile(filePath, 'utf-8'),
           ).toMatchFileSnapshot(
-            join('generator', folderName, 'snapshot', relativePath),
+            join('generator', folderName, 'snapshots', relativePath),
           )
         }
       })
