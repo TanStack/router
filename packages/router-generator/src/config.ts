@@ -36,7 +36,6 @@ export const configSchema = baseConfigSchema.extend({
   disableTypes: z.boolean().optional().default(false),
   verboseFileRoutes: z.boolean().optional(),
   addExtensions: z.boolean().optional().default(false),
-  disableManifestGeneration: z.boolean().optional().default(false),
   enableRouteTreeFormatting: z.boolean().optional().default(true),
   routeTreeFileFooter: z.array(z.string()).optional().default([]),
   autoCodeSplitting: z.boolean().optional(),

@@ -24,7 +24,6 @@ The following options are available for configuring the file-based routing:
 - [`disableLogging`](#disablelogging)
 - [`routeTreeFileHeader`](#routetreefileheader)
 - [`routeTreeFileFooter`](#routetreefilefooter)
-- [`disableManifestGeneration`](#disablemanifestgeneration)
 - [`enableRouteTreeFormatting`](#enableroutetreeformatting)
 
 > [!WARNING]
@@ -186,14 +185,6 @@ By default, this value is set to:
 ```json
 []
 ```
-
-### `disableManifestGeneration`
-
-[TanStack Start](/start) leverages the `generatedRouteTree` file to also store a JSON tree which allows Start to easily traverse the available route tree to understand the routing structure of the application. This JSON tree is saved at the end of the generated route tree file.
-
-This option allows you to disable the generation of the manifest.
-
-By default, this value is set to `false`.
 
 ### `enableRouteTreeFormatting`
 

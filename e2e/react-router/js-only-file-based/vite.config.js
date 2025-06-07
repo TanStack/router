@@ -8,7 +8,6 @@ export default defineConfig({
     tanstackRouter({
       target: 'react',
       disableTypes: true,
-      disableManifestGeneration: true,
     }),
     react(),
   ],

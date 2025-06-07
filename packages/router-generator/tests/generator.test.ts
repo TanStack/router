@@ -69,9 +69,6 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.routeTreeFileHeader = ['// prepend1', '// prepend2']
       config.routeTreeFileFooter = ['// append1', '// append2']
       break
-    case 'no-manifest':
-      config.disableManifestGeneration = true
-      break
     case 'no-formatted-route-tree':
       config.enableRouteTreeFormatting = false
       break
