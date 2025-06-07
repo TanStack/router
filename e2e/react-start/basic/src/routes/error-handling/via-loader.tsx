@@ -1,5 +1,3 @@
-
-
 export const Route = createFileRoute({
   loader: async () => {
     throw new Error('Loader error in /error-handling/loader-error-handling')
