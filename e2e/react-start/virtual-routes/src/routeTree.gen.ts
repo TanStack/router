@@ -22,8 +22,6 @@ import { Route as ClassicHelloUniverseRouteImport } from './routes/file-based-su
 import { Route as bRouteImport } from './routes/b'
 import { Route as aRouteImport } from './routes/a'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const postsPostsRoute = postsPostsRouteImport.update({
   id: '/posts',
   path: '/posts',

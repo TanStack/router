@@ -19,8 +19,6 @@ import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.dee
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',

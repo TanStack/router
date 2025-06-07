@@ -20,8 +20,6 @@ import { Route as ProjectVersionDocsFrameworkFrameworkIndexRouteImport } from '.
 import { Route as ProjectVersionDocsFrameworkFrameworkSplatRouteImport } from './routes/$project.$version.docs.framework.$framework.$'
 import { Route as ProjectVersionDocsFrameworkFrameworkExamplesSplatRouteImport } from './routes/$project.$version.docs.framework.$framework.examples.$'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const LibraryRoute = LibraryRouteImport.update({
   id: '/_library',
   getParentRoute: () => rootRouteImport,

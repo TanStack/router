@@ -100,7 +100,7 @@ export function serverRoutesPlugin(): GeneratorPluginWithTransform {
         })
       }
       // don't add the import if there are no server routes defined
-      const hasMatchingRouteFiles = ctx.sortedRouteNodes.length > 0
+      const hasMatchingRouteFiles = ctx.acc.routeNodes.length > 0
       if (hasMatchingRouteFiles) {
         // needs a virtual root route
         if (!ctx.rootRouteNode.exports?.includes(EXPORT_NAME)) {

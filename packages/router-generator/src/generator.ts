@@ -454,11 +454,6 @@ export class Generator {
     }
 
     const buildRouteTreeForExport = (plugin: GeneratorPluginWithTransform) => {
-      const pluginConfig = plugin.config({
-        generator: this,
-        rootRouteNode,
-        sortedRouteNodes: preRouteNodes,
-      })
       const exportName = plugin.transformPlugin.exportName
       const acc: HandleNodeAccumulator = {
         routeTree: [],
@@ -477,6 +472,12 @@ export class Generator {
         (d) => (d.routePath?.endsWith(this.config.indexToken) ? -1 : 1),
         (d) => d,
       ])
+
+      const pluginConfig = plugin.config({
+        generator: this,
+        rootRouteNode,
+        sortedRouteNodes,
+      })
 
       const routeImports = sortedRouteNodes
         .filter((d) => !d.isVirtual)

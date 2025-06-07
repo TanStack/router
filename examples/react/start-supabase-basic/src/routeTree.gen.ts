@@ -18,8 +18,6 @@ import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
 import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.index'
 import { Route as AuthedPostsPostIdRouteImport } from './routes/_authed/posts.$postId'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',

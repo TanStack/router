@@ -14,8 +14,6 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const LogoutRoute = LogoutRouteImport.update({
   id: '/logout',
   path: '/logout',

@@ -12,8 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BoardsBoardIdRouteImport } from './routes/boards.$boardId'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',

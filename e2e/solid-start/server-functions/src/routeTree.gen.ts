@@ -25,8 +25,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const SubmitPostFormdataRoute = SubmitPostFormdataRouteImport.update({
   id: '/submit-post-formdata',
   path: '/submit-post-formdata',

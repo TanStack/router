@@ -14,8 +14,6 @@ import { Route as testsWithSearchRouteImport } from './routes/(tests)/with-searc
 import { Route as testsWithLoaderRouteImport } from './routes/(tests)/with-loader'
 import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',

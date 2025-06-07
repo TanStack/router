@@ -12,8 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',

@@ -19,8 +19,6 @@ import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.dee
 import { Route as PathlessLayoutNestedLayoutRouteBRouteImport } from './routes/_pathlessLayout/_nested-layout/route-b'
 import { Route as PathlessLayoutNestedLayoutRouteARouteImport } from './routes/_pathlessLayout/_nested-layout/route-a'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',

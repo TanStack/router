@@ -16,8 +16,6 @@ import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.ind
 import { Route as AuthedProfileSplatRouteImport } from './routes/_authed/profile.$'
 import { Route as AuthedPostsPostIdRouteImport } from './routes/_authed/posts.$postId'
 
-const rootServerRouteImport = createServerRootRoute()
-
 const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
