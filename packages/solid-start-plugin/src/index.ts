@@ -39,7 +39,7 @@ import { createRouter } from '${ctx.routerFilepath}';
 
 const router = createRouter();
 
-hydrate(() => <StartClient router={router} />, document.body);`
+hydrate(() => <StartClient router={router} />, document);`
         },
         getVirtualServerEntry(ctx) {
           return `
