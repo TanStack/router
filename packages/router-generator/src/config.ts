@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { tmpdir } from 'node:os'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, mkdir, mkdirSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import type { GeneratorPlugin } from './plugin/types'
@@ -122,10 +122,11 @@ export function getConfig(
   }
 
   const resolveTmpDir = (dir: string) => {
-    if (path.isAbsolute(dir)) {
-      return dir
+    if (!path.isAbsolute(dir)) {
+       dir = path.resolve(process.cwd(), dir)
     }
-    return path.resolve(process.cwd(), dir)
+    mkdirSync(dir, { recursive: true })
+    return dir
   }
 
   if (config.tmpDir) {
