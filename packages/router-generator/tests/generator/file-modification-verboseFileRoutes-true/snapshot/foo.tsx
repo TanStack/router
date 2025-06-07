@@ -1,12 +1,7 @@
 // @ts-nocheck
 
 import * as React from 'react'
-import {
-  ErrorComponent,
-  ErrorComponentProps,
-  Link,
-  createFileRoute,
-} from '@tanstack/react-router'
+import { ErrorComponent, ErrorComponentProps, Link, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/(test)/foo')({
   loader: async ({ params: { postId } }) => ({
