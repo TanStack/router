@@ -10,34 +10,28 @@
 
 import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
-// Import Routes
-
-import { Route as rootRoute } from './routes/__root'
 import { Route as ScriptDotjsRouteImport } from './routes/script[.]js'
 import { Route as NestedDotjsRouteImport } from './routes/nested[.]js'
 import { Route as NestedDotjsScriptDotjsRouteImport } from './routes/nested[.]js.script[.]js'
 import { Route as NestedDotjsDoubleDotextDotjsRouteImport } from './routes/nested[.]js.double[.]ext[.]js'
 
-// Create/Update Routes
+const rootRouteImport = createRooRoute()
 
 const ScriptDotjsRoute = ScriptDotjsRouteImport.update({
   id: '/script.js',
   path: '/script.js',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const NestedDotjsRoute = NestedDotjsRouteImport.update({
   id: '/nested.js',
   path: '/nested.js',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const NestedDotjsScriptDotjsRoute = NestedDotjsScriptDotjsRouteImport.update({
   id: '/script.js',
   path: '/script.js',
   getParentRoute: () => NestedDotjsRoute,
 } as any)
-
 const NestedDotjsDoubleDotextDotjsRoute =
   NestedDotjsDoubleDotextDotjsRouteImport.update({
     id: '/double.ext.js',
@@ -45,7 +39,50 @@ const NestedDotjsDoubleDotextDotjsRoute =
     getParentRoute: () => NestedDotjsRoute,
   } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/nested.js': typeof NestedDotjsRouteWithChildren
+  '/script.js': typeof ScriptDotjsRoute
+  '/nested.js/double.ext.js': typeof NestedDotjsDoubleDotextDotjsRoute
+  '/nested.js/script.js': typeof NestedDotjsScriptDotjsRoute
+}
+export interface FileRoutesByTo {
+  '/nested.js': typeof NestedDotjsRouteWithChildren
+  '/script.js': typeof ScriptDotjsRoute
+  '/nested.js/double.ext.js': typeof NestedDotjsDoubleDotextDotjsRoute
+  '/nested.js/script.js': typeof NestedDotjsScriptDotjsRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/nested.js': typeof NestedDotjsRouteWithChildren
+  '/script.js': typeof ScriptDotjsRoute
+  '/nested.js/double.ext.js': typeof NestedDotjsDoubleDotextDotjsRoute
+  '/nested.js/script.js': typeof NestedDotjsScriptDotjsRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/nested.js'
+    | '/script.js'
+    | '/nested.js/double.ext.js'
+    | '/nested.js/script.js'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/nested.js'
+    | '/script.js'
+    | '/nested.js/double.ext.js'
+    | '/nested.js/script.js'
+  id:
+    | '__root__'
+    | '/nested.js'
+    | '/script.js'
+    | '/nested.js/double.ext.js'
+    | '/nested.js/script.js'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  NestedDotjsRoute: typeof NestedDotjsRouteWithChildren
+  ScriptDotjsRoute: typeof ScriptDotjsRoute
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -54,33 +91,31 @@ declare module '@tanstack/react-router' {
       path: '/nested.js'
       fullPath: '/nested.js'
       preLoaderRoute: typeof NestedDotjsRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/script.js': {
       id: '/script.js'
       path: '/script.js'
       fullPath: '/script.js'
       preLoaderRoute: typeof ScriptDotjsRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/nested.js/double.ext.js': {
       id: '/nested.js/double.ext.js'
       path: '/double.ext.js'
       fullPath: '/nested.js/double.ext.js'
       preLoaderRoute: typeof NestedDotjsDoubleDotextDotjsRouteImport
-      parentRoute: typeof NestedDotjsRouteImport
+      parentRoute: typeof NestedDotjsRoute
     }
     '/nested.js/script.js': {
       id: '/nested.js/script.js'
       path: '/script.js'
       fullPath: '/nested.js/script.js'
       preLoaderRoute: typeof NestedDotjsScriptDotjsRouteImport
-      parentRoute: typeof NestedDotjsRouteImport
+      parentRoute: typeof NestedDotjsRoute
     }
   }
 }
-
-// Add type-safety to the createFileRoute function across the route tree
 
 declare module './routes/nested[.]js' {
   const createFileRoute: CreateFileRoute<
@@ -119,8 +154,6 @@ declare module './routes/nested[.]js.script[.]js' {
   >
 }
 
-// Create and export the route tree
-
 interface NestedDotjsRouteChildren {
   NestedDotjsDoubleDotextDotjsRoute: typeof NestedDotjsDoubleDotextDotjsRoute
   NestedDotjsScriptDotjsRoute: typeof NestedDotjsScriptDotjsRoute
@@ -135,92 +168,10 @@ const NestedDotjsRouteWithChildren = NestedDotjsRoute._addFileChildren(
   NestedDotjsRouteChildren,
 )
 
-export interface FileRoutesByFullPath {
-  '/nested.js': typeof NestedDotjsRouteWithChildren
-  '/script.js': typeof ScriptDotjsRoute
-  '/nested.js/double.ext.js': typeof NestedDotjsDoubleDotextDotjsRoute
-  '/nested.js/script.js': typeof NestedDotjsScriptDotjsRoute
-}
-
-export interface FileRoutesByTo {
-  '/nested.js': typeof NestedDotjsRouteWithChildren
-  '/script.js': typeof ScriptDotjsRoute
-  '/nested.js/double.ext.js': typeof NestedDotjsDoubleDotextDotjsRoute
-  '/nested.js/script.js': typeof NestedDotjsScriptDotjsRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/nested.js': typeof NestedDotjsRouteWithChildren
-  '/script.js': typeof ScriptDotjsRoute
-  '/nested.js/double.ext.js': typeof NestedDotjsDoubleDotextDotjsRoute
-  '/nested.js/script.js': typeof NestedDotjsScriptDotjsRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/nested.js'
-    | '/script.js'
-    | '/nested.js/double.ext.js'
-    | '/nested.js/script.js'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/nested.js'
-    | '/script.js'
-    | '/nested.js/double.ext.js'
-    | '/nested.js/script.js'
-  id:
-    | '__root__'
-    | '/nested.js'
-    | '/script.js'
-    | '/nested.js/double.ext.js'
-    | '/nested.js/script.js'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  NestedDotjsRoute: typeof NestedDotjsRouteWithChildren
-  ScriptDotjsRoute: typeof ScriptDotjsRoute
-}
-
 const rootRouteChildren: RootRouteChildren = {
   NestedDotjsRoute: NestedDotjsRouteWithChildren,
   ScriptDotjsRoute: ScriptDotjsRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/nested.js",
-        "/script.js"
-      ]
-    },
-    "/nested.js": {
-      "filePath": "nested[.]js.tsx",
-      "children": [
-        "/nested.js/double.ext.js",
-        "/nested.js/script.js"
-      ]
-    },
-    "/script.js": {
-      "filePath": "script[.]js.tsx"
-    },
-    "/nested.js/double.ext.js": {
-      "filePath": "nested[.]js.double[.]ext[.]js.tsx",
-      "parent": "/nested.js"
-    },
-    "/nested.js/script.js": {
-      "filePath": "nested[.]js.script[.]js.tsx",
-      "parent": "/nested.js"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

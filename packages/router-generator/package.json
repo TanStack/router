@@ -65,17 +65,16 @@
     "node": ">=12"
   },
   "dependencies": {
+    "@tanstack/router-core": "workspace:^",
+    "@tanstack/router-utils": "workspace:^",
     "@tanstack/virtual-file-routes": "workspace:^",
-    "tsx": "^4.19.2",
     "prettier": "^3.5.0",
+    "recast": "^0.23.11",
+    "source-map": "^0.7.4",
+    "tsx": "^4.19.2",
     "zod": "^3.24.2"
   },
-  "peerDependencies": {
+  "devDependencies": {
     "@tanstack/react-router": "workspace:^"
-  },
-  "peerDependenciesMeta": {
-    "@tanstack/react-router": {
-      "optional": true
-    }
   }
 }

@@ -74,6 +74,7 @@
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/router-utils": "workspace:^",
     "@tanstack/server-functions-plugin": "workspace:^",
+    "@tanstack/start-server-core": "workspace:^",
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
     "babel-dead-code-elimination": "^1.0.9",

@@ -72,7 +72,7 @@ export async function getRouteNodes(
     children,
     filePath: virtualRouteConfig.file,
     fullPath: join(fullDir, virtualRouteConfig.file),
-    variableName: 'rootRoute',
+    variableName: 'root',
     routePath: `/${rootPathId}`,
     _fsRouteType: '__root',
   })

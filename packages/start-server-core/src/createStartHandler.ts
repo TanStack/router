@@ -54,6 +54,8 @@ export function createStartHandler<TRouter extends AnyRouter>({
 }: {
   createRouter: () => TRouter
 }): CustomizeStartHandler<TRouter> {
+  let serverRouteTree: AnyServerRoute | undefined | null = null
+
   return (cb) => {
     const originalFetch = globalThis.fetch
 
@@ -106,9 +108,11 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
       const APP_BASE = process.env.TSS_APP_BASE || '/'
 
+      // TODO do not create a router instance before we need it
       // Create the client-side router
       const router = createRouter()
 
+      // TODO only build startRoutesManifest once, not per request
       // Attach the server-side SSR utils to the client-side router
       const startRoutesManifest = await getStartManifest({ basePath: APP_BASE })
       attachRouterServerSsrUtils(router, startRoutesManifest)
@@ -137,24 +141,21 @@ export function createStartHandler<TRouter extends AnyRouter>({
             return await handleServerAction({ request })
           }
 
-          // Then move on to attempting to load server routes
-          const serverRouteTreeModule = await (async () => {
+          if (serverRouteTree === null) {
             try {
-              return (await import(
-                // @ts-expect-error
-                'tanstack-start-server-routes-manifest:v'
-              )) as { routeTree: AnyServerRoute }
+              serverRouteTree = (
+                await loadVirtualModule(VIRTUAL_MODULES.routeTree)
+              ).serverRouteTree
             } catch (e) {
               console.log(e)
-              return undefined
             }
-          })()
+          }
 
           // If we have a server route tree, then we try matching to see if we have a
           // server route that matches the request.
-          if (serverRouteTreeModule) {
+          if (serverRouteTree) {
             const [_matchedRoutes, response] = await handleServerRoutes({
-              routeTree: serverRouteTreeModule.routeTree,
+              routeTree: serverRouteTree,
               request,
               basePath: APP_BASE,
             })
@@ -283,6 +284,7 @@ async function handleServerRoutes({
   request: Request
   basePath: string
 }) {
+  // TODO only process server route tree once, not per request
   const { flatRoutes, routesById, routesByPath } = processRouteTree({
     routeTree,
     initRoute: (route, i) => {
@@ -295,6 +297,7 @@ async function handleServerRoutes({
   const url = new URL(request.url)
   const pathname = url.pathname
 
+  // TODO history seems not to be needed, we can just use the pathname
   const history = createMemoryHistory({
     initialEntries: [pathname],
   })

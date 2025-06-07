@@ -9,7 +9,7 @@ import {
   rootRoute,
   route,
 } from '@tanstack/virtual-file-routes'
-import { generator, getConfig } from '../src'
+import { Generator, getConfig } from '../src'
 import type { Config } from '../src'
 
 function makeFolderDir(folder: string) {
@@ -40,14 +40,14 @@ async function traverseDirectory(
   }
 }
 
-async function setupConfig(
+function setupConfig(
   folder: string,
   inlineConfig: Partial<Omit<Config, 'routesDirectory'>> = {},
 ) {
   const { generatedRouteTree = '/routeTree.gen.ts', ...rest } = inlineConfig
   const dir = makeFolderDir(folder)
 
-  const config = await getConfig({
+  const config = getConfig({
     disableLogging: true,
     routesDirectory: dir + '/routes',
     generatedRouteTree: dir + generatedRouteTree,
@@ -125,70 +125,76 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         ].join(''),
       }
       break
+    case 'file-modification-verboseFileRoutes-true':
+      config.verboseFileRoutes = true
+      break
+    case 'file-modification-verboseFileRoutes-false':
+      config.verboseFileRoutes = false
+      break
     default:
       break
   }
 }
 
 async function preprocess(folderName: string) {
-  switch (folderName) {
-    case 'file-modification': {
-      const templatePath = join(makeFolderDir(folderName), 'template.tsx')
-      const lazyTemplatePath = join(
-        makeFolderDir(folderName),
-        'template.lazy.tsx',
-      )
+  if (folderName.startsWith('file-modification')) {
+    const templateVerbosePath = join(
+      makeFolderDir(folderName),
+      'template-verbose.tsx',
+    )
+    const templatePath = join(makeFolderDir(folderName), 'template.tsx')
+    const lazyTemplatePath = join(
+      makeFolderDir(folderName),
+      'template.lazy.tsx',
+    )
 
-      const makeRoutePath = (file: string) =>
-        join(makeFolderDir(folderName), 'routes', '(test)', file)
-      const makeEmptyFile = async (file: string) => {
-        const fh = await fs.open(makeRoutePath(file), 'w')
-        await fh.close()
-      }
-
-      await fs.copyFile(templatePath, makeRoutePath('foo.tsx'))
-      await fs.copyFile(lazyTemplatePath, makeRoutePath('initiallyLazy.tsx'))
-      await fs.copyFile(templatePath, makeRoutePath('bar.lazy.tsx'))
-      await makeEmptyFile('initiallyEmpty.tsx')
-      await makeEmptyFile('initiallyEmpty.lazy.tsx')
-      break
+    const makeRoutePath = (file: string) =>
+      join(makeFolderDir(folderName), 'routes', '(test)', file)
+    const makeEmptyFile = async (file: string) => {
+      const fh = await fs.open(makeRoutePath(file), 'w')
+      await fh.close()
     }
-    case 'custom-scaffolding': {
-      const makeEmptyFile = async (...file: Array<string>) => {
-        const filePath = join(makeFolderDir(folderName), 'routes', ...file)
-        const dir = dirname(filePath)
-        await fs.mkdir(dir, { recursive: true })
-        const fh = await fs.open(filePath, 'w')
-        await fh.close()
-      }
 
-      await makeEmptyFile('__root.tsx')
-      await makeEmptyFile('index.tsx')
-      await makeEmptyFile('foo.lazy.tsx')
-      await makeEmptyFile('api', 'bar.tsx')
-      break
+    await fs.copyFile(templateVerbosePath, makeRoutePath('foo.bar.tsx'))
+    await fs.copyFile(templatePath, makeRoutePath('foo.tsx'))
+    await fs.copyFile(lazyTemplatePath, makeRoutePath('initiallyLazy.tsx'))
+    await fs.copyFile(templatePath, makeRoutePath('bar.lazy.tsx'))
+    await makeEmptyFile('initiallyEmpty.tsx')
+    await makeEmptyFile('initiallyEmpty.lazy.tsx')
+  } else if (folderName === 'custom-scaffolding') {
+    const makeEmptyFile = async (...file: Array<string>) => {
+      const filePath = join(makeFolderDir(folderName), 'routes', ...file)
+      const dir = dirname(filePath)
+      await fs.mkdir(dir, { recursive: true })
+      const fh = await fs.open(filePath, 'w')
+      await fh.close()
     }
+
+    await makeEmptyFile('__root.tsx')
+    await makeEmptyFile('index.tsx')
+    await makeEmptyFile('foo.lazy.tsx')
+    await makeEmptyFile('api', 'bar.tsx')
   }
 }
 
 async function postprocess(folderName: string) {
   switch (folderName) {
-    case 'file-modification': {
-      const fooPath = join(
-        makeFolderDir(folderName),
-        'routes',
-        '(test)',
-        'foo.tsx',
-      )
-      const fooText = await fs.readFile(fooPath, 'utf-8')
+    case 'file-modification-verboseFileRoutes-false':
+    case 'file-modification-verboseFileRoutes-true': {
       const routeFiles = await readDir(folderName, 'routes', '(test)')
-      routeFiles
-        .filter((r) => r.endsWith('.tsx'))
-        .forEach(async (routeFile) => {
-          await expect(fooText).toMatchFileSnapshot(
-            join('generator', folderName, 'snapshot', routeFile),
-          )
-        })
+      await Promise.all(
+        routeFiles
+          .filter((r) => r.endsWith('.tsx'))
+          .map(async (routeFile) => {
+            const text = await fs.readFile(
+              join(makeFolderDir(folderName), 'routes', '(test)', routeFile),
+              'utf-8',
+            )
+            await expect(text).toMatchFileSnapshot(
+              join('generator', folderName, 'snapshot', routeFile),
+            )
+          }),
+      )
       break
     }
     case 'custom-scaffolding': {
@@ -227,13 +233,17 @@ describe('generator works', async () => {
       rewriteConfigByFolderName(folderName, config)
 
       await preprocess(folderName)
+      const generator = new Generator({ config, root: folderRoot })
       const error = shouldThrow(folderName)
       if (error) {
-        await expect(() => generator(config, folderRoot)).rejects.toThrowError(
-          error,
-        )
+        try {
+          await generator.run()
+        } catch (e) {
+          expect(e).toBeInstanceOf(Error)
+          expect((e as Error).message.startsWith(error)).toBeTruthy()
+        }
       } else {
-        await generator(config, folderRoot)
+        await generator.run()
 
         const generatedRouteTree = await getRouteTreeFileText(config)
 

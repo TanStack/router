@@ -7,7 +7,7 @@ import {
   Link,
 } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/foo/bar')({
   loader: async ({ params: { postId } }) => ({
     postId,
     title: 'title',
