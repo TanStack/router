@@ -16,6 +16,7 @@ concurrency:
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   SERVER_PRESET: 'node-server'
+  TSR_TMP_DIR: ${{ github.workspace }}/tmp
 
 permissions:
   contents: write
@@ -50,4 +51,3 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           TAG: ${{ inputs.tag }}
-          TSR_TMP_DIR: ${{ github.workspace }}/tmp
