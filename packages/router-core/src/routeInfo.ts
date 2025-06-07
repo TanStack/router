@@ -219,6 +219,16 @@ export type FullSearchSchemaInput<TRouteTree extends AnyRoute> =
     ? PartialMergeAll<TRoutes['types']['fullSearchSchemaInput']>
     : never
 
+export type FullStateSchema<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? PartialMergeAll<TRoutes['types']['fullStateSchema']>
+    : never
+
+export type FullStateSchemaInput<TRouteTree extends AnyRoute> =
+  ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
+    ? PartialMergeAll<TRoutes['types']['fullStateSchemaInput']>
+    : never
+
 export type AllParams<TRouteTree extends AnyRoute> =
   ParseRoute<TRouteTree> extends infer TRoutes extends AnyRoute
     ? PartialMergeAll<TRoutes['types']['allParams']>
