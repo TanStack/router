@@ -48,9 +48,36 @@ import type { LinkComponentRoute } from './link'
 
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
+    /**
+     * The content to be rendered when the route is matched.
+     *
+     * @default Outlet
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType#component-property)
+     */
     component?: RouteComponent
+    /**
+     * The content to be rendered when the route encounters an error.
+     *
+     * @default routerOptions.defaultErrorComponent
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType#errorcomponent-property)
+     * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionserrorcomponent)
+     */
     errorComponent?: false | null | ErrorRouteComponent
+    /**
+     * The default `notFoundComponent` a route should use if no notFound component is provided.
+     *
+     * @default routerOptions.defaultNotFoundComponent
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType#notfoundcomponent-property)
+     * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/not-found-errors#configuring-a-routes-notfoundcomponent)
+     */
     notFoundComponent?: NotFoundRouteComponent
+    /**
+     * The content to be rendered if and when the route is pending and has reached its pendingMs threshold.
+     *
+     * @default routerOptions.defaultPendingComponent
+     * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType#pendingcomponent-property)
+     * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#showing-a-pending-component)
+     */
     pendingComponent?: RouteComponent
   }
 

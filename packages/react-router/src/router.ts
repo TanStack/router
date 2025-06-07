@@ -27,7 +27,7 @@ declare module '@tanstack/router-core' {
      *
      * @default ErrorComponent
      * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaulterrorcomponent-property)
-     * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionserrorcomponent)
+     * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#using-the-default-errorcomponent)
      */
     defaultErrorComponent?: ErrorRouteComponent
     /**
