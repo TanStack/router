@@ -265,15 +265,25 @@ export class Generator {
           this.logger.info(
             `Generated route tree in ${Math.round(end - start)}ms`,
           )
-        } catch (err) {
-          if (isRerun(err)) {
-            this.fileEventQueue.push(err.event)
-            if (err.msg) {
-              this.logger.info(err.msg)
-            }
+        } catch (err: unknown) {
+          if (!Array.isArray(err)) {
+            err = [err]
+          }
+          const errArray = err as Array<unknown>
+          const recoverableErrors = errArray.filter((e) => isRerun(e))
+          if (recoverableErrors.length === errArray.length) {
+            this.fileEventQueue.push(...recoverableErrors.map((e) => e.event))
+            recoverableErrors.forEach((e) => {
+              if (e.msg) {
+                this.logger.info(e.msg)
+              }
+            })
           } else {
+            const unrecoverableErrors = errArray.filter((e) => !isRerun(e))
             this.runPromise = undefined
-            throw err
+            throw new Error(
+              unrecoverableErrors.map((e) => (e as Error)?.message).join(),
+            )
           }
         }
       } while (this.fileEventQueue.length)
@@ -325,14 +335,26 @@ export class Generator {
       (d) => d.routePath,
     ]).filter((d) => ![`/${rootPathId}`].includes(d.routePath || ''))
 
-    const routeFileResult = (
-      await Promise.all(
-        preRouteNodes
-          // only process routes that are backed by an actual file
-          .filter((n) => !n.isVirtualParentRoute && !n.isVirtual)
-          .map((n) => this.processRouteNodeFile(n)),
-      )
-    ).filter((result) => result !== null)
+    const routeFileAllResult = await Promise.allSettled(
+      preRouteNodes
+        // only process routes that are backed by an actual file
+        .filter((n) => !n.isVirtualParentRoute && !n.isVirtual)
+        .map((n) => this.processRouteNodeFile(n)),
+    )
+
+    const rejections = routeFileAllResult.filter(
+      (result) => result.status === 'rejected',
+    )
+    if (rejections.length > 0) {
+      throw rejections.map((e) => e.reason)
+    }
+
+    const routeFileResult = routeFileAllResult.flatMap((result) => {
+      if (result.status === 'fulfilled' && result.value !== null) {
+        return result.value
+      }
+      return []
+    })
 
     routeFileResult.forEach((result) => {
       if (!result.node.exports?.length) {
