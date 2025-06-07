@@ -3,10 +3,7 @@ import * as fsp from 'node:fs/promises'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import crypto from 'node:crypto'
-import {
-  deepEqual,
-  rootRouteId,
-} from '@tanstack/router-core'
+import { deepEqual, rootRouteId } from '@tanstack/router-core'
 import { logging } from './logger'
 import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
 import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
