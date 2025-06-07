@@ -10,7 +10,6 @@ concurrency:
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   SERVER_PRESET: 'node-server'
-  TSR_TMP_DIR: ${{ github.workspace }}/tmp
 
 permissions:
   contents: read
@@ -19,6 +18,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    env:
+      TSR_TMP_DIR: ${{ github.workspace }}/tmp
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -26,8 +27,8 @@ jobs:
           fetch-depth: 0
       - name: Debug env var
         run: |
-            echo "TSR_TMP_DIR: $TSR_TMP_DIR"
-            env | grep TSR_TMP_DIR
+          echo "TSR_TMP_DIR: $TSR_TMP_DIR"
+          env | grep TSR_TMP_DIR
       - name: Start Nx Agents
         run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
       - name: Setup Tools
