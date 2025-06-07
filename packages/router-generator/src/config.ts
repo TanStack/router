@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { tmpdir } from 'node:os'
 import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
@@ -52,6 +53,7 @@ export const configSchema = baseConfigSchema.extend({
     })
     .optional(),
   plugins: z.array(z.custom<GeneratorPlugin>()).optional(),
+  tmpDir: z.string().optional().default(''),
 })
 
 export type Config = z.infer<typeof configSchema>
@@ -118,6 +120,22 @@ export function getConfig(
       )
     }
   }
+
+  const resolveTmpDir = (dir: string) => {
+    if (path.isAbsolute(dir)) {
+      return dir
+    }
+    return path.resolve(process.cwd(), dir)
+  }
+
+  if (config.tmpDir) {
+    config.tmpDir = resolveTmpDir(config.tmpDir)
+  } else if (process.env.TSR_TMP_DIR) {
+    config.tmpDir = resolveTmpDir(process.env.TSR_TMP_DIR)
+  } else {
+    config.tmpDir = tmpdir()
+  }
+  
 
   validateConfig(config)
   return config

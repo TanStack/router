@@ -1,7 +1,6 @@
 import path from 'node:path'
 import * as fsp from 'node:fs/promises'
 import { mkdtempSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import crypto from 'node:crypto'
 import { deepEqual, rootRouteId } from '@tanstack/router-core'
 import { logging } from './logger'
@@ -178,7 +177,7 @@ export class Generator {
     this.logger = logging({ disabled: this.config.disableLogging })
     this.root = opts.root
     this.fs = opts.fs || DefaultFileSystem
-    this.tmpDir = this.fs.mkdtempSync(path.join(tmpdir(), 'tanstack-router-'))
+    this.tmpDir = this.fs.mkdtempSync(path.join(this.config.tmpDir, 'tanstack-router-'))
     this.generatedRouteTreePath = path.resolve(this.config.generatedRouteTree)
     this.targetTemplate = getTargetTemplate(this.config)
 

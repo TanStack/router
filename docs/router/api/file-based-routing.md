@@ -25,6 +25,8 @@ The following options are available for configuring the file-based routing:
 - [`routeTreeFileHeader`](#routetreefileheader)
 - [`routeTreeFileFooter`](#routetreefilefooter)
 - [`enableRouteTreeFormatting`](#enableroutetreeformatting)
+- [`tmpDir`](#tmpdir)
+
 
 > [!WARNING]
 > Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the **File Naming Conventions** guide, or you may run into unexpected behavior.
@@ -191,3 +193,12 @@ By default, this value is set to:
 This option turns on the formatting function on the generated route tree file, which can be time-consuming for large projects.
 
 By default, this value is set to `true`.
+
+### `tmpDir`
+
+Atomic file writes (route files and the generated route tree file) are implemented by creating a temporary file first and then renaming it to their actual location.
+
+This config option allows to configure the path of the temp directory that will be used for creating those temporary files.
+If it is a relative path, it will be resolved to the current working directory.
+If this value is not set, `process.env.TSR_TMP_DIR` will be used.
+If `process.env.TSR_TMP_DIR` is not set, it will default to `os.tmpdir()`.
