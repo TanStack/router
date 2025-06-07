@@ -266,11 +266,9 @@ export class Generator {
           this.logger.info(
             `Generated route tree in ${Math.round(end - start)}ms`,
           )
-        } catch (err: unknown) {
-          if (!Array.isArray(err)) {
-            err = [err]
-          }
-          const errArray = err as Array<unknown>
+        } catch (err) {
+          const errArray = !Array.isArray(err) ? [err] : err
+
           const recoverableErrors = errArray.filter((e) => isRerun(e))
           if (recoverableErrors.length === errArray.length) {
             this.fileEventQueue.push(...recoverableErrors.map((e) => e.event))
@@ -283,7 +281,7 @@ export class Generator {
             const unrecoverableErrors = errArray.filter((e) => !isRerun(e))
             this.runPromise = undefined
             throw new Error(
-              unrecoverableErrors.map((e) => (e as Error)?.message).join(),
+              unrecoverableErrors.map((e) => (e as Error).message).join(),
             )
           }
         }
