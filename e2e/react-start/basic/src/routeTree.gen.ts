@@ -33,6 +33,8 @@ import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
+import { Route as ErrorHandlingViaLoaderRouteImport } from './routes/error-handling/via-loader'
+import { Route as ErrorHandlingViaBeforeLoadRouteImport } from './routes/error-handling/via-beforeLoad'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
 import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
@@ -165,6 +167,19 @@ const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
   path: '/via-beforeLoad',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
+
+const ErrorHandlingViaLoaderRoute = ErrorHandlingViaLoaderRouteImport.update({
+  id: '/error-handling/via-loader',
+  path: '/error-handling/via-loader',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ErrorHandlingViaBeforeLoadRoute =
+  ErrorHandlingViaBeforeLoadRouteImport.update({
+    id: '/error-handling/via-beforeLoad',
+    path: '/error-handling/via-beforeLoad',
+    getParentRoute: () => rootRoute,
+  } as any)
 
 const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
@@ -333,6 +348,20 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRouteImport
+    }
+    '/error-handling/via-beforeLoad': {
+      id: '/error-handling/via-beforeLoad'
+      path: '/error-handling/via-beforeLoad'
+      fullPath: '/error-handling/via-beforeLoad'
+      preLoaderRoute: typeof ErrorHandlingViaBeforeLoadRouteImport
+      parentRoute: typeof rootRoute
+    }
+    '/error-handling/via-loader': {
+      id: '/error-handling/via-loader'
+      path: '/error-handling/via-loader'
+      fullPath: '/error-handling/via-loader'
+      preLoaderRoute: typeof ErrorHandlingViaLoaderRouteImport
+      parentRoute: typeof rootRoute
     }
     '/not-found/via-beforeLoad': {
       id: '/not-found/via-beforeLoad'
@@ -590,6 +619,24 @@ declare module './routes/_layout/_layout-2' {
     FileRoutesByPath['/_layout/_layout-2']['id'],
     FileRoutesByPath['/_layout/_layout-2']['path'],
     FileRoutesByPath['/_layout/_layout-2']['fullPath']
+  >
+}
+declare module './routes/error-handling/via-beforeLoad' {
+  const createFileRoute: CreateFileRoute<
+    '/error-handling/via-beforeLoad',
+    FileRoutesByPath['/error-handling/via-beforeLoad']['parentRoute'],
+    FileRoutesByPath['/error-handling/via-beforeLoad']['id'],
+    FileRoutesByPath['/error-handling/via-beforeLoad']['path'],
+    FileRoutesByPath['/error-handling/via-beforeLoad']['fullPath']
+  >
+}
+declare module './routes/error-handling/via-loader' {
+  const createFileRoute: CreateFileRoute<
+    '/error-handling/via-loader',
+    FileRoutesByPath['/error-handling/via-loader']['parentRoute'],
+    FileRoutesByPath['/error-handling/via-loader']['id'],
+    FileRoutesByPath['/error-handling/via-loader']['path'],
+    FileRoutesByPath['/error-handling/via-loader']['fullPath']
   >
 }
 declare module './routes/not-found/via-beforeLoad' {
@@ -911,6 +958,8 @@ export interface FileRoutesByFullPath {
   '/search-params': typeof SearchParamsRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
+  '/error-handling/via-beforeLoad': typeof ErrorHandlingViaBeforeLoadRoute
+  '/error-handling/via-loader': typeof ErrorHandlingViaLoaderRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -942,6 +991,8 @@ export interface FileRoutesByTo {
   '/scripts': typeof ScriptsRoute
   '/search-params': typeof SearchParamsRoute
   '/stream': typeof StreamRoute
+  '/error-handling/via-beforeLoad': typeof ErrorHandlingViaBeforeLoadRoute
+  '/error-handling/via-loader': typeof ErrorHandlingViaLoaderRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -976,6 +1027,8 @@ export interface FileRoutesById {
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/error-handling/via-beforeLoad': typeof ErrorHandlingViaBeforeLoadRoute
+  '/error-handling/via-loader': typeof ErrorHandlingViaLoaderRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -1013,6 +1066,8 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/stream'
     | '/users'
+    | '/error-handling/via-beforeLoad'
+    | '/error-handling/via-loader'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
@@ -1043,6 +1098,8 @@ export interface FileRouteTypes {
     | '/scripts'
     | '/search-params'
     | '/stream'
+    | '/error-handling/via-beforeLoad'
+    | '/error-handling/via-loader'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
@@ -1075,6 +1132,8 @@ export interface FileRouteTypes {
     | '/stream'
     | '/users'
     | '/_layout/_layout-2'
+    | '/error-handling/via-beforeLoad'
+    | '/error-handling/via-loader'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
@@ -1111,6 +1170,8 @@ export interface RootRouteChildren {
   SearchParamsRoute: typeof SearchParamsRoute
   StreamRoute: typeof StreamRoute
   UsersRoute: typeof UsersRouteWithChildren
+  ErrorHandlingViaBeforeLoadRoute: typeof ErrorHandlingViaBeforeLoadRoute
+  ErrorHandlingViaLoaderRoute: typeof ErrorHandlingViaLoaderRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   RedirectIndexRoute: typeof RedirectIndexRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
@@ -1128,6 +1189,8 @@ const rootRouteChildren: RootRouteChildren = {
   SearchParamsRoute: SearchParamsRoute,
   StreamRoute: StreamRoute,
   UsersRoute: UsersRouteWithChildren,
+  ErrorHandlingViaBeforeLoadRoute: ErrorHandlingViaBeforeLoadRoute,
+  ErrorHandlingViaLoaderRoute: ErrorHandlingViaLoaderRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   RedirectIndexRoute: RedirectIndexRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
@@ -1154,6 +1217,8 @@ export const routeTree = rootRoute
         "/search-params",
         "/stream",
         "/users",
+        "/error-handling/via-beforeLoad",
+        "/error-handling/via-loader",
         "/redirect/$target",
         "/redirect/",
         "/posts_/$postId/deep",
@@ -1213,6 +1278,12 @@ export const routeTree = rootRoute
         "/_layout/_layout-2/layout-a",
         "/_layout/_layout-2/layout-b"
       ]
+    },
+    "/error-handling/via-beforeLoad": {
+      "filePath": "error-handling/via-beforeLoad.tsx"
+    },
+    "/error-handling/via-loader": {
+      "filePath": "error-handling/via-loader.tsx"
     },
     "/not-found/via-beforeLoad": {
       "filePath": "not-found/via-beforeLoad.tsx",

@@ -154,6 +154,22 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             This Route Does Not Exist
           </Link>
+          <Link
+            to="/error-handling/via-beforeLoad"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Error Handling (beforeLoad)
+          </Link>
+          <Link
+            to="/error-handling/via-loader"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Error Handling (loader)
+          </Link>
         </div>
         <hr />
         {children}
