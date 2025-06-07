@@ -16,7 +16,7 @@ import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.ind
 import { Route as AuthedProfileSplatRouteImport } from './routes/_authed/profile.$'
 import { Route as AuthedPostsPostIdRouteImport } from './routes/_authed/posts.$postId'
 
-const rootServerRouteImport = createServerRoute()
+const rootServerRouteImport = createServerRootRoute()
 
 const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
@@ -91,20 +91,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
 }
-export interface FileServerRoutesByFullPath {}
-export interface FileServerRoutesByTo {}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: never
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: never
-  id: '__root__'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -149,52 +135,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/posts/'
       preLoaderRoute: typeof AuthedPostsIndexRouteImport
       parentRoute: typeof AuthedPostsRoute
-    }
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_authed': {
-      id: '/_authed'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_authed/posts': {
-      id: '/_authed/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_authed/posts/$postId': {
-      id: '/_authed/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_authed/profile/$': {
-      id: '/_authed/profile/$'
-      path: '/profile/$'
-      fullPath: '/profile/$'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_authed/posts/': {
-      id: '/_authed/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
     }
   }
 }

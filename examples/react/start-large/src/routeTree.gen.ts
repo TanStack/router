@@ -8,7 +8,7 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRoute } from '@tanstack/react-start/server'
+import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RelativeRouteImport } from './routes/relative'
@@ -23,7 +23,7 @@ import {
 } from './routes/search/searchPlaceholder'
 import { Route as ParamsParamsPlaceholderRouteImport } from './routes/params/$paramsPlaceholder'
 
-const rootServerRouteImport = createServerRoute()
+const rootServerRouteImport = createServerRootRoute()
 
 const RelativeRoute = RelativeRouteImport.update({
   id: '/relative',
@@ -221,66 +221,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/search/searchPlaceholder'
       preLoaderRoute: typeof SearchSearchPlaceholderRouteImport
       parentRoute: typeof SearchRouteRoute
-    }
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/params': {
-      id: '/params'
-      path: '/params'
-      fullPath: '/params'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/absolute': {
-      id: '/absolute'
-      path: '/absolute'
-      fullPath: '/absolute'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/linkProps': {
-      id: '/linkProps'
-      path: '/linkProps'
-      fullPath: '/linkProps'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/relative': {
-      id: '/relative'
-      path: '/relative'
-      fullPath: '/relative'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/params/$paramsPlaceholder': {
-      id: '/params/$paramsPlaceholder'
-      path: '/$paramsPlaceholder'
-      fullPath: '/params/$paramsPlaceholder'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/search/searchPlaceholder': {
-      id: '/search/searchPlaceholder'
-      path: '/searchPlaceholder'
-      fullPath: '/search/searchPlaceholder'
-      preLoaderRoute: typeof SearchSearchPlaceholderServerRouteImport
-      parentRoute: typeof rootServerRouteImport
     }
   }
 }

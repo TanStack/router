@@ -25,7 +25,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 
-const rootServerRouteImport = createServerRoute()
+const rootServerRouteImport = createServerRootRoute()
 
 const SubmitPostFormdataRoute = SubmitPostFormdataRouteImport.update({
   id: '/submit-post-formdata',
@@ -226,20 +226,6 @@ export interface RootRouteChildren {
   CookiesSetRoute: typeof CookiesSetRoute
   CookiesIndexRoute: typeof CookiesIndexRoute
 }
-export interface FileServerRoutesByFullPath {}
-export interface FileServerRoutesByTo {}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: never
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: never
-  id: '__root__'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -347,115 +333,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/cookies'
       preLoaderRoute: typeof CookiesIndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/abort-signal': {
-      id: '/abort-signal'
-      path: '/abort-signal'
-      fullPath: '/abort-signal'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/consistent': {
-      id: '/consistent'
-      path: '/consistent'
-      fullPath: '/consistent'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/dead-code-preserve': {
-      id: '/dead-code-preserve'
-      path: '/dead-code-preserve'
-      fullPath: '/dead-code-preserve'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/env-only': {
-      id: '/env-only'
-      path: '/env-only'
-      fullPath: '/env-only'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/headers': {
-      id: '/headers'
-      path: '/headers'
-      fullPath: '/headers'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/isomorphic-fns': {
-      id: '/isomorphic-fns'
-      path: '/isomorphic-fns'
-      fullPath: '/isomorphic-fns'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/multipart': {
-      id: '/multipart'
-      path: '/multipart'
-      fullPath: '/multipart'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/raw-response': {
-      id: '/raw-response'
-      path: '/raw-response'
-      fullPath: '/raw-response'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/return-null': {
-      id: '/return-null'
-      path: '/return-null'
-      fullPath: '/return-null'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/serialize-form-data': {
-      id: '/serialize-form-data'
-      path: '/serialize-form-data'
-      fullPath: '/serialize-form-data'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/submit-post-formdata': {
-      id: '/submit-post-formdata'
-      path: '/submit-post-formdata'
-      fullPath: '/submit-post-formdata'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/cookies/set': {
-      id: '/cookies/set'
-      path: '/cookies/set'
-      fullPath: '/cookies/set'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/cookies/': {
-      id: '/cookies/'
-      path: '/cookies'
-      fullPath: '/cookies'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
     }
   }
 }

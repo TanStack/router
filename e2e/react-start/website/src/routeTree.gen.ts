@@ -8,7 +8,7 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRoute } from '@tanstack/react-start/server'
+import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LibraryRouteImport } from './routes/_library'
@@ -23,7 +23,7 @@ import { Route as ProjectVersionDocsFrameworkFrameworkSplatRouteImport } from '.
 import { Route as ProjectVersionDocsFrameworkFrameworkExamplesSplatRouteImport } from './routes/$project.$version.docs.framework.$framework.examples.$'
 import { ServerRoute as ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRouteImport } from './routes/$project.$version.docs.framework.$framework.{$}[.]md'
 
-const rootServerRouteImport = createServerRoute()
+const rootServerRouteImport = createServerRootRoute()
 
 const LibraryRoute = LibraryRouteImport.update({
   id: '/_library',
@@ -262,87 +262,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/$project/$version/docs/framework/$framework/examples/$'
       preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRouteImport
       parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRoute
-    }
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/_library': {
-      id: '/_library'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_library/$project': {
-      id: '/_library/$project'
-      path: '/$project'
-      fullPath: '/$project'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/': {
-      id: '/$project/'
-      path: '/$project'
-      fullPath: '/$project'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_library/': {
-      id: '/_library/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/': {
-      id: '/$project/$version/docs/'
-      path: '/$project/$version/docs'
-      fullPath: '/$project/$version/docs'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_library/$project/$version/': {
-      id: '/_library/$project/$version/'
-      path: '/$version'
-      fullPath: '/$project/$version'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/framework/$framework': {
-      id: '/$project/$version/docs/framework/$framework'
-      path: '/$project/$version/docs/framework/$framework'
-      fullPath: '/$project/$version/docs/framework/$framework'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/framework/$framework/$': {
-      id: '/$project/$version/docs/framework/$framework/$'
-      path: '/$'
-      fullPath: '/$project/$version/docs/framework/$framework/$'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/framework/$framework/{$}.md': {
-      id: '/$project/$version/docs/framework/$framework/{$}.md'
-      path: '/$project/$version/docs/framework/$framework/{$}.md'
-      fullPath: '/$project/$version/docs/framework/$framework/{$}.md'
-      preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/framework/$framework/': {
-      id: '/$project/$version/docs/framework/$framework/'
-      path: '/'
-      fullPath: '/$project/$version/docs/framework/$framework/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/framework/$framework/examples/$': {
-      id: '/$project/$version/docs/framework/$framework/examples/$'
-      path: '/examples/$'
-      fullPath: '/$project/$version/docs/framework/$framework/examples/$'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
     }
   }
 }

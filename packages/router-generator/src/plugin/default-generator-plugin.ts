@@ -86,5 +86,12 @@ export function defaultGeneratorPlugin(): GeneratorPluginWithTransform {
     createRootRouteCode: () => `createRooRoute()`,
     createVirtualRouteCode: ({ node }) =>
       `createFileRoute('${node.routePath}')()`,
+    config: ({ sortedRouteNodes }) => {
+      const hasMatchingRouteFiles = sortedRouteNodes.length > 0
+      return {
+        fileRoutesByPathInterface: true,
+        virtualRootRoute: hasMatchingRouteFiles,
+      }
+    },
   }
 }

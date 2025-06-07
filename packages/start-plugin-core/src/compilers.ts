@@ -32,8 +32,17 @@ export function compileStartOutputFactory(
             serverOnly: IdentifierConfig
             clientOnly: IdentifierConfig
             createIsomorphicFn: IdentifierConfig
+            createServerRootRoute: IdentifierConfig
           } = {
-            // TODO we need to alias createServerRootRoute (and make the types only accept middleware)
+            createServerRootRoute: {
+              name: 'createServerRootRoute',
+              handleCallExpression:
+                handleCreateServerFileRouteCallExpressionFactory(
+                  framework,
+                  'createServerRootRoute',
+                ),
+              paths: [],
+            },
             createServerRoute: {
               name: 'createServerRoute',
               handleCallExpression:
@@ -183,7 +192,10 @@ export function compileStartOutputFactory(
 
 function handleCreateServerFileRouteCallExpressionFactory(
   factory: CompileStartFrameworkOptions,
-  method: 'createServerFileRoute' | 'createServerRoute',
+  method:
+    | 'createServerFileRoute'
+    | 'createServerRoute'
+    | 'createServerRootRoute',
 ) {
   return function handleCreateServerFileRouteCallExpression(
     path: babel.NodePath<t.CallExpression>,

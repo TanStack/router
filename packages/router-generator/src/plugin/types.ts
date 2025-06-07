@@ -39,6 +39,14 @@ export interface GeneratorPluginWithTransform extends GeneratorPluginBase {
   }) => string | undefined
   createRootRouteCode: () => string
   createVirtualRouteCode: (opts: { node: RouteNode }) => string
+  config: (opts: {
+    generator: Generator
+    rootRouteNode: RouteNode
+    sortedRouteNodes: Array<RouteNode>
+  }) => {
+    fileRoutesByPathInterface?: boolean
+    virtualRootRoute?: boolean
+  }
 }
 
 export {}

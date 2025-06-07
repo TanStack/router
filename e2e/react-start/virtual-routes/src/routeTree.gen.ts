@@ -22,7 +22,7 @@ import { Route as ClassicHelloUniverseRouteImport } from './routes/file-based-su
 import { Route as bRouteImport } from './routes/b'
 import { Route as aRouteImport } from './routes/a'
 
-const rootServerRouteImport = createServerRoute()
+const rootServerRouteImport = createServerRootRoute()
 
 const postsPostsRoute = postsPostsRouteImport.update({
   id: '/posts',
@@ -169,20 +169,6 @@ export interface RootRouteChildren {
   postsPostsRoute: typeof postsPostsRouteWithChildren
   ClassicHelloRouteRoute: typeof ClassicHelloRouteRouteWithChildren
 }
-export interface FileServerRoutesByFullPath {}
-export interface FileServerRoutesByTo {}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: never
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: never
-  id: '__root__'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -276,101 +262,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/route-without-file/layout-b'
       preLoaderRoute: typeof bRouteImport
       parentRoute: typeof layoutSecondLayoutRoute
-    }
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_first': {
-      id: '/_first'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/classic/hello': {
-      id: '/classic/hello'
-      path: '/classic/hello'
-      fullPath: '/classic/hello'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_first/_second-layout': {
-      id: '/_first/_second-layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_first/_second-layout/route-without-file': {
-      id: '/_first/_second-layout/route-without-file'
-      path: ''
-      fullPath: '/route-without-file'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/classic/hello/universe': {
-      id: '/classic/hello/universe'
-      path: '/universe'
-      fullPath: '/classic/hello/universe'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/classic/hello/world': {
-      id: '/classic/hello/world'
-      path: '/world'
-      fullPath: '/classic/hello/world'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/classic/hello/': {
-      id: '/classic/hello/'
-      path: '/'
-      fullPath: '/classic/hello/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_first/_second-layout/route-without-file/layout-a': {
-      id: '/_first/_second-layout/route-without-file/layout-a'
-      path: '/route-without-file/layout-a'
-      fullPath: '/route-without-file/layout-a'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_first/_second-layout/route-without-file/layout-b': {
-      id: '/_first/_second-layout/route-without-file/layout-b'
-      path: '/route-without-file/layout-b'
-      fullPath: '/route-without-file/layout-b'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
     }
   }
 }

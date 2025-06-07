@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
-const rootServerRouteImport = createServerRoute()
+const rootServerRouteImport = createServerRootRoute()
 
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
@@ -50,20 +50,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
 }
-export interface FileServerRoutesByFullPath {}
-export interface FileServerRoutesByTo {}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: never
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: never
-  id: '__root__'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {}
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
@@ -80,24 +66,6 @@ declare module '@tanstack/solid-router' {
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
-    }
-  }
-}
-declare module '@tanstack/solid-start/server' {
-  interface ServerFileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
     }
   }
 }

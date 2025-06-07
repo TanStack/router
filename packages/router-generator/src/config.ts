@@ -135,7 +135,6 @@ export function getConfig(
   } else {
     config.tmpDir = tmpdir()
   }
-  
 
   validateConfig(config)
   return config

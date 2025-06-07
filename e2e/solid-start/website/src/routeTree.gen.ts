@@ -20,7 +20,7 @@ import { Route as ProjectVersionDocsFrameworkFrameworkIndexRouteImport } from '.
 import { Route as ProjectVersionDocsFrameworkFrameworkSplatRouteImport } from './routes/$project.$version.docs.framework.$framework.$'
 import { Route as ProjectVersionDocsFrameworkFrameworkExamplesSplatRouteImport } from './routes/$project.$version.docs.framework.$framework.examples.$'
 
-const rootServerRouteImport = createServerRoute()
+const rootServerRouteImport = createServerRootRoute()
 
 const LibraryRoute = LibraryRouteImport.update({
   id: '/_library',
@@ -151,20 +151,6 @@ export interface RootRouteChildren {
   ProjectVersionDocsIndexRoute: typeof ProjectVersionDocsIndexRoute
   ProjectVersionDocsFrameworkFrameworkRoute: typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
 }
-export interface FileServerRoutesByFullPath {}
-export interface FileServerRoutesByTo {}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: never
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: never
-  id: '__root__'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {}
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
@@ -237,80 +223,6 @@ declare module '@tanstack/solid-router' {
       fullPath: '/$project/$version/docs/framework/$framework/examples/$'
       preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRouteImport
       parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRoute
-    }
-  }
-}
-declare module '@tanstack/solid-start/server' {
-  interface ServerFileRoutesByPath {
-    '/_library': {
-      id: '/_library'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_library/$project': {
-      id: '/_library/$project'
-      path: '/$project'
-      fullPath: '/$project'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/': {
-      id: '/$project/'
-      path: '/$project'
-      fullPath: '/$project'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_library/': {
-      id: '/_library/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/': {
-      id: '/$project/$version/docs/'
-      path: '/$project/$version/docs'
-      fullPath: '/$project/$version/docs'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/_library/$project/$version/': {
-      id: '/_library/$project/$version/'
-      path: '/$version'
-      fullPath: '/$project/$version'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/framework/$framework': {
-      id: '/$project/$version/docs/framework/$framework'
-      path: '/$project/$version/docs/framework/$framework'
-      fullPath: '/$project/$version/docs/framework/$framework'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/framework/$framework/$': {
-      id: '/$project/$version/docs/framework/$framework/$'
-      path: '/$'
-      fullPath: '/$project/$version/docs/framework/$framework/$'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/framework/$framework/': {
-      id: '/$project/$version/docs/framework/$framework/'
-      path: '/'
-      fullPath: '/$project/$version/docs/framework/$framework/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/$project/$version/docs/framework/$framework/examples/$': {
-      id: '/$project/$version/docs/framework/$framework/examples/$'
-      path: '/examples/$'
-      fullPath: '/$project/$version/docs/framework/$framework/examples/$'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
     }
   }
 }

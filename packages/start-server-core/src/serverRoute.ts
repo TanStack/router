@@ -182,6 +182,10 @@ export function createServerRoute<
   return route
 }
 
+// TODO this needs to be restricted to only allow middleware, no methods
+// TODO we also need to restrict pathless server routes to only allow middleware
+export const createServerRootRoute = createServerRoute
+
 export type ServerRouteAddFileChildrenFn<
   in out TParentRoute extends AnyServerRouteWithTypes,
   in out TId extends RouteConstraints['TId'],

@@ -177,7 +177,9 @@ export class Generator {
     this.logger = logging({ disabled: this.config.disableLogging })
     this.root = opts.root
     this.fs = opts.fs || DefaultFileSystem
-    this.tmpDir = this.fs.mkdtempSync(path.join(this.config.tmpDir, 'tanstack-router-'))
+    this.tmpDir = this.fs.mkdtempSync(
+      path.join(this.config.tmpDir, 'tanstack-router-'),
+    )
     this.generatedRouteTreePath = path.resolve(this.config.generatedRouteTree)
     this.targetTemplate = getTargetTemplate(this.config)
 
@@ -454,6 +456,11 @@ export class Generator {
     }
 
     const buildRouteTreeForExport = (plugin: GeneratorPluginWithTransform) => {
+      const pluginConfig = plugin.config({
+        generator: this,
+        rootRouteNode,
+        sortedRouteNodes: preRouteNodes,
+      })
       const exportName = plugin.transformPlugin.exportName
       const acc: HandleNodeAccumulator = {
         routeTree: [],
@@ -477,6 +484,9 @@ export class Generator {
         .filter((d) => !d.isVirtual)
         .flatMap((node) => getImportForRouteNode(node, exportName) ?? [])
 
+      const hasMatchingRouteFiles =
+        acc.routeNodes.length > 0 || rootRouteNode.exports?.includes(exportName)
+
       const virtualRouteNodes = sortedRouteNodes
         .filter((d) => d.isVirtual)
         .map((node) => {
@@ -484,7 +494,10 @@ export class Generator {
             node.variableName
           }${exportName}Import = ${plugin.createVirtualRouteCode({ node })}`
         })
-      if (!rootRouteNode.exports?.includes(exportName)) {
+      if (
+        !rootRouteNode.exports?.includes(exportName) &&
+        pluginConfig.virtualRootRoute
+      ) {
         virtualRouteNodes.unshift(
           `const ${rootRouteNode.variableName}${exportName}Import = ${plugin.createRootRouteCode()}`,
         )
@@ -585,9 +598,8 @@ export class Generator {
       })
 
       let fileRoutesByFullPathPerPlugin = ''
-      let fileRoutesByPathInterfacePerPlugin = ''
 
-      if (!this.config.disableTypes) {
+      if (!this.config.disableTypes && hasMatchingRouteFiles) {
         fileRoutesByFullPathPerPlugin = [
           `export interface File${exportName}sByFullPath {
 ${[...createRouteNodesByFullPath(acc.routeNodes).entries()].map(
@@ -619,7 +631,9 @@ file${exportName}sById: File${exportName}sById
 ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${getResolvedRouteNodeVariableName(child, exportName)}`).join(',')}
 }`,
         ].join('\n')
-
+      }
+      let fileRoutesByPathInterfacePerPlugin = ''
+      if (!this.config.disableTypes && pluginConfig.fileRoutesByPathInterface) {
         fileRoutesByPathInterfacePerPlugin = buildFileRoutesByPathInterface({
           ...plugin.moduleAugmentation({ generator: this }),
           routeNodes: preRouteNodes,
@@ -628,10 +642,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
       }
 
       let routeTree = ''
-      if (
-        acc.routeNodes.length > 0 ||
-        rootRouteNode.exports?.includes(exportName)
-      ) {
+      if (hasMatchingRouteFiles) {
         routeTree = [
           `const root${exportName}Children${this.config.disableTypes ? '' : `: Root${exportName}Children`} = {
   ${acc.routeTree

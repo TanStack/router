@@ -8,173 +8,129 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root';
-import { Route as LogoutRouteImport } from './routes/logout';
-import { Route as AuthenticatedRouteImport } from './routes/_authenticated';
-import { Route as IndexRouteImport } from './routes/index';
-import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account';
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as LogoutRouteImport } from './routes/logout'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 
-const rootServerRouteImport = createServerRoute();
+const rootServerRouteImport = createServerRootRoute()
 
 const LogoutRoute = LogoutRouteImport.update({
   id: '/logout',
   path: '/logout',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   id: '/account',
   path: '/account',
   getParentRoute: () => AuthenticatedRoute,
-} as any);
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute;
-  '': typeof AuthenticatedRouteWithChildren;
-  '/logout': typeof LogoutRoute;
-  '/account': typeof AuthenticatedAccountRoute;
+  '/': typeof IndexRoute
+  '': typeof AuthenticatedRouteWithChildren
+  '/logout': typeof LogoutRoute
+  '/account': typeof AuthenticatedAccountRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute;
-  '': typeof AuthenticatedRouteWithChildren;
-  '/logout': typeof LogoutRoute;
-  '/account': typeof AuthenticatedAccountRoute;
+  '/': typeof IndexRoute
+  '': typeof AuthenticatedRouteWithChildren
+  '/logout': typeof LogoutRoute
+  '/account': typeof AuthenticatedAccountRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  '/': typeof IndexRoute;
-  '/_authenticated': typeof AuthenticatedRouteWithChildren;
-  '/logout': typeof LogoutRoute;
-  '/_authenticated/account': typeof AuthenticatedAccountRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/logout': typeof LogoutRoute
+  '/_authenticated/account': typeof AuthenticatedAccountRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
-  fullPaths: '/' | '' | '/logout' | '/account';
-  fileRoutesByTo: FileRoutesByTo;
-  to: '/' | '' | '/logout' | '/account';
-  id: '__root__' | '/' | '/_authenticated' | '/logout' | '/_authenticated/account';
-  fileRoutesById: FileRoutesById;
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '' | '/logout' | '/account'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '' | '/logout' | '/account'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/logout'
+    | '/_authenticated/account'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren;
-  LogoutRoute: typeof LogoutRoute;
+  IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LogoutRoute: typeof LogoutRoute
 }
-export interface FileServerRoutesByFullPath {}
-export interface FileServerRoutesByTo {}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport;
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath;
-  fullPaths: never;
-  fileServerRoutesByTo: FileServerRoutesByTo;
-  to: never;
-  id: '__root__';
-  fileServerRoutesById: FileServerRoutesById;
-}
-export interface RootServerRouteChildren {}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
-      id: '/';
-      path: '/';
-      fullPath: '/';
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
-      id: '/_authenticated';
-      path: '';
-      fullPath: '';
-      preLoaderRoute: typeof AuthenticatedRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/_authenticated'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/logout': {
-      id: '/logout';
-      path: '/logout';
-      fullPath: '/logout';
-      preLoaderRoute: typeof LogoutRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+      id: '/logout'
+      path: '/logout'
+      fullPath: '/logout'
+      preLoaderRoute: typeof LogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/account': {
-      id: '/_authenticated/account';
-      path: '/account';
-      fullPath: '/account';
-      preLoaderRoute: typeof AuthenticatedAccountRouteImport;
-      parentRoute: typeof AuthenticatedRoute;
-    };
+      id: '/_authenticated/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AuthenticatedAccountRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/api/auth/callback': {
-      id: '/api/auth/callback';
-      path: '';
-      fullPath: '/api/auth/callback';
-      preLoaderRoute: unknown;
-      parentRoute: typeof rootRouteImport;
-    };
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/': {
-      id: '/';
-      path: '/';
-      fullPath: '/';
-      preLoaderRoute: unknown;
-      parentRoute: typeof rootServerRouteImport;
-    };
-    '/_authenticated': {
-      id: '/_authenticated';
-      path: '';
-      fullPath: '';
-      preLoaderRoute: unknown;
-      parentRoute: typeof rootServerRouteImport;
-    };
-    '/logout': {
-      id: '/logout';
-      path: '/logout';
-      fullPath: '/logout';
-      preLoaderRoute: unknown;
-      parentRoute: typeof rootServerRouteImport;
-    };
-    '/_authenticated/account': {
-      id: '/_authenticated/account';
-      path: '/account';
-      fullPath: '/account';
-      preLoaderRoute: unknown;
-      parentRoute: typeof rootServerRouteImport;
-    };
-    '/api/auth/callback': {
-      id: '/api/auth/callback';
-      path: '';
-      fullPath: '/api/auth/callback';
-      preLoaderRoute: unknown;
-      parentRoute: typeof rootServerRouteImport;
-    };
+      id: '/api/auth/callback'
+      path: ''
+      fullPath: '/api/auth/callback'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute;
+  AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
-};
+}
 
-const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(AuthenticatedRouteChildren);
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LogoutRoute: LogoutRoute,
-};
-export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>();
+}
+export const routeTree = rootRouteImport
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()

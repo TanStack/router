@@ -10,12 +10,13 @@ import type {
   TransformImportsConfig,
 } from '@tanstack/router-generator'
 
+const EXPORT_NAME = 'ServerRoute'
 export function serverRoutesPlugin(): GeneratorPluginWithTransform {
   return {
     name: 'server-routes-plugin',
     transformPlugin: {
       name: 'server-routes-transform',
-      exportName: 'ServerRoute',
+      exportName: EXPORT_NAME,
       imports: (ctx) => {
         const targetModule = `@tanstack/${ctx.target}-start/server`
         const imports: TransformImportsConfig = {}
@@ -79,7 +80,7 @@ export function serverRoutesPlugin(): GeneratorPluginWithTransform {
       interfaceName: 'ServerFileRoutesByPath',
     }),
     onRouteTreesChanged: ({ routeTrees, generator }) => {
-      const tree = routeTrees.find((tree) => tree.exportName === 'ServerRoute')
+      const tree = routeTrees.find((tree) => tree.exportName === EXPORT_NAME)
       if (tree) {
         checkRouteFullPathUniqueness(tree.sortedRouteNodes, generator.config)
       }
@@ -99,14 +100,12 @@ export function serverRoutesPlugin(): GeneratorPluginWithTransform {
         })
       }
       // don't add the import if there are no server routes defined
-      if (
-        ctx.sortedRouteNodes.some((node) =>
-          node.exports?.includes('ServerRoute'),
-        )
-      ) {
-        if (!ctx.rootRouteNode.exports?.includes('ServerRoute')) {
+      const hasMatchingRouteFiles = ctx.sortedRouteNodes.length > 0
+      if (hasMatchingRouteFiles) {
+        // needs a virtual root route
+        if (!ctx.rootRouteNode.exports?.includes(EXPORT_NAME)) {
           imports.push({
-            specifiers: [{ imported: 'createServerRoute' }],
+            specifiers: [{ imported: 'createServerRootRoute' }],
             source: targetModule,
           })
         }
@@ -114,6 +113,7 @@ export function serverRoutesPlugin(): GeneratorPluginWithTransform {
       return imports
     },
     routeModuleAugmentation: ({ routeNode }) => {
+      // server routes don't support lazy routes
       if (routeNode._fsRouteType === 'lazy') {
         return undefined
       }
@@ -125,8 +125,15 @@ export function serverRoutesPlugin(): GeneratorPluginWithTransform {
           ${hasChildWithExport(routeNode, 'ServerRoute') ? `${routeNode.variableName}ServerRouteChildren` : 'unknown'}
         >`
     },
-    createRootRouteCode: () => `createServerRoute()`,
+    createRootRouteCode: () => `createServerRootRoute()`,
     createVirtualRouteCode: ({ node }) =>
       `createServerFileRoute('${node.routePath}')`,
+    config: ({ generator, sortedRouteNodes }) => {
+      const hasMatchingRouteFiles = sortedRouteNodes.length > 0
+      return {
+        fileRoutesByPathInterface: generator.config.verboseFileRoutes === false,
+        virtualRootRoute: hasMatchingRouteFiles,
+      }
+    },
   }
 }

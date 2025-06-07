@@ -14,7 +14,7 @@ import { Route as testsWithSearchRouteImport } from './routes/(tests)/with-searc
 import { Route as testsWithLoaderRouteImport } from './routes/(tests)/with-loader'
 import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
 
-const rootServerRouteImport = createServerRoute()
+const rootServerRouteImport = createServerRootRoute()
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -75,20 +75,6 @@ export interface RootRouteChildren {
   testsWithLoaderRoute: typeof testsWithLoaderRoute
   testsWithSearchRoute: typeof testsWithSearchRoute
 }
-export interface FileServerRoutesByFullPath {}
-export interface FileServerRoutesByTo {}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: never
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: never
-  id: '__root__'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {}
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
@@ -119,38 +105,6 @@ declare module '@tanstack/solid-router' {
       fullPath: '/with-search'
       preLoaderRoute: typeof testsWithSearchRouteImport
       parentRoute: typeof rootRouteImport
-    }
-  }
-}
-declare module '@tanstack/solid-start/server' {
-  interface ServerFileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/(tests)/normal-page': {
-      id: '/(tests)/normal-page'
-      path: '/normal-page'
-      fullPath: '/normal-page'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/(tests)/with-loader': {
-      id: '/(tests)/with-loader'
-      path: '/with-loader'
-      fullPath: '/with-loader'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/(tests)/with-search': {
-      id: '/(tests)/with-search'
-      path: '/with-search'
-      fullPath: '/with-search'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
     }
   }
 }

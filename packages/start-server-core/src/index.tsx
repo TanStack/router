@@ -18,7 +18,11 @@ export { handleServerAction } from './server-functions-handler'
 
 export * from './h3'
 
-export { createServerRoute, createServerFileRoute } from './serverRoute'
+export {
+  createServerRoute,
+  createServerFileRoute,
+  createServerRootRoute,
+} from './serverRoute'
 export type {
   CreateServerFileRoute,
   ServerFileRoutesByPath,

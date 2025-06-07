@@ -27,7 +27,6 @@ The following options are available for configuring the file-based routing:
 - [`enableRouteTreeFormatting`](#enableroutetreeformatting)
 - [`tmpDir`](#tmpdir)
 
-
 > [!WARNING]
 > Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the **File Naming Conventions** guide, or you may run into unexpected behavior.
 
