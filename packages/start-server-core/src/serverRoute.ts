@@ -13,21 +13,22 @@ import type {
 } from '@tanstack/start-client-core'
 
 export function createServerFileRoute<
-  TFilePath extends keyof FileRoutesByPath,
+  TFilePath extends keyof ServerFileRoutesByPath,
   TParentRoute extends
-    AnyServerRouteWithTypes = FileRoutesByPath[TFilePath]['parentRoute'],
-  TId extends RouteConstraints['TId'] = FileRoutesByPath[TFilePath]['id'],
-  TPath extends RouteConstraints['TPath'] = FileRoutesByPath[TFilePath]['path'],
+    AnyServerRouteWithTypes = ServerFileRoutesByPath[TFilePath]['parentRoute'],
+  TId extends RouteConstraints['TId'] = ServerFileRoutesByPath[TFilePath]['id'],
+  TPath extends
+    RouteConstraints['TPath'] = ServerFileRoutesByPath[TFilePath]['path'],
   TFullPath extends
-    RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
-  TChildren = FileRoutesByPath[TFilePath]['children'],
+    RouteConstraints['TFullPath'] = ServerFileRoutesByPath[TFilePath]['fullPath'],
+  TChildren = ServerFileRoutesByPath[TFilePath]['children'],
 >(_: TFilePath): ServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren> {
   return createServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren>(
     undefined,
   )
 }
 
-export interface FileRoutesByPath {}
+export interface ServerFileRoutesByPath {}
 
 export interface ServerRouteOptions<
   TParentRoute extends AnyServerRouteWithTypes,
