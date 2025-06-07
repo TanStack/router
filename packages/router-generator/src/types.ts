@@ -12,6 +12,8 @@ export type RouteNode = {
   isVirtual?: boolean
   children?: Array<RouteNode>
   parent?: RouteNode
+  isVirtualRedirectIndex?: boolean
+  redirectTo?: string
 }
 
 export interface GetRouteNodesResult {
