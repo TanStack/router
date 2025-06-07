@@ -50,3 +50,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           TAG: ${{ inputs.tag }}
+          TSR_TMP_DIR: ${{ github.workspace }}/tmp
