@@ -1,4 +1,4 @@
-import { ErrorComponent } from '@tanstack/react-router'
+import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
 import axios from 'redaxios'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
@@ -6,7 +6,7 @@ import type { User } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
 import { basepath } from '~/utils/basepath'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
     return await axios
       .get<User>(basepath + '/api/users/' + userId)

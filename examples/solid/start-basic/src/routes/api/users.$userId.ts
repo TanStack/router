@@ -1,7 +1,8 @@
+import { createServerFileRoute } from '@tanstack/solid-start/server'
 import { json } from '@tanstack/solid-start'
 import type { User } from '~/utils/users'
 
-export const ServerRoute = createServerFileRoute().methods({
+export const ServerRoute = createServerFileRoute('/api/users/$userId').methods({
   GET: async ({ params, request }) => {
     console.info(`Fetching users by id=${params.userId}... @`, request.url)
     try {

@@ -1,6 +1,7 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/submit-post-formdata')({
   component: SubmitPostFormDataFn,
 })
 

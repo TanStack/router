@@ -1,6 +1,7 @@
+import { createFileRoute } from '@tanstack/react-router'
 import Counter from '~/components/Counter'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/about')({
   component: RouteComponent,
 })
 

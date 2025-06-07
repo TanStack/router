@@ -1,11 +1,11 @@
-import { ErrorComponent, Link } from '@tanstack/react-router'
+import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
 import { postQueryOptions } from '~/utils/posts'
 import { NotFound } from '~/components/NotFound'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId }, context }) => {
     const data = await context.queryClient.ensureQueryData(
       postQueryOptions(postId),

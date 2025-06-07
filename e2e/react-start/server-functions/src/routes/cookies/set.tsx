@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { setCookie } from '@tanstack/react-start/server'
 import { z } from 'zod'
@@ -6,7 +7,7 @@ import React, { useEffect } from 'react'
 
 const cookieSchema = z.object({ value: z.string() })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/cookies/set')({
   validateSearch: cookieSchema,
   loaderDeps: ({ search }) => search,
   loader: async ({ deps }) => {

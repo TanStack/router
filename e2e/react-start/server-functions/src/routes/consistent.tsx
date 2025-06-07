@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { createServerFn } from '@tanstack/react-start'
 
@@ -9,7 +10,7 @@ import { createServerFn } from '@tanstack/react-start'
  * @link https://github.com/TanStack/router/issues/2481
  */
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/consistent')({
   component: ConsistentServerFnCalls,
   loader: async () => {
     const data = await cons_serverGetFn1({ data: { username: 'TEST' } })

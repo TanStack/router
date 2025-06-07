@@ -1,10 +1,11 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import axios from 'redaxios'
 
 import type { User } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
 import { UserErrorComponent } from '~/components/UserErrorComponent'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
     return await axios
       .get<User>('/api/users/' + userId)

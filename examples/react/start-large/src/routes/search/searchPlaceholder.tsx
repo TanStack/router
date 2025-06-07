@@ -1,4 +1,5 @@
-import { Link } from '@tanstack/react-router'
+import { createServerFileRoute } from '@tanstack/react-start/server'
+import { Link, createFileRoute } from '@tanstack/react-router'
 
 import * as v from 'valibot'
 import { queryOptions } from '@tanstack/react-query'
@@ -42,13 +43,15 @@ const fn = createServerFn()
     return result
   })
 
-export const ServerRoute = createServerFileRoute().methods((api) => ({
+export const ServerRoute = createServerFileRoute(
+  '/search/searchPlaceholder',
+).methods((api) => ({
   GET: api.handler(() => {
     return 'searchPlaceholder'
   }),
 }))
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/search/searchPlaceholder')({
   component: SearchComponent,
   validateSearch: search,
   loaderDeps: ({ search }) => ({ search }),

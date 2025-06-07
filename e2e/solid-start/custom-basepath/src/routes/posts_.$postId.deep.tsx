@@ -1,9 +1,9 @@
-import { Link } from '@tanstack/solid-router'
+import { Link, createFileRoute } from '@tanstack/solid-router'
 import { PostErrorComponent } from '~/components/PostErrorComponent'
 
 import { fetchPost } from '~/utils/posts'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts_/$postId/deep')({
   loader: async ({ params: { postId } }) => fetchPost({ data: postId }),
   errorComponent: PostErrorComponent,
   component: PostDeepComponent,

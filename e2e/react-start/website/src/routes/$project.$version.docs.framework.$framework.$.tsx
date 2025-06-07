@@ -1,10 +1,16 @@
-import { ErrorComponent, useLocation } from '@tanstack/react-router'
+import {
+  ErrorComponent,
+  useLocation,
+  createFileRoute,
+} from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { NotFound } from '~/components/NotFound'
 import { getDocument } from '~/server/document'
 import { capitalize, seo } from '~/utils/seo'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute(
+  '/$project/$version/docs/framework/$framework/$',
+)({
   loader: ({ params: { _splat } }) =>
     getDocument({
       data: _splat!,
