@@ -1,6 +1,8 @@
-import { redirect } from '@tanstack/solid-router'
+import { redirect, createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute(
+  '/$project/$version/docs/framework/$framework/',
+)({
   beforeLoad: () => {
     throw redirect({
       from: '/$project/$version/docs/framework/$framework/',

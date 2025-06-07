@@ -1,9 +1,6 @@
 import { joinPaths, rootRouteId } from '@tanstack/router-core'
-
-declare global {
-  // eslint-disable-next-line no-var
-  var TSS_INJECTED_HEAD_SCRIPTS: string | undefined
-}
+import { VIRTUAL_MODULES } from './virtual-modules'
+import { loadVirtualModule } from './loadVirtualModule'
 
 /**
  * @description Returns the router manifest that should be sent to the client.
@@ -12,7 +9,9 @@ declare global {
  * between routes or any other data that is not needed for the client.
  */
 export async function getStartManifest(opts: { basePath: string }) {
-  const { tsrStartManifest } = await import('tanstack-start-router-manifest:v')
+  const { tsrStartManifest } = await loadVirtualModule(
+    VIRTUAL_MODULES.startManifest,
+  )
   const startManifest = tsrStartManifest()
 
   const rootRoute = (startManifest.routes[rootRouteId] =

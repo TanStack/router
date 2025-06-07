@@ -2,13 +2,13 @@ import path from 'node:path'
 import * as fsp from 'node:fs/promises'
 import {
   determineInitialRoutePath,
-  logging,
   removeExt,
   replaceBackslash,
   routePathToVariable,
 } from '../../utils'
 import { getRouteNodes as getRouteNodesVirtual } from '../virtual/getRouteNodes'
 import { loadConfigFile } from '../virtual/loadConfigFile'
+import { logging } from '../../logger'
 import { rootPathId } from './rootPathId'
 import type {
   VirtualRootRoute,
@@ -189,6 +189,7 @@ export async function getRouteNodes(
   const rootRouteNode = routeNodes.find((d) => d.routePath === `/${rootPathId}`)
   if (rootRouteNode) {
     rootRouteNode._fsRouteType = '__root'
+    rootRouteNode.variableName = 'root'
   }
 
   return { rootRouteNode, routeNodes }

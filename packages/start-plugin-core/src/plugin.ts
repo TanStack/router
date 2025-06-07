@@ -1,19 +1,19 @@
 import path from 'node:path'
 import { createNitro } from 'nitropack'
 import { trimPathRight } from '@tanstack/router-core'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { createTanStackConfig } from './schema'
 import { nitroPlugin } from './nitro-plugin/plugin'
-import { startRoutesManifestPlugin } from './start-routes-manifest-plugin/plugin'
+import { startManifestPlugin } from './start-manifest-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin'
 import {
   CLIENT_DIST_DIR,
   SSR_ENTRY_FILE,
   VITE_ENVIRONMENT_NAMES,
 } from './constants'
-import { TanStackStartServerRoutesVite } from './start-server-routes-plugin/plugin'
+import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { resolveVirtualEntriesPlugin } from './resolve-virtual-entries-plugin/plugin'
@@ -35,11 +35,6 @@ export type TanStackStartOutputConfig = ReturnType<
   typeof getTanStackStartOptions
 >
 
-declare global {
-  // eslint-disable-next-line no-var
-  var TSS_APP_BASE: string
-}
-
 export interface TanStackStartVitePluginCoreOptions {
   framework: CompileStartFrameworkOptions
   getVirtualServerRootHandler: (ctx: {
@@ -57,11 +52,9 @@ export function TanStackStartVitePluginCore(
   startConfig: TanStackStartOutputConfig,
 ): Array<PluginOption> {
   return [
-    tanstackRouter({
-      verboseFileRoutes: false,
+    tanStackStartRouter({
       ...startConfig.tsr,
       target: opts.framework,
-      enableRouteGeneration: true,
       autoCodeSplitting: true,
     }),
     resolveVirtualEntriesPlugin(opts, startConfig),
@@ -162,18 +155,13 @@ export function TanStackStartVitePluginCore(
               '@tanstack/start-router-manifest',
               '@tanstack/start-config',
               '@tanstack/server-functions-plugin',
-              'tanstack-start-router-manifest:v',
-              'tanstack-start-server-fn-manifest:v',
               'nitropack',
               '@tanstack/**start**',
+              ...Object.values(VIRTUAL_MODULES),
             ],
           },
           optimizeDeps: {
-            exclude: [
-              'tanstack-start-server-fn-manifest:v',
-              'tanstack-start-router-manifest:v',
-              'tanstack-start-server-routes-manifest:v',
-            ],
+            exclude: [...Object.values(VIRTUAL_MODULES)],
           },
           /* prettier-ignore */
           define: {
@@ -197,7 +185,7 @@ export function TanStackStartVitePluginCore(
     TanStackServerFnPluginEnv({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
-      manifestVirtualImportId: 'tanstack-start-server-fn-manifest:v',
+      manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
       manifestOutputFilename:
         '.tanstack-start/build/server/server-functions-manifest.json',
       client: {
@@ -225,13 +213,9 @@ export function TanStackStartVitePluginCore(
       },
     }),
     loadEnvPlugin(startConfig),
-    startRoutesManifestPlugin(startConfig),
+    startManifestPlugin(startConfig),
     devServerPlugin(),
     nitroPlugin(startConfig, () => ssrBundle),
-    TanStackStartServerRoutesVite({
-      ...startConfig.tsr,
-      target: opts.framework,
-    }),
   ]
 }
 

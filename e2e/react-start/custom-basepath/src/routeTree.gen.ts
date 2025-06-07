@@ -8,11 +8,9 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+import { createServerRoute } from '@tanstack/react-start/server'
 
-// Import Routes
-
-import { Route as rootRoute } from './routes/__root'
+import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as DeferredRouteImport } from './routes/deferred'
@@ -22,242 +20,66 @@ import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
+import { ServerRoute as ApiUsersServerRouteImport } from './routes/api.users'
+import { ServerRoute as ApiUsersIdServerRouteImport } from './routes/api/users.$id'
 
-// Create/Update Routes
+const rootServerRouteImport = createServerRoute()
 
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const DeferredRoute = DeferredRouteImport.update({
   id: '/deferred',
   path: '/deferred',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const UsersIndexRoute = UsersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => UsersRoute,
 } as any)
-
 const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
-
 const UsersUserIdRoute = UsersUserIdRouteImport.update({
   id: '/$userId',
   path: '/$userId',
   getParentRoute: () => UsersRoute,
 } as any)
-
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
-
 const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
   id: '/posts_/$postId/deep',
   path: '/posts/$postId/deep',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-// Populate the FileRoutesByPath interface
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/deferred': {
-      id: '/deferred'
-      path: '/deferred'
-      fullPath: '/deferred'
-      preLoaderRoute: typeof DeferredRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/users': {
-      id: '/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof UsersRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRouteImport
-    }
-    '/users/$userId': {
-      id: '/users/$userId'
-      path: '/$userId'
-      fullPath: '/users/$userId'
-      preLoaderRoute: typeof UsersUserIdRouteImport
-      parentRoute: typeof UsersRouteImport
-    }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexRouteImport
-      parentRoute: typeof PostsRouteImport
-    }
-    '/users/': {
-      id: '/users/'
-      path: '/'
-      fullPath: '/users/'
-      preLoaderRoute: typeof UsersIndexRouteImport
-      parentRoute: typeof UsersRouteImport
-    }
-    '/posts_/$postId/deep': {
-      id: '/posts_/$postId/deep'
-      path: '/posts/$postId/deep'
-      fullPath: '/posts/$postId/deep'
-      preLoaderRoute: typeof PostsPostIdDeepRouteImport
-      parentRoute: typeof rootRoute
-    }
-  }
-}
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/deferred' {
-  const createFileRoute: CreateFileRoute<
-    '/deferred',
-    FileRoutesByPath['/deferred']['parentRoute'],
-    FileRoutesByPath['/deferred']['id'],
-    FileRoutesByPath['/deferred']['path'],
-    FileRoutesByPath['/deferred']['fullPath']
-  >
-}
-declare module './routes/posts' {
-  const createFileRoute: CreateFileRoute<
-    '/posts',
-    FileRoutesByPath['/posts']['parentRoute'],
-    FileRoutesByPath['/posts']['id'],
-    FileRoutesByPath['/posts']['path'],
-    FileRoutesByPath['/posts']['fullPath']
-  >
-}
-declare module './routes/users' {
-  const createFileRoute: CreateFileRoute<
-    '/users',
-    FileRoutesByPath['/users']['parentRoute'],
-    FileRoutesByPath['/users']['id'],
-    FileRoutesByPath['/users']['path'],
-    FileRoutesByPath['/users']['fullPath']
-  >
-}
-declare module './routes/posts.$postId' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/$postId',
-    FileRoutesByPath['/posts/$postId']['parentRoute'],
-    FileRoutesByPath['/posts/$postId']['id'],
-    FileRoutesByPath['/posts/$postId']['path'],
-    FileRoutesByPath['/posts/$postId']['fullPath']
-  >
-}
-declare module './routes/users.$userId' {
-  const createFileRoute: CreateFileRoute<
-    '/users/$userId',
-    FileRoutesByPath['/users/$userId']['parentRoute'],
-    FileRoutesByPath['/users/$userId']['id'],
-    FileRoutesByPath['/users/$userId']['path'],
-    FileRoutesByPath['/users/$userId']['fullPath']
-  >
-}
-declare module './routes/posts.index' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/',
-    FileRoutesByPath['/posts/']['parentRoute'],
-    FileRoutesByPath['/posts/']['id'],
-    FileRoutesByPath['/posts/']['path'],
-    FileRoutesByPath['/posts/']['fullPath']
-  >
-}
-declare module './routes/users.index' {
-  const createFileRoute: CreateFileRoute<
-    '/users/',
-    FileRoutesByPath['/users/']['parentRoute'],
-    FileRoutesByPath['/users/']['id'],
-    FileRoutesByPath['/users/']['path'],
-    FileRoutesByPath['/users/']['fullPath']
-  >
-}
-declare module './routes/posts_.$postId.deep' {
-  const createFileRoute: CreateFileRoute<
-    '/posts_/$postId/deep',
-    FileRoutesByPath['/posts_/$postId/deep']['parentRoute'],
-    FileRoutesByPath['/posts_/$postId/deep']['id'],
-    FileRoutesByPath['/posts_/$postId/deep']['path'],
-    FileRoutesByPath['/posts_/$postId/deep']['fullPath']
-  >
-}
-
-// Create and export the route tree
-
-interface PostsRouteChildren {
-  PostsPostIdRoute: typeof PostsPostIdRoute
-  PostsIndexRoute: typeof PostsIndexRoute
-}
-
-const PostsRouteChildren: PostsRouteChildren = {
-  PostsPostIdRoute: PostsPostIdRoute,
-  PostsIndexRoute: PostsIndexRoute,
-}
-
-const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
-
-interface UsersRouteChildren {
-  UsersUserIdRoute: typeof UsersUserIdRoute
-  UsersIndexRoute: typeof UsersIndexRoute
-}
-
-const UsersRouteChildren: UsersRouteChildren = {
-  UsersUserIdRoute: UsersUserIdRoute,
-  UsersIndexRoute: UsersIndexRoute,
-}
-
-const UsersRouteWithChildren = UsersRoute._addFileChildren(UsersRouteChildren)
+const ApiUsersServerRoute = ApiUsersServerRouteImport.update({
+  id: '/api/users',
+  path: '/api/users',
+  getParentRoute: () => rootServerRouteImport,
+} as any)
+const ApiUsersIdServerRoute = ApiUsersIdServerRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiUsersServerRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -270,7 +92,6 @@ export interface FileRoutesByFullPath {
   '/users/': typeof UsersIndexRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
 }
-
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/deferred': typeof DeferredRoute
@@ -280,9 +101,8 @@ export interface FileRoutesByTo {
   '/users': typeof UsersIndexRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
 }
-
 export interface FileRoutesById {
-  __root__: typeof rootRoute
+  __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/deferred': typeof DeferredRoute
   '/posts': typeof PostsRouteWithChildren
@@ -293,7 +113,6 @@ export interface FileRoutesById {
   '/users/': typeof UsersIndexRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
 }
-
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
@@ -328,7 +147,6 @@ export interface FileRouteTypes {
     | '/posts_/$postId/deep'
   fileRoutesById: FileRoutesById
 }
-
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DeferredRoute: typeof DeferredRoute
@@ -336,6 +154,229 @@ export interface RootRouteChildren {
   UsersRoute: typeof UsersRouteWithChildren
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
 }
+export interface FileServerRoutesByFullPath {
+  '/api/users': typeof ApiUsersServerRouteWithChildren
+  '/api/users/$id': typeof ApiUsersIdServerRoute
+}
+export interface FileServerRoutesByTo {
+  '/api/users': typeof ApiUsersServerRouteWithChildren
+  '/api/users/$id': typeof ApiUsersIdServerRoute
+}
+export interface FileServerRoutesById {
+  __root__: typeof rootServerRouteImport
+  '/api/users': typeof ApiUsersServerRouteWithChildren
+  '/api/users/$id': typeof ApiUsersIdServerRoute
+}
+export interface FileServerRouteTypes {
+  fileServerRoutesByFullPath: FileServerRoutesByFullPath
+  fullPaths: '/api/users' | '/api/users/$id'
+  fileServerRoutesByTo: FileServerRoutesByTo
+  to: '/api/users' | '/api/users/$id'
+  id: '__root__' | '/api/users' | '/api/users/$id'
+  fileServerRoutesById: FileServerRoutesById
+}
+export interface RootServerRouteChildren {
+  ApiUsersServerRoute: typeof ApiUsersServerRouteWithChildren
+}
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: typeof DeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/users': {
+      id: '/api/users'
+      path: ''
+      fullPath: '/api/users'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/users/$userId': {
+      id: '/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof UsersUserIdRouteImport
+      parentRoute: typeof UsersRoute
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: typeof UsersIndexRouteImport
+      parentRoute: typeof UsersRoute
+    }
+    '/api/users/$id': {
+      id: '/api/users/$id'
+      path: ''
+      fullPath: '/api/users/$id'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts_/$postId/deep': {
+      id: '/posts_/$postId/deep'
+      path: '/posts/$postId/deep'
+      fullPath: '/posts/$postId/deep'
+      preLoaderRoute: typeof PostsPostIdDeepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
+}
+declare module '@tanstack/react-start/server' {
+  interface ServerFileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/users': {
+      id: '/api/users'
+      path: '/api/users'
+      fullPath: '/api/users'
+      preLoaderRoute: typeof ApiUsersServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users/$userId': {
+      id: '/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/users/$id': {
+      id: '/api/users/$id'
+      path: '/$id'
+      fullPath: '/api/users/$id'
+      preLoaderRoute: typeof ApiUsersIdServerRouteImport
+      parentRoute: typeof ApiUsersServerRoute
+    }
+    '/posts_/$postId/deep': {
+      id: '/posts_/$postId/deep'
+      path: '/posts/$postId/deep'
+      fullPath: '/posts/$postId/deep'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+  }
+}
+
+interface PostsRouteChildren {
+  PostsPostIdRoute: typeof PostsPostIdRoute
+  PostsIndexRoute: typeof PostsIndexRoute
+}
+
+const PostsRouteChildren: PostsRouteChildren = {
+  PostsPostIdRoute: PostsPostIdRoute,
+  PostsIndexRoute: PostsIndexRoute,
+}
+
+const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
+
+interface UsersRouteChildren {
+  UsersUserIdRoute: typeof UsersUserIdRoute
+  UsersIndexRoute: typeof UsersIndexRoute
+}
+
+const UsersRouteChildren: UsersRouteChildren = {
+  UsersUserIdRoute: UsersUserIdRoute,
+  UsersIndexRoute: UsersIndexRoute,
+}
+
+const UsersRouteWithChildren = UsersRoute._addFileChildren(UsersRouteChildren)
+
+interface ApiUsersServerRouteChildren {
+  ApiUsersIdServerRoute: typeof ApiUsersIdServerRoute
+}
+
+const ApiUsersServerRouteChildren: ApiUsersServerRouteChildren = {
+  ApiUsersIdServerRoute: ApiUsersIdServerRoute,
+}
+
+const ApiUsersServerRouteWithChildren = ApiUsersServerRoute._addFileChildren(
+  ApiUsersServerRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -344,63 +385,12 @@ const rootRouteChildren: RootRouteChildren = {
   UsersRoute: UsersRouteWithChildren,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/deferred",
-        "/posts",
-        "/users",
-        "/posts_/$postId/deep"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/deferred": {
-      "filePath": "deferred.tsx"
-    },
-    "/posts": {
-      "filePath": "posts.tsx",
-      "children": [
-        "/posts/$postId",
-        "/posts/"
-      ]
-    },
-    "/users": {
-      "filePath": "users.tsx",
-      "children": [
-        "/users/$userId",
-        "/users/"
-      ]
-    },
-    "/posts/$postId": {
-      "filePath": "posts.$postId.tsx",
-      "parent": "/posts"
-    },
-    "/users/$userId": {
-      "filePath": "users.$userId.tsx",
-      "parent": "/users"
-    },
-    "/posts/": {
-      "filePath": "posts.index.tsx",
-      "parent": "/posts"
-    },
-    "/users/": {
-      "filePath": "users.index.tsx",
-      "parent": "/users"
-    },
-    "/posts_/$postId/deep": {
-      "filePath": "posts_.$postId.deep.tsx"
-    }
-  }
+const rootServerRouteChildren: RootServerRouteChildren = {
+  ApiUsersServerRoute: ApiUsersServerRouteWithChildren,
 }
-ROUTE_MANIFEST_END */
+export const serverRouteTree = rootServerRouteImport
+  ._addFileChildren(rootServerRouteChildren)
+  ._addFileTypes<FileServerRouteTypes>()

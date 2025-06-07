@@ -1,4 +1,4 @@
-import { Await } from '@tanstack/solid-router'
+import { Await, createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import { Suspense, createSignal } from 'solid-js'
 
@@ -15,7 +15,7 @@ const slowServerFn = createServerFn({ method: 'GET', type: 'static' })
     return { name, randomNumber: Math.floor(Math.random() * 100) }
   })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/deferred')({
   loader: async () => {
     return {
       deferredStuff: new Promise<string>((r) =>

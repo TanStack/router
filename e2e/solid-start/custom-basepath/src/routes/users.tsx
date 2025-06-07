@@ -1,9 +1,9 @@
-import { Link, Outlet } from '@tanstack/solid-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 import axios from 'redaxios'
 import type { User } from '~/utils/users'
 import { basepath } from '~/utils/basepath'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users')({
   loader: async () => {
     return await axios
       .get<Array<User>>(basepath + '/api/users')

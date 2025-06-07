@@ -11,37 +11,57 @@
 import { createFileRoute } from '@tanstack/react-router'
 import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
-// Import Routes
-
-import { Route as rootRoute } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiBarRouteImport } from './routes/api/bar'
 
-// Create Virtual Routes
-
+const rootRouteImport = createRooRoute()
 const FooLazyRouteImport = createFileRoute('/foo')()
-
-// Create/Update Routes
 
 const FooLazyRoute = FooLazyRouteImport.update({
   id: '/foo',
   path: '/foo',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/foo.lazy').then((d) => d.Route))
-
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const ApiBarRoute = ApiBarRouteImport.update({
   id: '/api/bar',
   path: '/api/bar',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/foo': typeof FooLazyRoute
+  '/api/bar': typeof ApiBarRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/foo': typeof FooLazyRoute
+  '/api/bar': typeof ApiBarRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/foo': typeof FooLazyRoute
+  '/api/bar': typeof ApiBarRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/foo' | '/api/bar'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/foo' | '/api/bar'
+  id: '__root__' | '/' | '/foo' | '/api/bar'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  FooLazyRoute: typeof FooLazyRoute
+  ApiBarRoute: typeof ApiBarRoute
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -50,26 +70,24 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/foo': {
       id: '/foo'
       path: '/foo'
       fullPath: '/foo'
       preLoaderRoute: typeof FooLazyRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/bar': {
       id: '/api/bar'
       path: '/api/bar'
       fullPath: '/api/bar'
       preLoaderRoute: typeof ApiBarRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-// Add type-safety to the createFileRoute function across the route tree
 
 declare module './routes/index' {
   const createFileRoute: CreateFileRoute<
@@ -95,72 +113,11 @@ declare module './routes/api/bar' {
   >
 }
 
-// Create and export the route tree
-
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/foo': typeof FooLazyRoute
-  '/api/bar': typeof ApiBarRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/foo': typeof FooLazyRoute
-  '/api/bar': typeof ApiBarRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/foo': typeof FooLazyRoute
-  '/api/bar': typeof ApiBarRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/foo' | '/api/bar'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/foo' | '/api/bar'
-  id: '__root__' | '/' | '/foo' | '/api/bar'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  FooLazyRoute: typeof FooLazyRoute
-  ApiBarRoute: typeof ApiBarRoute
-}
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FooLazyRoute: FooLazyRoute,
   ApiBarRoute: ApiBarRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/foo",
-        "/api/bar"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/foo": {
-      "filePath": "foo.lazy.tsx"
-    },
-    "/api/bar": {
-      "filePath": "api/bar.tsx"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

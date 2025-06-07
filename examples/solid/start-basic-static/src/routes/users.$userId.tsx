@@ -1,4 +1,4 @@
-import { ErrorComponent } from '@tanstack/solid-router'
+import { ErrorComponent, createFileRoute } from '@tanstack/solid-router'
 import axios from 'redaxios'
 import { createServerFn } from '@tanstack/solid-start'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
@@ -20,7 +20,7 @@ const fetchUser = createServerFn({ method: 'GET', type: 'static' })
       })
   })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users/$userId')({
   loader: ({ params: { userId } }) => fetchUser({ data: userId }),
   errorComponent: UserErrorComponent,
   component: UserComponent,

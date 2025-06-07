@@ -1,7 +1,8 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import * as Solid from 'solid-js'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/abort-signal')({
   component: RouteComponent,
 })
 

@@ -1,7 +1,7 @@
-import { Await } from '@tanstack/solid-router'
+import { Await, createFileRoute } from '@tanstack/solid-router'
 import { createEffect, createSignal } from 'solid-js'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/stream')({
   component: Home,
   loader() {
     return {

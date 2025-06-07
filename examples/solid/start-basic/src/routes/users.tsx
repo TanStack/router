@@ -1,7 +1,7 @@
-import { Link, Outlet } from '@tanstack/solid-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 import type { User } from '../utils/users'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users')({
   loader: async () => {
     const res = await fetch('/api/users')
 

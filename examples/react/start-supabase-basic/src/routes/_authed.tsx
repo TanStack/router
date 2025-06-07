@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { Login } from '../components/Login'
 import { getSupabaseServerClient } from '../utils/supabase'
@@ -19,7 +20,7 @@ export const loginFn = createServerFn({ method: 'POST' })
     }
   })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/_authed')({
   beforeLoad: ({ context }) => {
     if (!context.user) {
       throw new Error('Not authenticated')

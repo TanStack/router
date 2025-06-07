@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import {} from '@tanstack/react-router'
 import { Suspense, useState } from 'react'
@@ -15,7 +16,7 @@ const deferredQueryOptions = () =>
     },
   })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/deferred')({
   loader: ({ context }) => {
     // Kick off loading as early as possible!
     context.queryClient.prefetchQuery(deferredQueryOptions())

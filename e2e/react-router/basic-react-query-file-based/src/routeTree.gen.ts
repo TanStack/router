@@ -8,9 +8,7 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
-
-import { Route as rootRoute } from './routes/__root'
+import { Route as rootRouteImport } from './routes/__root'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
@@ -20,55 +18,102 @@ import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 
-// Create/Update Routes
-
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
-
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
-
 const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
-
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
-
 const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '': typeof LayoutLayout2RouteWithChildren
+  '/posts': typeof PostsRouteWithChildren
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/': typeof PostsIndexRoute
+  '/layout-a': typeof LayoutLayout2LayoutARoute
+  '/layout-b': typeof LayoutLayout2LayoutBRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '': typeof LayoutLayout2RouteWithChildren
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/posts': typeof PostsIndexRoute
+  '/layout-a': typeof LayoutLayout2LayoutARoute
+  '/layout-b': typeof LayoutLayout2LayoutBRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/_layout': typeof LayoutRouteWithChildren
+  '/posts': typeof PostsRouteWithChildren
+  '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/': typeof PostsIndexRoute
+  '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
+  '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | ''
+    | '/posts'
+    | '/posts/$postId'
+    | '/posts/'
+    | '/layout-a'
+    | '/layout-b'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '' | '/posts/$postId' | '/posts' | '/layout-a' | '/layout-b'
+  id:
+    | '__root__'
+    | '/'
+    | '/_layout'
+    | '/posts'
+    | '/_layout/_layout-2'
+    | '/posts/$postId'
+    | '/posts/'
+    | '/_layout/_layout-2/layout-a'
+    | '/_layout/_layout-2/layout-b'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  LayoutRoute: typeof LayoutRouteWithChildren
+  PostsRoute: typeof PostsRouteWithChildren
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -77,61 +122,59 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_layout': {
       id: '/_layout'
       path: ''
       fullPath: ''
       preLoaderRoute: typeof LayoutRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/_layout-2': {
       id: '/_layout/_layout-2'
       path: ''
       fullPath: ''
       preLoaderRoute: typeof LayoutLayout2RouteImport
-      parentRoute: typeof LayoutRouteImport
+      parentRoute: typeof LayoutRoute
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRouteImport
+      parentRoute: typeof PostsRoute
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
       preLoaderRoute: typeof PostsIndexRouteImport
-      parentRoute: typeof PostsRouteImport
+      parentRoute: typeof PostsRoute
     }
     '/_layout/_layout-2/layout-a': {
       id: '/_layout/_layout-2/layout-a'
       path: '/layout-a'
       fullPath: '/layout-a'
       preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
-      parentRoute: typeof LayoutLayout2RouteImport
+      parentRoute: typeof LayoutLayout2Route
     }
     '/_layout/_layout-2/layout-b': {
       id: '/_layout/_layout-2/layout-b'
       path: '/layout-b'
       fullPath: '/layout-b'
       preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
-      parentRoute: typeof LayoutLayout2RouteImport
+      parentRoute: typeof LayoutLayout2Route
     }
   }
 }
-
-// Create and export the route tree
 
 interface LayoutLayout2RouteChildren {
   LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
@@ -170,129 +213,11 @@ const PostsRouteChildren: PostsRouteChildren = {
 
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
-  '/posts': typeof PostsRouteWithChildren
-  '/posts/$postId': typeof PostsPostIdRoute
-  '/posts/': typeof PostsIndexRoute
-  '/layout-a': typeof LayoutLayout2LayoutARoute
-  '/layout-b': typeof LayoutLayout2LayoutBRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
-  '/posts/$postId': typeof PostsPostIdRoute
-  '/posts': typeof PostsIndexRoute
-  '/layout-a': typeof LayoutLayout2LayoutARoute
-  '/layout-b': typeof LayoutLayout2LayoutBRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/_layout': typeof LayoutRouteWithChildren
-  '/posts': typeof PostsRouteWithChildren
-  '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
-  '/posts/$postId': typeof PostsPostIdRoute
-  '/posts/': typeof PostsIndexRoute
-  '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
-  '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | ''
-    | '/posts'
-    | '/posts/$postId'
-    | '/posts/'
-    | '/layout-a'
-    | '/layout-b'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/posts/$postId' | '/posts' | '/layout-a' | '/layout-b'
-  id:
-    | '__root__'
-    | '/'
-    | '/_layout'
-    | '/posts'
-    | '/_layout/_layout-2'
-    | '/posts/$postId'
-    | '/posts/'
-    | '/_layout/_layout-2/layout-a'
-    | '/_layout/_layout-2/layout-b'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  LayoutRoute: typeof LayoutRouteWithChildren
-  PostsRoute: typeof PostsRouteWithChildren
-}
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   PostsRoute: PostsRouteWithChildren,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/_layout",
-        "/posts"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/_layout": {
-      "filePath": "_layout.tsx",
-      "children": [
-        "/_layout/_layout-2"
-      ]
-    },
-    "/posts": {
-      "filePath": "posts.tsx",
-      "children": [
-        "/posts/$postId",
-        "/posts/"
-      ]
-    },
-    "/_layout/_layout-2": {
-      "filePath": "_layout/_layout-2.tsx",
-      "parent": "/_layout",
-      "children": [
-        "/_layout/_layout-2/layout-a",
-        "/_layout/_layout-2/layout-b"
-      ]
-    },
-    "/posts/$postId": {
-      "filePath": "posts.$postId.tsx",
-      "parent": "/posts"
-    },
-    "/posts/": {
-      "filePath": "posts.index.tsx",
-      "parent": "/posts"
-    },
-    "/_layout/_layout-2/layout-a": {
-      "filePath": "_layout/_layout-2/layout-a.tsx",
-      "parent": "/_layout/_layout-2"
-    },
-    "/_layout/_layout-2/layout-b": {
-      "filePath": "_layout/_layout-2/layout-b.tsx",
-      "parent": "/_layout/_layout-2"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

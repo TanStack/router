@@ -5,9 +5,10 @@ import {
   ErrorComponent,
   ErrorComponentProps,
   Link,
+  createFileRoute,
 } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/(test)/foo')({
   loader: async ({ params: { postId } }) => ({
     postId,
     title: 'title',

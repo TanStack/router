@@ -2,6 +2,7 @@ import path from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
+import type { GeneratorPlugin } from './plugin/types'
 
 export const baseConfigSchema = z.object({
   target: z.enum(['react', 'solid']).optional().default('react'),
@@ -51,6 +52,7 @@ export const configSchema = baseConfigSchema.extend({
       enableCodeSplitting: z.boolean().optional(),
     })
     .optional(),
+  plugins: z.array(z.custom<GeneratorPlugin>()).optional(),
 })
 
 export type Config = z.infer<typeof configSchema>

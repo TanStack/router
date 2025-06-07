@@ -1,7 +1,7 @@
-import { Link, Outlet } from '@tanstack/solid-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 import { fetchPosts } from '../utils/posts'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts')({
   loader: async () => fetchPosts(),
   component: PostsComponent,
 })

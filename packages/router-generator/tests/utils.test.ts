@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   cleanPath,
   determineInitialRoutePath,
+  mergeImportDeclarations,
   multiSortBy,
   removeExt,
   removeUnderscores,
   routePathToVariable,
 } from '../src/utils'
+import type { ImportDeclaration } from '../src/types'
 
 describe('cleanPath', () => {
   it('keeps path with leading slash and trailing slash', () => {
@@ -121,5 +123,77 @@ describe('routePathToVariable', () => {
     ['/test/', 'Test'],
   ])(`converts "%s" to "%s"`, (routePath, expected) => {
     expect(routePathToVariable(routePath)).toBe(expected)
+  })
+})
+
+describe('mergeImportDeclarations', () => {
+  it('merges imports with the same source but different specifiers', () => {
+    const imports: ImportDeclaration[] = [
+      { source: 'moduleA', specifiers: [{ imported: 'A' }] },
+      { source: 'moduleA', specifiers: [{ imported: 'B' }] },
+    ]
+
+    const result = mergeImportDeclarations(imports)
+
+    expect(result).toEqual([
+      {
+        source: 'moduleA',
+        specifiers: [{ imported: 'A' }, { imported: 'B' }],
+      },
+    ])
+  })
+
+  it('merges imports with overlapping specifiers', () => {
+    const imports: ImportDeclaration[] = [
+      { source: 'moduleA', specifiers: [{ imported: 'A' }] },
+      { source: 'moduleA', specifiers: [{ imported: 'A' }, { imported: 'B' }] },
+    ]
+
+    const result = mergeImportDeclarations(imports)
+
+    expect(result).toEqual([
+      {
+        source: 'moduleA',
+        specifiers: [{ imported: 'A' }, { imported: 'B' }],
+      },
+    ])
+  })
+
+  it('does not merge imports with mixed import kinds for the same source', () => {
+    const imports: ImportDeclaration[] = [
+      {
+        source: 'moduleA',
+        importKind: 'type',
+        specifiers: [{ imported: 'A' }],
+      },
+      { source: 'moduleA', specifiers: [{ imported: 'B' }] },
+    ]
+
+    const result = mergeImportDeclarations(imports)
+
+    expect(result).toEqual([
+      {
+        source: 'moduleA',
+        importKind: 'type',
+        specifiers: [{ imported: 'A' }],
+      },
+      { source: 'moduleA', specifiers: [{ imported: 'B' }] },
+    ])
+  })
+
+  it('removes duplicate specifiers', () => {
+    const imports: ImportDeclaration[] = [
+      { source: 'moduleA', specifiers: [{ imported: 'A' }] },
+      { source: 'moduleA', specifiers: [{ imported: 'A' }] },
+    ]
+
+    const result = mergeImportDeclarations(imports)
+
+    expect(result).toEqual([
+      {
+        source: 'moduleA',
+        specifiers: [{ imported: 'A' }],
+      },
+    ])
   })
 })

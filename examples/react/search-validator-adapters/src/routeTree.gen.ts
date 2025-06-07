@@ -10,41 +10,66 @@
 
 import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
-// Import Routes
-
-import { Route as rootRoute } from './routes/__root'
+import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersZodIndexRouteImport } from './routes/users/zod.index'
 import { Route as UsersValibotIndexRouteImport } from './routes/users/valibot.index'
 import { Route as UsersArktypeIndexRouteImport } from './routes/users/arktype.index'
 
-// Create/Update Routes
-
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const UsersZodIndexRoute = UsersZodIndexRouteImport.update({
   id: '/users/zod/',
   path: '/users/zod/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const UsersValibotIndexRoute = UsersValibotIndexRouteImport.update({
   id: '/users/valibot/',
   path: '/users/valibot/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const UsersArktypeIndexRoute = UsersArktypeIndexRouteImport.update({
   id: '/users/arktype/',
   path: '/users/arktype/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/users/arktype': typeof UsersArktypeIndexRoute
+  '/users/valibot': typeof UsersValibotIndexRoute
+  '/users/zod': typeof UsersZodIndexRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/users/arktype': typeof UsersArktypeIndexRoute
+  '/users/valibot': typeof UsersValibotIndexRoute
+  '/users/zod': typeof UsersZodIndexRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/users/arktype/': typeof UsersArktypeIndexRoute
+  '/users/valibot/': typeof UsersValibotIndexRoute
+  '/users/zod/': typeof UsersZodIndexRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
+  id: '__root__' | '/' | '/users/arktype/' | '/users/valibot/' | '/users/zod/'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  UsersArktypeIndexRoute: typeof UsersArktypeIndexRoute
+  UsersValibotIndexRoute: typeof UsersValibotIndexRoute
+  UsersZodIndexRoute: typeof UsersZodIndexRoute
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -53,33 +78,31 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/users/arktype/': {
       id: '/users/arktype/'
       path: '/users/arktype'
       fullPath: '/users/arktype'
       preLoaderRoute: typeof UsersArktypeIndexRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/users/valibot/': {
       id: '/users/valibot/'
       path: '/users/valibot'
       fullPath: '/users/valibot'
       preLoaderRoute: typeof UsersValibotIndexRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/users/zod/': {
       id: '/users/zod/'
       path: '/users/zod'
       fullPath: '/users/zod'
       preLoaderRoute: typeof UsersZodIndexRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
   }
 }
-
-// Add type-safety to the createFileRoute function across the route tree
 
 declare module './routes/index' {
   const createFileRoute: CreateFileRoute<
@@ -118,81 +141,12 @@ declare module './routes/users/zod.index' {
   >
 }
 
-// Create and export the route tree
-
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/users/arktype': typeof UsersArktypeIndexRoute
-  '/users/valibot': typeof UsersValibotIndexRoute
-  '/users/zod': typeof UsersZodIndexRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/users/arktype': typeof UsersArktypeIndexRoute
-  '/users/valibot': typeof UsersValibotIndexRoute
-  '/users/zod': typeof UsersZodIndexRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/users/arktype/': typeof UsersArktypeIndexRoute
-  '/users/valibot/': typeof UsersValibotIndexRoute
-  '/users/zod/': typeof UsersZodIndexRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/users/arktype' | '/users/valibot' | '/users/zod'
-  id: '__root__' | '/' | '/users/arktype/' | '/users/valibot/' | '/users/zod/'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  UsersArktypeIndexRoute: typeof UsersArktypeIndexRoute
-  UsersValibotIndexRoute: typeof UsersValibotIndexRoute
-  UsersZodIndexRoute: typeof UsersZodIndexRoute
-}
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   UsersArktypeIndexRoute: UsersArktypeIndexRoute,
   UsersValibotIndexRoute: UsersValibotIndexRoute,
   UsersZodIndexRoute: UsersZodIndexRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/users/arktype/",
-        "/users/valibot/",
-        "/users/zod/"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/users/arktype/": {
-      "filePath": "users/arktype.index.tsx"
-    },
-    "/users/valibot/": {
-      "filePath": "users/valibot.index.tsx"
-    },
-    "/users/zod/": {
-      "filePath": "users/zod.index.tsx"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

@@ -1,6 +1,9 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import { RedirectOnClick } from '~/components/RedirectOnClick'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute(
+  '/redirect/$target/serverFn/via-useServerFn',
+)({
   component: () => {
     const params = Route.useParams()
     const search = Route.useSearch()

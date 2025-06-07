@@ -1,7 +1,8 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import { sleep } from 'src/utils/posts'
 import { ScrollBlock } from '../-components/scroll-block'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/(tests)/with-loader')({
   loader: async () => {
     await sleep(1000)
     return { foo: 'bar' }

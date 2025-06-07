@@ -1,4 +1,4 @@
-import { Link, Outlet } from '@tanstack/solid-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 import axios from 'redaxios'
 import { createServerFn } from '@tanstack/solid-start'
 import type { User } from '../utils/users'
@@ -16,7 +16,7 @@ const fetchUsers = createServerFn({ method: 'GET', type: 'static' }).handler(
   },
 )
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users')({
   loader: async () => fetchUsers(),
   component: UsersComponent,
 })
