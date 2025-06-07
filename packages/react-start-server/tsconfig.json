@@ -8,6 +8,5 @@
     "src",
     "tests",
     "vite.config.ts",
-    "../start-server-core/src/server-functions-handler.ts"
   ]
 }
