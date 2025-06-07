@@ -5,21 +5,20 @@ export default function minifyScriptPlugin(): Plugin {
   return {
     name: 'vite-plugin-minify-script',
     enforce: 'pre',
-    async transform(code, id) {
-      if (!id.endsWith('?script-string')) {
-        return null
-      }
+    transform: {
+      filter: { id: /\?script-string$/ },
+      async handler(code) {
+        const result = await esbuildTransform(code, {
+          loader: 'ts',
+          minify: true,
+          target: 'esnext',
+        })
 
-      const result = await esbuildTransform(code, {
-        loader: 'ts',
-        minify: true,
-        target: 'esnext',
-      })
-
-      return {
-        code: `export default ${JSON.stringify(result.code)};`,
-        map: null,
-      }
+        return {
+          code: `export default ${JSON.stringify(result.code)};`,
+          map: null,
+        }
+      },
     },
   }
 }
