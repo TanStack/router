@@ -1,9 +1,8 @@
-import { createServerFileRoute } from '@tanstack/react-start/server'
 import { json } from '@tanstack/react-start'
 import axios from 'redaxios'
 import type { User } from '~/utils/users'
 
-export const ServerRoute = createServerFileRoute('/api/users/$id').methods({
+export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ request, params }) => {
     console.info(`Fetching users by id=${params.id}... @`, request.url)
     try {

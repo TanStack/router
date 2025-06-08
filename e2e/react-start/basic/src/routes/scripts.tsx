@@ -1,7 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
 const isProd = import.meta.env.PROD
 
-export const Route = createFileRoute('/scripts')({
+export const Route = createFileRoute({
   head: () => ({
     scripts: [
       {

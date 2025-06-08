@@ -9,6 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
+import type {
+  CreateServerFileRoute,
+  ServerFileRoutesByPath,
+} from '@tanstack/react-start/server'
 import { createServerRootRoute } from '@tanstack/react-start/server'
 
 import { Route as rootRouteImport } from './routes/__root'
@@ -706,6 +711,827 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof FooBarQuxHereRoute
     }
   }
+}
+declare module '@tanstack/react-start/server' {
+  interface ServerFileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/not-found': {
+      id: '/not-found'
+      path: '/not-found'
+      fullPath: '/not-found'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/links': {
+      id: '/links'
+      path: '/links'
+      fullPath: '/links'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/scripts': {
+      id: '/scripts'
+      path: '/scripts'
+      fullPath: '/scripts'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/search-params': {
+      id: '/search-params'
+      path: '/search-params'
+      fullPath: '/search-params'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/stream': {
+      id: '/stream'
+      path: '/stream'
+      fullPath: '/stream'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_layout/_layout-2': {
+      id: '/_layout/_layout-2'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/users': {
+      id: '/api/users'
+      path: '/api/users'
+      fullPath: '/api/users'
+      preLoaderRoute: typeof ApiUsersServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/not-found/via-beforeLoad': {
+      id: '/not-found/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/not-found/via-beforeLoad'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/not-found/via-loader': {
+      id: '/not-found/via-loader'
+      path: '/via-loader'
+      fullPath: '/not-found/via-loader'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect/$target': {
+      id: '/redirect/$target'
+      path: '/redirect/$target'
+      fullPath: '/redirect/$target'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users/$userId': {
+      id: '/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/not-found/': {
+      id: '/not-found/'
+      path: '/'
+      fullPath: '/not-found/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_layout/_layout-2/layout-a': {
+      id: '/_layout/_layout-2/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_layout/_layout-2/layout-b': {
+      id: '/_layout/_layout-2/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/users/$id': {
+      id: '/api/users/$id'
+      path: '/$id'
+      fullPath: '/api/users/$id'
+      preLoaderRoute: typeof ApiUsersIdServerRouteImport
+      parentRoute: typeof ApiUsersServerRoute
+    }
+    '/posts_/$postId/deep': {
+      id: '/posts_/$postId/deep'
+      path: '/posts/$postId/deep'
+      fullPath: '/posts/$postId/deep'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect/$target/via-beforeLoad': {
+      id: '/redirect/$target/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/redirect/$target/via-beforeLoad'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect/$target/via-loader': {
+      id: '/redirect/$target/via-loader'
+      path: '/via-loader'
+      fullPath: '/redirect/$target/via-loader'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect/$target/': {
+      id: '/redirect/$target/'
+      path: '/'
+      fullPath: '/redirect/$target/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/foo/$bar/$qux/_here': {
+      id: '/foo/$bar/$qux/_here'
+      path: '/foo/$bar/$qux'
+      fullPath: '/foo/$bar/$qux'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect/$target/serverFn/via-beforeLoad': {
+      id: '/redirect/$target/serverFn/via-beforeLoad'
+      path: '/serverFn/via-beforeLoad'
+      fullPath: '/redirect/$target/serverFn/via-beforeLoad'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect/$target/serverFn/via-loader': {
+      id: '/redirect/$target/serverFn/via-loader'
+      path: '/serverFn/via-loader'
+      fullPath: '/redirect/$target/serverFn/via-loader'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect/$target/serverFn/via-useServerFn': {
+      id: '/redirect/$target/serverFn/via-useServerFn'
+      path: '/serverFn/via-useServerFn'
+      fullPath: '/redirect/$target/serverFn/via-useServerFn'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect/$target/serverFn/': {
+      id: '/redirect/$target/serverFn/'
+      path: '/serverFn'
+      fullPath: '/redirect/$target/serverFn'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/foo/$bar/$qux/_here/': {
+      id: '/foo/$bar/$qux/_here/'
+      path: '/'
+      fullPath: '/foo/$bar/$qux/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+  }
+}
+
+declare module './routes/index' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/']['parentRoute'],
+    ServerFileRoutesByPath['/']['id'],
+    ServerFileRoutesByPath['/']['path'],
+    ServerFileRoutesByPath['/']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/not-found/route' {
+  const createFileRoute: CreateFileRoute<
+    '/not-found',
+    FileRoutesByPath['/not-found']['parentRoute'],
+    FileRoutesByPath['/not-found']['id'],
+    FileRoutesByPath['/not-found']['path'],
+    FileRoutesByPath['/not-found']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/not-found']['parentRoute'],
+    ServerFileRoutesByPath['/not-found']['id'],
+    ServerFileRoutesByPath['/not-found']['path'],
+    ServerFileRoutesByPath['/not-found']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/_layout' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout',
+    FileRoutesByPath['/_layout']['parentRoute'],
+    FileRoutesByPath['/_layout']['id'],
+    FileRoutesByPath['/_layout']['path'],
+    FileRoutesByPath['/_layout']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/_layout']['parentRoute'],
+    ServerFileRoutesByPath['/_layout']['id'],
+    ServerFileRoutesByPath['/_layout']['path'],
+    ServerFileRoutesByPath['/_layout']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/deferred' {
+  const createFileRoute: CreateFileRoute<
+    '/deferred',
+    FileRoutesByPath['/deferred']['parentRoute'],
+    FileRoutesByPath['/deferred']['id'],
+    FileRoutesByPath['/deferred']['path'],
+    FileRoutesByPath['/deferred']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/deferred']['parentRoute'],
+    ServerFileRoutesByPath['/deferred']['id'],
+    ServerFileRoutesByPath['/deferred']['path'],
+    ServerFileRoutesByPath['/deferred']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/links' {
+  const createFileRoute: CreateFileRoute<
+    '/links',
+    FileRoutesByPath['/links']['parentRoute'],
+    FileRoutesByPath['/links']['id'],
+    FileRoutesByPath['/links']['path'],
+    FileRoutesByPath['/links']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/links']['parentRoute'],
+    ServerFileRoutesByPath['/links']['id'],
+    ServerFileRoutesByPath['/links']['path'],
+    ServerFileRoutesByPath['/links']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/posts' {
+  const createFileRoute: CreateFileRoute<
+    '/posts',
+    FileRoutesByPath['/posts']['parentRoute'],
+    FileRoutesByPath['/posts']['id'],
+    FileRoutesByPath['/posts']['path'],
+    FileRoutesByPath['/posts']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/posts']['parentRoute'],
+    ServerFileRoutesByPath['/posts']['id'],
+    ServerFileRoutesByPath['/posts']['path'],
+    ServerFileRoutesByPath['/posts']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/scripts' {
+  const createFileRoute: CreateFileRoute<
+    '/scripts',
+    FileRoutesByPath['/scripts']['parentRoute'],
+    FileRoutesByPath['/scripts']['id'],
+    FileRoutesByPath['/scripts']['path'],
+    FileRoutesByPath['/scripts']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/scripts']['parentRoute'],
+    ServerFileRoutesByPath['/scripts']['id'],
+    ServerFileRoutesByPath['/scripts']['path'],
+    ServerFileRoutesByPath['/scripts']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/search-params' {
+  const createFileRoute: CreateFileRoute<
+    '/search-params',
+    FileRoutesByPath['/search-params']['parentRoute'],
+    FileRoutesByPath['/search-params']['id'],
+    FileRoutesByPath['/search-params']['path'],
+    FileRoutesByPath['/search-params']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/search-params']['parentRoute'],
+    ServerFileRoutesByPath['/search-params']['id'],
+    ServerFileRoutesByPath['/search-params']['path'],
+    ServerFileRoutesByPath['/search-params']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/stream' {
+  const createFileRoute: CreateFileRoute<
+    '/stream',
+    FileRoutesByPath['/stream']['parentRoute'],
+    FileRoutesByPath['/stream']['id'],
+    FileRoutesByPath['/stream']['path'],
+    FileRoutesByPath['/stream']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/stream']['parentRoute'],
+    ServerFileRoutesByPath['/stream']['id'],
+    ServerFileRoutesByPath['/stream']['path'],
+    ServerFileRoutesByPath['/stream']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/users' {
+  const createFileRoute: CreateFileRoute<
+    '/users',
+    FileRoutesByPath['/users']['parentRoute'],
+    FileRoutesByPath['/users']['id'],
+    FileRoutesByPath['/users']['path'],
+    FileRoutesByPath['/users']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/users']['parentRoute'],
+    ServerFileRoutesByPath['/users']['id'],
+    ServerFileRoutesByPath['/users']['path'],
+    ServerFileRoutesByPath['/users']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/_layout/_layout-2' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2',
+    FileRoutesByPath['/_layout/_layout-2']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2']['id'],
+    FileRoutesByPath['/_layout/_layout-2']['path'],
+    FileRoutesByPath['/_layout/_layout-2']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/_layout/_layout-2']['parentRoute'],
+    ServerFileRoutesByPath['/_layout/_layout-2']['id'],
+    ServerFileRoutesByPath['/_layout/_layout-2']['path'],
+    ServerFileRoutesByPath['/_layout/_layout-2']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/api.users' {
+  const createFileRoute: CreateFileRoute<
+    '/api/users',
+    FileRoutesByPath['/api/users']['parentRoute'],
+    FileRoutesByPath['/api/users']['id'],
+    FileRoutesByPath['/api/users']['path'],
+    FileRoutesByPath['/api/users']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/api/users']['parentRoute'],
+    ServerFileRoutesByPath['/api/users']['id'],
+    ServerFileRoutesByPath['/api/users']['path'],
+    ServerFileRoutesByPath['/api/users']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/not-found/via-beforeLoad' {
+  const createFileRoute: CreateFileRoute<
+    '/not-found/via-beforeLoad',
+    FileRoutesByPath['/not-found/via-beforeLoad']['parentRoute'],
+    FileRoutesByPath['/not-found/via-beforeLoad']['id'],
+    FileRoutesByPath['/not-found/via-beforeLoad']['path'],
+    FileRoutesByPath['/not-found/via-beforeLoad']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/not-found/via-beforeLoad']['parentRoute'],
+    ServerFileRoutesByPath['/not-found/via-beforeLoad']['id'],
+    ServerFileRoutesByPath['/not-found/via-beforeLoad']['path'],
+    ServerFileRoutesByPath['/not-found/via-beforeLoad']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/not-found/via-loader' {
+  const createFileRoute: CreateFileRoute<
+    '/not-found/via-loader',
+    FileRoutesByPath['/not-found/via-loader']['parentRoute'],
+    FileRoutesByPath['/not-found/via-loader']['id'],
+    FileRoutesByPath['/not-found/via-loader']['path'],
+    FileRoutesByPath['/not-found/via-loader']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/not-found/via-loader']['parentRoute'],
+    ServerFileRoutesByPath['/not-found/via-loader']['id'],
+    ServerFileRoutesByPath['/not-found/via-loader']['path'],
+    ServerFileRoutesByPath['/not-found/via-loader']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/posts.$postId' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/$postId',
+    FileRoutesByPath['/posts/$postId']['parentRoute'],
+    FileRoutesByPath['/posts/$postId']['id'],
+    FileRoutesByPath['/posts/$postId']['path'],
+    FileRoutesByPath['/posts/$postId']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/posts/$postId']['parentRoute'],
+    ServerFileRoutesByPath['/posts/$postId']['id'],
+    ServerFileRoutesByPath['/posts/$postId']['path'],
+    ServerFileRoutesByPath['/posts/$postId']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/redirect/$target' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target',
+    FileRoutesByPath['/redirect/$target']['parentRoute'],
+    FileRoutesByPath['/redirect/$target']['id'],
+    FileRoutesByPath['/redirect/$target']['path'],
+    FileRoutesByPath['/redirect/$target']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/redirect/$target']['parentRoute'],
+    ServerFileRoutesByPath['/redirect/$target']['id'],
+    ServerFileRoutesByPath['/redirect/$target']['path'],
+    ServerFileRoutesByPath['/redirect/$target']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/users.$userId' {
+  const createFileRoute: CreateFileRoute<
+    '/users/$userId',
+    FileRoutesByPath['/users/$userId']['parentRoute'],
+    FileRoutesByPath['/users/$userId']['id'],
+    FileRoutesByPath['/users/$userId']['path'],
+    FileRoutesByPath['/users/$userId']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/users/$userId']['parentRoute'],
+    ServerFileRoutesByPath['/users/$userId']['id'],
+    ServerFileRoutesByPath['/users/$userId']['path'],
+    ServerFileRoutesByPath['/users/$userId']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/not-found/index' {
+  const createFileRoute: CreateFileRoute<
+    '/not-found/',
+    FileRoutesByPath['/not-found/']['parentRoute'],
+    FileRoutesByPath['/not-found/']['id'],
+    FileRoutesByPath['/not-found/']['path'],
+    FileRoutesByPath['/not-found/']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/not-found/']['parentRoute'],
+    ServerFileRoutesByPath['/not-found/']['id'],
+    ServerFileRoutesByPath['/not-found/']['path'],
+    ServerFileRoutesByPath['/not-found/']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/posts.index' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/',
+    FileRoutesByPath['/posts/']['parentRoute'],
+    FileRoutesByPath['/posts/']['id'],
+    FileRoutesByPath['/posts/']['path'],
+    FileRoutesByPath['/posts/']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/posts/']['parentRoute'],
+    ServerFileRoutesByPath['/posts/']['id'],
+    ServerFileRoutesByPath['/posts/']['path'],
+    ServerFileRoutesByPath['/posts/']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/redirect/index' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/',
+    FileRoutesByPath['/redirect/']['parentRoute'],
+    FileRoutesByPath['/redirect/']['id'],
+    FileRoutesByPath['/redirect/']['path'],
+    FileRoutesByPath['/redirect/']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/redirect/']['parentRoute'],
+    ServerFileRoutesByPath['/redirect/']['id'],
+    ServerFileRoutesByPath['/redirect/']['path'],
+    ServerFileRoutesByPath['/redirect/']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/users.index' {
+  const createFileRoute: CreateFileRoute<
+    '/users/',
+    FileRoutesByPath['/users/']['parentRoute'],
+    FileRoutesByPath['/users/']['id'],
+    FileRoutesByPath['/users/']['path'],
+    FileRoutesByPath['/users/']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/users/']['parentRoute'],
+    ServerFileRoutesByPath['/users/']['id'],
+    ServerFileRoutesByPath['/users/']['path'],
+    ServerFileRoutesByPath['/users/']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/_layout/_layout-2/layout-a' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2/layout-a',
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['id'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['path'],
+    FileRoutesByPath['/_layout/_layout-2/layout-a']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/_layout/_layout-2/layout-a']['parentRoute'],
+    ServerFileRoutesByPath['/_layout/_layout-2/layout-a']['id'],
+    ServerFileRoutesByPath['/_layout/_layout-2/layout-a']['path'],
+    ServerFileRoutesByPath['/_layout/_layout-2/layout-a']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/_layout/_layout-2/layout-b' {
+  const createFileRoute: CreateFileRoute<
+    '/_layout/_layout-2/layout-b',
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['parentRoute'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
+    FileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/_layout/_layout-2/layout-b']['parentRoute'],
+    ServerFileRoutesByPath['/_layout/_layout-2/layout-b']['id'],
+    ServerFileRoutesByPath['/_layout/_layout-2/layout-b']['path'],
+    ServerFileRoutesByPath['/_layout/_layout-2/layout-b']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/api/users.$id' {
+  const createFileRoute: CreateFileRoute<
+    '/api/users/$id',
+    FileRoutesByPath['/api/users/$id']['parentRoute'],
+    FileRoutesByPath['/api/users/$id']['id'],
+    FileRoutesByPath['/api/users/$id']['path'],
+    FileRoutesByPath['/api/users/$id']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/api/users/$id']['parentRoute'],
+    ServerFileRoutesByPath['/api/users/$id']['id'],
+    ServerFileRoutesByPath['/api/users/$id']['path'],
+    ServerFileRoutesByPath['/api/users/$id']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/posts_.$postId.deep' {
+  const createFileRoute: CreateFileRoute<
+    '/posts_/$postId/deep',
+    FileRoutesByPath['/posts_/$postId/deep']['parentRoute'],
+    FileRoutesByPath['/posts_/$postId/deep']['id'],
+    FileRoutesByPath['/posts_/$postId/deep']['path'],
+    FileRoutesByPath['/posts_/$postId/deep']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/posts_/$postId/deep']['parentRoute'],
+    ServerFileRoutesByPath['/posts_/$postId/deep']['id'],
+    ServerFileRoutesByPath['/posts_/$postId/deep']['path'],
+    ServerFileRoutesByPath['/posts_/$postId/deep']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/redirect/$target/via-beforeLoad' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/via-beforeLoad',
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['id'],
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['path'],
+    FileRoutesByPath['/redirect/$target/via-beforeLoad']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/redirect/$target/via-beforeLoad']['parentRoute'],
+    ServerFileRoutesByPath['/redirect/$target/via-beforeLoad']['id'],
+    ServerFileRoutesByPath['/redirect/$target/via-beforeLoad']['path'],
+    ServerFileRoutesByPath['/redirect/$target/via-beforeLoad']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/redirect/$target/via-loader' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/via-loader',
+    FileRoutesByPath['/redirect/$target/via-loader']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/via-loader']['id'],
+    FileRoutesByPath['/redirect/$target/via-loader']['path'],
+    FileRoutesByPath['/redirect/$target/via-loader']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/redirect/$target/via-loader']['parentRoute'],
+    ServerFileRoutesByPath['/redirect/$target/via-loader']['id'],
+    ServerFileRoutesByPath['/redirect/$target/via-loader']['path'],
+    ServerFileRoutesByPath['/redirect/$target/via-loader']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/redirect/$target/index' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/',
+    FileRoutesByPath['/redirect/$target/']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/']['id'],
+    FileRoutesByPath['/redirect/$target/']['path'],
+    FileRoutesByPath['/redirect/$target/']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/redirect/$target/']['parentRoute'],
+    ServerFileRoutesByPath['/redirect/$target/']['id'],
+    ServerFileRoutesByPath['/redirect/$target/']['path'],
+    ServerFileRoutesByPath['/redirect/$target/']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/foo/$bar/$qux/_here' {
+  const createFileRoute: CreateFileRoute<
+    '/foo/$bar/$qux/_here',
+    FileRoutesByPath['/foo/$bar/$qux/_here']['parentRoute'],
+    FileRoutesByPath['/foo/$bar/$qux/_here']['id'],
+    FileRoutesByPath['/foo/$bar/$qux/_here']['path'],
+    FileRoutesByPath['/foo/$bar/$qux/_here']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/foo/$bar/$qux/_here']['parentRoute'],
+    ServerFileRoutesByPath['/foo/$bar/$qux/_here']['id'],
+    ServerFileRoutesByPath['/foo/$bar/$qux/_here']['path'],
+    ServerFileRoutesByPath['/foo/$bar/$qux/_here']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/redirect/$target/serverFn/via-beforeLoad' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/serverFn/via-beforeLoad',
+    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['id'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['path'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['parentRoute'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['id'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['path'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-beforeLoad']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/redirect/$target/serverFn/via-loader' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/serverFn/via-loader',
+    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['id'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['path'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-loader']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-loader']['parentRoute'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-loader']['id'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-loader']['path'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-loader']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/redirect/$target/serverFn/via-useServerFn' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/serverFn/via-useServerFn',
+    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['id'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['path'],
+    FileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['parentRoute'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['id'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['path'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/via-useServerFn']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/redirect/$target/serverFn/index' {
+  const createFileRoute: CreateFileRoute<
+    '/redirect/$target/serverFn/',
+    FileRoutesByPath['/redirect/$target/serverFn/']['parentRoute'],
+    FileRoutesByPath['/redirect/$target/serverFn/']['id'],
+    FileRoutesByPath['/redirect/$target/serverFn/']['path'],
+    FileRoutesByPath['/redirect/$target/serverFn/']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/redirect/$target/serverFn/']['parentRoute'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/']['id'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/']['path'],
+    ServerFileRoutesByPath['/redirect/$target/serverFn/']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/foo/$bar/$qux/_here/index' {
+  const createFileRoute: CreateFileRoute<
+    '/foo/$bar/$qux/_here/',
+    FileRoutesByPath['/foo/$bar/$qux/_here/']['parentRoute'],
+    FileRoutesByPath['/foo/$bar/$qux/_here/']['id'],
+    FileRoutesByPath['/foo/$bar/$qux/_here/']['path'],
+    FileRoutesByPath['/foo/$bar/$qux/_here/']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/foo/$bar/$qux/_here/']['parentRoute'],
+    ServerFileRoutesByPath['/foo/$bar/$qux/_here/']['id'],
+    ServerFileRoutesByPath['/foo/$bar/$qux/_here/']['path'],
+    ServerFileRoutesByPath['/foo/$bar/$qux/_here/']['fullPath'],
+    unknown
+  >
 }
 
 interface NotFoundRouteRouteChildren {
