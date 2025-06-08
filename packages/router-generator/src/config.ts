@@ -123,7 +123,7 @@ export function getConfig(
 
   const resolveTmpDir = (dir: string) => {
     if (!path.isAbsolute(dir)) {
-       dir = path.resolve(process.cwd(), dir)
+      dir = path.resolve(process.cwd(), dir)
     }
     mkdirSync(dir, { recursive: true })
     return dir
