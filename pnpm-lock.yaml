@@ -5802,8 +5802,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       vibe-rules:
-        specifier: ^0.2.55
-        version: 0.2.55
+        specifier: ^0.2.57
+        version: 0.2.57
       zod:
         specifier: ^3.24.2
         version: 3.25.32
@@ -14958,8 +14958,8 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  vibe-rules@0.2.55:
-    resolution: {integrity: sha512-2CdweOc2B6U5ML2XhMMdS/s0mvJggHWkdZykJFth80N0mlrg0XTVL8vUYBbyiF1VJFQfzOVcInhv6lOoG6f2qg==}
+  vibe-rules@0.2.57:
+    resolution: {integrity: sha512-CVGXHyKRvDeC3S6SywxTcNGuckmSjwB+2q/v8eDSmwDBTlz0ziRqm49eI5ELLy4djKq6DdCSYvV4EGcwzsHRog==}
     hasBin: true
 
   vinxi@0.5.1:
@@ -23878,11 +23878,12 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vibe-rules@0.2.55:
+  vibe-rules@0.2.57:
     dependencies:
       chalk: 4.1.2
       commander: 11.1.0
       fs-extra: 11.3.0
+      import-meta-resolve: 4.1.0
       zod: 3.25.32
 
   vinxi@0.5.1(@types/node@22.13.4)(db0@0.2.3)(ioredis@5.4.2)(jiti@2.4.2)(lightningcss@1.29.1)(terser@5.37.0)(tsx@4.19.2)(typescript@5.8.2)(yaml@2.7.0):
