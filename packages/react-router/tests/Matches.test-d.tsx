@@ -19,10 +19,10 @@ type RootMatch = RouteMatch<
   RootRoute['fullPath'],
   RootRoute['types']['allParams'],
   RootRoute['types']['fullSearchSchema'],
+  RootRoute['types']['fullStateSchema'],
   RootRoute['types']['loaderData'],
   RootRoute['types']['allContext'],
-  RootRoute['types']['loaderDeps'],
-  RootRoute['types']['fullStateSchema']
+  RootRoute['types']['loaderDeps']
 >
 
 const indexRoute = createRoute({
@@ -37,10 +37,10 @@ type IndexMatch = RouteMatch<
   IndexRoute['fullPath'],
   IndexRoute['types']['allParams'],
   IndexRoute['types']['fullSearchSchema'],
+  IndexRoute['types']['fullStateSchema'],
   IndexRoute['types']['loaderData'],
   IndexRoute['types']['allContext'],
-  IndexRoute['types']['loaderDeps'],
-  IndexRoute['types']['fullStateSchema']
+  IndexRoute['types']['loaderDeps']
 >
 
 const invoicesRoute = createRoute({
@@ -54,10 +54,10 @@ type InvoiceMatch = RouteMatch<
   InvoiceRoute['fullPath'],
   InvoiceRoute['types']['allParams'],
   InvoiceRoute['types']['fullSearchSchema'],
+  IndexRoute['types']['fullStateSchema'],
   InvoiceRoute['types']['loaderData'],
   InvoiceRoute['types']['allContext'],
-  InvoiceRoute['types']['loaderDeps'],
-  InvoiceRoute['types']['fullStateSchema']
+  InvoiceRoute['types']['loaderDeps']
 >
 
 type InvoicesRoute = typeof invoicesRoute
@@ -67,10 +67,10 @@ type InvoicesMatch = RouteMatch<
   InvoicesRoute['fullPath'],
   InvoicesRoute['types']['allParams'],
   InvoicesRoute['types']['fullSearchSchema'],
+  InvoicesRoute['types']['fullStateSchema'],
   InvoicesRoute['types']['loaderData'],
   InvoicesRoute['types']['allContext'],
-  InvoicesRoute['types']['loaderDeps'],
-  InvoicesRoute['types']['fullStateSchema']
+  InvoicesRoute['types']['loaderDeps']
 >
 
 const invoicesIndexRoute = createRoute({
@@ -85,10 +85,10 @@ type InvoicesIndexMatch = RouteMatch<
   InvoicesIndexRoute['fullPath'],
   InvoicesIndexRoute['types']['allParams'],
   InvoicesIndexRoute['types']['fullSearchSchema'],
+  InvoicesIndexRoute['types']['fullStateSchema'],
   InvoicesIndexRoute['types']['loaderData'],
   InvoicesIndexRoute['types']['allContext'],
-  InvoicesIndexRoute['types']['loaderDeps'],
-  InvoicesIndexRoute['types']['fullStateSchema']
+  InvoicesIndexRoute['types']['loaderDeps']
 >
 
 const invoiceRoute = createRoute({
@@ -111,10 +111,10 @@ type LayoutMatch = RouteMatch<
   LayoutRoute['fullPath'],
   LayoutRoute['types']['allParams'],
   LayoutRoute['types']['fullSearchSchema'],
+  LayoutRoute['types']['fullStateSchema'],
   LayoutRoute['types']['loaderData'],
   LayoutRoute['types']['allContext'],
-  LayoutRoute['types']['loaderDeps'],
-  LayoutRoute['types']['fullStateSchema']
+  LayoutRoute['types']['loaderDeps']
 >
 
 const commentsRoute = createRoute({
@@ -135,10 +135,10 @@ type CommentsMatch = RouteMatch<
   CommentsRoute['fullPath'],
   CommentsRoute['types']['allParams'],
   CommentsRoute['types']['fullSearchSchema'],
+  LayoutRoute['types']['fullStateSchema'],
   CommentsRoute['types']['loaderData'],
   CommentsRoute['types']['allContext'],
-  CommentsRoute['types']['loaderDeps'],
-  CommentsRoute['types']['fullStateSchema']
+  CommentsRoute['types']['loaderDeps']
 >
 
 const routeTree = rootRoute.addChildren([
