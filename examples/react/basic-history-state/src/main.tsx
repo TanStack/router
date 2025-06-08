@@ -10,43 +10,13 @@ import {
   createRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import axios from 'redaxios'
 import { z } from 'zod'
+import { fetchPost, fetchPosts } from './posts'
 import type {
   ErrorComponentProps,
   SearchSchemaInput,
 } from '@tanstack/react-router'
 import './styles.css'
-
-type PostType = {
-  id: number
-  title: string
-  body: string
-}
-
-const fetchPosts = async () => {
-  console.info('Fetching posts...')
-  await new Promise((r) => setTimeout(r, 300))
-  return axios
-    .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
-}
-
-const fetchPost = async (postId: number) => {
-  console.info(`Fetching post with id ${postId}...`)
-  await new Promise((r) => setTimeout(r, 300))
-  const post = await axios
-    .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-    .catch((err) => {
-      if (err.status === 404) {
-        throw new NotFoundError(`Post with id "${postId}" not found!`)
-      }
-      throw err
-    })
-    .then((r) => r.data)
-
-  return post
-}
 
 const rootRoute = createRootRoute({
   component: RootComponent,
@@ -165,11 +135,7 @@ const postRoute = createRoute({
         postId: z.number().catch(1),
       })
       .parse(input),
-  validateState: (
-    input: {
-      color: 'white' | 'red' | 'green'
-    },
-  ) =>
+  validateState: (input: { color: 'white' | 'red' | 'green' }) =>
     z
       .object({
         color: z.enum(['white', 'red', 'green']).catch('white'),
@@ -197,7 +163,9 @@ function PostComponent() {
   return (
     <div className="space-y-2">
       <h4 className="text-xl font-bold">{post.title}</h4>
-      <h4 className="text-xl font-bold">Color: <span style={{ color: state.color }}>{state.color}</span></h4>
+      <h4 className="text-xl font-bold">
+        Color: <span style={{ color: state.color }}>{state.color}</span>
+      </h4>
       <hr className="opacity-20" />
       <div className="text-sm">{post.body}</div>
     </div>
@@ -256,9 +224,9 @@ function StateDestinationComponent() {
   return (
     <div className="mt-4 p-4 bg-black/20 rounded">
       <h4 className="text-lg font-bold mb-2">State Data Display</h4>
-          <pre className="whitespace-pre-wrap bg-black/30 p-2 rounded text-sm mt-2">
-            {JSON.stringify(state, null, 2)}
-          </pre>
+      <pre className="whitespace-pre-wrap bg-black/30 p-2 rounded text-sm mt-2">
+        {JSON.stringify(state, null, 2)}
+      </pre>
     </div>
   )
 }
