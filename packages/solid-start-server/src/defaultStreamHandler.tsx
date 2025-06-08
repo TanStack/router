@@ -10,10 +10,14 @@ import { StartServer } from './StartServer'
 import type { ReadableStream } from 'node:stream/web'
 
 export const defaultStreamHandler = defineHandlerCallback(
-  async ({ request, router, responseHeaders }) => {
+  async ({ request, router, responseHeaders, RootDocument }) => {
     const { writable, readable } = new TransformStream()
 
-    const stream = Solid.renderToStream(() => <StartServer router={router} />)
+    const stream = Solid.renderToStream(() => (
+      <RootDocument>
+        <StartServer router={router} />
+      </RootDocument>
+    ))
 
     if (isbot(request.headers.get('User-Agent'))) {
       await stream
