@@ -62,10 +62,6 @@
       "import": {
         "types": "./dist/llms/index.d.ts",
         "default": "./dist/llms/index.js"
-      },
-      "default": {
-        "types": "./dist/llms/index.d.cts",
-        "default": "./dist/llms/index.cjs"
       }
     }
   },
