@@ -15,6 +15,7 @@ import { fetchPost, fetchPosts } from './posts'
 import type {
   ErrorComponentProps,
   SearchSchemaInput,
+  StateSchemaInput,
 } from '@tanstack/react-router'
 import './styles.css'
 
@@ -135,7 +136,9 @@ const postRoute = createRoute({
         postId: z.number().catch(1),
       })
       .parse(input),
-  validateState: (input: { color: 'white' | 'red' | 'green' }) =>
+  validateState: (
+    input: { color: 'white' | 'red' | 'green' } & StateSchemaInput,
+  ) =>
     z
       .object({
         color: z.enum(['white', 'red', 'green']).catch('white'),

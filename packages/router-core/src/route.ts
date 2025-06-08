@@ -44,6 +44,10 @@ export type SearchSchemaInput = {
   __TSearchSchemaInput__: 'TSearchSchemaInput'
 }
 
+export type StateSchemaInput = {
+  __TStateSchemaInput__: 'TStateSchemaInput'
+}
+
 export type AnyContext = {}
 
 export interface RouteContext {}
@@ -464,6 +468,7 @@ export interface RouteTypes<
   searchSchemaInput: ResolveSearchValidatorInput<TSearchValidator>
   searchValidator: TSearchValidator
   stateSchema: ResolveStateSchema<TStateValidator>
+  stateSchemaInput: ResolveStateValidatorInput<TStateValidator>
   stateValidator: TStateValidator
   fullSearchSchema: ResolveFullSearchSchema<TParentRoute, TSearchValidator>
   fullSearchSchemaInput: ResolveFullSearchSchemaInput<

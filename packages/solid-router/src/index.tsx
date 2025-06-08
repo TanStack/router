@@ -57,6 +57,7 @@ export type {
   AnyPathParams,
   ResolveParams,
   SearchSchemaInput,
+  StateSchemaInput,
   AnyContext,
   RouteContext,
   PreloadableObj,

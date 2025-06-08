@@ -120,6 +120,7 @@ export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
 export type {
   AnyPathParams,
   SearchSchemaInput,
+  StateSchemaInput,
   AnyContext,
   RouteContext,
   PreloadableObj,
