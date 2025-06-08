@@ -20,6 +20,7 @@ const transformFuncs = [
   'clientOnly',
   'createIsomorphicFn',
   'createServerFileRoute',
+  'createServerRootRoute',
 ]
 
 const tokenRegex = new RegExp(transformFuncs.join('|'))
@@ -52,24 +53,29 @@ export function startCompilerPlugin(
     applyToEnvironment(env) {
       return [opts.client.envName, opts.server.envName].includes(env.name)
     },
-    transform(code, id) {
-      const env =
-        this.environment.name === opts.client.envName
-          ? 'client'
-          : this.environment.name === opts.server.envName
-            ? 'server'
-            : (() => {
-                throw new Error(
-                  `Environment ${this.environment.name} not configured`,
-                )
-              })()
+    transform: {
+      filter: {
+        code: tokenRegex,
+      },
+      handler(code, id) {
+        const env =
+          this.environment.name === opts.client.envName
+            ? 'client'
+            : this.environment.name === opts.server.envName
+              ? 'server'
+              : (() => {
+                  throw new Error(
+                    `Environment ${this.environment.name} not configured`,
+                  )
+                })()
 
-      return transformCode({
-        code,
-        id,
-        env,
-        framework,
-      })
+        return transformCode({
+          code,
+          id,
+          env,
+          framework,
+        })
+      },
     },
   }
 }
@@ -86,12 +92,6 @@ function transformCode(opts: {
   const url = pathToFileURL(id)
   url.searchParams.delete('v')
   id = fileURLToPath(url).replace(/\\/g, '/')
-
-  const includesToken = tokenRegex.test(code)
-
-  if (!includesToken) {
-    return null
-  }
 
   if (debug) console.info(`${env} Compiling Start: `, id)
 
