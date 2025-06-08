@@ -49,8 +49,10 @@ export function getStartResponseHeaders(opts: { router: AnyRouter }) {
 
 export function createStartHandler<TRouter extends AnyRouter>({
   createRouter,
+  RootDocument,
 }: {
   createRouter: () => TRouter
+  RootDocument?: any
 }): CustomizeStartHandler<TRouter> {
   return (cb) => {
     const originalFetch = globalThis.fetch
@@ -196,6 +198,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
             request,
             router,
             responseHeaders,
+            RootDocument,
           })
 
           return response

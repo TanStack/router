@@ -3,9 +3,13 @@ import { defineHandlerCallback } from '@tanstack/start-server-core'
 import { StartServer } from './StartServer'
 
 export const defaultRenderHandler = defineHandlerCallback(
-  async ({ router, responseHeaders }) => {
+  async ({ router, responseHeaders, RootDocument }) => {
     try {
-      let html = Solid.renderToString(() => <StartServer router={router} />)
+      let html = Solid.renderToString(() => (
+        <RootDocument>
+          <StartServer router={router} />
+        </RootDocument>
+      ))
       const injectedHtml = await Promise.all(
         router.serverSsr!.injectedHtml,
       ).then((htmls) => htmls.join(''))
