@@ -6,8 +6,7 @@ import {
   Scripts,
 } from '@tanstack/solid-router'
 import appCss from '~/styles/app.css?url'
-import * as Solid from 'solid-js'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import type * as Solid from 'solid-js'
 import { Hydration, HydrationScript, NoHydration } from 'solid-js/web'
 
 export const Route = createRootRoute({
@@ -25,7 +24,7 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: { children: Solid.JSX.Element }) {
+function RootDocument(props: { children: Solid.JSX.Element }) {
   return (
     <NoHydration>
       <html>
@@ -34,15 +33,17 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
           <HeadContent />
         </head>
         <body>
-          <Hydration>
-            <div class="p-2 flex gap-2 text-lg">
-              <Link to="/">Index</Link>
-              <Link to="/about">About</Link>
-            </div>
-            {children}
-            <TanStackRouterDevtools position="bottom-right" />
-            <Scripts />
-          </Hydration>
+          <div id="app">
+            <Hydration>
+              <div class="p-2 flex gap-2 text-lg">
+                <Link to="/">Index</Link>
+                <Link to="/about">About</Link>
+              </div>
+              {props.children}
+            </Hydration>
+          </div>
+
+          <Scripts />
         </body>
       </html>
     </NoHydration>
