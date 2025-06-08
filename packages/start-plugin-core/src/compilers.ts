@@ -94,9 +94,7 @@ export function compileStartOutputFactory(
 
           programPath.traverse({
             ImportDeclaration: (path) => {
-              if (
-                path.node.source.value !== `@tanstack/${framework}-start`
-              ) {
+              if (path.node.source.value !== `@tanstack/${framework}-start`) {
                 return
               }
 
