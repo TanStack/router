@@ -95,8 +95,7 @@ export function compileStartOutputFactory(
           programPath.traverse({
             ImportDeclaration: (path) => {
               if (
-                path.node.source.value !== '@tanstack/react-start' &&
-                path.node.source.value !== '@tanstack/solid-start'
+                path.node.source.value !== `@tanstack/${framework}-start`
               ) {
                 return
               }
