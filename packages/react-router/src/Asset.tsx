@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 export function Asset({ tag, attrs, children }: RouterManagedTag): any {
@@ -28,18 +29,34 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
 }
 
 function ScriptAsset({ attrs, children }: { attrs: any; children?: string }) {
+  const router = useRouter()
+
+  if (router.isServer) {
+    if (attrs?.src) {
+      return <script {...attrs} suppressHydrationWarning />
+    } else if (typeof children === 'string') {
+      return (
+        <script
+          dangerouslySetInnerHTML={{ __html: children }}
+          suppressHydrationWarning
+        />
+      )
+    }
+    return null
+  }
+
   React.useEffect(() => {
     if (attrs?.src) {
       const script = document.createElement('script')
-      
-      Object.keys(attrs).forEach(key => {
+
+      Object.keys(attrs).forEach((key) => {
         if (key !== 'suppressHydrationWarning') {
           script.setAttribute(key, attrs[key])
         }
       })
-      
+
       document.head.appendChild(script)
-      
+
       return () => {
         if (script.parentNode) {
           script.parentNode.removeChild(script)
@@ -48,23 +65,25 @@ function ScriptAsset({ attrs, children }: { attrs: any; children?: string }) {
     } else if (typeof children === 'string') {
       const script = document.createElement('script')
       script.textContent = children
-      
+
       if (attrs) {
-        Object.keys(attrs).forEach(key => {
+        Object.keys(attrs).forEach((key) => {
           if (key !== 'suppressHydrationWarning') {
             script.setAttribute(key, attrs[key])
           }
         })
       }
-      
+
       document.head.appendChild(script)
-      
+
       return () => {
         if (script.parentNode) {
           script.parentNode.removeChild(script)
         }
       }
     }
+
+    return undefined
   }, [attrs, children])
 
   return null
