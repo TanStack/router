@@ -52,9 +52,8 @@ describe('ssr scripts', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
     })
-
-    router.options.isServer = true
 
     await router.load()
 
@@ -87,9 +86,8 @@ describe('ssr scripts', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
     })
-
-    router.options.isServer = true
 
     await router.load()
 
@@ -179,9 +177,8 @@ describe('ssr HeadContent', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
     })
-
-    router.options.isServer = true
 
     await router.load()
 
