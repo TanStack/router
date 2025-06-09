@@ -260,6 +260,87 @@ declare module '@tanstack/solid-router' {
     }
   }
 }
+declare module '@tanstack/solid-start/server' {
+  interface ServerFileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/users': {
+      id: '/api/users'
+      path: '/api/users'
+      fullPath: '/api/users'
+      preLoaderRoute: typeof ApiUsersServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users/$userId': {
+      id: '/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/users/$userId': {
+      id: '/api/users/$userId'
+      path: '/$userId'
+      fullPath: '/api/users/$userId'
+      preLoaderRoute: typeof ApiUsersUserIdServerRouteImport
+      parentRoute: typeof ApiUsersServerRoute
+    }
+    '/posts_/$postId/deep': {
+      id: '/posts_/$postId/deep'
+      path: '/posts/$postId/deep'
+      fullPath: '/posts/$postId/deep'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+  }
+}
 
 interface PostsRouteChildren {
   PostsPostIdRoute: typeof PostsPostIdRoute

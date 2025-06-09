@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { Link, Outlet, createRootRoute } from '@tanstack/solid-router'
 
 import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'

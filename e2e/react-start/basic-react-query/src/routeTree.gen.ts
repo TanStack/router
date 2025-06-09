@@ -351,6 +351,122 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+declare module '@tanstack/react-start/server' {
+  interface ServerFileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect': {
+      id: '/redirect'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_layout/_layout-2': {
+      id: '/_layout/_layout-2'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/users': {
+      id: '/api/users'
+      path: '/api/users'
+      fullPath: '/api/users'
+      preLoaderRoute: typeof ApiUsersServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users/$userId': {
+      id: '/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_layout/_layout-2/layout-a': {
+      id: '/_layout/_layout-2/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_layout/_layout-2/layout-b': {
+      id: '/_layout/_layout-2/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/users/$id': {
+      id: '/api/users/$id'
+      path: '/$id'
+      fullPath: '/api/users/$id'
+      preLoaderRoute: typeof ApiUsersIdServerRouteImport
+      parentRoute: typeof ApiUsersServerRoute
+    }
+    '/posts_/$postId/deep': {
+      id: '/posts_/$postId/deep'
+      path: '/posts/$postId/deep'
+      fullPath: '/posts/$postId/deep'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+  }
+}
 
 interface LayoutLayout2RouteChildren {
   LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute

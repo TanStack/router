@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { createRootRoute, Link, Outlet } from '@tanstack/solid-router'
 import appCss from '~/styles/app.css?url'
 import * as Solid from 'solid-js'

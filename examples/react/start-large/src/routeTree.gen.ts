@@ -224,6 +224,66 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+declare module '@tanstack/react-start/server' {
+  interface ServerFileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/params': {
+      id: '/params'
+      path: '/params'
+      fullPath: '/params'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/absolute': {
+      id: '/absolute'
+      path: '/absolute'
+      fullPath: '/absolute'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/linkProps': {
+      id: '/linkProps'
+      path: '/linkProps'
+      fullPath: '/linkProps'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/relative': {
+      id: '/relative'
+      path: '/relative'
+      fullPath: '/relative'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/params/$paramsPlaceholder': {
+      id: '/params/$paramsPlaceholder'
+      path: '/$paramsPlaceholder'
+      fullPath: '/params/$paramsPlaceholder'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/search/searchPlaceholder': {
+      id: '/search/searchPlaceholder'
+      path: '/searchPlaceholder'
+      fullPath: '/search/searchPlaceholder'
+      preLoaderRoute: typeof SearchSearchPlaceholderServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
+  }
+}
 
 interface ParamsRouteRouteChildren {
   ParamsParamsPlaceholderRoute: typeof ParamsParamsPlaceholderRoute
