@@ -128,10 +128,9 @@ export function serverRoutesPlugin(): GeneratorPluginWithTransform {
     createRootRouteCode: () => `createServerRootRoute()`,
     createVirtualRouteCode: ({ node }) =>
       `createServerFileRoute('${node.routePath}')`,
-    config: ({ generator, sortedRouteNodes }) => {
+    config: ({ sortedRouteNodes }) => {
       const hasMatchingRouteFiles = sortedRouteNodes.length > 0
       return {
-        fileRoutesByPathInterface: generator.config.verboseFileRoutes === false,
         virtualRootRoute: hasMatchingRouteFiles,
       }
     },

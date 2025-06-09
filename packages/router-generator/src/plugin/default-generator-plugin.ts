@@ -89,7 +89,6 @@ export function defaultGeneratorPlugin(): GeneratorPluginWithTransform {
     config: ({ sortedRouteNodes }) => {
       const hasMatchingRouteFiles = sortedRouteNodes.length > 0
       return {
-        fileRoutesByPathInterface: true,
         virtualRootRoute: hasMatchingRouteFiles,
       }
     },

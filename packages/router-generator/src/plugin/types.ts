@@ -44,7 +44,6 @@ export interface GeneratorPluginWithTransform extends GeneratorPluginBase {
     rootRouteNode: RouteNode
     sortedRouteNodes: Array<RouteNode>
   }) => {
-    fileRoutesByPathInterface?: boolean
     virtualRootRoute?: boolean
   }
 }

@@ -596,6 +596,7 @@ export class Generator {
         ].join('\n\n')
       })
 
+      let fileRoutesByPathInterfacePerPlugin = ''
       let fileRoutesByFullPathPerPlugin = ''
 
       if (!this.config.disableTypes && hasMatchingRouteFiles) {
@@ -630,9 +631,7 @@ file${exportName}sById: File${exportName}sById
 ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${getResolvedRouteNodeVariableName(child, exportName)}`).join(',')}
 }`,
         ].join('\n')
-      }
-      let fileRoutesByPathInterfacePerPlugin = ''
-      if (!this.config.disableTypes && pluginConfig.fileRoutesByPathInterface) {
+
         fileRoutesByPathInterfacePerPlugin = buildFileRoutesByPathInterface({
           ...plugin.moduleAugmentation({ generator: this }),
           routeNodes: preRouteNodes,
