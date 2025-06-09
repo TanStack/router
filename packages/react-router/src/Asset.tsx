@@ -31,20 +31,6 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
 function ScriptAsset({ attrs, children }: { attrs: any; children?: string }) {
   const router = useRouter()
 
-  if (router.isServer) {
-    if (attrs?.src) {
-      return <script {...attrs} suppressHydrationWarning />
-    } else if (typeof children === 'string') {
-      return (
-        <script
-          dangerouslySetInnerHTML={{ __html: children }}
-          suppressHydrationWarning
-        />
-      )
-    }
-    return null
-  }
-
   React.useEffect(() => {
     if (attrs?.src) {
       const script = document.createElement('script')
@@ -85,6 +71,20 @@ function ScriptAsset({ attrs, children }: { attrs: any; children?: string }) {
 
     return undefined
   }, [attrs, children])
+
+  if (router.isServer) {
+    if (attrs?.src) {
+      return <script {...attrs} suppressHydrationWarning />
+    } else if (typeof children === 'string') {
+      return (
+        <script
+          dangerouslySetInnerHTML={{ __html: children }}
+          suppressHydrationWarning
+        />
+      )
+    }
+    return null
+  }
 
   return null
 }
