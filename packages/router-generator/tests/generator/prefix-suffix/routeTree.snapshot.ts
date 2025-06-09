@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WildcardChar123Char125suffixRouteImport } from './routes/wildcard/{$}suffix'
 import { Route as WildcardChar123Char125DotsuffixRouteImport } from './routes/wildcard/{$}[.]suffix'
@@ -125,52 +123,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRouteImport
     }
   }
-}
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/wildcard/$' {
-  const createFileRoute: CreateFileRoute<
-    '/wildcard/$',
-    FileRoutesByPath['/wildcard/$']['parentRoute'],
-    FileRoutesByPath['/wildcard/$']['id'],
-    FileRoutesByPath['/wildcard/$']['path'],
-    FileRoutesByPath['/wildcard/$']['fullPath']
-  >
-}
-declare module './routes/wildcard/prefix{$}' {
-  const createFileRoute: CreateFileRoute<
-    '/wildcard/prefix{$}',
-    FileRoutesByPath['/wildcard/prefix{$}']['parentRoute'],
-    FileRoutesByPath['/wildcard/prefix{$}']['id'],
-    FileRoutesByPath['/wildcard/prefix{$}']['path'],
-    FileRoutesByPath['/wildcard/prefix{$}']['fullPath']
-  >
-}
-declare module './routes/wildcard/{$}[.]suffix' {
-  const createFileRoute: CreateFileRoute<
-    '/wildcard/{$}.suffix',
-    FileRoutesByPath['/wildcard/{$}.suffix']['parentRoute'],
-    FileRoutesByPath['/wildcard/{$}.suffix']['id'],
-    FileRoutesByPath['/wildcard/{$}.suffix']['path'],
-    FileRoutesByPath['/wildcard/{$}.suffix']['fullPath']
-  >
-}
-declare module './routes/wildcard/{$}suffix' {
-  const createFileRoute: CreateFileRoute<
-    '/wildcard/{$}suffix',
-    FileRoutesByPath['/wildcard/{$}suffix']['parentRoute'],
-    FileRoutesByPath['/wildcard/{$}suffix']['id'],
-    FileRoutesByPath['/wildcard/{$}suffix']['path'],
-    FileRoutesByPath['/wildcard/{$}suffix']['fullPath']
-  >
 }
 
 const rootRouteChildren: RootRouteChildren = {

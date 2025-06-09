@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 import { Route as ScriptDotjsRouteImport } from './routes/script[.]js'
 import { Route as NestedDotjsRouteImport } from './routes/nested[.]js'
 import { Route as NestedDotjsScriptDotjsRouteImport } from './routes/nested[.]js.script[.]js'
@@ -115,43 +113,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof NestedDotjsRoute
     }
   }
-}
-
-declare module './routes/nested[.]js' {
-  const createFileRoute: CreateFileRoute<
-    '/nested.js',
-    FileRoutesByPath['/nested.js']['parentRoute'],
-    FileRoutesByPath['/nested.js']['id'],
-    FileRoutesByPath['/nested.js']['path'],
-    FileRoutesByPath['/nested.js']['fullPath']
-  >
-}
-declare module './routes/script[.]js' {
-  const createFileRoute: CreateFileRoute<
-    '/script.js',
-    FileRoutesByPath['/script.js']['parentRoute'],
-    FileRoutesByPath['/script.js']['id'],
-    FileRoutesByPath['/script.js']['path'],
-    FileRoutesByPath['/script.js']['fullPath']
-  >
-}
-declare module './routes/nested[.]js.double[.]ext[.]js' {
-  const createFileRoute: CreateFileRoute<
-    '/nested.js/double.ext.js',
-    FileRoutesByPath['/nested.js/double.ext.js']['parentRoute'],
-    FileRoutesByPath['/nested.js/double.ext.js']['id'],
-    FileRoutesByPath['/nested.js/double.ext.js']['path'],
-    FileRoutesByPath['/nested.js/double.ext.js']['fullPath']
-  >
-}
-declare module './routes/nested[.]js.script[.]js' {
-  const createFileRoute: CreateFileRoute<
-    '/nested.js/script.js',
-    FileRoutesByPath['/nested.js/script.js']['parentRoute'],
-    FileRoutesByPath['/nested.js/script.js']['id'],
-    FileRoutesByPath['/nested.js/script.js']['path'],
-    FileRoutesByPath['/nested.js/script.js']['fullPath']
-  >
 }
 
 interface NestedDotjsRouteChildren {

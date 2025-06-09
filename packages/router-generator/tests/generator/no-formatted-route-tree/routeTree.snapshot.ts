@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NestedIndexRouteImport } from './routes/nested/index'
@@ -72,34 +70,6 @@ declare module '@tanstack/react-router' {
         }
   }
 }
-
-declare module './routes/index' {
-                      const createFileRoute: CreateFileRoute<'/',
-            FileRoutesByPath['/']['parentRoute'],
-            FileRoutesByPath['/']['id'],
-            FileRoutesByPath['/']['path'],
-            FileRoutesByPath['/']['fullPath']
-          >
-        
-                    }
-declare module './routes/nested/child' {
-                      const createFileRoute: CreateFileRoute<'/nested/child',
-            FileRoutesByPath['/nested/child']['parentRoute'],
-            FileRoutesByPath['/nested/child']['id'],
-            FileRoutesByPath['/nested/child']['path'],
-            FileRoutesByPath['/nested/child']['fullPath']
-          >
-        
-                    }
-declare module './routes/nested/index' {
-                      const createFileRoute: CreateFileRoute<'/nested/',
-            FileRoutesByPath['/nested/']['parentRoute'],
-            FileRoutesByPath['/nested/']['id'],
-            FileRoutesByPath['/nested/']['path'],
-            FileRoutesByPath['/nested/']['fullPath']
-          >
-        
-                    }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,NestedChildRoute: NestedChildRoute,NestedIndexRoute: NestedIndexRoute

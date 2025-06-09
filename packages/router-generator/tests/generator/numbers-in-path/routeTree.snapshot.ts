@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as R03RouteImport } from './routes/03'
@@ -119,52 +117,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRouteImport
     }
   }
-}
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/03' {
-  const createFileRoute: CreateFileRoute<
-    '/03',
-    FileRoutesByPath['/03']['parentRoute'],
-    FileRoutesByPath['/03']['id'],
-    FileRoutesByPath['/03']['path'],
-    FileRoutesByPath['/03']['fullPath']
-  >
-}
-declare module './routes/about' {
-  const createFileRoute: CreateFileRoute<
-    '/about',
-    FileRoutesByPath['/about']['parentRoute'],
-    FileRoutesByPath['/about']['id'],
-    FileRoutesByPath['/about']['path'],
-    FileRoutesByPath['/about']['fullPath']
-  >
-}
-declare module './routes/01-example/index' {
-  const createFileRoute: CreateFileRoute<
-    '/01-example/',
-    FileRoutesByPath['/01-example/']['parentRoute'],
-    FileRoutesByPath['/01-example/']['id'],
-    FileRoutesByPath['/01-example/']['path'],
-    FileRoutesByPath['/01-example/']['fullPath']
-  >
-}
-declare module './routes/02.index' {
-  const createFileRoute: CreateFileRoute<
-    '/02/',
-    FileRoutesByPath['/02/']['parentRoute'],
-    FileRoutesByPath['/02/']['id'],
-    FileRoutesByPath['/02/']['path'],
-    FileRoutesByPath['/02/']['fullPath']
-  >
 }
 
 const rootRouteChildren: RootRouteChildren = {

@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as groupCLayoutCRouteImport } from './routes/(group-c)/_layout-c'
@@ -171,70 +170,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof groupCLayoutCRoute
     }
   }
-}
-
-declare module './routes/(group-a)/_layout-a' {
-  const createFileRoute: CreateFileRoute<
-    '/(group-a)/_layout-a',
-    FileRoutesByPath['/(group-a)/_layout-a']['parentRoute'],
-    FileRoutesByPath['/(group-a)/_layout-a']['id'],
-    FileRoutesByPath['/(group-a)/_layout-a']['path'],
-    FileRoutesByPath['/(group-a)/_layout-a']['fullPath']
-  >
-}
-declare module './routes/(group-b)/_layout-b' {
-  const createFileRoute: CreateFileRoute<
-    '/(group-b)/_layout-b',
-    FileRoutesByPath['/(group-b)/_layout-b']['parentRoute'],
-    FileRoutesByPath['/(group-b)/_layout-b']['id'],
-    FileRoutesByPath['/(group-b)/_layout-b']['path'],
-    FileRoutesByPath['/(group-b)/_layout-b']['fullPath']
-  >
-}
-declare module './routes/(group-c)/_layout-c' {
-  const createFileRoute: CreateFileRoute<
-    '/(group-c)/_layout-c',
-    FileRoutesByPath['/(group-c)/_layout-c']['parentRoute'],
-    FileRoutesByPath['/(group-c)/_layout-c']['id'],
-    FileRoutesByPath['/(group-c)/_layout-c']['path'],
-    FileRoutesByPath['/(group-c)/_layout-c']['fullPath']
-  >
-}
-declare module './routes/(group-a)/_layout-a/login' {
-  const createFileRoute: CreateFileRoute<
-    '/(group-a)/_layout-a/login',
-    FileRoutesByPath['/(group-a)/_layout-a/login']['parentRoute'],
-    FileRoutesByPath['/(group-a)/_layout-a/login']['id'],
-    FileRoutesByPath['/(group-a)/_layout-a/login']['path'],
-    FileRoutesByPath['/(group-a)/_layout-a/login']['fullPath']
-  >
-}
-declare module './routes/(group-a)/_layout-a/signup' {
-  const createFileRoute: CreateFileRoute<
-    '/(group-a)/_layout-a/signup',
-    FileRoutesByPath['/(group-a)/_layout-a/signup']['parentRoute'],
-    FileRoutesByPath['/(group-a)/_layout-a/signup']['id'],
-    FileRoutesByPath['/(group-a)/_layout-a/signup']['path'],
-    FileRoutesByPath['/(group-a)/_layout-a/signup']['fullPath']
-  >
-}
-declare module './routes/(group-b)/_layout-b/dashboard' {
-  const createFileRoute: CreateFileRoute<
-    '/(group-b)/_layout-b/dashboard',
-    FileRoutesByPath['/(group-b)/_layout-b/dashboard']['parentRoute'],
-    FileRoutesByPath['/(group-b)/_layout-b/dashboard']['id'],
-    FileRoutesByPath['/(group-b)/_layout-b/dashboard']['path'],
-    FileRoutesByPath['/(group-b)/_layout-b/dashboard']['fullPath']
-  >
-}
-declare module './routes/(group-c)/_layout-c/index' {
-  const createFileRoute: CreateFileRoute<
-    '/(group-c)/_layout-c/',
-    FileRoutesByPath['/(group-c)/_layout-c/']['parentRoute'],
-    FileRoutesByPath['/(group-c)/_layout-c/']['id'],
-    FileRoutesByPath['/(group-c)/_layout-c/']['path'],
-    FileRoutesByPath['/(group-c)/_layout-c/']['fullPath']
-  >
 }
 
 interface groupALayoutARouteChildren {

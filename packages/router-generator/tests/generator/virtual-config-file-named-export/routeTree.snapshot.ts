@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/root'
 import { Route as layoutRouteImport } from './routes/layout'
 import { Route as indexRouteImport } from './routes/index'
@@ -249,106 +247,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof layoutRoute
     }
   }
-}
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/layout' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout',
-    FileRoutesByPath['/_layout']['parentRoute'],
-    FileRoutesByPath['/_layout']['id'],
-    FileRoutesByPath['/_layout']['path'],
-    FileRoutesByPath['/_layout']['fullPath']
-  >
-}
-declare module './routes/pages' {
-  const createFileRoute: CreateFileRoute<
-    '/$lang/',
-    FileRoutesByPath['/$lang/']['parentRoute'],
-    FileRoutesByPath['/$lang/']['id'],
-    FileRoutesByPath['/$lang/']['path'],
-    FileRoutesByPath['/$lang/']['fullPath']
-  >
-}
-declare module './routes/db/dashboard' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/dashboard',
-    FileRoutesByPath['/_layout/dashboard']['parentRoute'],
-    FileRoutesByPath['/_layout/dashboard']['id'],
-    FileRoutesByPath['/_layout/dashboard']['path'],
-    FileRoutesByPath['/_layout/dashboard']['fullPath']
-  >
-}
-declare module './routes/db/dashboard-index' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/dashboard/',
-    FileRoutesByPath['/_layout/dashboard/']['parentRoute'],
-    FileRoutesByPath['/_layout/dashboard/']['id'],
-    FileRoutesByPath['/_layout/dashboard/']['path'],
-    FileRoutesByPath['/_layout/dashboard/']['fullPath']
-  >
-}
-declare module './routes/db/dashboard-invoices' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/dashboard/invoices',
-    FileRoutesByPath['/_layout/dashboard/invoices']['parentRoute'],
-    FileRoutesByPath['/_layout/dashboard/invoices']['id'],
-    FileRoutesByPath['/_layout/dashboard/invoices']['path'],
-    FileRoutesByPath['/_layout/dashboard/invoices']['fullPath']
-  >
-}
-declare module './routes/subtree/index' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/hello/',
-    FileRoutesByPath['/_layout/hello/']['parentRoute'],
-    FileRoutesByPath['/_layout/hello/']['id'],
-    FileRoutesByPath['/_layout/hello/']['path'],
-    FileRoutesByPath['/_layout/hello/']['fullPath']
-  >
-}
-declare module './routes/db/invoices-index' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/dashboard/invoices/',
-    FileRoutesByPath['/_layout/dashboard/invoices/']['parentRoute'],
-    FileRoutesByPath['/_layout/dashboard/invoices/']['id'],
-    FileRoutesByPath['/_layout/dashboard/invoices/']['path'],
-    FileRoutesByPath['/_layout/dashboard/invoices/']['fullPath']
-  >
-}
-declare module './routes/db/invoice-detail' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/dashboard/invoices/$id',
-    FileRoutesByPath['/_layout/dashboard/invoices/$id']['parentRoute'],
-    FileRoutesByPath['/_layout/dashboard/invoices/$id']['id'],
-    FileRoutesByPath['/_layout/dashboard/invoices/$id']['path'],
-    FileRoutesByPath['/_layout/dashboard/invoices/$id']['fullPath']
-  >
-}
-declare module './routes/subtree/foo/$id' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/hello/foo/$id',
-    FileRoutesByPath['/_layout/hello/foo/$id']['parentRoute'],
-    FileRoutesByPath['/_layout/hello/foo/$id']['id'],
-    FileRoutesByPath['/_layout/hello/foo/$id']['path'],
-    FileRoutesByPath['/_layout/hello/foo/$id']['fullPath']
-  >
-}
-declare module './routes/subtree/foo/index' {
-  const createFileRoute: CreateFileRoute<
-    '/_layout/hello/foo/',
-    FileRoutesByPath['/_layout/hello/foo/']['parentRoute'],
-    FileRoutesByPath['/_layout/hello/foo/']['id'],
-    FileRoutesByPath['/_layout/hello/foo/']['path'],
-    FileRoutesByPath['/_layout/hello/foo/']['fullPath']
-  >
 }
 
 interface dbDashboardInvoicesRouteChildren {

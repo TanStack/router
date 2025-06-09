@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as FooLayoutRouteRouteImport } from './routes/foo/_layout/route'
@@ -74,25 +73,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof FooLayoutRouteRoute
     }
   }
-}
-
-declare module './routes/foo/_layout/route' {
-  const createFileRoute: CreateFileRoute<
-    '/foo/_layout',
-    FileRoutesByPath['/foo/_layout']['parentRoute'],
-    FileRoutesByPath['/foo/_layout']['id'],
-    FileRoutesByPath['/foo/_layout']['path'],
-    FileRoutesByPath['/foo/_layout']['fullPath']
-  >
-}
-declare module './routes/foo/_layout/index' {
-  const createFileRoute: CreateFileRoute<
-    '/foo/_layout/',
-    FileRoutesByPath['/foo/_layout/']['parentRoute'],
-    FileRoutesByPath['/foo/_layout/']['id'],
-    FileRoutesByPath['/foo/_layout/']['path'],
-    FileRoutesByPath['/foo/_layout/']['fullPath']
-  >
 }
 
 interface FooLayoutRouteRouteChildren {

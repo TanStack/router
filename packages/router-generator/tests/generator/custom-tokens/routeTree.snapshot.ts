@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PostsR0ut3RouteImport } from './routes/posts/_r0ut3_'
 import { Route as BlogR0ut3RouteImport } from './routes/blog/_r0ut3_'
@@ -186,79 +184,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof PostsR0ut3Route
     }
   }
-}
-
-declare module './routes/_1nd3x' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/blog/_r0ut3_' {
-  const createFileRoute: CreateFileRoute<
-    '/blog',
-    FileRoutesByPath['/blog']['parentRoute'],
-    FileRoutesByPath['/blog']['id'],
-    FileRoutesByPath['/blog']['path'],
-    FileRoutesByPath['/blog']['fullPath']
-  >
-}
-declare module './routes/posts/_r0ut3_' {
-  const createFileRoute: CreateFileRoute<
-    '/posts',
-    FileRoutesByPath['/posts']['parentRoute'],
-    FileRoutesByPath['/posts']['id'],
-    FileRoutesByPath['/posts']['path'],
-    FileRoutesByPath['/posts']['fullPath']
-  >
-}
-declare module './routes/blog/$slug' {
-  const createFileRoute: CreateFileRoute<
-    '/blog/$slug',
-    FileRoutesByPath['/blog/$slug']['parentRoute'],
-    FileRoutesByPath['/blog/$slug']['id'],
-    FileRoutesByPath['/blog/$slug']['path'],
-    FileRoutesByPath['/blog/$slug']['fullPath']
-  >
-}
-declare module './routes/blog/_1nd3x' {
-  const createFileRoute: CreateFileRoute<
-    '/blog/',
-    FileRoutesByPath['/blog/']['parentRoute'],
-    FileRoutesByPath['/blog/']['id'],
-    FileRoutesByPath['/blog/']['path'],
-    FileRoutesByPath['/blog/']['fullPath']
-  >
-}
-declare module './routes/posts/_1nd3x' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/',
-    FileRoutesByPath['/posts/']['parentRoute'],
-    FileRoutesByPath['/posts/']['id'],
-    FileRoutesByPath['/posts/']['path'],
-    FileRoutesByPath['/posts/']['fullPath']
-  >
-}
-declare module './routes/posts/$postId/deep' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/$postId/deep',
-    FileRoutesByPath['/posts/$postId/deep']['parentRoute'],
-    FileRoutesByPath['/posts/$postId/deep']['id'],
-    FileRoutesByPath['/posts/$postId/deep']['path'],
-    FileRoutesByPath['/posts/$postId/deep']['fullPath']
-  >
-}
-declare module './routes/posts/$postId/_1nd3x' {
-  const createFileRoute: CreateFileRoute<
-    '/posts/$postId/',
-    FileRoutesByPath['/posts/$postId/']['parentRoute'],
-    FileRoutesByPath['/posts/$postId/']['id'],
-    FileRoutesByPath['/posts/$postId/']['path'],
-    FileRoutesByPath['/posts/$postId/']['fullPath']
-  >
 }
 
 interface BlogR0ut3RouteChildren {

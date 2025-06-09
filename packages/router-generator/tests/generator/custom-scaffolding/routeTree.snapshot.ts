@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiBarRouteImport } from './routes/api/bar'
@@ -87,30 +86,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof rootRouteImport
     }
   }
-}
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/foo.lazy' {
-  const createLazyFileRoute: CreateLazyFileRoute<
-    FileRoutesByPath['/foo']['preLoaderRoute']
-  >
-}
-declare module './routes/api/bar' {
-  const createFileRoute: CreateFileRoute<
-    '/api/bar',
-    FileRoutesByPath['/api/bar']['parentRoute'],
-    FileRoutesByPath['/api/bar']['id'],
-    FileRoutesByPath['/api/bar']['path'],
-    FileRoutesByPath['/api/bar']['fullPath']
-  >
 }
 
 const rootRouteChildren: RootRouteChildren = {

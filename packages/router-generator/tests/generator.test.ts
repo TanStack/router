@@ -51,7 +51,6 @@ function setupConfig(
     disableLogging: true,
     routesDirectory: dir + '/routes',
     generatedRouteTree: dir + generatedRouteTree,
-    verboseFileRoutes: false,
     ...rest,
   })
   return config
@@ -126,6 +125,13 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.verboseFileRoutes = true
       break
     case 'file-modification-verboseFileRoutes-false':
+      config.verboseFileRoutes = false
+      break
+    // these two folders contain type tests which are executed separately
+    case 'nested-verboseFileRoutes-true':
+      config.verboseFileRoutes = true
+      break
+    case 'nested-verboseFileRoutes-false':
       config.verboseFileRoutes = false
       break
     default:

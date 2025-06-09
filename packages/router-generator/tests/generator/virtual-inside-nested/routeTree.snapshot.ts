@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FooBarRouteImport } from './routes/foo/bar'
@@ -99,43 +97,6 @@ declare module '@tanstack/react-router' {
       parentRoute: typeof FooBarRoute
     }
   }
-}
-
-declare module './routes/index' {
-  const createFileRoute: CreateFileRoute<
-    '/',
-    FileRoutesByPath['/']['parentRoute'],
-    FileRoutesByPath['/']['id'],
-    FileRoutesByPath['/']['path'],
-    FileRoutesByPath['/']['fullPath']
-  >
-}
-declare module './routes/foo/bar' {
-  const createFileRoute: CreateFileRoute<
-    '/foo/bar',
-    FileRoutesByPath['/foo/bar']['parentRoute'],
-    FileRoutesByPath['/foo/bar']['id'],
-    FileRoutesByPath['/foo/bar']['path'],
-    FileRoutesByPath['/foo/bar']['fullPath']
-  >
-}
-declare module './routes/foo/bar/home' {
-  const createFileRoute: CreateFileRoute<
-    '/foo/bar/',
-    FileRoutesByPath['/foo/bar/']['parentRoute'],
-    FileRoutesByPath['/foo/bar/']['id'],
-    FileRoutesByPath['/foo/bar/']['path'],
-    FileRoutesByPath['/foo/bar/']['fullPath']
-  >
-}
-declare module './routes/foo/bar/details' {
-  const createFileRoute: CreateFileRoute<
-    '/foo/bar/$id',
-    FileRoutesByPath['/foo/bar/$id']['parentRoute'],
-    FileRoutesByPath['/foo/bar/$id']['id'],
-    FileRoutesByPath['/foo/bar/$id']['path'],
-    FileRoutesByPath['/foo/bar/$id']['fullPath']
-  >
 }
 
 interface FooBarRouteChildren {
