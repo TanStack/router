@@ -54,7 +54,7 @@ type InvoiceMatch = RouteMatch<
   InvoiceRoute['fullPath'],
   InvoiceRoute['types']['allParams'],
   InvoiceRoute['types']['fullSearchSchema'],
-  IndexRoute['types']['fullStateSchema'],
+  InvoiceRoute['types']['fullStateSchema'],
   InvoiceRoute['types']['loaderData'],
   InvoiceRoute['types']['allContext'],
   InvoiceRoute['types']['loaderDeps']
@@ -135,7 +135,7 @@ type CommentsMatch = RouteMatch<
   CommentsRoute['fullPath'],
   CommentsRoute['types']['allParams'],
   CommentsRoute['types']['fullSearchSchema'],
-  LayoutRoute['types']['fullStateSchema'],
+  CommentsRoute['types']['fullStateSchema'],
   CommentsRoute['types']['loaderData'],
   CommentsRoute['types']['allContext'],
   CommentsRoute['types']['loaderDeps']
