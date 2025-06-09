@@ -7,7 +7,7 @@
     "dev": "npx convex dev --once && concurrently -r npm:dev:web npm:dev:db",
     "dev:web": "vite dev",
     "dev:db": "convex dev --run board:seed",
-    "build": "vite build",
+    "build": "vite build && tsc --noEmit",
     "start": "vite start"
   },
   "dependencies": {

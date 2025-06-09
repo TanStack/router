@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite --port 3000",
     "dev:e2e": "vite",
-    "build": "vite build",
+    "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
     "start": "vite",
     "test:e2e": "playwright test --project=chromium"

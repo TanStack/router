@@ -8,6 +8,8 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createServerRootRoute } from '@tanstack/react-start/server'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RedirectRouteImport } from './routes/redirect'
 import { Route as DeferredRouteImport } from './routes/deferred'
@@ -23,6 +25,10 @@ import { Route as PathlessLayoutNestedLayoutRouteImport } from './routes/_pathle
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
 import { Route as PathlessLayoutNestedLayoutRouteBRouteImport } from './routes/_pathlessLayout/_nested-layout/route-b'
 import { Route as PathlessLayoutNestedLayoutRouteARouteImport } from './routes/_pathlessLayout/_nested-layout/route-a'
+import { ServerRoute as ApiUsersServerRouteImport } from './routes/api.users'
+import { ServerRoute as ApiUsersIdServerRouteImport } from './routes/api/users.$id'
+
+const rootServerRouteImport = createServerRootRoute()
 
 const RedirectRoute = RedirectRouteImport.update({
   id: '/redirect',
@@ -95,6 +101,16 @@ const PathlessLayoutNestedLayoutRouteARoute =
     path: '/route-a',
     getParentRoute: () => PathlessLayoutNestedLayoutRoute,
   } as any)
+const ApiUsersServerRoute = ApiUsersServerRouteImport.update({
+  id: '/api/users',
+  path: '/api/users',
+  getParentRoute: () => rootServerRouteImport,
+} as any)
+const ApiUsersIdServerRoute = ApiUsersIdServerRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiUsersServerRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -196,6 +212,30 @@ export interface RootRouteChildren {
   DeferredRoute: typeof DeferredRoute
   RedirectRoute: typeof RedirectRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
+}
+export interface FileServerRoutesByFullPath {
+  '/api/users': typeof ApiUsersServerRouteWithChildren
+  '/api/users/$id': typeof ApiUsersIdServerRoute
+}
+export interface FileServerRoutesByTo {
+  '/api/users': typeof ApiUsersServerRouteWithChildren
+  '/api/users/$id': typeof ApiUsersIdServerRoute
+}
+export interface FileServerRoutesById {
+  __root__: typeof rootServerRouteImport
+  '/api/users': typeof ApiUsersServerRouteWithChildren
+  '/api/users/$id': typeof ApiUsersIdServerRoute
+}
+export interface FileServerRouteTypes {
+  fileServerRoutesByFullPath: FileServerRoutesByFullPath
+  fullPaths: '/api/users' | '/api/users/$id'
+  fileServerRoutesByTo: FileServerRoutesByTo
+  to: '/api/users' | '/api/users/$id'
+  id: '__root__' | '/api/users' | '/api/users/$id'
+  fileServerRoutesById: FileServerRoutesById
+}
+export interface RootServerRouteChildren {
+  ApiUsersServerRoute: typeof ApiUsersServerRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -314,6 +354,122 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+declare module '@tanstack/react-start/server' {
+  interface ServerFileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_pathlessLayout': {
+      id: '/_pathlessLayout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/redirect': {
+      id: '/redirect'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_pathlessLayout/_nested-layout': {
+      id: '/_pathlessLayout/_nested-layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/users': {
+      id: '/api/users'
+      path: '/api/users'
+      fullPath: '/api/users'
+      preLoaderRoute: typeof ApiUsersServerRouteImport
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users/$userId': {
+      id: '/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_pathlessLayout/_nested-layout/route-a': {
+      id: '/_pathlessLayout/_nested-layout/route-a'
+      path: '/route-a'
+      fullPath: '/route-a'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/_pathlessLayout/_nested-layout/route-b': {
+      id: '/_pathlessLayout/_nested-layout/route-b'
+      path: '/route-b'
+      fullPath: '/route-b'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/api/users/$id': {
+      id: '/api/users/$id'
+      path: '/$id'
+      fullPath: '/api/users/$id'
+      preLoaderRoute: typeof ApiUsersIdServerRouteImport
+      parentRoute: typeof ApiUsersServerRoute
+    }
+    '/posts_/$postId/deep': {
+      id: '/posts_/$postId/deep'
+      path: '/posts/$postId/deep'
+      fullPath: '/posts/$postId/deep'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+  }
+}
 
 interface PostsRouteRouteChildren {
   PostsPostIdRoute: typeof PostsPostIdRoute
@@ -373,6 +529,18 @@ const PathlessLayoutRouteWithChildren = PathlessLayoutRoute._addFileChildren(
   PathlessLayoutRouteChildren,
 )
 
+interface ApiUsersServerRouteChildren {
+  ApiUsersIdServerRoute: typeof ApiUsersIdServerRoute
+}
+
+const ApiUsersServerRouteChildren: ApiUsersServerRouteChildren = {
+  ApiUsersIdServerRoute: ApiUsersIdServerRoute,
+}
+
+const ApiUsersServerRouteWithChildren = ApiUsersServerRoute._addFileChildren(
+  ApiUsersServerRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PostsRouteRoute: PostsRouteRouteWithChildren,
@@ -385,3 +553,9 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+const rootServerRouteChildren: RootServerRouteChildren = {
+  ApiUsersServerRoute: ApiUsersServerRouteWithChildren,
+}
+export const serverRouteTree = rootServerRouteImport
+  ._addFileChildren(rootServerRouteChildren)
+  ._addFileTypes<FileServerRouteTypes>()
