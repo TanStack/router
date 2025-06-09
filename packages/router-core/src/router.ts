@@ -2823,6 +2823,7 @@ export class RouterCore<
       pendingMatches: s.pendingMatches?.map(invalidate),
     }))
 
+    this.shouldViewTransition = false
     return this.load({ sync: opts?.sync })
   }
 

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router",
-  "version": "1.120.15",
+  "version": "1.120.20",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -89,7 +89,7 @@
     "combinate": "^1.1.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vibe-rules": "^0.2.55",
+    "vibe-rules": "^0.2.57",
     "zod": "^3.24.2"
   },
   "peerDependencies": {
