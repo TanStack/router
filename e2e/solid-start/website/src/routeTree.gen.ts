@@ -8,11 +8,7 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/solid-router'
-
-// Import Routes
-
-import { Route as rootRoute } from './routes/__root'
+import { Route as rootRouteImport } from './routes/__root'
 import { Route as LibraryRouteImport } from './routes/_library'
 import { Route as LibraryIndexRouteImport } from './routes/_library.index'
 import { Route as ProjectIndexRouteImport } from './routes/$project.index'
@@ -24,65 +20,54 @@ import { Route as ProjectVersionDocsFrameworkFrameworkIndexRouteImport } from '.
 import { Route as ProjectVersionDocsFrameworkFrameworkSplatRouteImport } from './routes/$project.$version.docs.framework.$framework.$'
 import { Route as ProjectVersionDocsFrameworkFrameworkExamplesSplatRouteImport } from './routes/$project.$version.docs.framework.$framework.examples.$'
 
-// Create/Update Routes
-
 const LibraryRoute = LibraryRouteImport.update({
   id: '/_library',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const LibraryIndexRoute = LibraryIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => LibraryRoute,
 } as any)
-
 const ProjectIndexRoute = ProjectIndexRouteImport.update({
   id: '/$project/',
   path: '/$project/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const LibraryProjectRoute = LibraryProjectRouteImport.update({
   id: '/$project',
   path: '/$project',
   getParentRoute: () => LibraryRoute,
 } as any)
-
 const LibraryProjectVersionIndexRoute =
   LibraryProjectVersionIndexRouteImport.update({
     id: '/$version/',
     path: '/$version/',
     getParentRoute: () => LibraryProjectRoute,
   } as any)
-
 const ProjectVersionDocsIndexRoute = ProjectVersionDocsIndexRouteImport.update({
   id: '/$project/$version/docs/',
   path: '/$project/$version/docs/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const ProjectVersionDocsFrameworkFrameworkRoute =
   ProjectVersionDocsFrameworkFrameworkRouteImport.update({
     id: '/$project/$version/docs/framework/$framework',
     path: '/$project/$version/docs/framework/$framework',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
 const ProjectVersionDocsFrameworkFrameworkIndexRoute =
   ProjectVersionDocsFrameworkFrameworkIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => ProjectVersionDocsFrameworkFrameworkRoute,
   } as any)
-
 const ProjectVersionDocsFrameworkFrameworkSplatRoute =
   ProjectVersionDocsFrameworkFrameworkSplatRouteImport.update({
     id: '/$',
     path: '/$',
     getParentRoute: () => ProjectVersionDocsFrameworkFrameworkRoute,
   } as any)
-
 const ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute =
   ProjectVersionDocsFrameworkFrameworkExamplesSplatRouteImport.update({
     id: '/examples/$',
@@ -90,7 +75,80 @@ const ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute =
     getParentRoute: () => ProjectVersionDocsFrameworkFrameworkRoute,
   } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '': typeof LibraryRouteWithChildren
+  '/$project': typeof ProjectIndexRoute
+  '/': typeof LibraryIndexRoute
+  '/$project/$version/docs': typeof ProjectVersionDocsIndexRoute
+  '/$project/$version': typeof LibraryProjectVersionIndexRoute
+  '/$project/$version/docs/framework/$framework': typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
+  '/$project/$version/docs/framework/$framework/$': typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
+  '/$project/$version/docs/framework/$framework/': typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
+  '/$project/$version/docs/framework/$framework/examples/$': typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute
+}
+export interface FileRoutesByTo {
+  '/$project': typeof ProjectIndexRoute
+  '/': typeof LibraryIndexRoute
+  '/$project/$version/docs': typeof ProjectVersionDocsIndexRoute
+  '/$project/$version': typeof LibraryProjectVersionIndexRoute
+  '/$project/$version/docs/framework/$framework/$': typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
+  '/$project/$version/docs/framework/$framework': typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
+  '/$project/$version/docs/framework/$framework/examples/$': typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/_library': typeof LibraryRouteWithChildren
+  '/_library/$project': typeof LibraryProjectRouteWithChildren
+  '/$project/': typeof ProjectIndexRoute
+  '/_library/': typeof LibraryIndexRoute
+  '/$project/$version/docs/': typeof ProjectVersionDocsIndexRoute
+  '/_library/$project/$version/': typeof LibraryProjectVersionIndexRoute
+  '/$project/$version/docs/framework/$framework': typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
+  '/$project/$version/docs/framework/$framework/$': typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
+  '/$project/$version/docs/framework/$framework/': typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
+  '/$project/$version/docs/framework/$framework/examples/$': typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | ''
+    | '/$project'
+    | '/'
+    | '/$project/$version/docs'
+    | '/$project/$version'
+    | '/$project/$version/docs/framework/$framework'
+    | '/$project/$version/docs/framework/$framework/$'
+    | '/$project/$version/docs/framework/$framework/'
+    | '/$project/$version/docs/framework/$framework/examples/$'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/$project'
+    | '/'
+    | '/$project/$version/docs'
+    | '/$project/$version'
+    | '/$project/$version/docs/framework/$framework/$'
+    | '/$project/$version/docs/framework/$framework'
+    | '/$project/$version/docs/framework/$framework/examples/$'
+  id:
+    | '__root__'
+    | '/_library'
+    | '/_library/$project'
+    | '/$project/'
+    | '/_library/'
+    | '/$project/$version/docs/'
+    | '/_library/$project/$version/'
+    | '/$project/$version/docs/framework/$framework'
+    | '/$project/$version/docs/framework/$framework/$'
+    | '/$project/$version/docs/framework/$framework/'
+    | '/$project/$version/docs/framework/$framework/examples/$'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  LibraryRoute: typeof LibraryRouteWithChildren
+  ProjectIndexRoute: typeof ProjectIndexRoute
+  ProjectVersionDocsIndexRoute: typeof ProjectVersionDocsIndexRoute
+  ProjectVersionDocsFrameworkFrameworkRoute: typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
+}
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
@@ -99,168 +157,73 @@ declare module '@tanstack/solid-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof LibraryRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_library/$project': {
       id: '/_library/$project'
       path: '/$project'
       fullPath: '/$project'
       preLoaderRoute: typeof LibraryProjectRouteImport
-      parentRoute: typeof LibraryRouteImport
+      parentRoute: typeof LibraryRoute
     }
     '/$project/': {
       id: '/$project/'
       path: '/$project'
       fullPath: '/$project'
       preLoaderRoute: typeof ProjectIndexRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_library/': {
       id: '/_library/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof LibraryIndexRouteImport
-      parentRoute: typeof LibraryRouteImport
+      parentRoute: typeof LibraryRoute
     }
     '/$project/$version/docs/': {
       id: '/$project/$version/docs/'
       path: '/$project/$version/docs'
       fullPath: '/$project/$version/docs'
       preLoaderRoute: typeof ProjectVersionDocsIndexRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_library/$project/$version/': {
       id: '/_library/$project/$version/'
       path: '/$version'
       fullPath: '/$project/$version'
       preLoaderRoute: typeof LibraryProjectVersionIndexRouteImport
-      parentRoute: typeof LibraryProjectRouteImport
+      parentRoute: typeof LibraryProjectRoute
     }
     '/$project/$version/docs/framework/$framework': {
       id: '/$project/$version/docs/framework/$framework'
       path: '/$project/$version/docs/framework/$framework'
       fullPath: '/$project/$version/docs/framework/$framework'
       preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkRouteImport
-      parentRoute: typeof rootRoute
+      parentRoute: typeof rootRouteImport
     }
     '/$project/$version/docs/framework/$framework/$': {
       id: '/$project/$version/docs/framework/$framework/$'
       path: '/$'
       fullPath: '/$project/$version/docs/framework/$framework/$'
       preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkSplatRouteImport
-      parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRouteImport
+      parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRoute
     }
     '/$project/$version/docs/framework/$framework/': {
       id: '/$project/$version/docs/framework/$framework/'
       path: '/'
       fullPath: '/$project/$version/docs/framework/$framework/'
       preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkIndexRouteImport
-      parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRouteImport
+      parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRoute
     }
     '/$project/$version/docs/framework/$framework/examples/$': {
       id: '/$project/$version/docs/framework/$framework/examples/$'
       path: '/examples/$'
       fullPath: '/$project/$version/docs/framework/$framework/examples/$'
       preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRouteImport
-      parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRouteImport
+      parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRoute
     }
   }
 }
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/_library' {
-  const createFileRoute: CreateFileRoute<
-    '/_library',
-    FileRoutesByPath['/_library']['parentRoute'],
-    FileRoutesByPath['/_library']['id'],
-    FileRoutesByPath['/_library']['path'],
-    FileRoutesByPath['/_library']['fullPath']
-  >
-}
-declare module './routes/_library.$project' {
-  const createFileRoute: CreateFileRoute<
-    '/_library/$project',
-    FileRoutesByPath['/_library/$project']['parentRoute'],
-    FileRoutesByPath['/_library/$project']['id'],
-    FileRoutesByPath['/_library/$project']['path'],
-    FileRoutesByPath['/_library/$project']['fullPath']
-  >
-}
-declare module './routes/$project.index' {
-  const createFileRoute: CreateFileRoute<
-    '/$project/',
-    FileRoutesByPath['/$project/']['parentRoute'],
-    FileRoutesByPath['/$project/']['id'],
-    FileRoutesByPath['/$project/']['path'],
-    FileRoutesByPath['/$project/']['fullPath']
-  >
-}
-declare module './routes/_library.index' {
-  const createFileRoute: CreateFileRoute<
-    '/_library/',
-    FileRoutesByPath['/_library/']['parentRoute'],
-    FileRoutesByPath['/_library/']['id'],
-    FileRoutesByPath['/_library/']['path'],
-    FileRoutesByPath['/_library/']['fullPath']
-  >
-}
-declare module './routes/$project.$version.docs.index' {
-  const createFileRoute: CreateFileRoute<
-    '/$project/$version/docs/',
-    FileRoutesByPath['/$project/$version/docs/']['parentRoute'],
-    FileRoutesByPath['/$project/$version/docs/']['id'],
-    FileRoutesByPath['/$project/$version/docs/']['path'],
-    FileRoutesByPath['/$project/$version/docs/']['fullPath']
-  >
-}
-declare module './routes/_library.$project.$version.index' {
-  const createFileRoute: CreateFileRoute<
-    '/_library/$project/$version/',
-    FileRoutesByPath['/_library/$project/$version/']['parentRoute'],
-    FileRoutesByPath['/_library/$project/$version/']['id'],
-    FileRoutesByPath['/_library/$project/$version/']['path'],
-    FileRoutesByPath['/_library/$project/$version/']['fullPath']
-  >
-}
-declare module './routes/$project.$version.docs.framework.$framework' {
-  const createFileRoute: CreateFileRoute<
-    '/$project/$version/docs/framework/$framework',
-    FileRoutesByPath['/$project/$version/docs/framework/$framework']['parentRoute'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework']['id'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework']['path'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework']['fullPath']
-  >
-}
-declare module './routes/$project.$version.docs.framework.$framework.$' {
-  const createFileRoute: CreateFileRoute<
-    '/$project/$version/docs/framework/$framework/$',
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/$']['parentRoute'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/$']['id'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/$']['path'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/$']['fullPath']
-  >
-}
-declare module './routes/$project.$version.docs.framework.$framework.index' {
-  const createFileRoute: CreateFileRoute<
-    '/$project/$version/docs/framework/$framework/',
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/']['parentRoute'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/']['id'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/']['path'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/']['fullPath']
-  >
-}
-declare module './routes/$project.$version.docs.framework.$framework.examples.$' {
-  const createFileRoute: CreateFileRoute<
-    '/$project/$version/docs/framework/$framework/examples/$',
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/examples/$']['parentRoute'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/examples/$']['id'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/examples/$']['path'],
-    FileRoutesByPath['/$project/$version/docs/framework/$framework/examples/$']['fullPath']
-  >
-}
-
-// Create and export the route tree
 
 interface LibraryProjectRouteChildren {
   LibraryProjectVersionIndexRoute: typeof LibraryProjectVersionIndexRoute
@@ -308,85 +271,6 @@ const ProjectVersionDocsFrameworkFrameworkRouteWithChildren =
     ProjectVersionDocsFrameworkFrameworkRouteChildren,
   )
 
-export interface FileRoutesByFullPath {
-  '': typeof LibraryRouteWithChildren
-  '/$project': typeof ProjectIndexRoute
-  '/': typeof LibraryIndexRoute
-  '/$project/$version/docs': typeof ProjectVersionDocsIndexRoute
-  '/$project/$version': typeof LibraryProjectVersionIndexRoute
-  '/$project/$version/docs/framework/$framework': typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
-  '/$project/$version/docs/framework/$framework/$': typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
-  '/$project/$version/docs/framework/$framework/': typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
-  '/$project/$version/docs/framework/$framework/examples/$': typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute
-}
-
-export interface FileRoutesByTo {
-  '/$project': typeof ProjectIndexRoute
-  '/': typeof LibraryIndexRoute
-  '/$project/$version/docs': typeof ProjectVersionDocsIndexRoute
-  '/$project/$version': typeof LibraryProjectVersionIndexRoute
-  '/$project/$version/docs/framework/$framework/$': typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
-  '/$project/$version/docs/framework/$framework': typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
-  '/$project/$version/docs/framework/$framework/examples/$': typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/_library': typeof LibraryRouteWithChildren
-  '/_library/$project': typeof LibraryProjectRouteWithChildren
-  '/$project/': typeof ProjectIndexRoute
-  '/_library/': typeof LibraryIndexRoute
-  '/$project/$version/docs/': typeof ProjectVersionDocsIndexRoute
-  '/_library/$project/$version/': typeof LibraryProjectVersionIndexRoute
-  '/$project/$version/docs/framework/$framework': typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
-  '/$project/$version/docs/framework/$framework/$': typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
-  '/$project/$version/docs/framework/$framework/': typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
-  '/$project/$version/docs/framework/$framework/examples/$': typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | ''
-    | '/$project'
-    | '/'
-    | '/$project/$version/docs'
-    | '/$project/$version'
-    | '/$project/$version/docs/framework/$framework'
-    | '/$project/$version/docs/framework/$framework/$'
-    | '/$project/$version/docs/framework/$framework/'
-    | '/$project/$version/docs/framework/$framework/examples/$'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/$project'
-    | '/'
-    | '/$project/$version/docs'
-    | '/$project/$version'
-    | '/$project/$version/docs/framework/$framework/$'
-    | '/$project/$version/docs/framework/$framework'
-    | '/$project/$version/docs/framework/$framework/examples/$'
-  id:
-    | '__root__'
-    | '/_library'
-    | '/_library/$project'
-    | '/$project/'
-    | '/_library/'
-    | '/$project/$version/docs/'
-    | '/_library/$project/$version/'
-    | '/$project/$version/docs/framework/$framework'
-    | '/$project/$version/docs/framework/$framework/$'
-    | '/$project/$version/docs/framework/$framework/'
-    | '/$project/$version/docs/framework/$framework/examples/$'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  LibraryRoute: typeof LibraryRouteWithChildren
-  ProjectIndexRoute: typeof ProjectIndexRoute
-  ProjectVersionDocsIndexRoute: typeof ProjectVersionDocsIndexRoute
-  ProjectVersionDocsFrameworkFrameworkRoute: typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
-}
-
 const rootRouteChildren: RootRouteChildren = {
   LibraryRoute: LibraryRouteWithChildren,
   ProjectIndexRoute: ProjectIndexRoute,
@@ -394,71 +278,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProjectVersionDocsFrameworkFrameworkRoute:
     ProjectVersionDocsFrameworkFrameworkRouteWithChildren,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/_library",
-        "/$project/",
-        "/$project/$version/docs/",
-        "/$project/$version/docs/framework/$framework"
-      ]
-    },
-    "/_library": {
-      "filePath": "_library.tsx",
-      "children": [
-        "/_library/$project",
-        "/_library/"
-      ]
-    },
-    "/_library/$project": {
-      "filePath": "_library.$project.tsx",
-      "parent": "/_library",
-      "children": [
-        "/_library/$project/$version/"
-      ]
-    },
-    "/$project/": {
-      "filePath": "$project.index.tsx"
-    },
-    "/_library/": {
-      "filePath": "_library.index.tsx",
-      "parent": "/_library"
-    },
-    "/$project/$version/docs/": {
-      "filePath": "$project.$version.docs.index.tsx"
-    },
-    "/_library/$project/$version/": {
-      "filePath": "_library.$project.$version.index.tsx",
-      "parent": "/_library/$project"
-    },
-    "/$project/$version/docs/framework/$framework": {
-      "filePath": "$project.$version.docs.framework.$framework.tsx",
-      "children": [
-        "/$project/$version/docs/framework/$framework/$",
-        "/$project/$version/docs/framework/$framework/",
-        "/$project/$version/docs/framework/$framework/examples/$"
-      ]
-    },
-    "/$project/$version/docs/framework/$framework/$": {
-      "filePath": "$project.$version.docs.framework.$framework.$.tsx",
-      "parent": "/$project/$version/docs/framework/$framework"
-    },
-    "/$project/$version/docs/framework/$framework/": {
-      "filePath": "$project.$version.docs.framework.$framework.index.tsx",
-      "parent": "/$project/$version/docs/framework/$framework"
-    },
-    "/$project/$version/docs/framework/$framework/examples/$": {
-      "filePath": "$project.$version.docs.framework.$framework.examples.$.tsx",
-      "parent": "/$project/$version/docs/framework/$framework"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

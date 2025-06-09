@@ -1,9 +1,10 @@
 import chokidar from 'chokidar'
 import {
-  generator,
+  Generator,
   getConfig,
   resolveConfigPath,
 } from '@tanstack/router-generator'
+import type { FileEventType } from '@tanstack/router-generator'
 
 export function watch(root: string) {
   const configPath = resolveConfigPath({
@@ -15,6 +16,7 @@ export function watch(root: string) {
 
   const generatorWatcher = () => {
     const config = getConfig()
+    const generator = new Generator({ config, root })
 
     watcher.close()
 
@@ -24,7 +26,7 @@ export function watch(root: string) {
     watcher.on('ready', async () => {
       const handle = async () => {
         try {
-          await generator(config, root)
+          await generator.run()
         } catch (err) {
           console.error(err)
           console.info()
@@ -33,19 +35,24 @@ export function watch(root: string) {
 
       await handle()
 
-      let timeout: ReturnType<typeof setTimeout> | undefined
-
-      const deduped = (_file: string) => {
-        if (timeout) {
-          clearTimeout(timeout)
+      watcher.on('all', (event, path) => {
+        let type: FileEventType | undefined
+        switch (event) {
+          case 'add':
+            type = 'create'
+            break
+          case 'change':
+            type = 'update'
+            break
+          case 'unlink':
+            type = 'delete'
+            break
         }
-
-        timeout = setTimeout(handle, 10)
-      }
-
-      watcher.on('change', deduped)
-      watcher.on('add', deduped)
-      watcher.on('unlink', deduped)
+        if (type) {
+          return generator.run({ path, type })
+        }
+        return generator.run()
+      })
     })
   }
 

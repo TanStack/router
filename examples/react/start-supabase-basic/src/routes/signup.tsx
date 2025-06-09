@@ -1,4 +1,4 @@
-import { redirect } from '@tanstack/react-router'
+import { redirect, createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { useMutation } from '../hooks/useMutation'
 import { Auth } from '../components/Auth'
@@ -27,7 +27,7 @@ export const signupFn = createServerFn({ method: 'POST' })
     })
   })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/signup')({
   component: SignupComp,
 })
 

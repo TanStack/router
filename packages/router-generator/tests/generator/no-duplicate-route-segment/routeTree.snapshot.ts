@@ -9,48 +9,55 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
-// Import Routes
-
-import { Route as rootRoute } from './routes/__root'
+import { Route as rootRouteImport } from './routes/__root'
 import { Route as FooLayoutRouteRouteImport } from './routes/foo/_layout/route'
 import { Route as FooLayoutIndexRouteImport } from './routes/foo/_layout/index'
 
-// Create Virtual Routes
-
 const FooRouteImport = createFileRoute('/foo')()
-
-// Create/Update Routes
 
 const FooRoute = FooRouteImport.update({
   id: '/foo',
   path: '/foo',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const FooLayoutRouteRoute = FooLayoutRouteRouteImport.update({
   id: '/_layout',
   getParentRoute: () => FooRoute,
 } as any)
-
 const FooLayoutIndexRoute = FooLayoutIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => FooLayoutRouteRoute,
 } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/foo': typeof FooLayoutRouteRouteWithChildren
+  '/foo/': typeof FooLayoutIndexRoute
+}
+export interface FileRoutesByTo {
+  '/foo': typeof FooLayoutIndexRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/foo': typeof FooRouteWithChildren
+  '/foo/_layout': typeof FooLayoutRouteRouteWithChildren
+  '/foo/_layout/': typeof FooLayoutIndexRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/foo' | '/foo/'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/foo'
+  id: '__root__' | '/foo' | '/foo/_layout' | '/foo/_layout/'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  FooRoute: typeof FooRouteWithChildren
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/foo': {
-      id: '/foo'
-      path: '/foo'
-      fullPath: '/foo'
-      preLoaderRoute: typeof FooRouteImport
-      parentRoute: typeof rootRoute
-    }
     '/foo/_layout': {
       id: '/foo/_layout'
       path: '/foo'
@@ -63,33 +70,10 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/foo/'
       preLoaderRoute: typeof FooLayoutIndexRouteImport
-      parentRoute: typeof FooLayoutRouteRouteImport
+      parentRoute: typeof FooLayoutRouteRoute
     }
   }
 }
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/foo/_layout/route' {
-  const createFileRoute: CreateFileRoute<
-    '/foo/_layout',
-    FileRoutesByPath['/foo/_layout']['parentRoute'],
-    FileRoutesByPath['/foo/_layout']['id'],
-    FileRoutesByPath['/foo/_layout']['path'],
-    FileRoutesByPath['/foo/_layout']['fullPath']
-  >
-}
-declare module './routes/foo/_layout/index' {
-  const createFileRoute: CreateFileRoute<
-    '/foo/_layout/',
-    FileRoutesByPath['/foo/_layout/']['parentRoute'],
-    FileRoutesByPath['/foo/_layout/']['id'],
-    FileRoutesByPath['/foo/_layout/']['path'],
-    FileRoutesByPath['/foo/_layout/']['fullPath']
-  >
-}
-
-// Create and export the route tree
 
 interface FooLayoutRouteRouteChildren {
   FooLayoutIndexRoute: typeof FooLayoutIndexRoute
@@ -113,69 +97,9 @@ const FooRouteChildren: FooRouteChildren = {
 
 const FooRouteWithChildren = FooRoute._addFileChildren(FooRouteChildren)
 
-export interface FileRoutesByFullPath {
-  '/foo': typeof FooLayoutRouteRouteWithChildren
-  '/foo/': typeof FooLayoutIndexRoute
-}
-
-export interface FileRoutesByTo {
-  '/foo': typeof FooLayoutIndexRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/foo': typeof FooRouteWithChildren
-  '/foo/_layout': typeof FooLayoutRouteRouteWithChildren
-  '/foo/_layout/': typeof FooLayoutIndexRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/foo' | '/foo/'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/foo'
-  id: '__root__' | '/foo' | '/foo/_layout' | '/foo/_layout/'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  FooRoute: typeof FooRouteWithChildren
-}
-
 const rootRouteChildren: RootRouteChildren = {
   FooRoute: FooRouteWithChildren,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/foo"
-      ]
-    },
-    "/foo": {
-      "filePath": "foo/_layout",
-      "children": [
-        "/foo/_layout"
-      ]
-    },
-    "/foo/_layout": {
-      "filePath": "foo/_layout/route.tsx",
-      "parent": "/foo",
-      "children": [
-        "/foo/_layout/"
-      ]
-    },
-    "/foo/_layout/": {
-      "filePath": "foo/_layout/index.tsx",
-      "parent": "/foo/_layout"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

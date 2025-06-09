@@ -1,10 +1,10 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { convexQuery } from '@convex-dev/react-query'
 import { api } from 'convex/_generated/api'
 import { Loader } from '~/components/Loader'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/')({
   component: Home,
   pendingComponent: () => <Loader />,
 })

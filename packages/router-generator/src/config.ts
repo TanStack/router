@@ -1,7 +1,9 @@
 import path from 'node:path'
-import { existsSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
+import type { GeneratorPlugin } from './plugin/types'
 
 export const baseConfigSchema = z.object({
   target: z.enum(['react', 'solid']).optional().default('react'),
@@ -35,7 +37,6 @@ export const configSchema = baseConfigSchema.extend({
   disableTypes: z.boolean().optional().default(false),
   verboseFileRoutes: z.boolean().optional(),
   addExtensions: z.boolean().optional().default(false),
-  disableManifestGeneration: z.boolean().optional().default(false),
   enableRouteTreeFormatting: z.boolean().optional().default(true),
   routeTreeFileFooter: z.array(z.string()).optional().default([]),
   autoCodeSplitting: z.boolean().optional(),
@@ -51,6 +52,8 @@ export const configSchema = baseConfigSchema.extend({
       enableCodeSplitting: z.boolean().optional(),
     })
     .optional(),
+  plugins: z.array(z.custom<GeneratorPlugin>()).optional(),
+  tmpDir: z.string().optional().default(''),
 })
 
 export type Config = z.infer<typeof configSchema>
@@ -116,6 +119,22 @@ export function getConfig(
         config.generatedRouteTree,
       )
     }
+  }
+
+  const resolveTmpDir = (dir: string) => {
+    if (!path.isAbsolute(dir)) {
+      dir = path.resolve(process.cwd(), dir)
+    }
+    mkdirSync(dir, { recursive: true })
+    return dir
+  }
+
+  if (config.tmpDir) {
+    config.tmpDir = resolveTmpDir(config.tmpDir)
+  } else if (process.env.TSR_TMP_DIR) {
+    config.tmpDir = resolveTmpDir(process.env.TSR_TMP_DIR)
+  } else {
+    config.tmpDir = tmpdir()
   }
 
   validateConfig(config)

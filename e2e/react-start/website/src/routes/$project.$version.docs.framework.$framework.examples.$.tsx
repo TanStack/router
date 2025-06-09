@@ -1,7 +1,10 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { NotFound } from '~/components/NotFound'
 import { capitalize, seo } from '~/utils/seo'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute(
+  '/$project/$version/docs/framework/$framework/examples/$',
+)({
   head: ({ params }) => ({
     meta: seo({
       title: `${capitalize(params._splat || '')} Example | TanStack ${capitalize(params.project)} ${capitalize(params.framework)}`,

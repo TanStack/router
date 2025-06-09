@@ -1,7 +1,8 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import { NotFound } from 'src/components/NotFound'
 import { UserErrorComponent } from 'src/components/UserError'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
     try {
       const res = await fetch('/api/users/' + userId)

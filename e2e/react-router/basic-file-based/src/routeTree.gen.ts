@@ -10,9 +10,7 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 
-// Import Routes
-
-import { Route as rootRoute } from './routes/__root'
+import { Route as rootRouteImport } from './routes/__root'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
@@ -51,94 +49,76 @@ import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layo
 import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
 import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_layout.insidelayout'
 
-// Create Virtual Routes
-
 const groupRouteImport = createFileRoute('/(group)')()
-
-// Create/Update Routes
 
 const groupRoute = groupRouteImport.update({
   id: '/(group)',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const EditingBRoute = EditingBRouteImport.update({
   id: '/editing-b',
   path: '/editing-b',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const EditingARoute = EditingARouteImport.update({
   id: '/editing-a',
   path: '/editing-a',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const AnchorRoute = AnchorRouteImport.update({
   id: '/anchor',
   path: '/anchor',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const RedirectIndexRoute = RedirectIndexRouteImport.update({
   id: '/redirect/',
   path: '/redirect/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
-
 const ParamsPsIndexRoute = ParamsPsIndexRouteImport.update({
   id: '/params-ps/',
   path: '/params-ps/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const StructuralSharingEnabledRoute =
   StructuralSharingEnabledRouteImport.update({
     id: '/structural-sharing/$enabled',
     path: '/structural-sharing/$enabled',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
 const RedirectTargetRoute = RedirectTargetRouteImport.update({
   id: '/redirect/$target',
   path: '/redirect/$target',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
-
 const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
-
 const groupLazyinsideRoute = groupLazyinsideRouteImport
   .update({
     id: '/lazyinside',
@@ -146,505 +126,126 @@ const groupLazyinsideRoute = groupLazyinsideRouteImport
     getParentRoute: () => groupRoute,
   } as any)
   .lazy(() => import('./routes/(group)/lazyinside.lazy').then((d) => d.Route))
-
 const groupInsideRoute = groupInsideRouteImport.update({
   id: '/inside',
   path: '/inside',
   getParentRoute: () => groupRoute,
 } as any)
-
 const groupLayoutRoute = groupLayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => groupRoute,
 } as any)
-
 const anotherGroupOnlyrouteinsideRoute =
   anotherGroupOnlyrouteinsideRouteImport.update({
     id: '/(another-group)/onlyrouteinside',
     path: '/onlyrouteinside',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
 const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
-
 const ParamsPsWildcardIndexRoute = ParamsPsWildcardIndexRouteImport.update({
   id: '/params-ps/wildcard/',
   path: '/params-ps/wildcard/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const ParamsPsNamedIndexRoute = ParamsPsNamedIndexRouteImport.update({
   id: '/params-ps/named/',
   path: '/params-ps/named/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const RedirectPreloadThirdRoute = RedirectPreloadThirdRouteImport.update({
   id: '/redirect/preload/third',
   path: '/redirect/preload/third',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const RedirectPreloadSecondRoute = RedirectPreloadSecondRouteImport.update({
   id: '/redirect/preload/second',
   path: '/redirect/preload/second',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const RedirectPreloadFirstRoute = RedirectPreloadFirstRouteImport.update({
   id: '/redirect/preload/first',
   path: '/redirect/preload/first',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
-
 const RedirectTargetViaBeforeLoadRoute =
   RedirectTargetViaBeforeLoadRouteImport.update({
     id: '/via-beforeLoad',
     path: '/via-beforeLoad',
     getParentRoute: () => RedirectTargetRoute,
   } as any)
-
 const PostsPostIdEditRoute = PostsPostIdEditRouteImport.update({
   id: '/posts_/$postId/edit',
   path: '/posts/$postId/edit',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const ParamsSingleValueRoute = ParamsSingleValueRouteImport.update({
   id: '/params/single/$value',
   path: '/params/single/$value',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const ParamsPsWildcardChar123Char125suffixRoute =
   ParamsPsWildcardChar123Char125suffixRouteImport.update({
     id: '/params-ps/wildcard/{$}suffix',
     path: '/params-ps/wildcard/{$}suffix',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
 const ParamsPsWildcardPrefixChar123Char125Route =
   ParamsPsWildcardPrefixChar123Char125RouteImport.update({
     id: '/params-ps/wildcard/prefix{$}',
     path: '/params-ps/wildcard/prefix{$}',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
 const ParamsPsWildcardSplatRoute = ParamsPsWildcardSplatRouteImport.update({
   id: '/params-ps/wildcard/$',
   path: '/params-ps/wildcard/$',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const ParamsPsNamedChar123fooChar125suffixRoute =
   ParamsPsNamedChar123fooChar125suffixRouteImport.update({
     id: '/params-ps/named/{$foo}suffix',
     path: '/params-ps/named/{$foo}suffix',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
 const ParamsPsNamedPrefixChar123fooChar125Route =
   ParamsPsNamedPrefixChar123fooChar125RouteImport.update({
     id: '/params-ps/named/prefix{$foo}',
     path: '/params-ps/named/prefix{$foo}',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
 const ParamsPsNamedFooRoute = ParamsPsNamedFooRouteImport.update({
   id: '/params-ps/named/$foo',
   path: '/params-ps/named/$foo',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
-
 const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
-
 const groupSubfolderInsideRoute = groupSubfolderInsideRouteImport.update({
   id: '/subfolder/inside',
   path: '/subfolder/inside',
   getParentRoute: () => groupRoute,
 } as any)
-
 const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
   id: '/insidelayout',
   path: '/insidelayout',
   getParentRoute: () => groupLayoutRoute,
 } as any)
-
-// Populate the FileRoutesByPath interface
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof LayoutRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/anchor': {
-      id: '/anchor'
-      path: '/anchor'
-      fullPath: '/anchor'
-      preLoaderRoute: typeof AnchorRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/editing-a': {
-      id: '/editing-a'
-      path: '/editing-a'
-      fullPath: '/editing-a'
-      preLoaderRoute: typeof EditingARouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/editing-b': {
-      id: '/editing-b'
-      path: '/editing-b'
-      fullPath: '/editing-b'
-      preLoaderRoute: typeof EditingBRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/(another-group)/onlyrouteinside': {
-      id: '/(another-group)/onlyrouteinside'
-      path: '/onlyrouteinside'
-      fullPath: '/onlyrouteinside'
-      preLoaderRoute: typeof anotherGroupOnlyrouteinsideRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/(group)': {
-      id: '/(group)'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof groupRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/(group)/_layout': {
-      id: '/(group)/_layout'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof groupLayoutRouteImport
-      parentRoute: typeof groupRoute
-    }
-    '/(group)/inside': {
-      id: '/(group)/inside'
-      path: '/inside'
-      fullPath: '/inside'
-      preLoaderRoute: typeof groupInsideRouteImport
-      parentRoute: typeof groupRouteImport
-    }
-    '/(group)/lazyinside': {
-      id: '/(group)/lazyinside'
-      path: '/lazyinside'
-      fullPath: '/lazyinside'
-      preLoaderRoute: typeof groupLazyinsideRouteImport
-      parentRoute: typeof groupRouteImport
-    }
-    '/_layout/_layout-2': {
-      id: '/_layout/_layout-2'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof LayoutLayout2RouteImport
-      parentRoute: typeof LayoutRouteImport
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRouteImport
-    }
-    '/redirect/$target': {
-      id: '/redirect/$target'
-      path: '/redirect/$target'
-      fullPath: '/redirect/$target'
-      preLoaderRoute: typeof RedirectTargetRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/structural-sharing/$enabled': {
-      id: '/structural-sharing/$enabled'
-      path: '/structural-sharing/$enabled'
-      fullPath: '/structural-sharing/$enabled'
-      preLoaderRoute: typeof StructuralSharingEnabledRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/params-ps/': {
-      id: '/params-ps/'
-      path: '/params-ps'
-      fullPath: '/params-ps'
-      preLoaderRoute: typeof ParamsPsIndexRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexRouteImport
-      parentRoute: typeof PostsRouteImport
-    }
-    '/redirect/': {
-      id: '/redirect/'
-      path: '/redirect'
-      fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectIndexRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/(group)/_layout/insidelayout': {
-      id: '/(group)/_layout/insidelayout'
-      path: '/insidelayout'
-      fullPath: '/insidelayout'
-      preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
-      parentRoute: typeof groupLayoutRouteImport
-    }
-    '/(group)/subfolder/inside': {
-      id: '/(group)/subfolder/inside'
-      path: '/subfolder/inside'
-      fullPath: '/subfolder/inside'
-      preLoaderRoute: typeof groupSubfolderInsideRouteImport
-      parentRoute: typeof groupRouteImport
-    }
-    '/_layout/_layout-2/layout-a': {
-      id: '/_layout/_layout-2/layout-a'
-      path: '/layout-a'
-      fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
-      parentRoute: typeof LayoutLayout2RouteImport
-    }
-    '/_layout/_layout-2/layout-b': {
-      id: '/_layout/_layout-2/layout-b'
-      path: '/layout-b'
-      fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
-      parentRoute: typeof LayoutLayout2RouteImport
-    }
-    '/params-ps/named/$foo': {
-      id: '/params-ps/named/$foo'
-      path: '/params-ps/named/$foo'
-      fullPath: '/params-ps/named/$foo'
-      preLoaderRoute: typeof ParamsPsNamedFooRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/params-ps/named/prefix{$foo}': {
-      id: '/params-ps/named/prefix{$foo}'
-      path: '/params-ps/named/prefix{$foo}'
-      fullPath: '/params-ps/named/prefix{$foo}'
-      preLoaderRoute: typeof ParamsPsNamedPrefixChar123fooChar125RouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/params-ps/named/{$foo}suffix': {
-      id: '/params-ps/named/{$foo}suffix'
-      path: '/params-ps/named/{$foo}suffix'
-      fullPath: '/params-ps/named/{$foo}suffix'
-      preLoaderRoute: typeof ParamsPsNamedChar123fooChar125suffixRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/params-ps/wildcard/$': {
-      id: '/params-ps/wildcard/$'
-      path: '/params-ps/wildcard/$'
-      fullPath: '/params-ps/wildcard/$'
-      preLoaderRoute: typeof ParamsPsWildcardSplatRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/params-ps/wildcard/prefix{$}': {
-      id: '/params-ps/wildcard/prefix{$}'
-      path: '/params-ps/wildcard/prefix{$}'
-      fullPath: '/params-ps/wildcard/prefix{$}'
-      preLoaderRoute: typeof ParamsPsWildcardPrefixChar123Char125RouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/params-ps/wildcard/{$}suffix': {
-      id: '/params-ps/wildcard/{$}suffix'
-      path: '/params-ps/wildcard/{$}suffix'
-      fullPath: '/params-ps/wildcard/{$}suffix'
-      preLoaderRoute: typeof ParamsPsWildcardChar123Char125suffixRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/params/single/$value': {
-      id: '/params/single/$value'
-      path: '/params/single/$value'
-      fullPath: '/params/single/$value'
-      preLoaderRoute: typeof ParamsSingleValueRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/posts_/$postId/edit': {
-      id: '/posts_/$postId/edit'
-      path: '/posts/$postId/edit'
-      fullPath: '/posts/$postId/edit'
-      preLoaderRoute: typeof PostsPostIdEditRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/redirect/$target/via-beforeLoad': {
-      id: '/redirect/$target/via-beforeLoad'
-      path: '/via-beforeLoad'
-      fullPath: '/redirect/$target/via-beforeLoad'
-      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
-      parentRoute: typeof RedirectTargetRouteImport
-    }
-    '/redirect/$target/via-loader': {
-      id: '/redirect/$target/via-loader'
-      path: '/via-loader'
-      fullPath: '/redirect/$target/via-loader'
-      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
-      parentRoute: typeof RedirectTargetRouteImport
-    }
-    '/redirect/preload/first': {
-      id: '/redirect/preload/first'
-      path: '/redirect/preload/first'
-      fullPath: '/redirect/preload/first'
-      preLoaderRoute: typeof RedirectPreloadFirstRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/redirect/preload/second': {
-      id: '/redirect/preload/second'
-      path: '/redirect/preload/second'
-      fullPath: '/redirect/preload/second'
-      preLoaderRoute: typeof RedirectPreloadSecondRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/redirect/preload/third': {
-      id: '/redirect/preload/third'
-      path: '/redirect/preload/third'
-      fullPath: '/redirect/preload/third'
-      preLoaderRoute: typeof RedirectPreloadThirdRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/params-ps/named/': {
-      id: '/params-ps/named/'
-      path: '/params-ps/named'
-      fullPath: '/params-ps/named'
-      preLoaderRoute: typeof ParamsPsNamedIndexRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/params-ps/wildcard/': {
-      id: '/params-ps/wildcard/'
-      path: '/params-ps/wildcard'
-      fullPath: '/params-ps/wildcard'
-      preLoaderRoute: typeof ParamsPsWildcardIndexRouteImport
-      parentRoute: typeof rootRoute
-    }
-    '/redirect/$target/': {
-      id: '/redirect/$target/'
-      path: '/'
-      fullPath: '/redirect/$target/'
-      preLoaderRoute: typeof RedirectTargetIndexRouteImport
-      parentRoute: typeof RedirectTargetRouteImport
-    }
-  }
-}
-
-// Create and export the route tree
-
-interface LayoutLayout2RouteChildren {
-  LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
-  LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
-}
-
-const LayoutLayout2RouteChildren: LayoutLayout2RouteChildren = {
-  LayoutLayout2LayoutARoute: LayoutLayout2LayoutARoute,
-  LayoutLayout2LayoutBRoute: LayoutLayout2LayoutBRoute,
-}
-
-const LayoutLayout2RouteWithChildren = LayoutLayout2Route._addFileChildren(
-  LayoutLayout2RouteChildren,
-)
-
-interface LayoutRouteChildren {
-  LayoutLayout2Route: typeof LayoutLayout2RouteWithChildren
-}
-
-const LayoutRouteChildren: LayoutRouteChildren = {
-  LayoutLayout2Route: LayoutLayout2RouteWithChildren,
-}
-
-const LayoutRouteWithChildren =
-  LayoutRoute._addFileChildren(LayoutRouteChildren)
-
-interface PostsRouteChildren {
-  PostsPostIdRoute: typeof PostsPostIdRoute
-  PostsIndexRoute: typeof PostsIndexRoute
-}
-
-const PostsRouteChildren: PostsRouteChildren = {
-  PostsPostIdRoute: PostsPostIdRoute,
-  PostsIndexRoute: PostsIndexRoute,
-}
-
-const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
-
-interface groupLayoutRouteChildren {
-  groupLayoutInsidelayoutRoute: typeof groupLayoutInsidelayoutRoute
-}
-
-const groupLayoutRouteChildren: groupLayoutRouteChildren = {
-  groupLayoutInsidelayoutRoute: groupLayoutInsidelayoutRoute,
-}
-
-const groupLayoutRouteWithChildren = groupLayoutRoute._addFileChildren(
-  groupLayoutRouteChildren,
-)
-
-interface groupRouteChildren {
-  groupLayoutRoute: typeof groupLayoutRouteWithChildren
-  groupInsideRoute: typeof groupInsideRoute
-  groupLazyinsideRoute: typeof groupLazyinsideRoute
-  groupSubfolderInsideRoute: typeof groupSubfolderInsideRoute
-}
-
-const groupRouteChildren: groupRouteChildren = {
-  groupLayoutRoute: groupLayoutRouteWithChildren,
-  groupInsideRoute: groupInsideRoute,
-  groupLazyinsideRoute: groupLazyinsideRoute,
-  groupSubfolderInsideRoute: groupSubfolderInsideRoute,
-}
-
-const groupRouteWithChildren = groupRoute._addFileChildren(groupRouteChildren)
-
-interface RedirectTargetRouteChildren {
-  RedirectTargetViaBeforeLoadRoute: typeof RedirectTargetViaBeforeLoadRoute
-  RedirectTargetViaLoaderRoute: typeof RedirectTargetViaLoaderRoute
-  RedirectTargetIndexRoute: typeof RedirectTargetIndexRoute
-}
-
-const RedirectTargetRouteChildren: RedirectTargetRouteChildren = {
-  RedirectTargetViaBeforeLoadRoute: RedirectTargetViaBeforeLoadRoute,
-  RedirectTargetViaLoaderRoute: RedirectTargetViaLoaderRoute,
-  RedirectTargetIndexRoute: RedirectTargetIndexRoute,
-}
-
-const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
-  RedirectTargetRouteChildren,
-)
 
 export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
@@ -683,7 +284,6 @@ export interface FileRoutesByFullPath {
   '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
 }
-
 export interface FileRoutesByTo {
   '/': typeof groupLayoutRouteWithChildren
   '': typeof LayoutLayout2RouteWithChildren
@@ -719,9 +319,8 @@ export interface FileRoutesByTo {
   '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
 }
-
 export interface FileRoutesById {
-  __root__: typeof rootRoute
+  __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
@@ -761,7 +360,6 @@ export interface FileRoutesById {
   '/params-ps/wildcard/': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
 }
-
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
@@ -877,7 +475,6 @@ export interface FileRouteTypes {
     | '/redirect/$target/'
   fileRoutesById: FileRoutesById
 }
-
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
@@ -905,6 +502,358 @@ export interface RootRouteChildren {
   ParamsPsNamedIndexRoute: typeof ParamsPsNamedIndexRoute
   ParamsPsWildcardIndexRoute: typeof ParamsPsWildcardIndexRoute
 }
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/anchor': {
+      id: '/anchor'
+      path: '/anchor'
+      fullPath: '/anchor'
+      preLoaderRoute: typeof AnchorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/editing-a': {
+      id: '/editing-a'
+      path: '/editing-a'
+      fullPath: '/editing-a'
+      preLoaderRoute: typeof EditingARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/editing-b': {
+      id: '/editing-b'
+      path: '/editing-b'
+      fullPath: '/editing-b'
+      preLoaderRoute: typeof EditingBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(another-group)/onlyrouteinside': {
+      id: '/(another-group)/onlyrouteinside'
+      path: '/onlyrouteinside'
+      fullPath: '/onlyrouteinside'
+      preLoaderRoute: typeof anotherGroupOnlyrouteinsideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(group)/_layout': {
+      id: '/(group)/_layout'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof groupLayoutRouteImport
+      parentRoute: typeof groupRoute
+    }
+    '/(group)/inside': {
+      id: '/(group)/inside'
+      path: '/inside'
+      fullPath: '/inside'
+      preLoaderRoute: typeof groupInsideRouteImport
+      parentRoute: typeof groupRoute
+    }
+    '/(group)/lazyinside': {
+      id: '/(group)/lazyinside'
+      path: '/lazyinside'
+      fullPath: '/lazyinside'
+      preLoaderRoute: typeof groupLazyinsideRouteImport
+      parentRoute: typeof groupRoute
+    }
+    '/_layout/_layout-2': {
+      id: '/_layout/_layout-2'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof LayoutLayout2RouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/redirect/$target': {
+      id: '/redirect/$target'
+      path: '/redirect/$target'
+      fullPath: '/redirect/$target'
+      preLoaderRoute: typeof RedirectTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/structural-sharing/$enabled': {
+      id: '/structural-sharing/$enabled'
+      path: '/structural-sharing/$enabled'
+      fullPath: '/structural-sharing/$enabled'
+      preLoaderRoute: typeof StructuralSharingEnabledRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(group)/lazyinside': {
+      id: '/(group)/lazyinside'
+      path: '/lazyinside'
+      fullPath: '/lazyinside'
+      preLoaderRoute: typeof groupLazyinsideLazyRouteImport
+      parentRoute: typeof groupRoute
+    }
+    '/params-ps/': {
+      id: '/params-ps/'
+      path: '/params-ps'
+      fullPath: '/params-ps'
+      preLoaderRoute: typeof ParamsPsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(group)/_layout/insidelayout': {
+      id: '/(group)/_layout/insidelayout'
+      path: '/insidelayout'
+      fullPath: '/insidelayout'
+      preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
+      parentRoute: typeof groupLayoutRoute
+    }
+    '/(group)/subfolder/inside': {
+      id: '/(group)/subfolder/inside'
+      path: '/subfolder/inside'
+      fullPath: '/subfolder/inside'
+      preLoaderRoute: typeof groupSubfolderInsideRouteImport
+      parentRoute: typeof groupRoute
+    }
+    '/_layout/_layout-2/layout-a': {
+      id: '/_layout/_layout-2/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/_layout/_layout-2/layout-b': {
+      id: '/_layout/_layout-2/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/params-ps/named/$foo': {
+      id: '/params-ps/named/$foo'
+      path: '/params-ps/named/$foo'
+      fullPath: '/params-ps/named/$foo'
+      preLoaderRoute: typeof ParamsPsNamedFooRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/named/prefix{$foo}': {
+      id: '/params-ps/named/prefix{$foo}'
+      path: '/params-ps/named/prefix{$foo}'
+      fullPath: '/params-ps/named/prefix{$foo}'
+      preLoaderRoute: typeof ParamsPsNamedPrefixChar123fooChar125RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/named/{$foo}suffix': {
+      id: '/params-ps/named/{$foo}suffix'
+      path: '/params-ps/named/{$foo}suffix'
+      fullPath: '/params-ps/named/{$foo}suffix'
+      preLoaderRoute: typeof ParamsPsNamedChar123fooChar125suffixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/wildcard/$': {
+      id: '/params-ps/wildcard/$'
+      path: '/params-ps/wildcard/$'
+      fullPath: '/params-ps/wildcard/$'
+      preLoaderRoute: typeof ParamsPsWildcardSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/wildcard/prefix{$}': {
+      id: '/params-ps/wildcard/prefix{$}'
+      path: '/params-ps/wildcard/prefix{$}'
+      fullPath: '/params-ps/wildcard/prefix{$}'
+      preLoaderRoute: typeof ParamsPsWildcardPrefixChar123Char125RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/wildcard/{$}suffix': {
+      id: '/params-ps/wildcard/{$}suffix'
+      path: '/params-ps/wildcard/{$}suffix'
+      fullPath: '/params-ps/wildcard/{$}suffix'
+      preLoaderRoute: typeof ParamsPsWildcardChar123Char125suffixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params/single/$value': {
+      id: '/params/single/$value'
+      path: '/params/single/$value'
+      fullPath: '/params/single/$value'
+      preLoaderRoute: typeof ParamsSingleValueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts_/$postId/edit': {
+      id: '/posts_/$postId/edit'
+      path: '/posts/$postId/edit'
+      fullPath: '/posts/$postId/edit'
+      preLoaderRoute: typeof PostsPostIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/$target/via-beforeLoad': {
+      id: '/redirect/$target/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/redirect/$target/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/via-loader': {
+      id: '/redirect/$target/via-loader'
+      path: '/via-loader'
+      fullPath: '/redirect/$target/via-loader'
+      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/preload/first': {
+      id: '/redirect/preload/first'
+      path: '/redirect/preload/first'
+      fullPath: '/redirect/preload/first'
+      preLoaderRoute: typeof RedirectPreloadFirstRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/preload/second': {
+      id: '/redirect/preload/second'
+      path: '/redirect/preload/second'
+      fullPath: '/redirect/preload/second'
+      preLoaderRoute: typeof RedirectPreloadSecondRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/preload/third': {
+      id: '/redirect/preload/third'
+      path: '/redirect/preload/third'
+      fullPath: '/redirect/preload/third'
+      preLoaderRoute: typeof RedirectPreloadThirdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/named/': {
+      id: '/params-ps/named/'
+      path: '/params-ps/named'
+      fullPath: '/params-ps/named'
+      preLoaderRoute: typeof ParamsPsNamedIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/wildcard/': {
+      id: '/params-ps/wildcard/'
+      path: '/params-ps/wildcard'
+      fullPath: '/params-ps/wildcard'
+      preLoaderRoute: typeof ParamsPsWildcardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/$target/': {
+      id: '/redirect/$target/'
+      path: '/'
+      fullPath: '/redirect/$target/'
+      preLoaderRoute: typeof RedirectTargetIndexRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+  }
+}
+
+interface LayoutLayout2RouteChildren {
+  LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
+  LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
+}
+
+const LayoutLayout2RouteChildren: LayoutLayout2RouteChildren = {
+  LayoutLayout2LayoutARoute: LayoutLayout2LayoutARoute,
+  LayoutLayout2LayoutBRoute: LayoutLayout2LayoutBRoute,
+}
+
+const LayoutLayout2RouteWithChildren = LayoutLayout2Route._addFileChildren(
+  LayoutLayout2RouteChildren,
+)
+
+interface LayoutRouteChildren {
+  LayoutLayout2Route: typeof LayoutLayout2RouteWithChildren
+}
+
+const LayoutRouteChildren: LayoutRouteChildren = {
+  LayoutLayout2Route: LayoutLayout2RouteWithChildren,
+}
+
+const LayoutRouteWithChildren =
+  LayoutRoute._addFileChildren(LayoutRouteChildren)
+
+interface PostsRouteChildren {
+  PostsPostIdRoute: typeof PostsPostIdRoute
+  PostsIndexRoute: typeof PostsIndexRoute
+}
+
+const PostsRouteChildren: PostsRouteChildren = {
+  PostsPostIdRoute: PostsPostIdRoute,
+  PostsIndexRoute: PostsIndexRoute,
+}
+
+const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
+
+interface groupLayoutRouteChildren {
+  groupLayoutInsidelayoutRoute: typeof groupLayoutInsidelayoutRoute
+}
+
+const groupLayoutRouteChildren: groupLayoutRouteChildren = {
+  groupLayoutInsidelayoutRoute: groupLayoutInsidelayoutRoute,
+}
+
+const groupLayoutRouteWithChildren = groupLayoutRoute._addFileChildren(
+  groupLayoutRouteChildren,
+)
+
+interface groupRouteChildren {
+  groupLayoutRoute: typeof groupLayoutRouteWithChildren
+  groupInsideRoute: typeof groupInsideRoute
+  groupLazyinsideRoute: typeof groupLazyinsideRoute
+  groupSubfolderInsideRoute: typeof groupSubfolderInsideRoute
+}
+
+const groupRouteChildren: groupRouteChildren = {
+  groupLayoutRoute: groupLayoutRouteWithChildren,
+  groupInsideRoute: groupInsideRoute,
+  groupLazyinsideRoute: groupLazyinsideRoute,
+  groupSubfolderInsideRoute: groupSubfolderInsideRoute,
+}
+
+const groupRouteWithChildren = groupRoute._addFileChildren(groupRouteChildren)
+
+interface RedirectTargetRouteChildren {
+  RedirectTargetViaBeforeLoadRoute: typeof RedirectTargetViaBeforeLoadRoute
+  RedirectTargetViaLoaderRoute: typeof RedirectTargetViaLoaderRoute
+  RedirectTargetIndexRoute: typeof RedirectTargetIndexRoute
+}
+
+const RedirectTargetRouteChildren: RedirectTargetRouteChildren = {
+  RedirectTargetViaBeforeLoadRoute: RedirectTargetViaBeforeLoadRoute,
+  RedirectTargetViaLoaderRoute: RedirectTargetViaLoaderRoute,
+  RedirectTargetIndexRoute: RedirectTargetIndexRoute,
+}
+
+const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
+  RedirectTargetRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -937,196 +886,6 @@ const rootRouteChildren: RootRouteChildren = {
   ParamsPsNamedIndexRoute: ParamsPsNamedIndexRoute,
   ParamsPsWildcardIndexRoute: ParamsPsWildcardIndexRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/_layout",
-        "/anchor",
-        "/editing-a",
-        "/editing-b",
-        "/posts",
-        "/(another-group)/onlyrouteinside",
-        "/(group)",
-        "/redirect/$target",
-        "/structural-sharing/$enabled",
-        "/params-ps/",
-        "/redirect/",
-        "/params-ps/named/$foo",
-        "/params-ps/named/prefix{$foo}",
-        "/params-ps/named/{$foo}suffix",
-        "/params-ps/wildcard/$",
-        "/params-ps/wildcard/prefix{$}",
-        "/params-ps/wildcard/{$}suffix",
-        "/params/single/$value",
-        "/posts_/$postId/edit",
-        "/redirect/preload/first",
-        "/redirect/preload/second",
-        "/redirect/preload/third",
-        "/params-ps/named/",
-        "/params-ps/wildcard/"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/_layout": {
-      "filePath": "_layout.tsx",
-      "children": [
-        "/_layout/_layout-2"
-      ]
-    },
-    "/anchor": {
-      "filePath": "anchor.tsx"
-    },
-    "/editing-a": {
-      "filePath": "editing-a.tsx"
-    },
-    "/editing-b": {
-      "filePath": "editing-b.tsx"
-    },
-    "/posts": {
-      "filePath": "posts.tsx",
-      "children": [
-        "/posts/$postId",
-        "/posts/"
-      ]
-    },
-    "/(another-group)/onlyrouteinside": {
-      "filePath": "(another-group)/onlyrouteinside.tsx"
-    },
-    "/(group)": {
-      "filePath": "(group)",
-      "children": [
-        "/(group)/_layout",
-        "/(group)/inside",
-        "/(group)/lazyinside",
-        "/(group)/subfolder/inside"
-      ]
-    },
-    "/(group)/_layout": {
-      "filePath": "(group)/_layout.tsx",
-      "parent": "/(group)",
-      "children": [
-        "/(group)/_layout/insidelayout"
-      ]
-    },
-    "/(group)/inside": {
-      "filePath": "(group)/inside.tsx",
-      "parent": "/(group)"
-    },
-    "/(group)/lazyinside": {
-      "filePath": "(group)/lazyinside.tsx",
-      "parent": "/(group)"
-    },
-    "/_layout/_layout-2": {
-      "filePath": "_layout/_layout-2.tsx",
-      "parent": "/_layout",
-      "children": [
-        "/_layout/_layout-2/layout-a",
-        "/_layout/_layout-2/layout-b"
-      ]
-    },
-    "/posts/$postId": {
-      "filePath": "posts.$postId.tsx",
-      "parent": "/posts"
-    },
-    "/redirect/$target": {
-      "filePath": "redirect/$target.tsx",
-      "children": [
-        "/redirect/$target/via-beforeLoad",
-        "/redirect/$target/via-loader",
-        "/redirect/$target/"
-      ]
-    },
-    "/structural-sharing/$enabled": {
-      "filePath": "structural-sharing.$enabled.tsx"
-    },
-    "/params-ps/": {
-      "filePath": "params-ps/index.tsx"
-    },
-    "/posts/": {
-      "filePath": "posts.index.tsx",
-      "parent": "/posts"
-    },
-    "/redirect/": {
-      "filePath": "redirect/index.tsx"
-    },
-    "/(group)/_layout/insidelayout": {
-      "filePath": "(group)/_layout.insidelayout.tsx",
-      "parent": "/(group)/_layout"
-    },
-    "/(group)/subfolder/inside": {
-      "filePath": "(group)/subfolder/inside.tsx",
-      "parent": "/(group)"
-    },
-    "/_layout/_layout-2/layout-a": {
-      "filePath": "_layout/_layout-2/layout-a.tsx",
-      "parent": "/_layout/_layout-2"
-    },
-    "/_layout/_layout-2/layout-b": {
-      "filePath": "_layout/_layout-2/layout-b.tsx",
-      "parent": "/_layout/_layout-2"
-    },
-    "/params-ps/named/$foo": {
-      "filePath": "params-ps/named/$foo.tsx"
-    },
-    "/params-ps/named/prefix{$foo}": {
-      "filePath": "params-ps/named/prefix{$foo}.tsx"
-    },
-    "/params-ps/named/{$foo}suffix": {
-      "filePath": "params-ps/named/{$foo}suffix.tsx"
-    },
-    "/params-ps/wildcard/$": {
-      "filePath": "params-ps/wildcard/$.tsx"
-    },
-    "/params-ps/wildcard/prefix{$}": {
-      "filePath": "params-ps/wildcard/prefix{$}.tsx"
-    },
-    "/params-ps/wildcard/{$}suffix": {
-      "filePath": "params-ps/wildcard/{$}suffix.tsx"
-    },
-    "/params/single/$value": {
-      "filePath": "params.single.$value.tsx"
-    },
-    "/posts_/$postId/edit": {
-      "filePath": "posts_.$postId.edit.tsx"
-    },
-    "/redirect/$target/via-beforeLoad": {
-      "filePath": "redirect/$target/via-beforeLoad.tsx",
-      "parent": "/redirect/$target"
-    },
-    "/redirect/$target/via-loader": {
-      "filePath": "redirect/$target/via-loader.tsx",
-      "parent": "/redirect/$target"
-    },
-    "/redirect/preload/first": {
-      "filePath": "redirect/preload/first.tsx"
-    },
-    "/redirect/preload/second": {
-      "filePath": "redirect/preload/second.tsx"
-    },
-    "/redirect/preload/third": {
-      "filePath": "redirect/preload/third.tsx"
-    },
-    "/params-ps/named/": {
-      "filePath": "params-ps/named/index.tsx"
-    },
-    "/params-ps/wildcard/": {
-      "filePath": "params-ps/wildcard/index.tsx"
-    },
-    "/redirect/$target/": {
-      "filePath": "redirect/$target/index.tsx",
-      "parent": "/redirect/$target"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

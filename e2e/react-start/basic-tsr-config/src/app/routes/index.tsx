@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { useRouter } from '@tanstack/react-router'
+import { useRouter, createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 
 const filePath = 'count.txt'
@@ -17,7 +17,7 @@ const updateCount = createServerFn({ method: 'POST' })
     const count = await getCount()
     await fs.promises.writeFile(filePath, `${count + data}`)
   })
-export const Route = createFileRoute({
+export const Route = createFileRoute('/')({
   component: Home,
   loader: async () => await getCount(),
 })

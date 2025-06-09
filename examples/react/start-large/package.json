@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && tsc --noEmit",
     "start": "vite start",
     "gen": "node ./src/createRoutes.mjs",
     "test:types": "tsc --extendedDiagnostics"

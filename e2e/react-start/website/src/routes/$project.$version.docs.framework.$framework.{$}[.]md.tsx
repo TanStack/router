@@ -1,6 +1,9 @@
+import { createServerFileRoute } from '@tanstack/react-start/server'
 import { getDocument } from '~/server/document'
 
-export const ServerRoute = createServerFileRoute().methods({
+export const ServerRoute = createServerFileRoute(
+  '/$project/$version/docs/framework/$framework/{$}.md',
+).methods({
   GET: async ({ params }) => {
     const splat = params['_splat'] || ''
     const docPath = splat.split('.md')[0]

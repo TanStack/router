@@ -1,4 +1,4 @@
-import { redirect } from '@tanstack/react-router'
+import { redirect, createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 
 import { hashPassword, prismaClient } from '~/utils/prisma'
@@ -65,7 +65,7 @@ export const signupFn = createServerFn({
     })
   })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/signup')({
   component: SignupComp,
 })
 

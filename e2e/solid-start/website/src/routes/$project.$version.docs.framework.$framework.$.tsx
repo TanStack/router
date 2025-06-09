@@ -1,10 +1,12 @@
-import { ErrorComponent } from '@tanstack/solid-router'
+import { ErrorComponent, createFileRoute } from '@tanstack/solid-router'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 import { NotFound } from '~/components/NotFound'
 import { getDocument } from '~/server/document'
 import { capitalize, seo } from '~/utils/seo'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute(
+  '/$project/$version/docs/framework/$framework/$',
+)({
   loader: ({ params: { _splat } }) =>
     getDocument({
       data: _splat!,

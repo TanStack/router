@@ -9,11 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { createFileRoute } from '@tanstack/react-router'
-import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
-// Import Routes
-
-import { Route as rootRoute } from './routes/__root'
 import { Route as fooAsdfLayoutRouteImport } from './routes/(foo)/asdf/_layout'
 import { Route as fooAsdfLayoutFooRouteImport } from './routes/(foo)/asdf/_layout.foo'
 import { Route as fooAsdfbarIdRouteImport } from './routes/(foo)/asdf/(bar)/$id'
@@ -21,8 +17,7 @@ import { Route as fooAsdfanotherGroupLayoutRouteImport } from './routes/(foo)/as
 import { Route as fooAsdfbarLayoutAboutRouteImport } from './routes/(foo)/asdf/(bar)/_layout.about'
 import { Route as fooAsdfanotherGroupLayoutBazRouteImport } from './routes/(foo)/asdf/(another-group)/_layout.baz'
 
-// Create Virtual Routes
-
+const rootRouteImport = createRooRoute()
 const fooAsdfRouteImport = createFileRoute('/(foo)/asdf')()
 const fooAsdfanotherGroupRouteImport = createFileRoute(
   '/(foo)/asdf/(another-group)',
@@ -31,42 +26,34 @@ const fooAsdfbarLayoutXyzLazyRouteImport = createFileRoute(
   '/(foo)/asdf/(bar)/_layout/xyz',
 )()
 
-// Create/Update Routes
-
 const fooAsdfRoute = fooAsdfRouteImport.update({
   id: '/(foo)/asdf',
   path: '/asdf',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
 const fooAsdfanotherGroupRoute = fooAsdfanotherGroupRouteImport.update({
   id: '/(another-group)',
   getParentRoute: () => fooAsdfRoute,
 } as any)
-
 const fooAsdfLayoutRoute = fooAsdfLayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => fooAsdfRoute,
 } as any)
-
 const fooAsdfLayoutFooRoute = fooAsdfLayoutFooRouteImport.update({
   id: '/foo',
   path: '/foo',
   getParentRoute: () => fooAsdfLayoutRoute,
 } as any)
-
 const fooAsdfbarIdRoute = fooAsdfbarIdRouteImport.update({
   id: '/(bar)/$id',
   path: '/$id',
   getParentRoute: () => fooAsdfRoute,
 } as any)
-
 const fooAsdfanotherGroupLayoutRoute =
   fooAsdfanotherGroupLayoutRouteImport.update({
     id: '/_layout',
     getParentRoute: () => fooAsdfanotherGroupRoute,
   } as any)
-
 const fooAsdfbarLayoutXyzLazyRoute = fooAsdfbarLayoutXyzLazyRouteImport
   .update({
     id: '/(bar)/_layout/xyz',
@@ -76,13 +63,11 @@ const fooAsdfbarLayoutXyzLazyRoute = fooAsdfbarLayoutXyzLazyRouteImport
   .lazy(() =>
     import('./routes/(foo)/asdf/(bar)/_layout.xyz.lazy').then((d) => d.Route),
   )
-
 const fooAsdfbarLayoutAboutRoute = fooAsdfbarLayoutAboutRouteImport.update({
   id: '/(bar)/_layout/about',
   path: '/about',
   getParentRoute: () => fooAsdfRoute,
 } as any)
-
 const fooAsdfanotherGroupLayoutBazRoute =
   fooAsdfanotherGroupLayoutBazRouteImport.update({
     id: '/baz',
@@ -90,30 +75,78 @@ const fooAsdfanotherGroupLayoutBazRoute =
     getParentRoute: () => fooAsdfanotherGroupLayoutRoute,
   } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/asdf': typeof fooAsdfLayoutRouteWithChildren
+  '/asdf/': typeof fooAsdfanotherGroupLayoutRouteWithChildren
+  '/asdf/$id': typeof fooAsdfbarIdRoute
+  '/asdf/foo': typeof fooAsdfLayoutFooRoute
+  '/asdf/baz': typeof fooAsdfanotherGroupLayoutBazRoute
+  '/asdf/about': typeof fooAsdfbarLayoutAboutRoute
+  '/asdf/xyz': typeof fooAsdfbarLayoutXyzLazyRoute
+}
+export interface FileRoutesByTo {
+  '/asdf': typeof fooAsdfanotherGroupLayoutRouteWithChildren
+  '/asdf/$id': typeof fooAsdfbarIdRoute
+  '/asdf/foo': typeof fooAsdfLayoutFooRoute
+  '/asdf/baz': typeof fooAsdfanotherGroupLayoutBazRoute
+  '/asdf/about': typeof fooAsdfbarLayoutAboutRoute
+  '/asdf/xyz': typeof fooAsdfbarLayoutXyzLazyRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/(foo)/asdf': typeof fooAsdfRouteWithChildren
+  '/(foo)/asdf/_layout': typeof fooAsdfLayoutRouteWithChildren
+  '/(foo)/asdf/(another-group)': typeof fooAsdfanotherGroupRouteWithChildren
+  '/(foo)/asdf/(another-group)/_layout': typeof fooAsdfanotherGroupLayoutRouteWithChildren
+  '/(foo)/asdf/(bar)/$id': typeof fooAsdfbarIdRoute
+  '/(foo)/asdf/_layout/foo': typeof fooAsdfLayoutFooRoute
+  '/(foo)/asdf/(another-group)/_layout/baz': typeof fooAsdfanotherGroupLayoutBazRoute
+  '/(foo)/asdf/(bar)/_layout/about': typeof fooAsdfbarLayoutAboutRoute
+  '/(foo)/asdf/(bar)/_layout/xyz': typeof fooAsdfbarLayoutXyzLazyRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/asdf'
+    | '/asdf/'
+    | '/asdf/$id'
+    | '/asdf/foo'
+    | '/asdf/baz'
+    | '/asdf/about'
+    | '/asdf/xyz'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/asdf'
+    | '/asdf/$id'
+    | '/asdf/foo'
+    | '/asdf/baz'
+    | '/asdf/about'
+    | '/asdf/xyz'
+  id:
+    | '__root__'
+    | '/(foo)/asdf'
+    | '/(foo)/asdf/_layout'
+    | '/(foo)/asdf/(another-group)'
+    | '/(foo)/asdf/(another-group)/_layout'
+    | '/(foo)/asdf/(bar)/$id'
+    | '/(foo)/asdf/_layout/foo'
+    | '/(foo)/asdf/(another-group)/_layout/baz'
+    | '/(foo)/asdf/(bar)/_layout/about'
+    | '/(foo)/asdf/(bar)/_layout/xyz'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  fooAsdfRoute: typeof fooAsdfRouteWithChildren
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/(foo)/asdf': {
-      id: '/(foo)/asdf'
-      path: '/asdf'
-      fullPath: '/asdf'
-      preLoaderRoute: typeof fooAsdfRouteImport
-      parentRoute: typeof rootRoute
-    }
     '/(foo)/asdf/_layout': {
       id: '/(foo)/asdf/_layout'
       path: '/asdf'
       fullPath: '/asdf'
       preLoaderRoute: typeof fooAsdfLayoutRouteImport
       parentRoute: typeof fooAsdfRoute
-    }
-    '/(foo)/asdf/(another-group)': {
-      id: '/(foo)/asdf/(another-group)'
-      path: '/'
-      fullPath: '/asdf/'
-      preLoaderRoute: typeof fooAsdfanotherGroupRouteImport
-      parentRoute: typeof fooAsdfRouteImport
     }
     '/(foo)/asdf/(another-group)/_layout': {
       id: '/(foo)/asdf/(another-group)/_layout'
@@ -127,103 +160,38 @@ declare module '@tanstack/react-router' {
       path: '/$id'
       fullPath: '/asdf/$id'
       preLoaderRoute: typeof fooAsdfbarIdRouteImport
-      parentRoute: typeof fooAsdfRouteImport
+      parentRoute: typeof fooAsdfRoute
     }
     '/(foo)/asdf/_layout/foo': {
       id: '/(foo)/asdf/_layout/foo'
       path: '/foo'
       fullPath: '/asdf/foo'
       preLoaderRoute: typeof fooAsdfLayoutFooRouteImport
-      parentRoute: typeof fooAsdfLayoutRouteImport
+      parentRoute: typeof fooAsdfLayoutRoute
     }
     '/(foo)/asdf/(another-group)/_layout/baz': {
       id: '/(foo)/asdf/(another-group)/_layout/baz'
       path: '/baz'
       fullPath: '/asdf/baz'
       preLoaderRoute: typeof fooAsdfanotherGroupLayoutBazRouteImport
-      parentRoute: typeof fooAsdfanotherGroupLayoutRouteImport
+      parentRoute: typeof fooAsdfanotherGroupLayoutRoute
     }
     '/(foo)/asdf/(bar)/_layout/about': {
       id: '/(foo)/asdf/(bar)/_layout/about'
       path: '/about'
       fullPath: '/asdf/about'
       preLoaderRoute: typeof fooAsdfbarLayoutAboutRouteImport
-      parentRoute: typeof fooAsdfRouteImport
+      parentRoute: typeof fooAsdfRoute
     }
     '/(foo)/asdf/(bar)/_layout/xyz': {
       id: '/(foo)/asdf/(bar)/_layout/xyz'
       path: '/xyz'
       fullPath: '/asdf/xyz'
       preLoaderRoute: typeof fooAsdfbarLayoutXyzLazyRouteImport
-      parentRoute: typeof fooAsdfRouteImport
+      parentRoute: typeof fooAsdfRoute
     }
   }
 }
-
-// Add type-safety to the createFileRoute function across the route tree
-
-declare module './routes/(foo)/asdf/_layout' {
-  const createFileRoute: CreateFileRoute<
-    '/(foo)/asdf/_layout',
-    FileRoutesByPath['/(foo)/asdf/_layout']['parentRoute'],
-    FileRoutesByPath['/(foo)/asdf/_layout']['id'],
-    FileRoutesByPath['/(foo)/asdf/_layout']['path'],
-    FileRoutesByPath['/(foo)/asdf/_layout']['fullPath']
-  >
-}
-
-declare module './routes/(foo)/asdf/(another-group)/_layout' {
-  const createFileRoute: CreateFileRoute<
-    '/(foo)/asdf/(another-group)/_layout',
-    FileRoutesByPath['/(foo)/asdf/(another-group)/_layout']['parentRoute'],
-    FileRoutesByPath['/(foo)/asdf/(another-group)/_layout']['id'],
-    FileRoutesByPath['/(foo)/asdf/(another-group)/_layout']['path'],
-    FileRoutesByPath['/(foo)/asdf/(another-group)/_layout']['fullPath']
-  >
-}
-declare module './routes/(foo)/asdf/(bar)/$id' {
-  const createFileRoute: CreateFileRoute<
-    '/(foo)/asdf/(bar)/$id',
-    FileRoutesByPath['/(foo)/asdf/(bar)/$id']['parentRoute'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/$id']['id'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/$id']['path'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/$id']['fullPath']
-  >
-}
-declare module './routes/(foo)/asdf/_layout.foo' {
-  const createFileRoute: CreateFileRoute<
-    '/(foo)/asdf/_layout/foo',
-    FileRoutesByPath['/(foo)/asdf/_layout/foo']['parentRoute'],
-    FileRoutesByPath['/(foo)/asdf/_layout/foo']['id'],
-    FileRoutesByPath['/(foo)/asdf/_layout/foo']['path'],
-    FileRoutesByPath['/(foo)/asdf/_layout/foo']['fullPath']
-  >
-}
-declare module './routes/(foo)/asdf/(another-group)/_layout.baz' {
-  const createFileRoute: CreateFileRoute<
-    '/(foo)/asdf/(another-group)/_layout/baz',
-    FileRoutesByPath['/(foo)/asdf/(another-group)/_layout/baz']['parentRoute'],
-    FileRoutesByPath['/(foo)/asdf/(another-group)/_layout/baz']['id'],
-    FileRoutesByPath['/(foo)/asdf/(another-group)/_layout/baz']['path'],
-    FileRoutesByPath['/(foo)/asdf/(another-group)/_layout/baz']['fullPath']
-  >
-}
-declare module './routes/(foo)/asdf/(bar)/_layout.about' {
-  const createFileRoute: CreateFileRoute<
-    '/(foo)/asdf/(bar)/_layout/about',
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/about']['parentRoute'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/about']['id'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/about']['path'],
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/about']['fullPath']
-  >
-}
-declare module './routes/(foo)/asdf/(bar)/_layout.xyz.lazy' {
-  const createLazyFileRoute: CreateLazyFileRoute<
-    FileRoutesByPath['/(foo)/asdf/(bar)/_layout/xyz']['preLoaderRoute']
-  >
-}
-
-// Create and export the route tree
 
 interface fooAsdfLayoutRouteChildren {
   fooAsdfLayoutFooRoute: typeof fooAsdfLayoutFooRoute
@@ -281,142 +249,9 @@ const fooAsdfRouteChildren: fooAsdfRouteChildren = {
 const fooAsdfRouteWithChildren =
   fooAsdfRoute._addFileChildren(fooAsdfRouteChildren)
 
-export interface FileRoutesByFullPath {
-  '/asdf': typeof fooAsdfLayoutRouteWithChildren
-  '/asdf/': typeof fooAsdfanotherGroupLayoutRouteWithChildren
-  '/asdf/$id': typeof fooAsdfbarIdRoute
-  '/asdf/foo': typeof fooAsdfLayoutFooRoute
-  '/asdf/baz': typeof fooAsdfanotherGroupLayoutBazRoute
-  '/asdf/about': typeof fooAsdfbarLayoutAboutRoute
-  '/asdf/xyz': typeof fooAsdfbarLayoutXyzLazyRoute
-}
-
-export interface FileRoutesByTo {
-  '/asdf': typeof fooAsdfanotherGroupLayoutRouteWithChildren
-  '/asdf/$id': typeof fooAsdfbarIdRoute
-  '/asdf/foo': typeof fooAsdfLayoutFooRoute
-  '/asdf/baz': typeof fooAsdfanotherGroupLayoutBazRoute
-  '/asdf/about': typeof fooAsdfbarLayoutAboutRoute
-  '/asdf/xyz': typeof fooAsdfbarLayoutXyzLazyRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/(foo)/asdf': typeof fooAsdfRouteWithChildren
-  '/(foo)/asdf/_layout': typeof fooAsdfLayoutRouteWithChildren
-  '/(foo)/asdf/(another-group)': typeof fooAsdfanotherGroupRouteWithChildren
-  '/(foo)/asdf/(another-group)/_layout': typeof fooAsdfanotherGroupLayoutRouteWithChildren
-  '/(foo)/asdf/(bar)/$id': typeof fooAsdfbarIdRoute
-  '/(foo)/asdf/_layout/foo': typeof fooAsdfLayoutFooRoute
-  '/(foo)/asdf/(another-group)/_layout/baz': typeof fooAsdfanotherGroupLayoutBazRoute
-  '/(foo)/asdf/(bar)/_layout/about': typeof fooAsdfbarLayoutAboutRoute
-  '/(foo)/asdf/(bar)/_layout/xyz': typeof fooAsdfbarLayoutXyzLazyRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/asdf'
-    | '/asdf/'
-    | '/asdf/$id'
-    | '/asdf/foo'
-    | '/asdf/baz'
-    | '/asdf/about'
-    | '/asdf/xyz'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/asdf'
-    | '/asdf/$id'
-    | '/asdf/foo'
-    | '/asdf/baz'
-    | '/asdf/about'
-    | '/asdf/xyz'
-  id:
-    | '__root__'
-    | '/(foo)/asdf'
-    | '/(foo)/asdf/_layout'
-    | '/(foo)/asdf/(another-group)'
-    | '/(foo)/asdf/(another-group)/_layout'
-    | '/(foo)/asdf/(bar)/$id'
-    | '/(foo)/asdf/_layout/foo'
-    | '/(foo)/asdf/(another-group)/_layout/baz'
-    | '/(foo)/asdf/(bar)/_layout/about'
-    | '/(foo)/asdf/(bar)/_layout/xyz'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  fooAsdfRoute: typeof fooAsdfRouteWithChildren
-}
-
 const rootRouteChildren: RootRouteChildren = {
   fooAsdfRoute: fooAsdfRouteWithChildren,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/(foo)/asdf"
-      ]
-    },
-    "/(foo)/asdf": {
-      "filePath": "(foo)/asdf",
-      "children": [
-        "/(foo)/asdf/_layout",
-        "/(foo)/asdf/(another-group)",
-        "/(foo)/asdf/(bar)/$id",
-        "/(foo)/asdf/(bar)/_layout/about",
-        "/(foo)/asdf/(bar)/_layout/xyz"
-      ]
-    },
-    "/(foo)/asdf/_layout": {
-      "filePath": "(foo)/asdf/_layout.tsx",
-      "parent": "/(foo)/asdf",
-      "children": [
-        "/(foo)/asdf/_layout/foo"
-      ]
-    },
-    "/(foo)/asdf/(another-group)": {
-      "filePath": "(foo)/asdf/(another-group)",
-      "parent": "/(foo)/asdf",
-      "children": [
-        "/(foo)/asdf/(another-group)/_layout"
-      ]
-    },
-    "/(foo)/asdf/(another-group)/_layout": {
-      "filePath": "(foo)/asdf/(another-group)/_layout.tsx",
-      "parent": "/(foo)/asdf/(another-group)",
-      "children": [
-        "/(foo)/asdf/(another-group)/_layout/baz"
-      ]
-    },
-    "/(foo)/asdf/(bar)/$id": {
-      "filePath": "(foo)/asdf/(bar)/$id.tsx",
-      "parent": "/(foo)/asdf"
-    },
-    "/(foo)/asdf/_layout/foo": {
-      "filePath": "(foo)/asdf/_layout.foo.tsx",
-      "parent": "/(foo)/asdf/_layout"
-    },
-    "/(foo)/asdf/(another-group)/_layout/baz": {
-      "filePath": "(foo)/asdf/(another-group)/_layout.baz.tsx",
-      "parent": "/(foo)/asdf/(another-group)/_layout"
-    },
-    "/(foo)/asdf/(bar)/_layout/about": {
-      "filePath": "(foo)/asdf/(bar)/_layout.about.tsx",
-      "parent": "/(foo)/asdf"
-    },
-    "/(foo)/asdf/(bar)/_layout/xyz": {
-      "filePath": "(foo)/asdf/(bar)/_layout.xyz.lazy.tsx",
-      "parent": "/(foo)/asdf"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

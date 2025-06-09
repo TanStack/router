@@ -1,6 +1,6 @@
-import { Link } from '@tanstack/solid-router'
+import { Link, createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/redirect/$target/serverFn/')({
   component: () => (
     <div>
       <h1 class="mb-4 text-4xl font-extrabold lmd:text-5xl lg:text-6xl ">

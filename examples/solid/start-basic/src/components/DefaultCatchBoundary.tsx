@@ -28,7 +28,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
         >
           Try Again
         </button>
-        {isRoot ? (
+        {isRoot() ? (
           <Link
             to="/"
             class={`px-2 py-1 bg-gray-600 dark:bg-gray-700 rounded text-white uppercase font-extrabold`}

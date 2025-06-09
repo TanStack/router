@@ -1,3 +1,4 @@
+import { createServerFileRoute } from '@tanstack/solid-start/server'
 import { createMiddleware, json } from '@tanstack/solid-start'
 import type { User } from '~/utils/users'
 
@@ -39,7 +40,7 @@ const testMiddleware = createMiddleware({ type: 'request' })
     return result
   })
 
-export const ServerRoute = createServerFileRoute()
+export const ServerRoute = createServerFileRoute('/api/users')
   .middleware([testMiddleware, userLoggerMiddleware, testParentMiddleware])
   .methods({
     GET: async ({ request }) => {

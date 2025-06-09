@@ -1,6 +1,7 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/submit-post-formdata')({
   component: SubmitPostFormDataFn,
 })
 

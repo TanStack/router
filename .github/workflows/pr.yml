@@ -18,13 +18,15 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    env:
+      TSR_TMP_DIR: ./tmp
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
       - name: Start Nx Agents
-        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
+        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml" --with-env-vars="TSR_TMP_DIR"
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
       - name: Get base and head commits for `nx affected`

@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { setResponseStatus } from '@tanstack/react-start/server'
 
@@ -8,7 +9,7 @@ const helloFn = createServerFn().handler(() => {
   }
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/status')({
   component: StatusComponent,
 })
 

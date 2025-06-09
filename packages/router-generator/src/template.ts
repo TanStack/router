@@ -15,7 +15,7 @@ export function fillTemplate(
   return format(replaced, config)
 }
 
-type TargetTemplate = {
+export type TargetTemplate = {
   fullPkg: string
   subPkg: string
   rootRoute: {
@@ -44,10 +44,9 @@ type TargetTemplate = {
   }
 }
 
-export function getTargetTemplate(target: Config['target']): TargetTemplate {
+export function getTargetTemplate(config: Config): TargetTemplate {
+  const target = config.target
   switch (target) {
-    // TODO: Remove this disabled eslint rule when more target types are added.
-
     case 'react':
       return {
         fullPkg: '@tanstack/react-router',
@@ -77,8 +76,14 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
               'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
             ].join(''),
           imports: {
-            tsrImports: () => '',
-            tsrExportStart: () => `export const Route = createFileRoute(`,
+            tsrImports: () =>
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createFileRoute } from '@tanstack/react-router';",
+            tsrExportStart: (routePath) =>
+              config.verboseFileRoutes === false
+                ? 'export const Route = createFileRoute('
+                : `export const Route = createFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -92,9 +97,13 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createLazyFileRoute } from '@tanstack/react-router';",
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createLazyFileRoute } from '@tanstack/react-router';",
             tsrExportStart: (routePath) =>
-              `export const Route = createLazyFileRoute('${routePath}')(`,
+              config.verboseFileRoutes === false
+                ? 'export const Route = createLazyFileRoute('
+                : `export const Route = createLazyFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -128,8 +137,14 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
               'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
             ].join(''),
           imports: {
-            tsrImports: () => '',
-            tsrExportStart: () => `export const Route = createFileRoute(`,
+            tsrImports: () =>
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createFileRoute } from '@tanstack/solid-router';",
+            tsrExportStart: (routePath) =>
+              config.verboseFileRoutes === false
+                ? 'export const Route = createFileRoute('
+                : `export const Route = createFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -143,9 +158,15 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createLazyFileRoute } from '@tanstack/solid-router';",
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createLazyFileRoute } from '@tanstack/solid-router';",
+
             tsrExportStart: (routePath) =>
-              `export const Route = createLazyFileRoute('${routePath}')(`,
+              config.verboseFileRoutes === false
+                ? 'export const Route = createLazyFileRoute('
+                : `export const Route = createLazyFileRoute('${routePath}')(`,
+
             tsrExportEnd: () => ');',
           },
         },
