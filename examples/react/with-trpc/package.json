@@ -8,10 +8,10 @@
     "start": "vite start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.121.0-alpha.22",
-    "@tanstack/react-router-devtools": "^1.121.0-alpha.22",
-    "@tanstack/router-plugin": "^1.121.0-alpha.26",
-    "@tanstack/react-start": "^1.121.0-alpha.26",
+    "@tanstack/react-router": "^1.121.0-alpha.27",
+    "@tanstack/react-router-devtools": "^1.121.0-alpha.27",
+    "@tanstack/router-plugin": "^1.121.0-alpha.27",
+    "@tanstack/react-start": "^1.121.0-alpha.27",
     "@trpc/client": "11.0.0-rc.772",
     "@trpc/server": "11.0.0-rc.772",
     "react": "^19.0.0",
