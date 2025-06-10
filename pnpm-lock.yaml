@@ -5245,7 +5245,7 @@ importers:
   examples/solid/basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.120.19
+        specifier: ^1.121.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5285,7 +5285,7 @@ importers:
   examples/solid/basic-devtools-panel:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.120.19
+        specifier: ^1.121.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5319,7 +5319,7 @@ importers:
   examples/solid/basic-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.120.19
+        specifier: ^1.121.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5359,7 +5359,7 @@ importers:
   examples/solid/basic-non-nested-devtools:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.120.19
+        specifier: ^1.121.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5405,7 +5405,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.120.19
+        specifier: ^1.121.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5448,7 +5448,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.120.19
+        specifier: ^1.121.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5488,7 +5488,7 @@ importers:
   examples/solid/kitchen-sink-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.120.19
+        specifier: ^1.121.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5531,7 +5531,7 @@ importers:
   examples/solid/quickstart-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.120.19
+        specifier: ^1.121.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5571,7 +5571,7 @@ importers:
   examples/solid/start-bare:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.120.19
+        specifier: ^1.121.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5620,7 +5620,7 @@ importers:
   examples/solid/start-basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.120.19
+        specifier: ^1.121.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5663,8 +5663,8 @@ importers:
   examples/solid/start-basic-static:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.121.0-alpha.27
-        version: 1.121.0-alpha.27(solid-js@1.9.5)
+        specifier: ^1.121.0
+        version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
@@ -9896,12 +9896,6 @@ packages:
     resolution: {integrity: sha512-ty4J5q+DIPEs7xB01TqkTfx0wYkcccJaofb378Nq/HfWoQ/0300A8TM7CU7YotJUmVWA3qwBHnJLChXlNzX4ow==}
     peerDependencies:
       solid-js: ^1.6.0
-
-  '@tanstack/solid-router@1.121.0-alpha.27':
-    resolution: {integrity: sha512-aFHdqUUflcE4ahkwbAW4w1hM0a03gYnfywhhnpmV5tgq3xU9iXCfX+u6f4ZEPYGG/5QRzpwWLdiCb4xy3qQ45g==}
-    engines: {node: '>=12'}
-    peerDependencies:
-      solid-js: ^1.9.5
 
   '@tanstack/solid-store@0.7.0':
     resolution: {integrity: sha512-uDQYkUuH3MppitiduZLTEcItkTr8vEJ33jzp2rH2VvlNRMGbuU54GQcqf3dLIlTbZ1/Z2TtIBtBjjl+N/OhwRg==}
@@ -18721,19 +18715,6 @@ snapshots:
     dependencies:
       '@tanstack/query-core': 5.72.2
       solid-js: 1.9.5
-
-  '@tanstack/solid-router@1.121.0-alpha.27(solid-js@1.9.5)':
-    dependencies:
-      '@solid-devtools/logger': 0.9.7(solid-js@1.9.5)
-      '@solid-primitives/refs': 1.1.0(solid-js@1.9.5)
-      '@solidjs/meta': 0.29.4(solid-js@1.9.5)
-      '@tanstack/history': link:packages/history
-      '@tanstack/router-core': link:packages/router-core
-      '@tanstack/solid-store': 0.7.0(solid-js@1.9.5)
-      jsesc: 3.1.0
-      solid-js: 1.9.5
-      tiny-invariant: 1.3.3
-      tiny-warning: 1.0.3
 
   '@tanstack/solid-store@0.7.0(solid-js@1.9.5)':
     dependencies:
