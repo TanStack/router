@@ -1050,7 +1050,9 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     const result = await this.isRouteFileCacheFresh(node)
 
     if (result.status === 'fresh') {
-      return false
+      node.exports = result.cacheEntry.exports
+      this.routeNodeShadowCache.set(node.fullPath, result.cacheEntry)
+      return result.exportsChanged
     }
     const rootNodeFile = await this.fs.readFile(node.fullPath)
     if (rootNodeFile === 'file-not-existing') {
