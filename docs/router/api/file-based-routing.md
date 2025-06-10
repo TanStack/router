@@ -200,4 +200,4 @@ Atomic file writes (route files and the generated route tree file) are implement
 This config option allows to configure the path of the temp directory that will be used for creating those temporary files.
 If it is a relative path, it will be resolved to the current working directory.
 If this value is not set, `process.env.TSR_TMP_DIR` will be used.
-If `process.env.TSR_TMP_DIR` is not set, it will default to `os.tmpdir()`.
+If `process.env.TSR_TMP_DIR` is not set, it will default to `.tanstack/tmp` relative to the current working directory.

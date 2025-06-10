@@ -178,7 +178,7 @@ export class Generator {
     this.root = opts.root
     this.fs = opts.fs || DefaultFileSystem
     this.tmpDir = this.fs.mkdtempSync(
-      path.join(this.config.tmpDir, 'tanstack-router-'),
+      path.join(this.config.tmpDir, 'router-generator-'),
     )
     this.generatedRouteTreePath = path.resolve(this.config.generatedRouteTree)
     this.targetTemplate = getTargetTemplate(this.config)

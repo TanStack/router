@@ -121,7 +121,10 @@ export function getConfig(
     }
   }
 
-  const resolveTmpDir = (dir: string) => {
+  const resolveTmpDir = (dir: string | Array<string>) => {
+    if (Array.isArray(dir)) {
+      dir = path.join(...dir)
+    }
     if (!path.isAbsolute(dir)) {
       dir = path.resolve(process.cwd(), dir)
     }
@@ -134,7 +137,7 @@ export function getConfig(
   } else if (process.env.TSR_TMP_DIR) {
     config.tmpDir = resolveTmpDir(process.env.TSR_TMP_DIR)
   } else {
-    config.tmpDir = tmpdir()
+    config.tmpDir = resolveTmpDir(['.tanstack', 'tmp'])
   }
 
   validateConfig(config)
