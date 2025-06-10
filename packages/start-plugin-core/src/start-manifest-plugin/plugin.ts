@@ -12,6 +12,7 @@ import type {
 } from 'vite'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { TanStackStartOutputConfig } from '../plugin'
+import { CLIENT_DIST_DIR } from '../constants'
 
 const getCSSRecursively = (
   file: ViteManifestChunk,
@@ -94,7 +95,9 @@ export function startManifestPlugin(
 
           const clientViteManifestPath = path.resolve(
             opts.root,
-            '.tanstack-start/build/client-dist/.vite/manifest.json',
+            CLIENT_DIST_DIR,
+            '.vite',
+            'manifest.json',
           )
 
           let viteManifest: ViteManifest

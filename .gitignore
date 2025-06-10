@@ -74,6 +74,7 @@ vite.config.ts.timestamp_*
 # Handling VSCode settings
 /.vscode/
 !/examples/react/**/.vscode/settings.json
-**/.tanstack-start/build
 
 **/llms
+
+**/.tanstack
