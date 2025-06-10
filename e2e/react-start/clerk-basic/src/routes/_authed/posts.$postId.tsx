@@ -1,10 +1,10 @@
-import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
+import { ErrorComponent } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
 import { NotFound } from '~/components/NotFound.js'
 import { fetchPost } from '~/utils/posts.js'
 
-export const Route = createFileRoute('/_authed/posts/$postId')({
+export const Route = createFileRoute({
   loader: ({ params: { postId } }) => fetchPost({ data: postId }),
   errorComponent: PostErrorComponent,
   component: PostComponent,

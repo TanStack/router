@@ -1,22 +1,15 @@
-import type { EventHandlerResponse } from 'h3'
 import type { AnyRouter } from '@tanstack/router-core'
 
-export interface HandlerCallback<
-  TRouter extends AnyRouter,
-  TResponse extends EventHandlerResponse = EventHandlerResponse,
-> {
+export interface HandlerCallback<TRouter extends AnyRouter> {
   (ctx: {
     request: Request
     router: TRouter
     responseHeaders: Headers
-  }): TResponse
+  }): Response | Promise<Response>
 }
 
-export function defineHandlerCallback<
-  TRouter extends AnyRouter,
-  TResponse = EventHandlerResponse,
->(
-  handler: HandlerCallback<TRouter, TResponse>,
-): HandlerCallback<TRouter, TResponse> {
+export function defineHandlerCallback<TRouter extends AnyRouter>(
+  handler: HandlerCallback<TRouter>,
+): HandlerCallback<TRouter> {
   return handler
 }

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import * as v from 'valibot'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'
@@ -26,7 +26,7 @@ const Valibot = () => {
   )
 }
 
-export const Route = createFileRoute('/users/valibot/')({
+export const Route = createFileRoute({
   validateSearch: v.object({
     search: v.fallback(v.optional(v.string(), ''), ''),
   }),

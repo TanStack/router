@@ -1,9 +1,9 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
 import {
   Link,
   MatchRoute,
   Outlet,
-  createFileRoute,
   retainSearchParams,
   useNavigate,
   useRouterState,

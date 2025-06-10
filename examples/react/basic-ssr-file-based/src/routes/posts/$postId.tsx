@@ -1,8 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import type { PostType } from '../posts'
 
-export const Route = createFileRoute('/posts/$postId')({
+export const Route = createFileRoute({
   loader: async ({ params }) => {
     console.info(`Fetching post with id ${params.postId}...`)
 

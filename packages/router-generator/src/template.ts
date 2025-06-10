@@ -15,7 +15,7 @@ export function fillTemplate(
   return format(replaced, config)
 }
 
-type TargetTemplate = {
+export type TargetTemplate = {
   fullPkg: string
   subPkg: string
   rootRoute: {
@@ -44,10 +44,9 @@ type TargetTemplate = {
   }
 }
 
-export function getTargetTemplate(target: Config['target']): TargetTemplate {
+export function getTargetTemplate(config: Config): TargetTemplate {
+  const target = config.target
   switch (target) {
-    // TODO: Remove this disabled eslint rule when more target types are added.
-
     case 'react':
       return {
         fullPkg: '@tanstack/react-router',
@@ -78,9 +77,13 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createFileRoute } from '@tanstack/react-router';",
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createFileRoute } from '@tanstack/react-router';",
             tsrExportStart: (routePath) =>
-              `export const Route = createFileRoute('${routePath}')(`,
+              config.verboseFileRoutes === false
+                ? 'export const Route = createFileRoute('
+                : `export const Route = createFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -94,9 +97,13 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createLazyFileRoute } from '@tanstack/react-router';",
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createLazyFileRoute } from '@tanstack/react-router';",
             tsrExportStart: (routePath) =>
-              `export const Route = createLazyFileRoute('${routePath}')(`,
+              config.verboseFileRoutes === false
+                ? 'export const Route = createLazyFileRoute('
+                : `export const Route = createLazyFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -131,9 +138,13 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createFileRoute } from '@tanstack/solid-router';",
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createFileRoute } from '@tanstack/solid-router';",
             tsrExportStart: (routePath) =>
-              `export const Route = createFileRoute('${routePath}')(`,
+              config.verboseFileRoutes === false
+                ? 'export const Route = createFileRoute('
+                : `export const Route = createFileRoute('${routePath}')(`,
             tsrExportEnd: () => ');',
           },
         },
@@ -147,9 +158,15 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createLazyFileRoute } from '@tanstack/solid-router';",
+              config.verboseFileRoutes === false
+                ? ''
+                : "import { createLazyFileRoute } from '@tanstack/solid-router';",
+
             tsrExportStart: (routePath) =>
-              `export const Route = createLazyFileRoute('${routePath}')(`,
+              config.verboseFileRoutes === false
+                ? 'export const Route = createLazyFileRoute('
+                : `export const Route = createLazyFileRoute('${routePath}')(`,
+
             tsrExportEnd: () => ');',
           },
         },
@@ -158,10 +175,3 @@ export function getTargetTemplate(target: Config['target']): TargetTemplate {
       throw new Error(`router-generator: Unknown target type: ${target}`)
   }
 }
-
-export const defaultAPIRouteTemplate = [
-  'import { json } from "@tanstack/react-start";\n',
-  '%%tsrImports%%',
-  '\n\n',
-  '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message:\'Hello "%%tsrPath%%"!\' }) }}%%tsrExportEnd%%\n',
-].join('')

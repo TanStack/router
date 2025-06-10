@@ -1,5 +1,6 @@
-import * as Solid from 'solid-js'
 import { createFileRoute } from '@tanstack/solid-router'
+import * as Solid from 'solid-js'
+
 import { z } from 'zod'
 import { fetchUserById } from '../utils/mockTodos'
 

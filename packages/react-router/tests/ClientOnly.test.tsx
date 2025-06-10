@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import React from 'react'
 import ReactDOMServer from 'react-dom/server'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import {
   RouterProvider,
   createMemoryHistory,
@@ -10,16 +10,14 @@ import {
   createRouter,
 } from '../src'
 import { ClientOnly } from '../src/ClientOnly'
-import type { RouterHistory } from '../src'
 
 afterEach(() => {
   vi.resetAllMocks()
   cleanup()
 })
 
-function createTestRouter(initialHistory?: RouterHistory) {
-  const history =
-    initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
+function createTestRouter(opts: { isServer: boolean }) {
+  const history = createMemoryHistory({ initialEntries: ['/'] })
 
   const rootRoute = createRootRoute({})
 
@@ -35,9 +33,18 @@ function createTestRouter(initialHistory?: RouterHistory) {
       </div>
     ),
   })
+  const otherRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+    component: () => (
+      <div>
+        <p data-testid="other-route">Other Route</p>
+      </div>
+    ),
+  })
 
-  const routeTree = rootRoute.addChildren([indexRoute])
-  const router = createRouter({ routeTree, history })
+  const routeTree = rootRoute.addChildren([indexRoute, otherRoute])
+  const router = createRouter({ routeTree, history, ...opts })
 
   return {
     router,
@@ -47,7 +54,7 @@ function createTestRouter(initialHistory?: RouterHistory) {
 
 describe('ClientOnly', () => {
   it('should render fallback during SSR', async () => {
-    const { router } = createTestRouter()
+    const { router } = createTestRouter({ isServer: true })
     await router.load()
 
     // Initial render (SSR)
@@ -59,7 +66,7 @@ describe('ClientOnly', () => {
   })
 
   it('should render client content after hydration', async () => {
-    const { router } = createTestRouter()
+    const { router } = createTestRouter({ isServer: false })
     await router.load()
 
     // Mock useSyncExternalStore to simulate hydration
@@ -67,12 +74,12 @@ describe('ClientOnly', () => {
 
     render(<RouterProvider router={router} />)
 
-    expect(screen.getByText('Client Only Content')).toBeInTheDocument()
+    expect(await screen.findByTestId('client-only-content')).toBeInTheDocument()
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
   })
 
   it('should handle navigation with client-only content', async () => {
-    const { router } = createTestRouter()
+    const { router } = createTestRouter({ isServer: false })
     await router.load()
 
     // Simulate hydration
@@ -81,11 +88,15 @@ describe('ClientOnly', () => {
     // Re-render after hydration
     render(<RouterProvider router={router} />)
 
+    expect(await screen.findByTestId('client-only-content')).toBeInTheDocument()
+
     // Navigate to a different route and back
-    await router.navigate({ to: '/other' })
-    await router.navigate({ to: '/' })
+    await act(() => router.navigate({ to: '/other' }))
+    expect(await screen.findByTestId('other-route')).toBeInTheDocument()
+
+    await act(() => router.navigate({ to: '/' }))
 
     // Content should still be visible after navigation
-    expect(screen.getByText('Client Only Content')).toBeInTheDocument()
+    expect(await screen.findByTestId('client-only-content')).toBeInTheDocument()
   })
 })

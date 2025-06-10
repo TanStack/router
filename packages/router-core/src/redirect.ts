@@ -1,6 +1,5 @@
 import type { NavigateOptions } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { PickAsRequired } from './utils'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
@@ -8,6 +7,17 @@ export type AnyRedirect = Redirect<any, any, any, any, any>
  * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RedirectType)
  */
 export type Redirect<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends string = TFrom,
+  TMaskTo extends string = '.',
+> = Response & {
+  options: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
+  redirectHandled?: boolean
+}
+
+export type RedirectOptions<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
   TTo extends string | undefined = undefined,
@@ -42,12 +52,7 @@ export type ResolvedRedirect<
   TTo extends string = '',
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '',
-> = PickAsRequired<
-  Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-  'code' | 'statusCode' | 'headers'
-> & {
-  href: string
-}
+> = Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export function redirect<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -56,30 +61,48 @@ export function redirect<
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(
-  opts: Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  opts: RedirectOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
-  ;(opts as any).isRedirect = true
   opts.statusCode = opts.statusCode || opts.code || 307
-  opts.headers = opts.headers || {}
+
   if (!opts.reloadDocument) {
-    opts.reloadDocument = false
     try {
       new URL(`${opts.href}`)
       opts.reloadDocument = true
     } catch {}
   }
 
+  const headers = new Headers(opts.headers || {})
+
+  const response = new Response(null, {
+    status: opts.statusCode,
+    headers,
+  })
+
+  ;(response as Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>).options =
+    opts
+
   if (opts.throw) {
-    throw opts
+    throw response
   }
 
-  return opts
+  return response as Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 }
 
 export function isRedirect(obj: any): obj is AnyRedirect {
-  return !!obj?.isRedirect
+  return obj instanceof Response && !!(obj as any).options
 }
 
-export function isResolvedRedirect(obj: any): obj is ResolvedRedirect {
-  return !!obj?.isRedirect && obj.href
+export function isResolvedRedirect(
+  obj: any,
+): obj is AnyRedirect & { options: { href: string } } {
+  return isRedirect(obj) && !!obj.options.href
+}
+
+export function parseRedirect(obj: any) {
+  if (typeof obj === 'object' && obj.isSerializedRedirect) {
+    return redirect(obj)
+  }
+
+  return undefined
 }

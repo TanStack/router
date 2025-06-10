@@ -1,10 +1,6 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
-import {
-  Link,
-  createFileRoute,
-  useNavigate,
-  useRouter,
-} from '@tanstack/react-router'
+import { Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { z } from 'zod'
 import { InvoiceFields } from '../components/InvoiceFields'
 import { useMutation } from '../hooks/useMutation'

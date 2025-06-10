@@ -6,21 +6,31 @@ import {
   screen,
 } from '@testing-library/react'
 
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { z } from 'zod'
 import {
   Link,
   Outlet,
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
 
 import { sleep } from './utils'
+import type { RouterHistory } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
@@ -45,7 +55,7 @@ describe('loaders are being called', () => {
       component: () => <div>Index page</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
 
     render(<RouterProvider router={router} />)
 
@@ -96,7 +106,7 @@ describe('loaders are being called', () => {
       nestedRoute.addChildren([fooRoute]),
       indexRoute,
     ])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
 
     render(<RouterProvider router={router} />)
 
@@ -152,7 +162,7 @@ describe('loaders parentMatchPromise', () => {
       nestedRoute.addChildren([fooRoute]),
       indexRoute,
     ])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
 
     render(<RouterProvider router={router} />)
 
@@ -190,7 +200,7 @@ test('reproducer for #2031', async () => {
   })
 
   const routeTree = rootRoute.addChildren([indexRoute])
-  const router = createRouter({ routeTree })
+  const router = createRouter({ routeTree, history })
 
   render(<RouterProvider router={router} />)
 
@@ -220,6 +230,7 @@ test('reproducer for #2053', async () => {
 
   const router = createRouter({
     routeTree,
+    history,
   })
 
   render(<RouterProvider router={router} />)
@@ -244,6 +255,7 @@ test('reproducer for #2198 - throw error from beforeLoad upon initial load', asy
   const routeTree = rootRoute.addChildren([indexRoute])
   const router = createRouter({
     routeTree,
+    history,
     defaultErrorComponent: () => {
       return <div>defaultErrorComponent</div>
     },
@@ -271,6 +283,7 @@ test('throw error from loader upon initial load', async () => {
   const routeTree = rootRoute.addChildren([indexRoute])
   const router = createRouter({
     routeTree,
+    history,
     defaultErrorComponent: () => {
       return <div>defaultErrorComponent</div>
     },
@@ -309,6 +322,7 @@ test('throw error from beforeLoad when navigating to route', async () => {
   const routeTree = rootRoute.addChildren([indexRoute, fooRoute])
   const router = createRouter({
     routeTree,
+    history,
     defaultErrorComponent: () => {
       return <div>defaultErrorComponent</div>
     },

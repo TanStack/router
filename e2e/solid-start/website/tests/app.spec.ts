@@ -17,3 +17,17 @@ test('resolves to the overview docs page', async ({ page }) => {
     '/router/latest/docs/framework/solid/overview',
   )
 })
+
+test('clicking on Documentation link navigates to the overview docs page', async ({
+  page,
+}) => {
+  await page.goto('/router')
+  await page.waitForLoadState('networkidle')
+
+  const documentationLink = page.getByLabel('Documentation')
+  await documentationLink.click()
+  await page.waitForLoadState('networkidle')
+
+  const pathname = new URL(page.url()).pathname
+  expect(pathname).toBe('/router/latest/docs/framework/solid/overview')
+})

@@ -1,6 +1,6 @@
 import { createMiddleware } from '@tanstack/solid-start'
 
-const preLogMiddleware = createMiddleware()
+const preLogMiddleware = createMiddleware({ type: 'function' })
   .client(async (ctx) => {
     const clientTime = new Date()
 
@@ -25,7 +25,7 @@ const preLogMiddleware = createMiddleware()
     })
   })
 
-export const logMiddleware = createMiddleware()
+export const logMiddleware = createMiddleware({ type: 'function' })
   .middleware([preLogMiddleware])
   .client(async (ctx) => {
     const res = await ctx.next()
