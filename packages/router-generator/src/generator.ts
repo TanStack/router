@@ -178,7 +178,7 @@ export class Generator {
     this.root = opts.root
     this.fs = opts.fs || DefaultFileSystem
     this.tmpDir = this.fs.mkdtempSync(
-      path.join(this.config.tmpDir, 'tanstack-router-'),
+      path.join(this.config.tmpDir, 'router-generator-'),
     )
     this.generatedRouteTreePath = path.resolve(this.config.generatedRouteTree)
     this.targetTemplate = getTargetTemplate(this.config)
@@ -1050,7 +1050,9 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     const result = await this.isRouteFileCacheFresh(node)
 
     if (result.status === 'fresh') {
-      return false
+      node.exports = result.cacheEntry.exports
+      this.routeNodeShadowCache.set(node.fullPath, result.cacheEntry)
+      return result.exportsChanged
     }
     const rootNodeFile = await this.fs.readFile(node.fullPath)
     if (rootNodeFile === 'file-not-existing') {

@@ -43,7 +43,10 @@ export async function prerender({
 
   const prerenderOutputDir = path.resolve(
     options.root,
-    '.tanstack-start/build/prerenderer',
+    '.tanstack',
+    'start',
+    'build',
+    'prerenderer',
   )
 
   const nodeNitro = await createNitro({

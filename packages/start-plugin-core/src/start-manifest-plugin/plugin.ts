@@ -1,9 +1,10 @@
-import { mkdirSync, readFileSync, rmSync, writeFile } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { joinURL } from 'ufo'
 import { rootRouteId } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { resolveViteId } from '../utils'
+import { CLIENT_DIST_DIR } from '../constants'
 import type {
   PluginOption,
   ResolvedConfig,
@@ -94,7 +95,9 @@ export function startManifestPlugin(
 
           const clientViteManifestPath = path.resolve(
             opts.root,
-            '.tanstack-start/build/client-dist/.vite/manifest.json',
+            CLIENT_DIST_DIR,
+            '.vite',
+            'manifest.json',
           )
 
           let viteManifest: ViteManifest
@@ -234,35 +237,6 @@ export function startManifestPlugin(
 
           const routesManifest = {
             routes: routeTreeRoutes,
-          }
-
-          try {
-            const routesManifestOutputDirPath = path.resolve(
-              opts.root,
-              '.tanstack-start/build/route-assets-manifest',
-            )
-            rmSync(routesManifestOutputDirPath, {
-              recursive: true,
-              force: true,
-            })
-            mkdirSync(routesManifestOutputDirPath, { recursive: true })
-            writeFile(
-              path.join(routesManifestOutputDirPath, 'manifest.json'),
-              JSON.stringify(routesManifest),
-              (err) => {
-                if (err) {
-                  console.error(
-                    'There was an error writing the routes manifest to disk.\nYou can ignore this error. It does not affect the runtime of your application.',
-                  )
-                  console.error(err)
-                }
-              },
-            )
-          } catch (err) {
-            console.error(
-              'There was an error writing the routes manifest to disk.\nYou can ignore this error. It does not affect the runtime of your application.',
-            )
-            console.error(err)
           }
 
           return `export const tsrStartManifest = () => (${JSON.stringify(routesManifest)})`

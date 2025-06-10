@@ -5,7 +5,7 @@ const b = types.builders
 export function ensureStringArgument(
   callExpression: types.namedTypes.CallExpression,
   value: string,
-  preferredQuote?: "'" | '"' | '`',
+  preferredQuote?: "'" | '"',
 ) {
   const argument = callExpression.arguments[0]
   if (!argument) {
