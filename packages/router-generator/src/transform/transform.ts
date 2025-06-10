@@ -290,7 +290,7 @@ async function fixTransformedOutputText({
   originalCode: string
   transformedCode: string
   sourceMap: RawSourceMap
-  preferredQuote: '"' | "'" | '`'
+  preferredQuote: '"' | "'"
 }) {
   const originalLines = originalCode.split('\n')
   const transformedLines = transformedCode.split('\n')
@@ -302,11 +302,10 @@ async function fixTransformedOutputText({
   const fixedLines = transformedLines.map((line, i) => {
     const transformedLineNum = i + 1
 
-    let mapped = null
-    let origLineText = null
+    let origLineText: string | undefined = undefined
 
     for (let col = 0; col < line.length; col++) {
-      mapped = consumer.originalPositionFor({
+      const mapped = consumer.originalPositionFor({
         line: transformedLineNum,
         column: col,
       })
@@ -316,7 +315,7 @@ async function fixTransformedOutputText({
       }
     }
 
-    if (origLineText != null) {
+    if (origLineText !== undefined) {
       if (origLineText === line) {
         return origLineText
       }
@@ -409,10 +408,9 @@ function detectSemicolonUsage(code: string) {
   return withSemis > total / 2
 }
 
-export function detectPreferredQuoteStyle(ast: types.ASTNode): "'" | '"' | '`' {
+export function detectPreferredQuoteStyle(ast: types.ASTNode): "'" | '"' {
   let single = 0
   let double = 0
-  let backtick = 0
 
   visit(ast, {
     visitStringLiteral(path) {
@@ -423,17 +421,10 @@ export function detectPreferredQuoteStyle(ast: types.ASTNode): "'" | '"' | '`' {
       }
       return false
     },
-    visitTemplateLiteral(path) {
-      if (path.parent.type !== 'JSXAttribute') {
-        backtick++
-      }
-      return false
-    },
   })
 
-  return single >= double && single >= backtick
-    ? "'"
-    : double >= single && double >= backtick
-      ? '"'
-      : '`'
+  if (single >= double) {
+    return "'"
+  }
+  return '"'
 }

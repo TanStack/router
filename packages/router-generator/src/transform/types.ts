@@ -46,5 +46,5 @@ export interface TransformContext {
   routeId: string
   lazy: boolean
   verboseFileRoutes: boolean
-  preferredQuote?: '"' | "'" | '`'
+  preferredQuote?: '"' | "'"
 }
