@@ -32,15 +32,11 @@ overrides:
   '@tanstack/arktype-adapter': workspace:*
   '@tanstack/react-start': workspace:*
   '@tanstack/react-start-client': workspace:*
-  '@tanstack/react-start-config': workspace:*
   '@tanstack/react-start-plugin': workspace:*
-  '@tanstack/react-start-router-manifest': workspace:*
   '@tanstack/react-start-server': workspace:*
   '@tanstack/solid-start': workspace:*
   '@tanstack/solid-start-client': workspace:*
-  '@tanstack/solid-start-config': workspace:*
   '@tanstack/solid-start-plugin': workspace:*
-  '@tanstack/solid-start-router-manifest': workspace:*
   '@tanstack/solid-start-server': workspace:*
   '@tanstack/start-server-functions-fetcher': workspace:*
   '@tanstack/start-server-functions-client': workspace:*
