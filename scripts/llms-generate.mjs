@@ -2,7 +2,18 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+/*
+This script generates LLM rules in CJS and ESM formats in the dist/llms directory.
+
+It takes a package name as an argument and generates the rules for that package.
+
+We generate the files directly without compilation because we couldn't get TSC to generate the correct CJS format directly.
+We have to generate both the ESM version and the CJS version because our publint requires that we support both formats,
+even though the `vibe-rules` package only really supports CJS.
+*/
+
 const DOCS_DIR = '../../docs'
+
 const LLMS_DIR = './llms'
 const RULES_DIR = './llms/rules'
 
@@ -69,11 +80,12 @@ function extractFrontMatter(content) {
   return { frontMatter, bodyContent }
 }
 
-function convertMarkdownToTypeScript(markdownContent) {
-  const sanitizedContent = markdownContent
-    .replace(/`/g, '\\`')
-    .replace(/\$\{/g, '\\${')
-  return `const content = \`${sanitizedContent}\`;\n\nexport default content;\n`
+function sanitizeMarkdown(markdownContent) {
+  return markdownContent.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')
+}
+
+function convertMarkdownToTypeScriptESM(markdownContent) {
+  return `export default \`${sanitizeMarkdown(markdownContent)}\`;`
 }
 
 function mergeFiles(files, outputFile) {
@@ -86,7 +98,7 @@ function mergeFiles(files, outputFile) {
   }
   fs.writeFileSync(
     outputFile,
-    convertMarkdownToTypeScript(mergedContent),
+    convertMarkdownToTypeScriptESM(mergedContent),
     'utf-8',
   )
 }
@@ -114,6 +126,7 @@ for (const { paths, name, description, globs } of packages[pkg]) {
   }
   mergeFiles(files.flat(), path.join(RULES_DIR, `${name}.ts`))
   imports.push(`import ${camelCase(name)} from './rules/${name}.js'`)
+
   rules.push(`{
   name: '${name}',
   description: '${description}',
@@ -122,7 +135,6 @@ for (const { paths, name, description, globs } of packages[pkg]) {
   globs: [${globs.map((glob) => `'${glob}'`).join(', ')}],
 }`)
 }
-
 // Create the index.ts file
 const indexFile = path.join(LLMS_DIR, 'index.ts')
 const indexContent = `${imports.join('\n')}

@@ -28,6 +28,8 @@ export {
   type CompiledFetcherFnOptions,
   type CompiledFetcherFn,
   type Fetcher,
+  type OptionalFetcher,
+  type RequiredFetcher,
   type RscStream,
   type FetcherData,
   type FetcherBaseOptions,

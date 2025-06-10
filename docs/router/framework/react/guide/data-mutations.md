@@ -87,9 +87,9 @@ Without notifying your mutation management library about the route change, it's 
 Hopefully and hypothetically, the easiest way is for your mutation library to support a keying mechanism that will allow your mutations's state to be reset when the key changes:
 
 ```tsx
-const routeApi = getRouteApi('/posts/$postId/edit')
+const routeApi = getRouteApi('/room/$roomId/chat')
 
-function EditPost() {
+function ChatRoom() {
   const { roomId } = routeApi.useParams()
 
   const sendMessageMutation = useCoolMutation({
