@@ -139,7 +139,7 @@ function OnRendered() {
 
   return (
     <script
-      key={router.latestLocation.state.key}
+      key={router.latestLocation.state.__key}
       suppressHydrationWarning
       ref={(el) => {
         if (

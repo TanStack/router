@@ -140,7 +140,7 @@ function OnRendered() {
 
   const location = useRouterState({
     select: (s) => {
-      return s.resolvedLocation?.state.key
+      return s.resolvedLocation?.state.__key
     },
   })
   Solid.createEffect(
