@@ -17,6 +17,7 @@ The following options are available for configuring the file-based routing:
 - [`routeToken`](#routetoken)
 - [`quoteStyle`](#quotestyle)
 - [`semicolons`](#semicolons)
+- [`tabWidth`](#tabwidth)
 - [`apiBase`](#apibase)
 - [`autoCodeSplitting`](#autocodesplitting)
 - [`disableTypes`](#disabletypes)
@@ -128,6 +129,15 @@ By default, this value is set to `single`.
 When your generated route tree is generated and when you first create a new route, those files will be formatted with semicolons if this option is set to `true`.
 
 By default, this value is set to `false`.
+
+> [!TIP]
+> You should ignore the path of your generated route tree file from your linter and formatter to avoid conflicts.
+
+### `tabWidth`
+
+When your generated route tree is generated and when you first create a new route, those files will be formatted with the tab width you specify here.
+
+By default, this value is set to `2`.
 
 > [!TIP]
 > You should ignore the path of your generated route tree file from your linter and formatter to avoid conflicts.

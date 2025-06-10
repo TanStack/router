@@ -155,6 +155,7 @@ export async function format(source: string, config: Config): Promise<string> {
   const prettierOptions: prettier.Config = {
     semi: config.semicolons,
     singleQuote: config.quoteStyle === 'single',
+    tabWidth: config.tabWidth,
     parser: 'typescript',
   }
   return prettier.format(source, prettierOptions)
