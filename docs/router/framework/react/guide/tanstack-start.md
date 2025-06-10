@@ -47,15 +47,12 @@ TanStack Start is powered by the following packages and need to be installed as 
 
 - [@tanstack/start](https://github.com/tanstack/start)
 - [@tanstack/react-router](https://tanstack.com/router)
-- [Vinxi](https://vinxi.vercel.app/)
-
-> [!NOTE]
-> Vinxi is a temporary dependency that will be replaced by a simple vite plugin or a dedicated Start CLI.
+- [Vite](https://vite.dev/)
 
 To install them, run:
 
 ```shell
-npm i @tanstack/react-start @tanstack/react-router vinxi
+npm i @tanstack/react-start @tanstack/react-router vite
 ```
 
 You'll also need React and the Vite React plugin, so install their dependencies as well:
@@ -72,16 +69,16 @@ npm i -D typescript @types/react @types/react-dom
 
 # Update Configuration Files
 
-We'll then update our `package.json` to use Vinxi's CLI and set `"type": "module"`:
+We'll then update our `package.json` to use Vite's CLI and set `"type": "module"`:
 
 ```jsonc
 {
   // ...
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start",
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vite start",
   },
 }
 ```
@@ -97,12 +94,10 @@ export default defineConfig({})
 
 # Add the Basic Templating
 
-There are four required files for TanStack Start usage:
+There are 2 required files for TanStack Start usage:
 
 1. The router configuration
-2. The server entry point
-3. The client entry point
-4. The root of your application
+2. The root of your application
 
 Once configuration is done, we'll have a file tree that looks like the following:
 
@@ -111,10 +106,8 @@ Once configuration is done, we'll have a file tree that looks like the following
 ├── app/
 │   ├── routes/
 │   │   └── `__root.tsx`
-│   ├── `client.tsx`
 │   ├── `router.tsx`
 │   ├── `routeTree.gen.ts`
-│   └── `ssr.tsx`
 ├── `.gitignore`
 ├── `app.config.ts`
 ├── `package.json`
@@ -123,7 +116,7 @@ Once configuration is done, we'll have a file tree that looks like the following
 
 ## The Router Configuration
 
-This is the file that will dictate the behavior of TanStack Router used within Start. Here, you can configure everything
+This is the file that will dictate the behavior of TanStack Router used within Start for both the server and the client. Here, you can configure everything
 from the default [preloading functionality](../preloading.md) to [caching staleness](../data-loading.md).
 
 ```tsx
@@ -149,52 +142,9 @@ declare module '@tanstack/react-router' {
 > `routeTree.gen.ts` is not a file you're expected to have at this point.
 > It will be generated when you run TanStack Start (via `npm run dev` or `npm run start`) for the first time.
 
-## The Server Entry Point
-
-As TanStack Start is an [SSR](https://unicorn-utterances.com/posts/what-is-ssr-and-ssg) framework, we need to pipe this router
-information to our server entry point:
-
-```tsx
-// app/ssr.tsx
-import {
-  createStartHandler,
-  defaultStreamHandler,
-} from '@tanstack/react-start/server'
-import { getRouterManifest } from '@tanstack/react-start/router-manifest'
-
-import { createRouter } from './router'
-
-export default createStartHandler({
-  createRouter,
-  getRouterManifest,
-})(defaultStreamHandler)
-```
-
-This allows us to know what routes and loaders we need to execute when the user hits a given route.
-
-## The Client Entry Point
-
-Now we need a way to hydrate our client-side JavaScript once the route resolves to the client. We do this by piping the same
-router information to our client entry point:
-
-```tsx
-// app/client.tsx
-import { hydrateRoot } from 'react-dom/client'
-import { StartClient } from '@tanstack/react-start'
-import { createRouter } from './router'
-
-const router = createRouter({
-  scrollRestoration: true,
-})
-
-hydrateRoot(document!, <StartClient router={router} />)
-```
-
-This enables us to kick off client-side routing once the user's initial server request has fulfilled.
-
 ## The Root of Your Application
 
-Finally, we need to create the root of our application. This is the entry point for all other routes. The code in this file will wrap all other routes in the application.
+Finally, we need to create the root of our application. This is the entry point for all application routes. The code in this file will wrap all other routes in the application.
 
 ```tsx
 // app/routes/__root.tsx

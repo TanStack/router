@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { render } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import ReactDOMServer from 'react-dom/server'
 
 import {
   HeadContent,
+  Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -15,7 +16,6 @@ import { Scripts } from '../src/Scripts'
 describe('ssr scripts', () => {
   test('it works', async () => {
     const rootRoute = createRootRoute({
-      // loader: () => new Promise((r) => setTimeout(r, 1)),
       head: () => {
         return {
           scripts: [
@@ -29,14 +29,19 @@ describe('ssr scripts', () => {
         }
       },
       component: () => {
-        return <Scripts />
+        return (
+          <div>
+            <div data-testid="root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
       },
     })
 
     const indexRoute = createRoute({
       path: '/',
       getParentRoute: () => rootRoute,
-      // loader: () => new Promise((r) => setTimeout(r, 2)),
       head: () => {
         return {
           scripts: [
@@ -53,9 +58,8 @@ describe('ssr scripts', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
     })
-
-    router.isServer = true
 
     await router.load()
 
@@ -73,7 +77,13 @@ describe('ssr scripts', () => {
         undefined, // 'script2.js' opted out by certain conditions, such as `NODE_ENV=production`.
       ],
       component: () => {
-        return <Scripts />
+        return (
+          <div>
+            <div data-testid="root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
       },
     })
 
@@ -81,6 +91,9 @@ describe('ssr scripts', () => {
       path: '/',
       getParentRoute: () => rootRoute,
       scripts: () => [{ src: 'script3.js' }],
+      component: () => {
+        return <div data-testid="index">index</div>
+      },
     })
 
     const router = createRouter({
@@ -88,9 +101,8 @@ describe('ssr scripts', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
     })
-
-    router.isServer = true
 
     await router.load()
 
@@ -100,10 +112,14 @@ describe('ssr scripts', () => {
       { src: 'script3.js' },
     ])
 
-    const { container } = render(<RouterProvider router={router} />)
+    const { container } = await act(() =>
+      render(<RouterProvider router={router} />),
+    )
+    expect(await screen.findByTestId('root')).toBeInTheDocument()
+    expect(await screen.findByTestId('index')).toBeInTheDocument()
 
     expect(container.innerHTML).toEqual(
-      `<script src="script.js"></script><script src="script3.js"></script>`,
+      `<div><div data-testid="root">root</div><div data-testid="index">index</div><script src="script.js"></script><script src="script3.js"></script></div>`,
     )
   })
 })
@@ -180,9 +196,8 @@ describe('ssr HeadContent', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
     })
-
-    router.isServer = true
 
     await router.load()
 
@@ -202,7 +217,7 @@ describe('ssr HeadContent', () => {
       <RouterProvider router={router} />,
     )
     expect(html).toEqual(
-      `<title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/><!--$--><!--/$-->`,
+      `<title>Index</title><meta name="image" content="image.jpg"/><meta property="og:description" content="Root description"/><meta name="description" content="Index"/><meta name="last-modified" content="2021-10-10"/><meta property="og:image" content="index-image.jpg"/>`,
     )
   })
 })

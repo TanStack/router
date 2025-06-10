@@ -8,41 +8,63 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as FooBarRouteImport } from './routes/foo/bar'
+import { Route as fooBarDetailsRouteImport } from './routes/foo/bar/details'
+import { Route as fooBarHomeRouteImport } from './routes/foo/bar/home'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as IndexImport } from './routes/index'
-import { Route as FooBarImport } from './routes/foo/bar'
-import { Route as fooBarDetailsImport } from './routes/foo/bar/details'
-import { Route as fooBarHomeImport } from './routes/foo/bar/home'
-
-// Create/Update Routes
-
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const FooBarRoute = FooBarImport.update({
+const FooBarRoute = FooBarRouteImport.update({
   id: '/foo/bar',
   path: '/foo/bar',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const fooBarDetailsRoute = fooBarDetailsImport.update({
+const fooBarDetailsRoute = fooBarDetailsRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => FooBarRoute,
 } as any)
-
-const fooBarHomeRoute = fooBarHomeImport.update({
+const fooBarHomeRoute = fooBarHomeRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => FooBarRoute,
 } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
+  '/foo/bar': typeof FooBarRouteWithChildren
+  '/foo/bar/': typeof fooBarHomeRoute
+  '/foo/bar/$id': typeof fooBarDetailsRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/foo/bar': typeof fooBarHomeRoute
+  '/foo/bar/$id': typeof fooBarDetailsRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/foo/bar': typeof FooBarRouteWithChildren
+  '/foo/bar/': typeof fooBarHomeRoute
+  '/foo/bar/$id': typeof fooBarDetailsRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/foo/bar' | '/foo/bar/' | '/foo/bar/$id'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/foo/bar' | '/foo/bar/$id'
+  id: '__root__' | '/' | '/foo/bar' | '/foo/bar/' | '/foo/bar/$id'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  FooBarRoute: typeof FooBarRouteWithChildren
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -50,34 +72,32 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/foo/bar': {
       id: '/foo/bar'
       path: '/foo/bar'
       fullPath: '/foo/bar'
-      preLoaderRoute: typeof FooBarImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof FooBarRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/foo/bar/': {
       id: '/foo/bar/'
       path: '/'
       fullPath: '/foo/bar/'
-      preLoaderRoute: typeof fooBarHomeImport
-      parentRoute: typeof FooBarImport
+      preLoaderRoute: typeof fooBarHomeRouteImport
+      parentRoute: typeof FooBarRoute
     }
     '/foo/bar/$id': {
       id: '/foo/bar/$id'
       path: '/$id'
       fullPath: '/foo/bar/$id'
-      preLoaderRoute: typeof fooBarDetailsImport
-      parentRoute: typeof FooBarImport
+      preLoaderRoute: typeof fooBarDetailsRouteImport
+      parentRoute: typeof FooBarRoute
     }
   }
 }
-
-// Create and export the route tree
 
 interface FooBarRouteChildren {
   fooBarHomeRoute: typeof fooBarHomeRoute
@@ -92,78 +112,10 @@ const FooBarRouteChildren: FooBarRouteChildren = {
 const FooBarRouteWithChildren =
   FooBarRoute._addFileChildren(FooBarRouteChildren)
 
-export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/foo/bar': typeof FooBarRouteWithChildren
-  '/foo/bar/': typeof fooBarHomeRoute
-  '/foo/bar/$id': typeof fooBarDetailsRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/foo/bar': typeof fooBarHomeRoute
-  '/foo/bar/$id': typeof fooBarDetailsRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/foo/bar': typeof FooBarRouteWithChildren
-  '/foo/bar/': typeof fooBarHomeRoute
-  '/foo/bar/$id': typeof fooBarDetailsRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/foo/bar' | '/foo/bar/' | '/foo/bar/$id'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/foo/bar' | '/foo/bar/$id'
-  id: '__root__' | '/' | '/foo/bar' | '/foo/bar/' | '/foo/bar/$id'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  FooBarRoute: typeof FooBarRouteWithChildren
-}
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FooBarRoute: FooBarRouteWithChildren,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/foo/bar"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/foo/bar": {
-      "filePath": "foo/bar.tsx",
-      "children": [
-        "/foo/bar/",
-        "/foo/bar/$id"
-      ]
-    },
-    "/foo/bar/": {
-      "filePath": "foo/bar/home.tsx",
-      "parent": "/foo/bar"
-    },
-    "/foo/bar/$id": {
-      "filePath": "foo/bar/details.tsx",
-      "parent": "/foo/bar"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

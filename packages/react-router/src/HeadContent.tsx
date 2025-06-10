@@ -58,8 +58,8 @@ export const useTags = () => {
   }, [routeMeta])
 
   const links = useRouterState({
-    select: (state) =>
-      state.matches
+    select: (state) => {
+      const constructed = state.matches
         .map((match) => match.links!)
         .filter(Boolean)
         .flat(1)
@@ -68,7 +68,30 @@ export const useTags = () => {
           attrs: {
             ...link,
           },
-        })) as Array<RouterManagedTag>,
+        })) satisfies Array<RouterManagedTag>
+
+      const manifest = router.ssr?.manifest
+
+      // These are the assets extracted from the ViteManifest
+      // using the `startManifestPlugin`
+      const assets = state.matches
+        .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
+        .filter(Boolean)
+        .flat(1)
+        .filter((asset) => asset.tag === 'link')
+        .map(
+          (asset) =>
+            ({
+              tag: 'link',
+              attrs: {
+                ...asset.attrs,
+                suppressHydrationWarning: true,
+              },
+            }) satisfies RouterManagedTag,
+        )
+
+      return [...constructed, ...assets]
+    },
     structuralSharing: true as any,
   })
 

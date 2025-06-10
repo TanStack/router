@@ -46,12 +46,16 @@
               "to": "framework/react/middleware"
             },
             {
-              "label": "API Routes",
-              "to": "framework/react/api-routes"
+              "label": "Server Routes",
+              "to": "framework/react/server-routes"
             },
             {
               "label": "SSR",
               "to": "framework/react/ssr"
+            },
+            {
+              "label": "SPA Mode",
+              "to": "framework/react/spa-mode"
             },
             {
               "label": "Hosting",
@@ -119,12 +123,16 @@
               "to": "framework/solid/middleware"
             },
             {
-              "label": "API Routes",
-              "to": "framework/solid/api-routes"
+              "label": "Server Routes",
+              "to": "framework/solid/server-routes"
             },
             {
               "label": "SSR",
               "to": "framework/solid/ssr"
+            },
+            {
+              "label": "SPA Mode",
+              "to": "framework/solid/spa-mode"
             },
             {
               "label": "Hosting",

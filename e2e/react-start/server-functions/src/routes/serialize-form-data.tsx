@@ -1,5 +1,6 @@
-import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import * as React from 'react'
+
 import { createServerFn } from '@tanstack/react-start'
 
 export const Route = createFileRoute('/serialize-form-data')({

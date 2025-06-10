@@ -92,7 +92,7 @@ Once you have defined the router context type, you can use it in your route defi
 
 ```tsx
 // src/routes/todos.tsx
-export const Route = createFileRoute('/todos')({
+export const Route = createFileRoute({
   component: Todos,
   loader: ({ context }) => fetchTodosByUserId(context.user.id),
 })
@@ -122,7 +122,7 @@ Then, in your route:
 
 ```tsx
 // src/routes/todos.tsx
-export const Route = createFileRoute('/todos')({
+export const Route = createFileRoute({
   component: Todos,
   loader: ({ context }) => context.fetchTodosByUserId(context.userId),
 })
@@ -158,7 +158,7 @@ Then, in your route:
 
 ```tsx
 // src/routes/todos.tsx
-export const Route = createFileRoute('/todos')({
+export const Route = createFileRoute({
   component: Todos,
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData({
@@ -234,7 +234,7 @@ So, now in our route's `loader` function, we can access the `networkStrength` ho
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/posts')({
+export const Route = createFileRoute({
   component: Posts,
   loader: ({ context }) => {
     if (context.networkStrength === 'STRONG') {
@@ -282,7 +282,7 @@ const router = createRouter({
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/todos')({
+export const Route = createFileRoute({
   component: Todos,
   beforeLoad: () => {
     return {
