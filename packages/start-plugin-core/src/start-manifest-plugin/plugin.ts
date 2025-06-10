@@ -1,9 +1,10 @@
-import { mkdirSync, readFileSync, rmSync, writeFile } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { joinURL } from 'ufo'
 import { rootRouteId } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { resolveViteId } from '../utils'
+import { CLIENT_DIST_DIR } from '../constants'
 import type {
   PluginOption,
   ResolvedConfig,
@@ -12,7 +13,6 @@ import type {
 } from 'vite'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { TanStackStartOutputConfig } from '../plugin'
-import { CLIENT_DIST_DIR } from '../constants'
 
 const getCSSRecursively = (
   file: ViteManifestChunk,

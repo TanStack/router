@@ -1,5 +1,4 @@
 import path from 'node:path'
-import { tmpdir } from 'node:os'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
