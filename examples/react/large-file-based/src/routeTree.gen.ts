@@ -134,32 +134,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/params': {
-      id: '/params'
-      path: '/params'
-      fullPath: '/params'
-      preLoaderRoute: typeof ParamsRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/absolute': {
-      id: '/absolute'
-      path: '/absolute'
-      fullPath: '/absolute'
-      preLoaderRoute: typeof AbsoluteRouteImport
+    '/relative': {
+      id: '/relative'
+      path: '/relative'
+      fullPath: '/relative'
+      preLoaderRoute: typeof RelativeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/linkProps': {
@@ -169,19 +148,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LinkPropsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/relative': {
-      id: '/relative'
-      path: '/relative'
-      fullPath: '/relative'
-      preLoaderRoute: typeof RelativeRouteImport
+    '/absolute': {
+      id: '/absolute'
+      path: '/absolute'
+      fullPath: '/absolute'
+      preLoaderRoute: typeof AbsoluteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/params/$paramsPlaceholder': {
-      id: '/params/$paramsPlaceholder'
-      path: '/$paramsPlaceholder'
-      fullPath: '/params/$paramsPlaceholder'
-      preLoaderRoute: typeof ParamsParamsPlaceholderRouteImport
-      parentRoute: typeof ParamsRouteRoute
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params': {
+      id: '/params'
+      path: '/params'
+      fullPath: '/params'
+      preLoaderRoute: typeof ParamsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/search/searchPlaceholder': {
       id: '/search/searchPlaceholder'
@@ -189,6 +182,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/search/searchPlaceholder'
       preLoaderRoute: typeof SearchSearchPlaceholderRouteImport
       parentRoute: typeof SearchRouteRoute
+    }
+    '/params/$paramsPlaceholder': {
+      id: '/params/$paramsPlaceholder'
+      path: '/$paramsPlaceholder'
+      fullPath: '/params/$paramsPlaceholder'
+      preLoaderRoute: typeof ParamsParamsPlaceholderRouteImport
+      parentRoute: typeof ParamsRouteRoute
     }
   }
 }

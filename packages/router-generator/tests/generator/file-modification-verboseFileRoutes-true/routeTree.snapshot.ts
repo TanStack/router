@@ -95,18 +95,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/(test)/foo': {
-      id: '/(test)/foo'
-      path: '/foo'
-      fullPath: '/foo'
-      preLoaderRoute: typeof testFooRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(test)/initiallyEmpty': {
-      id: '/(test)/initiallyEmpty'
-      path: '/initiallyEmpty'
-      fullPath: '/initiallyEmpty'
-      preLoaderRoute: typeof testInitiallyEmptyRouteImport
+    '/(test)/bar': {
+      id: '/(test)/bar'
+      path: '/bar'
+      fullPath: '/bar'
+      preLoaderRoute: typeof testBarLazyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(test)/initiallyLazy': {
@@ -116,18 +109,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testInitiallyLazyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(test)/bar': {
-      id: '/(test)/bar'
-      path: '/bar'
-      fullPath: '/bar'
-      preLoaderRoute: typeof testBarLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/(test)/initiallyEmpty': {
       id: '/(test)/initiallyEmpty'
       path: '/initiallyEmpty'
       fullPath: '/initiallyEmpty'
-      preLoaderRoute: typeof testInitiallyEmptyLazyRouteImport
+      preLoaderRoute: typeof testInitiallyEmptyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(test)/foo': {
+      id: '/(test)/foo'
+      path: '/foo'
+      fullPath: '/foo'
+      preLoaderRoute: typeof testFooRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(test)/foo/bar': {

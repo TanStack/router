@@ -10,7 +10,9 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 
+import { Route as barBarRouteImport } from './routes/(bar)/_bar'
 import { Route as fooAsdfLayoutRouteImport } from './routes/(foo)/asdf/_layout'
+import { Route as barBarHelloRouteImport } from './routes/(bar)/_bar.hello'
 import { Route as fooAsdfLayoutFooRouteImport } from './routes/(foo)/asdf/_layout.foo'
 import { Route as fooAsdfbarIdRouteImport } from './routes/(foo)/asdf/(bar)/$id'
 import { Route as fooAsdfanotherGroupLayoutRouteImport } from './routes/(foo)/asdf/(another-group)/_layout'
@@ -18,6 +20,7 @@ import { Route as fooAsdfbarLayoutAboutRouteImport } from './routes/(foo)/asdf/(
 import { Route as fooAsdfanotherGroupLayoutBazRouteImport } from './routes/(foo)/asdf/(another-group)/_layout.baz'
 
 const rootRouteImport = createRooRoute()
+const barRouteImport = createFileRoute('/(bar)')()
 const fooAsdfRouteImport = createFileRoute('/(foo)/asdf')()
 const fooAsdfanotherGroupRouteImport = createFileRoute(
   '/(foo)/asdf/(another-group)',
@@ -26,10 +29,18 @@ const fooAsdfbarLayoutXyzLazyRouteImport = createFileRoute(
   '/(foo)/asdf/(bar)/_layout/xyz',
 )()
 
+const barRoute = barRouteImport.update({
+  id: '/(bar)',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const fooAsdfRoute = fooAsdfRouteImport.update({
   id: '/(foo)/asdf',
   path: '/asdf',
   getParentRoute: () => rootRouteImport,
+} as any)
+const barBarRoute = barBarRouteImport.update({
+  id: '/_bar',
+  getParentRoute: () => barRoute,
 } as any)
 const fooAsdfanotherGroupRoute = fooAsdfanotherGroupRouteImport.update({
   id: '/(another-group)',
@@ -38,6 +49,11 @@ const fooAsdfanotherGroupRoute = fooAsdfanotherGroupRouteImport.update({
 const fooAsdfLayoutRoute = fooAsdfLayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => fooAsdfRoute,
+} as any)
+const barBarHelloRoute = barBarHelloRouteImport.update({
+  id: '/hello',
+  path: '/hello',
+  getParentRoute: () => barBarRoute,
 } as any)
 const fooAsdfLayoutFooRoute = fooAsdfLayoutFooRouteImport.update({
   id: '/foo',
@@ -76,6 +92,8 @@ const fooAsdfanotherGroupLayoutBazRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof barBarRouteWithChildren
+  '/hello': typeof barBarHelloRoute
   '/asdf': typeof fooAsdfLayoutRouteWithChildren
   '/asdf/': typeof fooAsdfanotherGroupLayoutRouteWithChildren
   '/asdf/$id': typeof fooAsdfbarIdRoute
@@ -85,6 +103,8 @@ export interface FileRoutesByFullPath {
   '/asdf/xyz': typeof fooAsdfbarLayoutXyzLazyRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof barBarRouteWithChildren
+  '/hello': typeof barBarHelloRoute
   '/asdf': typeof fooAsdfanotherGroupLayoutRouteWithChildren
   '/asdf/$id': typeof fooAsdfbarIdRoute
   '/asdf/foo': typeof fooAsdfLayoutFooRoute
@@ -94,6 +114,9 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/(bar)': typeof barRouteWithChildren
+  '/(bar)/_bar': typeof barBarRouteWithChildren
+  '/(bar)/_bar/hello': typeof barBarHelloRoute
   '/(foo)/asdf': typeof fooAsdfRouteWithChildren
   '/(foo)/asdf/_layout': typeof fooAsdfLayoutRouteWithChildren
   '/(foo)/asdf/(another-group)': typeof fooAsdfanotherGroupRouteWithChildren
@@ -107,6 +130,8 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
+    | '/hello'
     | '/asdf'
     | '/asdf/'
     | '/asdf/$id'
@@ -116,6 +141,8 @@ export interface FileRouteTypes {
     | '/asdf/xyz'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
+    | '/hello'
     | '/asdf'
     | '/asdf/$id'
     | '/asdf/foo'
@@ -124,6 +151,9 @@ export interface FileRouteTypes {
     | '/asdf/xyz'
   id:
     | '__root__'
+    | '/(bar)'
+    | '/(bar)/_bar'
+    | '/(bar)/_bar/hello'
     | '/(foo)/asdf'
     | '/(foo)/asdf/_layout'
     | '/(foo)/asdf/(another-group)'
@@ -136,16 +166,66 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  barRoute: typeof barRouteWithChildren
   fooAsdfRoute: typeof fooAsdfRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/(bar)': {
+      id: '/(bar)'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof barRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(foo)/asdf': {
+      id: '/(foo)/asdf'
+      path: '/asdf'
+      fullPath: '/asdf'
+      preLoaderRoute: typeof fooAsdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(bar)/_bar': {
+      id: '/(bar)/_bar'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof barBarRouteImport
+      parentRoute: typeof barRoute
+    }
+    '/(foo)/asdf/(another-group)': {
+      id: '/(foo)/asdf/(another-group)'
+      path: '/'
+      fullPath: '/asdf/'
+      preLoaderRoute: typeof fooAsdfanotherGroupRouteImport
+      parentRoute: typeof fooAsdfRoute
+    }
     '/(foo)/asdf/_layout': {
       id: '/(foo)/asdf/_layout'
       path: '/asdf'
       fullPath: '/asdf'
       preLoaderRoute: typeof fooAsdfLayoutRouteImport
+      parentRoute: typeof fooAsdfRoute
+    }
+    '/(bar)/_bar/hello': {
+      id: '/(bar)/_bar/hello'
+      path: '/hello'
+      fullPath: '/hello'
+      preLoaderRoute: typeof barBarHelloRouteImport
+      parentRoute: typeof barBarRoute
+    }
+    '/(foo)/asdf/_layout/foo': {
+      id: '/(foo)/asdf/_layout/foo'
+      path: '/foo'
+      fullPath: '/asdf/foo'
+      preLoaderRoute: typeof fooAsdfLayoutFooRouteImport
+      parentRoute: typeof fooAsdfLayoutRoute
+    }
+    '/(foo)/asdf/(bar)/$id': {
+      id: '/(foo)/asdf/(bar)/$id'
+      path: '/$id'
+      fullPath: '/asdf/$id'
+      preLoaderRoute: typeof fooAsdfbarIdRouteImport
       parentRoute: typeof fooAsdfRoute
     }
     '/(foo)/asdf/(another-group)/_layout': {
@@ -155,26 +235,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof fooAsdfanotherGroupLayoutRouteImport
       parentRoute: typeof fooAsdfanotherGroupRoute
     }
-    '/(foo)/asdf/(bar)/$id': {
-      id: '/(foo)/asdf/(bar)/$id'
-      path: '/$id'
-      fullPath: '/asdf/$id'
-      preLoaderRoute: typeof fooAsdfbarIdRouteImport
+    '/(foo)/asdf/(bar)/_layout/xyz': {
+      id: '/(foo)/asdf/(bar)/_layout/xyz'
+      path: '/xyz'
+      fullPath: '/asdf/xyz'
+      preLoaderRoute: typeof fooAsdfbarLayoutXyzLazyRouteImport
       parentRoute: typeof fooAsdfRoute
-    }
-    '/(foo)/asdf/_layout/foo': {
-      id: '/(foo)/asdf/_layout/foo'
-      path: '/foo'
-      fullPath: '/asdf/foo'
-      preLoaderRoute: typeof fooAsdfLayoutFooRouteImport
-      parentRoute: typeof fooAsdfLayoutRoute
-    }
-    '/(foo)/asdf/(another-group)/_layout/baz': {
-      id: '/(foo)/asdf/(another-group)/_layout/baz'
-      path: '/baz'
-      fullPath: '/asdf/baz'
-      preLoaderRoute: typeof fooAsdfanotherGroupLayoutBazRouteImport
-      parentRoute: typeof fooAsdfanotherGroupLayoutRoute
     }
     '/(foo)/asdf/(bar)/_layout/about': {
       id: '/(foo)/asdf/(bar)/_layout/about'
@@ -183,15 +249,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof fooAsdfbarLayoutAboutRouteImport
       parentRoute: typeof fooAsdfRoute
     }
-    '/(foo)/asdf/(bar)/_layout/xyz': {
-      id: '/(foo)/asdf/(bar)/_layout/xyz'
-      path: '/xyz'
-      fullPath: '/asdf/xyz'
-      preLoaderRoute: typeof fooAsdfbarLayoutXyzLazyRouteImport
-      parentRoute: typeof fooAsdfRoute
+    '/(foo)/asdf/(another-group)/_layout/baz': {
+      id: '/(foo)/asdf/(another-group)/_layout/baz'
+      path: '/baz'
+      fullPath: '/asdf/baz'
+      preLoaderRoute: typeof fooAsdfanotherGroupLayoutBazRouteImport
+      parentRoute: typeof fooAsdfanotherGroupLayoutRoute
     }
   }
 }
+
+interface barBarRouteChildren {
+  barBarHelloRoute: typeof barBarHelloRoute
+}
+
+const barBarRouteChildren: barBarRouteChildren = {
+  barBarHelloRoute: barBarHelloRoute,
+}
+
+const barBarRouteWithChildren =
+  barBarRoute._addFileChildren(barBarRouteChildren)
+
+interface barRouteChildren {
+  barBarRoute: typeof barBarRouteWithChildren
+}
+
+const barRouteChildren: barRouteChildren = {
+  barBarRoute: barBarRouteWithChildren,
+}
+
+const barRouteWithChildren = barRoute._addFileChildren(barRouteChildren)
 
 interface fooAsdfLayoutRouteChildren {
   fooAsdfLayoutFooRoute: typeof fooAsdfLayoutFooRoute
@@ -250,6 +337,7 @@ const fooAsdfRouteWithChildren =
   fooAsdfRoute._addFileChildren(fooAsdfRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  barRoute: barRouteWithChildren,
   fooAsdfRoute: fooAsdfRouteWithChildren,
 }
 export const routeTree = rootRouteImport

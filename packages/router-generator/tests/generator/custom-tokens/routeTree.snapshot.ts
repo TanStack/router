@@ -127,11 +127,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof R1nd3xRouteImport
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsR0ut3RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog': {
@@ -141,26 +141,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogR0ut3RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsR0ut3RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/blog/$slug': {
-      id: '/blog/$slug'
-      path: '/$slug'
-      fullPath: '/blog/$slug'
-      preLoaderRoute: typeof BlogSlugRouteImport
-      parentRoute: typeof BlogR0ut3Route
-    }
-    '/blog/': {
-      id: '/blog/'
+    '/': {
+      id: '/'
       path: '/'
-      fullPath: '/blog/'
-      preLoaderRoute: typeof Blog1nd3xRouteImport
-      parentRoute: typeof BlogR0ut3Route
+      fullPath: '/'
+      preLoaderRoute: typeof R1nd3xRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/posts/': {
       id: '/posts/'
@@ -169,18 +155,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Posts1nd3xRouteImport
       parentRoute: typeof PostsR0ut3Route
     }
-    '/posts/$postId/deep': {
-      id: '/posts/$postId/deep'
-      path: '/$postId/deep'
-      fullPath: '/posts/$postId/deep'
-      preLoaderRoute: typeof PostsPostIdDeepRouteImport
-      parentRoute: typeof PostsR0ut3Route
+    '/blog/': {
+      id: '/blog/'
+      path: '/'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof Blog1nd3xRouteImport
+      parentRoute: typeof BlogR0ut3Route
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogR0ut3Route
     }
     '/posts/$postId/': {
       id: '/posts/$postId/'
       path: '/$postId'
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostId1nd3xRouteImport
+      parentRoute: typeof PostsR0ut3Route
+    }
+    '/posts/$postId/deep': {
+      id: '/posts/$postId/deep'
+      path: '/$postId/deep'
+      fullPath: '/posts/$postId/deep'
+      preLoaderRoute: typeof PostsPostIdDeepRouteImport
       parentRoute: typeof PostsR0ut3Route
     }
   }

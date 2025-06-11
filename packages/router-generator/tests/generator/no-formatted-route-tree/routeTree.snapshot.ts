@@ -54,18 +54,18 @@ declare module '@tanstack/react-router' {
           preLoaderRoute: typeof IndexRouteImport
           parentRoute: typeof rootRouteImport
         }
-'/nested/child': {
-          id: '/nested/child'
-          path: '/nested/child'
-          fullPath: '/nested/child'
-          preLoaderRoute: typeof NestedChildRouteImport
-          parentRoute: typeof rootRouteImport
-        }
 '/nested/': {
           id: '/nested/'
           path: '/nested'
           fullPath: '/nested'
           preLoaderRoute: typeof NestedIndexRouteImport
+          parentRoute: typeof rootRouteImport
+        }
+'/nested/child': {
+          id: '/nested/child'
+          path: '/nested/child'
+          fullPath: '/nested/child'
+          preLoaderRoute: typeof NestedChildRouteImport
           parentRoute: typeof rootRouteImport
         }
   }

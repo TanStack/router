@@ -162,20 +162,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof indexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/$lang': {
-      id: '/$lang'
-      path: ''
-      fullPath: '/$lang'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootRouteImport
-    }
     '/_layout': {
       id: '/_layout'
       path: ''
@@ -183,11 +169,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof layoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$lang/': {
-      id: '/$lang/'
-      path: '/$lang'
-      fullPath: '/$lang'
-      preLoaderRoute: typeof pagesRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof indexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/dashboard': {
@@ -197,19 +183,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dbDashboardRouteImport
       parentRoute: typeof layoutRoute
     }
-    '/_layout/dashboard/': {
-      id: '/_layout/dashboard/'
-      path: '/'
-      fullPath: '/dashboard/'
-      preLoaderRoute: typeof dbDashboardIndexRouteImport
-      parentRoute: typeof dbDashboardRoute
-    }
-    '/_layout/dashboard/invoices': {
-      id: '/_layout/dashboard/invoices'
-      path: '/invoices'
-      fullPath: '/dashboard/invoices'
-      preLoaderRoute: typeof dbDashboardInvoicesRouteImport
-      parentRoute: typeof dbDashboardRoute
+    '/$lang/': {
+      id: '/$lang/'
+      path: '/$lang'
+      fullPath: '/$lang'
+      preLoaderRoute: typeof pagesRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/hello/': {
       id: '/_layout/hello/'
@@ -218,19 +197,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HelloIndexRouteImport
       parentRoute: typeof layoutRoute
     }
-    '/_layout/dashboard/invoices/': {
-      id: '/_layout/dashboard/invoices/'
-      path: '/'
-      fullPath: '/dashboard/invoices/'
-      preLoaderRoute: typeof dbInvoicesIndexRouteImport
-      parentRoute: typeof dbDashboardInvoicesRoute
+    '/_layout/dashboard/invoices': {
+      id: '/_layout/dashboard/invoices'
+      path: '/invoices'
+      fullPath: '/dashboard/invoices'
+      preLoaderRoute: typeof dbDashboardInvoicesRouteImport
+      parentRoute: typeof dbDashboardRoute
     }
-    '/_layout/dashboard/invoices/$id': {
-      id: '/_layout/dashboard/invoices/$id'
-      path: '/$id'
-      fullPath: '/dashboard/invoices/$id'
-      preLoaderRoute: typeof dbInvoiceDetailRouteImport
-      parentRoute: typeof dbDashboardInvoicesRoute
+    '/_layout/dashboard/': {
+      id: '/_layout/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof dbDashboardIndexRouteImport
+      parentRoute: typeof dbDashboardRoute
+    }
+    '/_layout/hello/foo/': {
+      id: '/_layout/hello/foo/'
+      path: '/hello/foo'
+      fullPath: '/hello/foo'
+      preLoaderRoute: typeof HelloFooIndexRouteImport
+      parentRoute: typeof layoutRoute
     }
     '/_layout/hello/foo/$id': {
       id: '/_layout/hello/foo/$id'
@@ -239,12 +225,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HelloFooIdRouteImport
       parentRoute: typeof layoutRoute
     }
-    '/_layout/hello/foo/': {
-      id: '/_layout/hello/foo/'
-      path: '/hello/foo'
-      fullPath: '/hello/foo'
-      preLoaderRoute: typeof HelloFooIndexRouteImport
-      parentRoute: typeof layoutRoute
+    '/_layout/dashboard/invoices/$id': {
+      id: '/_layout/dashboard/invoices/$id'
+      path: '/$id'
+      fullPath: '/dashboard/invoices/$id'
+      preLoaderRoute: typeof dbInvoiceDetailRouteImport
+      parentRoute: typeof dbDashboardInvoicesRoute
+    }
+    '/_layout/dashboard/invoices/': {
+      id: '/_layout/dashboard/invoices/'
+      path: '/'
+      fullPath: '/dashboard/invoices/'
+      preLoaderRoute: typeof dbInvoicesIndexRouteImport
+      parentRoute: typeof dbDashboardInvoicesRoute
     }
   }
 }

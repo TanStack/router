@@ -8,6 +8,7 @@ import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/ge
 import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
 import {
+  buildFileRoutesByPathInterface,
   buildImportString,
   buildRouteTreeConfig,
   checkFileExists,
@@ -19,8 +20,6 @@ import {
   format,
   getResolvedRouteNodeVariableName,
   hasParentRoute,
-  inferFullPath,
-  inferPath,
   isRouteNodeValidForAugmentation,
   lowerCaseFirstChar,
   mergeImportDeclarations,
@@ -292,7 +291,7 @@ export class Generator {
   }
 
   private async generatorInternal() {
-    let writeRouteTreeFile = false as boolean
+    let writeRouteTreeFile: boolean | 'force' = false
 
     let getRouteNodesResult: GetRouteNodesResult
 
@@ -376,6 +375,36 @@ export class Generator {
         }
       }
       writeRouteTreeFile = true
+    } else {
+      const routeTreeFileChange = await this.didFileChangeComparedToCache(
+        { path: this.generatedRouteTreePath },
+        this.routeTreeFileCache,
+      )
+      if (routeTreeFileChange.result !== false) {
+        writeRouteTreeFile = 'force'
+        if (routeTreeFileChange.result === true) {
+          const routeTreeFile = await this.fs.readFile(
+            this.generatedRouteTreePath,
+          )
+          if (routeTreeFile !== 'file-not-existing') {
+            this.routeTreeFileCache = {
+              fileContent: routeTreeFile.fileContent,
+              mtimeMs: routeTreeFile.stat.mtimeMs,
+            }
+          }
+        }
+      }
+    }
+
+    if (!writeRouteTreeFile) {
+      // only needs to be done if no other changes have been detected yet
+      // compare shadowCache and cache to identify deleted routes
+      for (const fullPath of this.routeNodeCache.keys()) {
+        if (!this.routeNodeShadowCache.has(fullPath)) {
+          writeRouteTreeFile = true
+          break
+        }
+      }
     }
 
     if (!writeRouteTreeFile) {
@@ -393,7 +422,10 @@ export class Generator {
 
     let newMtimeMs: bigint | undefined
     if (this.routeTreeFileCache) {
-      if (this.routeTreeFileCache.fileContent === routeTreeContent) {
+      if (
+        writeRouteTreeFile !== 'force' &&
+        this.routeTreeFileCache.fileContent === routeTreeContent
+      ) {
         // existing route tree file is already up-to-date, don't write it
         // we should only get here in the initial run when the route cache is not filled yet
       } else {
@@ -634,7 +666,13 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
 
         fileRoutesByPathInterfacePerPlugin = buildFileRoutesByPathInterface({
           ...plugin.moduleAugmentation({ generator: this }),
-          routeNodes: preRouteNodes,
+          routeNodes:
+            this.config.verboseFileRoutes !== false
+              ? sortedRouteNodes
+              : [
+                  ...routeFileResult.map(({ node }) => node),
+                  ...sortedRouteNodes.filter((d) => d.isVirtual),
+                ],
           exportName,
         })
       }
@@ -1254,38 +1292,4 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
 
     acc.routeNodes.push(node)
   }
-}
-
-export function buildFileRoutesByPathInterface(opts: {
-  routeNodes: Array<RouteNode>
-  module: string
-  interfaceName: string
-  exportName: string
-}): string {
-  return `declare module '${opts.module}' {
-  interface ${opts.interfaceName} {
-    ${opts.routeNodes
-      .map((routeNode) => {
-        const filePathId = routeNode.routePath
-        let preloaderRoute = ''
-
-        if (routeNode.exports?.includes(opts.exportName)) {
-          preloaderRoute = `typeof ${routeNode.variableName}${opts.exportName}Import`
-        } else {
-          preloaderRoute = 'unknown'
-        }
-
-        const parent = findParent(routeNode, opts.exportName)
-
-        return `'${filePathId}': {
-          id: '${filePathId}'
-          path: '${inferPath(routeNode)}'
-          fullPath: '${inferFullPath(routeNode)}'
-          preLoaderRoute: ${preloaderRoute}
-          parentRoute: typeof ${parent}
-        }`
-      })
-      .join('\n')}
-  }
-}`
 }

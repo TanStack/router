@@ -370,39 +370,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/(group)': {
+      id: '/(group)'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof LayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/anchor': {
-      id: '/anchor'
-      path: '/anchor'
-      fullPath: '/anchor'
-      preLoaderRoute: typeof AnchorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/editing-a': {
-      id: '/editing-a'
-      path: '/editing-a'
-      fullPath: '/editing-a'
-      preLoaderRoute: typeof EditingARouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/editing-b': {
-      id: '/editing-b'
-      path: '/editing-b'
-      fullPath: '/editing-b'
-      preLoaderRoute: typeof EditingBRouteImport
+      preLoaderRoute: typeof groupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts': {
@@ -412,46 +384,53 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(another-group)/onlyrouteinside': {
-      id: '/(another-group)/onlyrouteinside'
-      path: '/onlyrouteinside'
-      fullPath: '/onlyrouteinside'
-      preLoaderRoute: typeof anotherGroupOnlyrouteinsideRouteImport
+    '/editing-b': {
+      id: '/editing-b'
+      path: '/editing-b'
+      fullPath: '/editing-b'
+      preLoaderRoute: typeof EditingBRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(group)/_layout': {
-      id: '/(group)/_layout'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof groupLayoutRouteImport
-      parentRoute: typeof groupRoute
+    '/editing-a': {
+      id: '/editing-a'
+      path: '/editing-a'
+      fullPath: '/editing-a'
+      preLoaderRoute: typeof EditingARouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/(group)/inside': {
-      id: '/(group)/inside'
-      path: '/inside'
-      fullPath: '/inside'
-      preLoaderRoute: typeof groupInsideRouteImport
-      parentRoute: typeof groupRoute
+    '/anchor': {
+      id: '/anchor'
+      path: '/anchor'
+      fullPath: '/anchor'
+      preLoaderRoute: typeof AnchorRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/(group)/lazyinside': {
-      id: '/(group)/lazyinside'
-      path: '/lazyinside'
-      fullPath: '/lazyinside'
-      preLoaderRoute: typeof groupLazyinsideRouteImport
-      parentRoute: typeof groupRoute
-    }
-    '/_layout/_layout-2': {
-      id: '/_layout/_layout-2'
+    '/_layout': {
+      id: '/_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof LayoutLayout2RouteImport
-      parentRoute: typeof LayoutRoute
+      preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof PostsIndexRouteImport
       parentRoute: typeof PostsRoute
     }
     '/redirect/$target': {
@@ -461,88 +440,60 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof RedirectTargetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/_layout/_layout-2': {
+      id: '/_layout/_layout-2'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof LayoutLayout2RouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/(group)/lazyinside': {
       id: '/(group)/lazyinside'
       path: '/lazyinside'
       fullPath: '/lazyinside'
-      preLoaderRoute: typeof groupLazyinsideLazyRouteImport
+      preLoaderRoute: typeof groupLazyinsideRouteImport
       parentRoute: typeof groupRoute
     }
-    '/posts/': {
-      id: '/posts/'
+    '/(group)/inside': {
+      id: '/(group)/inside'
+      path: '/inside'
+      fullPath: '/inside'
+      preLoaderRoute: typeof groupInsideRouteImport
+      parentRoute: typeof groupRoute
+    }
+    '/(group)/_layout': {
+      id: '/(group)/_layout'
       path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexRouteImport
-      parentRoute: typeof PostsRoute
-    }
-    '/redirect/': {
-      id: '/redirect/'
-      path: '/redirect'
-      fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(group)/_layout/insidelayout': {
-      id: '/(group)/_layout/insidelayout'
-      path: '/insidelayout'
-      fullPath: '/insidelayout'
-      preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
-      parentRoute: typeof groupLayoutRoute
-    }
-    '/(group)/subfolder/inside': {
-      id: '/(group)/subfolder/inside'
-      path: '/subfolder/inside'
-      fullPath: '/subfolder/inside'
-      preLoaderRoute: typeof groupSubfolderInsideRouteImport
+      fullPath: '/'
+      preLoaderRoute: typeof groupLayoutRouteImport
       parentRoute: typeof groupRoute
     }
-    '/_layout/_layout-2/layout-a': {
-      id: '/_layout/_layout-2/layout-a'
-      path: '/layout-a'
-      fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
-      parentRoute: typeof LayoutLayout2Route
-    }
-    '/_layout/_layout-2/layout-b': {
-      id: '/_layout/_layout-2/layout-b'
-      path: '/layout-b'
-      fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
-      parentRoute: typeof LayoutLayout2Route
-    }
-    '/params/single/$value': {
-      id: '/params/single/$value'
-      path: '/params/single/$value'
-      fullPath: '/params/single/$value'
-      preLoaderRoute: typeof ParamsSingleValueRouteImport
+    '/(another-group)/onlyrouteinside': {
+      id: '/(another-group)/onlyrouteinside'
+      path: '/onlyrouteinside'
+      fullPath: '/onlyrouteinside'
+      preLoaderRoute: typeof anotherGroupOnlyrouteinsideRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/posts_/$postId/edit': {
-      id: '/posts_/$postId/edit'
-      path: '/posts/$postId/edit'
-      fullPath: '/posts/$postId/edit'
-      preLoaderRoute: typeof PostsPostIdEditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/redirect/$target/via-beforeLoad': {
-      id: '/redirect/$target/via-beforeLoad'
-      path: '/via-beforeLoad'
-      fullPath: '/redirect/$target/via-beforeLoad'
-      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
+    '/redirect/$target/': {
+      id: '/redirect/$target/'
+      path: '/'
+      fullPath: '/redirect/$target/'
+      preLoaderRoute: typeof RedirectTargetIndexRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
-    '/redirect/$target/via-loader': {
-      id: '/redirect/$target/via-loader'
-      path: '/via-loader'
-      fullPath: '/redirect/$target/via-loader'
-      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
-      parentRoute: typeof RedirectTargetRoute
-    }
-    '/redirect/preload/first': {
-      id: '/redirect/preload/first'
-      path: '/redirect/preload/first'
-      fullPath: '/redirect/preload/first'
-      preLoaderRoute: typeof RedirectPreloadFirstRouteImport
+    '/redirect/preload/third': {
+      id: '/redirect/preload/third'
+      path: '/redirect/preload/third'
+      fullPath: '/redirect/preload/third'
+      preLoaderRoute: typeof RedirectPreloadThirdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/redirect/preload/second': {
@@ -552,19 +503,68 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof RedirectPreloadSecondRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/redirect/preload/third': {
-      id: '/redirect/preload/third'
-      path: '/redirect/preload/third'
-      fullPath: '/redirect/preload/third'
-      preLoaderRoute: typeof RedirectPreloadThirdRouteImport
+    '/redirect/preload/first': {
+      id: '/redirect/preload/first'
+      path: '/redirect/preload/first'
+      fullPath: '/redirect/preload/first'
+      preLoaderRoute: typeof RedirectPreloadFirstRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/redirect/$target/': {
-      id: '/redirect/$target/'
-      path: '/'
-      fullPath: '/redirect/$target/'
-      preLoaderRoute: typeof RedirectTargetIndexRouteImport
+    '/redirect/$target/via-loader': {
+      id: '/redirect/$target/via-loader'
+      path: '/via-loader'
+      fullPath: '/redirect/$target/via-loader'
+      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
       parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/via-beforeLoad': {
+      id: '/redirect/$target/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/redirect/$target/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/posts_/$postId/edit': {
+      id: '/posts_/$postId/edit'
+      path: '/posts/$postId/edit'
+      fullPath: '/posts/$postId/edit'
+      preLoaderRoute: typeof PostsPostIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params/single/$value': {
+      id: '/params/single/$value'
+      path: '/params/single/$value'
+      fullPath: '/params/single/$value'
+      preLoaderRoute: typeof ParamsSingleValueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layout/_layout-2/layout-b': {
+      id: '/_layout/_layout-2/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/_layout/_layout-2/layout-a': {
+      id: '/_layout/_layout-2/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/(group)/subfolder/inside': {
+      id: '/(group)/subfolder/inside'
+      path: '/subfolder/inside'
+      fullPath: '/subfolder/inside'
+      preLoaderRoute: typeof groupSubfolderInsideRouteImport
+      parentRoute: typeof groupRoute
+    }
+    '/(group)/_layout/insidelayout': {
+      id: '/(group)/_layout/insidelayout'
+      path: '/insidelayout'
+      fullPath: '/insidelayout'
+      preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
+      parentRoute: typeof groupLayoutRoute
     }
   }
 }
