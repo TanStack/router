@@ -8,110 +8,167 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
+import type { CreateFileRoute, FileRoutesByPath } from '@tanstack/react-router'
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/root'
+import { Route as postsPostsRouteImport } from './routes/posts/posts'
+import { Route as layoutFirstLayoutRouteImport } from './routes/layout/first-layout'
+import { Route as homeRouteImport } from './routes/home'
+import { Route as postsPostsDetailRouteImport } from './routes/posts/posts-detail'
+import { Route as layoutSecondLayoutRouteImport } from './routes/layout/second-layout'
+import { Route as postsPostsHomeRouteImport } from './routes/posts/posts-home'
+import { Route as ClassicHelloRouteRouteImport } from './routes/file-based-subtree/hello/route'
+import { Route as ClassicHelloIndexRouteImport } from './routes/file-based-subtree/hello/index'
+import { Route as ClassicHelloWorldRouteImport } from './routes/file-based-subtree/hello/world'
+import { Route as ClassicHelloUniverseRouteImport } from './routes/file-based-subtree/hello/universe'
+import { Route as bRouteImport } from './routes/b'
+import { Route as aRouteImport } from './routes/a'
 
-import { Route as rootRoute } from './routes/root'
-import { Route as postsPostsImport } from './routes/posts/posts'
-import { Route as layoutFirstLayoutImport } from './routes/layout/first-layout'
-import { Route as homeImport } from './routes/home'
-import { Route as postsPostsDetailImport } from './routes/posts/posts-detail'
-import { Route as layoutSecondLayoutImport } from './routes/layout/second-layout'
-import { Route as postsPostsHomeImport } from './routes/posts/posts-home'
-import { Route as ClassicHelloRouteImport } from './routes/file-based-subtree/hello/route'
-import { Route as ClassicHelloIndexImport } from './routes/file-based-subtree/hello/index'
-import { Route as ClassicHelloWorldImport } from './routes/file-based-subtree/hello/world'
-import { Route as ClassicHelloUniverseImport } from './routes/file-based-subtree/hello/universe'
-import { Route as bImport } from './routes/b'
-import { Route as aImport } from './routes/a'
-
-// Create Virtual Routes
-
-const FirstSecondLayoutRouteWithoutFileImport = createFileRoute(
-  '/_first/_second-layout/route-without-file',
-)()
-
-// Create/Update Routes
-
-const postsPostsRoute = postsPostsImport.update({
+const postsPostsRoute = postsPostsRouteImport.update({
   id: '/posts',
   path: '/posts',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const layoutFirstLayoutRoute = layoutFirstLayoutImport.update({
+const layoutFirstLayoutRoute = layoutFirstLayoutRouteImport.update({
   id: '/_first',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const homeRoute = homeImport.update({
+const homeRoute = homeRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const postsPostsDetailRoute = postsPostsDetailImport.update({
+const postsPostsDetailRoute = postsPostsDetailRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => postsPostsRoute,
 } as any)
-
-const layoutSecondLayoutRoute = layoutSecondLayoutImport.update({
+const layoutSecondLayoutRoute = layoutSecondLayoutRouteImport.update({
   id: '/_second-layout',
   getParentRoute: () => layoutFirstLayoutRoute,
 } as any)
-
-const postsPostsHomeRoute = postsPostsHomeImport.update({
+const postsPostsHomeRoute = postsPostsHomeRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => postsPostsRoute,
 } as any)
-
-const ClassicHelloRouteRoute = ClassicHelloRouteImport.update({
+const ClassicHelloRouteRoute = ClassicHelloRouteRouteImport.update({
   id: '/classic/hello',
   path: '/classic/hello',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const ClassicHelloIndexRoute = ClassicHelloIndexImport.update({
+const ClassicHelloIndexRoute = ClassicHelloIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
-
-const ClassicHelloWorldRoute = ClassicHelloWorldImport.update({
+const ClassicHelloWorldRoute = ClassicHelloWorldRouteImport.update({
   id: '/world',
   path: '/world',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
-
-const ClassicHelloUniverseRoute = ClassicHelloUniverseImport.update({
+const ClassicHelloUniverseRoute = ClassicHelloUniverseRouteImport.update({
   id: '/universe',
   path: '/universe',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
-
-const FirstSecondLayoutRouteWithoutFileRoute =
-  FirstSecondLayoutRouteWithoutFileImport.update({
-    id: '/route-without-file',
-    path: '/route-without-file',
-    getParentRoute: () => layoutSecondLayoutRoute,
-  } as any)
-
-const bRoute = bImport.update({
-  id: '/layout-b',
-  path: '/layout-b',
-  getParentRoute: () => FirstSecondLayoutRouteWithoutFileRoute,
+const bRoute = bRouteImport.update({
+  id: '/route-without-file/layout-b',
+  path: '/route-without-file/layout-b',
+  getParentRoute: () => layoutSecondLayoutRoute,
+} as any)
+const aRoute = aRouteImport.update({
+  id: '/route-without-file/layout-a',
+  path: '/route-without-file/layout-a',
+  getParentRoute: () => layoutSecondLayoutRoute,
 } as any)
 
-const aRoute = aImport.update({
-  id: '/layout-a',
-  path: '/layout-a',
-  getParentRoute: () => FirstSecondLayoutRouteWithoutFileRoute,
-} as any)
-
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof homeRoute
+  '': typeof layoutSecondLayoutRouteWithChildren
+  '/posts': typeof postsPostsRouteWithChildren
+  '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
+  '/posts/': typeof postsPostsHomeRoute
+  '/posts/$postId': typeof postsPostsDetailRoute
+  '/classic/hello/universe': typeof ClassicHelloUniverseRoute
+  '/classic/hello/world': typeof ClassicHelloWorldRoute
+  '/classic/hello/': typeof ClassicHelloIndexRoute
+  '/route-without-file/layout-a': typeof aRoute
+  '/route-without-file/layout-b': typeof bRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof homeRoute
+  '': typeof layoutSecondLayoutRouteWithChildren
+  '/posts': typeof postsPostsHomeRoute
+  '/posts/$postId': typeof postsPostsDetailRoute
+  '/classic/hello/universe': typeof ClassicHelloUniverseRoute
+  '/classic/hello/world': typeof ClassicHelloWorldRoute
+  '/classic/hello': typeof ClassicHelloIndexRoute
+  '/route-without-file/layout-a': typeof aRoute
+  '/route-without-file/layout-b': typeof bRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof homeRoute
+  '/_first': typeof layoutFirstLayoutRouteWithChildren
+  '/posts': typeof postsPostsRouteWithChildren
+  '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
+  '/posts/': typeof postsPostsHomeRoute
+  '/_first/_second-layout': typeof layoutSecondLayoutRouteWithChildren
+  '/posts/$postId': typeof postsPostsDetailRoute
+  '/classic/hello/universe': typeof ClassicHelloUniverseRoute
+  '/classic/hello/world': typeof ClassicHelloWorldRoute
+  '/classic/hello/': typeof ClassicHelloIndexRoute
+  '/_first/_second-layout/route-without-file/layout-a': typeof aRoute
+  '/_first/_second-layout/route-without-file/layout-b': typeof bRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | ''
+    | '/posts'
+    | '/classic/hello'
+    | '/posts/'
+    | '/posts/$postId'
+    | '/classic/hello/universe'
+    | '/classic/hello/world'
+    | '/classic/hello/'
+    | '/route-without-file/layout-a'
+    | '/route-without-file/layout-b'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | ''
+    | '/posts'
+    | '/posts/$postId'
+    | '/classic/hello/universe'
+    | '/classic/hello/world'
+    | '/classic/hello'
+    | '/route-without-file/layout-a'
+    | '/route-without-file/layout-b'
+  id:
+    | '__root__'
+    | '/'
+    | '/_first'
+    | '/posts'
+    | '/classic/hello'
+    | '/posts/'
+    | '/_first/_second-layout'
+    | '/posts/$postId'
+    | '/classic/hello/universe'
+    | '/classic/hello/world'
+    | '/classic/hello/'
+    | '/_first/_second-layout/route-without-file/layout-a'
+    | '/_first/_second-layout/route-without-file/layout-b'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  homeRoute: typeof homeRoute
+  layoutFirstLayoutRoute: typeof layoutFirstLayoutRouteWithChildren
+  postsPostsRoute: typeof postsPostsRouteWithChildren
+  ClassicHelloRouteRoute: typeof ClassicHelloRouteRouteWithChildren
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -119,121 +176,213 @@ declare module '@tanstack/react-router' {
       id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof homeImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof homeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_first': {
       id: '/_first'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof layoutFirstLayoutImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof layoutFirstLayoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof postsPostsImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof postsPostsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/classic/hello': {
       id: '/classic/hello'
       path: '/classic/hello'
       fullPath: '/classic/hello'
-      preLoaderRoute: typeof ClassicHelloRouteImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof ClassicHelloRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/posts/': {
       id: '/posts/'
       path: '/'
       fullPath: '/posts/'
-      preLoaderRoute: typeof postsPostsHomeImport
-      parentRoute: typeof postsPostsImport
+      preLoaderRoute: typeof postsPostsHomeRouteImport
+      parentRoute: typeof postsPostsRoute
     }
     '/_first/_second-layout': {
       id: '/_first/_second-layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof layoutSecondLayoutImport
-      parentRoute: typeof layoutFirstLayoutImport
+      preLoaderRoute: typeof layoutSecondLayoutRouteImport
+      parentRoute: typeof layoutFirstLayoutRoute
     }
     '/posts/$postId': {
       id: '/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
-      preLoaderRoute: typeof postsPostsDetailImport
-      parentRoute: typeof postsPostsImport
+      preLoaderRoute: typeof postsPostsDetailRouteImport
+      parentRoute: typeof postsPostsRoute
     }
     '/_first/_second-layout/route-without-file': {
       id: '/_first/_second-layout/route-without-file'
-      path: '/route-without-file'
+      path: ''
       fullPath: '/route-without-file'
-      preLoaderRoute: typeof FirstSecondLayoutRouteWithoutFileImport
-      parentRoute: typeof layoutSecondLayoutImport
+      preLoaderRoute: unknown
+      parentRoute: typeof rootRouteImport
     }
     '/classic/hello/universe': {
       id: '/classic/hello/universe'
       path: '/universe'
       fullPath: '/classic/hello/universe'
-      preLoaderRoute: typeof ClassicHelloUniverseImport
-      parentRoute: typeof ClassicHelloRouteImport
+      preLoaderRoute: typeof ClassicHelloUniverseRouteImport
+      parentRoute: typeof ClassicHelloRouteRoute
     }
     '/classic/hello/world': {
       id: '/classic/hello/world'
       path: '/world'
       fullPath: '/classic/hello/world'
-      preLoaderRoute: typeof ClassicHelloWorldImport
-      parentRoute: typeof ClassicHelloRouteImport
+      preLoaderRoute: typeof ClassicHelloWorldRouteImport
+      parentRoute: typeof ClassicHelloRouteRoute
     }
     '/classic/hello/': {
       id: '/classic/hello/'
       path: '/'
       fullPath: '/classic/hello/'
-      preLoaderRoute: typeof ClassicHelloIndexImport
-      parentRoute: typeof ClassicHelloRouteImport
+      preLoaderRoute: typeof ClassicHelloIndexRouteImport
+      parentRoute: typeof ClassicHelloRouteRoute
     }
     '/_first/_second-layout/route-without-file/layout-a': {
       id: '/_first/_second-layout/route-without-file/layout-a'
-      path: '/layout-a'
+      path: '/route-without-file/layout-a'
       fullPath: '/route-without-file/layout-a'
-      preLoaderRoute: typeof aImport
-      parentRoute: typeof FirstSecondLayoutRouteWithoutFileImport
+      preLoaderRoute: typeof aRouteImport
+      parentRoute: typeof layoutSecondLayoutRoute
     }
     '/_first/_second-layout/route-without-file/layout-b': {
       id: '/_first/_second-layout/route-without-file/layout-b'
-      path: '/layout-b'
+      path: '/route-without-file/layout-b'
       fullPath: '/route-without-file/layout-b'
-      preLoaderRoute: typeof bImport
-      parentRoute: typeof FirstSecondLayoutRouteWithoutFileImport
+      preLoaderRoute: typeof bRouteImport
+      parentRoute: typeof layoutSecondLayoutRoute
     }
   }
 }
 
-// Create and export the route tree
+declare module './routes/home' {
+  const createFileRoute: CreateFileRoute<
+    '/',
+    FileRoutesByPath['/']['parentRoute'],
+    FileRoutesByPath['/']['id'],
+    FileRoutesByPath['/']['path'],
+    FileRoutesByPath['/']['fullPath']
+  >
+}
+declare module './routes/layout/first-layout' {
+  const createFileRoute: CreateFileRoute<
+    '/_first',
+    FileRoutesByPath['/_first']['parentRoute'],
+    FileRoutesByPath['/_first']['id'],
+    FileRoutesByPath['/_first']['path'],
+    FileRoutesByPath['/_first']['fullPath']
+  >
+}
+declare module './routes/posts/posts' {
+  const createFileRoute: CreateFileRoute<
+    '/posts',
+    FileRoutesByPath['/posts']['parentRoute'],
+    FileRoutesByPath['/posts']['id'],
+    FileRoutesByPath['/posts']['path'],
+    FileRoutesByPath['/posts']['fullPath']
+  >
+}
+declare module './routes/file-based-subtree/hello/route' {
+  const createFileRoute: CreateFileRoute<
+    '/classic/hello',
+    FileRoutesByPath['/classic/hello']['parentRoute'],
+    FileRoutesByPath['/classic/hello']['id'],
+    FileRoutesByPath['/classic/hello']['path'],
+    FileRoutesByPath['/classic/hello']['fullPath']
+  >
+}
+declare module './routes/posts/posts-home' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/',
+    FileRoutesByPath['/posts/']['parentRoute'],
+    FileRoutesByPath['/posts/']['id'],
+    FileRoutesByPath['/posts/']['path'],
+    FileRoutesByPath['/posts/']['fullPath']
+  >
+}
+declare module './routes/layout/second-layout' {
+  const createFileRoute: CreateFileRoute<
+    '/_first/_second-layout',
+    FileRoutesByPath['/_first/_second-layout']['parentRoute'],
+    FileRoutesByPath['/_first/_second-layout']['id'],
+    FileRoutesByPath['/_first/_second-layout']['path'],
+    FileRoutesByPath['/_first/_second-layout']['fullPath']
+  >
+}
+declare module './routes/posts/posts-detail' {
+  const createFileRoute: CreateFileRoute<
+    '/posts/$postId',
+    FileRoutesByPath['/posts/$postId']['parentRoute'],
+    FileRoutesByPath['/posts/$postId']['id'],
+    FileRoutesByPath['/posts/$postId']['path'],
+    FileRoutesByPath['/posts/$postId']['fullPath']
+  >
+}
+declare module './routes/file-based-subtree/hello/universe' {
+  const createFileRoute: CreateFileRoute<
+    '/classic/hello/universe',
+    FileRoutesByPath['/classic/hello/universe']['parentRoute'],
+    FileRoutesByPath['/classic/hello/universe']['id'],
+    FileRoutesByPath['/classic/hello/universe']['path'],
+    FileRoutesByPath['/classic/hello/universe']['fullPath']
+  >
+}
+declare module './routes/file-based-subtree/hello/world' {
+  const createFileRoute: CreateFileRoute<
+    '/classic/hello/world',
+    FileRoutesByPath['/classic/hello/world']['parentRoute'],
+    FileRoutesByPath['/classic/hello/world']['id'],
+    FileRoutesByPath['/classic/hello/world']['path'],
+    FileRoutesByPath['/classic/hello/world']['fullPath']
+  >
+}
+declare module './routes/file-based-subtree/hello/index' {
+  const createFileRoute: CreateFileRoute<
+    '/classic/hello/',
+    FileRoutesByPath['/classic/hello/']['parentRoute'],
+    FileRoutesByPath['/classic/hello/']['id'],
+    FileRoutesByPath['/classic/hello/']['path'],
+    FileRoutesByPath['/classic/hello/']['fullPath']
+  >
+}
+declare module './routes/a' {
+  const createFileRoute: CreateFileRoute<
+    '/_first/_second-layout/route-without-file/layout-a',
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['parentRoute'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['id'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['path'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-a']['fullPath']
+  >
+}
+declare module './routes/b' {
+  const createFileRoute: CreateFileRoute<
+    '/_first/_second-layout/route-without-file/layout-b',
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['parentRoute'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['id'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['path'],
+    FileRoutesByPath['/_first/_second-layout/route-without-file/layout-b']['fullPath']
+  >
+}
 
-interface FirstSecondLayoutRouteWithoutFileRouteChildren {
+interface layoutSecondLayoutRouteChildren {
   aRoute: typeof aRoute
   bRoute: typeof bRoute
 }
 
-const FirstSecondLayoutRouteWithoutFileRouteChildren: FirstSecondLayoutRouteWithoutFileRouteChildren =
-  {
-    aRoute: aRoute,
-    bRoute: bRoute,
-  }
-
-const FirstSecondLayoutRouteWithoutFileRouteWithChildren =
-  FirstSecondLayoutRouteWithoutFileRoute._addFileChildren(
-    FirstSecondLayoutRouteWithoutFileRouteChildren,
-  )
-
-interface layoutSecondLayoutRouteChildren {
-  FirstSecondLayoutRouteWithoutFileRoute: typeof FirstSecondLayoutRouteWithoutFileRouteWithChildren
-}
-
 const layoutSecondLayoutRouteChildren: layoutSecondLayoutRouteChildren = {
-  FirstSecondLayoutRouteWithoutFileRoute:
-    FirstSecondLayoutRouteWithoutFileRouteWithChildren,
+  aRoute: aRoute,
+  bRoute: bRoute,
 }
 
 const layoutSecondLayoutRouteWithChildren =
@@ -279,193 +428,12 @@ const ClassicHelloRouteRouteChildren: ClassicHelloRouteRouteChildren = {
 const ClassicHelloRouteRouteWithChildren =
   ClassicHelloRouteRoute._addFileChildren(ClassicHelloRouteRouteChildren)
 
-export interface FileRoutesByFullPath {
-  '/': typeof homeRoute
-  '': typeof layoutSecondLayoutRouteWithChildren
-  '/posts': typeof postsPostsRouteWithChildren
-  '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
-  '/posts/': typeof postsPostsHomeRoute
-  '/posts/$postId': typeof postsPostsDetailRoute
-  '/route-without-file': typeof FirstSecondLayoutRouteWithoutFileRouteWithChildren
-  '/classic/hello/universe': typeof ClassicHelloUniverseRoute
-  '/classic/hello/world': typeof ClassicHelloWorldRoute
-  '/classic/hello/': typeof ClassicHelloIndexRoute
-  '/route-without-file/layout-a': typeof aRoute
-  '/route-without-file/layout-b': typeof bRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof homeRoute
-  '': typeof layoutSecondLayoutRouteWithChildren
-  '/posts': typeof postsPostsHomeRoute
-  '/posts/$postId': typeof postsPostsDetailRoute
-  '/route-without-file': typeof FirstSecondLayoutRouteWithoutFileRouteWithChildren
-  '/classic/hello/universe': typeof ClassicHelloUniverseRoute
-  '/classic/hello/world': typeof ClassicHelloWorldRoute
-  '/classic/hello': typeof ClassicHelloIndexRoute
-  '/route-without-file/layout-a': typeof aRoute
-  '/route-without-file/layout-b': typeof bRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof homeRoute
-  '/_first': typeof layoutFirstLayoutRouteWithChildren
-  '/posts': typeof postsPostsRouteWithChildren
-  '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
-  '/posts/': typeof postsPostsHomeRoute
-  '/_first/_second-layout': typeof layoutSecondLayoutRouteWithChildren
-  '/posts/$postId': typeof postsPostsDetailRoute
-  '/_first/_second-layout/route-without-file': typeof FirstSecondLayoutRouteWithoutFileRouteWithChildren
-  '/classic/hello/universe': typeof ClassicHelloUniverseRoute
-  '/classic/hello/world': typeof ClassicHelloWorldRoute
-  '/classic/hello/': typeof ClassicHelloIndexRoute
-  '/_first/_second-layout/route-without-file/layout-a': typeof aRoute
-  '/_first/_second-layout/route-without-file/layout-b': typeof bRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | ''
-    | '/posts'
-    | '/classic/hello'
-    | '/posts/'
-    | '/posts/$postId'
-    | '/route-without-file'
-    | '/classic/hello/universe'
-    | '/classic/hello/world'
-    | '/classic/hello/'
-    | '/route-without-file/layout-a'
-    | '/route-without-file/layout-b'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | ''
-    | '/posts'
-    | '/posts/$postId'
-    | '/route-without-file'
-    | '/classic/hello/universe'
-    | '/classic/hello/world'
-    | '/classic/hello'
-    | '/route-without-file/layout-a'
-    | '/route-without-file/layout-b'
-  id:
-    | '__root__'
-    | '/'
-    | '/_first'
-    | '/posts'
-    | '/classic/hello'
-    | '/posts/'
-    | '/_first/_second-layout'
-    | '/posts/$postId'
-    | '/_first/_second-layout/route-without-file'
-    | '/classic/hello/universe'
-    | '/classic/hello/world'
-    | '/classic/hello/'
-    | '/_first/_second-layout/route-without-file/layout-a'
-    | '/_first/_second-layout/route-without-file/layout-b'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  homeRoute: typeof homeRoute
-  layoutFirstLayoutRoute: typeof layoutFirstLayoutRouteWithChildren
-  postsPostsRoute: typeof postsPostsRouteWithChildren
-  ClassicHelloRouteRoute: typeof ClassicHelloRouteRouteWithChildren
-}
-
 const rootRouteChildren: RootRouteChildren = {
   homeRoute: homeRoute,
   layoutFirstLayoutRoute: layoutFirstLayoutRouteWithChildren,
   postsPostsRoute: postsPostsRouteWithChildren,
   ClassicHelloRouteRoute: ClassicHelloRouteRouteWithChildren,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "root.tsx",
-      "children": [
-        "/",
-        "/_first",
-        "/posts",
-        "/classic/hello"
-      ]
-    },
-    "/": {
-      "filePath": "home.tsx"
-    },
-    "/_first": {
-      "filePath": "layout/first-layout.tsx",
-      "children": [
-        "/_first/_second-layout"
-      ]
-    },
-    "/posts": {
-      "filePath": "posts/posts.tsx",
-      "children": [
-        "/posts/",
-        "/posts/$postId"
-      ]
-    },
-    "/classic/hello": {
-      "filePath": "file-based-subtree/hello/route.tsx",
-      "children": [
-        "/classic/hello/universe",
-        "/classic/hello/world",
-        "/classic/hello/"
-      ]
-    },
-    "/posts/": {
-      "filePath": "posts/posts-home.tsx",
-      "parent": "/posts"
-    },
-    "/_first/_second-layout": {
-      "filePath": "layout/second-layout.tsx",
-      "parent": "/_first",
-      "children": [
-        "/_first/_second-layout/route-without-file"
-      ]
-    },
-    "/posts/$postId": {
-      "filePath": "posts/posts-detail.tsx",
-      "parent": "/posts"
-    },
-    "/_first/_second-layout/route-without-file": {
-      "filePath": "",
-      "parent": "/_first/_second-layout",
-      "children": [
-        "/_first/_second-layout/route-without-file/layout-a",
-        "/_first/_second-layout/route-without-file/layout-b"
-      ]
-    },
-    "/classic/hello/universe": {
-      "filePath": "file-based-subtree/hello/universe.tsx",
-      "parent": "/classic/hello"
-    },
-    "/classic/hello/world": {
-      "filePath": "file-based-subtree/hello/world.tsx",
-      "parent": "/classic/hello"
-    },
-    "/classic/hello/": {
-      "filePath": "file-based-subtree/hello/index.tsx",
-      "parent": "/classic/hello"
-    },
-    "/_first/_second-layout/route-without-file/layout-a": {
-      "filePath": "a.tsx",
-      "parent": "/_first/_second-layout/route-without-file"
-    },
-    "/_first/_second-layout/route-without-file/layout-b": {
-      "filePath": "b.tsx",
-      "parent": "/_first/_second-layout/route-without-file"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

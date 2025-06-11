@@ -37,7 +37,15 @@ function flattenTree(node: RouteNode): Array<RouteNode> {
 }
 
 export async function getRouteNodes(
-  tsrConfig: Config,
+  tsrConfig: Pick<
+    Config,
+    | 'routesDirectory'
+    | 'virtualRouteConfig'
+    | 'routeFileIgnorePrefix'
+    | 'disableLogging'
+    | 'indexToken'
+    | 'routeToken'
+  >,
   root: string,
 ): Promise<GetRouteNodesResult> {
   const fullDir = resolve(tsrConfig.routesDirectory)
@@ -64,7 +72,7 @@ export async function getRouteNodes(
     children,
     filePath: virtualRouteConfig.file,
     fullPath: join(fullDir, virtualRouteConfig.file),
-    variableName: 'rootRoute',
+    variableName: 'root',
     routePath: `/${rootPathId}`,
     _fsRouteType: '__root',
   })
@@ -90,7 +98,7 @@ export async function getRouteNodes(
  *
  */
 async function getVirtualRouteConfigFromFileExport(
-  tsrConfig: Config,
+  tsrConfig: Pick<Config, 'virtualRouteConfig'>,
   root: string,
 ): Promise<VirtualRootRoute> {
   if (
@@ -115,7 +123,14 @@ async function getVirtualRouteConfigFromFileExport(
 }
 
 export async function getRouteNodesRecursive(
-  tsrConfig: Config,
+  tsrConfig: Pick<
+    Config,
+    | 'routesDirectory'
+    | 'routeFileIgnorePrefix'
+    | 'disableLogging'
+    | 'indexToken'
+    | 'routeToken'
+  >,
   root: string,
   fullDir: string,
   nodes?: Array<VirtualRouteNode>,

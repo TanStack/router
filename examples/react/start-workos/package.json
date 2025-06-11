@@ -5,24 +5,24 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "start": "vite start"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@radix-ui/themes": "^3.2.1",
-    "@tanstack/react-router": "^1.120.15",
-    "@tanstack/react-router-devtools": "^1.120.15",
-    "@tanstack/react-start": "^1.120.15",
+    "@tanstack/react-router": "^1.121.0",
+    "@tanstack/react-router-devtools": "^1.121.0",
+    "@tanstack/react-start": "^1.121.0",
     "@workos-inc/node": "^7.45.0",
     "iron-session": "^8.0.4",
     "jose": "^6.0.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.3"
+    "vite": "^6.3.5"
   },
   "devDependencies": {
     "@types/react": "^19.0.8",

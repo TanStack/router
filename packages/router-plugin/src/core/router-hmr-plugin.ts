@@ -27,7 +27,7 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
 
       if (debug) console.info('Adding HMR handling to route ', id)
 
-      const ast = parseAst({ code, filename: id, root: ROOT })
+      const ast = parseAst({ code })
       ast.program.body.push(routeHmrStatement)
       const result = generateFromAst(ast, {
         sourceMaps: true,
@@ -48,8 +48,6 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
     vite: {
       configResolved(config) {
         ROOT = config.root
-        config.mode
-
         userConfig = getConfig(options, ROOT)
       },
     },

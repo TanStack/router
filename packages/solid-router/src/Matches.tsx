@@ -10,6 +10,7 @@ import { SafeFragment } from './SafeFragment'
 import type {
   AnyRouter,
   DeepPartial,
+  Expand,
   MakeOptionalPathParams,
   MakeOptionalSearchParams,
   MakeRouteMatchUnion,
@@ -117,7 +118,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   >(
     opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   ): Solid.Accessor<
-    false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
+    false | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']>
   > => {
     const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 

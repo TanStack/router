@@ -12,9 +12,9 @@
   "dependencies": {
     "@tanstack/react-query": "^5.66.0",
     "@tanstack/react-query-devtools": "^5.66.0",
-    "@tanstack/react-router": "^1.120.15",
-    "@tanstack/react-router-devtools": "^1.120.15",
-    "@tanstack/router-plugin": "^1.120.15",
+    "@tanstack/react-router": "^1.121.0",
+    "@tanstack/react-router-devtools": "^1.121.0",
+    "@tanstack/router-plugin": "^1.121.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1"
@@ -25,7 +25,7 @@
     "@types/react-dom": "^19.0.3",
     "typescript": "^5.7.2",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.1.0",
+    "vite": "^6.3.5",
     "vite-plugin-dts": "^4.5.0"
   },
   "keywords": [],

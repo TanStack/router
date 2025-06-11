@@ -68,7 +68,7 @@ function RootComponent() {
                 ['/route-a', 'Pathless Layout A'],
                 ['/route-b', 'Pathless Layout B'],
                 ['/profile', 'Profile'],
-                ['/login', 'Login'],
+                ...(auth.status === 'loggedOut' ? [['/login', 'Login']] : []),
               ] as const
             ).map(([to, label]) => {
               return (
@@ -642,6 +642,7 @@ const authPathlessLayoutRoute = createRoute({
   beforeLoad: ({ context, location }) => {
     // If the user is logged out, redirect them to the login page
     if (context.auth.status === 'loggedOut') {
+      console.log(location)
       throw redirect({
         to: loginRoute.to,
         search: {
@@ -674,6 +675,15 @@ function ProfileComponent() {
       <div>
         Username:<strong>{username}</strong>
       </div>
+      <button
+        className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
+        onClick={() => {
+          auth.logout()
+          router.invalidate()
+        }}
+      >
+        Log out
+      </button>
     </div>
   )
 }
@@ -714,7 +724,10 @@ function LoginComponent() {
       Logged in as <strong>{auth.username}</strong>
       <div className="h-2" />
       <button
-        onClick={() => auth.logout()}
+        onClick={() => {
+          auth.logout()
+          router.invalidate()
+        }}
         className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
       >
         Log out
@@ -732,10 +745,7 @@ function LoginComponent() {
           placeholder="Username"
           className="border p-1 px-2 rounded"
         />
-        <button
-          onClick={() => auth.logout()}
-          className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
-        >
+        <button className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded">
           Login
         </button>
       </form>

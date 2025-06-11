@@ -1,8 +1,8 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as fs from 'node:fs'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestHeader } from '@tanstack/react-start/server'
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/dead-code-preserve')({
   component: RouteComponent,

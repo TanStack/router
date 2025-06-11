@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/solid-router'
-
 const isProd = import.meta.env.PROD
 
 export const Route = createFileRoute('/scripts')({

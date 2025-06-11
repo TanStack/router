@@ -7,10 +7,8 @@ yarn.lock
 .env
 .vercel
 .output
-.vinxi
 
 /build/
 /api/
 /server/build
 /public/build
-.vinxi

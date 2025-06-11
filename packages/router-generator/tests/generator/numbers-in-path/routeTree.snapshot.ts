@@ -8,90 +8,38 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as R03RouteImport } from './routes/03'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as R02IndexRouteImport } from './routes/02.index'
+import { Route as R01ExampleIndexRouteImport } from './routes/01-example/index'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as AboutImport } from './routes/about'
-import { Route as R03Import } from './routes/03'
-import { Route as IndexImport } from './routes/index'
-import { Route as R02IndexImport } from './routes/02.index'
-import { Route as R01ExampleIndexImport } from './routes/01-example/index'
-
-// Create/Update Routes
-
-const AboutRoute = AboutImport.update({
+const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const R03Route = R03Import.update({
+const R03Route = R03RouteImport.update({
   id: '/03',
   path: '/03',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const R02IndexRoute = R02IndexImport.update({
+const R02IndexRoute = R02IndexRouteImport.update({
   id: '/02/',
   path: '/02/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const R01ExampleIndexRoute = R01ExampleIndexImport.update({
+const R01ExampleIndexRoute = R01ExampleIndexRouteImport.update({
   id: '/01-example/',
   path: '/01-example/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-// Populate the FileRoutesByPath interface
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/03': {
-      id: '/03'
-      path: '/03'
-      fullPath: '/03'
-      preLoaderRoute: typeof R03Import
-      parentRoute: typeof rootRoute
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutImport
-      parentRoute: typeof rootRoute
-    }
-    '/01-example/': {
-      id: '/01-example/'
-      path: '/01-example'
-      fullPath: '/01-example'
-      preLoaderRoute: typeof R01ExampleIndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/02/': {
-      id: '/02/'
-      path: '/02'
-      fullPath: '/02'
-      preLoaderRoute: typeof R02IndexImport
-      parentRoute: typeof rootRoute
-    }
-  }
-}
-
-// Create and export the route tree
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -100,7 +48,6 @@ export interface FileRoutesByFullPath {
   '/01-example': typeof R01ExampleIndexRoute
   '/02': typeof R02IndexRoute
 }
-
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/03': typeof R03Route
@@ -108,16 +55,14 @@ export interface FileRoutesByTo {
   '/01-example': typeof R01ExampleIndexRoute
   '/02': typeof R02IndexRoute
 }
-
 export interface FileRoutesById {
-  __root__: typeof rootRoute
+  __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/03': typeof R03Route
   '/about': typeof AboutRoute
   '/01-example/': typeof R01ExampleIndexRoute
   '/02/': typeof R02IndexRoute
 }
-
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/03' | '/about' | '/01-example' | '/02'
@@ -126,13 +71,52 @@ export interface FileRouteTypes {
   id: '__root__' | '/' | '/03' | '/about' | '/01-example/' | '/02/'
   fileRoutesById: FileRoutesById
 }
-
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   R03Route: typeof R03Route
   AboutRoute: typeof AboutRoute
   R01ExampleIndexRoute: typeof R01ExampleIndexRoute
   R02IndexRoute: typeof R02IndexRoute
+}
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/03': {
+      id: '/03'
+      path: '/03'
+      fullPath: '/03'
+      preLoaderRoute: typeof R03RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/01-example/': {
+      id: '/01-example/'
+      path: '/01-example'
+      fullPath: '/01-example'
+      preLoaderRoute: typeof R01ExampleIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/02/': {
+      id: '/02/'
+      path: '/02'
+      fullPath: '/02'
+      preLoaderRoute: typeof R02IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -142,39 +126,6 @@ const rootRouteChildren: RootRouteChildren = {
   R01ExampleIndexRoute: R01ExampleIndexRoute,
   R02IndexRoute: R02IndexRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/03",
-        "/about",
-        "/01-example/",
-        "/02/"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/03": {
-      "filePath": "03.tsx"
-    },
-    "/about": {
-      "filePath": "about.tsx"
-    },
-    "/01-example/": {
-      "filePath": "01-example/index.tsx"
-    },
-    "/02/": {
-      "filePath": "02.index.tsx"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

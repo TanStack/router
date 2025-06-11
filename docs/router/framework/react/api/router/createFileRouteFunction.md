@@ -26,7 +26,7 @@ A new function that accepts a single argument of type [`RouteOptions`](../RouteO
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute({
   loader: () => {
     return 'Hello World'
   },

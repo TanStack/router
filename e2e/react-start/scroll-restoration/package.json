@@ -1,13 +1,13 @@
 {
-  "name": "tanstack-start-e2e-basic-scroll-restoration",
+  "name": "tanstack-react-start-e2e-basic-scroll-restoration",
   "private": true,
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3000",
-    "dev:e2e": "vinxi dev",
-    "build": "vinxi build && tsc --noEmit",
-    "start": "vinxi start",
+    "dev": "vite dev --port 3000",
+    "dev:e2e": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "start": "node .output/server/index.mjs",
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
@@ -19,7 +19,7 @@
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
-    "vinxi": "0.5.3",
+    "vite": "^6.3.5",
     "zod": "^3.24.2"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/redirect/$target/serverFn/')({
+export const Route = createFileRoute({
   component: () => (
     <div>
       <h1 className="mb-4 text-4xl font-extrabold lmd:text-5xl lg:text-6xl ">
