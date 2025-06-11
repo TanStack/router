@@ -144,12 +144,59 @@ export function startManifestPlugin(
             opts.tsr.routesDirectory,
           )
 
-          // Add preloads to the routes from the vite manifest
-          Object.entries(routeTreeRoutes).forEach(([routeId, v]) => {
-            const file =
-              filesByRouteFilePath[
-                path.posix.join(routesDirectoryFromRoot, v.filePath as string)
-              ]
+          // Process virtual route directory paths
+          const virtualRouteDirectoriesFromRoot =
+            opts.tsr.virtualRouteDirectories.map((dir) =>
+              path.relative(opts.root, dir),
+            )
+
+          // Function to check if a file path should be code-split
+          function shouldCodeSplit(filePath: string): boolean {
+            if (filePath.startsWith(path.resolve(opts.tsr.routesDirectory))) {
+              return true
+            }
+
+            // Check if the file is inside any of the virtual route directories
+            for (const virtualDir of opts.tsr.virtualRouteDirectories) {
+              if (filePath.startsWith(path.resolve(virtualDir))) {
+                return true
+              }
+            }
+
+            return false
+          }
+
+          for (const [routeId, v] of Object.entries(routeTreeRoutes)) {
+            let file = null
+
+            const defaultRoutePath = path.posix.join(
+              routesDirectoryFromRoot,
+              v.filePath as string,
+            )
+            if (filesByRouteFilePath[defaultRoutePath]) {
+              file = filesByRouteFilePath[defaultRoutePath]
+            }
+
+            if (!file && virtualRouteDirectoriesFromRoot.length > 0) {
+              for (const virtualDir of virtualRouteDirectoriesFromRoot) {
+                const virtualFilePath = path.posix.join(
+                  virtualDir,
+                  v.filePath as string,
+                )
+                if (filesByRouteFilePath[virtualFilePath]) {
+                  file = filesByRouteFilePath[virtualFilePath]
+
+                  const absolutePath = path.resolve(opts.root, virtualFilePath)
+                  if (shouldCodeSplit(absolutePath)) {
+                    console.log(
+                      `[TanStack Router] Code-splitting virtual route: ${virtualFilePath}`,
+                    )
+                  }
+
+                  break
+                }
+              }
+            }
 
             if (file) {
               // Map the relevant imports to their route paths,
@@ -178,7 +225,7 @@ export function startManifestPlugin(
                 preloads,
               }
             }
-          })
+          }
 
           if (entryFile) {
             routeTreeRoutes[rootRouteId]!.preloads = [

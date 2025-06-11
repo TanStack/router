@@ -9,6 +9,7 @@ const tsrConfig = configSchema
   .partial()
   .extend({
     srcDirectory: z.string().optional().default('src'),
+    virtualRouteDirectories: z.array(z.string()).optional().default([]),
   })
 
 export function createTanStackConfig<
