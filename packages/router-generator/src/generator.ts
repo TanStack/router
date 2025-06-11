@@ -8,6 +8,7 @@ import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/ge
 import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
 import {
+  buildFileRoutesByPathInterface,
   buildImportString,
   buildRouteTreeConfig,
   checkFileExists,
@@ -19,8 +20,6 @@ import {
   format,
   getResolvedRouteNodeVariableName,
   hasParentRoute,
-  inferFullPath,
-  inferPath,
   isRouteNodeValidForAugmentation,
   lowerCaseFirstChar,
   mergeImportDeclarations,
@@ -1254,38 +1253,4 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
 
     acc.routeNodes.push(node)
   }
-}
-
-export function buildFileRoutesByPathInterface(opts: {
-  routeNodes: Array<RouteNode>
-  module: string
-  interfaceName: string
-  exportName: string
-}): string {
-  return `declare module '${opts.module}' {
-  interface ${opts.interfaceName} {
-    ${opts.routeNodes
-      .map((routeNode) => {
-        const filePathId = routeNode.routePath
-        let preloaderRoute = ''
-
-        if (routeNode.exports?.includes(opts.exportName)) {
-          preloaderRoute = `typeof ${routeNode.variableName}${opts.exportName}Import`
-        } else {
-          preloaderRoute = 'unknown'
-        }
-
-        const parent = findParent(routeNode, opts.exportName)
-
-        return `'${filePathId}': {
-          id: '${filePathId}'
-          path: '${inferPath(routeNode)}'
-          fullPath: '${inferFullPath(routeNode)}'
-          preLoaderRoute: ${preloaderRoute}
-          parentRoute: typeof ${parent}
-        }`
-      })
-      .join('\n')}
-  }
-}`
 }
