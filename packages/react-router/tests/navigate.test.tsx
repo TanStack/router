@@ -566,4 +566,21 @@ describe('relative navigation', () => {
 
     expect(router.state.location.pathname).toBe('/posts/tkdodo')
   })
+
+  it('should navigate to a parent route with .. from unsafe relative path', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner/child'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts/tanner/child')
+
+    await router.navigate({
+      to: '..',
+      unsafeRelative: 'path',
+    })
+
+    expect(router.state.location.pathname).toBe('/posts/tanner')
+  })
 })

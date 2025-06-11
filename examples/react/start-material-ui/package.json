@@ -4,9 +4,9 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "start": "vite start"
   },
   "dependencies": {
     "@emotion/cache": "11.14.0",
@@ -14,12 +14,11 @@
     "@emotion/styled": "11.14.0",
     "@fontsource-variable/roboto": "5.2.5",
     "@mui/material": "6.4.7",
-    "@tanstack/react-router": "^1.120.15",
-    "@tanstack/react-start": "^1.120.15",
-    "@tanstack/react-router-devtools": "^1.120.15",
+    "@tanstack/react-router": "^1.121.2",
+    "@tanstack/react-start": "^1.121.2",
+    "@tanstack/react-router-devtools": "^1.121.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {

@@ -1,5 +1,6 @@
-import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import * as React from 'react'
+
 import { InvoiceFields } from '../components/InvoiceFields'
 import { Spinner } from '../components/Spinner'
 import { useCreateInvoiceMutation } from '../utils/queryOptions'

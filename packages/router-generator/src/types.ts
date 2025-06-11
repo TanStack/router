@@ -12,6 +12,7 @@ export type RouteNode = {
   isVirtual?: boolean
   children?: Array<RouteNode>
   parent?: RouteNode
+  exports?: Array<string>
 }
 
 export interface GetRouteNodesResult {
@@ -25,8 +26,31 @@ export type FsRouteType =
   | 'layout'
   | 'pathless_layout'
   | 'lazy'
-  | 'api'
   | 'loader' // @deprecated
   | 'component' // @deprecated
   | 'pendingComponent' // @deprecated
   | 'errorComponent' // @deprecated
+
+export type RouteSubNode = {
+  component?: RouteNode
+  errorComponent?: RouteNode
+  pendingComponent?: RouteNode
+  loader?: RouteNode
+  lazy?: RouteNode
+}
+
+export type ImportSpecifier = {
+  imported: string
+  local?: string
+}
+export type ImportDeclaration = {
+  source: string
+  specifiers: Array<ImportSpecifier>
+  importKind?: 'type' | 'value'
+}
+
+export type HandleNodeAccumulator = {
+  routeTree: Array<RouteNode>
+  routePiecesByPath: Record<string, RouteSubNode>
+  routeNodes: Array<RouteNode>
+}

@@ -8,9 +8,9 @@ Create a new instance of the plugin with the following options:
 
 ```ts
 const TanStackServerFnsPlugin = createTanStackServerFnPlugin({
-  // This is the ID that will be available to look up and import
-  // our server function manifest and resolve its module
-  manifestVirtualImportId: 'tsr:server-fn-manifest',
+  // This is the ID (virtual module) that will be made available to look up
+  // and import our server function manifest and resolve its modules.
+  manifestVirtualImportId: 'tanstack:server-fn-manifest',
   client: {
     getRuntimeCode: () =>
       `import { createClientRpc } from '@tanstack/react-start/client-runtime'`,
@@ -44,7 +44,7 @@ Each runtime replacement should be implemented by your framework. Generally, on 
 
 ```ts
 function createClientRpc(functionId: string) {
-  const url = `${process.env.YOUR_SERVER_BASE}/_server-fn/${functionId}`
+  const url = `${process.env.YOUR_SERVER_BASE}/_serverFn/${functionId}`
 
   const fn = async (...args: any[]) => {
     const res = await fetch(url, {
@@ -71,7 +71,7 @@ function createClientRpc(functionId: string) {
 In your server handler, you can import the manifest and use it to look up and dynamically import the server function you want to call.
 
 ```ts
-import serverFnManifest from 'tsr:server-fn-manifest'
+import serverFnManifest from 'tanstack:server-fn-manifest'
 
 export const handler = async (req: Request) => {
   const functionId = req.url.split('/').pop()
@@ -86,5 +86,5 @@ export const handler = async (req: Request) => {
   const args = await req.json()
 
   return await fnModule(...args)
-
+}
 ```

@@ -29,7 +29,7 @@ Examples of **incorrect** code for this rule:
 /* eslint "@tanstack/router/create-route-property-order": "warn" */
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/foo/bar/$id')({
+export const Route = createFileRoute({
   loader: async ({context}) => {
     await context.queryClient.ensureQueryData(getQueryOptions(context.hello)),
   },
@@ -43,7 +43,7 @@ Examples of **correct** code for this rule:
 /* eslint "@tanstack/router/create-route-property-order": "warn" */
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/foo/bar/$id')({
+export const Route = createFileRoute({
   beforeLoad: () => ({hello: 'world'}),
   loader: async ({context}) => {
     await context.queryClient.ensureQueryData(getQueryOptions(context.hello)),

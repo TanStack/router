@@ -1,13 +1,13 @@
 {
-  "name": "tanstack-start-e2e-basic-tsr-config",
+  "name": "tanstack-react-start-e2e-basic-tsr-config",
   "private": true,
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3000",
-    "dev:e2e": "vinxi dev",
-    "build": "rimraf ./count.txt && vinxi build && tsc --noEmit",
-    "start": "vinxi start",
+    "dev": "vite dev --port 3000",
+    "dev:e2e": "vite dev",
+    "build": "rimraf ./count.txt && vite build && tsc --noEmit",
+    "start": "node .output/server/index.mjs",
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
@@ -15,7 +15,7 @@
     "@tanstack/react-start": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.3"
+    "vite": "^6.3.5"
   },
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",

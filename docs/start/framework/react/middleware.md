@@ -24,12 +24,14 @@ Middleware is defined using the `createMiddleware` function. This function retur
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 
-const loggingMiddleware = createMiddleware().server(async ({ next, data }) => {
-  console.log('Request received:', data)
-  const result = await next()
-  console.log('Response processed:', result)
-  return result
-})
+const loggingMiddleware = createMiddleware({ type: 'function' }).server(
+  async ({ next, data }) => {
+    console.log('Request received:', data)
+    const result = await next()
+    console.log('Response processed:', result)
+    return result
+  },
+)
 ```
 
 ## Using Middleware in Your Server Functions
@@ -63,7 +65,7 @@ The `middleware` method is used to dependency middleware to the chain that will 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 
-const loggingMiddleware = createMiddleware().middleware([
+const loggingMiddleware = createMiddleware({ type: 'function' }).middleware([
   authMiddleware,
   loggingMiddleware,
 ])
@@ -84,7 +86,7 @@ const mySchema = z.object({
   workspaceId: z.string(),
 })
 
-const workspaceMiddleware = createMiddleware()
+const workspaceMiddleware = createMiddleware({ type: 'function' })
   .validator(zodValidator(mySchema))
   .server(({ next, data }) => {
     console.log('Workspace ID:', data.workspaceId)
@@ -107,12 +109,14 @@ The `next` function is used to execute the next middleware in the chain. **You m
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 
-const loggingMiddleware = createMiddleware().server(async ({ next }) => {
-  console.log('Request received')
-  const result = await next()
-  console.log('Response processed')
-  return result
-})
+const loggingMiddleware = createMiddleware({ type: 'function' }).server(
+  async ({ next }) => {
+    console.log('Request received')
+    const result = await next()
+    console.log('Response processed')
+    return result
+  },
+)
 ```
 
 ## Providing context to the next middleware via `next`
@@ -122,15 +126,17 @@ The `next` function can be optionally called with an object that has a `context`
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 
-const awesomeMiddleware = createMiddleware().server(({ next }) => {
-  return next({
-    context: {
-      isAwesome: Math.random() > 0.5,
-    },
-  })
-})
+const awesomeMiddleware = createMiddleware({ type: 'function' }).server(
+  ({ next }) => {
+    return next({
+      context: {
+        isAwesome: Math.random() > 0.5,
+      },
+    })
+  },
+)
 
-const loggingMiddleware = createMiddleware().server(
+const loggingMiddleware = createMiddleware({ type: 'function' }).server(
   async ({ next, context }) => {
     console.log('Is awesome?', context.isAwesome)
     return next()
@@ -180,12 +186,14 @@ Similar to the `server` function, it also receives an object with the following 
 - `context`: An object that stores data from parent middleware. It can be extended with additional data that will be passed to child middleware.
 
 ```tsx
-const loggingMiddleware = createMiddleware().client(async ({ next }) => {
-  console.log('Request sent')
-  const result = await next()
-  console.log('Response received')
-  return result
-})
+const loggingMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    console.log('Request sent')
+    const result = await next()
+    console.log('Response received')
+    return result
+  },
+)
 ```
 
 ## Sending client context to the server
@@ -193,7 +201,7 @@ const loggingMiddleware = createMiddleware().client(async ({ next }) => {
 **Client context is NOT sent to the server by default since this could end up unintentionally sending large payloads to the server.** If you need to send client context to the server, you must call the `next` function with a `sendContext` property and object to transmit any data to the server. Any properties passed to `sendContext` will be merged, serialized and sent to the server along with the data and will be available on the normal context object of any nested server middleware.
 
 ```tsx
-const requestLogger = createMiddleware()
+const requestLogger = createMiddleware({ type: 'function' })
   .client(async ({ next, context }) => {
     return next({
       sendContext: {
@@ -217,7 +225,7 @@ You may have noticed that in the example above that while client-sent context is
 import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
-const requestLogger = createMiddleware()
+const requestLogger = createMiddleware({ type: 'function' })
   .client(async ({ next, context }) => {
     return next({
       sendContext: {
@@ -241,16 +249,18 @@ Similar to sending client context to the server, you can also send server contex
 > The return type of `next` in `client` can only be inferred from middleware known in the current middleware chain. Therefore the most accurate return type of `next` is in middleware at the end of the middleware chain
 
 ```tsx
-const serverTimer = createMiddleware().server(async ({ next }) => {
-  return next({
-    sendContext: {
-      // Send the current time to the client
-      timeFromServer: new Date(),
-    },
-  })
-})
+const serverTimer = createMiddleware({ type: 'function' }).server(
+  async ({ next }) => {
+    return next({
+      sendContext: {
+        // Send the current time to the client
+        timeFromServer: new Date(),
+      },
+    })
+  },
+)
 
-const requestLogger = createMiddleware()
+const requestLogger = createMiddleware({ type: 'function' })
   .middleware([serverTimer])
   .client(async ({ next }) => {
     const result = await next()
@@ -263,7 +273,7 @@ const requestLogger = createMiddleware()
 
 ## Reading/Modifying the Server Response
 
-Middleware that uses the `server` method executes in the same context as server functions, so you can follow the exact same [Server Function Context Utilities](../server-functions#server-function-context) to read and modify anything about the request headers, status codes, etc.
+Middleware that uses the `server` method executes in the same context as server functions, so you can follow the exact same [Server Function Context Utilities](../server-functions.md#server-function-context) to read and modify anything about the request headers, status codes, etc.
 
 ## Modifying the Client Request
 
@@ -276,13 +286,15 @@ Here's an example of adding an `Authorization` header any request using this mid
 ```tsx
 import { getToken } from 'my-auth-library'
 
-const authMiddleware = createMiddleware().client(async ({ next }) => {
-  return next({
-    headers: {
-      Authorization: `Bearer ${getToken()}`,
-    },
-  })
-})
+const authMiddleware = createMiddleware({ type: 'function' }).client(
+  async ({ next }) => {
+    return next({
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    })
+  },
+)
 ```
 
 ## Using Middleware
@@ -323,10 +335,12 @@ registerGlobalMiddleware({
 
 ```tsx
 // authMiddleware.ts
-const authMiddleware = createMiddleware().server(({ next, context }) => {
-  console.log(context.user) // <-- This will not be typed!
-  // ...
-})
+const authMiddleware = createMiddleware({ type: 'function' }).server(
+  ({ next, context }) => {
+    console.log(context.user) // <-- This will not be typed!
+    // ...
+  },
+)
 ```
 
 To solve this, add the global middleware you are trying to reference to the server function's middleware array. **The global middleware will be deduped to a single entry (the global instance), and your server function will receive the correct types.**
@@ -356,40 +370,44 @@ Middleware is executed dependency-first, starting with global middleware, follow
 - `d`
 
 ```tsx
-const globalMiddleware1 = createMiddleware().server(async ({ next }) => {
-  console.log('globalMiddleware1')
-  return next()
-})
+const globalMiddleware1 = createMiddleware({ type: 'function' }).server(
+  async ({ next }) => {
+    console.log('globalMiddleware1')
+    return next()
+  },
+)
 
-const globalMiddleware2 = createMiddleware().server(async ({ next }) => {
-  console.log('globalMiddleware2')
-  return next()
-})
+const globalMiddleware2 = createMiddleware({ type: 'function' }).server(
+  async ({ next }) => {
+    console.log('globalMiddleware2')
+    return next()
+  },
+)
 
 registerGlobalMiddleware({
   middleware: [globalMiddleware1, globalMiddleware2],
 })
 
-const a = createMiddleware().server(async ({ next }) => {
+const a = createMiddleware({ type: 'function' }).server(async ({ next }) => {
   console.log('a')
   return next()
 })
 
-const b = createMiddleware()
+const b = createMiddleware({ type: 'function' })
   .middleware([a])
   .server(async ({ next }) => {
     console.log('b')
     return next()
   })
 
-const c = createMiddleware()
+const c = createMiddleware({ type: 'function' })
   .middleware()
   .server(async ({ next }) => {
     console.log('c')
     return next()
   })
 
-const d = createMiddleware()
+const d = createMiddleware({ type: 'function' })
   .middleware([b, c])
   .server(async () => {
     console.log('d')

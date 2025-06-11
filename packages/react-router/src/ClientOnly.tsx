@@ -2,7 +2,7 @@ import React from 'react'
 
 export interface ClientOnlyProps {
   /**
-   * The children to render if the JS is loaded.
+   * The children to render when the JS is loaded.
    */
   children: React.ReactNode
   /**

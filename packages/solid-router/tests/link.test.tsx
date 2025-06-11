@@ -164,6 +164,44 @@ describe('Link', () => {
     ).rejects.toThrow()
   })
 
+  test('when a Link has children', async () => {
+    const ChildComponent = vi.fn().mockReturnValue(<button>Posts</button>)
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index</h1>
+          <Link to="/posts">
+            <ChildComponent />
+          </Link>
+        </>
+      ),
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    fireEvent.click(postsLink)
+
+    const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
+    expect(postsHeading).toBeInTheDocument()
+
+    expect(ChildComponent).toBeCalledTimes(1)
+  })
+
   test('when the current route is the root', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -2551,11 +2589,6 @@ describe('Link', () => {
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
     fireEvent.click(postsLink)
-
-    const invoicesErrorText = await screen.findByText(
-      'Invariant failed: Could not find match for from: /invoices',
-    )
-    expect(invoicesErrorText).toBeInTheDocument()
   })
 
   test('when navigating to /posts/$postId/info which is declaratively masked as /posts/$postId', async () => {

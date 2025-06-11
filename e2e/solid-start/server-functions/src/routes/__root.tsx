@@ -1,9 +1,8 @@
 import { Outlet, createRootRoute } from '@tanstack/solid-router'
 
-import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({

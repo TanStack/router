@@ -13,6 +13,7 @@ import {
   Outlet,
   RouterProvider,
   SearchParamError,
+  createBrowserHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -24,14 +25,23 @@ import type {
   AnyRoute,
   AnyRouter,
   MakeRemountDepsOptionsUnion,
+  RouterHistory,
   RouterOptions,
   ValidatorFn,
   ValidatorObj,
 } from '../src'
 
+let history: RouterHistory
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
+
 afterEach(() => {
-  vi.resetAllMocks()
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
+  vi.clearAllMocks()
+  vi.resetAllMocks()
   cleanup()
 })
 
@@ -48,7 +58,10 @@ export function validateSearchParams<
   expect(router.state.location.search).toEqual(expected)
 }
 
-function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
+function createTestRouter(
+  options: RouterOptions<AnyRoute, 'never'> &
+    Required<Pick<RouterOptions<AnyRoute, 'never'>, 'history'>>,
+) {
   const rootRoute = createRootRoute({
     validateSearch: z.object({ root: z.string().optional() }),
     component: () => {
@@ -975,6 +988,7 @@ describe('router rendering stability', () => {
     const router = createRouter({
       routeTree,
       defaultRemountDeps: opts?.remountDeps.default,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
     })
 
     await act(() => render(<RouterProvider router={router} />))
@@ -1196,6 +1210,15 @@ describe('invalidate', () => {
 })
 
 describe('search params in URL', () => {
+  let history: RouterHistory
+  beforeEach(() => {
+    history = createBrowserHistory()
+    expect(window.location.pathname).toBe('/')
+  })
+  afterEach(() => {
+    history.destroy()
+    window.history.replaceState(null, 'root', '/')
+  })
   const testCases = [
     { route: '/', search: { root: 'world' } },
     { route: '/', search: { root: 'world', unknown: 'asdf' } },
@@ -1212,7 +1235,7 @@ describe('search params in URL', () => {
       it.each(testCases)(
         'at $route with search params $search',
         async ({ route, search }) => {
-          const { router } = createTestRouter({ search: { strict } })
+          const { router } = createTestRouter({ search: { strict }, history })
           window.history.replaceState(
             null,
             '',
@@ -1238,7 +1261,7 @@ describe('search params in URL', () => {
 
   describe('removes unknown search params in the URL when search.strict=true', () => {
     it.each(testCases)('%j', async ({ route, search }) => {
-      const { router } = createTestRouter({ search: { strict: true } })
+      const { router } = createTestRouter({ search: { strict: true }, history })
       window.history.replaceState(
         null,
         '',
@@ -1264,7 +1287,7 @@ describe('search params in URL', () => {
   describe.each([false, true, undefined])('default search params', (strict) => {
     let router: AnyRouter
     beforeEach(() => {
-      const result = createTestRouter({ search: { strict } })
+      const result = createTestRouter({ search: { strict }, history })
       router = result.router
     })
 
@@ -1584,6 +1607,7 @@ const createHistoryRouter = () => {
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    history,
   })
 
   return { router }
@@ -1716,7 +1740,13 @@ it('does not push to history if url and state are the same', async () => {
 })
 
 describe('does not strip search params if search validation fails', () => {
+  let history: RouterHistory
+
+  beforeEach(() => {
+    history = createBrowserHistory()
+  })
   afterEach(() => {
+    history.destroy()
     window.history.replaceState(null, 'root', '/')
     cleanup()
   })
@@ -1751,7 +1781,7 @@ describe('does not strip search params if search validation fails', () => {
 
     const routeTree = rootRoute.addChildren([indexRoute])
 
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
 
     return router
   }

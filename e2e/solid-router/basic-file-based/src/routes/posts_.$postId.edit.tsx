@@ -1,4 +1,5 @@
-import { createFileRoute, getRouteApi, useParams } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/solid-router'
+import { getRouteApi, useParams } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/posts_/$postId/edit')({
   component: PostEditPage,

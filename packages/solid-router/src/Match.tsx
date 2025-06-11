@@ -329,6 +329,16 @@ export const Outlet = () => {
 
   return (
     <Solid.Switch>
+      <Solid.Match when={router.isShell}>
+        <Solid.Suspense
+          fallback={
+            <Dynamic component={router.options.defaultPendingComponent} />
+          }
+        >
+          <ErrorComponent error={new Error('ShellBoundaryError')} />
+        </Solid.Suspense>
+      </Solid.Match>
+
       <Solid.Match when={parentGlobalNotFound()}>
         {renderRouteNotFound(router, route(), undefined)}
       </Solid.Match>

@@ -24,8 +24,8 @@ The following options are available for configuring the file-based routing:
 - [`disableLogging`](#disablelogging)
 - [`routeTreeFileHeader`](#routetreefileheader)
 - [`routeTreeFileFooter`](#routetreefilefooter)
-- [`disableManifestGeneration`](#disablemanifestgeneration)
 - [`enableRouteTreeFormatting`](#enableroutetreeformatting)
+- [`tmpDir`](#tmpdir)
 
 > [!WARNING]
 > Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the **File Naming Conventions** guide, or you may run into unexpected behavior.
@@ -132,19 +132,6 @@ By default, this value is set to `false`.
 > [!TIP]
 > You should ignore the path of your generated route tree file from your linter and formatter to avoid conflicts.
 
-### `apiBase`
-
-As a framework, [TanStack Start](/start) supports the concept of API routes. This option configures the base path for API routes.
-
-By default, this value is set to `/api`.
-
-This means that all API routes will be prefixed with `/api`.
-
-This configuration value is only useful if you are using TanStack Start.
-
-> [!IMPORTANT]
-> This default value may conflict with your own project's routing if you planned on having a normal route with the same base path. You can change this value to avoid conflicts.
-
 ### `autoCodeSplitting`
 
 This feature is only available is you are using the TanStack Router Bundler Plugin.
@@ -200,16 +187,17 @@ By default, this value is set to:
 []
 ```
 
-### `disableManifestGeneration`
-
-[TanStack Start](/start) leverages the `generatedRouteTree` file to also store a JSON tree which allows Start to easily traverse the available route tree to understand the routing structure of the application. This JSON tree is saved at the end of the generated route tree file.
-
-This option allows you to disable the generation of the manifest.
-
-By default, this value is set to `false`.
-
 ### `enableRouteTreeFormatting`
 
 This option turns on the formatting function on the generated route tree file, which can be time-consuming for large projects.
 
 By default, this value is set to `true`.
+
+### `tmpDir`
+
+Atomic file writes (route files and the generated route tree file) are implemented by creating a temporary file first and then renaming it to their actual location.
+
+This config option allows to configure the path of the temp directory that will be used for creating those temporary files.
+If it is a relative path, it will be resolved to the current working directory.
+If this value is not set, `process.env.TSR_TMP_DIR` will be used.
+If `process.env.TSR_TMP_DIR` is not set, it will default to `.tanstack/tmp` relative to the current working directory.
