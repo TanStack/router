@@ -113,7 +113,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       })
     },
     webpack(compiler) {
-      initConfigAndGenerator();
+      initConfigAndGenerator()
 
       let handle: FSWatcher | null = null
 
