@@ -94,7 +94,7 @@ The default pathname used to generate the SPA shell is `/`. We call this the **s
 // vite.config.ts
 export default defineConfig({
   plugins: [
-    TanStackStart({
+    tanstackStart({
       spa: {
         maskPath: '/app',
       },
