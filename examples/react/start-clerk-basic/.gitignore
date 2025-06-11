@@ -2,11 +2,12 @@ node_modules
 package-lock.json
 yarn.lock
 
-!.env
 .DS_Store
 .cache
+.env
 .vercel
 .output
+.nitro
 /build/
 /api/
 /server/build
@@ -16,3 +17,4 @@ yarn.lock
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+.tanstack
