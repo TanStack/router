@@ -216,20 +216,40 @@ export function onMatchSettled(opts: {
 
   function injectPromise(entry: ServerExtractedPromise) {
     router.serverSsr!.injectScript(async () => {
-      await entry.promise
+      try {
+        await entry.promise
 
-      return `__TSR_SSR__.resolvePromise(${jsesc(
-        {
-          matchId: match.id,
-          id: entry.id,
-          promiseState: entry.promise[TSR_DEFERRED_PROMISE],
-        } satisfies ResolvePromiseState,
-        {
-          isScriptContext: true,
-          wrap: true,
-          json: true,
-        },
-      )})`
+        return `__TSR_SSR__.resolvePromise(${jsesc(
+          {
+            matchId: match.id,
+            id: entry.id,
+            promiseState: entry.promise[TSR_DEFERRED_PROMISE],
+          } satisfies ResolvePromiseState,
+          {
+            isScriptContext: true,
+            wrap: true,
+            json: true,
+          },
+        )})`
+      } catch (error) {
+        // Serialize and pass errors to the client
+        return `__TSR_SSR__.rejectPromise(${jsesc(
+          {
+            matchId: match.id,
+            id: entry.id,
+            error: {
+              message: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+              name: error instanceof Error ? error.name : 'Unknown Error',
+            },
+          },
+          {
+            isScriptContext: true,
+            wrap: true,
+            json: true,
+          },
+        )})`
+      }
     })
   }
 
