@@ -212,7 +212,7 @@ Now that we have the basic templating setup, we can write our first route. This 
 // src/routes/index.tsx
 import * as fs from 'node:fs'
 import { useRouter } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, createFileRoute } from '@tanstack/react-start'
 
 const filePath = 'count.txt'
 
@@ -235,10 +235,10 @@ const updateCount = createServerFn({ method: 'POST' })
     await fs.promises.writeFile(filePath, `${count + data}`)
   })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute("/")({
   component: Home,
   loader: async () => await getCount(),
-})
+});
 
 function Home() {
   const router = useRouter()
