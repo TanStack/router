@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.121.2",
-    "@tanstack/react-router-devtools": "^1.121.2",
+    "@tanstack/react-router-devtools": "^1.121.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "postcss": "^8.5.1",
