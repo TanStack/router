@@ -378,6 +378,17 @@ export class Generator {
     }
 
     if (!writeRouteTreeFile) {
+      // compare shadowCache and cache to identify deleted routes
+      // only needs to be done if the route tree file if no other changes have been detected yet
+      for (const fullPath of this.routeNodeCache.keys()) {
+        if (!this.routeNodeShadowCache.has(fullPath)) {
+          writeRouteTreeFile = true
+          break
+        }
+      }
+    }
+
+    if (!writeRouteTreeFile) {
       return
     }
 
