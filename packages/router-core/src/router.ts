@@ -38,6 +38,7 @@ import type {
   RouterHistory,
 } from '@tanstack/history'
 import type {
+  Awaitable,
   ControlledPromise,
   NoInfer,
   NonNullableUpdater,
@@ -290,12 +291,10 @@ export interface RouterOptions<
   /**
    * A function that will be called when the router is hydrated.
    *
-   * The return value of this function will be serialized and stored in the router's dehydrated state.
-   *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#hydrate-method)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration)
    */
-  hydrate?: (dehydrated: TDehydrated) => void
+  hydrate?: (dehydrated: TDehydrated) => Awaitable<void>
   /**
    * An array of route masks that will be used to mask routes in the route tree.
    *

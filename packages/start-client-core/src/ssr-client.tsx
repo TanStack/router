@@ -174,7 +174,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   })
 
   // Allow the user to handle custom hydration data
-  router.options.hydrate?.(dehydratedData)
+  await router.options.hydrate?.(dehydratedData)
 
   // now that all necessary data is hydrated:
   // 1) fully reconstruct the route context
