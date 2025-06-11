@@ -5833,9 +5833,6 @@ importers:
       '@tanstack/router-devtools-core':
         specifier: workspace:^
         version: link:../router-devtools-core
-      solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^4.3.4
