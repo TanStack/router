@@ -291,7 +291,7 @@ export class Generator {
   }
 
   private async generatorInternal() {
-    let writeRouteTreeFile = false as boolean
+    let writeRouteTreeFile: boolean | 'force' = false
 
     let getRouteNodesResult: GetRouteNodesResult
 
@@ -375,11 +375,30 @@ export class Generator {
         }
       }
       writeRouteTreeFile = true
+    } else {
+      const routeTreeFileChange = await this.didFileChangeComparedToCache(
+        { path: this.generatedRouteTreePath },
+        this.routeTreeFileCache,
+      )
+      if (routeTreeFileChange.result !== false) {
+        writeRouteTreeFile = 'force'
+        if (routeTreeFileChange.result === true) {
+          const routeTreeFile = await this.fs.readFile(
+            this.generatedRouteTreePath,
+          )
+          if (routeTreeFile !== 'file-not-existing') {
+            this.routeTreeFileCache = {
+              fileContent: routeTreeFile.fileContent,
+              mtimeMs: routeTreeFile.stat.mtimeMs,
+            }
+          }
+        }
+      }
     }
 
     if (!writeRouteTreeFile) {
+      // only needs to be done if no other changes have been detected yet
       // compare shadowCache and cache to identify deleted routes
-      // only needs to be done if the route tree file if no other changes have been detected yet
       for (const fullPath of this.routeNodeCache.keys()) {
         if (!this.routeNodeShadowCache.has(fullPath)) {
           writeRouteTreeFile = true
@@ -403,7 +422,10 @@ export class Generator {
 
     let newMtimeMs: bigint | undefined
     if (this.routeTreeFileCache) {
-      if (this.routeTreeFileCache.fileContent === routeTreeContent) {
+      if (
+        writeRouteTreeFile !== 'force' &&
+        this.routeTreeFileCache.fileContent === routeTreeContent
+      ) {
         // existing route tree file is already up-to-date, don't write it
         // we should only get here in the initial run when the route cache is not filled yet
       } else {
