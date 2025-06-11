@@ -9,7 +9,7 @@
     "start": "vite start"
   },
   "dependencies": {
-    "@clerk/tanstack-react-start": "0.12.0",
+    "@clerk/tanstack-react-start": "0.17.0-snapshot.v20250611045520",
     "@tanstack/react-router": "^1.121.0",
     "@tanstack/react-router-devtools": "^1.121.0",
     "@tanstack/react-start": "^1.121.1",
