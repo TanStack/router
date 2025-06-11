@@ -92,18 +92,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authed': {
       id: '/_authed'
       path: ''
       fullPath: ''
       preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/posts': {
@@ -113,11 +113,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedPostsRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/posts/$postId': {
-      id: '/_authed/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof AuthedPostsPostIdRouteImport
+    '/_authed/posts/': {
+      id: '/_authed/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof AuthedPostsIndexRouteImport
       parentRoute: typeof AuthedPostsRoute
     }
     '/_authed/profile/$': {
@@ -127,11 +127,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProfileSplatRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/posts/': {
-      id: '/_authed/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof AuthedPostsIndexRouteImport
+    '/_authed/posts/$postId': {
+      id: '/_authed/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof AuthedPostsPostIdRouteImport
       parentRoute: typeof AuthedPostsRoute
     }
   }

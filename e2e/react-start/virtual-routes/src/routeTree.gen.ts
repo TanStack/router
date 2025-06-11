@@ -170,11 +170,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof homeRouteImport
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof postsPostsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_first': {
@@ -184,25 +184,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof layoutFirstLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof postsPostsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/classic/hello': {
-      id: '/classic/hello'
-      path: '/classic/hello'
-      fullPath: '/classic/hello'
-      preLoaderRoute: typeof ClassicHelloRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts/': {
-      id: '/posts/'
+    '/': {
+      id: '/'
       path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof postsPostsHomeRouteImport
+      fullPath: '/'
+      preLoaderRoute: typeof homeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof postsPostsDetailRouteImport
       parentRoute: typeof postsPostsRoute
     }
     '/_first/_second-layout': {
@@ -212,25 +205,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof layoutSecondLayoutRouteImport
       parentRoute: typeof layoutFirstLayoutRoute
     }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof postsPostsDetailRouteImport
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof postsPostsHomeRouteImport
       parentRoute: typeof postsPostsRoute
     }
-    '/_first/_second-layout/route-without-file': {
-      id: '/_first/_second-layout/route-without-file'
-      path: ''
-      fullPath: '/route-without-file'
-      preLoaderRoute: unknown
+    '/classic/hello': {
+      id: '/classic/hello'
+      path: '/classic/hello'
+      fullPath: '/classic/hello'
+      preLoaderRoute: typeof ClassicHelloRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/classic/hello/universe': {
-      id: '/classic/hello/universe'
-      path: '/universe'
-      fullPath: '/classic/hello/universe'
-      preLoaderRoute: typeof ClassicHelloUniverseRouteImport
+    '/classic/hello/': {
+      id: '/classic/hello/'
+      path: '/'
+      fullPath: '/classic/hello/'
+      preLoaderRoute: typeof ClassicHelloIndexRouteImport
       parentRoute: typeof ClassicHelloRouteRoute
     }
     '/classic/hello/world': {
@@ -240,25 +233,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClassicHelloWorldRouteImport
       parentRoute: typeof ClassicHelloRouteRoute
     }
-    '/classic/hello/': {
-      id: '/classic/hello/'
-      path: '/'
-      fullPath: '/classic/hello/'
-      preLoaderRoute: typeof ClassicHelloIndexRouteImport
+    '/classic/hello/universe': {
+      id: '/classic/hello/universe'
+      path: '/universe'
+      fullPath: '/classic/hello/universe'
+      preLoaderRoute: typeof ClassicHelloUniverseRouteImport
       parentRoute: typeof ClassicHelloRouteRoute
-    }
-    '/_first/_second-layout/route-without-file/layout-a': {
-      id: '/_first/_second-layout/route-without-file/layout-a'
-      path: '/route-without-file/layout-a'
-      fullPath: '/route-without-file/layout-a'
-      preLoaderRoute: typeof aRouteImport
-      parentRoute: typeof layoutSecondLayoutRoute
     }
     '/_first/_second-layout/route-without-file/layout-b': {
       id: '/_first/_second-layout/route-without-file/layout-b'
       path: '/route-without-file/layout-b'
       fullPath: '/route-without-file/layout-b'
       preLoaderRoute: typeof bRouteImport
+      parentRoute: typeof layoutSecondLayoutRoute
+    }
+    '/_first/_second-layout/route-without-file/layout-a': {
+      id: '/_first/_second-layout/route-without-file/layout-a'
+      path: '/route-without-file/layout-a'
+      fullPath: '/route-without-file/layout-a'
+      preLoaderRoute: typeof aRouteImport
       parentRoute: typeof layoutSecondLayoutRoute
     }
   }

@@ -81,11 +81,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/03': {
@@ -95,18 +95,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof R03RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/01-example/': {
-      id: '/01-example/'
-      path: '/01-example'
-      fullPath: '/01-example'
-      preLoaderRoute: typeof R01ExampleIndexRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/02/': {
@@ -114,6 +107,13 @@ declare module '@tanstack/react-router' {
       path: '/02'
       fullPath: '/02'
       preLoaderRoute: typeof R02IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/01-example/': {
+      id: '/01-example/'
+      path: '/01-example'
+      fullPath: '/01-example'
+      preLoaderRoute: typeof R01ExampleIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

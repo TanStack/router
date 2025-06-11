@@ -120,11 +120,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/_pathlessLayout': {
+      id: '/_pathlessLayout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof PathlessLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts': {
@@ -134,26 +134,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_pathlessLayout': {
-      id: '/_pathlessLayout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof PathlessLayoutRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_pathlessLayout/_nested-layout': {
-      id: '/_pathlessLayout/_nested-layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteImport
-      parentRoute: typeof PathlessLayoutRoute
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRouteRoute
     }
     '/posts/': {
       id: '/posts/'
@@ -162,18 +148,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PostsIndexRouteImport
       parentRoute: typeof PostsRouteRoute
     }
-    '/_pathlessLayout/_nested-layout/route-a': {
-      id: '/_pathlessLayout/_nested-layout/route-a'
-      path: '/route-a'
-      fullPath: '/route-a'
-      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteARouteImport
-      parentRoute: typeof PathlessLayoutNestedLayoutRoute
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRouteRoute
+    }
+    '/_pathlessLayout/_nested-layout': {
+      id: '/_pathlessLayout/_nested-layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteImport
+      parentRoute: typeof PathlessLayoutRoute
     }
     '/_pathlessLayout/_nested-layout/route-b': {
       id: '/_pathlessLayout/_nested-layout/route-b'
       path: '/route-b'
       fullPath: '/route-b'
       preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteBRouteImport
+      parentRoute: typeof PathlessLayoutNestedLayoutRoute
+    }
+    '/_pathlessLayout/_nested-layout/route-a': {
+      id: '/_pathlessLayout/_nested-layout/route-a'
+      path: '/route-a'
+      fullPath: '/route-a'
+      preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteARouteImport
       parentRoute: typeof PathlessLayoutNestedLayoutRoute
     }
   }

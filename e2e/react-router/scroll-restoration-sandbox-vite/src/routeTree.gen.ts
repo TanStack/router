@@ -130,25 +130,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/lazy-page': {
-      id: '/(tests)/lazy-page'
-      path: '/lazy-page'
-      fullPath: '/lazy-page'
-      preLoaderRoute: typeof testsLazyPageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(tests)/lazy-with-loader-page': {
-      id: '/(tests)/lazy-with-loader-page'
-      path: '/lazy-with-loader-page'
-      fullPath: '/lazy-with-loader-page'
-      preLoaderRoute: typeof testsLazyWithLoaderPageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(tests)/normal-page': {
-      id: '/(tests)/normal-page'
-      path: '/normal-page'
-      fullPath: '/normal-page'
-      preLoaderRoute: typeof testsNormalPageRouteImport
+    '/(tests)/virtual-page': {
+      id: '/(tests)/virtual-page'
+      path: '/virtual-page'
+      fullPath: '/virtual-page'
+      preLoaderRoute: typeof testsVirtualPageLazyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(tests)/page-with-search': {
@@ -158,25 +144,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testsPageWithSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/lazy-page': {
-      id: '/(tests)/lazy-page'
-      path: '/lazy-page'
-      fullPath: '/lazy-page'
-      preLoaderRoute: typeof testsLazyPageLazyRouteImport
+    '/(tests)/normal-page': {
+      id: '/(tests)/normal-page'
+      path: '/normal-page'
+      fullPath: '/normal-page'
+      preLoaderRoute: typeof testsNormalPageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(tests)/lazy-with-loader-page': {
       id: '/(tests)/lazy-with-loader-page'
       path: '/lazy-with-loader-page'
       fullPath: '/lazy-with-loader-page'
-      preLoaderRoute: typeof testsLazyWithLoaderPageLazyRouteImport
+      preLoaderRoute: typeof testsLazyWithLoaderPageRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/virtual-page': {
-      id: '/(tests)/virtual-page'
-      path: '/virtual-page'
-      fullPath: '/virtual-page'
-      preLoaderRoute: typeof testsVirtualPageLazyRouteImport
+    '/(tests)/lazy-page': {
+      id: '/(tests)/lazy-page'
+      path: '/lazy-page'
+      fullPath: '/lazy-page'
+      preLoaderRoute: typeof testsLazyPageRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

@@ -221,13 +221,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof postsPostsDetailRouteImport
       parentRoute: typeof postsPostsRoute
     }
-    '/_first/_second-layout/route-without-file': {
-      id: '/_first/_second-layout/route-without-file'
-      path: ''
-      fullPath: '/route-without-file'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootRouteImport
-    }
     '/classic/hello/universe': {
       id: '/classic/hello/universe'
       path: '/universe'

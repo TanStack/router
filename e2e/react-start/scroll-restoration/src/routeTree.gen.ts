@@ -83,11 +83,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/normal-page': {
-      id: '/(tests)/normal-page'
-      path: '/normal-page'
-      fullPath: '/normal-page'
-      preLoaderRoute: typeof testsNormalPageRouteImport
+    '/(tests)/with-search': {
+      id: '/(tests)/with-search'
+      path: '/with-search'
+      fullPath: '/with-search'
+      preLoaderRoute: typeof testsWithSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(tests)/with-loader': {
@@ -97,11 +97,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testsWithLoaderRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/with-search': {
-      id: '/(tests)/with-search'
-      path: '/with-search'
-      fullPath: '/with-search'
-      preLoaderRoute: typeof testsWithSearchRouteImport
+    '/(tests)/normal-page': {
+      id: '/(tests)/normal-page'
+      path: '/normal-page'
+      fullPath: '/normal-page'
+      preLoaderRoute: typeof testsNormalPageRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

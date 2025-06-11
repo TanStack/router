@@ -87,25 +87,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: unknown
-      parentRoute: typeof rootRouteImport
-    }
-    '/wildcard/$': {
-      id: '/wildcard/$'
-      path: '/wildcard/$'
-      fullPath: '/wildcard/$'
-      preLoaderRoute: typeof WildcardSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/wildcard/prefix{$}': {
-      id: '/wildcard/prefix{$}'
-      path: '/wildcard/prefix{$}'
-      fullPath: '/wildcard/prefix{$}'
-      preLoaderRoute: typeof WildcardPrefixChar123Char125RouteImport
+    '/wildcard/{$}suffix': {
+      id: '/wildcard/{$}suffix'
+      path: '/wildcard/{$}suffix'
+      fullPath: '/wildcard/{$}suffix'
+      preLoaderRoute: typeof WildcardChar123Char125suffixRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/wildcard/{$}.suffix': {
@@ -115,11 +101,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WildcardChar123Char125DotsuffixRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/wildcard/{$}suffix': {
-      id: '/wildcard/{$}suffix'
-      path: '/wildcard/{$}suffix'
-      fullPath: '/wildcard/{$}suffix'
-      preLoaderRoute: typeof WildcardChar123Char125suffixRouteImport
+    '/wildcard/prefix{$}': {
+      id: '/wildcard/prefix{$}'
+      path: '/wildcard/prefix{$}'
+      fullPath: '/wildcard/prefix{$}'
+      preLoaderRoute: typeof WildcardPrefixChar123Char125RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wildcard/$': {
+      id: '/wildcard/$'
+      path: '/wildcard/$'
+      fullPath: '/wildcard/$'
+      preLoaderRoute: typeof WildcardSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

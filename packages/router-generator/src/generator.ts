@@ -666,7 +666,13 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
 
         fileRoutesByPathInterfacePerPlugin = buildFileRoutesByPathInterface({
           ...plugin.moduleAugmentation({ generator: this }),
-          routeNodes: preRouteNodes,
+          routeNodes:
+            this.config.verboseFileRoutes !== false
+              ? sortedRouteNodes
+              : [
+                  ...routeFileResult.map(({ node }) => node),
+                  ...sortedRouteNodes.filter((d) => d.isVirtual),
+                ],
           exportName,
         })
       }

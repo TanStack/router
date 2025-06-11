@@ -82,18 +82,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FooBarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/foo/bar/': {
-      id: '/foo/bar/'
-      path: '/'
-      fullPath: '/foo/bar/'
-      preLoaderRoute: typeof fooBarHomeRouteImport
-      parentRoute: typeof FooBarRoute
-    }
     '/foo/bar/$id': {
       id: '/foo/bar/$id'
       path: '/$id'
       fullPath: '/foo/bar/$id'
       preLoaderRoute: typeof fooBarDetailsRouteImport
+      parentRoute: typeof FooBarRoute
+    }
+    '/foo/bar/': {
+      id: '/foo/bar/'
+      path: '/'
+      fullPath: '/foo/bar/'
+      preLoaderRoute: typeof fooBarHomeRouteImport
       parentRoute: typeof FooBarRoute
     }
   }
