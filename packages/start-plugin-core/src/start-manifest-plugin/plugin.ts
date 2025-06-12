@@ -145,16 +145,11 @@ export function startManifestPlugin(
             opts.tsr.routesDirectory,
           )
 
-          // Process virtual route directory paths
-          const virtualRouteDirectoriesFromRoot =
-            opts.tsr.virtualRouteDirectories.map((dir) =>
-              path.relative(opts.root, dir),
-            )
+
 
           // Export route nodes information for router-plugin to use
           exportRouteNodesInfo({
             routesDirectory: opts.tsr.routesDirectory,
-            virtualRouteDirectories: opts.tsr.virtualRouteDirectories,
             routes: routeTreeRoutes,
           })
 
@@ -169,23 +164,7 @@ export function startManifestPlugin(
               file = filesByRouteFilePath[defaultRoutePath]
             }
 
-            if (!file && virtualRouteDirectoriesFromRoot.length > 0) {
-              for (const virtualDir of virtualRouteDirectoriesFromRoot) {
-                const virtualFilePath = path.posix.join(
-                  virtualDir,
-                  v.filePath as string,
-                )
-                if (filesByRouteFilePath[virtualFilePath]) {
-                  file = filesByRouteFilePath[virtualFilePath]
 
-                  console.log(
-                    `[TanStack Router] Found virtual route: ${virtualFilePath}`,
-                  )
-
-                  break
-                }
-              }
-            }
 
             if (file) {
               // Map the relevant imports to their route paths,
