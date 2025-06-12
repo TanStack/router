@@ -96,9 +96,7 @@ export async function transform({
       // this is an export without a declaration, e.g. `export { Route }`
       else if (n.declaration === null && n.specifiers) {
         for (const spec of n.specifiers) {
-          if (
-            typeof spec.exported.name === 'string'
-          ) {
+          if (typeof spec.exported.name === 'string') {
             const plugin = registeredExports.get(spec.exported.name)
             if (plugin) {
               const variableName = spec.local?.name || spec.exported.name
