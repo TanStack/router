@@ -1588,7 +1588,7 @@ export class RouterCore<
 
       if (opts._includeValidateState) {
         let validatedState = {}
-        matchedRoutesResult?.matchedRoutes.forEach((route) => {
+        destRoutes.forEach((route) => {
           try {
             if (route.options.validateState) {
               validatedState = {
