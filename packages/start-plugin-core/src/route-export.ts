@@ -8,7 +8,6 @@ let routeNodesInfo: RouteExportInfo | null = null
 
 export interface RouteExportInfo {
   routesDirectory: string
-  virtualRouteDirectories: Array<string>
   routes: Record<string, Record<string, unknown>>
 }
 
@@ -27,15 +26,4 @@ export function getRouteNodesInfo(): RouteExportInfo | null {
   return routeNodesInfo
 }
 
-export function isFileInVirtualRouteDirectories(
-  filePath: string,
-  virtualRouteDirectories: Array<string>,
-): boolean {
-  if (virtualRouteDirectories.length === 0) {
-    return false
-  }
 
-  return virtualRouteDirectories.some((dir) =>
-    filePath.startsWith(dir.replace(/\\/g, '/')),
-  )
-}

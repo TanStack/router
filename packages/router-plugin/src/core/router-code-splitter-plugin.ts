@@ -20,7 +20,6 @@ import { decodeIdentifier } from './code-splitter/path-ids'
 import {
   debug,
   fileIsInRoutesDirectory,
-  fileIsInVirtualRouteDirectory,
 } from './utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 
@@ -66,7 +65,6 @@ plugins: [
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
 export interface RouterCodeSplitterOptions extends Partial<Config> {
-  virtualRouteDirectories?: Array<string>
 }
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
@@ -197,11 +195,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       }
 
       if (
-        (fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
-          fileIsInVirtualRouteDirectory(
-            id,
-            userConfig.virtualRouteDirectories,
-          )) &&
+        fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
         (code.includes('createRoute(') || code.includes('createFileRoute('))
       ) {
         for (const externalPlugin of bannedBeforeExternalPlugins) {
@@ -227,7 +221,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       if (
         fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
-        fileIsInVirtualRouteDirectory(id, userConfig.virtualRouteDirectories) ||
         id.includes(tsrSplit)
       ) {
         return true
@@ -241,13 +234,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
         userConfig = getConfig(options, ROOT)
 
-        if (options.virtualRouteDirectories?.length) {
-          debug &&
-            console.log(
-              '[TanStack Router] Using virtual route directories from options:',
-              options.virtualRouteDirectories,
-            )
-        }
+  
       },
     },
 
