@@ -14,11 +14,15 @@ Once installed, you'll need to add the plugin to your configuration.
 
 ```tsx
 // webpack.config.ts
-import { TanStackRouterWebpack } from '@tanstack/router-plugin/webpack'
+import { tanstackRouter } from '@tanstack/router-plugin/webpack'
 
 export default {
   plugins: [
-    TanStackRouterWebpack({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
+      verboseFileRoutes: false,
+    }),
   ],
 }
 ```
@@ -73,6 +77,6 @@ When using the TanStack Router Plugin with Webpack for File-based routing, it co
 }
 ```
 
-If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by editing the configuration object passed into the `TanStackRouterWebpack` function.
+If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by editing the configuration object passed into the `tanstackRouter` function.
 
 You can find all the available configuration options in the [File-based Routing API Reference](../../../../api/file-based-routing.md).

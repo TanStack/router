@@ -1,6 +1,7 @@
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 
+export type Awaitable<T> = T | Promise<T>
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue
   ? TYesResult
@@ -168,6 +169,20 @@ export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
     ? never
     : 'Function is not serializable'
   : { [K in keyof T]: ValidateJSON<T[K]> }
+
+export type LooseReturnType<T> = T extends (
+  ...args: Array<any>
+) => infer TReturn
+  ? TReturn
+  : never
+
+export type LooseAsyncReturnType<T> = T extends (
+  ...args: Array<any>
+) => infer TReturn
+  ? TReturn extends Promise<infer TReturn>
+    ? TReturn
+    : TReturn
+  : never
 
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
@@ -445,21 +460,4 @@ export function shallow<T>(objA: T, objB: T) {
     }
   }
   return true
-}
-
-/**
- * Checks if a string contains URI-encoded special characters (e.g., %3F, %20).
- *
- * @param {string} inputString The string to check.
- * @returns {boolean} True if the string contains URI-encoded characters, false otherwise.
- * @example
- * ```typescript
- * const str1 = "foo%3Fbar";
- * const hasEncodedChars = hasUriEncodedChars(str1); // returns true
- * ```
- */
-export function hasUriEncodedChars(inputString: string): boolean {
-  // This regex looks for a percent sign followed by two hexadecimal digits
-  const pattern = /%[0-9A-Fa-f]{2}/
-  return pattern.test(inputString)
 }

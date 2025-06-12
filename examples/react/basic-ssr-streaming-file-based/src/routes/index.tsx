@@ -1,7 +1,7 @@
-import { Await, createFileRoute } from '@tanstack/react-router'
+import { Await } from '@tanstack/react-router'
 import * as React from 'react'
 
-export const Route = createFileRoute('/')({
+export const Route = createFileRoute({
   loader: () => ({
     date: new Date(),
     deferred: new Promise<{ date: Date }>((r) =>

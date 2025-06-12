@@ -8,7 +8,7 @@ export const Route = createFileRoute('/posts')({
 });
 if (import.meta.hot) {
   import.meta.hot.accept(newModule => {
-    if (newModule.Route && typeof newModule.Route.clone === 'function') {
+    if (newModule && newModule.Route && typeof newModule.Route.clone === 'function') {
       newModule.Route.clone(Route);
     }
   });

@@ -62,7 +62,6 @@ export function useLinkProps<
       'startTransition',
       'resetScroll',
       'viewTransition',
-      'children',
       'target',
       'disabled',
       'style',
@@ -250,7 +249,6 @@ export function useLinkProps<
         },
       },
       Solid.splitProps(local, [
-        'children',
         'target',
         'disabled',
         'style',
@@ -294,7 +292,7 @@ export function useLinkProps<
         startTransition: local.startTransition,
         viewTransition: local.viewTransition,
         ignoreBlocker: local.ignoreBlocker,
-      } as any)
+      })
     }
   }
 
@@ -545,29 +543,37 @@ export interface LinkComponentRoute<
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => Solid.JSX.Element>,
 ): LinkComponent<TComp> {
-  return (props) => <Link {...(props as any)} _asChild={Comp} />
+  return (props) => <Link {...props} _asChild={Comp} />
 }
 
-export const Link: LinkComponent<'a'> = (props: any) => {
-  const [local, rest] = Solid.splitProps(props, ['_asChild'])
+export const Link: LinkComponent<'a'> = (props) => {
+  const [local, rest] = Solid.splitProps(
+    props as typeof props & { _asChild: any },
+    ['_asChild', 'children'],
+  )
 
   const [_, linkProps] = Solid.splitProps(
     useLinkProps(rest as unknown as any),
-    ['type', 'children'],
+    ['type'],
   )
 
-  const children = () =>
-    typeof rest.children === 'function'
-      ? rest.children({
-          get isActive() {
-            return (linkProps as any)['data-status'] === 'active'
-          },
-        })
-      : rest.children
+  const children = Solid.createMemo(() => {
+    const ch = local.children
+    if (typeof ch === 'function') {
+      return ch({
+        get isActive() {
+          return (linkProps as any)['data-status'] === 'active'
+        },
+        isTransitioning: false,
+      })
+    }
+
+    return ch satisfies Solid.JSX.Element
+  })
 
   return (
     <Dynamic component={local._asChild ? local._asChild : 'a'} {...linkProps}>
-      {children}
+      {children()}
     </Dynamic>
   )
 }

@@ -14,7 +14,7 @@ const loaderResult = v.object({
   params,
 })
 
-const middleware = createMiddleware()
+const middleware = createMiddleware({ type: 'function' })
   .validator(params)
   .client(({ next }) => {
     const context = { client: { paramsPlaceholder: 'paramsPlaceholder' } }

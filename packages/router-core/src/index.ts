@@ -3,7 +3,6 @@ export type { DeferredPromiseState, DeferredPromise } from './defer'
 export { preloadWarning } from './link'
 export type {
   IsRequiredParams,
-  ParsePathParams,
   AddTrailingSlash,
   RemoveTrailingSlashes,
   AddLeadingSlash,
@@ -60,8 +59,10 @@ export type {
   InferFileRouteTypes,
   FileRouteTypes,
   FileRoutesByPath,
+  CreateFileRoute,
   LazyRoute,
   LazyRouteOptions,
+  CreateLazyFileRoute,
 } from './fileRoute'
 
 export type {
@@ -143,15 +144,11 @@ export type {
   ErrorRouteProps,
   ErrorComponentProps,
   NotFoundRouteProps,
-  ParseSplatParams,
-  SplatParams,
   ResolveParams,
   ParseParamsFn,
   StringifyParamsFn,
   ParamsOptions,
   UpdatableStaticRouteOption,
-  LooseReturnType,
-  LooseAsyncReturnType,
   ContextReturnType,
   ContextAsyncReturnType,
   ResolveRouteContext,
@@ -199,6 +196,8 @@ export type {
   RouteAddChildrenFn,
   RouteAddFileChildrenFn,
   RouteAddFileTypesFn,
+  ResolveOptionalParams,
+  ResolveRequiredParams,
   RootRoute,
 } from './route'
 
@@ -211,6 +210,8 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
+  processRouteTree,
+  getMatchedRoutes,
 } from './router'
 export type {
   ViewTransitionOptions,
@@ -244,7 +245,6 @@ export type {
   ControllablePromise,
   InjectedHtmlEntry,
   RouterErrorSerializer,
-  MatchedRoutesResult,
   EmitFn,
   LoadFn,
   GetMatchFn,
@@ -324,6 +324,8 @@ export type {
   MergeAll,
   ValidateJSON,
   StrictOrFrom,
+  LooseReturnType,
+  LooseAsyncReturnType,
 } from './utils'
 
 export type {
@@ -377,7 +379,12 @@ export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 
 export type { Redirect, ResolvedRedirect, AnyRedirect } from './redirect'
 
-export { redirect, isRedirect, isResolvedRedirect } from './redirect'
+export {
+  redirect,
+  isRedirect,
+  isResolvedRedirect,
+  parseRedirect,
+} from './redirect'
 
 export type { NotFoundError } from './not-found'
 export { isNotFound, notFound } from './not-found'

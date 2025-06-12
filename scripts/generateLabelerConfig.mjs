@@ -8,7 +8,7 @@ function generateLabelerConfig() {
    * Pairs of package labels and their corresponding paths
    * @type {Array<[string, string]>}
    **/
-  const pairs = []
+  let pairs = []
 
   // Add subfolders in the packages folder, i.e. packages/**
   fs.readdirSync(path.resolve('packages'))
@@ -27,6 +27,9 @@ function generateLabelerConfig() {
         )
       }
     })
+
+  // Sort by package name in alphabetical order
+  pairs.sort((a, b) => a[0].localeCompare(b[0]))
 
   // Always add the docs folder
   pairs.push(['documentation', 'docs/**/*'])

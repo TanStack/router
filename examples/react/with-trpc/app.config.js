@@ -1,8 +1,10 @@
-import { createApp } from 'vinxi'
+import { defineConfig } from 'vite'
 import reactRefresh from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
-export default createApp({
+// TODO: Need to migrate this to vite and the new TanStack Start plugin
+
+export default defineConfig({
   server: {
     preset: 'node-server', // change to 'netlify' or 'bun' or anyof the supported presets for nitro (nitro.unjs.io)
     experimental: {
@@ -29,7 +31,7 @@ export default createApp({
       handler: './index.html',
       target: 'browser',
       plugins: () => [
-        TanStackRouterVite({
+        tanstackRouter({
           target: 'react',
           autoCodeSplitting: true,
           routesDirectory: './src/routes',

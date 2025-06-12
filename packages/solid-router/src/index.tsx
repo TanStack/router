@@ -47,7 +47,6 @@ export type {
   DeferredPromiseState,
   DeferredPromise,
   ParsedLocation,
-  ParsePathParams,
   RemoveTrailingSlashes,
   RemoveLeadingSlashes,
   ActiveOptions,
@@ -56,6 +55,8 @@ export type {
   RootRouteId,
   AnyPathParams,
   ResolveParams,
+  ResolveOptionalParams,
+  ResolveRequiredParams,
   SearchSchemaInput,
   StateSchemaInput,
   AnyContext,
@@ -78,8 +79,6 @@ export type {
   TrimPath,
   TrimPathLeft,
   TrimPathRight,
-  ParseSplatParams,
-  SplatParams,
   StringifyParamsFn,
   ParamsOptions,
   InferAllParams,
@@ -208,6 +207,8 @@ export type {
   InjectedHtmlEntry,
   RouterErrorSerializer,
   SerializerExtensions,
+  CreateFileRoute,
+  CreateLazyFileRoute,
 } from '@tanstack/router-core'
 
 export {

@@ -87,8 +87,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
-      root: ROOT,
-      filename: id,
     })
 
     if (fromCode.groupings) {
@@ -122,11 +120,11 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
-      root: ROOT,
-      filename: id,
       runtimeEnv: isProduction ? 'prod' : 'dev',
       codeSplitGroupings: splitGroupings,
       targetFramework: userConfig.target,
+      filename: id,
+      id,
     })
 
     if (debug) {
@@ -161,7 +159,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const result = compileCodeSplitVirtualRoute({
       code,
-      root: ROOT,
       filename: id,
       splitTargets: grouping,
     })

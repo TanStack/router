@@ -8,202 +8,239 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
+import { Route as rootRouteImport } from './routes/root'
+import { Route as layoutRouteImport } from './routes/layout'
+import { Route as indexRouteImport } from './routes/index'
+import { Route as dbDashboardRouteImport } from './routes/db/dashboard'
+import { Route as pagesRouteImport } from './routes/pages'
+import { Route as HelloIndexRouteImport } from './routes/subtree/index'
+import { Route as dbDashboardInvoicesRouteImport } from './routes/db/dashboard-invoices'
+import { Route as dbDashboardIndexRouteImport } from './routes/db/dashboard-index'
+import { Route as HelloFooIndexRouteImport } from './routes/subtree/foo/index'
+import { Route as HelloFooIdRouteImport } from './routes/subtree/foo/$id'
+import { Route as dbInvoiceDetailRouteImport } from './routes/db/invoice-detail'
+import { Route as dbInvoicesIndexRouteImport } from './routes/db/invoices-index'
 
-// Import Routes
-
-import { Route as rootRoute } from './routes/root'
-import { Route as layoutImport } from './routes/layout'
-import { Route as indexImport } from './routes/index'
-import { Route as dbDashboardImport } from './routes/db/dashboard'
-import { Route as pagesImport } from './routes/pages'
-import { Route as HelloIndexImport } from './routes/subtree/index'
-import { Route as dbDashboardInvoicesImport } from './routes/db/dashboard-invoices'
-import { Route as dbDashboardIndexImport } from './routes/db/dashboard-index'
-import { Route as HelloFooIndexImport } from './routes/subtree/foo/index'
-import { Route as HelloFooIdImport } from './routes/subtree/foo/$id'
-import { Route as dbInvoiceDetailImport } from './routes/db/invoice-detail'
-import { Route as dbInvoicesIndexImport } from './routes/db/invoices-index'
-
-// Create Virtual Routes
-
-const LangImport = createFileRoute('/$lang')()
-
-// Create/Update Routes
-
-const layoutRoute = layoutImport.update({
+const layoutRoute = layoutRouteImport.update({
   id: '/_layout',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const LangRoute = LangImport.update({
-  id: '/$lang',
-  path: '/$lang',
-  getParentRoute: () => rootRoute,
-} as any)
-
-const indexRoute = indexImport.update({
+const indexRoute = indexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const dbDashboardRoute = dbDashboardImport.update({
+const dbDashboardRoute = dbDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => layoutRoute,
 } as any)
-
-const pagesRoute = pagesImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => LangRoute,
+const pagesRoute = pagesRouteImport.update({
+  id: '/$lang/',
+  path: '/$lang/',
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const HelloIndexRoute = HelloIndexImport.update({
+const HelloIndexRoute = HelloIndexRouteImport.update({
   id: '/hello/',
   path: '/hello/',
   getParentRoute: () => layoutRoute,
 } as any)
-
-const dbDashboardInvoicesRoute = dbDashboardInvoicesImport.update({
+const dbDashboardInvoicesRoute = dbDashboardInvoicesRouteImport.update({
   id: '/invoices',
   path: '/invoices',
   getParentRoute: () => dbDashboardRoute,
 } as any)
-
-const dbDashboardIndexRoute = dbDashboardIndexImport.update({
+const dbDashboardIndexRoute = dbDashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => dbDashboardRoute,
 } as any)
-
-const HelloFooIndexRoute = HelloFooIndexImport.update({
+const HelloFooIndexRoute = HelloFooIndexRouteImport.update({
   id: '/hello/foo/',
   path: '/hello/foo/',
   getParentRoute: () => layoutRoute,
 } as any)
-
-const HelloFooIdRoute = HelloFooIdImport.update({
+const HelloFooIdRoute = HelloFooIdRouteImport.update({
   id: '/hello/foo/$id',
   path: '/hello/foo/$id',
   getParentRoute: () => layoutRoute,
 } as any)
-
-const dbInvoiceDetailRoute = dbInvoiceDetailImport.update({
+const dbInvoiceDetailRoute = dbInvoiceDetailRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => dbDashboardInvoicesRoute,
 } as any)
-
-const dbInvoicesIndexRoute = dbInvoicesIndexImport.update({
+const dbInvoicesIndexRoute = dbInvoicesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => dbDashboardInvoicesRoute,
 } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof indexRoute
+  '': typeof layoutRouteWithChildren
+  '/$lang': typeof pagesRoute
+  '/dashboard': typeof dbDashboardRouteWithChildren
+  '/dashboard/': typeof dbDashboardIndexRoute
+  '/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
+  '/hello': typeof HelloIndexRoute
+  '/dashboard/invoices/': typeof dbInvoicesIndexRoute
+  '/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
+  '/hello/foo/$id': typeof HelloFooIdRoute
+  '/hello/foo': typeof HelloFooIndexRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof indexRoute
+  '': typeof layoutRouteWithChildren
+  '/$lang': typeof pagesRoute
+  '/dashboard': typeof dbDashboardIndexRoute
+  '/hello': typeof HelloIndexRoute
+  '/dashboard/invoices': typeof dbInvoicesIndexRoute
+  '/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
+  '/hello/foo/$id': typeof HelloFooIdRoute
+  '/hello/foo': typeof HelloFooIndexRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof indexRoute
+  '/_layout': typeof layoutRouteWithChildren
+  '/$lang/': typeof pagesRoute
+  '/_layout/dashboard': typeof dbDashboardRouteWithChildren
+  '/_layout/dashboard/': typeof dbDashboardIndexRoute
+  '/_layout/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
+  '/_layout/hello/': typeof HelloIndexRoute
+  '/_layout/dashboard/invoices/': typeof dbInvoicesIndexRoute
+  '/_layout/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
+  '/_layout/hello/foo/$id': typeof HelloFooIdRoute
+  '/_layout/hello/foo/': typeof HelloFooIndexRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | ''
+    | '/$lang'
+    | '/dashboard'
+    | '/dashboard/'
+    | '/dashboard/invoices'
+    | '/hello'
+    | '/dashboard/invoices/'
+    | '/dashboard/invoices/$id'
+    | '/hello/foo/$id'
+    | '/hello/foo'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | ''
+    | '/$lang'
+    | '/dashboard'
+    | '/hello'
+    | '/dashboard/invoices'
+    | '/dashboard/invoices/$id'
+    | '/hello/foo/$id'
+    | '/hello/foo'
+  id:
+    | '__root__'
+    | '/'
+    | '/_layout'
+    | '/$lang/'
+    | '/_layout/dashboard'
+    | '/_layout/dashboard/'
+    | '/_layout/dashboard/invoices'
+    | '/_layout/hello/'
+    | '/_layout/dashboard/invoices/'
+    | '/_layout/dashboard/invoices/$id'
+    | '/_layout/hello/foo/$id'
+    | '/_layout/hello/foo/'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  indexRoute: typeof indexRoute
+  layoutRoute: typeof layoutRouteWithChildren
+  pagesRoute: typeof pagesRoute
+}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof indexImport
-      parentRoute: typeof rootRoute
-    }
-    '/$lang': {
-      id: '/$lang'
-      path: '/$lang'
-      fullPath: '/$lang'
-      preLoaderRoute: typeof LangImport
-      parentRoute: typeof rootRoute
-    }
     '/_layout': {
       id: '/_layout'
       path: ''
       fullPath: ''
-      preLoaderRoute: typeof layoutImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof layoutRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/$lang/': {
-      id: '/$lang/'
+    '/': {
+      id: '/'
       path: '/'
-      fullPath: '/$lang/'
-      preLoaderRoute: typeof pagesImport
-      parentRoute: typeof LangImport
+      fullPath: '/'
+      preLoaderRoute: typeof indexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/dashboard': {
       id: '/_layout/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
-      preLoaderRoute: typeof dbDashboardImport
-      parentRoute: typeof layoutImport
+      preLoaderRoute: typeof dbDashboardRouteImport
+      parentRoute: typeof layoutRoute
     }
-    '/_layout/dashboard/': {
-      id: '/_layout/dashboard/'
-      path: '/'
-      fullPath: '/dashboard/'
-      preLoaderRoute: typeof dbDashboardIndexImport
-      parentRoute: typeof dbDashboardImport
-    }
-    '/_layout/dashboard/invoices': {
-      id: '/_layout/dashboard/invoices'
-      path: '/invoices'
-      fullPath: '/dashboard/invoices'
-      preLoaderRoute: typeof dbDashboardInvoicesImport
-      parentRoute: typeof dbDashboardImport
+    '/$lang/': {
+      id: '/$lang/'
+      path: '/$lang'
+      fullPath: '/$lang'
+      preLoaderRoute: typeof pagesRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_layout/hello/': {
       id: '/_layout/hello/'
       path: '/hello'
       fullPath: '/hello'
-      preLoaderRoute: typeof HelloIndexImport
-      parentRoute: typeof layoutImport
+      preLoaderRoute: typeof HelloIndexRouteImport
+      parentRoute: typeof layoutRoute
     }
-    '/_layout/dashboard/invoices/': {
-      id: '/_layout/dashboard/invoices/'
+    '/_layout/dashboard/invoices': {
+      id: '/_layout/dashboard/invoices'
+      path: '/invoices'
+      fullPath: '/dashboard/invoices'
+      preLoaderRoute: typeof dbDashboardInvoicesRouteImport
+      parentRoute: typeof dbDashboardRoute
+    }
+    '/_layout/dashboard/': {
+      id: '/_layout/dashboard/'
       path: '/'
-      fullPath: '/dashboard/invoices/'
-      preLoaderRoute: typeof dbInvoicesIndexImport
-      parentRoute: typeof dbDashboardInvoicesImport
-    }
-    '/_layout/dashboard/invoices/$id': {
-      id: '/_layout/dashboard/invoices/$id'
-      path: '/$id'
-      fullPath: '/dashboard/invoices/$id'
-      preLoaderRoute: typeof dbInvoiceDetailImport
-      parentRoute: typeof dbDashboardInvoicesImport
-    }
-    '/_layout/hello/foo/$id': {
-      id: '/_layout/hello/foo/$id'
-      path: '/hello/foo/$id'
-      fullPath: '/hello/foo/$id'
-      preLoaderRoute: typeof HelloFooIdImport
-      parentRoute: typeof layoutImport
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof dbDashboardIndexRouteImport
+      parentRoute: typeof dbDashboardRoute
     }
     '/_layout/hello/foo/': {
       id: '/_layout/hello/foo/'
       path: '/hello/foo'
       fullPath: '/hello/foo'
-      preLoaderRoute: typeof HelloFooIndexImport
-      parentRoute: typeof layoutImport
+      preLoaderRoute: typeof HelloFooIndexRouteImport
+      parentRoute: typeof layoutRoute
+    }
+    '/_layout/hello/foo/$id': {
+      id: '/_layout/hello/foo/$id'
+      path: '/hello/foo/$id'
+      fullPath: '/hello/foo/$id'
+      preLoaderRoute: typeof HelloFooIdRouteImport
+      parentRoute: typeof layoutRoute
+    }
+    '/_layout/dashboard/invoices/$id': {
+      id: '/_layout/dashboard/invoices/$id'
+      path: '/$id'
+      fullPath: '/dashboard/invoices/$id'
+      preLoaderRoute: typeof dbInvoiceDetailRouteImport
+      parentRoute: typeof dbDashboardInvoicesRoute
+    }
+    '/_layout/dashboard/invoices/': {
+      id: '/_layout/dashboard/invoices/'
+      path: '/'
+      fullPath: '/dashboard/invoices/'
+      preLoaderRoute: typeof dbInvoicesIndexRouteImport
+      parentRoute: typeof dbDashboardInvoicesRoute
     }
   }
 }
-
-// Create and export the route tree
-
-interface LangRouteChildren {
-  pagesRoute: typeof pagesRoute
-}
-
-const LangRouteChildren: LangRouteChildren = {
-  pagesRoute: pagesRoute,
-}
-
-const LangRouteWithChildren = LangRoute._addFileChildren(LangRouteChildren)
 
 interface dbDashboardInvoicesRouteChildren {
   dbInvoicesIndexRoute: typeof dbInvoicesIndexRoute
@@ -249,181 +286,11 @@ const layoutRouteChildren: layoutRouteChildren = {
 const layoutRouteWithChildren =
   layoutRoute._addFileChildren(layoutRouteChildren)
 
-export interface FileRoutesByFullPath {
-  '/': typeof indexRoute
-  '/$lang': typeof LangRouteWithChildren
-  '': typeof layoutRouteWithChildren
-  '/$lang/': typeof pagesRoute
-  '/dashboard': typeof dbDashboardRouteWithChildren
-  '/dashboard/': typeof dbDashboardIndexRoute
-  '/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
-  '/hello': typeof HelloIndexRoute
-  '/dashboard/invoices/': typeof dbInvoicesIndexRoute
-  '/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
-  '/hello/foo/$id': typeof HelloFooIdRoute
-  '/hello/foo': typeof HelloFooIndexRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof indexRoute
-  '': typeof layoutRouteWithChildren
-  '/$lang': typeof pagesRoute
-  '/dashboard': typeof dbDashboardIndexRoute
-  '/hello': typeof HelloIndexRoute
-  '/dashboard/invoices': typeof dbInvoicesIndexRoute
-  '/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
-  '/hello/foo/$id': typeof HelloFooIdRoute
-  '/hello/foo': typeof HelloFooIndexRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof indexRoute
-  '/$lang': typeof LangRouteWithChildren
-  '/_layout': typeof layoutRouteWithChildren
-  '/$lang/': typeof pagesRoute
-  '/_layout/dashboard': typeof dbDashboardRouteWithChildren
-  '/_layout/dashboard/': typeof dbDashboardIndexRoute
-  '/_layout/dashboard/invoices': typeof dbDashboardInvoicesRouteWithChildren
-  '/_layout/hello/': typeof HelloIndexRoute
-  '/_layout/dashboard/invoices/': typeof dbInvoicesIndexRoute
-  '/_layout/dashboard/invoices/$id': typeof dbInvoiceDetailRoute
-  '/_layout/hello/foo/$id': typeof HelloFooIdRoute
-  '/_layout/hello/foo/': typeof HelloFooIndexRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/$lang'
-    | ''
-    | '/$lang/'
-    | '/dashboard'
-    | '/dashboard/'
-    | '/dashboard/invoices'
-    | '/hello'
-    | '/dashboard/invoices/'
-    | '/dashboard/invoices/$id'
-    | '/hello/foo/$id'
-    | '/hello/foo'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | ''
-    | '/$lang'
-    | '/dashboard'
-    | '/hello'
-    | '/dashboard/invoices'
-    | '/dashboard/invoices/$id'
-    | '/hello/foo/$id'
-    | '/hello/foo'
-  id:
-    | '__root__'
-    | '/'
-    | '/$lang'
-    | '/_layout'
-    | '/$lang/'
-    | '/_layout/dashboard'
-    | '/_layout/dashboard/'
-    | '/_layout/dashboard/invoices'
-    | '/_layout/hello/'
-    | '/_layout/dashboard/invoices/'
-    | '/_layout/dashboard/invoices/$id'
-    | '/_layout/hello/foo/$id'
-    | '/_layout/hello/foo/'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  indexRoute: typeof indexRoute
-  LangRoute: typeof LangRouteWithChildren
-  layoutRoute: typeof layoutRouteWithChildren
-}
-
 const rootRouteChildren: RootRouteChildren = {
   indexRoute: indexRoute,
-  LangRoute: LangRouteWithChildren,
   layoutRoute: layoutRouteWithChildren,
+  pagesRoute: pagesRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "root.tsx",
-      "children": [
-        "/",
-        "/$lang",
-        "/_layout"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/$lang": {
-      "filePath": "",
-      "children": [
-        "/$lang/"
-      ]
-    },
-    "/_layout": {
-      "filePath": "layout.tsx",
-      "children": [
-        "/_layout/dashboard",
-        "/_layout/hello/",
-        "/_layout/hello/foo/$id",
-        "/_layout/hello/foo/"
-      ]
-    },
-    "/$lang/": {
-      "filePath": "pages.tsx",
-      "parent": "/$lang"
-    },
-    "/_layout/dashboard": {
-      "filePath": "db/dashboard.tsx",
-      "parent": "/_layout",
-      "children": [
-        "/_layout/dashboard/",
-        "/_layout/dashboard/invoices"
-      ]
-    },
-    "/_layout/dashboard/": {
-      "filePath": "db/dashboard-index.tsx",
-      "parent": "/_layout/dashboard"
-    },
-    "/_layout/dashboard/invoices": {
-      "filePath": "db/dashboard-invoices.tsx",
-      "parent": "/_layout/dashboard",
-      "children": [
-        "/_layout/dashboard/invoices/",
-        "/_layout/dashboard/invoices/$id"
-      ]
-    },
-    "/_layout/hello/": {
-      "filePath": "subtree/index.tsx",
-      "parent": "/_layout"
-    },
-    "/_layout/dashboard/invoices/": {
-      "filePath": "db/invoices-index.tsx",
-      "parent": "/_layout/dashboard/invoices"
-    },
-    "/_layout/dashboard/invoices/$id": {
-      "filePath": "db/invoice-detail.tsx",
-      "parent": "/_layout/dashboard/invoices"
-    },
-    "/_layout/hello/foo/$id": {
-      "filePath": "subtree/foo/$id.tsx",
-      "parent": "/_layout"
-    },
-    "/_layout/hello/foo/": {
-      "filePath": "subtree/foo/index.tsx",
-      "parent": "/_layout"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

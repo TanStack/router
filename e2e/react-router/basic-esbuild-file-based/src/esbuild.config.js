@@ -1,9 +1,9 @@
-import { TanStackRouterEsbuild } from '@tanstack/router-plugin/esbuild'
+import { tanstackRouter } from '@tanstack/router-plugin/esbuild'
 
 export default {
   // ...
   plugins: [
-    TanStackRouterEsbuild({
+    tanstackRouter({
       autoCodeSplitting: true,
     }),
   ],

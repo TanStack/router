@@ -3,7 +3,7 @@ id: hosting
 title: Hosting
 ---
 
-Hosting is the process of deploying your application to the internet so that users can access it. This is a critical part of any web development project, ensuring your application is available to the world. TanStack Start is built on [Nitro](https://nitro.unjs.io/), a powerful server toolkit for deploying web applications anywhere. Nitro allows TanStack Start to provide a unified API for SSR, streaming, and hydration on any hosting provider.
+Hosting is the process of deploying your application to the internet so that users can access it. This is a critical part of any web development project, ensuring your application is available to the world. TanStack Start is built on Vite, a powerful dev/build platform that allows us to make it possible to deploy your application to any hosting provider.
 
 ## What should I use?
 
@@ -31,7 +31,7 @@ Netlify is a leading hosting platform that provides a fast, secure, and reliable
 > [!WARNING]
 > The page is still a work in progress. We'll keep updating this page with guides on deployment to different hosting providers soon!
 
-When a TanStack Start application is being deployed, the `server.preset` value in the `app.config.ts` file determines the deployment target. The deployment target can be set to one of the following values:
+When a TanStack Start application is being deployed, the `target` value in the TanStack Start Vite plugin in the`vite.config.ts` file determines the deployment target. The deployment target can be set to one of the following values:
 
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
@@ -44,46 +44,32 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 
 ### Netlify
 
-Set the `server.preset` value to `netlify` in your `app.config.ts` file.
+Set the `target` value to `'netlify'` in the TanStack Start Vite plugin in `vite.config.ts` file.
 
 ```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/react-start/config'
+// vite.config.ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    preset: 'netlify',
-  },
+  plugins: [tanstackStart({ target: 'netlify' })],
 })
-```
-
-Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
-
-```sh
-npm run build --preset netlify
 ```
 
 Deploy your application to Netlify using their one-click deployment process, and you're ready to go!
 
 ### Vercel
 
-Deploying your TanStack Start application to Vercel is easy and straightforward. Just set the `server.preset` value to `vercel` in your `app.config.ts` file, and you're ready to deploy your application to Vercel.
+Set the `target` value to `'vercel'` in the TanStack Start Vite plugin in `vite.config.ts` file.
 
 ```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/react-start/config'
+// vite.config.ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    preset: 'vercel',
-  },
+  plugins: [tanstackStart({ target: 'vercel' })],
 })
-```
-
-Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
-
-```sh
-npm run build --preset vercel
 ```
 
 Deploy your application to Vercel using their one-click deployment process, and you're ready to go!
