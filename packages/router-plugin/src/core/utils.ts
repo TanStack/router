@@ -16,5 +16,3 @@ export function fileIsInRoutesDirectory(
 
   return path.startsWith(routesDirectoryPath)
 }
-
-

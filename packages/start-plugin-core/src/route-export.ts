@@ -25,5 +25,3 @@ export function exportRouteNodesInfo(info: RouteExportInfo): void {
 export function getRouteNodesInfo(): RouteExportInfo | null {
   return routeNodesInfo
 }
-
-

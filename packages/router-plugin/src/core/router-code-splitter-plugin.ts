@@ -17,10 +17,7 @@ import {
   tsrSplit,
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
-import {
-  debug,
-  fileIsInRoutesDirectory,
-} from './utils'
+import { debug, fileIsInRoutesDirectory } from './utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 
 import type { Config } from './config'
@@ -64,8 +61,7 @@ plugins: [
 
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
-export interface RouterCodeSplitterOptions extends Partial<Config> {
-}
+export interface RouterCodeSplitterOptions extends Partial<Config> {}
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   RouterCodeSplitterOptions | undefined
@@ -233,8 +229,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         ROOT = config.root
 
         userConfig = getConfig(options, ROOT)
-
-  
       },
     },
 
