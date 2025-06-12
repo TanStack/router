@@ -1,72 +1,108 @@
 'package: arktype-adapter':
-  - 'packages/arktype-adapter/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/arktype-adapter/**/*'
 'package: directive-functions-plugin':
-  - 'packages/directive-functions-plugin/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/directive-functions-plugin/**/*'
 'package: eslint-plugin-router':
-  - 'packages/eslint-plugin-router/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/eslint-plugin-router/**/*'
 'package: history':
-  - 'packages/history/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/history/**/*'
 'package: react-router':
-  - 'packages/react-router/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/react-router/**/*'
 'package: react-router-devtools':
-  - 'packages/react-router-devtools/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/react-router-devtools/**/*'
 'package: react-router-with-query':
-  - 'packages/react-router-with-query/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/react-router-with-query/**/*'
 'package: react-start':
-  - 'packages/react-start/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/react-start/**/*'
 'package: react-start-client':
-  - 'packages/react-start-client/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/react-start-client/**/*'
 'package: react-start-plugin':
-  - 'packages/react-start-plugin/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/react-start-plugin/**/*'
 'package: react-start-server':
-  - 'packages/react-start-server/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/react-start-server/**/*'
 'package: router-cli':
-  - 'packages/router-cli/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/router-cli/**/*'
 'package: router-core':
-  - 'packages/router-core/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/router-core/**/*'
 'package: router-devtools':
-  - 'packages/router-devtools/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/router-devtools/**/*'
 'package: router-devtools-core':
-  - 'packages/router-devtools-core/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/router-devtools-core/**/*'
 'package: router-generator':
-  - 'packages/router-generator/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/router-generator/**/*'
 'package: router-plugin':
-  - 'packages/router-plugin/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/router-plugin/**/*'
 'package: router-utils':
-  - 'packages/router-utils/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/router-utils/**/*'
 'package: router-vite-plugin':
-  - 'packages/router-vite-plugin/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/router-vite-plugin/**/*'
 'package: server-functions-plugin':
-  - 'packages/server-functions-plugin/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/server-functions-plugin/**/*'
 'package: solid-router':
-  - 'packages/solid-router/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/solid-router/**/*'
 'package: solid-router-devtools':
-  - 'packages/solid-router-devtools/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/solid-router-devtools/**/*'
 'package: solid-start':
-  - 'packages/solid-start/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/solid-start/**/*'
 'package: solid-start-client':
-  - 'packages/solid-start-client/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/solid-start-client/**/*'
 'package: solid-start-plugin':
-  - 'packages/solid-start-plugin/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/solid-start-plugin/**/*'
 'package: solid-start-server':
-  - 'packages/solid-start-server/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/solid-start-server/**/*'
 'package: start-client-core':
-  - 'packages/start-client-core/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/start-client-core/**/*'
 'package: start-plugin-core':
-  - 'packages/start-plugin-core/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/start-plugin-core/**/*'
 'package: start-server-core':
-  - 'packages/start-server-core/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/start-server-core/**/*'
 'package: start-server-functions-client':
-  - 'packages/start-server-functions-client/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/start-server-functions-client/**/*'
 'package: start-server-functions-fetcher':
-  - 'packages/start-server-functions-fetcher/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/start-server-functions-fetcher/**/*'
 'package: start-server-functions-server':
-  - 'packages/start-server-functions-server/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/start-server-functions-server/**/*'
 'package: valibot-adapter':
-  - 'packages/valibot-adapter/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/valibot-adapter/**/*'
 'package: virtual-file-routes':
-  - 'packages/virtual-file-routes/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/virtual-file-routes/**/*'
 'package: zod-adapter':
-  - 'packages/zod-adapter/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'packages/zod-adapter/**/*'
 'documentation':
-  - 'docs/**/*'
+  - changed-files:
+    - any-glob-to-any-file: 'docs/**/*'

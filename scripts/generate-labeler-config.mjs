@@ -1,10 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
-function space(n = 1) {
-  return ' '.repeat(n)
-}
-
 /**
  * Pairs of package labels and their corresponding paths
  * @typedef {[string, string]} LabelerPair
@@ -13,7 +9,7 @@ function space(n = 1) {
 /**
  * @returns {Array<LabelerPair>} Pairs of package labels and their corresponding paths
  */
-function getPairs() {
+function readPairsFromFs() {
   const ignored = new Set(['.DS_Store'])
 
   /** @type {Array<LabelerPair>} */
@@ -31,7 +27,7 @@ function getPairs() {
       ) {
         pairs.push([`package: ${folder}`, `packages/${folder}/**/*`])
       } else {
-        console.log(
+        console.info(
           `Skipping \`${folder}\` as it does not have a \`package.json\` file.`,
         )
       }
@@ -39,9 +35,6 @@ function getPairs() {
 
   // Sort by package name in alphabetical order
   pairs.sort((a, b) => a[0].localeCompare(b[0]))
-
-  // Always add the docs folder
-  pairs.push(['documentation', 'docs/**/*'])
 
   return pairs
 }
@@ -51,11 +44,19 @@ function getPairs() {
  * @returns {string} YAML string for the labeler config
  */
 function generateLabelerYaml(pairs) {
+  function s(n = 1) {
+    return ' '.repeat(n)
+  }
+
   // Convert the pairs into valid yaml
   const str = pairs
     .map(([packageLabel, packagePath]) => {
-      let result =
-        `'${packageLabel}':` + '\n' + `${space(2)}-${space(1)}'${packagePath}'`
+      const result = [
+        `'${packageLabel}':`,
+        `${s(2)}-${s(1)}changed-files:`,
+        `${s(4)}-${s(1)}any-glob-to-any-file:${s(1)}'${packagePath}'`,
+      ].join('\n')
+
       return result
     })
     .join('\n')
@@ -65,7 +66,10 @@ function generateLabelerYaml(pairs) {
 
 function run() {
   // Generate the pairs of package labels and their corresponding paths
-  const pairs = getPairs()
+  const pairs = readPairsFromFs()
+
+  // Always add the docs folder
+  pairs.push(['documentation', 'docs/**/*'])
 
   // Convert the pairs into valid yaml
   const yamlStr = generateLabelerYaml(pairs)
@@ -75,6 +79,7 @@ function run() {
   fs.writeFileSync(configPath, yamlStr + '\n', {
     encoding: 'utf-8',
   })
+  console.info(`Generated labeler config at \`${configPath}\`!`)
 }
 
 run()
