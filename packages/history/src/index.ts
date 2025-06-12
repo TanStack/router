@@ -68,7 +68,7 @@ export type HistoryAction =
   | 'BACK'
   | 'GO'
   | 'BLOCK'
-  | 'DISMISS-BLOCK'
+  | 'DISMISS_BLOCK'
 
 export type BlockerFnArgs = {
   currentLocation: HistoryLocation
@@ -176,7 +176,7 @@ export function createHistory(opts: {
 
           if (done) {
             isBlocked = value
-            if (blockNotified) notify({ type: 'DISMISS-BLOCK' })
+            if (blockNotified) notify({ type: 'DISMISS_BLOCK' })
             break
           }
         }
@@ -488,7 +488,7 @@ export function createBrowserHistory(opts?: {
 
             if (done) {
               isBlocked = value
-              if (blockNotified) history.notify({ type: 'DISMISS-BLOCK' })
+              if (blockNotified) history.notify({ type: 'DISMISS_BLOCK' })
               break
             }
           }
