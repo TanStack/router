@@ -18,6 +18,7 @@ export type RouteNode = {
 export interface GetRouteNodesResult {
   rootRouteNode?: RouteNode
   routeNodes: Array<RouteNode>
+  physicalDirectories: Array<string>
 }
 
 export type FsRouteType =
