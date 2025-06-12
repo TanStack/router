@@ -5,6 +5,7 @@ import { rootRouteId } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { resolveViteId } from '../utils'
 import { CLIENT_DIST_DIR } from '../constants'
+import { exportRouteNodesInfo } from '../route-export'
 import type {
   PluginOption,
   ResolvedConfig,
@@ -150,21 +151,12 @@ export function startManifestPlugin(
               path.relative(opts.root, dir),
             )
 
-          // Function to check if a file path should be code-split
-          function shouldCodeSplit(filePath: string): boolean {
-            if (filePath.startsWith(path.resolve(opts.tsr.routesDirectory))) {
-              return true
-            }
-
-            // Check if the file is inside any of the virtual route directories
-            for (const virtualDir of opts.tsr.virtualRouteDirectories) {
-              if (filePath.startsWith(path.resolve(virtualDir))) {
-                return true
-              }
-            }
-
-            return false
-          }
+          // Export route nodes information for router-plugin to use
+          exportRouteNodesInfo({
+            routesDirectory: opts.tsr.routesDirectory,
+            virtualRouteDirectories: opts.tsr.virtualRouteDirectories,
+            routes: routeTreeRoutes,
+          })
 
           for (const [routeId, v] of Object.entries(routeTreeRoutes)) {
             let file = null
@@ -186,12 +178,9 @@ export function startManifestPlugin(
                 if (filesByRouteFilePath[virtualFilePath]) {
                   file = filesByRouteFilePath[virtualFilePath]
 
-                  const absolutePath = path.resolve(opts.root, virtualFilePath)
-                  if (shouldCodeSplit(absolutePath)) {
-                    console.log(
-                      `[TanStack Router] Code-splitting virtual route: ${virtualFilePath}`,
-                    )
-                  }
+                  console.log(
+                    `[TanStack Router] Found virtual route: ${virtualFilePath}`,
+                  )
 
                   break
                 }

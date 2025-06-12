@@ -17,7 +17,11 @@ import {
   tsrSplit,
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
-import { debug, fileIsInRoutesDirectory } from './utils'
+import {
+  debug,
+  fileIsInRoutesDirectory,
+  fileIsInVirtualRouteDirectory,
+} from './utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 
 import type { Config } from './config'
@@ -61,8 +65,12 @@ plugins: [
 
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
+export interface RouterCodeSplitterOptions extends Partial<Config> {
+  virtualRouteDirectories?: Array<string>
+}
+
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  RouterCodeSplitterOptions | undefined
 > = (options = {}, { framework }) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config
@@ -186,8 +194,14 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       if (id.includes(tsrSplit)) {
         return handleCompilingVirtualFile(code, id)
-      } else if (
-        fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
+      }
+
+      if (
+        (fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
+          fileIsInVirtualRouteDirectory(
+            id,
+            userConfig.virtualRouteDirectories,
+          )) &&
         (code.includes('createRoute(') || code.includes('createFileRoute('))
       ) {
         for (const externalPlugin of bannedBeforeExternalPlugins) {
@@ -213,6 +227,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       if (
         fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
+        fileIsInVirtualRouteDirectory(id, userConfig.virtualRouteDirectories) ||
         id.includes(tsrSplit)
       ) {
         return true
@@ -225,6 +240,14 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
         ROOT = config.root
 
         userConfig = getConfig(options, ROOT)
+
+        if (options.virtualRouteDirectories?.length) {
+          debug &&
+            console.log(
+              '[TanStack Router] Using virtual route directories from options:',
+              options.virtualRouteDirectories,
+            )
+        }
       },
     },
 
