@@ -131,6 +131,14 @@ function RootComponent() {
         >
           This Route Does Not Exist
         </Link>
+        <Link
+          to="/global-blocker/multi-blockers"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Multi Blockers
+        </Link>
       </div>
       <hr />
       <Outlet />

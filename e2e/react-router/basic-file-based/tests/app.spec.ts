@@ -107,6 +107,113 @@ test('legacy Proceeding through blocked navigation works', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('Editing A')
 })
 
+test('useNavigationBlockingState exposes state and resets navigation', async ({
+  page,
+}) => {
+  await page.goto('/global-blocker/multi-blockers')
+
+  const blocker1Status = page.getByTestId('blocker-1-status')
+  const blocker2Status = page.getByTestId('blocker-2-status')
+  const globalBlockingModalHeading = page.getByRole('heading', {
+    name: 'Global Blocking Modal',
+    exact: true,
+  })
+  const resetButton = page.getByRole('button', { name: 'Reset' })
+
+  await expect(page.getByRole('heading')).toContainText(
+    'This page always blocks navigation',
+  )
+  await expect(blocker1Status).toHaveText('blocker1 is idle')
+  await expect(blocker2Status).toHaveText('blocker2 is idle')
+
+  await page.getByRole('link', { name: 'Home', exact: true }).click()
+
+  await expect(blocker1Status).toHaveText('blocker1 is blocked')
+  await expect(blocker2Status).toHaveText('blocker2 is idle')
+  await expect(globalBlockingModalHeading).toBeVisible()
+
+  await resetButton.click()
+
+  await expect(globalBlockingModalHeading).not.toBeVisible()
+  await expect(blocker1Status).toHaveText('blocker1 is idle')
+  await expect(blocker2Status).toHaveText('blocker2 is idle')
+})
+
+test('useNavigationBlockingState exposes state and proceed navigation', async ({
+  page,
+}) => {
+  await page.goto('/global-blocker/multi-blockers')
+
+  const blocker1Status = page.getByTestId('blocker-1-status')
+  const blocker2Status = page.getByTestId('blocker-2-status')
+  const globalBlockingModalHeading = page.getByRole('heading', {
+    name: 'Global Blocking Modal',
+    exact: true,
+  })
+  const proceedButton = page.getByRole('button', {
+    name: 'Proceed',
+    exact: true,
+  })
+
+  await expect(page.getByRole('heading')).toContainText(
+    'This page always blocks navigation',
+  )
+  await expect(blocker1Status).toHaveText('blocker1 is idle')
+  await expect(blocker2Status).toHaveText('blocker2 is idle')
+
+  await page.getByRole('link', { name: 'Home', exact: true }).click()
+
+  await expect(blocker1Status).toHaveText('blocker1 is blocked')
+  await expect(blocker2Status).toHaveText('blocker2 is idle')
+  await expect(globalBlockingModalHeading).toBeVisible()
+
+  await proceedButton.click()
+
+  await expect(blocker1Status).toHaveText('blocker1 is idle')
+  await expect(blocker2Status).toHaveText('blocker2 is blocked')
+  await expect(globalBlockingModalHeading).toBeVisible()
+
+  await proceedButton.click()
+
+  await expect(globalBlockingModalHeading).not.toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Welcome Home!', exact: true }),
+  ).toBeVisible()
+})
+
+test('useNavigationBlockingState exposes state and proceed navigation using proceedAll', async ({
+  page,
+}) => {
+  await page.goto('/global-blocker/multi-blockers')
+
+  const blocker1Status = page.getByTestId('blocker-1-status')
+  const blocker2Status = page.getByTestId('blocker-2-status')
+  const globalBlockingModalHeading = page.getByRole('heading', {
+    name: 'Global Blocking Modal',
+    exact: true,
+  })
+  const proceedAllButton = page.getByRole('button', { name: 'Proceed All' })
+
+  await expect(page.getByRole('heading')).toContainText(
+    'This page always blocks navigation',
+  )
+  await expect(blocker1Status).toHaveText('blocker1 is idle')
+  await expect(blocker2Status).toHaveText('blocker2 is idle')
+
+  await page.getByRole('link', { name: 'Home', exact: true }).click()
+
+  await expect(blocker1Status).toHaveText('blocker1 is blocked')
+  await expect(blocker2Status).toHaveText('blocker2 is idle')
+  await expect(globalBlockingModalHeading).toBeVisible()
+
+  await proceedAllButton.click()
+
+  await expect(globalBlockingModalHeading).not.toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Welcome Home!', exact: true }),
+  ).toBeVisible()
+})
+
 test('useCanGoBack correctly disables back button', async ({ page }) => {
   const getBackButtonDisabled = async () => {
     const backButton = page.getByTestId('back-button')
