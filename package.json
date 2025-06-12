@@ -30,7 +30,7 @@
     "cipublish": "node scripts/publish.js",
     "gpt-generate": "node gpt/generate.js",
     "set-ts-version": "node scripts/set-ts-version.js",
-    "labeler-generate": "node scripts/generateLabelerConfig.mjs",
+    "labeler-generate": "node scripts/generate-labeler-config.mjs",
     "cleanup-empty-packages": "node scripts/cleanup-empty-packages.mjs",
     "verify-links": "node scripts/verify-links.ts"
   },
