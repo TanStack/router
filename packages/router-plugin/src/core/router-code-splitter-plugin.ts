@@ -180,7 +180,10 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           code: 'createFileRoute(',
         },
         handler(code, id) {
-          if (globalThis.TSR_ROUTE_FILES?.has(id) && code.includes('createFileRoute(')) {
+          if (
+            globalThis.TSR_ROUTE_FILES?.has(id) &&
+            code.includes('createFileRoute(')
+          ) {
             for (const externalPlugin of bannedBeforeExternalPlugins) {
               if (!externalPlugin.frameworks.includes(framework)) {
                 continue
