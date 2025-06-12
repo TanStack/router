@@ -2,7 +2,7 @@ import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import babel from '@babel/core'
 import * as template from '@babel/template'
 import { getConfig } from './config'
-import { debug, fileIsInRoutesDirectory } from './utils'
+import { debug } from './utils'
 import type { Config } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
@@ -16,70 +16,74 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
   let userConfig = options as Config
 
   return {
-    name: 'router-autoimport-plugin',
+    name: 'tanstack-router:autoimport',
     enforce: 'pre',
 
-    transform(code, id) {
-      let routeType: 'createFileRoute' | 'createLazyFileRoute'
-      if (code.includes('export const Route = createFileRoute(')) {
-        routeType = 'createFileRoute'
-      } else if (code.includes('export const Route = createLazyFileRoute(')) {
-        routeType = 'createLazyFileRoute'
-      } else {
-        return null
-      }
-
-      const routerImportPath = `@tanstack/${userConfig.target}-router`
-
-      const ast = parseAst({ code })
-
-      let isCreateRouteFunctionImported = false as boolean
-
-      babel.traverse(ast, {
-        Program: {
-          enter(programPath) {
-            programPath.traverse({
-              ImportDeclaration(path) {
-                const importedSpecifiers = path.node.specifiers.map(
-                  (specifier) => specifier.local.name,
-                )
-                if (
-                  importedSpecifiers.includes(routeType) &&
-                  path.node.source.value === routerImportPath
-                ) {
-                  isCreateRouteFunctionImported = true
-                }
-              },
-            })
-          },
-        },
-      })
-
-      if (!isCreateRouteFunctionImported) {
-        if (debug) console.info('Adding autoimports to route ', id)
-
-        const autoImportStatement = template.statement(
-          `import { ${routeType} } from '${routerImportPath}'`,
-        )()
-        ast.program.body.unshift(autoImportStatement)
-
-        const result = generateFromAst(ast, {
-          sourceMaps: true,
-          filename: id,
-          sourceFileName: id,
-        })
-        if (debug) {
-          logDiff(code, result.code)
-          console.log('Output:\n', result.code + '\n\n')
+    transform: {
+      filter: {
+        code: /createFileRoute\(|createLazyFileRoute\(/,
+      },
+      handler(code, id) {
+        if (!globalThis.TSR_ROUTE_FILES?.has(id)) {
+          return null
         }
-        return result
-      }
+        let routeType: 'createFileRoute' | 'createLazyFileRoute'
+        if (code.includes('createFileRoute(')) {
+          routeType = 'createFileRoute'
+        } else if (code.includes('createLazyFileRoute(')) {
+          routeType = 'createLazyFileRoute'
+        } else {
+          return null
+        }
 
-      return null
-    },
+        const routerImportPath = `@tanstack/${userConfig.target}-router`
 
-    transformInclude(id) {
-      return fileIsInRoutesDirectory(id, userConfig.routesDirectory)
+        const ast = parseAst({ code })
+
+        let isCreateRouteFunctionImported = false as boolean
+
+        babel.traverse(ast, {
+          Program: {
+            enter(programPath) {
+              programPath.traverse({
+                ImportDeclaration(path) {
+                  const importedSpecifiers = path.node.specifiers.map(
+                    (specifier) => specifier.local.name,
+                  )
+                  if (
+                    importedSpecifiers.includes(routeType) &&
+                    path.node.source.value === routerImportPath
+                  ) {
+                    isCreateRouteFunctionImported = true
+                  }
+                },
+              })
+            },
+          },
+        })
+
+        if (!isCreateRouteFunctionImported) {
+          if (debug) console.info('Adding autoimports to route ', id)
+
+          const autoImportStatement = template.statement(
+            `import { ${routeType} } from '${routerImportPath}'`,
+          )()
+          ast.program.body.unshift(autoImportStatement)
+
+          const result = generateFromAst(ast, {
+            sourceMaps: true,
+            filename: id,
+            sourceFileName: id,
+          })
+          if (debug) {
+            logDiff(code, result.code)
+            console.log('Output:\n', result.code + '\n\n')
+          }
+          return result
+        }
+
+        return null
+      },
     },
 
     vite: {

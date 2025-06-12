@@ -17,7 +17,7 @@ import {
   tsrSplit,
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
-import { debug, fileIsInRoutesDirectory } from './utils'
+import { debug } from './utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 
 import type { Config } from './config'
@@ -26,10 +26,6 @@ import type {
   UnpluginFactory,
   TransformResult as UnpluginTransformResult,
 } from 'unplugin'
-
-function capitalizeFirst(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
 
 type BannedBeforeExternalPlugin = {
   identifier: string
@@ -52,7 +48,7 @@ class FoundPluginInBeforeCode extends Error {
     super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
 e.g.
 plugins: [
-  TanStackRouter${capitalizeFirst(framework)}(), // Place this before ${externalPlugin.usage}
+  tanstackRouter(), // Place this before ${externalPlugin.usage}
   ${externalPlugin.usage},
 ]
 `)
@@ -171,83 +167,78 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     return result
   }
 
-  return {
-    name: 'router-code-splitter-plugin',
-    enforce: 'pre',
+  return [
+    {
+      name: 'tanstack-router:code-splitter:compile-reference-file',
+      enforce: 'pre',
 
-    transform(code, id) {
-      if (!userConfig.autoCodeSplitting) {
-        return null
-      }
+      transform: {
+        filter: {
+          id: {
+            exclude: tsrSplit,
+          },
+          code: 'createFileRoute(',
+        },
+        handler(code, id) {
+          if (globalThis.TSR_ROUTE_FILES?.has(id) && code.includes('createFileRoute(')) {
+            for (const externalPlugin of bannedBeforeExternalPlugins) {
+              if (!externalPlugin.frameworks.includes(framework)) {
+                continue
+              }
 
-      const url = pathToFileURL(id)
-      url.searchParams.delete('v')
-      id = fileURLToPath(url).replace(/\\/g, '/')
+              if (code.includes(externalPlugin.identifier)) {
+                throw new FoundPluginInBeforeCode(externalPlugin, framework)
+              }
+            }
 
-      if (id.includes(tsrSplit)) {
-        return handleCompilingVirtualFile(code, id)
-      } else if (
-        fileIsInRoutesDirectory(id, userConfig.routesDirectory) &&
-        (code.includes('createRoute(') || code.includes('createFileRoute('))
-      ) {
-        for (const externalPlugin of bannedBeforeExternalPlugins) {
-          if (!externalPlugin.frameworks.includes(framework)) {
-            continue
+            return handleCompilingReferenceFile(code, id)
           }
 
-          if (code.includes(externalPlugin.identifier)) {
-            throw new FoundPluginInBeforeCode(externalPlugin, framework)
-          }
-        }
+          return null
+        },
+      },
 
-        return handleCompilingReferenceFile(code, id)
-      }
+      vite: {
+        configResolved(config) {
+          ROOT = config.root
+          userConfig = getConfig(options, ROOT)
+        },
+      },
 
-      return null
-    },
-
-    transformInclude(id) {
-      if (!userConfig.autoCodeSplitting) {
-        return undefined
-      }
-
-      if (
-        fileIsInRoutesDirectory(id, userConfig.routesDirectory) ||
-        id.includes(tsrSplit)
-      ) {
-        return true
-      }
-      return false
-    },
-
-    vite: {
-      configResolved(config) {
-        ROOT = config.root
-
+      rspack() {
+        ROOT = process.cwd()
         userConfig = getConfig(options, ROOT)
       },
-    },
 
-    rspack(_compiler) {
-      ROOT = process.cwd()
-      userConfig = getConfig(options, ROOT)
-    },
+      webpack(compiler) {
+        ROOT = process.cwd()
+        userConfig = getConfig(options, ROOT)
 
-    webpack(compiler) {
-      ROOT = process.cwd()
-      userConfig = getConfig(options, ROOT)
-
-      if (
-        userConfig.autoCodeSplitting &&
-        compiler.options.mode === 'production'
-      ) {
-        compiler.hooks.done.tap(PLUGIN_NAME, () => {
-          console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
-          setTimeout(() => {
-            process.exit(0)
+        if (compiler.options.mode === 'production') {
+          compiler.hooks.done.tap(PLUGIN_NAME, () => {
+            console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
+            setTimeout(() => {
+              process.exit(0)
+            })
           })
-        })
-      }
+        }
+      },
     },
-  }
+    {
+      name: 'tanstack-router:code-splitter:compile-virtual-file',
+      enforce: 'pre',
+
+      transform: {
+        filter: {
+          id: /tsr-split/,
+        },
+        handler(code, id) {
+          const url = pathToFileURL(id)
+          url.searchParams.delete('v')
+          id = fileURLToPath(url).replace(/\\/g, '/')
+          return handleCompilingVirtualFile(code, id)
+        },
+      },
+    },
+  ]
 }
