@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import * as prettier from 'prettier'
 
 /**
  * Pairs of package labels and their corresponding paths
@@ -41,15 +42,15 @@ function readPairsFromFs() {
 
 /**
  * @param {Array<LabelerPair>} pairs
- * @returns {string} YAML string for the labeler config
+ * @returns {Promise<string>} YAML string for the labeler config
  */
-function generateLabelerYaml(pairs) {
+async function generateLabelerYaml(pairs) {
   function s(n = 1) {
     return ' '.repeat(n)
   }
 
   // Convert the pairs into valid yaml
-  const str = pairs
+  const formattedPairs = pairs
     .map(([packageLabel, packagePath]) => {
       const result = [
         `'${packageLabel}':`,
@@ -61,10 +62,31 @@ function generateLabelerYaml(pairs) {
     })
     .join('\n')
 
-  return str
+  // Get the location of the Prettier config file
+  const prettierConfigPath = await prettier.resolveConfigFile()
+  if (!prettierConfigPath) {
+    throw new Error(
+      'No Prettier config file found. Please ensure you have a Prettier config file in your project.',
+    )
+  }
+  console.info('using prettier config file at:', prettierConfigPath)
+
+  // Resolve the Prettier config
+  const prettierConfig = await prettier.resolveConfig(prettierConfigPath)
+  console.info('using resolved prettier config:', prettierConfig)
+
+  // Format the YAML string using Prettier
+  const formattedStr = await prettier.format(formattedPairs, {
+    parser: 'yaml',
+    ...prettierConfig,
+  })
+
+  return formattedStr
 }
 
-function run() {
+async function run() {
+  console.info('Generating labeler config...')
+
   // Generate the pairs of package labels and their corresponding paths
   const pairs = readPairsFromFs()
 
@@ -72,16 +94,20 @@ function run() {
   pairs.push(['documentation', 'docs/**/*'])
 
   // Convert the pairs into valid yaml
-  const yamlStr = generateLabelerYaml(pairs)
+  const yamlStr = await generateLabelerYaml(pairs)
 
   // Write to '.github/labeler.yml'
   const configPath = path.resolve('.github/labeler.yml')
-  fs.writeFileSync(configPath, yamlStr + '\n', {
+  fs.writeFileSync(configPath, yamlStr, {
     encoding: 'utf-8',
   })
   console.info(`Generated labeler config at \`${configPath}\`!`)
 }
 
-run()
-
-process.exit(0)
+try {
+  await run()
+  process.exit(0)
+} catch (error) {
+  console.error('Error generating labeler config:', error)
+  process.exit(1)
+}
