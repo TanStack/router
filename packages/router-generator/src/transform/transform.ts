@@ -56,35 +56,71 @@ export async function transform({
     registeredExports.set(exportName, plugin)
   }
 
+  function onExportFound(
+    decl: types.namedTypes.VariableDeclarator,
+    exportName: string,
+    plugin: TransformPlugin,
+  ) {
+    const pluginAppliedChanges = plugin.onExportFound({
+      decl,
+      ctx: { ...ctx, preferredQuote },
+    })
+    if (pluginAppliedChanges) {
+      appliedChanges = true
+    }
+
+    // export is handled, remove it from the registered exports
+    registeredExports.delete(exportName)
+    // store the export so we can later return it once the file is transformed
+    foundExports.push(exportName)
+  }
+
   const program: types.namedTypes.Program = ast.program
   // first pass: find registered exports
   for (const n of program.body) {
-    if (
-      registeredExports.size > 0 &&
-      n.type === 'ExportNamedDeclaration' &&
-      n.declaration?.type === 'VariableDeclaration'
-    ) {
-      const decl = n.declaration.declarations[0]
-      if (
-        decl &&
-        decl.type === 'VariableDeclarator' &&
-        decl.id.type === 'Identifier'
-      ) {
-        const plugin = registeredExports.get(decl.id.name)
-        if (plugin) {
-          const pluginAppliedChanges = plugin.onExportFound({
-            decl,
-            ctx: { ...ctx, preferredQuote },
-          })
-
-          if (pluginAppliedChanges) {
-            appliedChanges = true
+    if (registeredExports.size > 0 && n.type === 'ExportNamedDeclaration') {
+      // direct export of a variable declaration, e.g. `export const Route = createFileRoute('/path')`
+      if (n.declaration?.type === 'VariableDeclaration') {
+        const decl = n.declaration.declarations[0]
+        if (
+          decl &&
+          decl.type === 'VariableDeclarator' &&
+          decl.id.type === 'Identifier'
+        ) {
+          const plugin = registeredExports.get(decl.id.name)
+          if (plugin) {
+            onExportFound(decl, decl.id.name, plugin)
           }
-
-          // export is handled, remove it from the registered exports
-          registeredExports.delete(decl.id.name)
-          // store the export so we can later return it once the file is transformed
-          foundExports.push(decl.id.name)
+        }
+      }
+      // this is an export without a declaration, e.g. `export { Route }`
+      else if (n.declaration === null && n.specifiers) {
+        for (const spec of n.specifiers) {
+          if (
+            typeof spec.exported.name === 'string'
+          ) {
+            const plugin = registeredExports.get(spec.exported.name)
+            if (plugin) {
+              const variableName = spec.local?.name || spec.exported.name
+              // find the matching variable declaration by iterating over the top-level declarations
+              for (const decl of program.body) {
+                if (
+                  decl.type === 'VariableDeclaration' &&
+                  decl.declarations[0]
+                ) {
+                  const variable = decl.declarations[0]
+                  if (
+                    variable.type === 'VariableDeclarator' &&
+                    variable.id.type === 'Identifier' &&
+                    variable.id.name === variableName
+                  ) {
+                    onExportFound(variable, spec.exported.name, plugin)
+                    break
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
