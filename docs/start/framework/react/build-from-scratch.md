@@ -210,9 +210,9 @@ Now that we have the basic templating setup, we can write our first route. This 
 
 ```tsx
 // src/routes/index.tsx
-import * as fs from 'node:fs';
-import { createFileRoute, useRouter } from '@tanstack/react-router';
-import { createServerFn } from '@tanstack/react-start';
+import * as fs from 'node:fs'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
 
 const filePath = 'count.txt'
 
