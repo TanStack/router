@@ -196,7 +196,7 @@ Now that we have the basic templating setup, we can write our first route. This 
 ```tsx
 // src/routes/index.tsx
 import * as fs from 'node:fs'
-import { useRouter } from '@tanstack/solid-router'
+import { createFileRoute, useRouter } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 
 const filePath = 'count.txt'
