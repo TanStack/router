@@ -101,12 +101,15 @@ async function run() {
   fs.writeFileSync(configPath, yamlStr, {
     encoding: 'utf-8',
   })
+
   console.info(`Generated labeler config at \`${configPath}\`!`)
+  return
 }
 
 try {
-  await run()
-  process.exit(0)
+  run().then(() => {
+    process.exit(0)
+  })
 } catch (error) {
   console.error('Error generating labeler config:', error)
   process.exit(1)
