@@ -69,6 +69,7 @@ export const configSchema = generatorConfigSchema.extend({
       return codeSplittingOptionsSchema.parse(v)
     })
     .optional(),
+  virtualRouteDirectories: z.array(z.string()).optional(),
 })
 
 export const getConfig = (inlineConfig: Partial<Config>, root: string) => {
