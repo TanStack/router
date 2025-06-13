@@ -53,7 +53,7 @@ export function defaultGeneratorPlugin(): GeneratorPluginWithTransform {
         // needs a virtual root route
         if (!opts.rootRouteNode.exports?.includes(EXPORT_NAME)) {
           imports.push({
-            specifiers: [{ imported: 'createServerRootRoute' }],
+            specifiers: [{ imported: 'createRootRoute' }],
             source: opts.generator.targetTemplate.fullPkg,
           })
         }

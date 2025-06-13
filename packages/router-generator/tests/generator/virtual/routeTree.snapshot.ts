@@ -78,7 +78,6 @@ const dbInvoicesIndexRoute = dbInvoicesIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof indexRoute
-  '': typeof layoutRouteWithChildren
   '/$lang': typeof pagesRoute
   '/dashboard': typeof dbDashboardRouteWithChildren
   '/dashboard/': typeof dbDashboardIndexRoute
@@ -91,7 +90,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof indexRoute
-  '': typeof layoutRouteWithChildren
   '/$lang': typeof pagesRoute
   '/dashboard': typeof dbDashboardIndexRoute
   '/hello': typeof HelloIndexRoute
@@ -118,7 +116,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | ''
     | '/$lang'
     | '/dashboard'
     | '/dashboard/'
@@ -131,7 +128,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | ''
     | '/$lang'
     | '/dashboard'
     | '/hello'
