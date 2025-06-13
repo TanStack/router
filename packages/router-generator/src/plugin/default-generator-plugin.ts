@@ -6,6 +6,7 @@ import {
 import type { ImportDeclaration } from '../types'
 import type { GeneratorPluginWithTransform } from './types'
 
+const EXPORT_NAME = 'Route'
 export function defaultGeneratorPlugin(): GeneratorPluginWithTransform {
   return {
     name: 'default',
@@ -47,6 +48,16 @@ export function defaultGeneratorPlugin(): GeneratorPluginWithTransform {
           imports.push(typeImport)
         }
       }
+      const hasMatchingRouteFiles = opts.acc.routeNodes.length > 0
+      if (hasMatchingRouteFiles) {
+        // needs a virtual root route
+        if (!opts.rootRouteNode.exports?.includes(EXPORT_NAME)) {
+          imports.push({
+            specifiers: [{ imported: 'createServerRootRoute' }],
+            source: opts.generator.targetTemplate.fullPkg,
+          })
+        }
+      }
       return imports
     },
     moduleAugmentation: ({ generator }) => ({
@@ -54,7 +65,9 @@ export function defaultGeneratorPlugin(): GeneratorPluginWithTransform {
       interfaceName: 'FileRoutesByPath',
     }),
     onRouteTreesChanged: ({ routeTrees, generator }) => {
-      const routeTree = routeTrees.find((tree) => tree.exportName === 'Route')
+      const routeTree = routeTrees.find(
+        (tree) => tree.exportName === EXPORT_NAME,
+      )
       if (!routeTree) {
         throw new Error(
           'No route tree found with export name "Route". Please ensure your routes are correctly defined.',
@@ -65,7 +78,7 @@ export function defaultGeneratorPlugin(): GeneratorPluginWithTransform {
           (d) =>
             d.children === undefined &&
             'lazy' !== d._fsRouteType &&
-            d.exports?.includes('Route'),
+            d.exports?.includes(EXPORT_NAME),
         ),
         generator.config,
       )
@@ -83,7 +96,7 @@ export function defaultGeneratorPlugin(): GeneratorPluginWithTransform {
         `
       }
     },
-    createRootRouteCode: () => `createRooRoute()`,
+    createRootRouteCode: () => `createRootRoute()`,
     createVirtualRouteCode: ({ node }) =>
       `createFileRoute('${node.routePath}')()`,
     config: ({ sortedRouteNodes }) => {
