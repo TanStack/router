@@ -42,8 +42,8 @@ export interface ServerRouteOptions<
   pathname: TFullPath
   originalIndex: number
   getParentRoute?: () => TParentRoute
-  middleware: Constrain<TMiddlewares, ReadonlyArray<AnyRequestMiddleware>>
-  methods: Record<
+  middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyRequestMiddleware>>
+  methods?: Record<
     string,
     ServerRouteMethodHandlerFn<TParentRoute, TFullPath, TMiddlewares, any, any>
   >

@@ -257,6 +257,7 @@ export type {
   ServerSrr,
   ClearCacheFn,
   CreateRouterFn,
+  ProcessRouteTreeResult,
 } from './router'
 
 export type {
