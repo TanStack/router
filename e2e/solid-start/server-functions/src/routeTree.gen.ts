@@ -227,81 +227,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/abort-signal': {
-      id: '/abort-signal'
-      path: '/abort-signal'
-      fullPath: '/abort-signal'
-      preLoaderRoute: typeof AbortSignalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/consistent': {
-      id: '/consistent'
-      path: '/consistent'
-      fullPath: '/consistent'
-      preLoaderRoute: typeof ConsistentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dead-code-preserve': {
-      id: '/dead-code-preserve'
-      path: '/dead-code-preserve'
-      fullPath: '/dead-code-preserve'
-      preLoaderRoute: typeof DeadCodePreserveRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/env-only': {
-      id: '/env-only'
-      path: '/env-only'
-      fullPath: '/env-only'
-      preLoaderRoute: typeof EnvOnlyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/headers': {
-      id: '/headers'
-      path: '/headers'
-      fullPath: '/headers'
-      preLoaderRoute: typeof HeadersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/isomorphic-fns': {
-      id: '/isomorphic-fns'
-      path: '/isomorphic-fns'
-      fullPath: '/isomorphic-fns'
-      preLoaderRoute: typeof IsomorphicFnsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/multipart': {
-      id: '/multipart'
-      path: '/multipart'
-      fullPath: '/multipart'
-      preLoaderRoute: typeof MultipartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/raw-response': {
-      id: '/raw-response'
-      path: '/raw-response'
-      fullPath: '/raw-response'
-      preLoaderRoute: typeof RawResponseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/return-null': {
-      id: '/return-null'
-      path: '/return-null'
-      fullPath: '/return-null'
-      preLoaderRoute: typeof ReturnNullRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/serialize-form-data': {
-      id: '/serialize-form-data'
-      path: '/serialize-form-data'
-      fullPath: '/serialize-form-data'
-      preLoaderRoute: typeof SerializeFormDataRouteImport
+    '/submit-post-formdata': {
+      id: '/submit-post-formdata'
+      path: '/submit-post-formdata'
+      fullPath: '/submit-post-formdata'
+      preLoaderRoute: typeof SubmitPostFormdataRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/status': {
@@ -311,18 +241,81 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/submit-post-formdata': {
-      id: '/submit-post-formdata'
-      path: '/submit-post-formdata'
-      fullPath: '/submit-post-formdata'
-      preLoaderRoute: typeof SubmitPostFormdataRouteImport
+    '/serialize-form-data': {
+      id: '/serialize-form-data'
+      path: '/serialize-form-data'
+      fullPath: '/serialize-form-data'
+      preLoaderRoute: typeof SerializeFormDataRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/cookies/set': {
-      id: '/cookies/set'
-      path: '/cookies/set'
-      fullPath: '/cookies/set'
-      preLoaderRoute: typeof CookiesSetRouteImport
+    '/return-null': {
+      id: '/return-null'
+      path: '/return-null'
+      fullPath: '/return-null'
+      preLoaderRoute: typeof ReturnNullRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/raw-response': {
+      id: '/raw-response'
+      path: '/raw-response'
+      fullPath: '/raw-response'
+      preLoaderRoute: typeof RawResponseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/multipart': {
+      id: '/multipart'
+      path: '/multipart'
+      fullPath: '/multipart'
+      preLoaderRoute: typeof MultipartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/isomorphic-fns': {
+      id: '/isomorphic-fns'
+      path: '/isomorphic-fns'
+      fullPath: '/isomorphic-fns'
+      preLoaderRoute: typeof IsomorphicFnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/headers': {
+      id: '/headers'
+      path: '/headers'
+      fullPath: '/headers'
+      preLoaderRoute: typeof HeadersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/env-only': {
+      id: '/env-only'
+      path: '/env-only'
+      fullPath: '/env-only'
+      preLoaderRoute: typeof EnvOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dead-code-preserve': {
+      id: '/dead-code-preserve'
+      path: '/dead-code-preserve'
+      fullPath: '/dead-code-preserve'
+      preLoaderRoute: typeof DeadCodePreserveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consistent': {
+      id: '/consistent'
+      path: '/consistent'
+      fullPath: '/consistent'
+      preLoaderRoute: typeof ConsistentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/abort-signal': {
+      id: '/abort-signal'
+      path: '/abort-signal'
+      fullPath: '/abort-signal'
+      preLoaderRoute: typeof AbortSignalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cookies/': {
@@ -330,6 +323,13 @@ declare module '@tanstack/solid-router' {
       path: '/cookies'
       fullPath: '/cookies'
       preLoaderRoute: typeof CookiesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies/set': {
+      id: '/cookies/set'
+      path: '/cookies/set'
+      fullPath: '/cookies/set'
+      preLoaderRoute: typeof CookiesSetRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

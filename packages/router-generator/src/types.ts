@@ -18,6 +18,7 @@ export type RouteNode = {
 export interface GetRouteNodesResult {
   rootRouteNode?: RouteNode
   routeNodes: Array<RouteNode>
+  physicalDirectories: Array<string>
 }
 
 export type FsRouteType =
@@ -54,3 +55,9 @@ export type HandleNodeAccumulator = {
   routePiecesByPath: Record<string, RouteSubNode>
   routeNodes: Array<RouteNode>
 }
+
+export type GetRoutesByFileMapResultValue = { routePath: string }
+export type GetRoutesByFileMapResult = Map<
+  string,
+  GetRoutesByFileMapResultValue
+>

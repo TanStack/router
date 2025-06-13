@@ -142,6 +142,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testFooBarRouteImport
       parentRoute: typeof testFooRoute
     }
+    '/(test)/bar': {
+      id: '/(test)/bar'
+      path: '/bar'
+      fullPath: '/bar'
+      preLoaderRoute: typeof testBarLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 

@@ -4,10 +4,14 @@ import { mkdtempSync } from 'node:fs'
 import crypto from 'node:crypto'
 import { deepEqual, rootRouteId } from '@tanstack/router-core'
 import { logging } from './logger'
-import { getRouteNodes as physicalGetRouteNodes } from './filesystem/physical/getRouteNodes'
+import {
+  isVirtualConfigFile,
+  getRouteNodes as physicalGetRouteNodes,
+} from './filesystem/physical/getRouteNodes'
 import { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getRouteNodes'
 import { rootPathId } from './filesystem/physical/rootPathId'
 import {
+  buildFileRoutesByPathInterface,
   buildImportString,
   buildRouteTreeConfig,
   checkFileExists,
@@ -19,8 +23,6 @@ import {
   format,
   getResolvedRouteNodeVariableName,
   hasParentRoute,
-  inferFullPath,
-  inferPath,
   isRouteNodeValidForAugmentation,
   lowerCaseFirstChar,
   mergeImportDeclarations,
@@ -46,6 +48,7 @@ import type { TargetTemplate } from './template'
 import type {
   FsRouteType,
   GetRouteNodesResult,
+  GetRoutesByFileMapResult,
   HandleNodeAccumulator,
   ImportDeclaration,
   RouteNode,
@@ -135,6 +138,7 @@ interface GeneratorCacheEntry {
 
 interface RouteNodeCacheEntry extends GeneratorCacheEntry {
   exports: Array<string>
+  routeId: string
 }
 
 type GeneratorRouteNodeCache = Map</** filePath **/ string, RouteNodeCacheEntry>
@@ -171,6 +175,7 @@ export class Generator {
   // this is just a cache for the transform plugins since we need them for each route file that is to be processed
   private transformPlugins: Array<TransformPlugin> = []
   private routeGroupPatternRegex = /\(.+\)/g
+  private physicalDirectories: Array<string> = []
 
   constructor(opts: { config: Config; root: string; fs?: fs }) {
     this.config = opts.config
@@ -204,17 +209,22 @@ export class Generator {
       : path.resolve(this.root, this.config.routesDirectory)
   }
 
+  public getRoutesByFileMap(): GetRoutesByFileMapResult {
+    return new Map(
+      [...this.routeNodeCache.entries()].map(([filePath, cacheEntry]) => [
+        filePath,
+        { routePath: cacheEntry.routeId },
+      ]),
+    )
+  }
+
   public async run(event?: GeneratorEvent): Promise<void> {
-    // we are only interested in FileEvents that affect either the generated route tree or files inside the routes folder
-    if (event && event.type !== 'rerun') {
-      if (
-        !(
-          event.path === this.generatedRouteTreePath ||
-          event.path.startsWith(this.routesDirectoryPath)
-        )
-      ) {
-        return
-      }
+    if (
+      event &&
+      event.type !== 'rerun' &&
+      !this.isFileRelevantForRouteTreeGeneration(event.path)
+    ) {
+      return
     }
     this.fileEventQueue.push(event ?? { type: 'rerun' })
     // only allow a single run at a time
@@ -234,7 +244,7 @@ export class Generator {
           await Promise.all(
             tempQueue.map(async (e) => {
               if (e.type === 'update') {
-                let cacheEntry
+                let cacheEntry: GeneratorCacheEntry | undefined
                 if (e.path === this.generatedRouteTreePath) {
                   cacheEntry = this.routeTreeFileCache
                 } else {
@@ -292,7 +302,7 @@ export class Generator {
   }
 
   private async generatorInternal() {
-    let writeRouteTreeFile = false as boolean
+    let writeRouteTreeFile: boolean | 'force' = false
 
     let getRouteNodesResult: GetRouteNodesResult
 
@@ -302,7 +312,11 @@ export class Generator {
       getRouteNodesResult = await physicalGetRouteNodes(this.config, this.root)
     }
 
-    const { rootRouteNode, routeNodes: beforeRouteNodes } = getRouteNodesResult
+    const {
+      rootRouteNode,
+      routeNodes: beforeRouteNodes,
+      physicalDirectories,
+    } = getRouteNodesResult
     if (rootRouteNode === undefined) {
       let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
       if (!this.config.virtualRouteConfig) {
@@ -310,6 +324,7 @@ export class Generator {
       }
       throw new Error(errorMessage)
     }
+    this.physicalDirectories = physicalDirectories
 
     writeRouteTreeFile = await this.handleRootNode(rootRouteNode)
 
@@ -376,6 +391,36 @@ export class Generator {
         }
       }
       writeRouteTreeFile = true
+    } else {
+      const routeTreeFileChange = await this.didFileChangeComparedToCache(
+        { path: this.generatedRouteTreePath },
+        this.routeTreeFileCache,
+      )
+      if (routeTreeFileChange.result !== false) {
+        writeRouteTreeFile = 'force'
+        if (routeTreeFileChange.result === true) {
+          const routeTreeFile = await this.fs.readFile(
+            this.generatedRouteTreePath,
+          )
+          if (routeTreeFile !== 'file-not-existing') {
+            this.routeTreeFileCache = {
+              fileContent: routeTreeFile.fileContent,
+              mtimeMs: routeTreeFile.stat.mtimeMs,
+            }
+          }
+        }
+      }
+    }
+
+    if (!writeRouteTreeFile) {
+      // only needs to be done if no other changes have been detected yet
+      // compare shadowCache and cache to identify deleted routes
+      for (const fullPath of this.routeNodeCache.keys()) {
+        if (!this.routeNodeShadowCache.has(fullPath)) {
+          writeRouteTreeFile = true
+          break
+        }
+      }
     }
 
     if (!writeRouteTreeFile) {
@@ -393,7 +438,10 @@ export class Generator {
 
     let newMtimeMs: bigint | undefined
     if (this.routeTreeFileCache) {
-      if (this.routeTreeFileCache.fileContent === routeTreeContent) {
+      if (
+        writeRouteTreeFile !== 'force' &&
+        this.routeTreeFileCache.fileContent === routeTreeContent
+      ) {
         // existing route tree file is already up-to-date, don't write it
         // we should only get here in the initial run when the route cache is not filled yet
       } else {
@@ -634,7 +682,13 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
 
         fileRoutesByPathInterfacePerPlugin = buildFileRoutesByPathInterface({
           ...plugin.moduleAugmentation({ generator: this }),
-          routeNodes: preRouteNodes,
+          routeNodes:
+            this.config.verboseFileRoutes !== false
+              ? sortedRouteNodes
+              : [
+                  ...routeFileResult.map(({ node }) => node),
+                  ...sortedRouteNodes.filter((d) => d.isVirtual),
+                ],
           exportName,
         })
       }
@@ -784,6 +838,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
       fileContent: existingRouteFile.fileContent,
       mtimeMs: existingRouteFile.stat.mtimeMs,
       exports: [],
+      routeId: node.routePath ?? '$$TSR_NO_ROUTE_PATH_ASSIGNED$$',
     }
 
     const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
@@ -1063,6 +1118,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
       fileContent: rootNodeFile.fileContent,
       mtimeMs: rootNodeFile.stat.mtimeMs,
       exports: [],
+      routeId: node.routePath ?? '$$TSR_NO_ROOT_ROUTE_PATH_ASSIGNED$$',
     }
 
     // scaffold the root route
@@ -1254,38 +1310,42 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
 
     acc.routeNodes.push(node)
   }
-}
 
-export function buildFileRoutesByPathInterface(opts: {
-  routeNodes: Array<RouteNode>
-  module: string
-  interfaceName: string
-  exportName: string
-}): string {
-  return `declare module '${opts.module}' {
-  interface ${opts.interfaceName} {
-    ${opts.routeNodes
-      .map((routeNode) => {
-        const filePathId = routeNode.routePath
-        let preloaderRoute = ''
+  // only process files that are relevant for the route tree generation
+  private isFileRelevantForRouteTreeGeneration(filePath: string): boolean {
+    // the generated route tree file
+    if (filePath === this.generatedRouteTreePath) {
+      return true
+    }
 
-        if (routeNode.exports?.includes(opts.exportName)) {
-          preloaderRoute = `typeof ${routeNode.variableName}${opts.exportName}Import`
-        } else {
-          preloaderRoute = 'unknown'
-        }
+    // files inside the routes folder
+    if (filePath.startsWith(this.routesDirectoryPath)) {
+      return true
+    }
 
-        const parent = findParent(routeNode, opts.exportName)
+    // the virtual route config file passed into `virtualRouteConfig`
+    if (
+      typeof this.config.virtualRouteConfig === 'string' &&
+      filePath === this.config.virtualRouteConfig
+    ) {
+      return true
+    }
 
-        return `'${filePathId}': {
-          id: '${filePathId}'
-          path: '${inferPath(routeNode)}'
-          fullPath: '${inferFullPath(routeNode)}'
-          preLoaderRoute: ${preloaderRoute}
-          parentRoute: typeof ${parent}
-        }`
-      })
-      .join('\n')}
+    // this covers all files that are mounted via `virtualRouteConfig` or any `__virtual.ts` files
+    if (this.routeNodeCache.has(filePath)) {
+      return true
+    }
+
+    // virtual config files such as`__virtual.ts`
+    if (isVirtualConfigFile(path.basename(filePath))) {
+      return true
+    }
+
+    // route files inside directories mounted via `physical()` inside a virtual route config
+    if (this.physicalDirectories.some((dir) => filePath.startsWith(dir))) {
+      return true
+    }
+
+    return false
   }
-}`
 }

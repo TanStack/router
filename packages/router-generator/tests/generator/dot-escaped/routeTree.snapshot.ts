@@ -84,13 +84,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/nested.js': {
-      id: '/nested.js'
-      path: '/nested.js'
-      fullPath: '/nested.js'
-      preLoaderRoute: typeof NestedDotjsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/script.js': {
       id: '/script.js'
       path: '/script.js'
@@ -98,18 +91,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScriptDotjsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/nested.js/double.ext.js': {
-      id: '/nested.js/double.ext.js'
-      path: '/double.ext.js'
-      fullPath: '/nested.js/double.ext.js'
-      preLoaderRoute: typeof NestedDotjsDoubleDotextDotjsRouteImport
-      parentRoute: typeof NestedDotjsRoute
+    '/nested.js': {
+      id: '/nested.js'
+      path: '/nested.js'
+      fullPath: '/nested.js'
+      preLoaderRoute: typeof NestedDotjsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/nested.js/script.js': {
       id: '/nested.js/script.js'
       path: '/script.js'
       fullPath: '/nested.js/script.js'
       preLoaderRoute: typeof NestedDotjsScriptDotjsRouteImport
+      parentRoute: typeof NestedDotjsRoute
+    }
+    '/nested.js/double.ext.js': {
+      id: '/nested.js/double.ext.js'
+      path: '/double.ext.js'
+      fullPath: '/nested.js/double.ext.js'
+      preLoaderRoute: typeof NestedDotjsDoubleDotextDotjsRouteImport
       parentRoute: typeof NestedDotjsRoute
     }
   }

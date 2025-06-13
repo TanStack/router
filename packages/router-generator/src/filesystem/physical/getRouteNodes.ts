@@ -19,6 +19,11 @@ import type { Config } from '../../config'
 
 const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
 
+const virtualConfigFileRegExp = /__virtual\.[mc]?[jt]s$/
+export function isVirtualConfigFile(fileName: string): boolean {
+  return virtualConfigFileRegExp.test(fileName)
+}
+
 export async function getRouteNodes(
   config: Pick<
     Config,
@@ -38,6 +43,7 @@ export async function getRouteNodes(
   const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
 
   const routeNodes: Array<RouteNode> = []
+  const allPhysicalDirectories: Array<string> = []
 
   async function recurse(dir: string) {
     const fullDir = path.resolve(config.routesDirectory, dir)
@@ -63,7 +69,7 @@ export async function getRouteNodes(
     })
 
     const virtualConfigFile = dirList.find((dirent) => {
-      return dirent.isFile() && dirent.name.match(/__virtual\.[mc]?[jt]s$/)
+      return dirent.isFile() && isVirtualConfigFile(dirent.name)
     })
 
     if (virtualConfigFile !== undefined) {
@@ -81,14 +87,16 @@ export async function getRouteNodes(
         file: '',
         children: virtualRouteSubtreeConfig,
       }
-      const { routeNodes: virtualRouteNodes } = await getRouteNodesVirtual(
-        {
-          ...config,
-          routesDirectory: fullDir,
-          virtualRouteConfig: dummyRoot,
-        },
-        root,
-      )
+      const { routeNodes: virtualRouteNodes, physicalDirectories } =
+        await getRouteNodesVirtual(
+          {
+            ...config,
+            routesDirectory: fullDir,
+            virtualRouteConfig: dummyRoot,
+          },
+          root,
+        )
+      allPhysicalDirectories.push(...physicalDirectories)
       virtualRouteNodes.forEach((node) => {
         const filePath = replaceBackslash(path.join(dir, node.filePath))
         const routePath = `/${dir}${node.routePath}`
@@ -192,7 +200,11 @@ export async function getRouteNodes(
     rootRouteNode.variableName = 'root'
   }
 
-  return { rootRouteNode, routeNodes }
+  return {
+    rootRouteNode,
+    routeNodes,
+    physicalDirectories: allPhysicalDirectories,
+  }
 }
 
 /**

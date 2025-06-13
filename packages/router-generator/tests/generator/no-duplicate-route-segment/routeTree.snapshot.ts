@@ -58,6 +58,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/foo': {
+      id: '/foo'
+      path: '/foo'
+      fullPath: '/foo'
+      preLoaderRoute: typeof FooRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/foo/_layout': {
       id: '/foo/_layout'
       path: '/foo'

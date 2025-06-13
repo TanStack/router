@@ -73,7 +73,7 @@ Server routes in TanStack Start, follow the same file-based routing conventions 
 - `/routes/users/$id.ts` will create an API route at `/users/$id`
 - `/routes/users/$id/posts.ts` will create an API route at `/users/$id/posts`
 - `/routes/users.$id.posts.ts` will create an API route at `/users/$id/posts`
-- `/routes/file/$.ts` will create an API route at `/api/file/$`
+- `/routes/api/file/$.ts` will create an API route at `/api/file/$`
 - `/routes/my-script[.]js.ts` will create an API route at `/my-script.js`
 
 ## Unique Route Paths

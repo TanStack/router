@@ -583,3 +583,37 @@ export const findParent = (
   }
   return findParent(node.parent, exportName)
 }
+
+export function buildFileRoutesByPathInterface(opts: {
+  routeNodes: Array<RouteNode>
+  module: string
+  interfaceName: string
+  exportName: string
+}): string {
+  return `declare module '${opts.module}' {
+  interface ${opts.interfaceName} {
+    ${opts.routeNodes
+      .map((routeNode) => {
+        const filePathId = routeNode.routePath
+        let preloaderRoute = ''
+
+        if (routeNode.exports?.includes(opts.exportName)) {
+          preloaderRoute = `typeof ${routeNode.variableName}${opts.exportName}Import`
+        } else {
+          preloaderRoute = 'unknown'
+        }
+
+        const parent = findParent(routeNode, opts.exportName)
+
+        return `'${filePathId}': {
+          id: '${filePathId}'
+          path: '${inferPath(routeNode)}'
+          fullPath: '${inferFullPath(routeNode)}'
+          preLoaderRoute: ${preloaderRoute}
+          parentRoute: typeof ${parent}
+        }`
+      })
+      .join('\n')}
+  }
+}`
+}

@@ -20,7 +20,13 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
   const routerCodeSplitter = getPlugin(unpluginRouterCodeSplitterFactory)
   const routeAutoImport = getPlugin(unpluginRouteAutoImportFactory)
 
-  const result = [...routerGenerator, ...routerCodeSplitter, ...routeAutoImport]
+  const result = [...routerGenerator]
+  if (options.autoCodeSplitting) {
+    result.push(...routerCodeSplitter)
+  }
+  if (options.verboseFileRoutes === false) {
+    result.push(...routeAutoImport)
+  }
 
   const isProduction = process.env.NODE_ENV === 'production'
 

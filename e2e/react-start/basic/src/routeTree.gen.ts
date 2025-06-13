@@ -710,6 +710,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FooBarQuxHereIndexRouteImport
       parentRoute: typeof FooBarQuxHereRoute
     }
+    '/foo/$bar/$qux': {
+      id: '/foo/$bar/$qux'
+      path: '/foo/$bar/$qux'
+      fullPath: '/foo/$bar/$qux'
+      preLoaderRoute: typeof FooBarQuxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 declare module '@tanstack/react-start/server' {

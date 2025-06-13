@@ -120,19 +120,26 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/(group-a)/_layout-a': {
-      id: '/(group-a)/_layout-a'
+    '/(group-c)': {
+      id: '/(group-c)'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupALayoutARouteImport
-      parentRoute: typeof groupARoute
+      preLoaderRoute: typeof groupCRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/(group-b)/_layout-b': {
-      id: '/(group-b)/_layout-b'
+    '/(group-b)': {
+      id: '/(group-b)'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupBLayoutBRouteImport
-      parentRoute: typeof groupBRoute
+      preLoaderRoute: typeof groupBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(group-a)': {
+      id: '/(group-a)'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof groupARouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/(group-c)/_layout-c': {
       id: '/(group-c)/_layout-c'
@@ -141,19 +148,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof groupCLayoutCRouteImport
       parentRoute: typeof groupCRoute
     }
-    '/(group-a)/_layout-a/login': {
-      id: '/(group-a)/_layout-a/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof groupALayoutALoginRouteImport
-      parentRoute: typeof groupALayoutARoute
+    '/(group-b)/_layout-b': {
+      id: '/(group-b)/_layout-b'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof groupBLayoutBRouteImport
+      parentRoute: typeof groupBRoute
     }
-    '/(group-a)/_layout-a/signup': {
-      id: '/(group-a)/_layout-a/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof groupALayoutASignupRouteImport
-      parentRoute: typeof groupALayoutARoute
+    '/(group-a)/_layout-a': {
+      id: '/(group-a)/_layout-a'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof groupALayoutARouteImport
+      parentRoute: typeof groupARoute
+    }
+    '/(group-c)/_layout-c/': {
+      id: '/(group-c)/_layout-c/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof groupCLayoutCIndexRouteImport
+      parentRoute: typeof groupCLayoutCRoute
     }
     '/(group-b)/_layout-b/dashboard': {
       id: '/(group-b)/_layout-b/dashboard'
@@ -162,12 +176,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof groupBLayoutBDashboardRouteImport
       parentRoute: typeof groupBLayoutBRoute
     }
-    '/(group-c)/_layout-c/': {
-      id: '/(group-c)/_layout-c/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof groupCLayoutCIndexRouteImport
-      parentRoute: typeof groupCLayoutCRoute
+    '/(group-a)/_layout-a/signup': {
+      id: '/(group-a)/_layout-a/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof groupALayoutASignupRouteImport
+      parentRoute: typeof groupALayoutARoute
+    }
+    '/(group-a)/_layout-a/login': {
+      id: '/(group-a)/_layout-a/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof groupALayoutALoginRouteImport
+      parentRoute: typeof groupALayoutARoute
     }
   }
 }
