@@ -137,6 +137,7 @@ interface GeneratorCacheEntry {
 
 interface RouteNodeCacheEntry extends GeneratorCacheEntry {
   exports: Array<string>
+  routeId: string
 }
 
 type GeneratorRouteNodeCache = Map</** filePath **/ string, RouteNodeCacheEntry>
@@ -208,7 +209,16 @@ export class Generator {
   }
 
   public getRouteFileList(): Set<string> {
-    return new Set(this.routeNodeCache.keys())
+    return new Set(...this.routeNodeCache.keys())
+  }
+
+  public getRouteIdByFileMap(): Map<string, string> {
+    return new Map(
+      [...this.routeNodeCache.entries()].map(([filePath, cacheEntry]) => [
+        filePath,
+        cacheEntry.routeId,
+      ]),
+    )
   }
 
   public async run(event?: GeneratorEvent): Promise<void> {
@@ -831,6 +841,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
       fileContent: existingRouteFile.fileContent,
       mtimeMs: existingRouteFile.stat.mtimeMs,
       exports: [],
+      routeId: node.routePath ?? '$$TSR_NO_ROUTE_PATH_ASSIGNED$$',
     }
 
     const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
@@ -1110,6 +1121,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
       fileContent: rootNodeFile.fileContent,
       mtimeMs: rootNodeFile.stat.mtimeMs,
       exports: [],
+      routeId: node.routePath ?? '$$TSR_NO_ROOT_ROUTE_PATH_ASSIGNED$$',
     }
 
     // scaffold the root route
