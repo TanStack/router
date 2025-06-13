@@ -164,20 +164,6 @@ export function createStartHandler<TRouter extends AnyRouter>({
             }
           }
 
-          // If we have a server route tree, then we try matching to see if we have a
-          // server route that matches the request.
-          if (processedServerRouteTree) {
-            const [_matchedRoutes, response] = await handleServerRoutes({
-              processedServerRouteTree,
-              router,
-              request,
-              basePath: APP_BASE,
-            })
-
-            if (response) return response
-          }
-
-          // Server Routes did not produce a response, so fallback to normal SSR matching using the router
           async function executeRouter() {
             const requestAcceptHeader = request.headers.get('Accept') || '*/*'
             const splitRequestAcceptHeader = requestAcceptHeader.split(',')
@@ -230,6 +216,21 @@ export function createStartHandler<TRouter extends AnyRouter>({
             return response
           }
 
+          // If we have a server route tree, then we try matching to see if we have a
+          // server route that matches the request.
+          if (processedServerRouteTree) {
+            const [_matchedRoutes, response] = await handleServerRoutes({
+              processedServerRouteTree,
+              router,
+              request,
+              basePath: APP_BASE,
+              executeRouter,
+            })
+
+            if (response) return response
+          }
+
+          // Server Routes did not produce a response, so fallback to normal SSR matching using the router
           const routerResponse = await executeRouter()
           return routerResponse
         } catch (err) {
@@ -310,6 +311,7 @@ async function handleServerRoutes(opts: {
   processedServerRouteTree: ProcessRouteTreeResult<AnyServerRouteWithTypes>
   request: Request
   basePath: string
+  executeRouter: () => Promise<Response>
 }) {
   const url = new URL(opts.request.url)
   const pathname = url.pathname
@@ -327,37 +329,38 @@ async function handleServerRoutes(opts: {
 
   let response: Response | undefined
   let matchedRoutes: Array<AnyServerRouteWithTypes> = []
-  if (routeTreeResult.foundRoute || serverTreeResult.foundRoute) {
-    matchedRoutes = serverTreeResult.matchedRoutes
-    // check if the app route tree found a match that is deeper than the server route tree
-    if (routeTreeResult.foundRoute) {
-      if (
-        serverTreeResult.matchedRoutes.length <
-        routeTreeResult.matchedRoutes.length
-      ) {
-        const closestCommon = [...routeTreeResult.matchedRoutes]
-          .reverse()
-          .find((r) => {
-            return opts.processedServerRouteTree.routesById[r.id] !== undefined
-          })
-        if (closestCommon) {
-          // walk up the tree and collect all parents
-          let routeId = closestCommon.id
-          matchedRoutes = []
-          do {
-            const route = opts.processedServerRouteTree.routesById[routeId]
-            if (!route) {
-              break
-            }
-            matchedRoutes.push(route)
-            routeId = route.parentRoute?.id
-          } while (routeId)
+  matchedRoutes = serverTreeResult.matchedRoutes
+  // check if the app route tree found a match that is deeper than the server route tree
+  if (routeTreeResult.foundRoute) {
+    if (
+      serverTreeResult.matchedRoutes.length <
+      routeTreeResult.matchedRoutes.length
+    ) {
+      const closestCommon = [...routeTreeResult.matchedRoutes]
+        .reverse()
+        .find((r) => {
+          return opts.processedServerRouteTree.routesById[r.id] !== undefined
+        })
+      if (closestCommon) {
+        // walk up the tree and collect all parents
+        let routeId = closestCommon.id
+        matchedRoutes = []
+        do {
+          const route = opts.processedServerRouteTree.routesById[routeId]
+          if (!route) {
+            break
+          }
+          matchedRoutes.push(route)
+          routeId = route.parentRoute?.id
+        } while (routeId)
 
-          matchedRoutes.reverse()
-        }
+        matchedRoutes.reverse()
       }
     }
-    // We've found a server route that matches the request, so we can call it.
+  }
+
+  if (matchedRoutes.length) {
+    // We've found a server route that (partially) matches the request, so we can call it.
     // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
 
     const middlewares = flattenMiddlewares(
@@ -379,6 +382,9 @@ async function handleServerRoutes(opts: {
         }
       }
     }
+
+    // eventually, execute the router
+    middlewares.push(handlerToMiddleware(opts.executeRouter))
 
     // TODO: This is starting to feel too much like a server function
     // Do generalize the existing middleware execution? Or do we need to
@@ -408,9 +414,13 @@ function handlerToMiddleware(
     any
   >,
 ) {
-  return async ({ next: _next, ...rest }: TODO) => ({
-    response: await handler(rest),
-  })
+  return async ({ next: _next, ...rest }: TODO) => {
+    const response = await handler(rest)
+    if (response) {
+      return { response }
+    }
+    return _next(rest)
+  }
 }
 
 function executeMiddleware(middlewares: TODO, ctx: TODO) {
