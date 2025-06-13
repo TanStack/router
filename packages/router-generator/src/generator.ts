@@ -650,16 +650,18 @@ export class Generator {
       if (!this.config.disableTypes && hasMatchingRouteFiles) {
         fileRoutesByFullPathPerPlugin = [
           `export interface File${exportName}sByFullPath {
-${[...createRouteNodesByFullPath(acc.routeNodes).entries()].map(
-  ([fullPath, routeNode]) => {
+${[...createRouteNodesByFullPath(acc.routeNodes).entries()]
+  .filter(([fullPath]) => fullPath)
+  .map(([fullPath, routeNode]) => {
     return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode, exportName)}`
-  },
-)}
+  })}
 }`,
           `export interface File${exportName}sByTo {
-${[...createRouteNodesByTo(acc.routeNodes).entries()].map(([to, routeNode]) => {
-  return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode, exportName)}`
-})}
+${[...createRouteNodesByTo(acc.routeNodes).entries()]
+  .filter(([to]) => to)
+  .map(([to, routeNode]) => {
+    return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode, exportName)}`
+  })}
 }`,
           `export interface File${exportName}sById {
 '${rootRouteId}': typeof root${exportName}Import,
@@ -669,9 +671,23 @@ ${[...createRouteNodesById(acc.routeNodes).entries()].map(([id, routeNode]) => {
 }`,
           `export interface File${exportName}Types {
 file${exportName}sByFullPath: File${exportName}sByFullPath
-fullPaths: ${acc.routeNodes.length > 0 ? [...createRouteNodesByFullPath(acc.routeNodes).keys()].map((fullPath) => `'${fullPath}'`).join('|') : 'never'}
+fullPaths: ${
+            acc.routeNodes.length > 0
+              ? [...createRouteNodesByFullPath(acc.routeNodes).keys()]
+                  .filter((fullPath) => fullPath)
+                  .map((fullPath) => `'${fullPath}'`)
+                  .join('|')
+              : 'never'
+          }
 file${exportName}sByTo: File${exportName}sByTo
-to: ${acc.routeNodes.length > 0 ? [...createRouteNodesByTo(acc.routeNodes).keys()].map((to) => `'${to}'`).join('|') : 'never'}
+to: ${
+            acc.routeNodes.length > 0
+              ? [...createRouteNodesByTo(acc.routeNodes).keys()]
+                  .filter((to) => to)
+                  .map((to) => `'${to}'`)
+                  .join('|')
+              : 'never'
+          }
 id: ${[`'${rootRouteId}'`, ...[...createRouteNodesById(acc.routeNodes).keys()].map((id) => `'${id}'`)].join('|')}
 file${exportName}sById: File${exportName}sById
 }`,
@@ -1151,6 +1167,8 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     const rootRouteExports: Array<string> = []
     for (const plugin of this.pluginsWithTransform) {
       const exportName = plugin.transformPlugin.exportName
+      // TODO we need to parse instead of just string match
+      // otherwise a commented out export will still be detected
       if (rootNodeFile.fileContent.includes(`export const ${exportName}`)) {
         rootRouteExports.push(exportName)
       }
