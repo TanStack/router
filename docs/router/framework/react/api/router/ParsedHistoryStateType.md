@@ -7,7 +7,7 @@ The `ParsedHistoryState` type represents a parsed state object. Additionally to 
 
 ```tsx
 export type ParsedHistoryState = HistoryState & {
-  __key?: string
+  __TSR_key?: string
   __TSR_index: number
 }
 ```
