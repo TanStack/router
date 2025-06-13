@@ -44,8 +44,11 @@ const bannedBeforeExternalPlugins: Array<BannedBeforeExternalPlugin> = [
 ]
 
 class FoundPluginInBeforeCode extends Error {
-  constructor(externalPlugin: BannedBeforeExternalPlugin, framework: string) {
-    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
+  constructor(
+    externalPlugin: BannedBeforeExternalPlugin,
+    pluginFramework: string,
+  ) {
+    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin/${pluginFramework}'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
 e.g.
 plugins: [
   tanstackRouter(), // Place this before ${externalPlugin.usage}
