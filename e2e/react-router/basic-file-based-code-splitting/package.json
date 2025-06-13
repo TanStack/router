@@ -8,7 +8,9 @@
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
     "start": "vite",
-    "test:e2e": "playwright test --project=chromium"
+    "test:e2e:verbose-routes:true": "VERBOSE_FILE_ROUTES=1 playwright test --project=chromium",
+    "test:e2e:verbose-routes:false": "VERBOSE_FILE_ROUTES=0 playwright test --project=chromium",
+    "test:e2e": "pnpm run test:e2e:verbose-routes:true && pnpm run test:e2e:verbose-routes:false"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
