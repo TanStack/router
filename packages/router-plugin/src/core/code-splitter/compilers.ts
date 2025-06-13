@@ -729,25 +729,11 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
               return
             }
 
-            if (t.isCallExpression(path.parentPath.node)) {
-              // Extract out the routeId
-              if (t.isCallExpression(path.parentPath.node.callee)) {
-                // const callee = path.parentPath.node.callee
-                // if (t.isIdentifier(callee.callee)) {
-                //   const firstArg = callee.arguments[0]
-                //   if (t.isStringLiteral(firstArg)) {
-                //     routeId = firstArg.value
-                //   }
-                // }
-              }
-
-              // Extracting the codeSplitGroupings
-              const options = resolveIdentifier(
-                path,
-                path.parentPath.node.arguments[0],
-              )
-              if (t.isObjectExpression(options)) {
-                options.properties.forEach((prop) => {
+            function babelHandleSplittingGroups(
+              routeOptions: t.Node | undefined,
+            ) {
+              if (t.isObjectExpression(routeOptions)) {
+                routeOptions.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
                     if (t.isIdentifier(prop.key)) {
                       if (prop.key.name === 'codeSplitGroupings') {
@@ -780,6 +766,25 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
                     }
                   }
                 })
+              }
+            }
+
+            // Extracting the codeSplitGroupings
+            if (t.isCallExpression(path.parentPath.node)) {
+              // createFileRoute('/')({ ... })
+              const options = resolveIdentifier(
+                path,
+                path.parentPath.node.arguments[0],
+              )
+
+              babelHandleSplittingGroups(options)
+            } else if (t.isVariableDeclarator(path.parentPath.node)) {
+              // createFileRoute({ ... })
+              const caller = resolveIdentifier(path, path.parentPath.node.init)
+
+              if (t.isCallExpression(caller)) {
+                const options = resolveIdentifier(path, caller.arguments[0])
+                babelHandleSplittingGroups(options)
               }
             }
           },
