@@ -327,7 +327,7 @@ Learn more about the [Links](../learn-the-basics.md#navigation).
 + }) // [!code ++]
 ```
 
-Learn more about the [Server Functions](./server-functions.md).
+Learn more about the [Server Functions](../server-functions.md).
 
 ### Server Routes ~Handlers~
 
@@ -340,7 +340,7 @@ Learn more about the [Server Functions](./server-functions.md).
 + }) // [!code ++]
 ```
 
-Learn more about the [Server Routes](./server-routes.md).
+Learn more about the [Server Routes](../server-routes.md).
 
 ### Fonts
 
