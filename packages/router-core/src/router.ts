@@ -3020,13 +3020,18 @@ interface RouteLike {
   }
 }
 
+export type ProcessRouteTreeResult<TRouteLike extends RouteLike> = {
+  routesById: Record<string, TRouteLike>
+  routesByPath: Record<string, TRouteLike>
+  flatRoutes: Array<TRouteLike>
+}
 export function processRouteTree<TRouteLike extends RouteLike>({
   routeTree,
   initRoute,
 }: {
   routeTree: TRouteLike
   initRoute?: (route: TRouteLike, index: number) => void
-}) {
+}): ProcessRouteTreeResult<TRouteLike> {
   const routesById = {} as Record<string, TRouteLike>
   const routesByPath = {} as Record<string, TRouteLike>
 
