@@ -1209,11 +1209,13 @@ export class RouterCore<
         const rawState = parentMatch?.state ?? next.state
         const parentStrictState = parentMatch?._strictState ?? {}
         // Exclude keys starting with __ and key named 'key'
-        const filteredState = Object.fromEntries(
-          Object.entries(rawState).filter(
-            ([key]) => !(key.startsWith('__') || key === 'key'),
-          ),
-        )
+        const filteredState = rawState
+          ? Object.fromEntries(
+              Object.entries(rawState).filter(
+                ([key]) => !(key.startsWith('__') || key === 'key'),
+              ),
+            )
+          : {}
 
         try {
           if (route.options.validateState) {
