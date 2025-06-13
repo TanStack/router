@@ -706,11 +706,8 @@ export function compileCodeSplitVirtualRoute(
  */
 export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
   groupings: CodeSplitGroupings | undefined
-  routeId: string
 } {
   const ast = parseAst(opts)
-
-  let routeId = ''
 
   let codeSplitGroupings: CodeSplitGroupings | undefined = undefined
 
@@ -735,14 +732,13 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
             if (t.isCallExpression(path.parentPath.node)) {
               // Extract out the routeId
               if (t.isCallExpression(path.parentPath.node.callee)) {
-                const callee = path.parentPath.node.callee
-
-                if (t.isIdentifier(callee.callee)) {
-                  const firstArg = callee.arguments[0]
-                  if (t.isStringLiteral(firstArg)) {
-                    routeId = firstArg.value
-                  }
-                }
+                // const callee = path.parentPath.node.callee
+                // if (t.isIdentifier(callee.callee)) {
+                //   const firstArg = callee.arguments[0]
+                //   if (t.isStringLiteral(firstArg)) {
+                //     routeId = firstArg.value
+                //   }
+                // }
               }
 
               // Extracting the codeSplitGroupings
@@ -792,7 +788,7 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
     },
   })
 
-  return { groupings: codeSplitGroupings, routeId }
+  return { groupings: codeSplitGroupings }
 }
 
 function getImportSpecifierAndPathFromLocalName(
