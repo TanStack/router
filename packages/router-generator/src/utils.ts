@@ -466,47 +466,61 @@ export function buildRouteTreeConfig(
   disableTypes: boolean,
   depth = 1,
 ): Array<string> {
-  const children = nodes.map((node) => {
-    if (node._fsRouteType === '__root') {
-      return
-    }
+  const children = nodes
+    .filter((n) => n.exports?.includes(exportName))
+    .map((node) => {
+      if (node._fsRouteType === '__root') {
+        return
+      }
 
-    if (node._fsRouteType === 'pathless_layout' && !node.children?.length) {
-      return
-    }
+      if (node._fsRouteType === 'pathless_layout' && !node.children?.length) {
+        return
+      }
 
-    const route = `${node.variableName}`
+      const route = `${node.variableName}`
 
-    if (node.children?.length) {
-      const childConfigs = buildRouteTreeConfig(
-        node.children,
-        exportName,
-        disableTypes,
-        depth + 1,
-      )
+      if (node.children?.length) {
+        const childConfigs = buildRouteTreeConfig(
+          node.children,
+          exportName,
+          disableTypes,
+          depth + 1,
+        )
 
-      const childrenDeclaration = disableTypes
-        ? ''
-        : `interface ${route}${exportName}Children {
-  ${node.children.map((child) => `${child.variableName}${exportName}: typeof ${getResolvedRouteNodeVariableName(child, exportName)}`).join(',')}
+        const childrenDeclaration = disableTypes
+          ? ''
+          : `interface ${route}${exportName}Children {
+  ${node.children
+    .filter((n) => n.exports?.includes(exportName))
+    .map(
+      (child) =>
+        `${child.variableName}${exportName}: typeof ${getResolvedRouteNodeVariableName(child, exportName)}`,
+    )
+    .join(',')}
 }`
 
-      const children = `const ${route}${exportName}Children${disableTypes ? '' : `: ${route}${exportName}Children`} = {
-  ${node.children.map((child) => `${child.variableName}${exportName}: ${getResolvedRouteNodeVariableName(child, exportName)}`).join(',')}
+        const children = `const ${route}${exportName}Children${disableTypes ? '' : `: ${route}${exportName}Children`} = {
+  ${node.children
+    .filter((n) => n.exports?.includes(exportName))
+    .map(
+      (child) =>
+        `${child.variableName}${exportName}: ${getResolvedRouteNodeVariableName(child, exportName)}`,
+    )
+    .join(',')}
 }`
 
-      const routeWithChildren = `const ${route}${exportName}WithChildren = ${route}${exportName}._addFileChildren(${route}${exportName}Children)`
+        const routeWithChildren = `const ${route}${exportName}WithChildren = ${route}${exportName}._addFileChildren(${route}${exportName}Children)`
 
-      return [
-        childConfigs.join('\n'),
-        childrenDeclaration,
-        children,
-        routeWithChildren,
-      ].join('\n\n')
-    }
+        return [
+          childConfigs.join('\n'),
+          childrenDeclaration,
+          children,
+          routeWithChildren,
+        ].join('\n\n')
+      }
 
-    return undefined
-  })
+      return undefined
+    })
 
   return children.filter((x) => x !== undefined)
 }

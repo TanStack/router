@@ -74,7 +74,9 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         initConfigAndGenerator()
       },
       async buildStart() {
-        if (this.environment.config.consumer === 'server') {
+        // to support vite 5, we need to optionally chain the access to the environment
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (this.environment?.config?.consumer === 'server') {
           // When building in environment mode, we only need to generate routes
           // for the client environment
           return

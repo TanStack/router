@@ -6,7 +6,9 @@ declare module 'tanstack-start-manifest:v' {
 
 declare module 'tanstack-start-route-tree:v' {
   import type { AnyServerRoute } from '@tanstack/start-server-core'
+  import type { AnyRoute } from '@tanstack/router-core'
 
+  export const routeTree: AnyRoute | undefined
   export const serverRouteTree: AnyServerRoute | undefined
 }
 
