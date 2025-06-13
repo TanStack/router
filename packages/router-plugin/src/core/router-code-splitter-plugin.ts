@@ -19,7 +19,7 @@ import {
 import { decodeIdentifier } from './code-splitter/path-ids'
 import { debug } from './utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
-
+import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { Config } from './config'
 import type {
   UnpluginContextMeta,
@@ -44,8 +44,11 @@ const bannedBeforeExternalPlugins: Array<BannedBeforeExternalPlugin> = [
 ]
 
 class FoundPluginInBeforeCode extends Error {
-  constructor(externalPlugin: BannedBeforeExternalPlugin, framework: string) {
-    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
+  constructor(
+    externalPlugin: BannedBeforeExternalPlugin,
+    pluginFramework: string,
+  ) {
+    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin/${pluginFramework}'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
 e.g.
 plugins: [
   tanstackRouter(), // Place this before ${externalPlugin.usage}
@@ -78,6 +81,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   const handleCompilingReferenceFile = (
     code: string,
     id: string,
+    generatorNodeInfo: GetRoutesByFileMapResultValue,
   ): UnpluginTransformResult => {
     if (debug) console.info('Compiling Route: ', id)
 
@@ -98,7 +102,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     const userShouldSplitFn = getShouldSplitFn()
 
     const pluginSplitBehavior = userShouldSplitFn?.({
-      routeId: fromCode.routeId,
+      routeId: generatorNodeInfo.routePath,
     }) as CodeSplitGroupings | undefined
 
     if (pluginSplitBehavior) {
@@ -180,10 +184,8 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           code: 'createFileRoute(',
         },
         handler(code, id) {
-          if (
-            globalThis.TSR_ROUTE_FILES?.has(id) &&
-            code.includes('createFileRoute(')
-          ) {
+          const generatorFileInfo = globalThis.TSR_ROUTES_BY_ID_MAP?.get(id)
+          if (generatorFileInfo && code.includes('createFileRoute(')) {
             for (const externalPlugin of bannedBeforeExternalPlugins) {
               if (!externalPlugin.frameworks.includes(framework)) {
                 continue
@@ -194,7 +196,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
               }
             }
 
-            return handleCompilingReferenceFile(code, id)
+            return handleCompilingReferenceFile(code, id, generatorFileInfo)
           }
 
           return null

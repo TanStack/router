@@ -25,7 +25,7 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
         code: 'createFileRoute(',
       },
       handler(code, id) {
-        if (!globalThis.TSR_ROUTE_FILES?.has(id)) {
+        if (!globalThis.TSR_ROUTES_BY_ID_MAP?.has(id)) {
           return null
         }
 
