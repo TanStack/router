@@ -5,7 +5,7 @@ import { configSchema, getConfig } from '@tanstack/router-generator'
 import type { NitroConfig } from 'nitropack'
 
 const tsrConfig = configSchema
-  .omit({ autoCodeSplitting: true })
+  // .omit({ autoCodeSplitting: true })
   .partial()
   .extend({
     srcDirectory: z.string().optional().default('src'),
