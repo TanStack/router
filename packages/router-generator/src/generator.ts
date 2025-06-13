@@ -209,10 +209,6 @@ export class Generator {
       : path.resolve(this.root, this.config.routesDirectory)
   }
 
-  public getRouteFileList(): Set<string> {
-    return new Set(...this.routeNodeCache.keys())
-  }
-
   public getRoutesByFileMap(): GetRoutesByFileMapResult {
     return new Map(
       [...this.routeNodeCache.entries()].map(([filePath, cacheEntry]) => [
