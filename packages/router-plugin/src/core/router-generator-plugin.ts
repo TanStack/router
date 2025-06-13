@@ -52,7 +52,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     try {
       await generator.run(generatorEvent)
       globalThis.TSR_ROUTE_FILES = generator.getRouteFileList()
-      globalThis.TSR_ROUTE_FILES_TO_IDS = generator.getRouteIdByFileMap()
+      globalThis.TSR_ROUTES_BY_ID_MAP = generator.getRoutesByFileMap()
     } catch (e) {
       console.error(e)
     }

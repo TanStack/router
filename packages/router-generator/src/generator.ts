@@ -48,6 +48,7 @@ import type { TargetTemplate } from './template'
 import type {
   FsRouteType,
   GetRouteNodesResult,
+  GetRoutesByFileMapResult,
   HandleNodeAccumulator,
   ImportDeclaration,
   RouteNode,
@@ -212,11 +213,11 @@ export class Generator {
     return new Set(...this.routeNodeCache.keys())
   }
 
-  public getRouteIdByFileMap(): Map<string, string> {
+  public getRoutesByFileMap(): GetRoutesByFileMapResult {
     return new Map(
       [...this.routeNodeCache.entries()].map(([filePath, cacheEntry]) => [
         filePath,
-        cacheEntry.routeId,
+        { routePath: cacheEntry.routeId },
       ]),
     )
   }

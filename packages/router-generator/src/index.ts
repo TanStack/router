@@ -37,6 +37,7 @@ export {
 export type {
   RouteNode,
   GetRouteNodesResult,
+  GetRoutesByFileMapResult,
   ImportDeclaration,
   ImportSpecifier,
 } from './types'
