@@ -7,7 +7,6 @@ const successCases: Array<{
   name: string
   code: string
   expectedGrouping: CodeSplitGroupings | undefined
-  expectedRouteId: string
 }> = [
   {
     // This test should be updated whenever the `defaultCodeSplitGroupings` changes
@@ -23,7 +22,6 @@ codeSplitGroupings: [
 })
 `,
     expectedGrouping: defaultCodeSplitGroupings,
-    expectedRouteId: '/posts',
   },
   {
     name: 'loader-separate-components-combined',
@@ -40,7 +38,6 @@ codeSplitGroupings: [
       ['loader'],
       ['component', 'pendingComponent', 'errorComponent', 'notFoundComponent'],
     ],
-    expectedRouteId: '/posts',
   },
   {
     name: 'limited-loader-and-component',
@@ -57,7 +54,6 @@ codeSplitGroupings: [
       ['loader', 'component'],
       ['pendingComponent', 'errorComponent', 'notFoundComponent'],
     ],
-    expectedRouteId: '/posts',
   },
   {
     name: 'empty',
@@ -66,21 +62,19 @@ import {createFileRoute} from '@tanstack/react-router'
 export const Route = createFileRoute('/posts')({})
 `,
     expectedGrouping: undefined,
-    expectedRouteId: '/posts',
   },
 ]
 
 describe('detectCodeSplitGroupingsFromRoute - success', () => {
   it.each(successCases)(
     'should detect code split groupings for $name',
-    ({ code, expectedGrouping, expectedRouteId }) => {
+    ({ code, expectedGrouping }) => {
       const result = detectCodeSplitGroupingsFromRoute({
         code: code,
         sourceFilename: 'test.ts',
       })
 
       expect(result.groupings).toEqual(expectedGrouping)
-      expect(result.routeId).toEqual(expectedRouteId)
     },
   )
 })
