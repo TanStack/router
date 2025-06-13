@@ -12,6 +12,11 @@ export function fillTemplate(
     /%%(\w+)%%/g,
     (_, key) => values[key as TemplateTag] || '',
   )
+
+  if (config.customScaffolding?.disableFormatting) {
+    return replaced
+  }
+
   return format(replaced, config)
 }
 
