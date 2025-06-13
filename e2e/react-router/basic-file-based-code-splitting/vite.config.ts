@@ -14,9 +14,13 @@ export default defineConfig({
       verboseFileRoutes: isVerboseFileRoutes,
       codeSplittingOptions: {
         splitBehavior: ({ routeId }) => {
-          // @ts-expect-error
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-          if (routeId === '' || routeId === undefined) {
+          if (
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            routeId === undefined ||
+            routeId.startsWith('$$TSR_') ||
+            // @ts-expect-error
+            routeId === ''
+          ) {
             console.error(
               'The routeId is empty or undefined. This should not happen.',
             )
