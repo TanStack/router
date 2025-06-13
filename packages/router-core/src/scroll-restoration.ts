@@ -79,7 +79,7 @@ export const scrollRestorationCache = createScrollRestorationCache()
  */
 
 export const defaultGetScrollRestorationKey = (location: ParsedLocation) => {
-  return location.state.__TSR_key! || location.href
+  return location.state.key! || location.href
 }
 
 export function getCssSelector(el: any): string {
