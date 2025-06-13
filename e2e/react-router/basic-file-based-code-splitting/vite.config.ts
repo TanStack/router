@@ -11,7 +11,6 @@ export default defineConfig({
       verboseFileRoutes: false,
       codeSplittingOptions: {
         splitBehavior: ({ routeId }) => {
-          console.info('splitBehavior called for routeId:', routeId)
           if (routeId === '/posts') {
             return [
               ['loader'],

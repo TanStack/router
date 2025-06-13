@@ -56,4 +56,8 @@ export type HandleNodeAccumulator = {
   routeNodes: Array<RouteNode>
 }
 
-export type GetRoutesByFileMapResult = Map<string, { routePath: string }>
+export type GetRoutesByFileMapResultValue = { routePath: string }
+export type GetRoutesByFileMapResult = Map<
+  string,
+  GetRoutesByFileMapResultValue
+>
