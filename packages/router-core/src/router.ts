@@ -1201,6 +1201,46 @@ export class RouterCore<
           return [parentSearch, {}, searchParamError]
         }
       })()
+      const [preMatchState, strictMatchState, stateError]: [
+        Record<string, any>,
+        Record<string, any>,
+        Error | undefined,
+      ] = (() => {
+        const rawState = parentMatch?.state ?? next.state
+        const parentStrictState = parentMatch?._strictState ?? {}
+        // Exclude keys starting with __ and key named 'key'
+        const filteredState = rawState
+          ? Object.fromEntries(
+              Object.entries(rawState).filter(
+                ([key]) => !(key.startsWith('__') || key === 'key'),
+              ),
+            )
+          : {}
+
+        try {
+          if (route.options.validateState) {
+            const strictState =
+              validateState(route.options.validateState, filteredState) || {}
+            return [
+              {
+                ...filteredState,
+                ...strictState,
+              },
+              { ...parentStrictState, ...strictState },
+              undefined,
+            ]
+          }
+          return [filteredState, {}, undefined]
+        } catch (err: any) {
+          const stateValidationError = err
+
+          if (opts?.throwOnError) {
+            throw stateValidationError
+          }
+
+          return [filteredState, {}, stateValidationError]
+        }
+      })()
 
       // This is where we need to call route.options.loaderDeps() to get any additional
       // deps that the route's loader function might need to run. We need to do this
@@ -1256,6 +1296,10 @@ export class RouterCore<
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : replaceEqualDeep(existingMatch.search, preMatchSearch),
           _strictSearch: strictMatchSearch,
+          state: previousMatch
+            ? replaceEqualDeep(previousMatch.state, preMatchState)
+            : replaceEqualDeep(existingMatch.state, preMatchState),
+          _strictState: strictMatchState,
         }
       } else {
         const status =
@@ -1282,6 +1326,11 @@ export class RouterCore<
           _strictSearch: strictMatchSearch,
           searchError: undefined,
           status,
+          state: previousMatch
+            ? replaceEqualDeep(previousMatch.state, preMatchState)
+            : preMatchState,
+          _strictState: strictMatchState,
+          stateError: undefined,
           isFetching: false,
           error: undefined,
           paramsError: parseErrors[index],
@@ -1313,6 +1362,8 @@ export class RouterCore<
 
       // update the searchError if there is one
       match.searchError = searchError
+      // update the stateError if there is one
+      match.stateError = stateError
 
       const parentContext = getParentContext(parentMatch)
 
@@ -1536,6 +1587,26 @@ export class RouterCore<
 
       // Replace the equal deep
       nextState = replaceEqualDeep(currentLocation.state, nextState)
+
+      if (opts._includeValidateState) {
+        let validatedState = {}
+        destRoutes.forEach((route) => {
+          try {
+            if (route.options.validateState) {
+              validatedState = {
+                ...validatedState,
+                ...(validateState(route.options.validateState, {
+                  ...validatedState,
+                  ...nextState,
+                }) ?? {}),
+              }
+            }
+          } catch {
+            // ignore errors here because they are already handled in matchRoutes
+          }
+        })
+        nextState = validatedState
+      }
 
       // Return the next location
       return {
@@ -2961,6 +3032,33 @@ export function getInitialRouterState(
     cachedMatches: [],
     statusCode: 200,
   }
+}
+function validateState(validateState: AnyValidator, input: unknown): unknown {
+  if (validateState == null) return {}
+
+  if ('~standard' in validateState) {
+    const result = validateState['~standard'].validate(input)
+
+    if (result instanceof Promise)
+      throw new Error('Async validation not supported')
+
+    if (result.issues)
+      throw new Error(JSON.stringify(result.issues, undefined, 2), {
+        cause: result,
+      })
+
+    return result.value
+  }
+
+  if ('parse' in validateState) {
+    return validateState.parse(input)
+  }
+
+  if (typeof validateState === 'function') {
+    return validateState(input)
+  }
+
+  return {}
 }
 
 function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
