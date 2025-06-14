@@ -1,7 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import {
-  ErrorComponent,
   Link,
   Outlet,
   RouterProvider,
@@ -11,12 +10,6 @@ import {
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { z } from 'zod'
-import { fetchPost, fetchPosts } from './posts'
-import type {
-  ErrorComponentProps,
-  SearchSchemaInput,
-  StateSchemaInput,
-} from '@tanstack/react-router'
 import './styles.css'
 
 const rootRoute = createRootRoute({
@@ -38,14 +31,6 @@ function RootComponent() {
           activeOptions={{ exact: true }}
         >
           Home
-        </Link>
-        <Link
-          to="/posts"
-          activeProps={{
-            className: 'font-bold',
-          }}
-        >
-          Posts
         </Link>
         <Link
           to="/state-examples"
@@ -71,106 +56,6 @@ function IndexComponent() {
   return (
     <div className="p-2">
       <h3>Welcome Home!</h3>
-    </div>
-  )
-}
-
-const postsLayoutRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: 'posts',
-  loader: () => fetchPosts(),
-  component: PostsLayoutComponent,
-})
-
-function PostsLayoutComponent() {
-  const posts = postsLayoutRoute.useLoaderData()
-
-  return (
-    <div className="p-2 flex gap-2">
-      <div className="list-disc bg-gray-800/70 rounded-lg divide-y divide-green-500/30">
-        {posts.map((post, index) => {
-          return (
-            <div key={post.id} className="whitespace-nowrap">
-              <Link
-                to={postRoute.to}
-                search={{ postId: post.id }}
-                state={{
-                  color: index % 2 ? 'red' : 'green',
-                }}
-                className="block py-1 px-2 text-green-300 hover:text-green-200"
-                activeProps={{ className: '!text-white font-bold' }}
-              >
-                <div>{post.title.substring(0, 20)}</div>
-              </Link>
-            </div>
-          )
-        })}
-      </div>
-      <Outlet />
-    </div>
-  )
-}
-
-const postsIndexRoute = createRoute({
-  getParentRoute: () => postsLayoutRoute,
-  path: '/',
-  component: PostsIndexComponent,
-})
-
-function PostsIndexComponent() {
-  return <div>Select a post.</div>
-}
-
-class NotFoundError extends Error {}
-
-const postRoute = createRoute({
-  getParentRoute: () => postsLayoutRoute,
-  path: 'post',
-  validateSearch: (
-    input: {
-      postId: number
-    } & SearchSchemaInput,
-  ) =>
-    z
-      .object({
-        postId: z.number().catch(1),
-      })
-      .parse(input),
-  validateState: (
-    input: { color: 'white' | 'red' | 'green' } & StateSchemaInput,
-  ) =>
-    z
-      .object({
-        color: z.enum(['white', 'red', 'green']).catch('white'),
-      })
-      .parse(input),
-  loaderDeps: ({ search: { postId } }) => ({
-    postId,
-  }),
-  errorComponent: PostErrorComponent,
-  loader: ({ deps: { postId } }) => fetchPost(postId),
-  component: PostComponent,
-})
-
-function PostErrorComponent({ error }: ErrorComponentProps) {
-  if (error instanceof NotFoundError) {
-    return <div>{error.message}</div>
-  }
-
-  return <ErrorComponent error={error} />
-}
-
-function PostComponent() {
-  const post = postRoute.useLoaderData()
-  const state = postRoute.useHistoryState()
-  return (
-    <div className="space-y-2">
-      <h4 className="text-xl font-bold">{post.title}</h4>
-      <h4 className="text-xl font-bold">
-        Color: <span style={{ color: state.color }}>{state.color}</span>
-      </h4>
-      <hr className="opacity-20" />
-      <div className="text-sm">{post.body}</div>
     </div>
   )
 }
@@ -235,7 +120,6 @@ function StateDestinationComponent() {
 }
 
 const routeTree = rootRoute.addChildren([
-  postsLayoutRoute.addChildren([postRoute, postsIndexRoute]),
   stateExamplesRoute.addChildren([stateDestinationRoute]),
   indexRoute,
 ])
