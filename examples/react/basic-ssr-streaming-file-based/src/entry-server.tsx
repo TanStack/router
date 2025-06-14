@@ -8,10 +8,10 @@ import type express from 'express'
 import './fetch-polyfill'
 
 export async function render({
-                               req,
-                               res,
-                               head,
-                             }: {
+  req,
+  res,
+  head,
+}: {
   head: string
   req: express.Request
   res: express.Response
