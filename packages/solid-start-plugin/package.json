@@ -67,10 +67,10 @@
   "dependencies": {
     "@tanstack/router-utils": "workspace:^",
     "@tanstack/start-plugin-core": "workspace:^",
-    "zod": "^3.24.2"
+    "zod": "^3.25.64"
   },
   "devDependencies": {
-    "vite": "^6.0.0",
+    "vite": "^6.3.5",
     "vite-plugin-solid": "^2.11.6"
   },
   "peerDependencies": {
