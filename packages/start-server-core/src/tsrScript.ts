@@ -58,6 +58,23 @@ const __TSR_SSR__: StartSsrGlobal = {
     }
     return false
   },
+  rejectPromise: ({ matchId, id, error }) => {
+    const match = __TSR_SSR__.matches.find((m) => m.id === matchId)
+    if (match) {
+      const ex = match.extracted?.[id]
+      if (ex && ex.type === 'promise' && ex.value) {
+        // Rebuild the error object and pass it to the client
+        const reconstructedError = new Error(error.message)
+        reconstructedError.name = error.name
+        if (error.stack) {
+          reconstructedError.stack = error.stack
+        }
+        ex.value.reject(reconstructedError)
+        return true
+      }
+    }
+    return false
+  },
   injectChunk: ({ matchId, id, chunk }) => {
     const match = __TSR_SSR__.matches.find((m) => m.id === matchId)
 
