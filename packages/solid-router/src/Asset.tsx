@@ -12,7 +12,7 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
     case 'style':
       return <Style {...attrs} innerHTML={children} />
     case 'script':
-      if ((attrs as any) && (attrs as any).src) {
+      if (attrs?.src) {
         return <script {...attrs} />
       }
       if (typeof children === 'string')
