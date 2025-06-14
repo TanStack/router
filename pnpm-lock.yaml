@@ -4834,6 +4834,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
+      redaxios:
+        specifier: ^0.5.1
+        version: 0.5.1
     devDependencies:
       '@types/react':
         specifier: ^19.0.8
@@ -4853,6 +4856,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
+      vite:
+        specifier: 6.3.5
+        version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
