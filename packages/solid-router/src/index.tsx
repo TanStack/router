@@ -117,6 +117,8 @@ export type {
   ResolveValidatorOutputFn,
   ResolveSearchValidatorInput,
   ResolveSearchValidatorInputFn,
+  ResolveStateValidatorInput,
+  ResolveStateValidatorInputFn,
   Validator,
   ValidatorAdapter,
   ValidatorObj,

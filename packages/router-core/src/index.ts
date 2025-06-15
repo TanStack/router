@@ -350,6 +350,8 @@ export type {
   DefaultValidator,
   ResolveSearchValidatorInputFn,
   ResolveSearchValidatorInput,
+  ResolveStateValidatorInputFn,
+  ResolveStateValidatorInput,
   ResolveValidatorInputFn,
   ResolveValidatorInput,
   ResolveValidatorOutputFn,
