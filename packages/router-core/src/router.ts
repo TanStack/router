@@ -2181,8 +2181,8 @@ export class RouterCore<
                 }
 
                 // Wait for the beforeLoad to resolve before we continue
-                await existingMatch.beforeLoadPromise
-                executeBeforeLoad = this.getMatch(matchId)!.status !== 'success'
+                await existingMatch.beforeLoadPromise                
+                executeBeforeLoad = this.getMatch(matchId)!.status === 'error'
               }
               if (executeBeforeLoad) {
                 // If we are not in the middle of a load OR the previous load failed, start it
