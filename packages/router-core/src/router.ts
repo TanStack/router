@@ -3000,6 +3000,8 @@ export class RouterCore<
 
 export class SearchParamError extends Error {}
 
+export class StateParamError extends Error {}
+
 export class PathParamError extends Error {}
 
 // A function that takes an import() argument which is a function and returns a new function that will
@@ -3033,60 +3035,47 @@ export function getInitialRouterState(
     statusCode: 200,
   }
 }
-function validateState(validateState: AnyValidator, input: unknown): unknown {
-  if (validateState == null) return {}
 
-  if ('~standard' in validateState) {
-    const result = validateState['~standard'].validate(input)
+function validateInput<TErrorClass extends Error>(
+  validator: AnyValidator,
+  input: unknown,
+  ErrorClass: new (message?: string, options?: ErrorOptions) => TErrorClass,
+): unknown {
+  if (validator == null) return {}
+
+  if ('~standard' in validator) {
+    const result = validator['~standard'].validate(input)
 
     if (result instanceof Promise)
-      throw new Error('Async validation not supported')
+      throw new ErrorClass('Async validation not supported')
 
     if (result.issues)
-      throw new Error(JSON.stringify(result.issues, undefined, 2), {
+      throw new ErrorClass(JSON.stringify(result.issues, undefined, 2), {
         cause: result,
       })
 
     return result.value
   }
 
-  if ('parse' in validateState) {
-    return validateState.parse(input)
+  if ('parse' in validator) {
+    return validator.parse(input)
   }
 
-  if (typeof validateState === 'function') {
-    return validateState(input)
+  if (typeof validator === 'function') {
+    return validator(input)
   }
 
   return {}
 }
 
+function validateState(validateState: AnyValidator, input: unknown): unknown {
+  return validateInput(validateState, input, StateParamError)
+}
+
 function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
-  if (validateSearch == null) return {}
+  return validateInput(validateSearch, input, SearchParamError)
+}
 
-  if ('~standard' in validateSearch) {
-    const result = validateSearch['~standard'].validate(input)
-
-    if (result instanceof Promise)
-      throw new SearchParamError('Async validation not supported')
-
-    if (result.issues)
-      throw new SearchParamError(JSON.stringify(result.issues, undefined, 2), {
-        cause: result,
-      })
-
-    return result.value
-  }
-
-  if ('parse' in validateSearch) {
-    return validateSearch.parse(input)
-  }
-
-  if (typeof validateSearch === 'function') {
-    return validateSearch(input)
-  }
-
-  return {}
 }
 
 export const componentTypes = [
