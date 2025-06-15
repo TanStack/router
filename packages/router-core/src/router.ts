@@ -2181,9 +2181,6 @@ export class RouterCore<
                   }, pendingMs)
                 }
 
-                console.log(`Match ${matchId} is already loading`, {
-                  match: this.getMatch(matchId),
-                })
                 // Wait for the beforeLoad to resolve before we continue
                 await existingMatch.beforeLoadPromise
                 executeBeforeLoad = this.getMatch(matchId)!.status === 'error'
