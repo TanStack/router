@@ -126,7 +126,7 @@ test.describe('redirects', () => {
     })
   })
 
-  test.skip('regression test for #3097', async ({ page }) => {
+  test('regression test for #3097', async ({ page }) => {
     await page.goto(`/redirect/preload/first`)
     const link = page.getByTestId(`link`)
     await link.focus()
