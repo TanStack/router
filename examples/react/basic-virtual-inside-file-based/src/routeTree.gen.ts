@@ -73,7 +73,6 @@ const postsLetsGoDeeperHomeRoute = postsLetsGoDeeperHomeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
   '/posts': typeof PostsRouteWithChildren
   '/posts/': typeof postsHomeRoute
   '/posts/$postId': typeof postsDetailsRoute
@@ -84,7 +83,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
   '/posts': typeof postsHomeRoute
   '/posts/$postId': typeof postsDetailsRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -109,7 +107,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | ''
     | '/posts'
     | '/posts/'
     | '/posts/$postId'
@@ -120,7 +117,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | ''
     | '/posts'
     | '/posts/$postId'
     | '/layout-a'
