@@ -89,6 +89,21 @@ export type ResolveSearchValidatorInput<TValidator> =
         ? ResolveSearchValidatorInputFn<TValidator['parse']>
         : ResolveSearchValidatorInputFn<TValidator>
 
+export type ResolveStateValidatorInputFn<TValidator> = TValidator extends (
+  input: infer TSchemaInput,
+) => any
+  ? TSchemaInput
+  : AnySchema
+
+export type ResolveStateValidatorInput<TValidator> =
+  TValidator extends AnyStandardSchemaValidator
+    ? NonNullable<TValidator['~standard']['types']>['input']
+    : TValidator extends AnyValidatorAdapter
+      ? TValidator['types']['input']
+      : TValidator extends AnyValidatorObj
+        ? ResolveStateValidatorInputFn<TValidator['parse']>
+        : ResolveStateValidatorInputFn<TValidator>
+
 export type ResolveValidatorInputFn<TValidator> = TValidator extends (
   input: infer TInput,
 ) => any
