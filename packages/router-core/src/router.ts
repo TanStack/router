@@ -2181,7 +2181,7 @@ export class RouterCore<
                 }
 
                 // Wait for the beforeLoad to resolve before we continue
-                await existingMatch.beforeLoadPromise                
+                await existingMatch.beforeLoadPromise
                 executeBeforeLoad = this.getMatch(matchId)!.status === 'error'
               }
               if (executeBeforeLoad) {
