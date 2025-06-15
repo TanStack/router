@@ -1,4 +1,4 @@
-import type { SearchSchemaInput } from './route'
+import type { SearchSchemaInput, StateSchemaInput } from './route'
 
 export interface StandardSchemaValidatorProps<TInput, TOutput> {
   readonly types?: StandardSchemaValidatorTypes<TInput, TOutput> | undefined
@@ -72,13 +72,18 @@ export type AnySchema = {}
 
 export type DefaultValidator = Validator<Record<string, unknown>, AnySchema>
 
-export type ResolveSearchValidatorInputFn<TValidator> = TValidator extends (
-  input: infer TSchemaInput,
-) => any
-  ? TSchemaInput extends SearchSchemaInput
-    ? Omit<TSchemaInput, keyof SearchSchemaInput>
-    : ResolveValidatorOutputFn<TValidator>
-  : AnySchema
+export type ResolveSchemaValidatorInputFn<TValidator, TSchemaInput> =
+  TValidator extends (input: infer TInferredInput) => any
+    ? TInferredInput extends TSchemaInput
+      ? Omit<TInferredInput, keyof TSchemaInput>
+      : ResolveValidatorOutputFn<TValidator>
+    : AnySchema
+
+export type ResolveSearchValidatorInputFn<TValidator> =
+  ResolveSchemaValidatorInputFn<TValidator, SearchSchemaInput>
+
+export type ResolveStateValidatorInputFn<TValidator> =
+  ResolveSchemaValidatorInputFn<TValidator, StateSchemaInput>
 
 export type ResolveSearchValidatorInput<TValidator> =
   TValidator extends AnyStandardSchemaValidator
@@ -88,12 +93,6 @@ export type ResolveSearchValidatorInput<TValidator> =
       : TValidator extends AnyValidatorObj
         ? ResolveSearchValidatorInputFn<TValidator['parse']>
         : ResolveSearchValidatorInputFn<TValidator>
-
-export type ResolveStateValidatorInputFn<TValidator> = TValidator extends (
-  input: infer TSchemaInput,
-) => any
-  ? TSchemaInput
-  : AnySchema
 
 export type ResolveStateValidatorInput<TValidator> =
   TValidator extends AnyStandardSchemaValidator
