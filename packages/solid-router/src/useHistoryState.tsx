@@ -1,3 +1,4 @@
+import { omitInternalKeys } from '@tanstack/history'
 import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
 import type {
@@ -26,9 +27,7 @@ export interface UseHistoryStateBaseOptions<
   TThrow extends boolean,
   TSelected,
 > {
-  select?: (
-    state: ResolveUseHistoryState<TRouter, TFrom, TStrict>,
-  ) => TSelected
+  select?: (state: ResolveUseHistoryState<TRouter, TFrom, TStrict>) => TSelected
   shouldThrow?: TThrow
 }
 
@@ -39,13 +38,7 @@ export type UseHistoryStateOptions<
   TThrow extends boolean,
   TSelected,
 > = StrictOrFrom<TRouter, TFrom, TStrict> &
-  UseHistoryStateBaseOptions<
-    TRouter,
-    TFrom,
-    TStrict,
-    TThrow,
-    TSelected
-  >
+  UseHistoryStateBaseOptions<TRouter, TFrom, TStrict, TThrow, TSelected>
 
 export type UseHistoryStateRoute<TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
@@ -78,19 +71,24 @@ export function useHistoryState<
     TSelected
   >,
 ): Accessor<
-  ThrowOrOptional<UseHistoryStateResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
+  ThrowOrOptional<
+    UseHistoryStateResult<TRouter, TFrom, TStrict, TSelected>,
+    TThrow
+  >
 > {
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
     select: (match: any) => {
-      const matchState = match.state;
-      const filteredState = Object.fromEntries(
-        Object.entries(matchState).filter(([key]) => !(key.startsWith('__') || key === 'key'))
-      );
-      const typedState = filteredState as unknown as ResolveUseHistoryState<TRouter, TFrom, TStrict>;
-      return opts.select ? opts.select(typedState) : typedState;
+      const matchState = match.state
+      const filteredState = omitInternalKeys(matchState)
+      const typedState = filteredState as unknown as ResolveUseHistoryState<
+        TRouter,
+        TFrom,
+        TStrict
+      >
+      return opts.select ? opts.select(typedState) : typedState
     },
-  }) as any;
+  }) as any
 }

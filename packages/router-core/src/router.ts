@@ -3076,8 +3076,6 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return validateInput(validateSearch, input, SearchParamError)
 }
 
-}
-
 export const componentTypes = [
   'component',
   'errorComponent',

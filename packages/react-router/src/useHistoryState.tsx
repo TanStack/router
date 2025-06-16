@@ -1,3 +1,4 @@
+import { omitInternalKeys } from '@tanstack/history'
 import { useMatch } from './useMatch'
 import type {
   AnyRouter,
@@ -101,12 +102,14 @@ export function useHistoryState<
     shouldThrow: opts.shouldThrow,
     structuralSharing: opts.structuralSharing,
     select: (match: any) => {
-      const matchState = match.state;
-      const filteredState = Object.fromEntries(
-        Object.entries(matchState).filter(([key]) => !(key.startsWith('__') || key === 'key'))
-      );
-      const typedState = filteredState as unknown as ResolveUseHistoryState<TRouter, TFrom, TStrict>;
-      return opts.select ? opts.select(typedState) : typedState;
+      const matchState = match.state
+      const filteredState = omitInternalKeys(matchState)
+      const typedState = filteredState as unknown as ResolveUseHistoryState<
+        TRouter,
+        TFrom,
+        TStrict
+      >
+      return opts.select ? opts.select(typedState) : typedState
     },
-  } as any) as any;
+  } as any) as any
 }

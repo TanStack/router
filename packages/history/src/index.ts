@@ -95,6 +95,20 @@ const stateIndexKey = '__TSR_index'
 const popStateEvent = 'popstate'
 const beforeUnloadEvent = 'beforeunload'
 
+/**
+ * Filters out internal state keys from a state object.
+ * Internal keys are those that start with '__' or equal 'key'.
+ */
+export function omitInternalKeys(
+  state: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(state).filter(
+      ([key]) => !(key.startsWith('__') || key === 'key'),
+    ),
+  )
+}
+
 export function createHistory(opts: {
   getLocation: () => HistoryLocation
   getLength: () => number

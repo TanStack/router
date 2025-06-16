@@ -2,6 +2,7 @@ import { clsx as cx } from 'clsx'
 import { default as invariant } from 'tiny-invariant'
 import { interpolatePath, rootRouteId, trimPath } from '@tanstack/router-core'
 import { Show, createMemo } from 'solid-js'
+import { omitInternalKeys } from '@tanstack/history'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
 import useLocalStorage from './useLocalStorage'
@@ -229,14 +230,6 @@ function RouteComp({
   )
 }
 
-function filterInternalState(state: Record<string, any>) {
-  return Object.fromEntries(
-    Object.entries(state).filter(([key]) =>
-      !(key.startsWith('__') || key === 'key'),
-    ),
-  )
-}
-
 function getMergedStrictState(routerState: any) {
   const matches = [
     ...(routerState.pendingMatches ?? []),
@@ -299,7 +292,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     )
 
     const validatedState = createMemo(() =>
-      filterInternalState(getMergedStrictState(routerState())),
+      omitInternalKeys(getMergedStrictState(routerState())),
     )
 
     const hasState = createMemo(() => Object.keys(validatedState()).length)
@@ -658,12 +651,13 @@ export const BaseTanStackRouterDevtoolsPanel =
             <div class={styles().detailsContent}>
               <Explorer
                 value={validatedStateValue}
-                defaultExpanded={Object.keys(
-                  validatedState(),
-                ).reduce((obj: any, next) => {
-                  obj[next] = {}
-                  return obj
-                }, {})}
+                defaultExpanded={Object.keys(validatedState()).reduce(
+                  (obj: any, next) => {
+                    obj[next] = {}
+                    return obj
+                  },
+                  {},
+                )}
               />
             </div>
           </div>
