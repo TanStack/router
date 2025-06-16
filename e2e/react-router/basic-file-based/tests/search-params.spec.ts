@@ -8,7 +8,9 @@ test.describe('/search-params/default', () => {
 
     await expect(page.getByTestId('search-default')).toContainText('d1')
     await expect(page.getByTestId('context-hello')).toContainText('world')
-    expect(page.url().endsWith('/search-params/default?default=d1')).toBeTruthy()
+    expect(
+      page.url().endsWith('/search-params/default?default=d1'),
+    ).toBeTruthy()
   })
 
   test('Directly visiting the route with search param set', async ({
@@ -18,7 +20,9 @@ test.describe('/search-params/default', () => {
 
     await expect(page.getByTestId('search-default')).toContainText('d2')
     await expect(page.getByTestId('context-hello')).toContainText('world')
-    expect(page.url().endsWith('/search-params/default?default=d2')).toBeTruthy()
+    expect(
+      page.url().endsWith('/search-params/default?default=d2'),
+    ).toBeTruthy()
   })
 
   test('navigating to the route without search param set', async ({ page }) => {
@@ -27,7 +31,9 @@ test.describe('/search-params/default', () => {
 
     await expect(page.getByTestId('search-default')).toContainText('d1')
     await expect(page.getByTestId('context-hello')).toContainText('world')
-    expect(page.url().endsWith('/search-params/default?default=d1')).toBeTruthy()
+    expect(
+      page.url().endsWith('/search-params/default?default=d1'),
+    ).toBeTruthy()
   })
 
   test('navigating to the route with search param set', async ({ page }) => {
@@ -36,6 +42,8 @@ test.describe('/search-params/default', () => {
 
     await expect(page.getByTestId('search-default')).toContainText('d2')
     await expect(page.getByTestId('context-hello')).toContainText('world')
-    expect(page.url().endsWith('/search-params/default?default=d2')).toBeTruthy()
+    expect(
+      page.url().endsWith('/search-params/default?default=d2'),
+    ).toBeTruthy()
   })
 })
