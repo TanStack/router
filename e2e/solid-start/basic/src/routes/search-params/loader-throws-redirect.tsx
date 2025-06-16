@@ -1,7 +1,19 @@
 import { redirect, createFileRoute } from '@tanstack/solid-router'
 import { z } from 'zod'
 
-export const Route = createFileRoute('/search-params')({
+export const Route = createFileRoute('/search-params/loader-throws-redirect')({
+  validateSearch: z.object({
+    step: z.enum(['a', 'b', 'c']).optional(),
+  }),
+  loaderDeps: ({ search: { step } }) => ({ step }),
+  loader: ({ deps: { step } }) => {
+    if (step === undefined) {
+      throw redirect({
+        to: '/search-params/loader-throws-redirect',
+        search: { step: 'a' },
+      })
+    }
+  },
   component: () => {
     const search = Route.useSearch()
     return (
@@ -10,18 +22,5 @@ export const Route = createFileRoute('/search-params')({
         <div data-testid="search-param">{search().step}</div>
       </div>
     )
-  },
-  validateSearch: z.object({
-    step: z.enum(['a', 'b', 'c']).optional(),
-  }),
-  loaderDeps: ({ search: { step } }) => ({ step }),
-  loader: ({ deps: { step } }) => {
-    if (step === undefined) {
-      throw redirect({
-        to: '/search-params',
-        from: '/search-params',
-        search: { step: 'a' },
-      })
-    }
   },
 })

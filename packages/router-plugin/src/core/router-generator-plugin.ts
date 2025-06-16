@@ -102,7 +102,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         const chokidar = await import('chokidar')
         handle = chokidar
           .watch(routesDirectoryPath, { ignoreInitial: true })
-          .on('add', generate)
+          .on('add', (file) => generate({ file, event: 'create' }))
 
         await generate()
       })
@@ -130,7 +130,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         const chokidar = await import('chokidar')
         handle = chokidar
           .watch(routesDirectoryPath, { ignoreInitial: true })
-          .on('add', generate)
+          .on('add', (file) => generate({ file, event: 'create' }))
 
         await generate()
       })

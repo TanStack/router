@@ -9,6 +9,10 @@ on:
   push:
     branches: [main, alpha, beta]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   SERVER_PRESET: 'node-server'
@@ -22,9 +26,6 @@ jobs:
     name: Build & Test
     if: github.repository_owner == 'TanStack'
     runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-test-${{ github.event.number || github.ref }}
-      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -39,22 +40,6 @@ jobs:
       - name: Stop Nx Agents
         if: ${{ always() }}
         run: npx nx-cloud stop-all-agents
-
-  publish:
-    name: Publish
-    if: github.repository_owner == 'TanStack'
-    runs-on: ubuntu-latest
-    needs: test
-    concurrency:
-      group: ${{ github.workflow }}-publish-${{ github.ref }}
-      cancel-in-progress: false
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-      - name: Setup Tools
-        uses: tanstack/config/.github/setup@main
       - name: Publish
         run: |
           git config --global user.name 'Tanner Linsley'
