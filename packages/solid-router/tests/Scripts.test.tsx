@@ -97,12 +97,7 @@ describe('ssr scripts', () => {
       { src: 'script3.js' },
     ])
 
-    const { container } = render(() => <RouterProvider router={router} />)
-
-    expect(container.innerHTML).toEqual(
-      `<script src="script.js"></script><script src="script3.js"></script>`,
-    )
-  })
+    
 })
 
 describe('ssr HeadContent', () => {

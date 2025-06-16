@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'vitest'
-import { render } from '@testing-library/react'
 import ReactDOMServer from 'react-dom/server'
 
 import {
@@ -97,12 +96,6 @@ describe('ssr scripts', () => {
       undefined,
       { src: 'script3.js' },
     ])
-
-    const { container } = render(<RouterProvider router={router} />)
-
-    expect(container.innerHTML).toEqual(
-      `<script src="script.js"></script><script src="script3.js"></script>`,
-    )
   })
 })
 

@@ -1,8 +1,20 @@
 import * as React from 'react'
-import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
-export function Asset({ tag, attrs, children }: RouterManagedTag): any {
+const ScriptCache = new Map<string, Promise<void>>()
+const LoadCache = new Set<string>()
+
+interface ScriptAttrs {
+  [key: string]: string | boolean | undefined
+  src?: string
+  suppressHydrationWarning?: boolean
+}
+
+export function Asset({
+  tag,
+  attrs,
+  children,
+}: RouterManagedTag): React.ReactElement | null {
   switch (tag) {
     case 'title':
       return (
@@ -18,72 +30,146 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
       return (
         <style
           {...attrs}
-          dangerouslySetInnerHTML={{ __html: children as any }}
+          dangerouslySetInnerHTML={{ __html: children as string }}
         />
       )
     case 'script':
-      return <ScriptAsset attrs={attrs} children={children} />
+      return <Script attrs={attrs}>{children}</Script>
     default:
       return null
   }
 }
 
-function ScriptAsset({ attrs, children }: { attrs: any; children?: string }) {
-  const router = useRouter()
+const loadScript = (attrs?: ScriptAttrs, children?: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const cacheKey = attrs?.src || children || ''
 
-  React.useEffect(() => {
+    if (cacheKey && LoadCache.has(cacheKey)) {
+      resolve()
+      return
+    }
+
+    if (attrs?.src && ScriptCache.has(attrs.src)) {
+      LoadCache.add(cacheKey)
+      const existingPromise = ScriptCache.get(attrs.src)
+      if (existingPromise) {
+        existingPromise.then(resolve, reject)
+      }
+      return
+    }
+
+    const script = document.createElement('script')
+
+    const afterLoad = () => {
+      LoadCache.add(cacheKey)
+      resolve()
+    }
+
     if (attrs?.src) {
-      const script = document.createElement('script')
-
-      Object.keys(attrs).forEach((key) => {
-        if (key !== 'suppressHydrationWarning') {
-          script.setAttribute(key, attrs[key])
-        }
+      const loadPromise = new Promise<void>((resolveLoad, rejectLoad) => {
+        script.addEventListener('load', () => {
+          resolveLoad()
+          afterLoad()
+        })
+        script.addEventListener('error', rejectLoad)
       })
 
-      document.head.appendChild(script)
+      ScriptCache.set(attrs.src, loadPromise)
 
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
+      for (const [key, value] of Object.entries(attrs)) {
+        if (
+          key !== 'suppressHydrationWarning' &&
+          value !== undefined &&
+          value !== false
+        ) {
+          script.setAttribute(
+            key,
+            typeof value === 'boolean' ? '' : String(value),
+          )
         }
       }
+
+      if (typeof attrs.src === 'string') {
+        script.src = attrs.src
+      }
+      document.head.appendChild(script)
+
+      loadPromise.then(resolve, reject)
     } else if (typeof children === 'string') {
-      const script = document.createElement('script')
       script.textContent = children
 
       if (attrs) {
-        Object.keys(attrs).forEach((key) => {
-          if (key !== 'suppressHydrationWarning') {
-            script.setAttribute(key, attrs[key])
+        for (const [key, value] of Object.entries(attrs)) {
+          if (key !== 'suppressHydrationWarning' && value) {
+            script.setAttribute(key, String(value))
           }
-        })
+        }
       }
 
       document.head.appendChild(script)
+      afterLoad()
+    } else {
+      resolve()
+    }
+  })
+}
 
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
+const initializeScriptCache = () => {
+  if (typeof document !== 'undefined') {
+    const existingScripts = Array.from(document.querySelectorAll('script[src]'))
+    for (const script of existingScripts) {
+      const src = script.getAttribute('src')
+      if (src) {
+        LoadCache.add(src)
       }
     }
 
-    return undefined
+    const existingInlineScripts = Array.from(
+      document.querySelectorAll('script:not([src])'),
+    )
+    for (const script of existingInlineScripts) {
+      if (script.textContent) {
+        LoadCache.add(script.textContent)
+      }
+    }
+  }
+}
+
+function Script({
+  attrs,
+  children,
+}: {
+  attrs?: ScriptAttrs
+  children?: string
+}) {
+  const hasLoadScriptEffectCalled = React.useRef(false)
+
+  React.useEffect(() => {
+    if (!hasLoadScriptEffectCalled.current) {
+      initializeScriptCache()
+
+      loadScript(attrs, children).catch((error) => {
+        console.error('Script loading failed:', error)
+      })
+
+      hasLoadScriptEffectCalled.current = true
+    }
   }, [attrs, children])
 
-  if (router.isServer) {
-    if (attrs?.src) {
+  if (typeof document === 'undefined') {
+    if (attrs?.src && typeof attrs.src === 'string') {
       return <script {...attrs} suppressHydrationWarning />
-    } else if (typeof children === 'string') {
+    }
+
+    if (typeof children === 'string') {
       return (
         <script
+          {...attrs}
           dangerouslySetInnerHTML={{ __html: children }}
           suppressHydrationWarning
         />
       )
     }
-    return null
   }
 
   return null
