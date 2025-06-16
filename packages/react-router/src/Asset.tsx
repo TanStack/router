@@ -156,20 +156,18 @@ function Script({
     }
   }, [attrs, children])
 
-  if (typeof document === 'undefined') {
-    if (attrs?.src && typeof attrs.src === 'string') {
-      return <script {...attrs} suppressHydrationWarning />
-    }
+  if (attrs?.src && typeof attrs.src === 'string') {
+    return <script {...attrs} suppressHydrationWarning />
+  }
 
-    if (typeof children === 'string') {
-      return (
-        <script
-          {...attrs}
-          dangerouslySetInnerHTML={{ __html: children }}
-          suppressHydrationWarning
-        />
-      )
-    }
+  if (typeof children === 'string') {
+    return (
+      <script
+        {...attrs}
+        dangerouslySetInnerHTML={{ __html: children }}
+        suppressHydrationWarning
+      />
+    )
   }
 
   return null

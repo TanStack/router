@@ -130,14 +130,12 @@ function Script({
     })
   })
 
-  if (typeof document === 'undefined') {
-    if (attrs?.src && typeof attrs.src === 'string') {
-      return <script {...attrs} />
-    }
+  if (attrs?.src && typeof attrs.src === 'string') {
+    return <script {...attrs} />
+  }
 
-    if (typeof children === 'string') {
-      return <script {...attrs} innerHTML={children} />
-    }
+  if (typeof children === 'string') {
+    return <script {...attrs} innerHTML={children} />
   }
 
   return null
