@@ -19,19 +19,22 @@ import { createServerRootRoute } from '@tanstack/react-start/server'
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as StreamRouteImport } from './routes/stream'
-import { Route as SearchParamsRouteImport } from './routes/search-params'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UsersIndexRouteImport } from './routes/users.index'
+import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as NotFoundIndexRouteImport } from './routes/not-found/index'
 import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
+import { Route as SearchParamsLoaderThrowsRedirectRouteImport } from './routes/search-params/loader-throws-redirect'
+import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
@@ -65,11 +68,6 @@ const StreamRoute = StreamRouteImport.update({
   path: '/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SearchParamsRoute = SearchParamsRouteImport.update({
-  id: '/search-params',
-  path: '/search-params',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ScriptsRoute = ScriptsRouteImport.update({
   id: '/scripts',
   path: '/scripts',
@@ -94,6 +92,11 @@ const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
+  id: '/search-params',
+  path: '/search-params',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NotFoundRouteRoute = NotFoundRouteRouteImport.update({
   id: '/not-found',
   path: '/not-found',
@@ -108,6 +111,11 @@ const UsersIndexRoute = UsersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => UsersRoute,
+} as any)
+const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SearchParamsRouteRoute,
 } as any)
 const RedirectIndexRoute = RedirectIndexRouteImport.update({
   id: '/redirect/',
@@ -128,6 +136,17 @@ const UsersUserIdRoute = UsersUserIdRouteImport.update({
   id: '/$userId',
   path: '/$userId',
   getParentRoute: () => UsersRoute,
+} as any)
+const SearchParamsLoaderThrowsRedirectRoute =
+  SearchParamsLoaderThrowsRedirectRouteImport.update({
+    id: '/loader-throws-redirect',
+    path: '/loader-throws-redirect',
+    getParentRoute: () => SearchParamsRouteRoute,
+  } as any)
+const SearchParamsDefaultRoute = SearchParamsDefaultRouteImport.update({
+  id: '/default',
+  path: '/default',
+  getParentRoute: () => SearchParamsRouteRoute,
 } as any)
 const RedirectTargetRoute = RedirectTargetRouteImport.update({
   id: '/redirect/$target',
@@ -236,21 +255,24 @@ const ApiUsersIdServerRoute = ApiUsersIdServerRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/not-found': typeof NotFoundRouteRouteWithChildren
+  '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/scripts': typeof ScriptsRoute
-  '/search-params': typeof SearchParamsRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
+  '/search-params/default': typeof SearchParamsDefaultRoute
+  '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
+  '/search-params/': typeof SearchParamsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
@@ -270,15 +292,17 @@ export interface FileRoutesByTo {
   '/deferred': typeof DeferredRoute
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
-  '/search-params': typeof SearchParamsRoute
   '/stream': typeof StreamRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/search-params/default': typeof SearchParamsDefaultRoute
+  '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/not-found': typeof NotFoundIndexRoute
   '/posts': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
+  '/search-params': typeof SearchParamsIndexRoute
   '/users': typeof UsersIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
@@ -296,12 +320,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/not-found': typeof NotFoundRouteRouteWithChildren
+  '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/scripts': typeof ScriptsRoute
-  '/search-params': typeof SearchParamsRoute
   '/stream': typeof StreamRoute
   '/users': typeof UsersRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
@@ -309,10 +333,13 @@ export interface FileRoutesById {
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
+  '/search-params/default': typeof SearchParamsDefaultRoute
+  '/search-params/loader-throws-redirect': typeof SearchParamsLoaderThrowsRedirectRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/not-found/': typeof NotFoundIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
+  '/search-params/': typeof SearchParamsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
@@ -333,21 +360,24 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/not-found'
+    | '/search-params'
     | '/deferred'
     | '/links'
     | '/posts'
     | '/scripts'
-    | '/search-params'
     | '/stream'
     | '/users'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/redirect/$target'
+    | '/search-params/default'
+    | '/search-params/loader-throws-redirect'
     | '/users/$userId'
     | '/not-found/'
     | '/posts/'
     | '/redirect'
+    | '/search-params/'
     | '/users/'
     | '/layout-a'
     | '/layout-b'
@@ -367,15 +397,17 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/links'
     | '/scripts'
-    | '/search-params'
     | '/stream'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/search-params/default'
+    | '/search-params/loader-throws-redirect'
     | '/users/$userId'
     | '/not-found'
     | '/posts'
     | '/redirect'
+    | '/search-params'
     | '/users'
     | '/layout-a'
     | '/layout-b'
@@ -392,12 +424,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/not-found'
+    | '/search-params'
     | '/_layout'
     | '/deferred'
     | '/links'
     | '/posts'
     | '/scripts'
-    | '/search-params'
     | '/stream'
     | '/users'
     | '/_layout/_layout-2'
@@ -405,10 +437,13 @@ export interface FileRouteTypes {
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/redirect/$target'
+    | '/search-params/default'
+    | '/search-params/loader-throws-redirect'
     | '/users/$userId'
     | '/not-found/'
     | '/posts/'
     | '/redirect/'
+    | '/search-params/'
     | '/users/'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
@@ -428,12 +463,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NotFoundRouteRoute: typeof NotFoundRouteRouteWithChildren
+  SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
-  SearchParamsRoute: typeof SearchParamsRoute
   StreamRoute: typeof StreamRoute
   UsersRoute: typeof UsersRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
@@ -482,6 +517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotFoundRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/search-params': {
+      id: '/search-params'
+      path: '/search-params'
+      fullPath: '/search-params'
+      preLoaderRoute: typeof SearchParamsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_layout': {
       id: '/_layout'
       path: ''
@@ -515,13 +557,6 @@ declare module '@tanstack/react-router' {
       path: '/scripts'
       fullPath: '/scripts'
       preLoaderRoute: typeof ScriptsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search-params': {
-      id: '/search-params'
-      path: '/search-params'
-      fullPath: '/search-params'
-      preLoaderRoute: typeof SearchParamsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stream': {
@@ -580,6 +615,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTargetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/search-params/default': {
+      id: '/search-params/default'
+      path: '/default'
+      fullPath: '/search-params/default'
+      preLoaderRoute: typeof SearchParamsDefaultRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/search-params/loader-throws-redirect': {
+      id: '/search-params/loader-throws-redirect'
+      path: '/loader-throws-redirect'
+      fullPath: '/search-params/loader-throws-redirect'
+      preLoaderRoute: typeof SearchParamsLoaderThrowsRedirectRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
     '/users/$userId': {
       id: '/users/$userId'
       path: '/$userId'
@@ -607,6 +656,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/redirect'
       preLoaderRoute: typeof RedirectIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/search-params/': {
+      id: '/search-params/'
+      path: '/'
+      fullPath: '/search-params/'
+      preLoaderRoute: typeof SearchParamsIndexRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
     }
     '/users/': {
       id: '/users/'
@@ -731,6 +787,13 @@ declare module '@tanstack/react-start/server' {
       preLoaderRoute: unknown
       parentRoute: typeof rootServerRouteImport
     }
+    '/search-params': {
+      id: '/search-params'
+      path: '/search-params'
+      fullPath: '/search-params'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
     '/_layout': {
       id: '/_layout'
       path: ''
@@ -763,13 +826,6 @@ declare module '@tanstack/react-start/server' {
       id: '/scripts'
       path: '/scripts'
       fullPath: '/scripts'
-      preLoaderRoute: unknown
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/search-params': {
-      id: '/search-params'
-      path: '/search-params'
-      fullPath: '/search-params'
       preLoaderRoute: unknown
       parentRoute: typeof rootServerRouteImport
     }
@@ -829,6 +885,20 @@ declare module '@tanstack/react-start/server' {
       preLoaderRoute: unknown
       parentRoute: typeof rootServerRouteImport
     }
+    '/search-params/default': {
+      id: '/search-params/default'
+      path: '/default'
+      fullPath: '/search-params/default'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/search-params/loader-throws-redirect': {
+      id: '/search-params/loader-throws-redirect'
+      path: '/loader-throws-redirect'
+      fullPath: '/search-params/loader-throws-redirect'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
     '/users/$userId': {
       id: '/users/$userId'
       path: '/$userId'
@@ -854,6 +924,13 @@ declare module '@tanstack/react-start/server' {
       id: '/redirect/'
       path: '/redirect'
       fullPath: '/redirect'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/search-params/': {
+      id: '/search-params/'
+      path: '/'
+      fullPath: '/search-params/'
       preLoaderRoute: unknown
       parentRoute: typeof rootServerRouteImport
     }
@@ -992,6 +1069,23 @@ declare module './routes/not-found/route' {
     unknown
   >
 }
+declare module './routes/search-params/route' {
+  const createFileRoute: CreateFileRoute<
+    '/search-params',
+    FileRoutesByPath['/search-params']['parentRoute'],
+    FileRoutesByPath['/search-params']['id'],
+    FileRoutesByPath['/search-params']['path'],
+    FileRoutesByPath['/search-params']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/search-params']['parentRoute'],
+    ServerFileRoutesByPath['/search-params']['id'],
+    ServerFileRoutesByPath['/search-params']['path'],
+    ServerFileRoutesByPath['/search-params']['fullPath'],
+    unknown
+  >
+}
 declare module './routes/_layout' {
   const createFileRoute: CreateFileRoute<
     '/_layout',
@@ -1074,23 +1168,6 @@ declare module './routes/scripts' {
     ServerFileRoutesByPath['/scripts']['id'],
     ServerFileRoutesByPath['/scripts']['path'],
     ServerFileRoutesByPath['/scripts']['fullPath'],
-    unknown
-  >
-}
-declare module './routes/search-params' {
-  const createFileRoute: CreateFileRoute<
-    '/search-params',
-    FileRoutesByPath['/search-params']['parentRoute'],
-    FileRoutesByPath['/search-params']['id'],
-    FileRoutesByPath['/search-params']['path'],
-    FileRoutesByPath['/search-params']['fullPath']
-  >
-
-  const createServerFileRoute: CreateServerFileRoute<
-    ServerFileRoutesByPath['/search-params']['parentRoute'],
-    ServerFileRoutesByPath['/search-params']['id'],
-    ServerFileRoutesByPath['/search-params']['path'],
-    ServerFileRoutesByPath['/search-params']['fullPath'],
     unknown
   >
 }
@@ -1230,6 +1307,40 @@ declare module './routes/redirect/$target' {
     unknown
   >
 }
+declare module './routes/search-params/default' {
+  const createFileRoute: CreateFileRoute<
+    '/search-params/default',
+    FileRoutesByPath['/search-params/default']['parentRoute'],
+    FileRoutesByPath['/search-params/default']['id'],
+    FileRoutesByPath['/search-params/default']['path'],
+    FileRoutesByPath['/search-params/default']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/search-params/default']['parentRoute'],
+    ServerFileRoutesByPath['/search-params/default']['id'],
+    ServerFileRoutesByPath['/search-params/default']['path'],
+    ServerFileRoutesByPath['/search-params/default']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/search-params/loader-throws-redirect' {
+  const createFileRoute: CreateFileRoute<
+    '/search-params/loader-throws-redirect',
+    FileRoutesByPath['/search-params/loader-throws-redirect']['parentRoute'],
+    FileRoutesByPath['/search-params/loader-throws-redirect']['id'],
+    FileRoutesByPath['/search-params/loader-throws-redirect']['path'],
+    FileRoutesByPath['/search-params/loader-throws-redirect']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/search-params/loader-throws-redirect']['parentRoute'],
+    ServerFileRoutesByPath['/search-params/loader-throws-redirect']['id'],
+    ServerFileRoutesByPath['/search-params/loader-throws-redirect']['path'],
+    ServerFileRoutesByPath['/search-params/loader-throws-redirect']['fullPath'],
+    unknown
+  >
+}
 declare module './routes/users.$userId' {
   const createFileRoute: CreateFileRoute<
     '/users/$userId',
@@ -1295,6 +1406,23 @@ declare module './routes/redirect/index' {
     ServerFileRoutesByPath['/redirect/']['id'],
     ServerFileRoutesByPath['/redirect/']['path'],
     ServerFileRoutesByPath['/redirect/']['fullPath'],
+    unknown
+  >
+}
+declare module './routes/search-params/index' {
+  const createFileRoute: CreateFileRoute<
+    '/search-params/',
+    FileRoutesByPath['/search-params/']['parentRoute'],
+    FileRoutesByPath['/search-params/']['id'],
+    FileRoutesByPath['/search-params/']['path'],
+    FileRoutesByPath['/search-params/']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/search-params/']['parentRoute'],
+    ServerFileRoutesByPath['/search-params/']['id'],
+    ServerFileRoutesByPath['/search-params/']['path'],
+    ServerFileRoutesByPath['/search-params/']['fullPath'],
     unknown
   >
 }
@@ -1553,6 +1681,21 @@ const NotFoundRouteRouteWithChildren = NotFoundRouteRoute._addFileChildren(
   NotFoundRouteRouteChildren,
 )
 
+interface SearchParamsRouteRouteChildren {
+  SearchParamsDefaultRoute: typeof SearchParamsDefaultRoute
+  SearchParamsLoaderThrowsRedirectRoute: typeof SearchParamsLoaderThrowsRedirectRoute
+  SearchParamsIndexRoute: typeof SearchParamsIndexRoute
+}
+
+const SearchParamsRouteRouteChildren: SearchParamsRouteRouteChildren = {
+  SearchParamsDefaultRoute: SearchParamsDefaultRoute,
+  SearchParamsLoaderThrowsRedirectRoute: SearchParamsLoaderThrowsRedirectRoute,
+  SearchParamsIndexRoute: SearchParamsIndexRoute,
+}
+
+const SearchParamsRouteRouteWithChildren =
+  SearchParamsRouteRoute._addFileChildren(SearchParamsRouteRouteChildren)
+
 interface LayoutLayout2RouteChildren {
   LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
   LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
@@ -1667,12 +1810,12 @@ const ApiUsersServerRouteWithChildren = ApiUsersServerRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NotFoundRouteRoute: NotFoundRouteRouteWithChildren,
+  SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
   ScriptsRoute: ScriptsRoute,
-  SearchParamsRoute: SearchParamsRoute,
   StreamRoute: StreamRoute,
   UsersRoute: UsersRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
