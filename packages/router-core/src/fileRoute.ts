@@ -2,6 +2,10 @@ import type {
   AnyContext,
   AnyPathParams,
   AnyRoute,
+  FileBaseRouteOptions,
+  ResolveParams,
+  Route,
+  RouteConstraints,
   UpdatableRouteOptions,
 } from './route'
 import type { AnyValidator } from './validators'
@@ -28,6 +32,87 @@ export interface FileRoutesByPath {
   // }
 }
 
+export interface FileRouteOptions<
+  TFilePath extends string,
+  TParentRoute extends AnyRoute,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+  TSearchValidator = undefined,
+  TParams = ResolveParams<TPath>,
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderFn = undefined,
+> extends FileBaseRouteOptions<
+      TParentRoute,
+      TId,
+      TPath,
+      TSearchValidator,
+      TParams,
+      TLoaderDeps,
+      TLoaderFn,
+      AnyContext,
+      TRouteContextFn,
+      TBeforeLoadFn
+    >,
+    UpdatableRouteOptions<
+      TParentRoute,
+      TId,
+      TFullPath,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TLoaderDeps,
+      AnyContext,
+      TRouteContextFn,
+      TBeforeLoadFn
+    > {}
+
+export type CreateFileRoute<
+  TFilePath extends string,
+  TParentRoute extends AnyRoute,
+  TId extends RouteConstraints['TId'],
+  TPath extends RouteConstraints['TPath'],
+  TFullPath extends RouteConstraints['TFullPath'],
+> = <
+  TSearchValidator = undefined,
+  TParams = ResolveParams<TPath>,
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderFn = undefined,
+>(
+  options?: FileRouteOptions<
+    TFilePath,
+    TParentRoute,
+    TId,
+    TPath,
+    TFullPath,
+    TSearchValidator,
+    TParams,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn
+  >,
+) => Route<
+  TParentRoute,
+  TPath,
+  TFullPath,
+  TFilePath,
+  TId,
+  TSearchValidator,
+  TParams,
+  AnyContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  TLoaderDeps,
+  TLoaderFn,
+  unknown,
+  unknown
+>
+
 export type LazyRouteOptions = Pick<
   UpdatableRouteOptions<
     AnyRoute,
@@ -44,8 +129,12 @@ export type LazyRouteOptions = Pick<
   'component' | 'errorComponent' | 'pendingComponent' | 'notFoundComponent'
 >
 
-export interface LazyRoute {
+export interface LazyRoute<in out TRoute extends AnyRoute> {
   options: {
     id: string
   } & LazyRouteOptions
 }
+
+export type CreateLazyFileRoute<TRoute extends AnyRoute> = (
+  opts: LazyRouteOptions,
+) => LazyRoute<TRoute>

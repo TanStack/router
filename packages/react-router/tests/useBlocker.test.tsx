@@ -1,20 +1,32 @@
 import React from 'react'
 import '@testing-library/jest-dom/vitest'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import { z } from 'zod'
 import {
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouter,
   useBlocker,
   useNavigate,
 } from '../src'
+import type { RouterHistory } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
+  vi.clearAllMocks()
+  vi.resetAllMocks()
   cleanup()
 })
 
@@ -56,6 +68,7 @@ describe('useBlocker', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -108,6 +121,7 @@ describe('useBlocker', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -160,6 +174,7 @@ describe('useBlocker', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -216,6 +231,7 @@ describe('useBlocker', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -302,6 +318,7 @@ describe('useBlocker', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -394,6 +411,7 @@ describe('useBlocker', () => {
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute, invoicesRoute]),
+      history,
     })
 
     type Router = typeof router

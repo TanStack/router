@@ -7,7 +7,6 @@
 pnpm-lock.yaml
 **/snapshots
 **/.vercel
-**/.vinxi
 **/.output
 **/node_modules
 node_modules
@@ -16,3 +15,4 @@ node_modules
 **/tests/generator/file-modification/routes/(test)/*
 **/tests/generator/no-formatted-route-tree/routeTree.snapshot.ts
 /.nx/workspace-data
+**/src/routeTree.gen.ts

@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
   Link,
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouter,
@@ -11,12 +12,21 @@ import {
   stripSearchParams,
 } from '../src'
 import { getSearchParamsFromURI } from './utils'
-import type { AnyRouter } from '../src'
+import type { AnyRouter, RouterHistory } from '../src'
 import type { SearchMiddleware } from '@tanstack/router-core'
 
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
+
 afterEach(() => {
-  vi.resetAllMocks()
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
+  vi.clearAllMocks()
+  vi.resetAllMocks()
   cleanup()
 })
 
@@ -70,6 +80,7 @@ function setupTest(opts: {
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    history,
   })
   window.history.replaceState(
     null,

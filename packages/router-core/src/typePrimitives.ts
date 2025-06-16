@@ -5,7 +5,7 @@ import type {
   SearchParamOptions,
   ToPathOption,
 } from './link'
-import type { Redirect } from './redirect'
+import type { RedirectOptions } from './redirect'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { UseParamsResult } from './useParams'
@@ -104,7 +104,7 @@ export type ValidateRedirectOptions<
   TDefaultFrom extends string = string,
 > = Constrain<
   TOptions,
-  Redirect<
+  RedirectOptions<
     TRouter,
     InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,

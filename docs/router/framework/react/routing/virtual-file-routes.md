@@ -53,11 +53,11 @@ If you're using the `TanStackRouter` plugin for Vite/Rspack/Webpack, you can con
 // vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
   plugins: [
-    TanStackRouterVite({
+    tanstackRouter({
       target: 'react',
       virtualRouteConfig: './routes.ts',
     }),
@@ -72,7 +72,7 @@ Or, you choose to define the virtual routes directly in the configuration:
 // vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { rootRoute } from '@tanstack/virtual-file-routes'
 
 const routes = rootRoute('root.tsx', [
@@ -80,7 +80,7 @@ const routes = rootRoute('root.tsx', [
 ])
 
 export default defineConfig({
-  plugins: [TanStackRouterVite({ virtualRouteConfig: routes }), react()],
+  plugins: [tanstackRouter({ virtualRouteConfig: routes }), react()],
 })
 ```
 

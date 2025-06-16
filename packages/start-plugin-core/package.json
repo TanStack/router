@@ -1,0 +1,95 @@
+{
+  "name": "@tanstack/start-plugin-core",
+  "version": "1.121.16",
+  "description": "Modern and scalable routing for React applications",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/start-plugin-core"
+  },
+  "homepage": "https://tanstack.com/start",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "solid",
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "clean:snapshots": "rimraf **/*snapshot* --glob",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
+    "test:unit": "vitest",
+    "test:eslint": "eslint ./src",
+    "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
+    "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
+    "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
+    "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
+    "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
+    "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
+    "test:types:ts58": "tsc",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
+    "build": "vite build"
+  },
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
+  "dependencies": {
+    "@babel/code-frame": "7.26.2",
+    "@babel/core": "^7.26.8",
+    "@babel/types": "^7.26.8",
+    "@tanstack/router-core": "workspace:^",
+    "@tanstack/router-generator": "workspace:^",
+    "@tanstack/router-plugin": "workspace:^",
+    "@tanstack/router-utils": "workspace:^",
+    "@tanstack/server-functions-plugin": "workspace:^",
+    "@tanstack/start-server-core": "workspace:^",
+    "@types/babel__code-frame": "^7.0.6",
+    "@types/babel__core": "^7.20.5",
+    "babel-dead-code-elimination": "^1.0.9",
+    "cheerio": "^1.0.0",
+    "h3": "1.13.0",
+    "nitropack": "^2.11.12",
+    "pathe": "^2.0.3",
+    "ufo": "^1.5.4",
+    "xmlbuilder2": "^3.1.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  },
+  "peerDependencies": {
+    "vite": ">=6.0.0"
+  }
+}

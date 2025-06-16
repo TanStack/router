@@ -17,15 +17,17 @@ export function RouterContextProvider<
 }: RouterProps<TRouter, TDehydrated> & {
   children: React.ReactNode
 }) {
-  // Allow the router to update options on the router instance
-  router.update({
-    ...router.options,
-    ...rest,
-    context: {
-      ...router.options.context,
-      ...rest.context,
-    },
-  } as any)
+  if (Object.keys(rest).length > 0) {
+    // Allow the router to update options on the router instance
+    router.update({
+      ...router.options,
+      ...rest,
+      context: {
+        ...router.options.context,
+        ...rest.context,
+      },
+    } as any)
+  }
 
   const routerContext = getRouterContext()
 

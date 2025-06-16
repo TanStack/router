@@ -10,8 +10,8 @@
   "dependencies": {
     "@tanstack/history": "^1.120.17",
     "@tanstack/react-query": "^5.66.0",
-    "@tanstack/react-router": "^1.120.20",
-    "@tanstack/router-plugin": "^1.120.20",
+    "@tanstack/react-router": "^1.121.16",
+    "@tanstack/router-plugin": "^1.121.16",
     "@router-mono-react-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",
     "zod": "^3.24.2",
@@ -23,7 +23,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.1.0",
+    "vite": "^6.3.5",
     "vite-plugin-dts": "^4.5.0"
   }
 }

@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/solid-router'
+import { redirect, createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/$project/')({
   loader: ({ params }) => {

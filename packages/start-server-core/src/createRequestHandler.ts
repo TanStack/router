@@ -66,9 +66,7 @@ function getRequestHeaders(opts: { router: AnyRouter }): Headers {
   const { redirect } = opts.router.state
 
   if (redirect) {
-    headers = mergeHeaders(headers, redirect.headers, {
-      Location: redirect.href,
-    })
+    headers = mergeHeaders(headers, redirect.headers)
   }
 
   return headers

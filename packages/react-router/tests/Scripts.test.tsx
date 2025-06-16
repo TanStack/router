@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { render } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import ReactDOMServer from 'react-dom/server'
 
 import {
   HeadContent,
+  Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -15,7 +16,6 @@ import { Scripts } from '../src/Scripts'
 describe('ssr scripts', () => {
   test('it works', async () => {
     const rootRoute = createRootRoute({
-      // loader: () => new Promise((r) => setTimeout(r, 1)),
       head: () => {
         return {
           scripts: [
@@ -29,14 +29,19 @@ describe('ssr scripts', () => {
         }
       },
       component: () => {
-        return <Scripts />
+        return (
+          <div>
+            <div data-testid="root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
       },
     })
 
     const indexRoute = createRoute({
       path: '/',
       getParentRoute: () => rootRoute,
-      // loader: () => new Promise((r) => setTimeout(r, 2)),
       head: () => {
         return {
           scripts: [
@@ -72,7 +77,13 @@ describe('ssr scripts', () => {
         undefined, // 'script2.js' opted out by certain conditions, such as `NODE_ENV=production`.
       ],
       component: () => {
-        return <Scripts />
+        return (
+          <div>
+            <div data-testid="root">root</div>
+            <Outlet />
+            <Scripts />
+          </div>
+        )
       },
     })
 
@@ -80,6 +91,9 @@ describe('ssr scripts', () => {
       path: '/',
       getParentRoute: () => rootRoute,
       scripts: () => [{ src: 'script3.js' }],
+      component: () => {
+        return <div data-testid="index">index</div>
+      },
     })
 
     const router = createRouter({
@@ -98,10 +112,14 @@ describe('ssr scripts', () => {
       { src: 'script3.js' },
     ])
 
-    const { container } = render(<RouterProvider router={router} />)
+    const { container } = await act(() =>
+      render(<RouterProvider router={router} />),
+    )
+    expect(await screen.findByTestId('root')).toBeInTheDocument()
+    expect(await screen.findByTestId('index')).toBeInTheDocument()
 
     expect(container.innerHTML).toEqual(
-      `<script src="script.js"></script><script src="script3.js"></script>`,
+      `<div><div data-testid="root">root</div><div data-testid="index">index</div><script src="script.js"></script><script src="script3.js"></script></div>`,
     )
   })
 })

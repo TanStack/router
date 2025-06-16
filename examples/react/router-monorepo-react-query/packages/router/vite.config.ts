@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -17,7 +17,7 @@ export default defineConfig({
       tsconfigPath: path.join(__dirname, 'tsconfig.json'),
     }),
     react(),
-    TanStackRouterVite(),
+    tanstackRouter(),
   ],
   build: {
     outDir: './dist',
