@@ -53,9 +53,12 @@ export async function render({
   // Convert the fetch response back to an express response
   res.statusMessage = response.statusText
   res.status(response.status)
+
   response.headers.forEach((value, name) => {
     res.setHeader(name, value)
   })
+
+  res.setHeader("content-encoding", "br, gzip, compress");
 
   // Stream the response body
   return pipeline(response.body as any, res)
