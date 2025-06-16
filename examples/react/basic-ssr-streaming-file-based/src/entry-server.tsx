@@ -58,11 +58,6 @@ export async function render({
     res.setHeader(name, value)
   })
 
-  if (import.meta.env.PROD) {
-    //marking this as compress for prod since it breaks the streaming of the text/html content-type in prod
-    res.setHeader("content-encoding", "compress");
-  }
-
   // Stream the response body
   return pipeline(response.body as any, res)
 }
