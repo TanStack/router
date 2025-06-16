@@ -45,7 +45,7 @@ const clientBuildConfig: BuildEnvironmentOptions = {
 export default defineConfig((configEnv) => {
   return {
     plugins: [
-      tanstackRouter({ target: 'react', autoCodeSplitting: false }),
+      tanstackRouter({ target: 'react', autoCodeSplitting: true }),
       react(),
     ],
     build: configEnv.isSsrBuild ? ssrBuildConfig : clientBuildConfig

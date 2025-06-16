@@ -2870,9 +2870,6 @@ importers:
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      '@tanstack/virtual-file-routes':
-        specifier: workspace:*
-        version: link:../../../packages/virtual-file-routes
       get-port:
         specifier: ^7.1.0
         version: 7.1.0
