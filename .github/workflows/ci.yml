@@ -50,6 +50,7 @@ jobs:
           name: build-packages-${{ github.run_id }}
           path: |
             packages/**/dist
+            packages/**/llms
 
   publish:
     name: Publish
