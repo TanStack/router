@@ -6984,7 +6984,7 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       zod:
-        specifier: ^3.24.2
+        specifier: ^3.25.0
         version: 3.25.57
 
 packages:
