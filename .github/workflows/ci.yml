@@ -49,6 +49,12 @@ jobs:
       group: ${{ github.workflow }}-publish-${{ github.ref }}
       cancel-in-progress: false
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
       - name: Publish
         run: |
           git config --global user.name 'Tanner Linsley'
