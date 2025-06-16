@@ -41,6 +41,8 @@ export async function createServer(
     app.use((await import('compression')).default())
   }
 
+  if (isProd) app.use(express.static("./dist/client"));
+
   app.use('*', async (req, res) => {
     try {
       const url = req.originalUrl
