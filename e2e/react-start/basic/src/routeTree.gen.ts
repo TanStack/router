@@ -236,7 +236,6 @@ const ApiUsersIdServerRoute = ApiUsersIdServerRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/not-found': typeof NotFoundRouteRouteWithChildren
-  '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
@@ -268,7 +267,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
@@ -335,7 +333,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/not-found'
-    | ''
     | '/deferred'
     | '/links'
     | '/posts'
@@ -367,7 +364,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | ''
     | '/deferred'
     | '/links'
     | '/scripts'

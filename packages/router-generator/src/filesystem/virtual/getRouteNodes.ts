@@ -3,6 +3,7 @@ import {
   removeExt,
   removeLeadingSlash,
   removeTrailingSlash,
+  replaceBackslash,
   routePathToVariable,
 } from '../../utils'
 import { getRouteNodes as getRouteNodesPhysical } from '../physical/getRouteNodes'
@@ -70,7 +71,7 @@ export async function getRouteNodes(
   const allNodes = flattenTree({
     children,
     filePath: virtualRouteConfig.file,
-    fullPath: join(fullDir, virtualRouteConfig.file),
+    fullPath: replaceBackslash(join(fullDir, virtualRouteConfig.file)),
     variableName: 'root',
     routePath: `/${rootPathId}`,
     _fsRouteType: '__root',
@@ -163,7 +164,7 @@ export async function getRouteNodesRecursive(
       function getFile(file: string) {
         const filePath = file
         const variableName = routePathToVariable(removeExt(filePath))
-        const fullPath = join(fullDir, filePath)
+        const fullPath = replaceBackslash(join(fullDir, filePath))
         return { filePath, variableName, fullPath }
       }
       const parentRoutePath = removeTrailingSlash(parent?.routePath ?? '/')

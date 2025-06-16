@@ -184,7 +184,6 @@ const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
-  '': typeof LayoutLayout2RouteWithChildren
   '/anchor': typeof AnchorRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
@@ -211,7 +210,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof groupLayoutRouteWithChildren
-  '': typeof LayoutLayout2RouteWithChildren
   '/anchor': typeof AnchorRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
@@ -269,7 +267,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | ''
     | '/anchor'
     | '/editing-a'
     | '/editing-b'
@@ -296,7 +293,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | ''
     | '/anchor'
     | '/editing-a'
     | '/editing-b'

@@ -46,13 +46,11 @@ const ApiAuthCallbackServerRoute = ApiAuthCallbackServerRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '': typeof AuthenticatedRouteWithChildren
   '/logout': typeof LogoutRoute
   '/account': typeof AuthenticatedAccountRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof AuthenticatedRouteWithChildren
   '/logout': typeof LogoutRoute
   '/account': typeof AuthenticatedAccountRoute
 }
@@ -65,9 +63,9 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '' | '/logout' | '/account'
+  fullPaths: '/' | '/logout' | '/account'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/logout' | '/account'
+  to: '/' | '/logout' | '/account'
   id:
     | '__root__'
     | '/'

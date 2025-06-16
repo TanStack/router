@@ -73,7 +73,6 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
   '/posts': typeof PostsRouteWithChildren
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
@@ -84,7 +83,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -109,7 +107,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | ''
     | '/posts'
     | '/viewport-test'
     | '/without-loader'
@@ -120,7 +117,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | ''
     | '/viewport-test'
     | '/without-loader'
     | '/posts/$postId'
