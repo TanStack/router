@@ -39,15 +39,17 @@ export async function createServer(
     // use vite's connect instance as middleware
     app.use(vite.middlewares)
   } else {
-    app.use((await import("compression")).default({
-      brotli: {
-        flush: zlib.constants.BROTLI_OPERATION_FLUSH,
-      },
-      flush: zlib.constants.Z_SYNC_FLUSH,
-    }))
+    app.use(
+      (await import('compression')).default({
+        brotli: {
+          flush: zlib.constants.BROTLI_OPERATION_FLUSH,
+        },
+        flush: zlib.constants.Z_SYNC_FLUSH,
+      }),
+    )
   }
 
-  if (isProd) app.use(express.static("./dist/client"));
+  if (isProd) app.use(express.static('./dist/client'))
 
   app.use('*', async (req, res) => {
     try {
