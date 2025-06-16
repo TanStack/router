@@ -2055,6 +2055,9 @@ export class RouterCore<
           }
         }
 
+        match.beforeLoadPromise?.resolve()
+        match.loaderPromise?.resolve()
+
         updateMatch(match.id, (prev) => ({
           ...prev,
           status: isRedirect(err)
@@ -2072,8 +2075,6 @@ export class RouterCore<
           ;(err as any).routeId = match.routeId
         }
 
-        match.beforeLoadPromise?.resolve()
-        match.loaderPromise?.resolve()
         match.loadPromise?.resolve()
 
         if (isRedirect(err)) {
@@ -2182,7 +2183,7 @@ export class RouterCore<
 
                 // Wait for the beforeLoad to resolve before we continue
                 await existingMatch.beforeLoadPromise
-                executeBeforeLoad = this.getMatch(matchId)!.status !== 'success'
+                executeBeforeLoad = this.getMatch(matchId)!.status === 'error'
               }
               if (executeBeforeLoad) {
                 // If we are not in the middle of a load OR the previous load failed, start it
