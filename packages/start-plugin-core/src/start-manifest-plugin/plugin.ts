@@ -1,28 +1,22 @@
-import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { joinURL } from 'ufo'
 import { rootRouteId } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
+import { tsrSplit } from '@tanstack/router-plugin'
 import { resolveViteId } from '../utils'
-import { CLIENT_DIST_DIR } from '../constants'
-import type {
-  PluginOption,
-  ResolvedConfig,
-  Manifest as ViteManifest,
-  ManifestChunk as ViteManifestChunk,
-} from 'vite'
+import type { PluginOption, ResolvedConfig, Rollup } from 'vite'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { TanStackStartOutputConfig } from '../plugin'
 
-const getCSSRecursively = (
-  file: ViteManifestChunk,
-  filesByRouteFilePath: ViteManifest,
+export const getCSSRecursively = (
+  chunk: Rollup.OutputChunk,
+  chunksByFileName: Map<string, Rollup.OutputChunk>,
   basePath: string,
 ) => {
   const result: Array<RouterManagedTag> = []
 
   // Get all css imports from the file
-  for (const cssFile of file.css ?? []) {
+  for (const cssFile of chunk.viteMetadata?.importedCss ?? []) {
     result.push({
       tag: 'link',
       attrs: {
@@ -34,11 +28,11 @@ const getCSSRecursively = (
   }
 
   // Recursively get CSS from imports
-  for (const imp of file.imports ?? []) {
-    const importInfo = filesByRouteFilePath[imp]
-    if (importInfo) {
+  for (const importedFileName of chunk.imports) {
+    const importedChunk = chunksByFileName.get(importedFileName)
+    if (importedChunk) {
       result.push(
-        ...getCSSRecursively(importInfo, filesByRouteFilePath, basePath),
+        ...getCSSRecursively(importedChunk, chunksByFileName, basePath),
       )
     }
   }
@@ -59,9 +53,6 @@ export function startManifestPlugin(
     configResolved(resolvedConfig) {
       config = resolvedConfig
     },
-    // configEnvironment(env, envConfig) {
-    //   config = envConfig.
-    // },
     resolveId: {
       filter: { id: new RegExp(VIRTUAL_MODULES.startManifest) },
       handler(id) {
@@ -93,106 +84,110 @@ export function startManifestPlugin(
           // This is the basepath for the application
           const APP_BASE = globalThis.TSS_APP_BASE
 
-          const clientViteManifestPath = path.resolve(
-            opts.root,
-            CLIENT_DIST_DIR,
-            '.vite',
-            'manifest.json',
-          )
-
-          let viteManifest: ViteManifest
-          try {
-            viteManifest = JSON.parse(
-              readFileSync(clientViteManifestPath, 'utf-8'),
-            )
-          } catch (err) {
-            console.error(err)
-            throw new Error(
-              `Could not find the production client vite manifest at '${clientViteManifestPath}'!`,
-            )
-          }
-
           // This the manifest pulled from the generated route tree and later used by the Router.
-          // i.e what's located in `src/generatedRouteTree.gen.ts`
+          // i.e what's located in `src/routeTree.gen.ts`
           const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST.routes
 
           // This is where hydration will start, from when the SSR'd page reaches the browser.
           // By default, this'd be the virtual entry of `/~start/default-client-entry.tsx`, unless a custom entry is provided.
-          let entryFile: ViteManifestChunk | undefined
+          let entryFile: Rollup.OutputChunk | undefined
 
-          const filesByRouteFilePath: ViteManifest = Object.fromEntries(
-            Object.entries(viteManifest).map(([k, v]) => {
-              if (v.isEntry) {
-                if (entryFile !== undefined) {
-                  console.error(
-                    `multiple entries detected`,
-                    entryFile.file,
-                    v.file,
+          const clientBundle = globalThis.TSS_CLIENT_BUNDLE
+          const chunksByFileName = new Map<string, Rollup.OutputChunk>()
+
+          const routeChunks: Record<
+            string /** fullPath of route file **/,
+            Array<Rollup.OutputChunk>
+          > = {}
+          for (const bundleEntry of Object.values(clientBundle)) {
+            if (bundleEntry.type === 'chunk') {
+              chunksByFileName.set(bundleEntry.fileName, bundleEntry)
+              if (bundleEntry.isEntry) {
+                if (entryFile) {
+                  throw new Error(
+                    `multiple entries detected: ${entryFile.fileName} ${bundleEntry.fileName}`,
                   )
                 }
-                entryFile = v
+                entryFile = bundleEntry
               }
+              const routePieces = bundleEntry.moduleIds.flatMap((m) => {
+                const [id, query] = m.split('?')
+                if (id === undefined) {
+                  throw new Error('expected id to be defined')
+                }
+                if (query === undefined) {
+                  return []
+                }
+                const searchParams = new URLSearchParams(query)
+                const split = searchParams.get(tsrSplit)
 
-              const rPath = k.split('?')[0]
-
-              return [rPath, v]
-            }, {}),
-          )
-
-          const routesDirectoryFromRoot = path.relative(
-            opts.root,
-            opts.tsr.routesDirectory,
-          )
+                if (split !== null) {
+                  return {
+                    id,
+                    split,
+                  }
+                }
+                return []
+              })
+              if (routePieces.length > 0) {
+                routePieces.forEach((r) => {
+                  let array = routeChunks[r.id]
+                  if (array === undefined) {
+                    array = []
+                    routeChunks[r.id] = array
+                  }
+                  array.push(bundleEntry)
+                })
+              }
+            }
+          }
 
           // Add preloads to the routes from the vite manifest
           Object.entries(routeTreeRoutes).forEach(([routeId, v]) => {
-            const file =
-              filesByRouteFilePath[
-                path.posix.join(routesDirectoryFromRoot, v.filePath as string)
-              ]
+            if (!v.filePath) {
+              throw new Error(`expected filePath to be set for ${routeId}`)
+            }
+            const chunks = routeChunks[v.filePath]
+            if (chunks) {
+              chunks.forEach((chunk) => {
+                // Map the relevant imports to their route paths,
+                // so that it can be imported in the browser.
+                const preloads = chunk.imports.map((d) => {
+                  const assetPath = joinURL(APP_BASE, d)
+                  return assetPath
+                })
 
-            if (file) {
-              // Map the relevant imports to their route paths,
-              // so that it can be imported in the browser.
-              const preloads = (file.imports ?? []).map((d) => {
-                const assetPath = joinURL(APP_BASE, viteManifest[d]!.file)
-                return assetPath
+                // Since this is the most important JS entry for the route,
+                // it should be moved to the front of the preloads so that
+                // it has the best chance of being loaded first.
+                preloads.unshift(path.join(APP_BASE, chunk.fileName))
+
+                const cssAssetsList = getCSSRecursively(
+                  chunk,
+                  chunksByFileName,
+                  APP_BASE,
+                )
+
+                routeTreeRoutes[routeId] = {
+                  ...v,
+                  assets: [...(v.assets || []), ...cssAssetsList],
+                  preloads: [...(v.preloads || []), ...preloads],
+                }
               })
-
-              // Since this is the most important JS entry for the route,
-              // it should be moved to the front of the preloads so that
-              // it has the best chance of being loaded first.
-              if (file.file) {
-                preloads.unshift(path.join(APP_BASE, file.file))
-              }
-
-              const cssAssetsList = getCSSRecursively(
-                file,
-                filesByRouteFilePath,
-                APP_BASE,
-              )
-
-              routeTreeRoutes[routeId] = {
-                ...v,
-                assets: [...(v.assets || []), ...cssAssetsList],
-                preloads,
-              }
             }
           })
 
           if (entryFile) {
             routeTreeRoutes[rootRouteId]!.preloads = [
-              joinURL(APP_BASE, entryFile.file),
-              ...(entryFile.imports?.map((d) =>
-                joinURL(APP_BASE, viteManifest[d]!.file),
-              ) || []),
+              joinURL(APP_BASE, entryFile.fileName),
+              ...entryFile.imports.map((d) => joinURL(APP_BASE, d)),
             ]
 
             // Gather all the CSS files from the entry file in
             // the `css` key and add them to the root route
             const entryCssAssetsList = getCSSRecursively(
               entryFile,
-              filesByRouteFilePath,
+              chunksByFileName,
               APP_BASE,
             )
 
@@ -202,7 +197,7 @@ export function startManifestPlugin(
               {
                 tag: 'script',
                 attrs: {
-                  src: joinURL(APP_BASE, entryFile.file),
+                  src: joinURL(APP_BASE, entryFile.fileName),
                   type: 'module',
                 },
               },
@@ -232,8 +227,7 @@ export function startManifestPlugin(
             }
           }
 
-          // @ts-expect-error
-          recurseRoute(routeTreeRoutes[rootRouteId])
+          recurseRoute(routeTreeRoutes[rootRouteId]!)
 
           const routesManifest = {
             routes: routeTreeRoutes,
