@@ -184,7 +184,7 @@ Consider the following file structure:
 /routes
 ├── root.tsx
 ├── index.tsx
-├── pathless.tsx
+├── pathlessLayout.tsx
 ├── app
 │   ├── dashboard.tsx
 │   ├── dashboard-index.tsx
