@@ -221,6 +221,16 @@ export function TanStackStartVitePluginCore(
     startManifestPlugin(startConfig),
     devServerPlugin(),
     nitroPlugin(startConfig, () => ssrBundle),
+    {
+      name: 'tanstack-start:core:capture-client-bundle',
+      applyToEnvironment(e) {
+        return e.config.consumer === 'client'
+      },
+      enforce: 'post',
+      generateBundle(_options, bundle) {
+        globalThis.TSS_CLIENT_BUNDLE = bundle
+      },
+    },
   ]
 }
 
