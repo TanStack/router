@@ -136,12 +136,12 @@ const awesomeMiddleware = createMiddleware({ type: 'function' }).server(
   },
 )
 
-const loggingMiddleware = createMiddleware({ type: 'function' }).server(
-  async ({ next, context }) => {
+const loggingMiddleware = createMiddleware({ type: 'function' })
+  .middleware([awesomeMiddleware])
+  .server(async ({ next, context }) => {
     console.log('Is awesome?', context.isAwesome)
     return next()
-  },
-)
+  })
 ```
 
 ## Client-Side Logic
