@@ -103,11 +103,11 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/solid-start-client": "workspace:^",
-    "@tanstack/solid-start-server": "workspace:^",
-    "@tanstack/solid-start-plugin": "workspace:^",
-    "@tanstack/start-server-functions-client": "workspace:^",
-    "@tanstack/start-server-functions-server": "workspace:^"
+    "@tanstack/solid-start-client": "workspace:*",
+    "@tanstack/solid-start-server": "workspace:*",
+    "@tanstack/solid-start-plugin": "workspace:*",
+    "@tanstack/start-server-functions-client": "workspace:*",
+    "@tanstack/start-server-functions-server": "workspace:*"
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0",

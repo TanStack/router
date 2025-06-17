@@ -62,7 +62,7 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/server-functions-plugin": "workspace:^",
+    "@tanstack/server-functions-plugin": "workspace:*",
     "tiny-invariant": "^1.3.3"
   },
   "devDependencies": {

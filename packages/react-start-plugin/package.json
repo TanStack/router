@@ -65,8 +65,7 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-utils": "workspace:^",
-    "@tanstack/start-plugin-core": "workspace:^",
+    "@tanstack/start-plugin-core": "workspace:*",
     "zod": "^3.24.2"
   },
   "devDependencies": {

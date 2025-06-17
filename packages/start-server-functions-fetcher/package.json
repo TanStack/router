@@ -62,8 +62,8 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-core": "workspace:^",
-    "@tanstack/start-client-core": "workspace:^"
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/start-client-core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

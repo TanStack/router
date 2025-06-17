@@ -103,11 +103,11 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/react-start-client": "workspace:^",
-    "@tanstack/react-start-server": "workspace:^",
-    "@tanstack/react-start-plugin": "workspace:^",
-    "@tanstack/start-server-functions-client": "workspace:^",
-    "@tanstack/start-server-functions-server": "workspace:^"
+    "@tanstack/react-start-client": "workspace:*",
+    "@tanstack/react-start-server": "workspace:*",
+    "@tanstack/react-start-plugin": "workspace:*",
+    "@tanstack/start-server-functions-client": "workspace:*",
+    "@tanstack/start-server-functions-server": "workspace:*"
   },
   "peerDependencies": {
     "@vitejs/plugin-react": ">=4.3.4",

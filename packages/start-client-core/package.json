@@ -63,7 +63,7 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-core": "workspace:^",
+    "@tanstack/router-core": "workspace:*",
     "cookie-es": "^1.2.2",
     "tiny-invariant": "^1.3.3",
     "tiny-warning": "^1.0.3"
