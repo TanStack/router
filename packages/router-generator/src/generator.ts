@@ -424,6 +424,7 @@ export class Generator {
     }
 
     if (!writeRouteTreeFile) {
+      this.swapCaches()
       return
     }
 
@@ -473,7 +474,11 @@ export class Generator {
       }
     }
 
-    // now that we have finished this run, we can finally swap the caches
+    this.swapCaches()
+    
+  }
+
+  private swapCaches() {
     this.routeNodeCache = this.routeNodeShadowCache
     this.routeNodeShadowCache = new Map()
   }
