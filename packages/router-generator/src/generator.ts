@@ -475,7 +475,6 @@ export class Generator {
     }
 
     this.swapCaches()
-    
   }
 
   private swapCaches() {
