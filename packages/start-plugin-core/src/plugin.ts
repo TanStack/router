@@ -186,13 +186,6 @@ export function TanStackStartVitePluginCore(
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
       manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
-      manifestOutputFilename: path.join(
-        '.tanstack',
-        'start',
-        'build',
-        'server',
-        'server-functions-manifest.json',
-      ),
       client: {
         getRuntimeCode: () =>
           `import { createClientRpc } from '@tanstack/${opts.framework}-start/server-functions-client'`,
@@ -206,15 +199,6 @@ export function TanStackStartVitePluginCore(
         replacer: (d) =>
           `createServerRpc('${d.functionId}', '${startConfig.serverFns.base}', ${d.fn})`,
         envName: VITE_ENVIRONMENT_NAMES.server,
-      },
-      importer: (fn) => {
-        const serverEnv = (globalThis as any).viteDevServer.environments[
-          VITE_ENVIRONMENT_NAMES.server
-        ]
-        if (!serverEnv) {
-          throw new Error(`'ssr' vite dev environment not found`)
-        }
-        return serverEnv.runner.import(fn.extractedFilename)
       },
     }),
     loadEnvPlugin(startConfig),
