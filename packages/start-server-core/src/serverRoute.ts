@@ -70,6 +70,7 @@ export function createServerRoute<
   const options = __opts || {}
 
   const route: ServerRoute<TParentRoute, TId, TPath, TFullPath, TChildren> = {
+    isRoot: false as any,
     path: '' as TPath,
     id: '' as TId,
     fullPath: '' as TFullPath,
@@ -162,6 +163,7 @@ export function createServerRoute<
       route.id = id as TId
       route.fullPath = fullPath as TFullPath
       route.to = fullPath as TrimPathRight<TFullPath>
+      route.isRoot = isRoot as any
     },
 
     _addFileChildren: (children) => {
@@ -290,6 +292,7 @@ export interface ServerRouteWithTypes<
     TMiddlewares,
     TMethods
   >
+  isRoot: TParentRoute extends AnyServerRouteWithTypes ? true : false
   path: TPath
   id: TId
   fullPath: TFullPath
@@ -329,6 +332,7 @@ export interface ServerRouteTypes<
   TMiddlewares,
   TMethods,
 > {
+  isRoot: TParentRoute extends AnyServerRouteWithTypes ? true : false
   id: TId
   path: TPath
   fullPath: TFullPath
