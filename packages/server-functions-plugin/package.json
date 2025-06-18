@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/server-functions-plugin",
-  "version": "1.121.21",
+  "version": "1.121.26",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
