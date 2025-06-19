@@ -6,7 +6,8 @@ import {
   defineHandlerCallback,
   transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
-} from '@tanstack/start-server-core'
+} from '@tanstack/start-server-core/core-ssr'
+
 import { StartServer } from './StartServer'
 
 import type { ReadableStream } from 'node:stream/web'

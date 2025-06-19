@@ -2,7 +2,6 @@ import path from 'node:path'
 import url from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { VIRTUAL_MODULES } from '@tanstack/react-start/server'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import type { BuildEnvironmentOptions } from 'vite'
 
@@ -17,7 +16,6 @@ const ssrBuildConfig: BuildEnvironmentOptions = {
   copyPublicDir: false,
   emptyOutDir: true,
   rollupOptions: {
-    external: [...Object.values(VIRTUAL_MODULES)],
     input: path.resolve(__dirname, 'src/entry-server.tsx'),
     output: {
       entryFileNames: '[name].js',

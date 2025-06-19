@@ -1,5 +1,5 @@
 import ReactDOMServer from 'react-dom/server'
-import { defineHandlerCallback } from '@tanstack/start-server-core'
+import { defineHandlerCallback } from '@tanstack/start-server-core/core-ssr'
 import { StartServer } from './StartServer'
 
 export const defaultRenderHandler = defineHandlerCallback(
