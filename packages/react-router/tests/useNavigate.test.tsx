@@ -1517,7 +1517,9 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
 })
 
 describe('relative useNavigate', () => {
-  const setupRouter = () => {
+  const testVars = [{basepath:""}, {basepath:"/basepath"}]
+
+  const setupRouter = (basepath: string) => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -1625,17 +1627,18 @@ describe('relative useNavigate', () => {
         paramRoute.addChildren([paramARoute, paramBRoute]),
       ]),
       history,
+      basepath: basepath === "" ? undefined : basepath
     })
   }
 
-  test('should navigate to the parent route', async () => {
-    const router = setupRouter()
+  test.each(testVars)('should navigate to the parent route', async ({basepath}) => {
+    const router = setupRouter(basepath)
 
     render(<RouterProvider router={router} />)
 
     // Navigate to /a/b
     await act(async () => {
-      history.push('/a/b')
+      history.push(`${basepath}/a/b`)
     })
 
     // Inspect the link to go up a parent
@@ -1646,17 +1649,17 @@ describe('relative useNavigate', () => {
       fireEvent.click(parentLink)
     })
 
-    expect(window.location.pathname).toBe('/a')
+    expect(window.location.pathname).toBe(`${basepath}/a`)
   })
 
-  test('should navigate to the parent route and keep params', async () => {
-    const router = setupRouter()
+  test.each(testVars)('should navigate to the parent route and keep params', async ({basepath}) => {
+    const router = setupRouter(basepath)
 
     render(<RouterProvider router={router} />)
 
     // Navigate to /param/oldParamValue/a/b
     await act(async () => {
-      history.push('/param/foo/a/b')
+      history.push(`${basepath}/param/foo/a/b`)
     })
 
     // Inspect the link to go up a parent and keep the params
@@ -1667,17 +1670,17 @@ describe('relative useNavigate', () => {
       fireEvent.click(parentLink)
     })
 
-    expect(window.location.pathname).toBe('/param/foo/a')
+    expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
   })
 
-  test('should navigate to the parent route and change params', async () => {
-    const router = setupRouter()
+  test.each(testVars)('should navigate to the parent route and change params', async ({basepath}) => {
+    const router = setupRouter(basepath)
 
     render(<RouterProvider router={router} />)
 
     // Navigate to /param/oldParamValue/a/b
     await act(async () => {
-      history.push('/param/foo/a/b')
+      history.push(`${basepath}/param/foo/a/b`)
     })
 
     // Inspect the link to go up a parent and keep the params
@@ -1688,16 +1691,16 @@ describe('relative useNavigate', () => {
       fireEvent.click(parentLink)
     })
 
-    expect(window.location.pathname).toBe('/param/bar/a')
+    expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
   })
 
-  test('should navigate to a relative link based on render location', async () => {
-    const router = setupRouter()
+  test.each(testVars)('should navigate to a relative link based on render location', async ({basepath}) => {
+    const router = setupRouter(basepath)
 
     render(<RouterProvider router={router} />)
 
     await act(async () => {
-      history.push('/param/foo/a/b')
+      history.push(`${basepath}/param/foo/a/b`)
     })
 
     // Inspect the relative link to ./a
@@ -1708,16 +1711,16 @@ describe('relative useNavigate', () => {
       fireEvent.click(relativeLink)
     })
 
-    expect(window.location.pathname).toBe('/param/foo/a')
+    expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
   })
 
-  test('should navigate to a parent link based on render location', async () => {
-    const router = setupRouter()
+  test.each(testVars)('should navigate to a parent link based on render location', async ({basepath}) => {
+    const router = setupRouter(basepath)
 
     render(<RouterProvider router={router} />)
 
     await act(async () => {
-      history.push('/param/foo/a/b')
+      history.push(`${basepath}/param/foo/a/b`)
     })
 
     // Inspect the relative link to ./a
@@ -1728,16 +1731,16 @@ describe('relative useNavigate', () => {
       fireEvent.click(relativeLink)
     })
 
-    expect(window.location.pathname).toBe('/param/foo')
+    expect(window.location.pathname).toBe(`${basepath}/param/foo`)
   })
 
-  test('should navigate to same route with different params', async () => {
-    const router = setupRouter()
+  test.each(testVars)('should navigate to same route with different params', async ({basepath}) => {
+    const router = setupRouter(basepath)
 
     render(<RouterProvider router={router} />)
 
     await act(async () => {
-      history.push('/param/foo/a/b')
+      history.push(`${basepath}/param/foo/a/b`)
     })
 
     const parentLink = await screen.findByText('Link to . with param:bar')
@@ -1746,6 +1749,6 @@ describe('relative useNavigate', () => {
       fireEvent.click(parentLink)
     })
 
-    expect(window.location.pathname).toBe('/param/bar/a/b')
+    expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
   })
 })
