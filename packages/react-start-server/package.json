@@ -62,9 +62,9 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/history": "workspace:^",
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/router-core": "workspace:^",
+    "@tanstack/history": "workspace:*",
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/router-core": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
     "h3": "1.13.0",

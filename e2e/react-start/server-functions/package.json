@@ -11,9 +11,9 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-router-devtools": "workspace:^",
-    "@tanstack/react-start": "workspace:^",
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-router-devtools": "workspace:*",
+    "@tanstack/react-start": "workspace:*",
     "js-cookie": "^3.0.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/router-e2e-utils": "workspace:*",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",

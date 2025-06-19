@@ -13,9 +13,9 @@
     "test:e2e": "pnpm run test:e2e:verbose-routes:true && pnpm run test:e2e:verbose-routes:false"
   },
   "dependencies": {
-    "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/solid-router": "workspace:^",
-    "@tanstack/solid-router-devtools": "workspace:^",
+    "@tanstack/router-plugin": "workspace:*",
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/solid-router-devtools": "workspace:*",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.1",
     "solid-js": "^1.9.5",
@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/router-e2e-utils": "workspace:*",
     "vite": "^6.3.5",
     "vite-plugin-solid": "^2.11.2"
   }

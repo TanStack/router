@@ -13,8 +13,8 @@
   "dependencies": {
     "@tanstack/solid-query": "^5.71.9",
     "@tanstack/solid-query-devtools": "^5.71.9",
-    "@tanstack/solid-router": "workspace:^",
-    "@tanstack/solid-router-devtools": "workspace:^",
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/solid-router-devtools": "workspace:*",
     "solid-js": "^1.9.5",
     "redaxios": "^0.5.1",
     "postcss": "^8.5.1",
@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/router-e2e-utils": "workspace:*",
     "vite-plugin-solid": "^2.11.2",
     "vite": "^6.3.5"
   }

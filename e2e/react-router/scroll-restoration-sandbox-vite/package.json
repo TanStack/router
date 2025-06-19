@@ -14,10 +14,10 @@
     "test:e2e": "pnpm run test:e2e:browser && pnpm run test:e2e:hash"
   },
   "dependencies": {
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-router-devtools": "workspace:^",
-    "@tanstack/router-plugin": "workspace:^",
-    "@tanstack/zod-adapter": "workspace:^",
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-router-devtools": "workspace:*",
+    "@tanstack/router-plugin": "workspace:*",
+    "@tanstack/zod-adapter": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/router-e2e-utils": "workspace:*",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
