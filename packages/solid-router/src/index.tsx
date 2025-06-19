@@ -167,6 +167,7 @@ export type {
   UseNavigateResult,
   AnyRedirect,
   Redirect,
+  RedirectOptions,
   ResolvedRedirect,
   RouteOptions,
   FileBaseRouteOptions,

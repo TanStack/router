@@ -28,7 +28,7 @@ import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
-import { isRedirect } from './redirect'
+import { isRedirect, redirect } from './redirect'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -1762,6 +1762,20 @@ export class RouterCore<
     this.cancelMatches()
     this.latestLocation = this.parseLocation(this.latestLocation)
 
+    if (this.isServer) {
+      // for SPAs on the initial load, this is handled by the Transitioner
+      const nextLocation = this.buildLocation({
+        to: this.latestLocation.pathname,
+        search: true,
+        params: true,
+        hash: true,
+        state: true,
+        _includeValidateSearch: true,
+      })
+      if (trimPath(this.latestLocation.href) !== trimPath(nextLocation.href)) {
+        throw redirect({ href: nextLocation.href })
+      }
+    }
     // Match the routes
     const pendingMatches = this.matchRoutes(this.latestLocation)
 

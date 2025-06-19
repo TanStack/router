@@ -186,13 +186,6 @@ export function TanStackStartVitePluginCore(
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
       manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
-      manifestOutputFilename: path.join(
-        '.tanstack',
-        'start',
-        'build',
-        'server',
-        'server-functions-manifest.json',
-      ),
       client: {
         getRuntimeCode: () =>
           `import { createClientRpc } from '@tanstack/${opts.framework}-start/server-functions-client'`,
@@ -207,20 +200,21 @@ export function TanStackStartVitePluginCore(
           `createServerRpc('${d.functionId}', '${startConfig.serverFns.base}', ${d.fn})`,
         envName: VITE_ENVIRONMENT_NAMES.server,
       },
-      importer: (fn) => {
-        const serverEnv = (globalThis as any).viteDevServer.environments[
-          VITE_ENVIRONMENT_NAMES.server
-        ]
-        if (!serverEnv) {
-          throw new Error(`'ssr' vite dev environment not found`)
-        }
-        return serverEnv.runner.import(fn.extractedFilename)
-      },
     }),
     loadEnvPlugin(startConfig),
     startManifestPlugin(startConfig),
     devServerPlugin(),
     nitroPlugin(startConfig, () => ssrBundle),
+    {
+      name: 'tanstack-start:core:capture-client-bundle',
+      applyToEnvironment(e) {
+        return e.config.consumer === 'client'
+      },
+      enforce: 'post',
+      generateBundle(_options, bundle) {
+        globalThis.TSS_CLIENT_BUNDLE = bundle
+      },
+    },
   ]
 }
 

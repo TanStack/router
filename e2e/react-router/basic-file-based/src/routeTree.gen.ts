@@ -16,11 +16,14 @@ import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as ParamsPsIndexRouteImport } from './routes/params-ps/index'
 import { Route as StructuralSharingEnabledRouteImport } from './routes/structural-sharing.$enabled'
+import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
@@ -79,10 +82,20 @@ const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
+  id: '/search-params',
+  path: '/search-params',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SearchParamsRouteRoute,
 } as any)
 const RedirectIndexRoute = RedirectIndexRouteImport.update({
   id: '/redirect/',
@@ -105,6 +118,11 @@ const StructuralSharingEnabledRoute =
     path: '/structural-sharing/$enabled',
     getParentRoute: () => rootRouteImport,
   } as any)
+const SearchParamsDefaultRoute = SearchParamsDefaultRouteImport.update({
+  id: '/default',
+  path: '/default',
+  getParentRoute: () => SearchParamsRouteRoute,
+} as any)
 const RedirectTargetRoute = RedirectTargetRouteImport.update({
   id: '/redirect/$target',
   path: '/redirect/$target',
@@ -249,6 +267,7 @@ const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
+  '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
@@ -258,10 +277,12 @@ export interface FileRoutesByFullPath {
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
+  '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/params-ps': typeof ParamsPsIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
+  '/search-params/': typeof SearchParamsIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -292,10 +313,12 @@ export interface FileRoutesByTo {
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/params-ps': typeof ParamsPsIndexRoute
   '/posts': typeof PostsIndexRoute
   '/redirect': typeof RedirectIndexRoute
+  '/search-params': typeof SearchParamsIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -320,6 +343,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/editing-a': typeof EditingARoute
@@ -333,10 +357,12 @@ export interface FileRoutesById {
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
+  '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
   '/params-ps/': typeof ParamsPsIndexRoute
   '/posts/': typeof PostsIndexRoute
   '/redirect/': typeof RedirectIndexRoute
+  '/search-params/': typeof SearchParamsIndexRoute
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
@@ -362,6 +388,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/search-params'
     | '/anchor'
     | '/editing-a'
     | '/editing-b'
@@ -371,10 +398,12 @@ export interface FileRouteTypes {
     | '/lazyinside'
     | '/posts/$postId'
     | '/redirect/$target'
+    | '/search-params/default'
     | '/structural-sharing/$enabled'
     | '/params-ps'
     | '/posts/'
     | '/redirect'
+    | '/search-params/'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
@@ -405,10 +434,12 @@ export interface FileRouteTypes {
     | '/inside'
     | '/lazyinside'
     | '/posts/$postId'
+    | '/search-params/default'
     | '/structural-sharing/$enabled'
     | '/params-ps'
     | '/posts'
     | '/redirect'
+    | '/search-params'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
@@ -432,6 +463,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/search-params'
     | '/_layout'
     | '/anchor'
     | '/editing-a'
@@ -445,10 +477,12 @@ export interface FileRouteTypes {
     | '/_layout/_layout-2'
     | '/posts/$postId'
     | '/redirect/$target'
+    | '/search-params/default'
     | '/structural-sharing/$enabled'
     | '/params-ps/'
     | '/posts/'
     | '/redirect/'
+    | '/search-params/'
     | '/(group)/_layout/insidelayout'
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
@@ -473,6 +507,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
   EditingARoute: typeof EditingARoute
@@ -543,12 +578,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/search-params': {
+      id: '/search-params'
+      path: '/search-params'
+      fullPath: '/search-params'
+      preLoaderRoute: typeof SearchParamsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/search-params/': {
+      id: '/search-params/'
+      path: '/'
+      fullPath: '/search-params/'
+      preLoaderRoute: typeof SearchParamsIndexRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
     }
     '/redirect/': {
       id: '/redirect/'
@@ -577,6 +626,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/structural-sharing/$enabled'
       preLoaderRoute: typeof StructuralSharingEnabledRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/search-params/default': {
+      id: '/search-params/default'
+      path: '/default'
+      fullPath: '/search-params/default'
+      preLoaderRoute: typeof SearchParamsDefaultRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
     }
     '/redirect/$target': {
       id: '/redirect/$target'
@@ -770,6 +826,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SearchParamsRouteRouteChildren {
+  SearchParamsDefaultRoute: typeof SearchParamsDefaultRoute
+  SearchParamsIndexRoute: typeof SearchParamsIndexRoute
+}
+
+const SearchParamsRouteRouteChildren: SearchParamsRouteRouteChildren = {
+  SearchParamsDefaultRoute: SearchParamsDefaultRoute,
+  SearchParamsIndexRoute: SearchParamsIndexRoute,
+}
+
+const SearchParamsRouteRouteWithChildren =
+  SearchParamsRouteRoute._addFileChildren(SearchParamsRouteRouteChildren)
+
 interface LayoutLayout2RouteChildren {
   LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
   LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
@@ -853,6 +922,7 @@ const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
   EditingARoute: EditingARoute,
