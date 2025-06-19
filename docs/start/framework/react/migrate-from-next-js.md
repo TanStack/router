@@ -187,7 +187,7 @@ Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
 
 ```tsx
 - export default function Home() { // [!code --]
-+ export const Route = createFileRoute({ // [!code ++]
++ export const Route = createFileRoute('/')({ // [!code ++]
 +   component: Home, // [!code ++]
 + }) // [!code ++]
 
@@ -283,7 +283,7 @@ Retrieving dynamic route parameters in TanStack Start is straightforward.
 - }: { // [!code --]
 -   params: Promise<{ slug: string }> // [!code --]
 - }) { // [!code --]
-+ export const Route = createFileRoute({ // [!code ++]
++ export const Route = createFileRoute('/app/posts/$slug')({ // [!code ++]
 +   component: Page, // [!code ++]
 + }) // [!code ++]
 
@@ -384,7 +384,7 @@ Add the following to `src/app/globals.css`:
 
 ```tsx
 - export default async function Page() { // [!code --]
-+ export const Route = createFileRoute({ // [!code ++]
++ export const Route = createFileRoute('/')({ // [!code ++]
 +   component: Page, // [!code ++]
 +   loader: async () => { // [!code ++]
 +     const res = await fetch('https://api.vercel.app/blog') // [!code ++]
