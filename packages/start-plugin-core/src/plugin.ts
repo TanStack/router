@@ -77,25 +77,6 @@ export function TanStackStartVitePluginCore(
           return nitroOutputPublicDir
         })()
 
-        const getClientEntryPath = (startConfig: TanStackStartOutputConfig) => {
-          // when the user specifies a custom client entry path, we need to resolve it
-          // relative to the root of the project, keeping in mind that if not specified
-          // it will be /~start/default-client-entry which is a virtual path
-          // that is resolved by vite to the actual client entry path
-          const entry = startConfig.clientEntryPath.startsWith(
-            '/~start/default-client-entry',
-          )
-            ? startConfig.clientEntryPath
-            : vite.normalizePath(
-                path.join(
-                  '/@fs',
-                  path.resolve(startConfig.root, startConfig.clientEntryPath),
-                ),
-              )
-
-          return entry
-        }
-
         return {
           base: viteAppBase,
           environments: {
@@ -169,7 +150,6 @@ export function TanStackStartVitePluginCore(
             // i.e: __FRAMEWORK_NAME__ can be replaced with JSON.stringify("TanStack Start")
             // This is not the same as injecting environment variables.
 
-            ...defineReplaceEnv('TSS_CLIENT_ENTRY', getClientEntryPath(startConfig)), // This is consumed by the router-manifest, where the entry point is imported after the dev refresh runtime is resolved
             ...defineReplaceEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
             ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
             ...defineReplaceEnv('TSS_APP_BASE', viteAppBase)
@@ -202,7 +182,7 @@ export function TanStackStartVitePluginCore(
       },
     }),
     loadEnvPlugin(startConfig),
-    startManifestPlugin(startConfig),
+    startManifestPlugin({ clientEntry: getClientEntryPath(startConfig) }),
     devServerPlugin(),
     nitroPlugin(startConfig, () => ssrBundle),
     {
@@ -226,4 +206,23 @@ function defineReplaceEnv<TKey extends string, TValue extends string>(
     [`process.env.${key}`]: JSON.stringify(value),
     [`import.meta.env.${key}`]: JSON.stringify(value),
   } as { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue }
+}
+
+const getClientEntryPath = (startConfig: TanStackStartOutputConfig) => {
+  // when the user specifies a custom client entry path, we need to resolve it
+  // relative to the root of the project, keeping in mind that if not specified
+  // it will be /~start/default-client-entry which is a virtual path
+  // that is resolved by vite to the actual client entry path
+  const entry = startConfig.clientEntryPath.startsWith(
+    '/~start/default-client-entry',
+  )
+    ? startConfig.clientEntryPath
+    : vite.normalizePath(
+        path.join(
+          '/@fs',
+          path.resolve(startConfig.root, startConfig.clientEntryPath),
+        ),
+      )
+
+  return entry
 }

@@ -6,7 +6,6 @@ import { tsrSplit } from '@tanstack/router-plugin'
 import { resolveViteId } from '../utils'
 import type { PluginOption, ResolvedConfig, Rollup } from 'vite'
 import type { RouterManagedTag } from '@tanstack/router-core'
-import type { TanStackStartOutputConfig } from '../plugin'
 
 export const getCSSRecursively = (
   chunk: Rollup.OutputChunk,
@@ -41,9 +40,9 @@ export const getCSSRecursively = (
 }
 
 const resolvedModuleId = resolveViteId(VIRTUAL_MODULES.startManifest)
-export function startManifestPlugin(
-  opts: TanStackStartOutputConfig,
-): PluginOption {
+export function startManifestPlugin(opts: {
+  clientEntry: string
+}): PluginOption {
   let config: ResolvedConfig
 
   return {
@@ -74,15 +73,16 @@ export function startManifestPlugin(
             return `export default {}`
           }
 
+          // This is the basepath for the application
+          const APP_BASE = globalThis.TSS_APP_BASE
+
           // If we're in development, return a dummy manifest
           if (config.command === 'serve') {
             return `export const tsrStartManifest = () => ({
-            routes: {}
+            routes: {},
+            clientEntry: '${joinURL(APP_BASE, opts.clientEntry)}',
           })`
           }
-
-          // This is the basepath for the application
-          const APP_BASE = globalThis.TSS_APP_BASE
 
           // This the manifest pulled from the generated route tree and later used by the Router.
           // i.e what's located in `src/routeTree.gen.ts`
@@ -177,32 +177,26 @@ export function startManifestPlugin(
             }
           })
 
-          if (entryFile) {
-            routeTreeRoutes[rootRouteId]!.preloads = [
-              joinURL(APP_BASE, entryFile.fileName),
-              ...entryFile.imports.map((d) => joinURL(APP_BASE, d)),
-            ]
-
-            // Gather all the CSS files from the entry file in
-            // the `css` key and add them to the root route
-            const entryCssAssetsList = getCSSRecursively(
-              entryFile,
-              chunksByFileName,
-              APP_BASE,
-            )
-
-            routeTreeRoutes[rootRouteId]!.assets = [
-              ...(routeTreeRoutes[rootRouteId]!.assets || []),
-              ...entryCssAssetsList,
-              {
-                tag: 'script',
-                attrs: {
-                  src: joinURL(APP_BASE, entryFile.fileName),
-                  type: 'module',
-                },
-              },
-            ]
+          if (!entryFile) {
+            throw new Error('No entry file found')
           }
+          routeTreeRoutes[rootRouteId]!.preloads = [
+            joinURL(APP_BASE, entryFile.fileName),
+            ...entryFile.imports.map((d) => joinURL(APP_BASE, d)),
+          ]
+
+          // Gather all the CSS files from the entry file in
+          // the `css` key and add them to the root route
+          const entryCssAssetsList = getCSSRecursively(
+            entryFile,
+            chunksByFileName,
+            APP_BASE,
+          )
+
+          routeTreeRoutes[rootRouteId]!.assets = [
+            ...(routeTreeRoutes[rootRouteId]!.assets || []),
+            ...entryCssAssetsList,
+          ]
 
           const recurseRoute = (
             route: {
@@ -231,6 +225,7 @@ export function startManifestPlugin(
 
           const routesManifest = {
             routes: routeTreeRoutes,
+            clientEntry: joinURL(APP_BASE, entryFile.fileName),
           }
 
           return `export const tsrStartManifest = () => (${JSON.stringify(routesManifest)})`
