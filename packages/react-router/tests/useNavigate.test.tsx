@@ -1517,7 +1517,7 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
 })
 
 describe('relative useNavigate', () => {
-  const testVars = [{basepath:""}, {basepath:"/basepath"}]
+  const testVars = [{ basepath: '' }, { basepath: '/basepath' }]
 
   const setupRouter = (basepath: string) => {
     const rootRoute = createRootRoute()
@@ -1627,128 +1627,150 @@ describe('relative useNavigate', () => {
         paramRoute.addChildren([paramARoute, paramBRoute]),
       ]),
       history,
-      basepath: basepath === "" ? undefined : basepath
+      basepath: basepath === '' ? undefined : basepath,
     })
   }
 
-  test.each(testVars)('should navigate to the parent route', async ({basepath}) => {
-    const router = setupRouter(basepath)
+  test.each(testVars)(
+    'should navigate to the parent route',
+    async ({ basepath }) => {
+      const router = setupRouter(basepath)
 
-    render(<RouterProvider router={router} />)
+      render(<RouterProvider router={router} />)
 
-    // Navigate to /a/b
-    await act(async () => {
-      history.push(`${basepath}/a/b`)
-    })
+      // Navigate to /a/b
+      await act(async () => {
+        history.push(`${basepath}/a/b`)
+      })
 
-    // Inspect the link to go up a parent
-    const parentLink = await screen.findByText('Link to Parent')
+      // Inspect the link to go up a parent
+      const parentLink = await screen.findByText('Link to Parent')
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(parentLink)
-    })
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(parentLink)
+      })
 
-    expect(window.location.pathname).toBe(`${basepath}/a`)
-  })
+      expect(window.location.pathname).toBe(`${basepath}/a`)
+    },
+  )
 
-  test.each(testVars)('should navigate to the parent route and keep params', async ({basepath}) => {
-    const router = setupRouter(basepath)
+  test.each(testVars)(
+    'should navigate to the parent route and keep params',
+    async ({ basepath }) => {
+      const router = setupRouter(basepath)
 
-    render(<RouterProvider router={router} />)
+      render(<RouterProvider router={router} />)
 
-    // Navigate to /param/oldParamValue/a/b
-    await act(async () => {
-      history.push(`${basepath}/param/foo/a/b`)
-    })
+      // Navigate to /param/oldParamValue/a/b
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
 
-    // Inspect the link to go up a parent and keep the params
-    const parentLink = await screen.findByText('Link to Parent')
+      // Inspect the link to go up a parent and keep the params
+      const parentLink = await screen.findByText('Link to Parent')
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(parentLink)
-    })
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(parentLink)
+      })
 
-    expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
-  })
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+    },
+  )
 
-  test.each(testVars)('should navigate to the parent route and change params', async ({basepath}) => {
-    const router = setupRouter(basepath)
+  test.each(testVars)(
+    'should navigate to the parent route and change params',
+    async ({ basepath }) => {
+      const router = setupRouter(basepath)
 
-    render(<RouterProvider router={router} />)
+      render(<RouterProvider router={router} />)
 
-    // Navigate to /param/oldParamValue/a/b
-    await act(async () => {
-      history.push(`${basepath}/param/foo/a/b`)
-    })
+      // Navigate to /param/oldParamValue/a/b
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
 
-    // Inspect the link to go up a parent and keep the params
-    const parentLink = await screen.findByText('Link to Parent with param:bar')
+      // Inspect the link to go up a parent and keep the params
+      const parentLink = await screen.findByText(
+        'Link to Parent with param:bar',
+      )
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(parentLink)
-    })
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(parentLink)
+      })
 
-    expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
-  })
+      expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
+    },
+  )
 
-  test.each(testVars)('should navigate to a relative link based on render location', async ({basepath}) => {
-    const router = setupRouter(basepath)
+  test.each(testVars)(
+    'should navigate to a relative link based on render location',
+    async ({ basepath }) => {
+      const router = setupRouter(basepath)
 
-    render(<RouterProvider router={router} />)
+      render(<RouterProvider router={router} />)
 
-    await act(async () => {
-      history.push(`${basepath}/param/foo/a/b`)
-    })
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
 
-    // Inspect the relative link to ./a
-    const relativeLink = await screen.findByText('Link to ./a')
+      // Inspect the relative link to ./a
+      const relativeLink = await screen.findByText('Link to ./a')
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(relativeLink)
-    })
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(relativeLink)
+      })
 
-    expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
-  })
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+    },
+  )
 
-  test.each(testVars)('should navigate to a parent link based on render location', async ({basepath}) => {
-    const router = setupRouter(basepath)
+  test.each(testVars)(
+    'should navigate to a parent link based on render location',
+    async ({ basepath }) => {
+      const router = setupRouter(basepath)
 
-    render(<RouterProvider router={router} />)
+      render(<RouterProvider router={router} />)
 
-    await act(async () => {
-      history.push(`${basepath}/param/foo/a/b`)
-    })
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
 
-    // Inspect the relative link to ./a
-    const relativeLink = await screen.findByText('Link to .. from /param/foo/a')
+      // Inspect the relative link to ./a
+      const relativeLink = await screen.findByText(
+        'Link to .. from /param/foo/a',
+      )
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(relativeLink)
-    })
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(relativeLink)
+      })
 
-    expect(window.location.pathname).toBe(`${basepath}/param/foo`)
-  })
+      expect(window.location.pathname).toBe(`${basepath}/param/foo`)
+    },
+  )
 
-  test.each(testVars)('should navigate to same route with different params', async ({basepath}) => {
-    const router = setupRouter(basepath)
+  test.each(testVars)(
+    'should navigate to same route with different params',
+    async ({ basepath }) => {
+      const router = setupRouter(basepath)
 
-    render(<RouterProvider router={router} />)
+      render(<RouterProvider router={router} />)
 
-    await act(async () => {
-      history.push(`${basepath}/param/foo/a/b`)
-    })
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
 
-    const parentLink = await screen.findByText('Link to . with param:bar')
+      const parentLink = await screen.findByText('Link to . with param:bar')
 
-    await act(async () => {
-      fireEvent.click(parentLink)
-    })
+      await act(async () => {
+        fireEvent.click(parentLink)
+      })
 
-    expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
-  })
+      expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
+    },
+  )
 })
