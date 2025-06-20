@@ -16,7 +16,7 @@ import { seo } from '../utils/seo'
 import { getSupabaseServerClient } from '../utils/supabase'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
-  const supabase = await getSupabaseServerClient()
+  const supabase = getSupabaseServerClient()
   const { data, error: _error } = await supabase.auth.getUser()
 
   if (!data.user?.email) {
