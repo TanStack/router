@@ -518,6 +518,26 @@ export class Generator {
         }
       }
 
+      // Detect layout routes that have children but lack an explicit index ("/") child
+      // and mark them to redirect to the root path.
+      acc.routeNodes.forEach((node) => {
+        if (node._fsRouteType !== 'layout') {
+          return
+        }
+
+        if (!node.isVirtualParentRoute) {
+          return
+        }
+
+        if (node.children && node.children.length > 0) {
+          if (node.children.some((child) => child.cleanedPath === '/')) {
+            return // already has index child → skip
+          }
+        }
+
+        node.isVirtualRedirectIndex = true
+        node.redirectTo = '/'
+      })
       const sortedRouteNodes = multiSortBy(acc.routeNodes, [
         (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
         (d) => d.routePath?.split('/').length,
@@ -763,7 +783,6 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     }
 
     const importStatements = mergedImports.map(buildImportString)
-
     let moduleAugmentation = ''
     if (this.config.verboseFileRoutes === false && !this.config.disableTypes) {
       moduleAugmentation = routeFileResult
