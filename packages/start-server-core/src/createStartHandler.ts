@@ -375,9 +375,26 @@ async function handleServerRoutes(opts: {
 
       if (method) {
         const handler = serverTreeResult.foundRoute.options.methods[method]
-
         if (handler) {
-          middlewares.push(handlerToMiddleware(handler) as TODO)
+          if (typeof handler === 'function') {
+            middlewares.push(handlerToMiddleware(handler) as TODO)
+          } else {
+            if (
+              handler._options.middlewares &&
+              handler._options.middlewares.length
+            ) {
+              middlewares.push(
+                ...flattenMiddlewares(handler._options.middlewares as any).map(
+                  (d) => d.options.server,
+                ),
+              )
+            }
+            if (handler._options.handler) {
+              middlewares.push(
+                handlerToMiddleware(handler._options.handler),
+              )
+            }
+          }
         }
       }
     }
