@@ -13,8 +13,6 @@ export type RouteNode = {
   children?: Array<RouteNode>
   parent?: RouteNode
   exports?: Array<string>
-  isVirtualRedirectIndex?: boolean
-  redirectTo?: string
 }
 
 export interface GetRouteNodesResult {

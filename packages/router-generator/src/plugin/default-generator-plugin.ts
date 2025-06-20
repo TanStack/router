@@ -19,12 +19,6 @@ export function defaultGeneratorPlugin(): GeneratorPluginWithTransform {
           source: opts.generator.targetTemplate.fullPkg,
         })
       }
-      if (opts.acc.routeNodes.some((n) => n.isVirtualRedirectIndex)) {
-        imports.push({
-          specifiers: [{ imported: 'redirect' }],
-          source: opts.generator.targetTemplate.fullPkg,
-        })
-      }
       if (opts.generator.config.verboseFileRoutes === false) {
         const typeImport: ImportDeclaration = {
           specifiers: [],
@@ -103,17 +97,8 @@ export function defaultGeneratorPlugin(): GeneratorPluginWithTransform {
       }
     },
     createRootRouteCode: () => `createRootRoute()`,
-    createVirtualRouteCode: ({ node }) => {
-      if (node.isVirtualRedirectIndex) {
-        return `createFileRoute('${node.routePath}')({
-          loader: () => {
-            redirect({ to: '${node.redirectTo}', throw: true })
-          },
-        })`
-      } else {
-        return `createFileRoute('${node.routePath}')()`
-      }
-    },
+    createVirtualRouteCode: ({ node }) =>
+      `createFileRoute('${node.routePath}')()`,
     config: ({ sortedRouteNodes }) => {
       const hasMatchingRouteFiles = sortedRouteNodes.length > 0
       return {

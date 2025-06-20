@@ -3225,6 +3225,14 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
     routeParams = getMatchedParams(foundRoute)!
   } else {
     foundRoute = flatRoutes.find((route) => {
+      console.log(route)
+      // If there are child routes, check if any of them have the same path as the current route
+      if (route.children && route.children.length > 0) {
+        if (!route.children.find((child) => child.path === '/')) {
+          return false
+        }
+      }
+
       const matchedParams = getMatchedParams(route)
 
       if (matchedParams) {
