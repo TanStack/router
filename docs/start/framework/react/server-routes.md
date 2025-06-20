@@ -35,7 +35,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/hello')({
   component: HelloComponent,
 })
 
