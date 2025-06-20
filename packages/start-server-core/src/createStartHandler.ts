@@ -19,7 +19,6 @@ import { handleServerAction } from './server-functions-handler'
 import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
 import type {
-  AnyServerRoute,
   AnyServerRouteWithTypes,
   ServerRouteMethodHandlerFn,
 } from './serverRoute'
@@ -57,7 +56,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
   createRouter: () => TRouter
 }): CustomizeStartHandler<TRouter> {
   let routeTreeModule: {
-    serverRouteTree: AnyServerRoute | undefined
+    serverRouteTree: AnyServerRouteWithTypes | undefined
     routeTree: AnyRoute | undefined
   } | null = null
   let startRoutesManifest: Manifest | null = null

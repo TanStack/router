@@ -73,6 +73,7 @@
     "unctx": "^2.4.1"
   },
   "devDependencies": {
+    "@tanstack/directive-functions-plugin": "workspace:*",
     "@types/jsesc": "^3.0.3",
     "esbuild": "^0.25.0",
     "typescript": "^5.7.2",
