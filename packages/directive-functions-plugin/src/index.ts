@@ -90,30 +90,35 @@ export function TanStackDirectiveFunctionsPluginEnv(
     buildStart() {
       root = this.environment.config.root
     },
-    // applyToEnvironment(env) {
-    //   return [
-    //     opts.environments.client.envName,
-    //     opts.environments.server.envName,
-    //   ].includes(env.name)
-    // },
-    transform(code, id) {
-      const envOptions = [
-        opts.environments.client,
-        opts.environments.server,
-      ].find((e) => e.envName === this.environment.name)
+    applyToEnvironment(env) {
+      return [
+        opts.environments.client.envName,
+        opts.environments.server.envName,
+      ].includes(env.name)
+    },
+    transform: {
+      filter: {
+        code: directiveRx,
+      },
+      handler(code, id) {
+        const envOptions = [
+          opts.environments.client,
+          opts.environments.server,
+        ].find((e) => e.envName === this.environment.name)
 
-      if (!envOptions) {
-        throw new Error(`Environment ${this.environment.name} not found`)
-      }
+        if (!envOptions) {
+          throw new Error(`Environment ${this.environment.name} not found`)
+        }
 
-      return transformCode({
-        ...opts,
-        ...envOptions,
-        code,
-        id,
-        directiveRx,
-        root,
-      })
+        return transformCode({
+          ...opts,
+          ...envOptions,
+          code,
+          id,
+          directiveRx,
+          root,
+        })
+      },
     },
   }
 }
