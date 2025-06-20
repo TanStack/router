@@ -5,8 +5,8 @@ import {
   Link,
 } from '@tanstack/react-router'
 import { test, expectTypeOf } from 'vitest'
-import { zodValidator } from '../src'
-import { z } from 'zod'
+import { fallback, zodValidator } from '../src'
+import { z } from 'zod/v4'
 
 test('when creating a route with zod validation', () => {
   const rootRoute = createRootRoute({
@@ -53,6 +53,42 @@ test('when creating a route with zod validation', () => {
   }>()
   expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
     page: number
+  }>
+})
+
+test('when creating a route with zod validation and fallback handler', () => {
+  const rootRoute = createRootRoute({
+    validateSearch: zodValidator(
+      z.object({
+        page: z.number().optional().default(0),
+        sort: fallback(z.enum(['oldest', 'newest']), 'oldest').default(
+          'oldest',
+        ),
+      }),
+    ),
+  })
+
+  const router = createRouter({ routeTree: rootRoute })
+
+  expectTypeOf(Link<typeof router, string, '/'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .exclude<Function | true>()
+    .toEqualTypeOf<{ page?: number; sort?: 'oldest' | 'newest' } | undefined>()
+
+  expectTypeOf(Link<typeof router, string, '/'>)
+    .parameter(0)
+    .toHaveProperty('search')
+    .returns.toEqualTypeOf<{ page?: number; sort?: 'oldest' | 'newest' }>()
+
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+    sort: 'oldest' | 'newest'
+  }>()
+
+  expectTypeOf(rootRoute.useSearch<typeof router>()).toEqualTypeOf<{
+    page: number
+    sort: 'oldest' | 'newest'
   }>
 })
 
