@@ -46,7 +46,7 @@ function HelloComponent() {
     <div>
       <button
         onClick={() => {
-          fetch('/api/hello', {
+          fetch('/hello', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
