@@ -23,6 +23,7 @@ type SubscriberArgs = {
 export interface RouterHistory {
   location: HistoryLocation
   length: number
+  entries: Array<HistoryEntry>
   subscribers: Set<(opts: SubscriberArgs) => void>
   subscribe: (cb: (opts: SubscriberArgs) => void) => () => void
   push: (path: string, state?: any, navigateOpts?: NavigateOptions) => void
@@ -57,9 +58,29 @@ export type ParsedHistoryState = HistoryState & {
   __TSR_index: number
 }
 
+export interface HistoryEntry {
+  key: string
+  index: number
+  path: ParsedPath
+  getState: () => ParsedHistoryState | undefined
+}
+
 type ShouldAllowNavigation = any
 
 export type HistoryAction = 'PUSH' | 'REPLACE' | 'FORWARD' | 'BACK' | 'GO'
+
+interface CachedHistoryEntry {
+  path: ParsedPath
+  state: ParsedHistoryState
+}
+
+type HistoryEntriesCache = {
+  get: () => Array<HistoryEntry>
+  push: (location: HistoryLocation) => void
+  replace: (location: HistoryLocation) => void
+  flush: () => void
+  clone: () => HistoryEntriesCache
+}
 
 export type BlockerFnArgs = {
   currentLocation: HistoryLocation
@@ -98,6 +119,7 @@ const beforeUnloadEvent = 'beforeunload'
 export function createHistory(opts: {
   getLocation: () => HistoryLocation
   getLength: () => number
+  getEntries: () => Array<HistoryEntry>
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
   go: (n: number) => void
@@ -163,6 +185,9 @@ export function createHistory(opts: {
     },
     get length() {
       return opts.getLength()
+    },
+    get entries() {
+      return opts.getEntries()
     },
     subscribers,
     subscribe: (cb: (opts: SubscriberArgs) => void) => {
@@ -287,6 +312,10 @@ export function createBrowserHistory(opts?: {
   const originalPushState = win.history.pushState
   const originalReplaceState = win.history.replaceState
 
+  let entriesCache =
+    createHistoryEntriesSessionCache() || createHistoryEntriesMemoryCache()
+  let rollbackEntriesCache: HistoryEntriesCache | undefined = undefined
+
   let blockers: Array<NavigationBlocker> = []
   const _getBlockers = () => blockers
   const _setBlockers = (newBlockers: Array<NavigationBlocker>) =>
@@ -301,8 +330,10 @@ export function createBrowserHistory(opts?: {
         win.history.state,
       ))
 
+  const _noInitialKey = !win.history.state?.key
+
   // Ensure there is always a key to start
-  if (!win.history.state?.key) {
+  if (_noInitialKey) {
     win.history.replaceState(
       {
         [stateIndexKey]: 0,
@@ -313,6 +344,12 @@ export function createBrowserHistory(opts?: {
   }
 
   let currentLocation = parseLocation()
+
+  if (_noInitialKey) {
+    entriesCache.push(currentLocation)
+    Promise.resolve().then(() => entriesCache.flush())
+  }
+
   let rollbackLocation: HistoryLocation | undefined
 
   let nextPopIsGo = false
@@ -353,6 +390,8 @@ export function createBrowserHistory(opts?: {
       next.href,
     )
 
+    entriesCache.flush()
+
     // Stop ignoring subscriber updates
     history._ignoreSubscribers = false
 
@@ -360,6 +399,7 @@ export function createBrowserHistory(opts?: {
     next = undefined
     scheduled = undefined
     rollbackLocation = undefined
+    rollbackEntriesCache = undefined
   }
 
   // This function queues up a call to update the browser history
@@ -372,10 +412,19 @@ export function createBrowserHistory(opts?: {
 
     if (!scheduled) {
       rollbackLocation = currentLocation
+      rollbackEntriesCache = entriesCache.clone()
+    } else {
+      entriesCache = rollbackEntriesCache!.clone()
     }
 
     // Update the location in memory
     currentLocation = parseHref(destHref, state)
+
+    if (type === 'push') {
+      entriesCache.push(currentLocation)
+    } else {
+      entriesCache.replace(currentLocation)
+    }
 
     // Keep track of the next location we need to flush to the URL
     next = {
@@ -390,9 +439,13 @@ export function createBrowserHistory(opts?: {
     }
   }
 
-  // NOTE: this function can probably be removed
   const onPushPop = (type: 'PUSH' | 'REPLACE') => {
     currentLocation = parseLocation()
+    if (type === 'PUSH') {
+      entriesCache.push(currentLocation)
+    } else {
+      entriesCache.replace(currentLocation)
+    }
     history.notify({ type })
   }
 
@@ -483,6 +536,7 @@ export function createBrowserHistory(opts?: {
   const history = createHistory({
     getLocation,
     getLength: () => win.history.length,
+    getEntries: () => entriesCache.get(),
     pushState: (href, state) => queueHistoryAction('push', href, state),
     replaceState: (href, state) => queueHistoryAction('replace', href, state),
     back: (ignoreBlocker) => {
@@ -514,6 +568,7 @@ export function createBrowserHistory(opts?: {
       // that we optimistically updated in memory.
       if (rollbackLocation && currentLocation !== rollbackLocation) {
         currentLocation = rollbackLocation
+        entriesCache = rollbackEntriesCache!.clone()
       }
     },
     getBlockers: _getBlockers,
@@ -568,41 +623,47 @@ export function createMemoryHistory(
     initialEntries: ['/'],
   },
 ): RouterHistory {
-  const entries = opts.initialEntries
   let index = opts.initialIndex
-    ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
-    : entries.length - 1
-  const states = entries.map((_entry, index) =>
-    assignKeyAndIndex(index, undefined),
+    ? Math.min(Math.max(opts.initialIndex, 0), opts.initialEntries.length - 1)
+    : opts.initialEntries.length - 1
+  const entriesCache = createHistoryEntriesMemoryCache(
+    opts.initialEntries.map((href, index) => {
+      const { state, ...path } = parseHref(
+        href,
+        assignKeyAndIndex(index, undefined),
+      )
+      return {
+        path,
+        state,
+      } as CachedHistoryEntry
+    }),
   )
 
-  const getLocation = () => parseHref(entries[index]!, states[index])
+  const getLocation = () => {
+    const entry = entriesCache.get()[index]!
+    return { ...entry.path, state: entry.getState() } as HistoryLocation
+  }
 
   return createHistory({
     getLocation,
-    getLength: () => entries.length,
+    getLength: () => entriesCache.get().length,
+    getEntries: entriesCache.get,
     pushState: (path, state) => {
-      // Removes all subsequent entries after the current index to start a new branch
-      if (index < entries.length - 1) {
-        entries.splice(index + 1)
-        states.splice(index + 1)
-      }
-      states.push(state)
-      entries.push(path)
-      index = Math.max(entries.length - 1, 0)
+      const location = parseHref(path, state)
+      entriesCache.push(location)
+      index = location.state[stateIndexKey]
     },
     replaceState: (path, state) => {
-      states[index] = state
-      entries[index] = path
+      entriesCache.replace(parseHref(path, state))
     },
     back: () => {
       index = Math.max(index - 1, 0)
     },
     forward: () => {
-      index = Math.min(index + 1, entries.length - 1)
+      index = Math.min(index + 1, entriesCache.get().length - 1)
     },
     go: (n) => {
-      index = Math.min(Math.max(index + n, 0), entries.length - 1)
+      index = Math.min(Math.max(index + n, 0), entriesCache.get().length - 1)
     },
     createHref: (path) => path,
   })
@@ -634,6 +695,129 @@ export function parseHref(
         : '',
     state: state || { [stateIndexKey]: 0, key: createRandomKey() },
   }
+}
+
+function getSafeSessionStorage() {
+  try {
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.sessionStorage === 'object'
+    ) {
+      return window.sessionStorage
+    }
+  } catch {
+    return undefined
+  }
+  return undefined
+}
+
+const entriesStorageKey = 'tsr-history-entries-v1'
+
+function createHistoryEntriesCache(opts: {
+  get: () => Array<CachedHistoryEntry>
+  set: (entries: Array<CachedHistoryEntry>) => void
+  clone: () => HistoryEntriesCache
+  flush?: () => void
+}): HistoryEntriesCache {
+  return {
+    get: () =>
+      opts
+        .get()
+        .map((entry) => ({ key: entry.state.key!, path: entry.path }))
+        .map((entry) => ({
+          key: entry.key,
+          get index() {
+            return opts
+              .get()
+              .findIndex((cmpEntry) => cmpEntry.state.key === entry.key)
+          },
+          path: { ...entry.path },
+          getState: () => {
+            const state = opts
+              .get()
+              .find((cmpEntry) => cmpEntry.state.key === entry.key)?.state
+            return state
+              ? typeof structuredClone === 'function'
+                ? structuredClone(state)
+                : { ...state }
+              : undefined
+          },
+        })),
+    push: (location) => {
+      const index = location.state[stateIndexKey]
+      let entries = opts.get()
+      if (index < entries.length) {
+        entries = entries.slice(0, index) // Removes all subsequent entries after the current index to start a new branch
+      } else {
+        entries = [...entries]
+      }
+      const { state, ...path } = location
+      entries.push({
+        path,
+        state,
+      })
+      opts.set(entries)
+    },
+    replace: (location) => {
+      const index = location.state[stateIndexKey]
+      const entries = opts.get()
+      const { state, ...path } = location
+      opts.set([
+        ...entries.slice(0, index),
+        { path, state },
+        ...entries.slice(index + 1),
+      ])
+    },
+    clone: opts.clone,
+    flush: () => opts.flush?.(),
+  }
+}
+
+function createHistoryEntriesSessionCache(
+  initialEntries?: Array<CachedHistoryEntry>,
+): HistoryEntriesCache | undefined {
+  const safeSessionStorage = getSafeSessionStorage()
+  if (!safeSessionStorage) {
+    return undefined
+  }
+
+  let cachedEntries: Array<CachedHistoryEntry> | undefined = initialEntries
+
+  return createHistoryEntriesCache({
+    get: (): Array<CachedHistoryEntry> => {
+      if (cachedEntries !== undefined) {
+        return cachedEntries
+      }
+      const persistedStates = safeSessionStorage.getItem(entriesStorageKey)
+      return (cachedEntries = persistedStates
+        ? JSON.parse(persistedStates)
+        : [])
+    },
+    set: (entries: Array<CachedHistoryEntry>) => {
+      cachedEntries = entries
+    },
+    clone: () => createHistoryEntriesSessionCache(cachedEntries)!,
+    flush: () => {
+      safeSessionStorage.setItem(
+        entriesStorageKey,
+        JSON.stringify(cachedEntries),
+      )
+    },
+  })
+}
+
+function createHistoryEntriesMemoryCache(
+  initialEntries?: Array<CachedHistoryEntry>,
+): HistoryEntriesCache {
+  let cachedEntries: Array<CachedHistoryEntry> = initialEntries || []
+
+  return createHistoryEntriesCache({
+    get: () => cachedEntries,
+    set: (entries: Array<CachedHistoryEntry>) => {
+      cachedEntries = entries
+    },
+    clone: () => createHistoryEntriesMemoryCache(cachedEntries),
+  })
 }
 
 // Thanks co-pilot!
