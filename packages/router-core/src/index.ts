@@ -67,6 +67,7 @@ export type {
 
 export type {
   TsrSerializer,
+  StartSerializer,
   Serializable,
   SerializerParse,
   SerializerParseBy,

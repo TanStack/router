@@ -5,6 +5,11 @@ export interface TsrSerializer {
   decode: <T>(value: T) => T
 }
 
+/**
+ * @deprecated This is re-export of TsrSerializer which is the generic Router serializer interface. Going forward StartSerializer will be used specifically as a Tanstack Start serializer interface.
+ */
+export interface StartSerializer extends TsrSerializer {}
+
 export type SerializerStringifyBy<T, TSerializable> = T extends TSerializable
   ? T
   : T extends (...args: Array<any>) => any
