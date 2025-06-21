@@ -1,10 +1,11 @@
 import { Await, RouterProvider } from '@tanstack/react-router'
 import { hydrate } from '@tanstack/router-core-ssr/client'
 import type { AnyRouter } from '@tanstack/router-core'
+import type { ReactNode } from 'react'
 
 let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
 
-export function RouterClient(props: { router: AnyRouter }) {
+export function RouterClient(props: { router: AnyRouter, children?: ReactNode }) {
   if (!hydrationPromise) {
     if (!props.router.state.matches.length) {
       hydrationPromise = hydrate(props.router)
@@ -15,7 +16,7 @@ export function RouterClient(props: { router: AnyRouter }) {
   return (
     <Await
       promise={hydrationPromise}
-      children={() => <RouterProvider router={props.router} />}
+      children={() => props.children ?? <RouterProvider router={props.router} />}
     />
   )
 }
