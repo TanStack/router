@@ -1,7 +1,7 @@
 import type { ControllablePromise } from '@tanstack/router-core'
-import type { StartSsrGlobal } from '@tanstack/start-client-core'
+import type { TsrSsrGlobal } from '../client/ssr-client'
 
-const __TSR_SSR__: StartSsrGlobal = {
+const __TSR_SSR__: TsrSsrGlobal = {
   matches: [],
   streamedValues: {},
   initMatch: (match) => {

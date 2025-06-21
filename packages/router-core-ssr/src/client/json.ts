@@ -1,5 +1,8 @@
 import { mergeHeaders } from './headers'
-import type { JsonResponse } from './createServerFn'
+
+export interface JsonResponse<TData> extends Response {
+  json: () => Promise<TData>
+}
 
 export function json<TData>(
   payload: TData,

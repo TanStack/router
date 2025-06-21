@@ -1,5 +1,6 @@
 import { splitSetCookieString } from 'cookie-es'
 import type { OutgoingHttpHeaders } from 'node:http2'
+
 // A utility function to turn HeadersInit into an object
 export function headersInitToObject(
   headers: HeadersInit,
