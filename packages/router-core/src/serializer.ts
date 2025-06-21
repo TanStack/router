@@ -1,4 +1,4 @@
-export interface StartSerializer {
+export interface TsrSerializer {
   stringify: (obj: unknown) => string
   parse: (str: string) => unknown
   encode: <T>(value: T) => T

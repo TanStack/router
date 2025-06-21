@@ -66,7 +66,7 @@ export type {
 } from './fileRoute'
 
 export type {
-  StartSerializer,
+  TsrSerializer,
   Serializable,
   SerializerParse,
   SerializerParseBy,
