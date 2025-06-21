@@ -155,6 +155,7 @@ Finally, we need to create the root of our application. This is the entry point 
 
 ```tsx
 // src/routes/__root.tsx
+/// <reference types="vite/client" />
 import type { ReactNode } from 'react'
 import {
   Outlet,
