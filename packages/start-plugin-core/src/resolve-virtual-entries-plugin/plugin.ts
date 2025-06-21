@@ -22,42 +22,56 @@ export function resolveVirtualEntriesPlugin(
     configResolved(config) {
       resolvedConfig = config
     },
-    resolveId(id) {
-      if (modules.has(id)) {
-        return `${id}.tsx`
-      }
+    resolveId: {
+      filter: {
+        id: new RegExp([...modules].join('|')),
+      },
+      handler(id) {
+        if (modules.has(id)) {
+          return `${id}.tsx`
+        }
 
-      return undefined
+        return undefined
+      },
     },
-    load(id) {
-      const routerFilepath = vite.normalizePath(
-        path.resolve(startConfig.root, startConfig.tsr.srcDirectory, 'router'),
-      )
-
-      if (id === '/~start/server-entry.tsx') {
-        const ssrEntryFilepath = startConfig.serverEntryPath.startsWith(
-          '/~start/default-server-entry',
+    load: {
+      filter: {
+        id: new RegExp([...modules].map((m) => `${m}.tsx`).join('|')),
+      },
+      handler(id) {
+        const routerFilepath = vite.normalizePath(
+          path.resolve(
+            startConfig.root,
+            startConfig.tsr.srcDirectory,
+            'router',
+          ),
         )
-          ? startConfig.serverEntryPath
-          : vite.normalizePath(
-              path.resolve(resolvedConfig.root, startConfig.serverEntryPath),
-            )
 
-        return opts.getVirtualServerRootHandler({
-          routerFilepath,
-          serverEntryFilepath: ssrEntryFilepath,
-        })
-      }
+        if (id === '/~start/server-entry.tsx') {
+          const ssrEntryFilepath = startConfig.serverEntryPath.startsWith(
+            '/~start/default-server-entry',
+          )
+            ? startConfig.serverEntryPath
+            : vite.normalizePath(
+                path.resolve(resolvedConfig.root, startConfig.serverEntryPath),
+              )
 
-      if (id === '/~start/default-client-entry.tsx') {
-        return opts.getVirtualClientEntry({ routerFilepath })
-      }
+          return opts.getVirtualServerRootHandler({
+            routerFilepath,
+            serverEntryFilepath: ssrEntryFilepath,
+          })
+        }
 
-      if (id === '/~start/default-server-entry.tsx') {
-        return opts.getVirtualServerEntry({ routerFilepath })
-      }
+        if (id === '/~start/default-client-entry.tsx') {
+          return opts.getVirtualClientEntry({ routerFilepath })
+        }
 
-      return undefined
+        if (id === '/~start/default-server-entry.tsx') {
+          return opts.getVirtualServerEntry({ routerFilepath })
+        }
+
+        return undefined
+      },
     },
   }
 }

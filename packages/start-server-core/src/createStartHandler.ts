@@ -19,7 +19,6 @@ import { handleServerAction } from './server-functions-handler'
 import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
 import type {
-  AnyServerRoute,
   AnyServerRouteWithTypes,
   ServerRouteMethodHandlerFn,
 } from './serverRoute'
@@ -57,7 +56,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
   createRouter: () => TRouter
 }): CustomizeStartHandler<TRouter> {
   let routeTreeModule: {
-    serverRouteTree: AnyServerRoute | undefined
+    serverRouteTree: AnyServerRouteWithTypes | undefined
     routeTree: AnyRoute | undefined
   } | null = null
   let startRoutesManifest: Manifest | null = null
@@ -376,9 +375,24 @@ async function handleServerRoutes(opts: {
 
       if (method) {
         const handler = serverTreeResult.foundRoute.options.methods[method]
-
         if (handler) {
-          middlewares.push(handlerToMiddleware(handler) as TODO)
+          if (typeof handler === 'function') {
+            middlewares.push(handlerToMiddleware(handler) as TODO)
+          } else {
+            if (
+              handler._options.middlewares &&
+              handler._options.middlewares.length
+            ) {
+              middlewares.push(
+                ...flattenMiddlewares(handler._options.middlewares as any).map(
+                  (d) => d.options.server,
+                ),
+              )
+            }
+            if (handler._options.handler) {
+              middlewares.push(handlerToMiddleware(handler._options.handler))
+            }
+          }
         }
       }
     }

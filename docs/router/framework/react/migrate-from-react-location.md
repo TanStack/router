@@ -112,7 +112,7 @@ export const Route = createRootRoute({
 // src/routes/index.tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/')({
   component: Index,
 })
 ```
@@ -125,7 +125,7 @@ export const Route = createFileRoute({
 // src/routes/posts.tsx
 import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts')({
   component: Posts,
   loader: async () => {
     const posts = await fetchPosts()
@@ -164,7 +164,7 @@ function Posts() {
 // src/routes/posts.index.tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts/')({
   component: PostsIndex,
 })
 ```
@@ -177,7 +177,7 @@ export const Route = createFileRoute({
 // src/routes/posts.$postId.tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts/$postId')({
   component: PostsId,
   loader: async ({ params: { postId } }) => {
     const post = await fetchPost(postId)

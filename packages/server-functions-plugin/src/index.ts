@@ -2,7 +2,7 @@ import {
   TanStackDirectiveFunctionsPlugin,
   TanStackDirectiveFunctionsPluginEnv,
 } from '@tanstack/directive-functions-plugin'
-import type { Plugin } from 'vite'
+import type { Plugin, ViteDevServer } from 'vite'
 import type {
   DirectiveFn,
   ReplacerFn,
@@ -13,11 +13,6 @@ export type CreateRpcFn = (
   serverBase: string,
   splitImportFn?: string,
 ) => any
-
-declare global {
-  // eslint-disable-next-line no-var
-  var TSR_directiveFnsById: Record<string, DirectiveFn>
-}
 
 export type ServerFnPluginOpts = {
   /**
@@ -41,16 +36,19 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
   ssr: Array<Plugin>
   server: Array<Plugin>
 } {
-  const ROOT = process.cwd()
-
-  globalThis.TSR_directiveFnsById = {}
+  const directiveFnsById: Record<string, DirectiveFn> = {}
+  let viteDevServer: ViteDevServer | undefined
 
   const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
     // When directives are compiled, save them to our global variable
     // This variable will be used both during development to incrementally
     // look up server functions and during build/production to produce a
     // static manifest that can be read by the server build
-    Object.assign(globalThis.TSR_directiveFnsById, d)
+    Object.assign(directiveFnsById, d)
+    invalidateVirtualModule(
+      viteDevServer,
+      resolveViteId(opts.manifestVirtualImportId),
+    )
   }
 
   const directive = 'use server'
@@ -87,6 +85,9 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         // by its ID, import it, and call it.
         name: 'tanstack-start-server-fn-vite-plugin-manifest-server',
         enforce: 'pre',
+        configureServer(server) {
+          viteDevServer = server
+        },
         resolveId(id) {
           if (id === opts.manifestVirtualImportId) {
             return resolveViteId(id)
@@ -98,9 +99,12 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
           if (id !== resolveViteId(opts.manifestVirtualImportId)) {
             return undefined
           }
+          if (this.environment.config.consumer !== 'server') {
+            return `export default {}`
+          }
 
           const manifestWithImports = `
-          export default {${Object.entries(globalThis.TSR_directiveFnsById)
+          export default {${Object.entries(directiveFnsById)
             .map(
               ([id, fn]: any) =>
                 `'${id}': {
@@ -163,16 +167,20 @@ export function TanStackServerFnPluginEnv(
     },
   }
 
-  const root = process.cwd()
-
-  globalThis.TSR_directiveFnsById = {}
+  const directiveFnsById: Record<string, DirectiveFn> = {}
+  let viteDevServer: ViteDevServer | undefined
 
   const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
     // When directives are compiled, save them to our global variable
     // This variable will be used both during development to incrementally
     // look up server functions and during build/production to produce a
     // static manifest that can be read by the server build
-    Object.assign(globalThis.TSR_directiveFnsById, d)
+    Object.assign(directiveFnsById, d)
+
+    invalidateVirtualModule(
+      viteDevServer,
+      resolveViteId(opts.manifestVirtualImportId),
+    )
   }
 
   const directive = 'use server'
@@ -207,23 +215,23 @@ export function TanStackServerFnPluginEnv(
       // so the manifest is like a serialized state from the client build to the server build
       name: 'tanstack-start-server-fn-vite-plugin-manifest-server',
       enforce: 'pre',
-      applyToEnvironment(environment) {
-        return environment.name === opts.server.envName
+      configureServer(server) {
+        viteDevServer = server
       },
-      resolveId(id) {
-        if (id === opts.manifestVirtualImportId) {
+      resolveId: {
+        filter: { id: new RegExp(opts.manifestVirtualImportId) },
+        handler(id) {
           return resolveViteId(id)
-        }
-
-        return undefined
+        },
       },
-      load(id) {
-        if (id !== resolveViteId(opts.manifestVirtualImportId)) {
-          return undefined
-        }
-
-        const manifestWithImports = `
-          export default {${Object.entries(globalThis.TSR_directiveFnsById)
+      load: {
+        filter: { id: new RegExp(resolveViteId(opts.manifestVirtualImportId)) },
+        handler() {
+          if (this.environment.config.consumer !== 'server') {
+            return `export default {}`
+          }
+          const manifestWithImports = `
+          export default {${Object.entries(directiveFnsById)
             .map(
               ([id, fn]: any) =>
                 `'${id}': {
@@ -233,7 +241,8 @@ export function TanStackServerFnPluginEnv(
             )
             .join(',')}}`
 
-        return manifestWithImports
+          return manifestWithImports
+        },
       },
     },
   ]
@@ -241,4 +250,16 @@ export function TanStackServerFnPluginEnv(
 
 function resolveViteId(id: string) {
   return `\0${id}`
+}
+
+function invalidateVirtualModule(
+  viteDevServer: ViteDevServer | undefined,
+  resolvedId: string,
+) {
+  if (viteDevServer) {
+    const mod = viteDevServer.moduleGraph.getModuleById(resolvedId)
+    if (mod) {
+      viteDevServer.moduleGraph.invalidateModule(mod)
+    }
+  }
 }

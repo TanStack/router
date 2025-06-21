@@ -35,7 +35,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/hello')({
   component: HelloComponent,
 })
 
@@ -46,7 +46,7 @@ function HelloComponent() {
     <div>
       <button
         onClick={() => {
-          fetch('/api/hello', {
+          fetch('/hello', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

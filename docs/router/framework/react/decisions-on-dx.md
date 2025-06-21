@@ -225,7 +225,7 @@ Let's take a look at how the route configuration for the previous example would 
 // src/routes/posts/index.ts
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts/')({
   component: () => 'Posts index component goes here!!!',
 })
 ```
