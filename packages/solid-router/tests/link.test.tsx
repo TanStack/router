@@ -4587,7 +4587,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           ]),
           splatRoute,
         ]),
-     
+
         basepath: basepath === '' ? undefined : basepath,
       })
     }
@@ -4595,11 +4595,10 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
     test('should navigate to the parent route', async () => {
       const router = setupRouter()
 
-      render(() =><RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
       // Navigate to /a/b
-      window.history.replaceState(null, "root", `${basepath}/a/b`)
-     
+      window.history.replaceState(null, 'root', `${basepath}/a/b`)
 
       // Inspect the link to go up a parent
       const parentLink = await screen.findByText('Link to Parent')
@@ -4607,7 +4606,6 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
-      
 
       expect(window.location.pathname).toBe(`${basepath}/a`)
     })
@@ -4615,19 +4613,17 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
     test('should navigate to the parent route and keep params', async () => {
       const router = setupRouter()
 
-      render(() =><RouterProvider router={router} />)
+      render(() => <RouterProvider router={router} />)
 
       // Navigate to /param/oldParamValue/a/b
-      window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
-      
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
 
       // Inspect the link to go up a parent and keep the params
       const parentLink = await screen.findByText('Link to Parent')
       expect(parentLink.getAttribute('href')).toBe(`${basepath}/param/foo/a`)
 
       // Click the link and ensure the new location
-     fireEvent.click(parentLink)
-     
+      fireEvent.click(parentLink)
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
@@ -4638,8 +4634,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       render(() => <RouterProvider router={router} />)
 
       // Navigate to /param/oldParamValue/a/b
-      window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
-      
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+
       // Inspect the link to go up a parent and keep the params
       const parentLink = await screen.findByText(
         'Link to Parent with param:bar',
@@ -4649,7 +4645,6 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
 
-
       expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
     })
 
@@ -4658,16 +4653,14 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       render(() => <RouterProvider router={router} />)
 
-    
-      window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
-   
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+
       // Inspect the relative link to ./a
       const relativeLink = await screen.findByText('Link to ./a')
       expect(relativeLink.getAttribute('href')).toBe(`${basepath}/param/foo/a`)
 
       // Click the link and ensure the new location
-     fireEvent.click(relativeLink)
-   
+      fireEvent.click(relativeLink)
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
@@ -4677,8 +4670,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       render(() => <RouterProvider router={router} />)
 
-      window.history.replaceState(null, "root",`${basepath}/param/foo/a/b`)
-  
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+
       // Inspect the relative link to ./a
       const relativeLink = await screen.findByText(
         'Link to .. from /param/foo/a',
@@ -4687,7 +4680,6 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-  
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo`)
     })
@@ -4697,8 +4689,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       render(() => <RouterProvider router={router} />)
 
-      window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
-  
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+
       // Inspect the relative link to ./a
       const relativeLink = await screen.findByText('Link to c')
       expect(relativeLink.getAttribute('href')).toBe(
@@ -4716,7 +4708,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       render(() => <RouterProvider router={router} />)
 
-      window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
 
       // Inspect the relative link to ./a
       const relativeLink = await screen.findByText('Link to ../c')
@@ -4727,7 +4719,6 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
 
-
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a/c`)
     })
 
@@ -4736,7 +4727,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       render(() => <RouterProvider router={router} />)
 
-      window.history.replaceState(null , "root", `${basepath}/splat/a/b/c/d`)
+      window.history.replaceState(null, 'root', `${basepath}/splat/a/b/c/d`)
 
       const relativeLink = await screen.findByText('Unsafe link to ..')
       expect(relativeLink.getAttribute('href')).toBe(`${basepath}/splat/a/b/c`)
@@ -4744,14 +4735,13 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
 
-
       expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c`)
     })
 
     test('should navigate to same route inside of splat route based on pathname', async () => {
       const router = setupRouter()
 
-      window.history.replaceState(null, "root", `${basepath}/splat/a/b/c`)
+      window.history.replaceState(null, 'root', `${basepath}/splat/a/b/c`)
 
       render(() => <RouterProvider router={router} />)
 
@@ -4761,14 +4751,13 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
 
-
       expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c`)
     })
 
     test('should navigate to child route inside of splat route based on pathname', async () => {
       const router = setupRouter()
-      
-      window.history.replaceState(null, "root", `${basepath}/splat/a/b/c`)   
+
+      window.history.replaceState(null, 'root', `${basepath}/splat/a/b/c`)
 
       render(() => <RouterProvider router={router} />)
 
@@ -4779,7 +4768,6 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-      
 
       expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c/child`)
     })

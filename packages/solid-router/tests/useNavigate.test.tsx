@@ -1454,7 +1454,6 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
   test('RouteApi', () => runTest('RouteApi'))
 })
 
-
 describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
   'relative useNavigate with %s',
   ({ basepath }) => {
@@ -1567,7 +1566,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           aRoute.addChildren([bRoute]),
           paramRoute.addChildren([paramARoute, paramBRoute]),
         ]),
-      
+
         basepath: basepath === '' ? undefined : basepath,
       })
     }
@@ -1576,12 +1575,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       const router = setupRouter()
 
       // Navigate to /a/b
-      window.history.replaceState(null, "root", `${basepath}/a/b`)
+      window.history.replaceState(null, 'root', `${basepath}/a/b`)
 
       render(() => <RouterProvider router={router} />)
-
-      
-   
 
       // Inspect the link to go up a parent
       const parentLink = await screen.findByText('Link to Parent')
@@ -1596,17 +1592,15 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       const router = setupRouter()
 
       // Navigate to /param/oldParamValue/a/b
-      window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
 
-      render(() =>  <RouterProvider router={router} />)
-
+      render(() => <RouterProvider router={router} />)
 
       // Inspect the link to go up a parent and keep the params
       const parentLink = await screen.findByText('Link to Parent')
 
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
-  
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
@@ -1614,10 +1608,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
     test('should navigate to the parent route and change params', async () => {
       const router = setupRouter()
       // Navigate to /param/oldParamValue/a/b
-    
-      window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
-      render(() => <RouterProvider router={router} />)
 
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+      render(() => <RouterProvider router={router} />)
 
       // Inspect the link to go up a parent and keep the params
       const parentLink = await screen.findByText(
@@ -1626,7 +1619,6 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
-      
 
       expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
     })
@@ -1634,17 +1626,15 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
     test('should navigate to a relative link based on render location with basepath', async () => {
       const router = setupRouter()
 
-      window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
 
       render(() => <RouterProvider router={router} />)
 
-   
       // Inspect the relative link to ./a
       const relativeLink = await screen.findByText('Link to ./a')
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-      
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
@@ -1652,11 +1642,10 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
     test('should navigate to a parent link based on render location', async () => {
       const router = setupRouter()
 
-      window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
 
       render(() => <RouterProvider router={router} />)
 
-  
       // Inspect the relative link to ./a
       const relativeLink = await screen.findByText(
         'Link to .. from /param/foo/a',
@@ -1664,7 +1653,6 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-  
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo`)
     })
@@ -1672,14 +1660,14 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
     test('should navigate to same route with different params', async () => {
       const router = setupRouter()
 
-      window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
 
       render(() => <RouterProvider router={router} />)
 
       const parentLink = await screen.findByText('Link to . with param:bar')
 
       fireEvent.click(parentLink)
-    
+
       expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
     })
   },
