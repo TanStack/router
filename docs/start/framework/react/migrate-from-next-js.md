@@ -16,25 +16,25 @@ This step-by-step guide provides an overview of how to migrate your Next.js App 
 
 Before we begin, this guide assumes your project structure looks like this:
 
-```txt
+```
 .
 ├── next.config.ts
 ├── package.json
 ├── postcss.config.mjs
-├── public
+├── tsconfig.json
+├── README.md
+├── public/
 │   ├── file.svg
 │   ├── globe.svg
 │   ├── next.svg
 │   ├── vercel.svg
 │   └── window.svg
-├── README.md
-├── src
-│   └── app
-│       ├── favicon.ico
-│       ├── globals.css
-│       ├── layout.tsx
-│       └── page.tsx
-└── tsconfig.json
+└── src/
+    └── app/
+        ├── favicon.ico
+        ├── globals.css
+        ├── layout.tsx
+        └── page.tsx
 ```
 
 Alternatively, you can follow along by cloning the following [starter template](https://github.com/nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start):
@@ -178,6 +178,9 @@ function RootLayout() {
   )
 }
 ```
+
+> [!NOTE]
+> When using `import "./globals.css"` directly, you may notice a flicker on the initial load. This is expected behavior during development and does not occur in production. It will be addressed in a future update. Alternatively, for now you can refer to this [example](https://tanstack.com/start/latest/docs/framework/react/examples/start-basic) for now to address this issue.
 
 ### 5. Adapt the Home Page
 
