@@ -64,6 +64,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-router-ssr": "workspace:*",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "cookie-es": "^1.2.2",
