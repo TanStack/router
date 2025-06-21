@@ -1,16 +1,9 @@
-export {
-  transformReadableStreamWithRouter,
-  transformPipeableStreamWithRouter,
-} from './transformStreamWithRouter'
-
 export { createStartHandler } from './createStartHandler'
 export type { CustomizeStartHandler } from './createStartHandler'
-export { createRequestHandler } from './createRequestHandler'
 
-export { defineHandlerCallback } from './handlerCallback'
-export type { HandlerCallback } from './handlerCallback'
+export { attachRouterServerSsrUtils, createRequestHandler, defineHandlerCallback, dehydrateRouter, transformReadableStreamWithRouter, transformPipeableStreamWithRouter } from '@tanstack/router-core-ssr/server'
+export type { HandlerCallback } from '@tanstack/router-core-ssr/server'
 
-export { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 export { handleServerAction } from './server-functions-handler'
 
 export * from './h3'
