@@ -38,7 +38,7 @@ export {
 } from '@tanstack/router-core'
 
 export type {
-  StartSerializer,
+  TsrSerializer,
   Serializable,
   SerializerParse,
   SerializerParseBy,
