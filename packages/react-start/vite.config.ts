@@ -20,6 +20,7 @@ export default mergeConfig(
       './src/plugin-vite.ts',
       './src/server-functions-client.tsx',
       './src/server-functions-server.tsx',
+      './src/server-core-ssr.ts',
     ],
     externalDeps: [
       '@tanstack/react-start-client',

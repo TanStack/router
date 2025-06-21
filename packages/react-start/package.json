@@ -62,6 +62,16 @@
         "default": "./dist/cjs/server.cjs"
       }
     },
+    "./server-core-ssr": {
+      "import": {
+        "types": "./dist/esm/server-core-ssr.d.ts",
+        "default": "./dist/esm/server-core-ssr.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server-core-ssr.d.cts",
+        "default": "./dist/cjs/server-core-ssr.cjs"
+      }
+    },
     "./plugin/vite": {
       "import": {
         "types": "./dist/esm/plugin-vite.d.ts",

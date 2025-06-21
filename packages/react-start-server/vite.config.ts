@@ -18,6 +18,6 @@ export default mergeConfig(
   config,
   tanstackViteConfig({
     srcDir: './src',
-    entry: './src/index.tsx',
+    entry: ['./src/index.tsx','./src/core-ssr-export.ts']
   }),
 )

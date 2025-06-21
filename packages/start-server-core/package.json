@@ -51,6 +51,16 @@
         "default": "./dist/cjs/index.cjs"
       }
     },
+    "./core-ssr": {
+      "import": {
+        "types": "./dist/esm/core-ssr-export.d.ts",
+        "default": "./dist/esm/core-ssr-export.js"
+      },
+      "require": {
+        "types": "./dist/cjs/core-ssr-export.d.cts",
+        "default": "./dist/cjs/core-ssr-export.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

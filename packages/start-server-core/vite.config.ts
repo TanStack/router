@@ -21,7 +21,7 @@ export default mergeConfig(
   config,
   tanstackViteConfig({
     srcDir: './src',
-    entry: './src/index.tsx',
-    externalDeps: [...Object.values(VIRTUAL_MODULES)],
+    entry: ['./src/index.tsx','./src/core-ssr-export.ts'],
+    externalDeps: [...Object.values(VIRTUAL_MODULES)]
   }),
 )
