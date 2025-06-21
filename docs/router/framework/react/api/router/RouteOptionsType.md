@@ -160,6 +160,12 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - By default, path params are already used to uniquely identify a route match, so it's unnecessary to return these here.
 - If your route match relies on search params for unique identification, it's required that you return them here so they can be made available in the `loader`'s `deps` argument.
 
+### `preload` property
+
+- Type: `boolean`
+- Optional
+- If `false`, this route will opt out of preloading.
+
 ### `staleTime` property
 
 - Type: `number`
@@ -179,7 +185,14 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Type: `number`
 - Optional
 - Defaults to `routerOptions.defaultGcTime`, which defaults to 30 minutes.
-- The amount of time in milliseconds that a route match's loader data will be kept in memory after a preload or it is no longer in use.
+- The amount of time in milliseconds that a route match's loader data will be kept in memory after a preload or after it is no longer in use.
+
+### `preloadGcTime` property
+
+- Type: `number`
+- Optional
+- Defaults to `routerOptions.defaultPreloadGcTime`, which defaults to 30 minutes.
+- The amount of time in milliseconds that a route match's loader data will be kept in memory after a preload.
 
 ### `shouldReload` property
 
@@ -193,6 +206,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 
 - Type: `boolean`
 - Optional
+- Defaults to `routerOptions.caseSensitive`, which defaults to `false`.
 - If `true`, this route will be matched as case-sensitive.
 
 ### `wrapInSuspense` property
