@@ -2,4 +2,4 @@
 
 # TanStack Router Core SSR Utilities
 
-See [https://tanstack.com/router](https://tanstack.com/router) for documentation.
+This package is not meant to be used directly. It is used internally to enable SSR Rendering in Tanstack Router and Tanstack Start packages.
