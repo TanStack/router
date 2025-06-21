@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-router-devtools": "workspace:^",
-    "@tanstack/react-start": "workspace:^",
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-router-devtools": "workspace:*",
+    "@tanstack/react-start": "workspace:*",
     "prisma": "^5.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/router-e2e-utils": "workspace:*",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",

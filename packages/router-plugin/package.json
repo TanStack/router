@@ -110,10 +110,10 @@
     "@babel/template": "^7.26.8",
     "@babel/traverse": "^7.26.8",
     "@babel/types": "^7.26.8",
-    "@tanstack/router-core": "workspace:^",
-    "@tanstack/router-generator": "workspace:^",
-    "@tanstack/router-utils": "workspace:^",
-    "@tanstack/virtual-file-routes": "workspace:^",
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/router-generator": "workspace:*",
+    "@tanstack/router-utils": "workspace:*",
+    "@tanstack/virtual-file-routes": "workspace:*",
     "babel-dead-code-elimination": "^1.0.10",
     "chokidar": "^3.6.0",
     "unplugin": "^2.1.2",
@@ -126,7 +126,7 @@
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2",
-    "@tanstack/react-router": "workspace:^",
+    "@tanstack/react-router": "workspace:*",
     "vite": ">=5.0.0 || >=6.0.0",
     "vite-plugin-solid": "^2.11.2",
     "webpack": ">=5.92.0"

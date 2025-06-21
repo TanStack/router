@@ -11,14 +11,14 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/solid-router": "workspace:^",
-    "@tanstack/solid-router-devtools": "workspace:^",
-    "@tanstack/solid-start": "workspace:^",
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/solid-router-devtools": "workspace:*",
+    "@tanstack/solid-start": "workspace:*",
     "solid-js": "^1.9.5",
     "vite": "6.3.5"
   },
   "devDependencies": {
-    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/router-e2e-utils": "workspace:*",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"
