@@ -1438,7 +1438,7 @@ export class RouterCore<
       // Resolve the next to
       const nextTo = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
-        : fromPath
+        : this.resolvePathWithBase(fromPath, '.')
 
       // Resolve the next params
       let nextParams =
