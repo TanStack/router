@@ -1516,125 +1516,125 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
   test('RouteApi', () => runTest('RouteApi'))
 })
 
-describe('relative useNavigate', () => {
-  const testVars = [{ basepath: '' }, { basepath: '/basepath' }]
+describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
+  'relative useNavigate with %s',
+  ({ basepath }) => {
+    const setupRouter = () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return <h1>Index Route</h1>
+        },
+      })
+      const aRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'a',
+        component: () => {
+          return (
+            <>
+              <h1>A Route</h1>
+              <Outlet />
+            </>
+          )
+        },
+      })
 
-  const setupRouter = (basepath: string) => {
-    const rootRoute = createRootRoute()
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => {
-        return <h1>Index Route</h1>
-      },
-    })
-    const aRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: 'a',
-      component: () => {
-        return (
-          <>
-            <h1>A Route</h1>
-            <Outlet />
-          </>
-        )
-      },
-    })
+      const bRoute = createRoute({
+        getParentRoute: () => aRoute,
+        path: 'b',
+        component: function BRoute() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>B Route</h1>
+              <button onClick={() => navigate({ to: '..' })}>
+                Link to Parent
+              </button>
+            </>
+          )
+        },
+      })
 
-    const bRoute = createRoute({
-      getParentRoute: () => aRoute,
-      path: 'b',
-      component: function BRoute() {
-        const navigate = useNavigate()
-        return (
-          <>
-            <h1>B Route</h1>
-            <button onClick={() => navigate({ to: '..' })}>
-              Link to Parent
-            </button>
-          </>
-        )
-      },
-    })
+      const paramRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'param/$param',
+        component: function ParamRoute() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>Param Route</h1>
+              <button onClick={() => navigate({ to: './a' })}>
+                Link to ./a
+              </button>
+              <button
+                onClick={() => navigate({ params: { param: 'bar' } as any })}
+              >
+                Link to . with param:bar
+              </button>
+              <Outlet />
+            </>
+          )
+        },
+      })
 
-    const paramRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: 'param/$param',
-      component: function ParamRoute() {
-        const navigate = useNavigate()
-        return (
-          <>
-            <h1>Param Route</h1>
-            <button onClick={() => navigate({ to: './a' })}>Link to ./a</button>
-            <button
-              onClick={() => navigate({ params: { param: 'bar' } as any })}
-            >
-              Link to . with param:bar
-            </button>
-            <Outlet />
-          </>
-        )
-      },
-    })
+      const paramARoute = createRoute({
+        getParentRoute: () => paramRoute,
+        path: 'a',
+        component: function ParamARoute() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>Param A Route</h1>
+              <button onClick={() => navigate({ to: '..' })}>
+                Link to .. from /param/foo/a
+              </button>
+              <Outlet />
+            </>
+          )
+        },
+      })
 
-    const paramARoute = createRoute({
-      getParentRoute: () => paramRoute,
-      path: 'a',
-      component: function ParamARoute() {
-        const navigate = useNavigate()
-        return (
-          <>
-            <h1>Param A Route</h1>
-            <button onClick={() => navigate({ to: '..' })}>
-              Link to .. from /param/foo/a
-            </button>
-            <Outlet />
-          </>
-        )
-      },
-    })
+      const paramBRoute = createRoute({
+        getParentRoute: () => paramARoute,
+        path: 'b',
+        component: function ParamBRoute() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>Param B Route</h1>
+              <button onClick={() => navigate({ to: '..' })}>
+                Link to Parent
+              </button>
+              <button
+                onClick={() => navigate({ to: '..', params: { param: 'bar' } })}
+              >
+                Link to Parent with param:bar
+              </button>
+              <button
+                onClick={() => navigate({ to: '..', params: { param: 'bar' } })}
+              >
+                Link to Parent with param:bar functional
+              </button>
+            </>
+          )
+        },
+      })
 
-    const paramBRoute = createRoute({
-      getParentRoute: () => paramARoute,
-      path: 'b',
-      component: function ParamBRoute() {
-        const navigate = useNavigate()
-        return (
-          <>
-            <h1>Param B Route</h1>
-            <button onClick={() => navigate({ to: '..' })}>
-              Link to Parent
-            </button>
-            <button
-              onClick={() => navigate({ to: '..', params: { param: 'bar' } })}
-            >
-              Link to Parent with param:bar
-            </button>
-            <button
-              onClick={() => navigate({ to: '..', params: { param: 'bar' } })}
-            >
-              Link to Parent with param:bar functional
-            </button>
-          </>
-        )
-      },
-    })
+      return createRouter({
+        routeTree: rootRoute.addChildren([
+          indexRoute,
+          aRoute.addChildren([bRoute]),
+          paramRoute.addChildren([paramARoute, paramBRoute]),
+        ]),
+        history,
+        basepath: basepath === '' ? undefined : basepath,
+      })
+    }
 
-    return createRouter({
-      routeTree: rootRoute.addChildren([
-        indexRoute,
-        aRoute.addChildren([bRoute]),
-        paramRoute.addChildren([paramARoute, paramBRoute]),
-      ]),
-      history,
-      basepath: basepath === '' ? undefined : basepath,
-    })
-  }
-
-  test.each(testVars)(
-    'should navigate to the parent route',
-    async ({ basepath }) => {
-      const router = setupRouter(basepath)
+    test('should navigate to the parent route', async () => {
+      const router = setupRouter()
 
       render(<RouterProvider router={router} />)
 
@@ -1652,13 +1652,10 @@ describe('relative useNavigate', () => {
       })
 
       expect(window.location.pathname).toBe(`${basepath}/a`)
-    },
-  )
+    })
 
-  test.each(testVars)(
-    'should navigate to the parent route and keep params',
-    async ({ basepath }) => {
-      const router = setupRouter(basepath)
+    test('should navigate to the parent route and keep params', async () => {
+      const router = setupRouter()
 
       render(<RouterProvider router={router} />)
 
@@ -1676,13 +1673,10 @@ describe('relative useNavigate', () => {
       })
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
-    },
-  )
+    })
 
-  test.each(testVars)(
-    'should navigate to the parent route and change params',
-    async ({ basepath }) => {
-      const router = setupRouter(basepath)
+    test('should navigate to the parent route and change params', async () => {
+      const router = setupRouter()
 
       render(<RouterProvider router={router} />)
 
@@ -1702,13 +1696,10 @@ describe('relative useNavigate', () => {
       })
 
       expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
-    },
-  )
+    })
 
-  test.each(testVars)(
-    'should navigate to a relative link based on render location',
-    async ({ basepath }) => {
-      const router = setupRouter(basepath)
+    test('should navigate to a relative link based on render location with basepath', async () => {
+      const router = setupRouter()
 
       render(<RouterProvider router={router} />)
 
@@ -1725,13 +1716,10 @@ describe('relative useNavigate', () => {
       })
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
-    },
-  )
+    })
 
-  test.each(testVars)(
-    'should navigate to a parent link based on render location',
-    async ({ basepath }) => {
-      const router = setupRouter(basepath)
+    test('should navigate to a parent link based on render location', async () => {
+      const router = setupRouter()
 
       render(<RouterProvider router={router} />)
 
@@ -1750,13 +1738,10 @@ describe('relative useNavigate', () => {
       })
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo`)
-    },
-  )
+    })
 
-  test.each(testVars)(
-    'should navigate to same route with different params',
-    async ({ basepath }) => {
-      const router = setupRouter(basepath)
+    test('should navigate to same route with different params', async () => {
+      const router = setupRouter()
 
       render(<RouterProvider router={router} />)
 
@@ -1771,6 +1756,6 @@ describe('relative useNavigate', () => {
       })
 
       expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
-    },
-  )
-})
+    })
+  },
+)
