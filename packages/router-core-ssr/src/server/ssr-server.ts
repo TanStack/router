@@ -7,14 +7,9 @@ import {
   pick,
 } from '@tanstack/router-core'
 import jsesc from 'jsesc'
-import { startSerializer } from '@tanstack/start-client-core'
+import { tsrSerializer } from '../client/serializer'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
-import type {
-  ClientExtractedBaseEntry,
-  DehydratedRouter,
-  ResolvePromiseState,
-  SsrMatch,
-} from '@tanstack/start-client-core'
+import type { ClientExtractedBaseEntry, DehydratedRouter, ResolvePromiseState, SsrMatch } from '../client/ssr-client'
 import type {
   AnyRouteMatch,
   AnyRouter,
@@ -47,7 +42,7 @@ export function attachRouterServerSsrUtils(
 ) {
   router.ssr = {
     manifest,
-    serializer: startSerializer,
+    serializer: tsrSerializer,
   }
 
   router.serverSsr = {

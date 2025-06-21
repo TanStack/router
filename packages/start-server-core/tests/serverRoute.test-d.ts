@@ -1,5 +1,5 @@
 import { expectTypeOf, test } from 'vitest'
-import { json } from '../../start-client-core/src/json'
+import { json } from '../../router-core-ssr/src/client/json'
 import { createMiddleware } from '../../start-client-core/src/createMiddleware'
 import { createServerFileRoute as defaultCreateServerFileRoute } from '../src/serverRoute'
 import type { CreateServerFileRoute } from '../src/serverRoute'

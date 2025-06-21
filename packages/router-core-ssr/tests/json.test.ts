@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { json } from '../json'
+import { json } from '../src/client/json'
 
 describe('json', () => {
   it('sets the content type to application/json and stringifies the data', async () => {

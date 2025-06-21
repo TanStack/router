@@ -39,6 +39,7 @@ export {
 
 export type {
   AnyRoute,
+  TsrSerializer,
   StartSerializer,
   Serializable,
   SerializerParse,

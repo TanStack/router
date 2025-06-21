@@ -1,7 +1,7 @@
 import { isPlainObject } from '@tanstack/router-core'
-import type { StartSerializer } from '@tanstack/router-core'
+import type { TsrSerializer } from '@tanstack/router-core'
 
-export const startSerializer: StartSerializer = {
+export const tsrSerializer: TsrSerializer = {
   stringify: (value: any) =>
     JSON.stringify(value, function replacer(key, val) {
       const ogVal = this[key]
@@ -29,14 +29,14 @@ export const startSerializer: StartSerializer = {
   encode: (value: any) => {
     // When encoding, dive first
     if (Array.isArray(value)) {
-      return value.map((v) => startSerializer.encode(v))
+      return value.map((v) => tsrSerializer.encode(v))
     }
 
     if (isPlainObject(value)) {
       return Object.fromEntries(
         Object.entries(value).map(([key, v]) => [
           key,
-          startSerializer.encode(v),
+          tsrSerializer.encode(v),
         ]),
       )
     }
@@ -58,14 +58,14 @@ export const startSerializer: StartSerializer = {
     }
 
     if (Array.isArray(value)) {
-      return value.map((v) => startSerializer.decode(v))
+      return value.map((v) => tsrSerializer.decode(v))
     }
 
     if (isPlainObject(value)) {
       return Object.fromEntries(
         Object.entries(value).map(([key, v]) => [
           key,
-          startSerializer.decode(v),
+          tsrSerializer.decode(v),
         ]),
       )
     }

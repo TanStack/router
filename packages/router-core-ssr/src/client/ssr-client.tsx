@@ -2,7 +2,8 @@ import { isPlainObject } from '@tanstack/router-core'
 
 import invariant from 'tiny-invariant'
 
-import { startSerializer } from './serializer'
+import { tsrSerializer } from './serializer'
+
 import type {
   AnyRouter,
   ControllablePromise,
@@ -14,11 +15,11 @@ import type {
 
 declare global {
   interface Window {
-    __TSR_SSR__?: StartSsrGlobal
+    __TSR_SSR__?: TsrSsrGlobal
   }
 }
 
-export interface StartSsrGlobal {
+export interface TsrSsrGlobal {
   matches: Array<SsrMatch>
   streamedValues: Record<
     string,
@@ -86,13 +87,13 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     'Expected to find a dehydrated data on window.__TSR_SSR__.dehydrated... but we did not. Please file an issue!',
   )
 
-  const { manifest, dehydratedData, lastMatchId } = startSerializer.parse(
+  const { manifest, dehydratedData, lastMatchId } = tsrSerializer.parse(
     window.__TSR_SSR__.dehydrated,
   ) as DehydratedRouter
 
   router.ssr = {
     manifest,
-    serializer: startSerializer,
+    serializer: tsrSerializer,
   }
 
   router.clientSsr = {

@@ -77,7 +77,7 @@ import type {
   NavigateFn,
 } from './RouterProvider'
 import type { Manifest } from './manifest'
-import type { StartSerializer } from './serializer'
+import type { TsrSerializer } from './serializer'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
@@ -2854,7 +2854,7 @@ export class RouterCore<
 
   ssr?: {
     manifest: Manifest | undefined
-    serializer: StartSerializer
+    serializer: TsrSerializer
   }
 
   serverSsr?: {

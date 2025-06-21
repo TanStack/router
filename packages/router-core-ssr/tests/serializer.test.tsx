@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { startSerializer as tf } from '../serializer'
+import { tsrSerializer as tf } from '../src/client/serializer'
 
 describe('transformer.stringify', () => {
   it('should stringify dates', () => {
@@ -74,6 +74,7 @@ describe('transformer.parse', () => {
     const date = new Date('2021-08-19T20:00:00.000Z')
     const str = tf.stringify(date)
     expect(tf.parse(str)).toEqual(date)
+    expect(tf.parse(str) instanceof Date).toBe(true)
   })
 
   it('should parse undefined', () => {
