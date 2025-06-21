@@ -1,4 +1,6 @@
-export {Server} from './Server'
+export {RouterServer} from './RouterServer'
 export {defaultRenderHandler} from './defaultRenderHandler'
 export {defaultStreamHandler} from './defaultStreamHandler'
+export {reactRenderToStream} from './reactRenderToStream'
+export {reactRenderToString} from './reactRenderToString'
 export * from '@tanstack/router-core-ssr/server'
