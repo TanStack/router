@@ -63,10 +63,10 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "goober": "^2.1.16"
+    "goober": "^2.1.16",
+    "@tanstack/history": "workspace:*"
   },
   "devDependencies": {
-    "@tanstack/history": "workspace:*",
     "solid-js": "^1.9.5",
     "vite-plugin-solid": "^2.11.6"
   },
