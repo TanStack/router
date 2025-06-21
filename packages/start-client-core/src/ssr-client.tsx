@@ -35,6 +35,15 @@ export interface StartSsrGlobal {
     id: number
     promiseState: DeferredPromiseState<any>
   }) => void
+  rejectPromise: (opts: {
+    matchId: string
+    id: number
+    error: {
+      message: string
+      stack?: string
+      name: string
+    }
+  }) => void
   injectChunk: (opts: { matchId: string; id: number; chunk: string }) => void
   closeStream: (opts: { matchId: string; id: number }) => void
 }
