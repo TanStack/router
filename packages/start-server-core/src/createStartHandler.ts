@@ -390,9 +390,7 @@ async function handleServerRoutes(opts: {
               )
             }
             if (handler._options.handler) {
-              middlewares.push(
-                handlerToMiddleware(handler._options.handler),
-              )
+              middlewares.push(handlerToMiddleware(handler._options.handler))
             }
           }
         }
