@@ -1,12 +1,12 @@
 import {
   defineHandlerCallback,
-  reactRenderToStream,
+  renderRouterToStream,
 } from '@tanstack/react-router-ssr/server'
 import { StartServer } from './StartServer'
 
 export const defaultStreamHandler = defineHandlerCallback(
   ({ request, router, responseHeaders }) =>
-    reactRenderToStream({
+    renderRouterToStream({
       request,
       router,
       responseHeaders,

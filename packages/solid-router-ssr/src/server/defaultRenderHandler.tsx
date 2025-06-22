@@ -1,10 +1,10 @@
 import { defineHandlerCallback } from '@tanstack/router-ssr-core/server'
 import { RouterServer } from './RouterServer'
-import { solidRenderToString } from './solidRenderToString'
+import { renderRouterToString } from './renderRouterToString'
 
 export const defaultRenderHandler = defineHandlerCallback(
   ({ router, responseHeaders }) =>
-    solidRenderToString({
+    renderRouterToString({
       router,
       responseHeaders,
       children: () => <RouterServer router={router} />,

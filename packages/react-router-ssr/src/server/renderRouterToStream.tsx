@@ -9,7 +9,7 @@ import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { ReactNode } from 'react'
 
-export const reactRenderToStream = async ({
+export const renderRouterToStream = async ({
   request,
   router,
   responseHeaders,

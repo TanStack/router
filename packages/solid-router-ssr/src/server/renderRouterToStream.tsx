@@ -5,7 +5,7 @@ import type { JSXElement } from 'solid-js'
 import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 
-export const solidRenderToStream = async ({
+export const renderRouterToStream = async ({
   request,
   router,
   responseHeaders,

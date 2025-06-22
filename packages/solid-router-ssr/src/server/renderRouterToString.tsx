@@ -1,23 +1,23 @@
-import ReactDOMServer from 'react-dom/server'
-import type { ReactNode } from 'react'
+import * as Solid from 'solid-js/web'
+import type { JSXElement } from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
 
-export const reactRenderToString = async ({
+export const renderRouterToString = async ({
   router,
   responseHeaders,
   children,
 }: {
   router: AnyRouter
   responseHeaders: Headers
-  children: ReactNode
+  children: () => JSXElement
 }) => {
   try {
-    let html = ReactDOMServer.renderToString(children)
+    let html = Solid.renderToString(children)
     const injectedHtml = await Promise.all(router.serverSsr!.injectedHtml).then(
       (htmls) => htmls.join(''),
     )
     html = html.replace(`</body>`, `${injectedHtml}</body>`)
-    return new Response(`<!DOCTYPE html>${html}`, {
+    return new Response(html, {
       status: router.state.statusCode,
       headers: responseHeaders,
     })

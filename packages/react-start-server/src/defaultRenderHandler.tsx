@@ -1,12 +1,12 @@
 import {
   defineHandlerCallback,
-  reactRenderToString,
+  renderRouterToString,
 } from '@tanstack/react-router-ssr/server'
 import { StartServer } from './StartServer'
 
 export const defaultRenderHandler = defineHandlerCallback(
   ({ router, responseHeaders }) =>
-    reactRenderToString({
+    renderRouterToString({
       router,
       responseHeaders,
       children: <StartServer router={router} />,

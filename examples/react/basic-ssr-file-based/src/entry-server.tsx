@@ -2,7 +2,7 @@ import { pipeline } from 'node:stream/promises'
 import {
   RouterServer,
   createRequestHandler,
-  reactRenderToString,
+  renderRouterToString,
 } from '@tanstack/react-router-ssr/server'
 import { createRouter } from './router'
 import type express from 'express'
@@ -50,7 +50,7 @@ export async function render({
 
   // Let's use the default stream handler to create the response
   const response = await handler(({ responseHeaders, router }) =>
-    reactRenderToString({
+    renderRouterToString({
       responseHeaders,
       router,
       children: <RouterServer router={router} />,

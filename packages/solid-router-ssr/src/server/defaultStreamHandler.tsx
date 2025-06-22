@@ -1,10 +1,10 @@
 import { defineHandlerCallback } from '@tanstack/router-ssr-core/server'
 import { RouterServer } from './RouterServer'
-import { solidRenderToStream } from './solidRenderToStream'
+import { renderRouterToStream } from './renderRouterToStream'
 
 export const defaultStreamHandler = defineHandlerCallback(
   ({ request, router, responseHeaders }) =>
-    solidRenderToStream({
+    renderRouterToStream({
       request,
       router,
       responseHeaders,
