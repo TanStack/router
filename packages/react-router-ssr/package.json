@@ -30,7 +30,6 @@
     "build": "vite build"
   },
   "type": "module",
-  "types": "dist/esm/index.d.ts",
   "exports": {
     "./client": {
       "import": {

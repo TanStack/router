@@ -6548,6 +6548,40 @@ importers:
         specifier: ^2.11.6
         version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
 
+  packages/solid-router-ssr:
+    dependencies:
+      '@solidjs/meta':
+        specifier: ^0.29.4
+        version: 0.29.4(solid-js@1.9.5)
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
+      '@tanstack/router-ssr-core':
+        specifier: workspace:*
+        version: link:../router-ssr-core
+      '@tanstack/solid-router':
+        specifier: workspace:*
+        version: link:../solid-router
+      isbot:
+        specifier: ^5.1.22
+        version: 5.1.28
+    devDependencies:
+      '@solidjs/testing-library':
+        specifier: ^0.8.10
+        version: 0.8.10(solid-js@1.9.5)
+      '@testing-library/jest-dom':
+        specifier: ^6.6.3
+        version: 6.6.3
+      '@types/jsesc':
+        specifier: ^3.0.3
+        version: 3.0.3
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      vite-plugin-solid:
+        specifier: ^2.11.2
+        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+
   packages/solid-start:
     dependencies:
       '@tanstack/solid-start-client':
@@ -6649,6 +6683,9 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../solid-router
+      '@tanstack/solid-router-ssr':
+        specifier: workspace:^
+        version: link:../solid-router-ssr
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core

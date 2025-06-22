@@ -66,6 +66,7 @@
     "@tanstack/history": "workspace:^",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
+    "@tanstack/solid-router-ssr": "workspace:^",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
     "isbot": "^5.1.22"
