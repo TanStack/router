@@ -1,4 +1,4 @@
-import { defineHandlerCallback } from '@tanstack/router-core-ssr/server'
+import { defineHandlerCallback } from '@tanstack/router-ssr-core/server'
 import { reactRenderToString } from './reactRenderToString'
 import { RouterServer } from './RouterServer'
 

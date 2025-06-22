@@ -64,7 +64,7 @@
   "dependencies": {
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
-    "@tanstack/router-core-ssr": "workspace:*",
+    "@tanstack/router-ssr-core": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "h3": "1.13.0",
     "isbot": "^5.1.22",

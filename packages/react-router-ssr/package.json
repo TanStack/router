@@ -66,7 +66,7 @@
     "@tanstack/history": "workspace:^",
     "@tanstack/react-router": "workspace:*",
     "@tanstack/router-core": "workspace:*",
-    "@tanstack/router-core-ssr": "workspace:*",
+    "@tanstack/router-ssr-core": "workspace:*",
     "isbot": "^5.1.22"
   },
   "peerDependencies": {

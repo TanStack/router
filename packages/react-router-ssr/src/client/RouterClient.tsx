@@ -1,6 +1,6 @@
 import { Await, RouterProvider } from '@tanstack/react-router'
-import { hydrate } from '@tanstack/router-core-ssr/client'
 import type { AnyRouter } from '@tanstack/router-core'
+import { hydrate } from '@tanstack/router-ssr-core/client'
 import type { ReactNode } from 'react'
 
 let hydrationPromise: Promise<void | Array<Array<void>>> | undefined

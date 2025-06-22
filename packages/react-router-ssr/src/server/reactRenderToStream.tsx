@@ -4,7 +4,7 @@ import { isbot } from 'isbot'
 import {
   transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
-} from '@tanstack/router-core-ssr/server'
+} from '@tanstack/router-ssr-core/server'
 import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { ReactNode } from 'react'

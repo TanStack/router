@@ -8,14 +8,14 @@ export type {
   ClientExtractedPromise,
   ClientExtractedStream,
   ResolvePromiseState,
-} from '@tanstack/router-core-ssr/client'
+} from '@tanstack/router-ssr-core/client'
 
 export {
   hydrate,
   json,
   mergeHeaders,
   tsrSerializer as startSerializer,
-} from '@tanstack/router-core-ssr/client'
+} from '@tanstack/router-ssr-core/client'
 
 export {
   createIsomorphicFn,
