@@ -1,14 +1,15 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
   Link,
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
-import type { ErrorComponentProps } from '../src'
+import type { ErrorComponentProps, RouterHistory } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
   return <div>Error: {props.error.message}</div>
@@ -23,7 +24,15 @@ function throwFn() {
   throw new Error('error thrown')
 }
 
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
+
 afterEach(() => {
+  history.destroy()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
@@ -71,6 +80,7 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
           const router = createRouter({
             routeTree,
             defaultPreload: options.preload,
+            history,
           })
 
           render(<RouterProvider router={router} />)
@@ -89,7 +99,9 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
             undefined,
             { timeout: 1500 },
           )
-          expect(screen.findByText('About route content')).rejects.toThrow()
+          await expect(
+            screen.findByText('About route content'),
+          ).rejects.toThrow()
           expect(errorComponent).toBeInTheDocument()
         },
       )
@@ -114,6 +126,7 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
           const router = createRouter({
             routeTree,
             defaultPreload: options.preload,
+            history,
           })
 
           render(<RouterProvider router={router} />)
@@ -123,7 +136,9 @@ describe.each([{ preload: false }, { preload: 'intent' }] as const)(
             undefined,
             { timeout: 750 },
           )
-          expect(screen.findByText('Index route content')).rejects.toThrow()
+          await expect(
+            screen.findByText('Index route content'),
+          ).rejects.toThrow()
           expect(errorComponent).toBeInTheDocument()
         },
       )

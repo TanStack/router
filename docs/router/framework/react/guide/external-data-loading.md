@@ -105,7 +105,7 @@ export const Route = createFileRoute('/posts')({
 When an error occurs while using `suspense` with `Tanstack Query`, you'll need to let queries know that you want to try again when re-rendering. This can be done by using the `reset` function provided by the `useQueryErrorResetBoundary` hook. We can invoke this function in an effect as soon as the error component mounts. This will make sure that the query is reset and will try to fetch data again when the route component is rendered again. This will also cover cases where users navigate away from our route instead of clicking the `retry` button.
 
 ```tsx
-export const Route = createFileRoute('/posts')({
+export const Route = createFileRoute('/')({
   loader: () => queryClient.ensureQueryData(postsQueryOptions),
   errorComponent: ({ error, reset }) => {
     const router = useRouter()

@@ -18,6 +18,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    env:
+      TSR_TMP_DIR: ./tmp
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2

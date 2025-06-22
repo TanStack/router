@@ -1,9 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { RedirectOnClick } from '~/components/RedirectOnClick'
 
-export const Route = createFileRoute(
-  '/redirect/$target/serverFn/via-useServerFn',
-)({
+export const Route = createFileRoute({
   component: () => {
     const { target } = Route.useParams()
     const { reloadDocument, externalHost } = Route.useSearch()

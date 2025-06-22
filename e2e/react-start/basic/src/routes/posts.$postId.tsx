@@ -1,10 +1,10 @@
-import { ErrorComponent, Link, createFileRoute } from '@tanstack/react-router'
+import { ErrorComponent, Link } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 
 import { fetchPost } from '~/utils/posts'
 import { NotFound } from '~/components/NotFound'
 
-export const Route = createFileRoute('/posts/$postId')({
+export const Route = createFileRoute({
   loader: async ({ params: { postId } }) => fetchPost({ data: postId }),
   errorComponent: PostErrorComponent,
   component: PostComponent,
@@ -30,7 +30,7 @@ function PostComponent() {
           postId: post.id,
         }}
         activeProps={{ className: 'text-black font-bold' }}
-        className="block py-1 text-blue-800 hover:text-blue-600"
+        className="inline-block py-1 text-blue-800 hover:text-blue-600"
       >
         Deep View
       </Link>

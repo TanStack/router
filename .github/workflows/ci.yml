@@ -22,8 +22,8 @@ permissions:
   id-token: write
 
 jobs:
-  test-and-publish:
-    name: Test & Publish
+  test:
+    name: Build & Test
     if: github.repository_owner == 'TanStack'
     runs-on: ubuntu-latest
     steps:

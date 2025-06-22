@@ -3,14 +3,11 @@ id: migrate-from-next-js
 title: Migrate from Next.js
 ---
 
-> [!IMPORTANT]
-> This guide is based on the upcoming work in the `alpha` branch of **TanStack Start**. We are actively working on exciting new features, and this guide will be updated soon.
-
 This guide provides a step-by-step process to migrate a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth as possible.
 
 ## Step-by-Step (Basics)
 
-This step-by-step guide provides an overview of how to migrate your Next.js App Router project to TanStack Start using a starter template. The goal is to help you understand the basic steps involved in the migration process so you can adapt them to your specific project needs.
+This step-by-step guide provides an overview of how to migrate your Next.js App Router project to TanStack Start. The goal is to help you understand the basic steps involved in the migration process so you can adapt them to your specific project needs.
 
 ### Prerequisites
 
@@ -43,7 +40,7 @@ Alternatively, you can follow along by cloning the following [starter template](
 npx gitpick nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start next.js-start-er
 ```
 
-This structure or starter is a basic Next.js application using the App Router, which we will migrate to TanStack Start.
+This structure is a basic Next.js application using the App Router, which we will migrate to TanStack Start.
 
 ### 1. Remove Next.js
 
@@ -58,11 +55,8 @@ rm postcss.config.* next.config.*
 
 TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
 
-> [!NOTE]
-> We're using the `alpha` version of TanStack Start and TanStack Router. This will change once they are merged into main.
-
 ```sh
-npm i @tanstack/react-router@alpha @tanstack/react-start@alpha vite
+npm i @tanstack/react-router @tanstack/react-start vite
 ```
 
 For Tailwind CSS and resolving imports using path aliases:
@@ -190,7 +184,7 @@ Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
 
 ```tsx
 - export default function Home() { // [!code --]
-+ export const Route = createFileRoute({ // [!code ++]
++ export const Route = createFileRoute('/')({ // [!code ++]
 +   component: Home, // [!code ++]
 + }) // [!code ++]
 
@@ -286,7 +280,7 @@ Retrieving dynamic route parameters in TanStack Start is straightforward.
 - }: { // [!code --]
 -   params: Promise<{ slug: string }> // [!code --]
 - }) { // [!code --]
-+ export const Route = createFileRoute({ // [!code ++]
++ export const Route = createFileRoute('/app/posts/$slug')({ // [!code ++]
 +   component: Page, // [!code ++]
 + }) // [!code ++]
 
@@ -330,7 +324,7 @@ Learn more about the [Links](../learn-the-basics.md#navigation).
 + }) // [!code ++]
 ```
 
-Learn more about the [Server Functions](./server-functions.md).
+Learn more about the [Server Functions](../server-functions.md).
 
 ### Server Routes ~Handlers~
 
@@ -343,7 +337,7 @@ Learn more about the [Server Functions](./server-functions.md).
 + }) // [!code ++]
 ```
 
-Learn more about the [Server Routes](./server-routes.md).
+Learn more about the [Server Routes](../server-routes.md).
 
 ### Fonts
 
@@ -387,7 +381,7 @@ Add the following to `src/app/globals.css`:
 
 ```tsx
 - export default async function Page() { // [!code --]
-+ export const Route = createFileRoute({ // [!code ++]
++ export const Route = createFileRoute('/')({ // [!code ++]
 +   component: Page, // [!code ++]
 +   loader: async () => { // [!code ++]
 +     const res = await fetch('https://api.vercel.app/blog') // [!code ++]

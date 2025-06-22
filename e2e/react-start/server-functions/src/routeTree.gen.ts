@@ -8,230 +8,98 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as SubmitPostFormdataRouteImport } from './routes/submit-post-formdata'
+import { Route as StatusRouteImport } from './routes/status'
+import { Route as SerializeFormDataRouteImport } from './routes/serialize-form-data'
+import { Route as ReturnNullRouteImport } from './routes/return-null'
+import { Route as RawResponseRouteImport } from './routes/raw-response'
+import { Route as MultipartRouteImport } from './routes/multipart'
+import { Route as IsomorphicFnsRouteImport } from './routes/isomorphic-fns'
+import { Route as HeadersRouteImport } from './routes/headers'
+import { Route as EnvOnlyRouteImport } from './routes/env-only'
+import { Route as DeadCodePreserveRouteImport } from './routes/dead-code-preserve'
+import { Route as ConsistentRouteImport } from './routes/consistent'
+import { Route as AbortSignalRouteImport } from './routes/abort-signal'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
+import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as SubmitPostFormdataImport } from './routes/submit-post-formdata'
-import { Route as StatusImport } from './routes/status'
-import { Route as SerializeFormDataImport } from './routes/serialize-form-data'
-import { Route as ReturnNullImport } from './routes/return-null'
-import { Route as RawResponseImport } from './routes/raw-response'
-import { Route as MultipartImport } from './routes/multipart'
-import { Route as IsomorphicFnsImport } from './routes/isomorphic-fns'
-import { Route as HeadersImport } from './routes/headers'
-import { Route as EnvOnlyImport } from './routes/env-only'
-import { Route as DeadCodePreserveImport } from './routes/dead-code-preserve'
-import { Route as ConsistentImport } from './routes/consistent'
-import { Route as AbortSignalImport } from './routes/abort-signal'
-import { Route as IndexImport } from './routes/index'
-import { Route as CookiesIndexImport } from './routes/cookies/index'
-import { Route as CookiesSetImport } from './routes/cookies/set'
-
-// Create/Update Routes
-
-const SubmitPostFormdataRoute = SubmitPostFormdataImport.update({
+const SubmitPostFormdataRoute = SubmitPostFormdataRouteImport.update({
   id: '/submit-post-formdata',
   path: '/submit-post-formdata',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const StatusRoute = StatusImport.update({
+const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const SerializeFormDataRoute = SerializeFormDataImport.update({
+const SerializeFormDataRoute = SerializeFormDataRouteImport.update({
   id: '/serialize-form-data',
   path: '/serialize-form-data',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const ReturnNullRoute = ReturnNullImport.update({
+const ReturnNullRoute = ReturnNullRouteImport.update({
   id: '/return-null',
   path: '/return-null',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const RawResponseRoute = RawResponseImport.update({
+const RawResponseRoute = RawResponseRouteImport.update({
   id: '/raw-response',
   path: '/raw-response',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const MultipartRoute = MultipartImport.update({
+const MultipartRoute = MultipartRouteImport.update({
   id: '/multipart',
   path: '/multipart',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const IsomorphicFnsRoute = IsomorphicFnsImport.update({
+const IsomorphicFnsRoute = IsomorphicFnsRouteImport.update({
   id: '/isomorphic-fns',
   path: '/isomorphic-fns',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const HeadersRoute = HeadersImport.update({
+const HeadersRoute = HeadersRouteImport.update({
   id: '/headers',
   path: '/headers',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const EnvOnlyRoute = EnvOnlyImport.update({
+const EnvOnlyRoute = EnvOnlyRouteImport.update({
   id: '/env-only',
   path: '/env-only',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const DeadCodePreserveRoute = DeadCodePreserveImport.update({
+const DeadCodePreserveRoute = DeadCodePreserveRouteImport.update({
   id: '/dead-code-preserve',
   path: '/dead-code-preserve',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const ConsistentRoute = ConsistentImport.update({
+const ConsistentRoute = ConsistentRouteImport.update({
   id: '/consistent',
   path: '/consistent',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AbortSignalRoute = AbortSignalImport.update({
+const AbortSignalRoute = AbortSignalRouteImport.update({
   id: '/abort-signal',
   path: '/abort-signal',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const IndexRoute = IndexImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const CookiesIndexRoute = CookiesIndexImport.update({
+const CookiesIndexRoute = CookiesIndexRouteImport.update({
   id: '/cookies/',
   path: '/cookies/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const CookiesSetRoute = CookiesSetImport.update({
+const CookiesSetRoute = CookiesSetRouteImport.update({
   id: '/cookies/set',
   path: '/cookies/set',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-// Populate the FileRoutesByPath interface
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
-    }
-    '/abort-signal': {
-      id: '/abort-signal'
-      path: '/abort-signal'
-      fullPath: '/abort-signal'
-      preLoaderRoute: typeof AbortSignalImport
-      parentRoute: typeof rootRoute
-    }
-    '/consistent': {
-      id: '/consistent'
-      path: '/consistent'
-      fullPath: '/consistent'
-      preLoaderRoute: typeof ConsistentImport
-      parentRoute: typeof rootRoute
-    }
-    '/dead-code-preserve': {
-      id: '/dead-code-preserve'
-      path: '/dead-code-preserve'
-      fullPath: '/dead-code-preserve'
-      preLoaderRoute: typeof DeadCodePreserveImport
-      parentRoute: typeof rootRoute
-    }
-    '/env-only': {
-      id: '/env-only'
-      path: '/env-only'
-      fullPath: '/env-only'
-      preLoaderRoute: typeof EnvOnlyImport
-      parentRoute: typeof rootRoute
-    }
-    '/headers': {
-      id: '/headers'
-      path: '/headers'
-      fullPath: '/headers'
-      preLoaderRoute: typeof HeadersImport
-      parentRoute: typeof rootRoute
-    }
-    '/isomorphic-fns': {
-      id: '/isomorphic-fns'
-      path: '/isomorphic-fns'
-      fullPath: '/isomorphic-fns'
-      preLoaderRoute: typeof IsomorphicFnsImport
-      parentRoute: typeof rootRoute
-    }
-    '/multipart': {
-      id: '/multipart'
-      path: '/multipart'
-      fullPath: '/multipart'
-      preLoaderRoute: typeof MultipartImport
-      parentRoute: typeof rootRoute
-    }
-    '/raw-response': {
-      id: '/raw-response'
-      path: '/raw-response'
-      fullPath: '/raw-response'
-      preLoaderRoute: typeof RawResponseImport
-      parentRoute: typeof rootRoute
-    }
-    '/return-null': {
-      id: '/return-null'
-      path: '/return-null'
-      fullPath: '/return-null'
-      preLoaderRoute: typeof ReturnNullImport
-      parentRoute: typeof rootRoute
-    }
-    '/serialize-form-data': {
-      id: '/serialize-form-data'
-      path: '/serialize-form-data'
-      fullPath: '/serialize-form-data'
-      preLoaderRoute: typeof SerializeFormDataImport
-      parentRoute: typeof rootRoute
-    }
-    '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: typeof StatusImport
-      parentRoute: typeof rootRoute
-    }
-    '/submit-post-formdata': {
-      id: '/submit-post-formdata'
-      path: '/submit-post-formdata'
-      fullPath: '/submit-post-formdata'
-      preLoaderRoute: typeof SubmitPostFormdataImport
-      parentRoute: typeof rootRoute
-    }
-    '/cookies/set': {
-      id: '/cookies/set'
-      path: '/cookies/set'
-      fullPath: '/cookies/set'
-      preLoaderRoute: typeof CookiesSetImport
-      parentRoute: typeof rootRoute
-    }
-    '/cookies/': {
-      id: '/cookies/'
-      path: '/cookies'
-      fullPath: '/cookies'
-      preLoaderRoute: typeof CookiesIndexImport
-      parentRoute: typeof rootRoute
-    }
-  }
-}
-
-// Create and export the route tree
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -250,7 +118,6 @@ export interface FileRoutesByFullPath {
   '/cookies/set': typeof CookiesSetRoute
   '/cookies': typeof CookiesIndexRoute
 }
-
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/abort-signal': typeof AbortSignalRoute
@@ -268,9 +135,8 @@ export interface FileRoutesByTo {
   '/cookies/set': typeof CookiesSetRoute
   '/cookies': typeof CookiesIndexRoute
 }
-
 export interface FileRoutesById {
-  __root__: typeof rootRoute
+  __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/abort-signal': typeof AbortSignalRoute
   '/consistent': typeof ConsistentRoute
@@ -287,7 +153,6 @@ export interface FileRoutesById {
   '/cookies/set': typeof CookiesSetRoute
   '/cookies/': typeof CookiesIndexRoute
 }
-
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
@@ -342,7 +207,6 @@ export interface FileRouteTypes {
     | '/cookies/'
   fileRoutesById: FileRoutesById
 }
-
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AbortSignalRoute: typeof AbortSignalRoute
@@ -359,6 +223,116 @@ export interface RootRouteChildren {
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
   CookiesSetRoute: typeof CookiesSetRoute
   CookiesIndexRoute: typeof CookiesIndexRoute
+}
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/submit-post-formdata': {
+      id: '/submit-post-formdata'
+      path: '/submit-post-formdata'
+      fullPath: '/submit-post-formdata'
+      preLoaderRoute: typeof SubmitPostFormdataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/serialize-form-data': {
+      id: '/serialize-form-data'
+      path: '/serialize-form-data'
+      fullPath: '/serialize-form-data'
+      preLoaderRoute: typeof SerializeFormDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/return-null': {
+      id: '/return-null'
+      path: '/return-null'
+      fullPath: '/return-null'
+      preLoaderRoute: typeof ReturnNullRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/raw-response': {
+      id: '/raw-response'
+      path: '/raw-response'
+      fullPath: '/raw-response'
+      preLoaderRoute: typeof RawResponseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/multipart': {
+      id: '/multipart'
+      path: '/multipart'
+      fullPath: '/multipart'
+      preLoaderRoute: typeof MultipartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/isomorphic-fns': {
+      id: '/isomorphic-fns'
+      path: '/isomorphic-fns'
+      fullPath: '/isomorphic-fns'
+      preLoaderRoute: typeof IsomorphicFnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/headers': {
+      id: '/headers'
+      path: '/headers'
+      fullPath: '/headers'
+      preLoaderRoute: typeof HeadersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/env-only': {
+      id: '/env-only'
+      path: '/env-only'
+      fullPath: '/env-only'
+      preLoaderRoute: typeof EnvOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dead-code-preserve': {
+      id: '/dead-code-preserve'
+      path: '/dead-code-preserve'
+      fullPath: '/dead-code-preserve'
+      preLoaderRoute: typeof DeadCodePreserveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consistent': {
+      id: '/consistent'
+      path: '/consistent'
+      fullPath: '/consistent'
+      preLoaderRoute: typeof ConsistentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/abort-signal': {
+      id: '/abort-signal'
+      path: '/abort-signal'
+      fullPath: '/abort-signal'
+      preLoaderRoute: typeof AbortSignalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies/': {
+      id: '/cookies/'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookies/set': {
+      id: '/cookies/set'
+      path: '/cookies/set'
+      fullPath: '/cookies/set'
+      preLoaderRoute: typeof CookiesSetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+  }
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -378,79 +352,6 @@ const rootRouteChildren: RootRouteChildren = {
   CookiesSetRoute: CookiesSetRoute,
   CookiesIndexRoute: CookiesIndexRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/abort-signal",
-        "/consistent",
-        "/dead-code-preserve",
-        "/env-only",
-        "/headers",
-        "/isomorphic-fns",
-        "/multipart",
-        "/raw-response",
-        "/return-null",
-        "/serialize-form-data",
-        "/status",
-        "/submit-post-formdata",
-        "/cookies/set",
-        "/cookies/"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/abort-signal": {
-      "filePath": "abort-signal.tsx"
-    },
-    "/consistent": {
-      "filePath": "consistent.tsx"
-    },
-    "/dead-code-preserve": {
-      "filePath": "dead-code-preserve.tsx"
-    },
-    "/env-only": {
-      "filePath": "env-only.tsx"
-    },
-    "/headers": {
-      "filePath": "headers.tsx"
-    },
-    "/isomorphic-fns": {
-      "filePath": "isomorphic-fns.tsx"
-    },
-    "/multipart": {
-      "filePath": "multipart.tsx"
-    },
-    "/raw-response": {
-      "filePath": "raw-response.tsx"
-    },
-    "/return-null": {
-      "filePath": "return-null.tsx"
-    },
-    "/serialize-form-data": {
-      "filePath": "serialize-form-data.tsx"
-    },
-    "/status": {
-      "filePath": "status.tsx"
-    },
-    "/submit-post-formdata": {
-      "filePath": "submit-post-formdata.tsx"
-    },
-    "/cookies/set": {
-      "filePath": "cookies/set.tsx"
-    },
-    "/cookies/": {
-      "filePath": "cookies/index.tsx"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-devtools-core",
-  "version": "1.120.13",
+  "version": "1.121.27",
   "description": "Modern and scalable routing for Web applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -63,10 +63,10 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
-    "goober": "^2.1.16"
+    "goober": "^2.1.16",
+    "solid-js": "^1.9.5"
   },
   "devDependencies": {
-    "solid-js": "^1.9.5",
     "vite-plugin-solid": "^2.11.6"
   },
   "peerDependencies": {

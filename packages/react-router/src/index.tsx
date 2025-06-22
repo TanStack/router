@@ -48,7 +48,6 @@ export type {
   DeferredPromiseState,
   DeferredPromise,
   ParsedLocation,
-  ParsePathParams,
   RemoveTrailingSlashes,
   RemoveLeadingSlashes,
   ActiveOptions,
@@ -57,6 +56,8 @@ export type {
   RootRouteId,
   AnyPathParams,
   ResolveParams,
+  ResolveOptionalParams,
+  ResolveRequiredParams,
   SearchSchemaInput,
   AnyContext,
   RouteContext,
@@ -78,8 +79,6 @@ export type {
   TrimPath,
   TrimPathLeft,
   TrimPathRight,
-  ParseSplatParams,
-  SplatParams,
   StringifyParamsFn,
   ParamsOptions,
   InferAllParams,
@@ -126,6 +125,7 @@ export type {
   RouteById,
   RootRouteOptions,
   SerializerExtensions,
+  CreateFileRoute,
 } from '@tanstack/router-core'
 
 export type * from './serializer'
@@ -203,6 +203,7 @@ export type {
   UseNavigateResult,
   AnyRedirect,
   Redirect,
+  RedirectOptions,
   ResolvedRedirect,
   MakeRouteMatch,
   MakeRouteMatchUnion,
@@ -237,6 +238,7 @@ export type {
   RouteConstraints,
   RouteMask,
   MatchRouteOptions,
+  CreateLazyFileRoute,
 } from '@tanstack/router-core'
 export type {
   UseLinkPropsOptions,

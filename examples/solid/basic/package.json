@@ -9,8 +9,8 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.120.13",
-    "@tanstack/solid-router-devtools": "^1.120.13",
+    "@tanstack/solid-router": "^1.121.27",
+    "@tanstack/solid-router-devtools": "^1.121.27",
     "redaxios": "^0.5.1",
     "postcss": "^8.5.1",
     "solid-js": "^1.9.5",
@@ -21,7 +21,7 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "typescript": "^5.7.2",
-    "vite": "^6.1.0",
+    "vite": "^6.3.5",
     "vite-plugin-solid": "^2.11.2"
   }
 }

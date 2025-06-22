@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-core",
-  "version": "1.120.13",
+  "version": "1.121.27",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",

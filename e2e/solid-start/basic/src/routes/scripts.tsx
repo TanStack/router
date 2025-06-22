@@ -21,7 +21,7 @@ export const Route = createFileRoute('/scripts')({
 function ScriptsComponent() {
   return (
     <div class="p-2">
-      <h3>Scripts Test</h3>
+      <h3 data-testid="scripts-test-heading">Scripts Test</h3>
       <p>
         Both `script.js` and `script2.js` are included in development, but only
         `script.js` is included in production.

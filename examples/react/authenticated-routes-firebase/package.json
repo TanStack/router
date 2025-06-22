@@ -9,9 +9,9 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.120.13",
-    "@tanstack/react-router-devtools": "^1.120.13",
-    "@tanstack/router-plugin": "^1.120.13",
+    "@tanstack/react-router": "^1.121.27",
+    "@tanstack/react-router-devtools": "^1.121.27",
+    "@tanstack/router-plugin": "^1.121.29",
     "autoprefixer": "^10.4.20",
     "firebase": "^11.4.0",
     "postcss": "^8.5.1",
@@ -27,6 +27,6 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.1.0"
+    "vite": "^6.3.5"
   }
 }

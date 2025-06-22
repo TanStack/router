@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-
 export const Route = createFileRoute('/(group-c)/_layout-c/')({
   component: RouteComponent,
 })
