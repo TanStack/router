@@ -1,7 +1,13 @@
 import * as Solid from 'solid-js'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, test } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 
 import { z } from 'zod'
 import {
@@ -1453,3 +1459,230 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
   test('Route', () => runTest('Route'))
   test('RouteApi', () => runTest('RouteApi'))
 })
+
+describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
+  'relative useNavigate with %s',
+  ({ basepath }) => {
+    const setupRouter = () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return <h1>Index Route</h1>
+        },
+      })
+      const aRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'a',
+        component: () => {
+          return (
+            <>
+              <h1>A Route</h1>
+              <Outlet />
+            </>
+          )
+        },
+      })
+
+      const bRoute = createRoute({
+        getParentRoute: () => aRoute,
+        path: 'b',
+        component: function BRoute() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>B Route</h1>
+              <button onClick={() => navigate({ to: '..' })}>
+                Link to Parent
+              </button>
+            </>
+          )
+        },
+      })
+
+      const paramRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'param/$param',
+        component: function ParamRoute() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>Param Route</h1>
+              <button onClick={() => navigate({ to: './a' })}>
+                Link to ./a
+              </button>
+              <button
+                onClick={() => navigate({ params: { param: 'bar' } as any })}
+              >
+                Link to . with param:bar
+              </button>
+              <Outlet />
+            </>
+          )
+        },
+      })
+
+      const paramARoute = createRoute({
+        getParentRoute: () => paramRoute,
+        path: 'a',
+        component: function ParamARoute() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>Param A Route</h1>
+              <button onClick={() => navigate({ to: '..' })}>
+                Link to .. from /param/foo/a
+              </button>
+              <Outlet />
+            </>
+          )
+        },
+      })
+
+      const paramBRoute = createRoute({
+        getParentRoute: () => paramARoute,
+        path: 'b',
+        component: function ParamBRoute() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>Param B Route</h1>
+              <button onClick={() => navigate({ to: '..' })}>
+                Link to Parent
+              </button>
+              <button
+                onClick={() => navigate({ to: '..', params: { param: 'bar' } })}
+              >
+                Link to Parent with param:bar
+              </button>
+              <button
+                onClick={() => navigate({ to: '..', params: { param: 'bar' } })}
+              >
+                Link to Parent with param:bar functional
+              </button>
+            </>
+          )
+        },
+      })
+
+      return createRouter({
+        routeTree: rootRoute.addChildren([
+          indexRoute,
+          aRoute.addChildren([bRoute]),
+          paramRoute.addChildren([paramARoute, paramBRoute]),
+        ]),
+
+        basepath: basepath === '' ? undefined : basepath,
+      })
+    }
+
+    test('should navigate to the parent route', async () => {
+      const router = setupRouter()
+
+      // Navigate to /a/b
+      window.history.replaceState(null, 'root', `${basepath}/a/b`)
+
+      render(() => <RouterProvider router={router} />)
+
+      // Inspect the link to go up a parent
+      const parentLink = await screen.findByText('Link to Parent')
+
+      // Click the link and ensure the new location
+      fireEvent.click(parentLink)
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/a`),
+      )
+    })
+
+    test('should navigate to the parent route and keep params', async () => {
+      const router = setupRouter()
+
+      // Navigate to /param/oldParamValue/a/b
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+
+      render(() => <RouterProvider router={router} />)
+
+      // Inspect the link to go up a parent and keep the params
+      const parentLink = await screen.findByText('Link to Parent')
+
+      // Click the link and ensure the new location
+      fireEvent.click(parentLink)
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/foo/a`),
+      )
+    })
+
+    test('should navigate to the parent route and change params', async () => {
+      const router = setupRouter()
+      // Navigate to /param/oldParamValue/a/b
+
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+      render(() => <RouterProvider router={router} />)
+
+      // Inspect the link to go up a parent and keep the params
+      const parentLink = await screen.findByText(
+        'Link to Parent with param:bar',
+      )
+
+      // Click the link and ensure the new location
+      fireEvent.click(parentLink)
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/bar/a`),
+      )
+    })
+
+    test('should navigate to a relative link based on render location with basepath', async () => {
+      const router = setupRouter()
+
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+
+      render(() => <RouterProvider router={router} />)
+
+      // Inspect the relative link to ./a
+      const relativeLink = await screen.findByText('Link to ./a')
+
+      // Click the link and ensure the new location
+      fireEvent.click(relativeLink)
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/foo/a`),
+      )
+    })
+
+    test('should navigate to a parent link based on render location', async () => {
+      const router = setupRouter()
+
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+
+      render(() => <RouterProvider router={router} />)
+
+      // Inspect the relative link to ./a
+      const relativeLink = await screen.findByText(
+        'Link to .. from /param/foo/a',
+      )
+
+      // Click the link and ensure the new location
+      fireEvent.click(relativeLink)
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/foo`),
+      )
+    })
+
+    test('should navigate to same route with different params', async () => {
+      const router = setupRouter()
+
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+
+      render(() => <RouterProvider router={router} />)
+
+      const parentLink = await screen.findByText('Link to . with param:bar')
+
+      fireEvent.click(parentLink)
+      await waitFor(
+        () =>
+          expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`),
+        {},
+      )
+    })
+  },
+)
