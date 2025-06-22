@@ -1,5 +1,11 @@
 import { Asset, RouterProvider, Scripts, useTags } from '@tanstack/solid-router'
-import { Hydration, HydrationScript, NoHydration, ssr, useAssets } from 'solid-js/web'
+import {
+  Hydration,
+  HydrationScript,
+  NoHydration,
+  ssr,
+  useAssets,
+} from 'solid-js/web'
 import { MetaProvider } from '@solidjs/meta'
 import type { AnyRouter } from '@tanstack/router-core'
 

@@ -40,9 +40,6 @@
 'package: router-core':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-core/**/*'
-'package: router-core-ssr':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/router-core-ssr/**/*'
 'package: router-devtools':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-devtools/**/*'
@@ -55,6 +52,9 @@
 'package: router-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-plugin/**/*'
+'package: router-ssr-core':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/router-ssr-core/**/*'
 'package: router-utils':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-utils/**/*'
@@ -70,6 +70,9 @@
 'package: solid-router-devtools':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-router-devtools/**/*'
+'package: solid-router-ssr':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/solid-router-ssr/**/*'
 'package: solid-start':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-start/**/*'

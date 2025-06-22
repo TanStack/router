@@ -1,12 +1,15 @@
 import * as Solid from 'solid-js/web'
 import { isbot } from 'isbot'
-import {transformReadableStreamWithRouter} from '@tanstack/router-ssr-core/server'
+import { transformReadableStreamWithRouter } from '@tanstack/router-ssr-core/server'
 import type { JSXElement } from 'solid-js'
 import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 
 export const solidRenderToStream = async ({
-  request, router, responseHeaders, children
+  request,
+  router,
+  responseHeaders,
+  children,
 }: {
   request: Request
   router: AnyRouter
