@@ -1,5 +1,5 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
-import {Suspense} from 'solid-js'
+import { Suspense } from 'solid-js'
 
 export const Route = createFileRoute('/')({
   loader: () => ({
@@ -19,7 +19,7 @@ function Home() {
       <h3>Welcome Home!</h3>
       <p>Data: {data().date.getDate()}</p>
       <Suspense fallback={<div>Loading...</div>}>
-        <Await promise={data().deferred} >
+        <Await promise={data().deferred}>
           {(data) => <p>Deferred: {new Date(data.date).getDate()}</p>}
         </Await>
       </Suspense>

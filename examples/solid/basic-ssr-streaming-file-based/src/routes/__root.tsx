@@ -1,8 +1,4 @@
-import {
-  Link,
-  Outlet,
-  createRootRoute
-} from '@tanstack/solid-router'
+import { Link, Outlet, createRootRoute } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import stylesCss from '../styles.css?url'
 
@@ -30,8 +26,8 @@ export const Route = createRootRoute({
         src: import.meta.env.PROD
           ? '/static/entry-client.js'
           : '/src/entry-client.tsx',
-      }
-    ]
+      },
+    ],
   }),
   component: RootComponent,
   notFoundComponent: () => {
