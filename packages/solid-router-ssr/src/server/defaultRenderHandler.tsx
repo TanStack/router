@@ -3,5 +3,10 @@ import { RouterServer } from './RouterServer'
 import { solidRenderToString } from './solidRenderToString'
 
 export const defaultRenderHandler = defineHandlerCallback(
-  ({ router, responseHeaders }) => solidRenderToString({ router, responseHeaders, children: () => <RouterServer router={router} /> })
+  ({ router, responseHeaders }) =>
+    solidRenderToString({
+      router,
+      responseHeaders,
+      children: () => <RouterServer router={router} />,
+    }),
 )
