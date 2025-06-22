@@ -52,7 +52,6 @@ export default defineConfig({
     tanstackRouter({
       target: 'solid',
       autoCodeSplitting: true,
-      verboseFileRoutes: false,
     }),
     solid(),
     // ...,
@@ -98,9 +97,9 @@ export const Route = createRootRoute({
 #### `src/routes/index.tsx`
 
 ```tsx
-import { createLazyFileRoute } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createLazyFileRoute('/')({
+export const Route = createFileRoute('/')({
   component: Index,
 })
 
@@ -116,9 +115,9 @@ function Index() {
 #### `src/routes/about.tsx`
 
 ```tsx
-import { createLazyFileRoute } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createLazyFileRoute('/about')({
+export const Route = createFileRoute('/about')({
   component: About,
 })
 

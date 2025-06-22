@@ -206,6 +206,7 @@ export type {
   UseNavigateResult,
   AnyRedirect,
   Redirect,
+  RedirectOptions,
   ResolvedRedirect,
   MakeRouteMatch,
   MakeRouteMatchUnion,

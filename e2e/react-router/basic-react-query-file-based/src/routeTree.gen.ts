@@ -59,7 +59,6 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
@@ -68,7 +67,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts': typeof PostsIndexRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -89,14 +87,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | ''
     | '/posts'
     | '/posts/$postId'
     | '/posts/'
     | '/layout-a'
     | '/layout-b'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/posts/$postId' | '/posts' | '/layout-a' | '/layout-b'
+  to: '/' | '/posts/$postId' | '/posts' | '/layout-a' | '/layout-b'
   id:
     | '__root__'
     | '/'

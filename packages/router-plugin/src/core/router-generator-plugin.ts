@@ -1,7 +1,8 @@
 import { isAbsolute, join, normalize } from 'node:path'
 import { Generator, resolveConfigPath } from '@tanstack/router-generator'
-
 import { getConfig } from './config'
+
+import type { GeneratorEvent } from '@tanstack/router-generator'
 import type { FSWatcher } from 'chokidar'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
@@ -31,41 +32,39 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     })
   }
 
-  const generate = async () => {
+  const generate = async (opts?: {
+    file: string
+    event: 'create' | 'update' | 'delete'
+  }) => {
     if (routeGenerationDisabled()) {
       return
     }
-    try {
-      await generator.run()
-    } catch (e) {
-      console.error(e)
+    let generatorEvent: GeneratorEvent | undefined = undefined
+    if (opts) {
+      const filePath = normalize(opts.file)
+      if (filePath === resolveConfigPath({ configDirectory: ROOT })) {
+        initConfigAndGenerator()
+        return
+      }
+      generatorEvent = { path: filePath, type: opts.event }
     }
-  }
 
-  const handleFile = async (
-    file: string,
-    event: 'create' | 'update' | 'delete',
-  ) => {
-    const filePath = normalize(file)
-
-    if (filePath === resolveConfigPath({ configDirectory: ROOT })) {
-      initConfigAndGenerator()
-      return
-    }
     try {
-      await generator.run({ path: filePath, type: event })
+      await generator.run(generatorEvent)
+      globalThis.TSR_ROUTES_BY_ID_MAP = generator.getRoutesByFileMap()
     } catch (e) {
       console.error(e)
     }
   }
 
   return {
-    name: 'router-generator-plugin',
+    name: 'tanstack:router-generator',
     enforce: 'pre',
     async watchChange(id, { event }) {
-      if (!routeGenerationDisabled()) {
-        await handleFile(id, event)
-      }
+      await generate({
+        file: id,
+        event,
+      })
     },
     async buildStart() {
       await generate()
@@ -75,7 +74,9 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         initConfigAndGenerator()
       },
       async buildStart() {
-        if (this.environment.config.consumer === 'server') {
+        // to support vite 5, we need to optionally chain the access to the environment
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (this.environment?.config?.consumer === 'server') {
           // When building in environment mode, we only need to generate routes
           // for the client environment
           return
@@ -89,7 +90,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
 
       let handle: FSWatcher | null = null
 
-      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, generate)
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => generate())
 
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
         if (handle) {
@@ -101,7 +102,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         const chokidar = await import('chokidar')
         handle = chokidar
           .watch(routesDirectoryPath, { ignoreInitial: true })
-          .on('add', generate)
+          .on('add', (file) => generate({ file, event: 'create' }))
 
         await generate()
       })
@@ -117,7 +118,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
 
       let handle: FSWatcher | null = null
 
-      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, generate)
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => generate())
 
       compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
         if (handle) {
@@ -129,7 +130,7 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         const chokidar = await import('chokidar')
         handle = chokidar
           .watch(routesDirectoryPath, { ignoreInitial: true })
-          .on('add', generate)
+          .on('add', (file) => generate({ file, event: 'create' }))
 
         await generate()
       })

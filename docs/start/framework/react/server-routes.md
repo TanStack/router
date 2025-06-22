@@ -35,7 +35,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/hello')({
   component: HelloComponent,
 })
 
@@ -46,7 +46,7 @@ function HelloComponent() {
     <div>
       <button
         onClick={() => {
-          fetch('/api/hello', {
+          fetch('/hello', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -78,15 +78,15 @@ Server routes in TanStack Start, follow the same file-based routing conventions 
 
 ## Unique Route Paths
 
-Each route can only have a single handler file associated with it. So, if you have a file named `routes/users.ts` which'd equal the request path of `/api/users`, you cannot have other files that'd also resolve to the same route. For example, the following files would all resolve to the same route and would error:
+Each route can only have a single handler file associated with it. So, if you have a file named `routes/users.ts` which'd equal the request path of `/users`, you cannot have other files that'd also resolve to the same route. For example, the following files would all resolve to the same route and would error:
 
 - `/routes/users.index.ts`
 - `/routes/users.ts`
-- `/routes/users.index.ts`
+- `/routes/users/index.ts`
 
 ## Escaped Matching
 
-Just as with normal routes, server routes can match on escaped characters. For example, a file named `routes/users[.]json.ts` will create an API route at `/api/users[.]json`.
+Just as with normal routes, server routes can match on escaped characters. For example, a file named `routes/users[.]json.ts` will create an API route at `/users[.]json`.
 
 ## Pathless Layout Routes and Break-out Routes
 
@@ -133,7 +133,7 @@ export default defineHandler((event) => {
 })
 ```
 
-## Defining an Server Route
+## Defining a Server Route
 
 Server routes are created by exporting a `ServerRoute` from a route file. The `ServerRoute` export should be created by calling the `createServerFileRoute` function. The resulting builder object can then be used to:
 
@@ -205,11 +205,11 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Visit /api/users/123 to see the response
+// Visit /users/123 to see the response
 // User ID: 123
 ```
 
-You can also have multiple dynamic path parameters in a single route. For example, a file named `routes/users/$id/posts/$postId.ts` will create an API route at `/api/users/$id/posts/$postId` that accepts two dynamic parameters.
+You can also have multiple dynamic path parameters in a single route. For example, a file named `routes/users/$id/posts/$postId.ts` will create an API route at `/users/$id/posts/$postId` that accepts two dynamic parameters.
 
 ```ts
 // routes/users/$id/posts/$postId.ts
@@ -220,13 +220,13 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Visit /api/users/123/posts/456 to see the response
+// Visit /users/123/posts/456 to see the response
 // User ID: 123, Post ID: 456
 ```
 
 ## Wildcard/Splat Param
 
-Server routes also support wildcard parameters at the end of the path, which are denoted by a `$` followed by nothing. For example, a file named `routes/file/$.ts` will create an API route at `/api/file/$` that accepts a wildcard parameter.
+Server routes also support wildcard parameters at the end of the path, which are denoted by a `$` followed by nothing. For example, a file named `routes/file/$.ts` will create an API route at `/file/$` that accepts a wildcard parameter.
 
 ```ts
 // routes/file/$.ts
@@ -237,7 +237,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Visit /api/file/hello.txt to see the response
+// Visit /file/hello.txt to see the response
 // File: hello.txt
 ```
 
@@ -254,7 +254,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Send a POST request to /api/hello with a JSON body like { "name": "Tanner" }
+// Send a POST request to /hello with a JSON body like { "name": "Tanner" }
 // Hello, Tanner!
 ```
 
@@ -280,7 +280,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Visit /api/hello to see the response
+// Visit /hello to see the response
 // {"message":"Hello, World!"}
 ```
 
@@ -298,7 +298,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Visit /api/hello to see the response
+// Visit /hello to see the response
 // {"message":"Hello, World!"}
 ```
 
@@ -364,7 +364,7 @@ Sometimes you may need to set headers in the response. You can do this by either
     },
   })
 
-  // Visit /api/hello to see the response
+  // Visit /hello to see the response
   // Hello, World!
   ```
 

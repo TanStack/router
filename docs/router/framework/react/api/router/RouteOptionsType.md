@@ -125,7 +125,7 @@ type beforeLoad = (
 type loader = (
   opts: RouteMatch & {
     abortController: AbortController
-    cause: 'enter' | 'stay'
+    cause: 'preload' | 'enter' | 'stay'
     context: TAllContext
     deps: TLoaderDeps
     location: ParsedLocation
@@ -133,6 +133,7 @@ type loader = (
     preload: boolean
     parentMatchPromise: Promise<MakeRouteMatchFromRoute<TParentRoute>>
     navigate: NavigateFn<AnyRoute> // @deprecated
+    route: AnyRoute
   },
 ) => Promise<TLoaderData> | TLoaderData | void
 ```

@@ -22,7 +22,6 @@ export default {
     tanstackRouter({
       target: 'react',
       autoCodeSplitting: true,
-      verboseFileRoutes: false,
     }),
   ],
 }

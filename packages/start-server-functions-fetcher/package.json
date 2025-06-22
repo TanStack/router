@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-server-functions-fetcher",
-  "version": "1.121.2",
+  "version": "1.121.27",
   "description": "Modern and scalable routing for applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -62,8 +62,8 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-core": "workspace:^",
-    "@tanstack/start-client-core": "workspace:^"
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/start-client-core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

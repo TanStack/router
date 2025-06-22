@@ -59,7 +59,6 @@ export default defineConfig({
   plugins: [
     tanstackRouter({
       target: 'react',
-      verboseFileRoutes: false,
       virtualRouteConfig: './routes.ts',
     }),
     react(),
@@ -185,7 +184,7 @@ Consider the following file structure:
 /routes
 ├── root.tsx
 ├── index.tsx
-├── pathless.tsx
+├── pathlessLayout.tsx
 ├── app
 │   ├── dashboard.tsx
 │   ├── dashboard-index.tsx

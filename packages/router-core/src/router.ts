@@ -28,7 +28,7 @@ import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
-import { isRedirect } from './redirect'
+import { isRedirect, redirect } from './redirect'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -1833,6 +1833,20 @@ export class RouterCore<
     this.cancelMatches()
     this.latestLocation = this.parseLocation(this.latestLocation)
 
+    if (this.isServer) {
+      // for SPAs on the initial load, this is handled by the Transitioner
+      const nextLocation = this.buildLocation({
+        to: this.latestLocation.pathname,
+        search: true,
+        params: true,
+        hash: true,
+        state: true,
+        _includeValidateSearch: true,
+      })
+      if (trimPath(this.latestLocation.href) !== trimPath(nextLocation.href)) {
+        throw redirect({ href: nextLocation.href })
+      }
+    }
     // Match the routes
     const pendingMatches = this.matchRoutes(this.latestLocation)
 
@@ -2126,6 +2140,9 @@ export class RouterCore<
           }
         }
 
+        match.beforeLoadPromise?.resolve()
+        match.loaderPromise?.resolve()
+
         updateMatch(match.id, (prev) => ({
           ...prev,
           status: isRedirect(err)
@@ -2143,8 +2160,6 @@ export class RouterCore<
           ;(err as any).routeId = match.routeId
         }
 
-        match.beforeLoadPromise?.resolve()
-        match.loaderPromise?.resolve()
         match.loadPromise?.resolve()
 
         if (isRedirect(err)) {
@@ -2253,7 +2268,7 @@ export class RouterCore<
 
                 // Wait for the beforeLoad to resolve before we continue
                 await existingMatch.beforeLoadPromise
-                executeBeforeLoad = this.getMatch(matchId)!.status !== 'success'
+                executeBeforeLoad = this.getMatch(matchId)!.status === 'error'
               }
               if (executeBeforeLoad) {
                 // If we are not in the middle of a load OR the previous load failed, start it
@@ -3105,13 +3120,18 @@ interface RouteLike {
   }
 }
 
+export type ProcessRouteTreeResult<TRouteLike extends RouteLike> = {
+  routesById: Record<string, TRouteLike>
+  routesByPath: Record<string, TRouteLike>
+  flatRoutes: Array<TRouteLike>
+}
 export function processRouteTree<TRouteLike extends RouteLike>({
   routeTree,
   initRoute,
 }: {
   routeTree: TRouteLike
   initRoute?: (route: TRouteLike, index: number) => void
-}) {
+}): ProcessRouteTreeResult<TRouteLike> {
   const routesById = {} as Record<string, TRouteLike>
   const routesByPath = {} as Record<string, TRouteLike>
 
