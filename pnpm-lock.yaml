@@ -6451,6 +6451,9 @@ importers:
       '@types/jsesc':
         specifier: ^3.0.3
         version: 3.0.3
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.4
 
   packages/router-utils:
     dependencies:
