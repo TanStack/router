@@ -64,7 +64,7 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "goober": "^2.1.16",
-    "@tanstack/history": "workspace:*"
+    "@tanstack/history": "workspace:*",
     "solid-js": "^1.9.5"
   },
   "devDependencies": {
