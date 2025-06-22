@@ -306,12 +306,12 @@ export function createBrowserHistory(opts?: {
 
   // Ensure there is always a key to start
   if (!win.history.state?.__TSR_key && !win.history.state?.key) {
-    const key = createRandomKey()
+    const addedKey = createRandomKey()
     win.history.replaceState(
       {
         [stateIndexKey]: 0,
-        key, // TODO: Remove in v2 - use __TSR_key instead
-        __TSR_key: key,
+        key: addedKey, // TODO: Remove in v2 - use __TSR_key instead
+        __TSR_key: addedKey,
       },
       '',
     )
