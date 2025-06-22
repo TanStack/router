@@ -23,9 +23,13 @@ export function useNavigate<
   })
 
   return ((options: NavigateOptions) => {
-    return navigate({ ...options,  from: options.from ??
+    return navigate({
+      ...options,
+      from:
+        options.from ??
         _defaultOpts?.from ??
-        state.matches[matchIndex()]!.fullPath,  })
+        state.matches[matchIndex()]!.fullPath,
+    })
   }) as UseNavigateResult<TDefaultFrom>
 }
 

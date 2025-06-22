@@ -4535,7 +4535,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
             <>
               <h1>Param B Route</h1>
               <Link to="..">Link to Parent</Link>
-              <Link to ="." params={{param: "bar"}}>Link to . with param:bar</Link>
+              <Link to="." params={{ param: 'bar' }}>
+                Link to . with param:bar
+              </Link>
               <Link to=".." params={{ param: 'bar' }}>
                 Link to Parent with param:bar
               </Link>
@@ -4608,7 +4610,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
 
-      await waitFor(() =>expect(window.location.pathname).toBe(`${basepath}/a`))
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/a`),
+      )
     })
 
     test('should navigate to the parent route and keep params', async () => {
@@ -4626,7 +4630,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
 
-      await waitFor(() =>expect(window.location.pathname).toBe(`${basepath}/param/foo/a`))
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/foo/a`),
+      )
     })
 
     test('should navigate to the parent route and change params', async () => {
@@ -4646,7 +4652,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
 
-      await waitFor(() =>expect(window.location.pathname).toBe(`${basepath}/param/bar/a`))
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/bar/a`),
+      )
     })
 
     test('should navigate to a relative link based on render location', async () => {
@@ -4663,7 +4671,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
 
-      await waitFor(() =>expect(window.location.pathname).toBe(`${basepath}/param/foo/a`))
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/foo/a`),
+      )
     })
 
     test('should navigate to a parent link based on render location', async () => {
@@ -4682,7 +4692,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
 
-      await waitFor(() =>expect(window.location.pathname).toBe(`${basepath}/param/foo`))
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/foo`),
+      )
     })
 
     test('should navigate to a child link based on pathname', async () => {
@@ -4701,7 +4713,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
 
-      await waitFor(() =>expect(window.location.pathname).toBe(`${basepath}/param/foo/a/b/c`))
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/foo/a/b/c`),
+      )
     })
 
     test('should navigate to a relative link based on pathname', async () => {
@@ -4719,8 +4733,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-      await waitFor(() =>expect(window.location.pathname).toBe(`${basepath}/param/foo/a/c`) )
-      
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/foo/a/c`),
+      )
     })
 
     test('should navigate to parent inside of splat route based on pathname', async () => {
@@ -4735,8 +4750,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-      await waitFor(() =>expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c`) )
-      
+      await waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c`),
+      )
     })
 
     test('should navigate to same route inside of splat route based on pathname', async () => {
@@ -4770,21 +4786,24 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
       await waitFor(() =>
-      expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c/child`))
+        expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c/child`),
+      )
     })
 
     test('should navigate to same route with different params', async () => {
-          const router = setupRouter()
-          window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
-          
-          render(() => <RouterProvider router={router} />)
-    
-          const parentLink = await screen.findByText('Link to . with param:bar')
-    
-        
-          fireEvent.click(parentLink)
-        
-          waitFor(() => expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`))
-        })
+      const router = setupRouter()
+
+      window.history.replaceState(null, 'root', `${basepath}/param/foo/a/b`)
+
+      render(() => <RouterProvider router={router} />)
+
+      const parentLink = await screen.findByText('Link to . with param:bar')
+
+      fireEvent.click(parentLink)
+
+      waitFor(() =>
+        expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`),
+      )
+    })
   },
 )

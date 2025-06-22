@@ -133,8 +133,6 @@ export function useLinkProps<
     select: (s) => s.location.searchStr,
   })
 
-  
-
   // when `from` is not supplied, use the current match fullPath as the `from` location
   // so relative routing works as expected
   const from = useMatch({
