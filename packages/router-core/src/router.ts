@@ -2,6 +2,7 @@ import { Store, batch } from '@tanstack/store'
 import {
   createBrowserHistory,
   createMemoryHistory,
+  omitInternalKeys,
   parseHref,
 } from '@tanstack/history'
 import invariant from 'tiny-invariant'
@@ -1208,14 +1209,7 @@ export class RouterCore<
       ] = (() => {
         const rawState = parentMatch?.state ?? next.state
         const parentStrictState = parentMatch?._strictState ?? {}
-        // Exclude keys starting with __ and key named 'key'
-        const filteredState = rawState
-          ? Object.fromEntries(
-              Object.entries(rawState).filter(
-                ([key]) => !(key.startsWith('__') || key === 'key'),
-              ),
-            )
-          : {}
+        const filteredState = rawState ? omitInternalKeys(rawState) : {}
 
         try {
           if (route.options.validateState) {
