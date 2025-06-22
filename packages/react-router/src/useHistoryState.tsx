@@ -2,11 +2,9 @@ import { omitInternalKeys } from '@tanstack/history'
 import { useMatch } from './useMatch'
 import type {
   AnyRouter,
-  Constrain,
-  Expand,
   RegisteredRouter,
-  RouteById,
-  RouteIds,
+  ResolveUseHistoryState,
+  StrictOrFrom,
   ThrowConstraint,
   ThrowOrOptional,
   UseHistoryStateResult,
@@ -16,50 +14,41 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 
-type ResolveUseHistoryState<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean,
-> = TStrict extends false
-  ? Expand<Partial<Record<string, unknown>>>
-  : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['stateSchema']>
-
 export interface UseHistoryStateBaseOptions<
   TRouter extends AnyRouter,
   TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
-  TStructuralSharing extends boolean,
+  TStructuralSharing,
 > {
   select?: (
     state: ResolveUseHistoryState<TRouter, TFrom, TStrict>,
   ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
-  from?: Constrain<TFrom, RouteIds<TRouter['routeTree']>>
-  strict?: TStrict
   shouldThrow?: TThrow
 }
 
 export type UseHistoryStateOptions<
   TRouter extends AnyRouter,
-  TFrom extends string | undefined,
+  TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
-  TStructuralSharing extends boolean,
-> = UseHistoryStateBaseOptions<
-  TRouter,
-  TFrom,
-  TStrict,
-  TThrow,
-  TSelected,
-  TStructuralSharing
-> &
+  TStructuralSharing,
+> = StrictOrFrom<TRouter, TFrom, TStrict> &
+  UseHistoryStateBaseOptions<
+    TRouter,
+    TFrom,
+    TStrict,
+    TThrow,
+    TSelected,
+    TStructuralSharing
+  > &
   StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
 
 export type UseHistoryStateRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
-  TSelected = RouteById<TRouter['routeTree'], TFrom>['types']['stateSchema'],
+  TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
   opts?: UseHistoryStateBaseOptions<
@@ -78,10 +67,7 @@ export function useHistoryState<
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TThrow extends boolean = true,
-  TState = TStrict extends false
-    ? Expand<Partial<Record<string, unknown>>>
-    : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['stateSchema']>,
-  TSelected = TState,
+  TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
 >(
   opts: UseHistoryStateOptions<
