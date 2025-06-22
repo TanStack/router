@@ -3,22 +3,13 @@ import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
 import type {
   AnyRouter,
-  Expand,
   RegisteredRouter,
-  RouteById,
+  ResolveUseHistoryState,
   StrictOrFrom,
   ThrowConstraint,
   ThrowOrOptional,
   UseHistoryStateResult,
 } from '@tanstack/router-core'
-
-type ResolveUseHistoryState<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean,
-> = TStrict extends false
-  ? Expand<Partial<Record<string, unknown>>>
-  : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['stateSchema']>
 
 export interface UseHistoryStateBaseOptions<
   TRouter extends AnyRouter,
@@ -33,7 +24,7 @@ export interface UseHistoryStateBaseOptions<
 
 export type UseHistoryStateOptions<
   TRouter extends AnyRouter,
-  TFrom extends string | undefined,
+  TFrom,
   TStrict extends boolean,
   TThrow extends boolean,
   TSelected,
@@ -42,7 +33,7 @@ export type UseHistoryStateOptions<
 
 export type UseHistoryStateRoute<TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
-  TSelected = RouteById<TRouter['routeTree'], TFrom>['types']['stateSchema'],
+  TSelected = unknown,
 >(
   opts?: UseHistoryStateBaseOptions<
     TRouter,
@@ -58,10 +49,7 @@ export function useHistoryState<
   const TFrom extends string | undefined = undefined,
   TStrict extends boolean = true,
   TThrow extends boolean = true,
-  TState = TStrict extends false
-    ? Expand<Partial<Record<string, unknown>>>
-    : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['stateSchema']>,
-  TSelected = TState,
+  TSelected = unknown,
 >(
   opts: UseHistoryStateOptions<
     TRouter,
