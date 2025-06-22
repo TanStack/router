@@ -1,76 +1,74 @@
 {
-  "name": "@tanstack/router-ssr-core",
-  "version": "1.121.32",
-  "description": "Modern and scalable routing for React applications",
-  "author": "Tanner Linsley",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/router-ssr-core"
-  },
-  "homepage": "https://tanstack.com/router",
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/tannerlinsley"
-  },
-  "keywords": [
-    "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
-    "typescript"
-  ],
-  "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test": "pnpm test:build",
-    "test:build": "exit 0; vitest",
-    "build": "vite build"
-  },
-  "type": "module",
-  "types": "dist/esm/index.d.ts",
-  "exports": {
-    "./client": {
-      "import": {
-        "types": "./dist/esm/client/index.d.ts",
-        "default": "./dist/esm/client/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/client/index.d.cts",
-        "default": "./dist/cjs/client/index.cjs"
-      }
-    },
-    "./server": {
-      "import": {
-        "types": "./dist/esm/server/index.d.ts",
-        "default": "./dist/esm/server/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/server/index.d.cts",
-        "default": "./dist/cjs/server/index.cjs"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "sideEffects": false,
-  "files": [
-    "dist",
-    "src"
-  ],
-  "engines": {
-    "node": ">=12"
-  },
-  "dependencies": {
-    "@tanstack/history": "workspace:*",
-    "@tanstack/router-core": "workspace:*",
-    "cookie-es": "^1.2.2",
-    "jsesc": "^3.1.0",
-    "tiny-invariant": "^1.3.3",
-    "tiny-warning": "^1.0.3"
-  },
-  "devDependencies": {
-    "@types/jsesc": "^3.0.3"
-  }
+	"name": "@tanstack/router-ssr-core",
+	"version": "1.121.32",
+	"description": "Modern and scalable routing for React applications",
+	"author": "Tanner Linsley",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/TanStack/router.git",
+		"directory": "packages/router-ssr-core"
+	},
+	"homepage": "https://tanstack.com/router",
+	"funding": {
+		"type": "github",
+		"url": "https://github.com/sponsors/tannerlinsley"
+	},
+	"keywords": [
+		"react",
+		"location",
+		"router",
+		"routing",
+		"async",
+		"async router",
+		"typescript"
+	],
+	"scripts": {
+		"clean": "rimraf ./dist && rimraf ./coverage",
+		"test": "pnpm test:build",
+		"test:build": "exit 0; vitest",
+		"build": "vite build"
+	},
+	"type": "module",
+	"types": "dist/esm/index.d.ts",
+	"exports": {
+		"./client": {
+			"import": {
+				"types": "./dist/esm/client/index.d.ts",
+				"default": "./dist/esm/client/index.js"
+			},
+			"require": {
+				"types": "./dist/cjs/client/index.d.cts",
+				"default": "./dist/cjs/client/index.cjs"
+			}
+		},
+		"./server": {
+			"import": {
+				"types": "./dist/esm/server/index.d.ts",
+				"default": "./dist/esm/server/index.js"
+			},
+			"require": {
+				"types": "./dist/cjs/server/index.d.cts",
+				"default": "./dist/cjs/server/index.cjs"
+			}
+		},
+		"./package.json": "./package.json"
+	},
+	"sideEffects": false,
+	"files": ["dist", "src"],
+	"engines": {
+		"node": ">=12"
+	},
+	"dependencies": {
+		"@tanstack/history": "workspace:*",
+		"@tanstack/router-core": "workspace:*",
+		"cookie-es": "^1.2.2",
+		"jsesc": "^3.1.0",
+		"tiny-invariant": "^1.3.3",
+		"tiny-warning": "^1.0.3"
+	},
+	"devDependencies": {
+		"@types/jsesc": "^3.0.3",
+		"esbuild": "^0.25.0"
+	}
 }
