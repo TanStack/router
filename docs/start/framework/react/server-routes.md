@@ -26,7 +26,7 @@ export const ServerRoute = createServerFileRoute().methods({
 Because server routes can be defined in the same directory as your app routes, you can even use the same file for both!
 
 ```tsx
-// routes/api/hello.tsx
+// routes/hello.tsx
 
 export const ServerRoute = createServerFileRoute().methods({
   POST: async ({ request }) => {
@@ -86,7 +86,7 @@ Each route can only have a single handler file associated with it. So, if you ha
 
 ## Escaped Matching
 
-Just as with normal routes, server routes can match on escaped characters. For example, a file named `routes/api/users[.]json.ts` will create an API route at `/api/users[.]json`.
+Just as with normal routes, server routes can match on escaped characters. For example, a file named `routes/users[.]json.ts` will create an API route at `/users[.]json`.
 
 ## Pathless Layout Routes and Break-out Routes
 
@@ -194,10 +194,10 @@ Once you've processed the request, you can return a `Response` object or `Promis
 
 ## Dynamic Path Params
 
-Server routes support dynamic path parameters in the same way as TanStack Router. For example, a file named `routes/api/users/$id.ts` will create an API route at `/api/users/$id` that accepts a dynamic `id` parameter.
+Server routes support dynamic path parameters in the same way as TanStack Router. For example, a file named `routes/users/$id.ts` will create an API route at `/users/$id` that accepts a dynamic `id` parameter.
 
 ```ts
-// routes/api/users/$id.ts
+// routes/users/$id.ts
 export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ params }) => {
     const { id } = params
@@ -205,14 +205,14 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Visit /api/users/123 to see the response
+// Visit /users/123 to see the response
 // User ID: 123
 ```
 
-You can also have multiple dynamic path parameters in a single route. For example, a file named `routes/api/users/$id/posts/$postId.ts` will create an API route at `/api/users/$id/posts/$postId` that accepts two dynamic parameters.
+You can also have multiple dynamic path parameters in a single route. For example, a file named `routes/users/$id/posts/$postId.ts` will create an API route at `/users/$id/posts/$postId` that accepts two dynamic parameters.
 
 ```ts
-// routes/api/users/$id/posts/$postId.ts
+// routes/users/$id/posts/$postId.ts
 export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ params }) => {
     const { id, postId } = params
@@ -220,16 +220,16 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Visit /api/users/123/posts/456 to see the response
+// Visit /users/123/posts/456 to see the response
 // User ID: 123, Post ID: 456
 ```
 
 ## Wildcard/Splat Param
 
-Server routes also support wildcard parameters at the end of the path, which are denoted by a `$` followed by nothing. For example, a file named `routes/api/file/$.ts` will create an API route at `/api/file/$` that accepts a wildcard parameter.
+Server routes also support wildcard parameters at the end of the path, which are denoted by a `$` followed by nothing. For example, a file named `routes/file/$.ts` will create an API route at `/file/$` that accepts a wildcard parameter.
 
 ```ts
-// routes/api/file/$.ts
+// routes/file/$.ts
 export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ params }) => {
     const { _splat } = params
@@ -237,7 +237,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Visit /api/file/hello.txt to see the response
+// Visit /file/hello.txt to see the response
 // File: hello.txt
 ```
 
@@ -254,7 +254,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Send a POST request to /api/hello with a JSON body like { "name": "Tanner" }
+// Send a POST request to /hello with a JSON body like { "name": "Tanner" }
 // Hello, Tanner!
 ```
 
@@ -269,7 +269,7 @@ This is a common pattern for handling POST requests in Server routes/ You can al
 When returning JSON using a Response object, this is a common pattern:
 
 ```ts
-// routes/api/hello.ts
+// routes/hello.ts
 export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ request }) => {
     return new Response(JSON.stringify({ message: 'Hello, World!' }), {
@@ -280,7 +280,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Visit /api/hello to see the response
+// Visit /hello to see the response
 // {"message":"Hello, World!"}
 ```
 
@@ -289,7 +289,7 @@ export const ServerRoute = createServerFileRoute().methods({
 Or you can use the `json` helper function to automatically set the `Content-Type` header to `application/json` and serialize the JSON object for you.
 
 ```ts
-// routes/api/hello.ts
+// routes/hello.ts
 import { json } from '@tanstack/react-start'
 
 export const ServerRoute = createServerFileRoute().methods({
@@ -298,7 +298,7 @@ export const ServerRoute = createServerFileRoute().methods({
   },
 })
 
-// Visit /api/hello to see the response
+// Visit /hello to see the response
 // {"message":"Hello, World!"}
 ```
 
@@ -309,7 +309,7 @@ You can set the status code of the response by either:
 - Passing it as a property of the second argument to the `Response` constructor
 
   ```ts
-  // routes/api/hello.ts
+  // routes/hello.ts
   import { json } from '@tanstack/react-start'
 
   export const ServerRoute = createServerFileRoute().methods({
@@ -328,7 +328,7 @@ You can set the status code of the response by either:
 - Using the `setResponseStatus` helper function from `@tanstack/react-start/server`
 
   ```ts
-  // routes/api/hello.ts
+  // routes/hello.ts
   import { json } from '@tanstack/react-start'
   import { setResponseStatus } from '@tanstack/react-start/server'
 
@@ -353,7 +353,7 @@ Sometimes you may need to set headers in the response. You can do this by either
 - Passing an object as the second argument to the `Response` constructor.
 
   ```ts
-  // routes/api/hello.ts
+  // routes/hello.ts
   export const ServerRoute = createServerFileRoute().methods({
     GET: async ({ request }) => {
       return new Response('Hello, World!', {
@@ -364,14 +364,14 @@ Sometimes you may need to set headers in the response. You can do this by either
     },
   })
 
-  // Visit /api/hello to see the response
+  // Visit /hello to see the response
   // Hello, World!
   ```
 
 - Or using the `setHeaders` helper function from `@tanstack/react-start/server`.
 
   ```ts
-  // routes/api/hello.ts
+  // routes/hello.ts
   import { setHeaders } from '@tanstack/react-start/server'
 
   export const ServerRoute = createServerFileRoute().methods({
