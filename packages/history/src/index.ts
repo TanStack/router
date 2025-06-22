@@ -620,6 +620,8 @@ export function parseHref(
   const hashIndex = href.indexOf('#')
   const searchIndex = href.indexOf('?')
 
+  const addedKey = createRandomKey()
+
   return {
     href,
     pathname: href.substring(
@@ -637,10 +639,7 @@ export function parseHref(
       searchIndex > -1
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
-    state: state || (() => {
-      const key = createRandomKey()
-      return { [stateIndexKey]: 0, key, __TSR_key: key } // TODO: Remove key in v2 - use __TSR_key instead
-    })(),
+    state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey },
   }
 }
 
