@@ -15,7 +15,7 @@ import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
-import { useMatches } from './Matches'
+import { useMatch } from './useMatch'
 import type {
   AnyRouter,
   Constrain,
@@ -28,7 +28,6 @@ import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
-import { useMatch } from './useMatch'
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
