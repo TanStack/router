@@ -178,13 +178,14 @@ describe('resolvePath', () => {
     ['/', '/a/b/c', './d', '/a/b/c/d'],
     ['/', '/a/b/c', './../d', '/a/b/d'],
     ['/', '/a/b/c/d', './../d', '/a/b/c/d'],
-    ['/', '/a/b/c', '../d', '/a/b/d'],
     ['/', '/a/b/c', '../../d', '/a/d'],
+    ['/', '/a/b/c', '../d', '/a/b/d'],
     ['/', '/a/b/c', '..', '/a/b'],
     ['/', '/a/b/c', '../..', '/a'],
     ['/', '/a/b/c', '../../..', '/'],
     ['/', '/a/b/c/', '../../..', '/'],
     ['/products', '/', '/products-list', '/products/products-list'],
+    ['/basepath', '/products', '.', '/basepath/products'],
   ])('resolves correctly', (base, a, b, eq) => {
     it(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
       expect(resolvePath({ basepath: base, base: a, to: b })).toEqual(eq)
