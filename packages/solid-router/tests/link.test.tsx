@@ -4535,6 +4535,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
             <>
               <h1>Param B Route</h1>
               <Link to="..">Link to Parent</Link>
+              <Link to ="." params={{param: "bar"}}>Link to . with param:bar</Link>
               <Link to=".." params={{ param: 'bar' }}>
                 Link to Parent with param:bar
               </Link>
@@ -4771,5 +4772,19 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       await waitFor(() =>
       expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c/child`))
     })
+
+    test('should navigate to same route with different params', async () => {
+          const router = setupRouter()
+          window.history.replaceState(null, "root", `${basepath}/param/foo/a/b`)
+          
+          render(() => <RouterProvider router={router} />)
+    
+          const parentLink = await screen.findByText('Link to . with param:bar')
+    
+        
+          fireEvent.click(parentLink)
+        
+          waitFor(() => expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`))
+        })
   },
 )
