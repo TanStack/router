@@ -1,7 +1,7 @@
 import * as Solid from 'solid-js'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, test } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 
 import { z } from 'zod'
 import {
@@ -1584,8 +1584,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
-
-      expect(window.location.pathname).toBe(`${basepath}/a`)
+      await waitFor(() =>
+      expect(window.location.pathname).toBe(`${basepath}/a`))
     })
 
     test('should navigate to the parent route and keep params', async () => {
@@ -1601,8 +1601,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
-
-      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+      await waitFor(() =>
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`))
     })
 
     test('should navigate to the parent route and change params', async () => {
@@ -1619,8 +1619,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
-
-      expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
+      await waitFor(() =>
+      expect(window.location.pathname).toBe(`${basepath}/param/bar/a`))
     })
 
     test('should navigate to a relative link based on render location with basepath', async () => {
@@ -1635,8 +1635,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-
-      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+      await waitFor(() =>
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`))
     })
 
     test('should navigate to a parent link based on render location', async () => {
@@ -1653,8 +1653,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-
-      expect(window.location.pathname).toBe(`${basepath}/param/foo`)
+      await waitFor(() =>
+      expect(window.location.pathname).toBe(`${basepath}/param/foo`))
     })
 
     test('should navigate to same route with different params', async () => {
@@ -1667,8 +1667,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       const parentLink = await screen.findByText('Link to . with param:bar')
 
       fireEvent.click(parentLink)
-
-      expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
+      await waitFor(() =>
+      expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`), {}
+    )
     })
   },
 )
