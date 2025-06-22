@@ -1,5 +1,4 @@
 import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
-import { getConfig } from './config'
 import { routeHmrStatement } from './route-hmr-statement'
 import { debug } from './utils'
 import type { Config } from './config'
@@ -12,16 +11,14 @@ import type { UnpluginFactory } from 'unplugin'
  */
 export const unpluginRouterHmrFactory: UnpluginFactory<
   Partial<Config> | undefined
-> = (options = {}) => {
-  let ROOT: string = process.cwd()
-  let userConfig = options as Config
-
+> = () => {
   return {
     name: 'tanstack-router:hmr',
     enforce: 'pre',
-
     transform: {
       filter: {
+        // this is necessary for webpack / rspack to avoid matching .html files
+        id: /\.(m|c)?(j|t)sx?$/,
         code: 'createFileRoute(',
       },
       handler(code, id) {
@@ -44,23 +41,6 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
         }
         return result
       },
-    },
-
-    vite: {
-      configResolved(config) {
-        ROOT = config.root
-        userConfig = getConfig(options, ROOT)
-      },
-    },
-
-    rspack() {
-      ROOT = process.cwd()
-      userConfig = getConfig(options, ROOT)
-    },
-
-    webpack() {
-      ROOT = process.cwd()
-      userConfig = getConfig(options, ROOT)
     },
   }
 }
