@@ -14,12 +14,7 @@ export default mergeConfig(
   config,
   tanstackViteConfig({
     srcDir: './src',
-    entry: [
-      './src/client/index.ts',
-      './src/server/index.ts'
-    ],
-    externalDeps: [
-      '@tanstack/react-router-ssr',
-    ],
+    entry: ['./src/client/index.ts', './src/server/index.ts'],
+    externalDeps: ['@tanstack/react-router-ssr'],
   }),
 )

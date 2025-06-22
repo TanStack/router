@@ -1,19 +1,29 @@
 import { PassThrough } from 'node:stream'
 import ReactDOMServer from 'react-dom/server'
 import { isbot } from 'isbot'
-import { transformPipeableStreamWithRouter, transformReadableStreamWithRouter } from '@tanstack/router-core-ssr/server'
+import {
+  transformPipeableStreamWithRouter,
+  transformReadableStreamWithRouter,
+} from '@tanstack/router-core-ssr/server'
 import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { ReactNode } from 'react'
 
-export const reactRenderToStream = async ({ request, router, responseHeaders, children }: {request: Request, router: AnyRouter, responseHeaders: Headers, children: ReactNode}) => {
+export const reactRenderToStream = async ({
+  request,
+  router,
+  responseHeaders,
+  children,
+}: {
+  request: Request
+  router: AnyRouter
+  responseHeaders: Headers
+  children: ReactNode
+}) => {
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
-    const stream = await ReactDOMServer.renderToReadableStream(
-      children,
-    {
+    const stream = await ReactDOMServer.renderToReadableStream(children, {
       signal: request.signal,
-    },
-  )
+    })
 
     if (isbot(request.headers.get('User-Agent'))) {
       await stream.allReady
@@ -33,30 +43,24 @@ export const reactRenderToStream = async ({ request, router, responseHeaders, ch
     const reactAppPassthrough = new PassThrough()
 
     try {
-      const pipeable = ReactDOMServer.renderToPipeableStream(
-        children,
-      {
-      ...(isbot(request.headers.get('User-Agent'))
-        ? {
-          onAllReady() {
-            pipeable.pipe(reactAppPassthrough)
-          },
-        }
-        : {
-          onShellReady() {
-            pipeable.pipe(reactAppPassthrough)
-          },
-        }),
+      const pipeable = ReactDOMServer.renderToPipeableStream(children, {
+        ...(isbot(request.headers.get('User-Agent'))
+          ? {
+              onAllReady() {
+                pipeable.pipe(reactAppPassthrough)
+              },
+            }
+          : {
+              onShellReady() {
+                pipeable.pipe(reactAppPassthrough)
+              },
+            }),
         onError: (error, info) => {
-        if (
-          error instanceof Error &&
-          error.message === 'ShellBoundaryError'
-        )
-          return
-        console.error('Error in renderToPipeableStream:', error, info)
-      },
-      },
-    )
+          if (error instanceof Error && error.message === 'ShellBoundaryError')
+            return
+          console.error('Error in renderToPipeableStream:', error, info)
+        },
+      })
     } catch (e) {
       console.error('Error in renderToPipeableStream:', e)
     }
@@ -74,4 +78,4 @@ export const reactRenderToStream = async ({ request, router, responseHeaders, ch
   throw new Error(
     'No renderToReadableStream or renderToPipeableStream found in react-dom/server. Ensure you are using a version of react-dom that supports streaming.',
   )
-};
+}

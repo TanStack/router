@@ -16,6 +16,9 @@
 'package: react-router-devtools':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router-devtools/**/*'
+'package: react-router-ssr':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/react-router-ssr/**/*'
 'package: react-router-with-query':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router-with-query/**/*'
@@ -37,6 +40,9 @@
 'package: router-core':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-core/**/*'
+'package: router-core-ssr':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/router-core-ssr/**/*'
 'package: router-devtools':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-devtools/**/*'

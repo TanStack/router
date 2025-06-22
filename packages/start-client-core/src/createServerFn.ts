@@ -14,7 +14,7 @@ import type {
   SerializerStringifyBy,
   Validator,
 } from '@tanstack/router-core'
-import type {JsonResponse} from '@tanstack/router-core-ssr/client'
+import type { JsonResponse } from '@tanstack/router-core-ssr/client'
 import type { Readable } from 'node:stream'
 import type {
   AnyFunctionMiddleware,

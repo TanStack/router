@@ -1,8 +1,8 @@
 export { mergeHeaders, headersInitToObject } from './headers'
-export {json} from './json'
-export type {JsonResponse} from './json'
-export {tsrSerializer} from './serializer'
-export {hydrate} from './ssr-client'
+export { json } from './json'
+export type { JsonResponse } from './json'
+export { tsrSerializer } from './serializer'
+export { hydrate } from './ssr-client'
 export type {
   DehydratedRouter,
   ClientExtractedBaseEntry,
@@ -11,5 +11,5 @@ export type {
   SsrMatch,
   ClientExtractedPromise,
   ClientExtractedStream,
-  ResolvePromiseState
+  ResolvePromiseState,
 } from './ssr-client'

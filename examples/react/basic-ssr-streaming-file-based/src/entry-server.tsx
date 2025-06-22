@@ -2,17 +2,17 @@ import { pipeline } from 'node:stream/promises'
 import {
   RouterServer,
   createRequestHandler,
-  reactRenderToStream
+  reactRenderToStream,
 } from '@tanstack/react-router-ssr/server'
 import { createRouter } from './router'
 import type express from 'express'
 import './fetch-polyfill'
 
 export async function render({
-                               req,
-                               res,
-                               head,
-                             }: {
+  req,
+  res,
+  head,
+}: {
   head: string
   req: express.Request
   res: express.Response
@@ -49,12 +49,14 @@ export async function render({
   })
 
   // Let's use the default stream handler to create the response
-  const response = await handler(({request, responseHeaders, router}) => reactRenderToStream({
-    request,
-    responseHeaders,
-    router,
-    children: <RouterServer router={router} />
-  }))
+  const response = await handler(({ request, responseHeaders, router }) =>
+    reactRenderToStream({
+      request,
+      responseHeaders,
+      router,
+      children: <RouterServer router={router} />,
+    }),
+  )
 
   // Convert the fetch response back to an express response
   res.statusMessage = response.statusText

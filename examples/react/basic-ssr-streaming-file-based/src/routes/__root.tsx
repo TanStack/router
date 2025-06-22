@@ -30,19 +30,19 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       },
       ...(!import.meta.env.PROD
         ? [
-          {
-            type: 'module',
-            children: `import RefreshRuntime from "/@react-refresh"
+            {
+              type: 'module',
+              children: `import RefreshRuntime from "/@react-refresh"
   RefreshRuntime.injectIntoGlobalHook(window)
   window.$RefreshReg$ = () => {}
   window.$RefreshSig$ = () => (type) => type
   window.__vite_plugin_react_preamble_installed__ = true`,
-          },
-          {
-            type: 'module',
-            src: '/@vite/client',
-          },
-        ]
+            },
+            {
+              type: 'module',
+              src: '/@vite/client',
+            },
+          ]
         : []),
       {
         type: 'module',

@@ -3,7 +3,7 @@ import * as React from 'react'
 
 export const Route = createFileRoute('/')({
   loader: () => ({
-    date: new Date()
+    date: new Date(),
   }),
   component: IndexComponent,
 })

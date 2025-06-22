@@ -9,7 +9,12 @@ import {
 import jsesc from 'jsesc'
 import { tsrSerializer } from '../client/serializer'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
-import type { ClientExtractedBaseEntry, DehydratedRouter, ResolvePromiseState, SsrMatch } from '../client/ssr-client'
+import type {
+  ClientExtractedBaseEntry,
+  DehydratedRouter,
+  ResolvePromiseState,
+  SsrMatch,
+} from '../client/ssr-client'
 import type {
   AnyRouteMatch,
   AnyRouter,

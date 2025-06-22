@@ -5,7 +5,10 @@ import type { ReactNode } from 'react'
 
 let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
 
-export function RouterClient(props: { router: AnyRouter, children?: ReactNode }) {
+export function RouterClient(props: {
+  router: AnyRouter
+  children?: ReactNode
+}) {
   if (!hydrationPromise) {
     if (!props.router.state.matches.length) {
       hydrationPromise = hydrate(props.router)
@@ -16,7 +19,9 @@ export function RouterClient(props: { router: AnyRouter, children?: ReactNode })
   return (
     <Await
       promise={hydrationPromise}
-      children={() => props.children ?? <RouterProvider router={props.router} />}
+      children={() =>
+        props.children ?? <RouterProvider router={props.router} />
+      }
     />
   )
 }

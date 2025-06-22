@@ -12,7 +12,10 @@ import {
   processRouteTree,
   trimPath,
 } from '@tanstack/router-core'
-import { attachRouterServerSsrUtils, dehydrateRouter } from '@tanstack/router-core-ssr/server'
+import {
+  attachRouterServerSsrUtils,
+  dehydrateRouter,
+} from '@tanstack/router-core-ssr/server'
 import { getResponseHeaders, requestHandler } from './h3'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'

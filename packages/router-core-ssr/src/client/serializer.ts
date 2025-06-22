@@ -34,10 +34,7 @@ export const tsrSerializer: TsrSerializer = {
 
     if (isPlainObject(value)) {
       return Object.fromEntries(
-        Object.entries(value).map(([key, v]) => [
-          key,
-          tsrSerializer.encode(v),
-        ]),
+        Object.entries(value).map(([key, v]) => [key, tsrSerializer.encode(v)]),
       )
     }
 
@@ -63,10 +60,7 @@ export const tsrSerializer: TsrSerializer = {
 
     if (isPlainObject(value)) {
       return Object.fromEntries(
-        Object.entries(value).map(([key, v]) => [
-          key,
-          tsrSerializer.decode(v),
-        ]),
+        Object.entries(value).map(([key, v]) => [key, tsrSerializer.decode(v)]),
       )
     }
 
