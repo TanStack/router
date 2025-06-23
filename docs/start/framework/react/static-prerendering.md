@@ -7,10 +7,10 @@ Static prerendering is the process of generating static HTML files for your appl
 
 ## Prerendering
 
-TanStack Start can prerender your application to static HTML files, which can then be served to users without having to generate them on the fly. To prerender your application, you can add the `server.prerender` option to your `app.config.js` file:
+TanStack Start can prerender your application to static HTML files, which can then be served to users without having to generate them on the fly. To prerender your application, you can add the `server.prerender` option to your `app.config.ts` file:
 
-```js
-// app.config.js
+```ts
+// app.config.ts
 
 import { defineConfig } from '@tanstack/react-start/config'
 
