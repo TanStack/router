@@ -190,7 +190,7 @@ The following table shows which component(s) will be rendered based on the URL:
 
 | URL Path         | Component                |
 | ---------------- | ------------------------ |
-| `/app`           | `<Index>`                |
+| `/app`           | `<AppLayout>`                |
 | `/app/dashboard` | `<AppLayout><Dashboard>` |
 | `/app/settings`  | `<AppLayout><Settings>`  |
 
