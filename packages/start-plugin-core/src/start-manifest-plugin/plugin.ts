@@ -160,7 +160,7 @@ export function startManifestPlugin(opts: {
                 // Since this is the most important JS entry for the route,
                 // it should be moved to the front of the preloads so that
                 // it has the best chance of being loaded first.
-                preloads.unshift(path.join(APP_BASE, chunk.fileName))
+                preloads.unshift(joinURL(APP_BASE, chunk.fileName))
 
                 const cssAssetsList = getCSSRecursively(
                   chunk,
