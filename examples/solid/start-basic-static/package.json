@@ -12,17 +12,17 @@
     "@tanstack/solid-router": "^1.121.33",
     "@tanstack/solid-router-devtools": "^1.121.33",
     "@tanstack/solid-start": "^1.121.33",
-    "solid-js": "^1.9.5",
+    "solid-js": "^1.9.7",
     "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.5.5"
+    "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.15",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.6.2",
     "vite": "^6.3.5",
-    "vite-tsconfig-paths": "^5.1.3"
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }

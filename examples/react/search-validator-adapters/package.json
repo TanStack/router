@@ -11,27 +11,27 @@
   },
   "dependencies": {
     "@tanstack/arktype-adapter": "^1.121.33",
-    "@tanstack/react-query": "^5.66.0",
+    "@tanstack/react-query": "^5.81.2",
     "@tanstack/react-router": "^1.121.33",
     "@tanstack/react-router-devtools": "^1.121.33",
     "@tanstack/router-plugin": "^1.121.33",
     "@tanstack/valibot-adapter": "^1.121.33",
     "@tanstack/zod-adapter": "^1.121.33",
-    "arktype": "^2.1.7",
+    "arktype": "^2.1.20",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "postcss": "^8.5.1",
-    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.6",
+    "autoprefixer": "^10.4.21",
     "tailwindcss": "^3.4.17",
-    "valibot": "1.0.0-beta.15",
-    "zod": "^3.24.2"
+    "valibot": "1.1.0",
+    "zod": "^3.25.67"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0",
+    "@testing-library/react": "^16.3.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^4.5.2",
     "typescript": "^5.7.2",
     "vite": "^6.3.5"
   }

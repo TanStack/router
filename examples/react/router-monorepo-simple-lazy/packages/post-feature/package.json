@@ -16,7 +16,7 @@
     }
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.66.0",
+    "@tanstack/react-query": "^5.81.2",
     "@router-mono-simple-lazy/router": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -24,9 +24,9 @@
   "devDependencies": {
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^4.5.2",
     "typescript": "^5.7.2",
     "vite": "^6.3.5",
-    "vite-plugin-dts": "^4.5.0"
+    "vite-plugin-dts": "^4.5.4"
   }
 }
