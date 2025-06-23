@@ -13,7 +13,6 @@ Code splitting and lazy loading is a powerful technique for improving the bundle
 TanStack Router separates code into two categories:
 
 - **Critical Route Configuration** - The code that is required to render the current route and kick off the data loading process as early as possible.
-
   - Path Parsing/Serialization
   - Search Param Validation
   - Loaders, Before Load
