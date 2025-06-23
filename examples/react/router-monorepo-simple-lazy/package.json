@@ -19,10 +19,10 @@
     "@types/node": "^22.7.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^4.5.2",
     "typescript": "^5.7.2",
     "vite": "^6.3.5",
-    "vite-plugin-dts": "^4.5.0"
+    "vite-plugin-dts": "^4.5.4"
   },
   "keywords": [],
   "author": "",

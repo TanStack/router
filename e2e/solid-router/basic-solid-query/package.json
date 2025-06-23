@@ -11,20 +11,20 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.71.9",
-    "@tanstack/solid-query-devtools": "^5.71.9",
+    "@tanstack/solid-query": "^5.81.2",
+    "@tanstack/solid-query-devtools": "^5.81.2",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
-    "solid-js": "^1.9.5",
+    "solid-js": "^1.9.7",
     "redaxios": "^0.5.1",
-    "postcss": "^8.5.1",
-    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.6",
+    "autoprefixer": "^10.4.21",
     "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.53.1",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "vite-plugin-solid": "^2.11.2",
+    "vite-plugin-solid": "^2.11.6",
     "vite": "^6.3.5"
   }
 }

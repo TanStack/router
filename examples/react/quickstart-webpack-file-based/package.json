@@ -13,14 +13,14 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@swc/core": "^1.10.15",
+    "@swc/core": "^1.12.5",
     "@tanstack/router-plugin": "^1.121.33",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "html-webpack-plugin": "^5.6.3",
     "swc-loader": "^0.2.6",
     "typescript": "^5.7.2",
-    "webpack": "^5.97.1",
+    "webpack": "^5.99.9",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^5.2.0"
   }
