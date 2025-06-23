@@ -1016,7 +1016,8 @@ export class RouterCore<
     if (__tempLocation && (!__tempKey || __tempKey === this.tempLocationKey)) {
       // Sync up the location keys
       const parsedTempLocation = parse(__tempLocation) as any
-      parsedTempLocation.state.key = location.state.key
+      parsedTempLocation.state.key = location.state.key // TODO: Remove in v2 - use __TSR_key instead
+      parsedTempLocation.state.__TSR_key = location.state.__TSR_key
 
       delete parsedTempLocation.state.__tempLocation
 
@@ -1616,7 +1617,8 @@ export class RouterCore<
       // temporarily add the previous values to the next state so they don't affect
       // the comparison
       const ignoredProps = [
-        'key',
+        'key', // TODO: Remove in v2 - use __TSR_key instead
+        '__TSR_key',
         '__TSR_index',
         '__hashScrollIntoViewOptions',
       ] as const
@@ -1657,7 +1659,8 @@ export class RouterCore<
                 ...nextHistory.state,
                 __tempKey: undefined!,
                 __tempLocation: undefined!,
-                key: undefined!,
+                __TSR_key: undefined!,
+                key: undefined!, // TODO: Remove in v2 - use __TSR_key instead
               },
             },
           },
