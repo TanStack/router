@@ -3032,6 +3032,7 @@ interface RouteLike {
   children?: Array<RouteLike>
   options?: {
     caseSensitive?: boolean
+    isVirtualLayout?: boolean
   }
 }
 
@@ -3225,12 +3226,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
     routeParams = getMatchedParams(foundRoute)!
   } else {
     foundRoute = flatRoutes.find((route) => {
-      // If there are child routes, check if any of them have the same path as the current route
-      if (route.children && route.children.length > 0) {
-        if (!route.children.find((child) => child.path === '/')) {
-          return false
-        }
-      }
+      if (route.options?.isVirtualLayout) return false
 
       const matchedParams = getMatchedParams(route)
 

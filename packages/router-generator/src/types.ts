@@ -13,6 +13,7 @@ export type RouteNode = {
   children?: Array<RouteNode>
   parent?: RouteNode
   exports?: Array<string>
+  isVirtualLayout?: boolean
 }
 
 export interface GetRouteNodesResult {

@@ -525,6 +525,23 @@ export class Generator {
         (d) => d,
       ])
 
+      // After all nodes have been processed we can safely (re)-evaluate
+      // whether a virtual `layout` route should be treated as a virtual-layout wrapper
+      sortedRouteNodes.forEach((node) => {
+        if (
+          node.isVirtual &&
+          node._fsRouteType === 'layout' &&
+          node.children &&
+          !node.children.some((c) => c.cleanedPath === '/')
+        ) {
+          node.isVirtualLayout = true
+        } else {
+          // If the conditions are not met, ensure the flag is falsy so we
+          // don't rely on an outdated value that may have been set earlier.
+          delete node.isVirtualLayout
+        }
+      })
+
       const pluginConfig = plugin.config({
         generator: this,
         rootRouteNode,
@@ -583,6 +600,7 @@ export class Generator {
               `id: '${node.path}'`,
               !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
               `getParentRoute: () => ${findParent(node, exportName)}`,
+              node.isVirtualLayout ? `isVirtualLayout: true` : undefined,
             ]
               .filter(Boolean)
               .join(',')}
