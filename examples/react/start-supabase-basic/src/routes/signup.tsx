@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { redirect, createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 import { useMutation } from '../hooks/useMutation'
 import { Auth } from '../components/Auth'
@@ -9,7 +9,7 @@ export const signupFn = createServerFn({ method: 'POST' })
     (d: { email: string; password: string; redirectUrl?: string }) => d,
   )
   .handler(async ({ data }) => {
-    const supabase = await getSupabaseServerClient()
+    const supabase = getSupabaseServerClient()
     const { error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,

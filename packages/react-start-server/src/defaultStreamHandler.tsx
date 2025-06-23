@@ -54,6 +54,11 @@ export const defaultStreamHandler = defineHandlerCallback(
                   },
                 }),
             onError: (error, info) => {
+              if (
+                error instanceof Error &&
+                error.message === 'ShellBoundaryError'
+              )
+                return
               console.error('Error in renderToPipeableStream:', error, info)
             },
           },

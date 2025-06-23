@@ -1,8 +1,8 @@
 import {
   Link,
   Outlet,
-  createFileRoute,
   useLocation,
+  createFileRoute,
 } from '@tanstack/react-router'
 import { getDocumentHeads } from '~/server/document'
 import { getProject } from '~/server/projects'

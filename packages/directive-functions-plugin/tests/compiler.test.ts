@@ -713,8 +713,6 @@ describe('server function compilation', () => {
           .extractedFilename,
     })
 
-    console.log(ssr.directiveFnsById)
-
     expect(client.compiledResult.code).toMatchInlineSnapshot(`
       "'use server';
 

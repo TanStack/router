@@ -1,6 +1,6 @@
 import { defineConfig } from '@rsbuild/core'
 import { pluginSolid } from '@rsbuild/plugin-solid'
-import { TanStackRouterRspack } from '@tanstack/router-plugin/rspack'
+import { tanstackRouter } from '@tanstack/router-plugin/rspack'
 import { pluginBabel } from '@rsbuild/plugin-babel'
 
 export default defineConfig({
@@ -12,9 +12,7 @@ export default defineConfig({
   ],
   tools: {
     rspack: {
-      plugins: [
-        TanStackRouterRspack({ target: 'solid', autoCodeSplitting: true }),
-      ],
+      plugins: [tanstackRouter({ target: 'solid', autoCodeSplitting: true })],
     },
   },
 })

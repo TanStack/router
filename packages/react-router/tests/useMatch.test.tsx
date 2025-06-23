@@ -39,6 +39,8 @@ describe('useMatch', () => {
       ),
     })
 
+    history = history || createMemoryHistory({ initialEntries: ['/'] })
+
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/posts',

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start",
-  "version": "1.120.20",
+  "version": "1.121.33",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -62,34 +62,14 @@
         "default": "./dist/cjs/server.cjs"
       }
     },
-    "./config": {
+    "./plugin/vite": {
       "import": {
-        "types": "./dist/esm/config.d.ts",
-        "default": "./dist/esm/config.js"
+        "types": "./dist/esm/plugin-vite.d.ts",
+        "default": "./dist/esm/plugin-vite.js"
       },
       "require": {
-        "types": "./dist/cjs/config.d.cts",
-        "default": "./dist/cjs/config.cjs"
-      }
-    },
-    "./api": {
-      "import": {
-        "types": "./dist/esm/api.d.ts",
-        "default": "./dist/esm/api.js"
-      },
-      "require": {
-        "types": "./dist/cjs/api.d.cts",
-        "default": "./dist/cjs/api.cjs"
-      }
-    },
-    "./router-manifest": {
-      "import": {
-        "types": "./dist/esm/router-manifest.d.ts",
-        "default": "./dist/esm/router-manifest.js"
-      },
-      "require": {
-        "types": "./dist/cjs/router-manifest.d.cts",
-        "default": "./dist/cjs/router-manifest.cjs"
+        "types": "./dist/cjs/plugin-vite.d.cts",
+        "default": "./dist/cjs/plugin-vite.cjs"
       }
     },
     "./server-functions-client": {
@@ -112,26 +92,6 @@
         "default": "./dist/cjs/server-functions-server.cjs"
       }
     },
-    "./server-functions-handler": {
-      "import": {
-        "types": "./dist/esm/server-functions-handler.d.ts",
-        "default": "./dist/esm/server-functions-handler.js"
-      },
-      "require": {
-        "types": "./dist/cjs/server-functions-handler.d.cts",
-        "default": "./dist/cjs/server-functions-handler.cjs"
-      }
-    },
-    "./server-functions-ssr": {
-      "import": {
-        "types": "./dist/esm/server-functions-ssr.d.ts",
-        "default": "./dist/esm/server-functions-ssr.js"
-      },
-      "require": {
-        "types": "./dist/cjs/server-functions-ssr.d.cts",
-        "default": "./dist/cjs/server-functions-ssr.cjs"
-      }
-    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -143,20 +103,17 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/react-start-client": "workspace:^",
-    "@tanstack/react-start-server": "workspace:^",
-    "@tanstack/react-start-config": "workspace:^",
-    "@tanstack/react-start-router-manifest": "workspace:^",
-    "@tanstack/start-server-functions-client": "workspace:^",
-    "@tanstack/start-server-functions-server": "workspace:^",
-    "@tanstack/start-server-functions-handler": "workspace:^",
-    "@tanstack/start-server-functions-ssr": "workspace:^",
-    "@tanstack/start-api-routes": "workspace:^"
+    "@tanstack/react-start-client": "workspace:*",
+    "@tanstack/react-start-server": "workspace:*",
+    "@tanstack/react-start-plugin": "workspace:*",
+    "@tanstack/start-server-functions-client": "workspace:*",
+    "@tanstack/start-server-functions-server": "workspace:*"
   },
   "peerDependencies": {
+    "@vitejs/plugin-react": ">=4.3.4",
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0",
-    "vite": "^6.0.0"
+    "vite": ">=6.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.25.0"

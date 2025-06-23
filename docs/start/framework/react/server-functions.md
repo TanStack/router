@@ -7,8 +7,8 @@ title: Server Functions
 
 Server functions allow you to specify logic that can be invoked almost anywhere (even the client), but run **only** on the server. In fact, they are not so different from an API Route, but with a few key differences:
 
-- They do not have stable public URL
-- They can be called from anywhere in your application, including loaders, hooks, components, etc., but cannot be called from API Routes.
+- They do not have stable public URL.
+- They can be called from anywhere in your application, including loaders, hooks, components, server routes etc.
 
 However, they are similar to regular API Routes in that:
 

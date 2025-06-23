@@ -1,6 +1,6 @@
-import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
+import { Link, Outlet } from '@tanstack/solid-router'
 
-export const Route = createFileRoute('/_first/_second')({
+export const Route = createFileRoute({
   component: LayoutComponent,
 })
 

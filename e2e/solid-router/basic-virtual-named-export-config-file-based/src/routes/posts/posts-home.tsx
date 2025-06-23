@@ -1,6 +1,4 @@
-import { createFileRoute } from '@tanstack/solid-router'
-
-export const Route = createFileRoute('/posts/')({
+export const Route = createFileRoute({
   component: PostsIndexComponent,
 })
 
