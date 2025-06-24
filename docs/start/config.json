@@ -50,10 +50,6 @@
               "to": "framework/react/server-routes"
             },
             {
-              "label": "SSR",
-              "to": "framework/react/ssr"
-            },
-            {
               "label": "SPA Mode",
               "to": "framework/react/spa-mode"
             },
@@ -125,10 +121,6 @@
             {
               "label": "Server Routes",
               "to": "framework/solid/server-routes"
-            },
-            {
-              "label": "SSR",
-              "to": "framework/solid/ssr"
             },
             {
               "label": "SPA Mode",
