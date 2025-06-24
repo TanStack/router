@@ -1,4 +1,4 @@
-import { joinPaths, rootRouteId } from '@tanstack/router-core'
+import { rootRouteId } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
 
@@ -19,45 +19,21 @@ export async function getStartManifest(opts: { basePath: string }) {
 
   rootRoute.assets = rootRoute.assets || []
 
-  // Get the entry for the client
-  // const ClientManifest = getManifest('client')
-
-  // const importPath =
-  //   ClientManifest.inputs[ClientManifest.handler]?.output.path
-  // if (!importPath) {
-  //   invariant(importPath, 'Could not find client entry in manifest')
-  // }
-
-  if (process.env.NODE_ENV === 'development' && !process.env.TSS_CLIENT_ENTRY) {
-    throw new Error(
-      'tanstack/start-server-core: TSS_CLIENT_ENTRY must be defined in your environment for getStartManifest()',
-    )
-  }
-
+  let script = `import('${startManifest.clientEntry}')`
   if (process.env.NODE_ENV === 'development') {
-    // Always fake that HMR is ready
-    // const CLIENT_BASE = sanitizeBase(process.env.TSS_CLIENT_BASE || '')
-
-    // if (!CLIENT_BASE) {
-    //   throw new Error(
-    //     'tanstack/start-router-manifest: TSS_CLIENT_BASE must be defined in your environment for getFullRouterManifest()',
-    //   )
-    // }
-
-    const clientEntry = joinPaths([opts.basePath, process.env.TSS_CLIENT_ENTRY])
-
-    const script = `${globalThis.TSS_INJECTED_HEAD_SCRIPTS ? globalThis.TSS_INJECTED_HEAD_SCRIPTS + '; ' : ''}import('${clientEntry}')`
-
-    rootRoute.assets.push({
-      tag: 'script',
-      attrs: {
-        type: 'module',
-        suppressHydrationWarning: true,
-        async: true,
-      },
-      children: script,
-    })
+    if (globalThis.TSS_INJECTED_HEAD_SCRIPTS) {
+      script = `${globalThis.TSS_INJECTED_HEAD_SCRIPTS + ';'}${script}`
+    }
   }
+  rootRoute.assets.push({
+    tag: 'script',
+    attrs: {
+      type: 'module',
+      suppressHydrationWarning: true,
+      async: true,
+    },
+    children: script,
+  })
 
   const manifest = {
     ...startManifest,

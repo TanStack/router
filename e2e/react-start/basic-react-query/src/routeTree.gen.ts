@@ -111,7 +111,6 @@ const ApiUsersIdServerRoute = ApiUsersIdServerRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
@@ -126,7 +125,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof LayoutLayout2RouteWithChildren
   '/deferred': typeof DeferredRoute
   '/redirect': typeof RedirectRoute
   '/posts/$postId': typeof PostsPostIdRoute
@@ -158,7 +156,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | ''
     | '/deferred'
     | '/posts'
     | '/redirect'
@@ -173,7 +170,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | ''
     | '/deferred'
     | '/redirect'
     | '/posts/$postId'

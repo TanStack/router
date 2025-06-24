@@ -54,7 +54,6 @@ const AuthInvoicesInvoiceIdRoute = AuthInvoicesInvoiceIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthDashboardRoute
   '/invoices': typeof AuthInvoicesRouteWithChildren
@@ -63,7 +62,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthDashboardRoute
   '/invoices/$invoiceId': typeof AuthInvoicesInvoiceIdRoute
@@ -83,14 +81,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | ''
     | '/login'
     | '/dashboard'
     | '/invoices'
     | '/invoices/$invoiceId'
     | '/invoices/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '' | '/login' | '/dashboard' | '/invoices/$invoiceId' | '/invoices'
+  to: '/' | '/login' | '/dashboard' | '/invoices/$invoiceId' | '/invoices'
   id:
     | '__root__'
     | '/'

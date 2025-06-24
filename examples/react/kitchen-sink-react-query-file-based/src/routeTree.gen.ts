@@ -115,7 +115,6 @@ const DashboardInvoicesInvoiceIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRouteRouteWithChildren
-  '': typeof PathlessLayoutRouteWithChildren
   '/login': typeof LoginRoute
   '/dashboard/invoices': typeof DashboardInvoicesRouteRouteWithChildren
   '/dashboard/users': typeof DashboardUsersRouteRouteWithChildren
@@ -132,7 +131,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof PathlessLayoutRouteWithChildren
   '/login': typeof LoginRoute
   '/profile': typeof AuthProfileRoute
   '/route-a': typeof PathlessLayoutRouteARoute
@@ -170,7 +168,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
-    | ''
     | '/login'
     | '/dashboard/invoices'
     | '/dashboard/users'
@@ -187,7 +184,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | ''
     | '/login'
     | '/profile'
     | '/route-a'

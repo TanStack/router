@@ -69,7 +69,6 @@ const PathlessLayoutNestedLayoutRouteARoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteRouteWithChildren
-  '': typeof PathlessLayoutNestedLayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
@@ -78,7 +77,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '': typeof PathlessLayoutNestedLayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts': typeof PostsIndexRoute
@@ -102,21 +100,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/posts'
-    | ''
     | '/anchor'
     | '/posts/$postId'
     | '/posts/'
     | '/route-a'
     | '/route-b'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | ''
-    | '/anchor'
-    | '/posts/$postId'
-    | '/posts'
-    | '/route-a'
-    | '/route-b'
+  to: '/' | '/anchor' | '/posts/$postId' | '/posts' | '/route-a' | '/route-b'
   id:
     | '__root__'
     | '/'

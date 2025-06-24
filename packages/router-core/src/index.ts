@@ -257,6 +257,7 @@ export type {
   ServerSrr,
   ClearCacheFn,
   CreateRouterFn,
+  ProcessRouteTreeResult,
 } from './router'
 
 export type {
@@ -371,7 +372,12 @@ export type { UseLoaderDepsResult, ResolveUseLoaderDeps } from './useLoaderDeps'
 
 export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 
-export type { Redirect, ResolvedRedirect, AnyRedirect } from './redirect'
+export type {
+  Redirect,
+  RedirectOptions,
+  ResolvedRedirect,
+  AnyRedirect,
+} from './redirect'
 
 export {
   redirect,

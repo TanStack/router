@@ -13,7 +13,7 @@ All other routes, other than the [Root Route](#the-root-route), are configured u
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/')({
   component: PostsComponent,
 })
 ```
@@ -71,7 +71,7 @@ Let's take a look at an `/about` route:
 // about.tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/about')({
   component: AboutComponent,
 })
 
@@ -93,7 +93,7 @@ Let's take a look at an index route for a `/posts` URL:
 import { createFileRoute } from '@tanstack/react-router'
 
 // Note the trailing slash, which is used to target index routes
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts/')({
   component: PostsIndexComponent,
 })
 
@@ -113,7 +113,7 @@ These params are then usable in your route's configuration and components! Let's
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts/$postId')({
   // In a loader
   loader: ({ params }) => fetchPost(params.postId),
   // Or in a component
@@ -172,7 +172,7 @@ This tree structure is used to wrap the child routes with a layout component:
 ```tsx
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/app')({
   component: AppLayoutComponent,
 })
 
@@ -190,7 +190,7 @@ The following table shows which component(s) will be rendered based on the URL:
 
 | URL Path         | Component                |
 | ---------------- | ------------------------ |
-| `/`              | `<Index>`                |
+| `/app`           | `<AppLayout>`            |
 | `/app/dashboard` | `<AppLayout><Dashboard>` |
 | `/app/settings`  | `<AppLayout><Settings>`  |
 
@@ -243,7 +243,7 @@ The `_pathlessLayout.tsx` route is used to wrap the child routes with a Pathless
 ```tsx
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/_pathlessLayout')({
   component: PathlessLayoutComponent,
 })
 

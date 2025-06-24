@@ -18,7 +18,7 @@ export function routesManifestPlugin(): GeneratorPlugin {
       }
       const routesManifest = {
         [rootRouteId]: {
-          filePath: rootRouteNode.filePath,
+          filePath: rootRouteNode.fullPath,
           children: routeTree.acc.routeTree.map((d) => d.routePath),
         },
         ...Object.fromEntries(
@@ -28,7 +28,7 @@ export function routesManifestPlugin(): GeneratorPlugin {
             return [
               filePathId,
               {
-                filePath: d.filePath,
+                filePath: d.fullPath,
                 parent: d.parent?.routePath ? d.parent.routePath : undefined,
                 children: d.children?.map((childRoute) => childRoute.routePath),
               },

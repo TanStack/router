@@ -83,7 +83,6 @@ const aRoute = aRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof homeRoute
-  '': typeof layoutSecondLayoutRouteWithChildren
   '/posts': typeof postsPostsRouteWithChildren
   '/classic/hello': typeof ClassicHelloRouteRouteWithChildren
   '/posts/': typeof postsPostsHomeRoute
@@ -96,7 +95,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof homeRoute
-  '': typeof layoutSecondLayoutRouteWithChildren
   '/posts': typeof postsPostsHomeRoute
   '/posts/$postId': typeof postsPostsDetailRoute
   '/classic/hello/universe': typeof ClassicHelloUniverseRoute
@@ -124,7 +122,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | ''
     | '/posts'
     | '/classic/hello'
     | '/posts/'
@@ -137,7 +134,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | ''
     | '/posts'
     | '/posts/$postId'
     | '/classic/hello/universe'

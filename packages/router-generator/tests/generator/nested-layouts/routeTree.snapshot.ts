@@ -160,7 +160,6 @@ const JestedLayoutB3LayoutC2BarRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/jested': typeof JestedLayoutB3LayoutC2RouteWithChildren
-  '': typeof LayoutA2RouteWithChildren
   '/foo': typeof LayoutA1FooRoute
   '/in-folder': typeof folderInFolderRoute
   '/bar': typeof LayoutA2BarRoute
@@ -178,7 +177,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/jested': typeof JestedLayoutB3IndexRoute
-  '': typeof LayoutA2RouteWithChildren
   '/foo': typeof FooLayoutB5IndexRoute
   '/in-folder': typeof folderInFolderRoute
   '/bar': typeof LayoutA2BarRoute
@@ -223,7 +221,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/jested'
-    | ''
     | '/foo'
     | '/in-folder'
     | '/bar'
@@ -241,7 +238,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/jested'
-    | ''
     | '/foo'
     | '/in-folder'
     | '/bar'

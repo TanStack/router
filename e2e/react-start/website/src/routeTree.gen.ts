@@ -89,7 +89,6 @@ const ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRoute =
   )
 
 export interface FileRoutesByFullPath {
-  '': typeof LibraryRouteWithChildren
   '/$project': typeof ProjectIndexRoute
   '/': typeof LibraryIndexRoute
   '/$project/$version/docs': typeof ProjectVersionDocsIndexRoute
@@ -124,7 +123,6 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | ''
     | '/$project'
     | '/'
     | '/$project/$version/docs'

@@ -1,4 +1,5 @@
 import { promises as fsp } from 'node:fs'
+import { pathToFileURL } from 'node:url'
 import os from 'node:os'
 import path from 'node:path'
 import { getRollupConfig } from 'nitropack/rollup'
@@ -22,7 +23,7 @@ export async function prerender({
   builder: ViteBuilder
 }) {
   const logger = createLogger('prerender')
-  logger.info('Prendering pages...')
+  logger.info('Prerendering pages...')
 
   // If prerender is enabled but no pages are provided, default to prerendering the root page
   if (options.prerender?.enabled && !options.pages.length) {
@@ -84,9 +85,9 @@ export async function prerender({
       ? nodeNitroRollupOptions.output.entryFileNames
       : 'index.mjs'
 
-  const serverEntrypoint = path.resolve(
-    path.join(nodeNitro.options.output.serverDir, serverFilename),
-  )
+  const serverEntrypoint = pathToFileURL(
+    path.resolve(path.join(nodeNitro.options.output.serverDir, serverFilename)),
+  ).toString()
 
   const { closePrerenderer, localFetch } = (await import(serverEntrypoint)) as {
     closePrerenderer: () => void

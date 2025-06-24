@@ -4,9 +4,10 @@ import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { extractHtmlScripts } from './extract-html-scripts'
 import type { Connect, DevEnvironment, Plugin, ViteDevServer } from 'vite'
 
+/* eslint-disable no-var */
 declare global {
-  // eslint-disable-next-line no-var
   var TSS_INJECTED_HEAD_SCRIPTS: string | undefined
+  var TSS_VITE_DEV_SERVER: ViteDevServer | undefined
 }
 
 export function devServerPlugin(): Plugin {
@@ -24,13 +25,13 @@ export function devServerPlugin(): Plugin {
         return
       }
 
-      ;(globalThis as any).viteDevServer = viteDevServer
-
+      globalThis.TSS_VITE_DEV_SERVER = viteDevServer
+      // upon server restart, reset the injected scripts
+      globalThis.TSS_INJECTED_HEAD_SCRIPTS = undefined
       return () => {
         remove_html_middlewares(viteDevServer.middlewares)
-        let cachedScripts: string | undefined
 
-        viteDevServer.middlewares.use(async (req, res) => {
+        viteDevServer.middlewares.use(async (req, res, next) => {
           // Create an H3Event to have it passed into the server entry
           // i.e: event => defineEventHandler(event)
           const event = createEvent(req, res)
@@ -46,14 +47,8 @@ export function devServerPlugin(): Plugin {
               )
             }
 
-            if (!isRunnableDevEnvironment(serverEnv)) {
-              throw new Error(
-                `Expected server environment ${VITE_ENVIRONMENT_NAMES.server} to be a RunnableDevEnvironment. This can be caused by multiple vite versions being installed in the project.`,
-              )
-            }
-
             // Extract the scripts that Vite plugins would inject into the initial HTML
-            if (cachedScripts === undefined) {
+            if (globalThis.TSS_INJECTED_HEAD_SCRIPTS === undefined) {
               const templateHtml = `<html><head></head><body></body></html>`
               const transformedHtml = await viteDevServer.transformIndexHtml(
                 req.url || '/',
@@ -63,6 +58,10 @@ export function devServerPlugin(): Plugin {
               globalThis.TSS_INJECTED_HEAD_SCRIPTS = scripts
                 .map((script) => script.content ?? '')
                 .join(';')
+            }
+
+            if (!isRunnableDevEnvironment(serverEnv)) {
+              return next()
             }
 
             // Import and resolve the request by running the server entry point

@@ -30,7 +30,7 @@ const searchSchema = z.object({
   two: z.string().default(defaultValues.two),
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/')({
   validateSearch: zodValidator(searchSchema),
   search: {
     // strip default values
@@ -68,7 +68,7 @@ const searchSchema = z.object({
   two: z.string().default('xyz'),
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/')({
   validateSearch: zodValidator(searchSchema),
   search: {
     // remove all search params

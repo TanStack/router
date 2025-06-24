@@ -39,7 +39,7 @@ const searchSchema = z.object({
   two: z.string().optional(),
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/')({
   validateSearch: zodValidator(searchSchema),
   search: {
     middlewares: [retainSearchParams(true)],

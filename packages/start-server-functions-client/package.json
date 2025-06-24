@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-server-functions-client",
-  "version": "1.121.2",
+  "version": "1.121.34",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -62,8 +62,8 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/server-functions-plugin": "workspace:^",
-    "@tanstack/start-server-functions-fetcher": "workspace:^"
+    "@tanstack/server-functions-plugin": "workspace:*",
+    "@tanstack/start-server-functions-fetcher": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

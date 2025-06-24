@@ -80,6 +80,8 @@ export const Route = createRootRoute({
 
 ### Single-Page Applications
 
+First, remove the `<title>` tag from the the index.html if you have set any.
+
 ```tsx
 import { HeadContent } from '@tanstack/react-router'
 

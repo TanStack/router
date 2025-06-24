@@ -1,10 +1,8 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import path from 'node:path'
 import {
   TanStackDirectiveFunctionsPlugin,
   TanStackDirectiveFunctionsPluginEnv,
 } from '@tanstack/directive-functions-plugin'
-import type { Plugin } from 'vite'
+import type { Plugin, ViteDevServer } from 'vite'
 import type {
   DirectiveFn,
   ReplacerFn,
@@ -16,11 +14,6 @@ export type CreateRpcFn = (
   splitImportFn?: string,
 ) => any
 
-declare global {
-  // eslint-disable-next-line no-var
-  var TSR_directiveFnsById: Record<string, DirectiveFn>
-}
-
 export type ServerFnPluginOpts = {
   /**
    * The virtual import ID that will be used to import the server function manifest.
@@ -28,22 +21,10 @@ export type ServerFnPluginOpts = {
    * and its modules.
    */
   manifestVirtualImportId: string
-  /**
-   * The path to the manifest file that will be created during the build process.
-   * This file will be used to import the modules for the server functions in your
-   * server handler.
-   *
-   * @default 'node_modules/.tanstack-start/server-functions-manifest.json'
-   */
-  manifestOutputFilename?: string
   client: ServerFnPluginEnvOpts
   ssr: ServerFnPluginEnvOpts
   server: ServerFnPluginEnvOpts
-  importer?: (fn: DirectiveFn) => Promise<any>
 }
-
-const defaultManifestFilename =
-  'node_modules/.tanstack-start/server-functions-manifest.json'
 
 export type ServerFnPluginEnvOpts = {
   getRuntimeCode: () => string
@@ -55,37 +36,20 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
   ssr: Array<Plugin>
   server: Array<Plugin>
 } {
-  const ROOT = process.cwd()
-
-  globalThis.TSR_directiveFnsById = {}
+  const directiveFnsById: Record<string, DirectiveFn> = {}
+  let viteDevServer: ViteDevServer | undefined
 
   const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
     // When directives are compiled, save them to our global variable
     // This variable will be used both during development to incrementally
     // look up server functions and during build/production to produce a
     // static manifest that can be read by the server build
-    Object.assign(
-      globalThis.TSR_directiveFnsById,
-      Object.fromEntries(
-        Object.entries(d).map(([id, fn]) => [
-          id,
-          {
-            ...fn,
-            // This importer is required for the development server to
-            // work. It's also required in production, but cannot be serialized
-            // into the manifest because it's a dynamic import. Instead, as you'll
-            // see below, we augment the manifest output with a code-generated importer
-            // that looks exactly like this.
-            importer: () =>
-              opts.importer ? opts.importer(fn) : import(fn.extractedFilename),
-          },
-        ]),
-      ),
+    Object.assign(directiveFnsById, d)
+    invalidateVirtualModule(
+      viteDevServer,
+      resolveViteId(opts.manifestVirtualImportId),
     )
   }
-
-  const manifestFilename =
-    opts.manifestOutputFilename || defaultManifestFilename
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -102,41 +66,6 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         replacer: opts.client.replacer,
         onDirectiveFnsById,
       }),
-      {
-        // Now that we have the directiveFnsById, we need to create a new
-        // virtual module that can be used to import that manifest
-        name: 'tanstack-start-server-fn-vite-plugin-build-client',
-        generateBundle() {
-          // In production, we create a manifest so we can
-          // access it later in the server build, which likely does not run in the
-          // same vite build environment. This is essentially a
-          // serialized state transfer from the client build to the server
-          // build.
-
-          // Ensure the manifest directory exists
-          mkdirSync(path.join(ROOT, path.dirname(manifestFilename)), {
-            recursive: true,
-          })
-
-          // Write the manifest to disk
-          writeFileSync(
-            path.join(ROOT, manifestFilename),
-            JSON.stringify(
-              Object.fromEntries(
-                Object.entries(globalThis.TSR_directiveFnsById).map(
-                  ([id, fn]) => [
-                    id,
-                    {
-                      functionName: fn.functionName,
-                      extractedFilename: fn.extractedFilename,
-                    },
-                  ],
-                ),
-              ),
-            ),
-          )
-        },
-      },
     ],
     ssr: [
       // The SSR plugin is used to compile the server directives
@@ -153,10 +82,12 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
       {
         // On the server, we need to be able to read the server-function manifest from the client build.
         // This is likely used in the handler for server functions, so we can find the server function
-        // by its ID, import it, and call it. We can't do this in memory here because the builds happen in isolation,
-        // so the manifest is like a serialized state from the client build to the server build
+        // by its ID, import it, and call it.
         name: 'tanstack-start-server-fn-vite-plugin-manifest-server',
         enforce: 'pre',
+        configureServer(server) {
+          viteDevServer = server
+        },
         resolveId(id) {
           if (id === opts.manifestVirtualImportId) {
             return resolveViteId(id)
@@ -168,26 +99,12 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
           if (id !== resolveViteId(opts.manifestVirtualImportId)) {
             return undefined
           }
-
-          // In development, we **can** use the in-memory manifest, and we should
-          // since it will be incrementally updated as we use the app and dynamic
-          // imports are triggered.
-          if (process.env.NODE_ENV === 'development') {
-            return `export default globalThis.TSR_directiveFnsById`
+          if (this.environment.config.consumer !== 'server') {
+            return `export default {}`
           }
 
-          // In production, we need to read the manifest from the client build.
-          // The manifest at that point should contain the full set of server functions
-          // that were found in the client build.
-          const manifest = JSON.parse(
-            readFileSync(path.join(ROOT, manifestFilename), 'utf-8'),
-          )
-
-          // The manifest has a lot of information, but for now we only need to
-          // provide the function ID for lookup and the importer for loading
-          // This should keep the manifest small for now.
           const manifestWithImports = `
-          export default {${Object.entries(manifest)
+          export default {${Object.entries(directiveFnsById)
             .map(
               ([id, fn]: any) =>
                 `'${id}': {
@@ -223,14 +140,6 @@ export interface TanStackServerFnPluginEnvOpts {
    * and its modules.
    */
   manifestVirtualImportId: string
-  /**
-   * The path to the manifest file that will be created during the build process.
-   * This file will be used to import the modules for the server functions in your
-   * server handler.
-   *
-   * @default 'node_modules/.tanstack-start/server-functions-manifest.json'
-   */
-  manifestOutputFilename?: string
   client: {
     envName?: string
     getRuntimeCode: () => string
@@ -241,7 +150,6 @@ export interface TanStackServerFnPluginEnvOpts {
     getRuntimeCode: () => string
     replacer: ReplacerFn
   }
-  importer?: (fn: DirectiveFn) => Promise<any>
 }
 
 export function TanStackServerFnPluginEnv(
@@ -259,37 +167,21 @@ export function TanStackServerFnPluginEnv(
     },
   }
 
-  const root = process.cwd()
-
-  globalThis.TSR_directiveFnsById = {}
+  const directiveFnsById: Record<string, DirectiveFn> = {}
+  let viteDevServer: ViteDevServer | undefined
 
   const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
     // When directives are compiled, save them to our global variable
     // This variable will be used both during development to incrementally
     // look up server functions and during build/production to produce a
     // static manifest that can be read by the server build
-    Object.assign(
-      globalThis.TSR_directiveFnsById,
-      Object.fromEntries(
-        Object.entries(d).map(([id, fn]) => [
-          id,
-          {
-            ...fn,
-            // This importer is required for the development server to
-            // work. It's also required in production, but cannot be serialized
-            // into the manifest because it's a dynamic import. Instead, as you'll
-            // see below, we augment the manifest output with a code-generated importer
-            // that looks exactly like this.
-            importer: () =>
-              opts.importer ? opts.importer(fn) : import(fn.extractedFilename),
-          },
-        ]),
-      ),
+    Object.assign(directiveFnsById, d)
+
+    invalidateVirtualModule(
+      viteDevServer,
+      resolveViteId(opts.manifestVirtualImportId),
     )
   }
-
-  const manifestFilename =
-    opts.manifestOutputFilename || defaultManifestFilename
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -317,84 +209,29 @@ export function TanStackServerFnPluginEnv(
       },
     }),
     {
-      // Now that we have the directiveFnsById, we need to create a new
-      // virtual module that can be used to import that manifest
-      name: 'tanstack-start-server-fn-vite-plugin-build-client',
-      applyToEnvironment(environment) {
-        return environment.name === opts.client.envName
-      },
-      buildEnd() {
-        // In production, we create a manifest so we can
-        // access it later in the server build, which likely does not run in the
-        // same vite build environment. This is essentially a
-        // serialized state transfer from the client build to the server
-        // build.
-
-        // Ensure the manifest directory exists
-        mkdirSync(path.join(root, path.dirname(manifestFilename)), {
-          recursive: true,
-        })
-
-        // Write the manifest to disk
-        writeFileSync(
-          path.join(root, manifestFilename),
-          JSON.stringify(
-            Object.fromEntries(
-              Object.entries(globalThis.TSR_directiveFnsById).map(
-                ([id, fn]) => [
-                  id,
-                  {
-                    functionName: fn.functionName,
-                    extractedFilename: fn.extractedFilename,
-                  },
-                ],
-              ),
-            ),
-          ),
-        )
-      },
-    },
-    {
       // On the server, we need to be able to read the server-function manifest from the client build.
       // This is likely used in the handler for server functions, so we can find the server function
       // by its ID, import it, and call it. We can't do this in memory here because the builds happen in isolation,
       // so the manifest is like a serialized state from the client build to the server build
       name: 'tanstack-start-server-fn-vite-plugin-manifest-server',
       enforce: 'pre',
-      // applyToEnvironment(environment) {
-      //   return environment.name === opts.server.envName
-      // },
-      resolveId(id) {
-        if (id === opts.manifestVirtualImportId) {
-          return resolveViteId(id)
-        }
-
-        return undefined
+      configureServer(server) {
+        viteDevServer = server
       },
-      load(id) {
-        if (id !== resolveViteId(opts.manifestVirtualImportId)) {
-          return undefined
-        }
-
-        // In development, we **can** use the in-memory manifest, and we should
-        // since it will be incrementally updated as we use the app and dynamic
-        // imports are triggered.
-        if (process.env.NODE_ENV === 'development') {
-          return `export default globalThis.TSR_directiveFnsById`
-        }
-
-        // In production, we need to read the manifest from the client build.
-        // The manifest at that point should contain the full set of server functions
-        // that were found in the client build.
-        const manifest = JSON.parse(
-          readFileSync(path.join(root, manifestFilename), 'utf-8'),
-        )
-
-        // The manifest has a lot of information, but for now we only need to
-        // provide the function ID for lookup and the importer for loading
-        // This should keep the manifest small for now.
-        const manifestWithImports = `
-          export default {${Object.entries(manifest)
+      resolveId: {
+        filter: { id: new RegExp(opts.manifestVirtualImportId) },
+        handler(id) {
+          return resolveViteId(id)
+        },
+      },
+      load: {
+        filter: { id: new RegExp(resolveViteId(opts.manifestVirtualImportId)) },
+        handler() {
+          if (this.environment.config.consumer !== 'server') {
+            return `export default {}`
+          }
+          const manifestWithImports = `
+          export default {${Object.entries(directiveFnsById)
             .map(
               ([id, fn]: any) =>
                 `'${id}': {
@@ -404,7 +241,8 @@ export function TanStackServerFnPluginEnv(
             )
             .join(',')}}`
 
-        return manifestWithImports
+          return manifestWithImports
+        },
       },
     },
   ]
@@ -412,4 +250,16 @@ export function TanStackServerFnPluginEnv(
 
 function resolveViteId(id: string) {
   return `\0${id}`
+}
+
+function invalidateVirtualModule(
+  viteDevServer: ViteDevServer | undefined,
+  resolvedId: string,
+) {
+  if (viteDevServer) {
+    const mod = viteDevServer.moduleGraph.getModuleById(resolvedId)
+    if (mod) {
+      viteDevServer.moduleGraph.invalidateModule(mod)
+    }
+  }
 }

@@ -8,12 +8,14 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createRootRoute } from '@tanstack/react-router'
+
 import { Route as ScriptDotjsRouteImport } from './routes/script[.]js'
 import { Route as NestedDotjsRouteImport } from './routes/nested[.]js'
 import { Route as NestedDotjsScriptDotjsRouteImport } from './routes/nested[.]js.script[.]js'
 import { Route as NestedDotjsDoubleDotextDotjsRouteImport } from './routes/nested[.]js.double[.]ext[.]js'
 
-const rootRouteImport = createRooRoute()
+const rootRouteImport = createRootRoute()
 
 const ScriptDotjsRoute = ScriptDotjsRouteImport.update({
   id: '/script.js',
