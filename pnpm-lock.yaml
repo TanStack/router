@@ -4557,8 +4557,8 @@ importers:
   examples/react/start-clerk-basic:
     dependencies:
       '@clerk/tanstack-react-start':
-        specifier: 0.17.0-snapshot.v20250611045520
-        version: 0.17.0-snapshot.v20250611045520(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        specifier: ^0.18.0
+        version: 0.18.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -4613,7 +4613,7 @@ importers:
     dependencies:
       '@convex-dev/react-query':
         specifier: 0.0.0-alpha.8
-        version: 0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.25.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
+        version: 0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
       '@tanstack/react-query':
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
@@ -4637,7 +4637,7 @@ importers:
         version: 8.2.2
       convex:
         specifier: ^1.19.0
-        version: 1.19.0(@clerk/clerk-react@5.25.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 1.19.0(@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       ky:
         specifier: ^1.7.4
         version: 1.7.4
@@ -6919,26 +6919,19 @@ packages:
   '@bundled-es-modules/tough-cookie@0.1.6':
     resolution: {integrity: sha512-dvMHbL464C0zI+Yqxbz6kZ5TOEp7GLW+pry/RWndAR8MJQAXZ2rPmIs8tziTZjeIyhSNZgZbCePtfSbdWqStJw==}
 
-  '@clerk/backend@2.0.1-snapshot.v20250611045520':
-    resolution: {integrity: sha512-dllv3pGXMkj+oHIBKxP+JoDNInGey8rvYtgSKbDo+frYEv50Ymprdi3f9EgKh+dyP2sGAFGx5X9y3EC/D11Jzg==}
+  '@clerk/backend@2.2.0':
+    resolution: {integrity: sha512-ppr/ikitOIq1CTZaTbMTN7YRIpii5pHMPyl4TNplFmH6dF1HRVYaOw0Ce2YVMLDnBVALNR60f2Z247/voJMLkA==}
     engines: {node: '>=18.17.0'}
 
-  '@clerk/clerk-react@5.25.3':
-    resolution: {integrity: sha512-nSuUzvu/DtiBADx2q0p0syk6NfCT5q4SuVJbQUimNSOPSnGJ7CVfO6QvEXS1oWcVyEKn+8nVlMaZonfDsuaORA==}
-    engines: {node: '>=18.17.0'}
-    peerDependencies:
-      react: ^19.0.0
-      react-dom: ^19.0.0
-
-  '@clerk/clerk-react@5.31.10-snapshot.v20250611045520':
-    resolution: {integrity: sha512-35qMgoiuPmrEUOwfukdYV4uIXhUSyNN54X7feIF8GdJw/wNJWEoOcssz+a/MFaXUgoGVkpUyLUoTfszrBQAM/Q==}
+  '@clerk/clerk-react@5.32.1':
+    resolution: {integrity: sha512-ByIukEdfqKirEp7dLIo3ohcAiFAXG6XFtwRSdA2Osv8K5rd0wuzHMFg1drj18fnyhAav0fd06r32iJxqGpC93Q==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@clerk/shared@3.2.1':
-    resolution: {integrity: sha512-KLLb/AohQH/p+XcRAwtijQRmnZA/dfCu+jkY6nDDS5J3PQDl/cUxuRVCCTeitOrCzwP7vLxowKz6cSqUq5Irlg==}
+  '@clerk/shared@3.9.8':
+    resolution: {integrity: sha512-gJwABXovbjtvP0ZVO9p5G+zYezyE3UFzvkVhbwsN/QBmwkwwGm7dbnH88HR9PY5MdlNE4feVamwg6WDwa841Vg==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       react: ^19.0.0
@@ -6949,20 +6942,8 @@ packages:
       react-dom:
         optional: true
 
-  '@clerk/shared@3.9.7-snapshot.v20250611045520':
-    resolution: {integrity: sha512-Z64hRJXGRpxJnr234SIKqAzDPQTrKtO6lPyR63R2ak0MHStg3ZyikReczPcVD83QorLXe3ULt+DwwWmDrAJjUA==}
-    engines: {node: '>=18.17.0'}
-    peerDependencies:
-      react: ^19.0.0
-      react-dom: ^19.0.0
-    peerDependenciesMeta:
-      react:
-        optional: true
-      react-dom:
-        optional: true
-
-  '@clerk/tanstack-react-start@0.17.0-snapshot.v20250611045520':
-    resolution: {integrity: sha512-nLIkzfL7DDD0UvRNld1SZe0B/BvYrWLkt4ZMyY1hxFmfbFPn4PNqznTS/AcMeTLOz5L5IBlq4pReTkcbl+8C0w==}
+  '@clerk/tanstack-react-start@0.18.0':
+    resolution: {integrity: sha512-JajGYixktm/B8z4Hi6r062gTXcIOyKJVhkT2hSv9dhjkk9Dcram10d/R6ZWDFmNGVhM+FGRhKQQq6vu9IJBRmw==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       '@tanstack/react-router': workspace:*
@@ -6970,12 +6951,8 @@ packages:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@clerk/types@4.49.2':
-    resolution: {integrity: sha512-b4LR3Xsegqe0S6ZkaSJ1skO5a36EIiYRCFBzrJIbJX58vh25FFbOs4VHcK71uCLGJ1Jm1bViPi8QPGYoqYAUuw==}
-    engines: {node: '>=18.17.0'}
-
-  '@clerk/types@4.60.1-snapshot.v20250611045520':
-    resolution: {integrity: sha512-5ZC0+Hu+bP8iaMdhMqCoeSW2sc5V3PiQNh+QQbWhQLhd1NOB1ZpLpLZZykw5zpr97ehVagqBtt1jPpVUfSJaCQ==}
+  '@clerk/types@4.61.0':
+    resolution: {integrity: sha512-SK58IsUIAmmgm8qg63raiZCXvpwKQobpA9/wCOfQj5GgN8CIEuCqGwqLGzk8xkYabLsLTACLs1l9bx38rLMMzQ==}
     engines: {node: '>=18.17.0'}
 
   '@cloudflare/kv-asset-handler@0.4.0':
@@ -14314,11 +14291,6 @@ packages:
       '@swc/core': ^1.2.147
       webpack: '>=2'
 
-  swr@2.3.0:
-    resolution: {integrity: sha512-NyZ76wA4yElZWBHzSgEJc28a0u6QZvhb6w0azeL2k7+Q1gAzVK+IqQYXhVOC/mzi+HZIozrZvBVeSeOZNR2bqA==}
-    peerDependencies:
-      react: ^19.0.0
-
   swr@2.3.3:
     resolution: {integrity: sha512-dshNvs3ExOqtZ6kJBaAsabhPdHyeY4P2cKwRCniDVifBMoG/SVI7tfLWqPXriVspf2Rg4tPzXJTnwaihIeFw2A==}
     peerDependencies:
@@ -15559,10 +15531,10 @@ snapshots:
       '@types/tough-cookie': 4.0.5
       tough-cookie: 4.1.4
 
-  '@clerk/backend@2.0.1-snapshot.v20250611045520(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/backend@2.2.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/shared': 3.9.7-snapshot.v20250611045520(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.60.1-snapshot.v20250611045520
+      '@clerk/shared': 3.9.8(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/types': 4.61.0
       cookie: 1.0.2
       snakecase-keys: 8.0.1
       tslib: 2.8.1
@@ -15570,39 +15542,17 @@ snapshots:
       - react
       - react-dom
 
-  '@clerk/clerk-react@5.25.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/shared': 3.2.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.49.2
-      react: 19.0.0
-      react-dom: 19.0.0(react@19.0.0)
-      tslib: 2.8.1
-    optional: true
-
-  '@clerk/clerk-react@5.31.10-snapshot.v20250611045520(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
-    dependencies:
-      '@clerk/shared': 3.9.7-snapshot.v20250611045520(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.60.1-snapshot.v20250611045520
+      '@clerk/shared': 3.9.8(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/types': 4.61.0
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
       tslib: 2.8.1
 
-  '@clerk/shared@3.2.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/shared@3.9.8(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/types': 4.49.2
-      dequal: 2.0.3
-      glob-to-regexp: 0.4.1
-      js-cookie: 3.0.5
-      std-env: 3.9.0
-      swr: 2.3.0(react@19.0.0)
-    optionalDependencies:
-      react: 19.0.0
-      react-dom: 19.0.0(react@19.0.0)
-    optional: true
-
-  '@clerk/shared@3.9.7-snapshot.v20250611045520(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
-    dependencies:
-      '@clerk/types': 4.60.1-snapshot.v20250611045520
+      '@clerk/types': 4.61.0
       dequal: 2.0.3
       glob-to-regexp: 0.4.1
       js-cookie: 3.0.5
@@ -15612,24 +15562,19 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@clerk/tanstack-react-start@0.17.0-snapshot.v20250611045520(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/tanstack-react-start@0.18.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/backend': 2.0.1-snapshot.v20250611045520(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/clerk-react': 5.31.10-snapshot.v20250611045520(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/shared': 3.9.7-snapshot.v20250611045520(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.60.1-snapshot.v20250611045520
+      '@clerk/backend': 2.2.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/clerk-react': 5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/shared': 3.9.8(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/types': 4.61.0
       '@tanstack/react-router': link:packages/react-router
       '@tanstack/react-start': link:packages/react-start
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
       tslib: 2.8.1
 
-  '@clerk/types@4.49.2':
-    dependencies:
-      csstype: 3.1.3
-    optional: true
-
-  '@clerk/types@4.60.1-snapshot.v20250611045520':
+  '@clerk/types@4.61.0':
     dependencies:
       csstype: 3.1.3
 
@@ -15653,10 +15598,10 @@ snapshots:
       '@types/conventional-commits-parser': 5.0.1
       chalk: 5.4.1
 
-  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.25.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))':
+  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))':
     dependencies:
       '@tanstack/react-query': 5.66.0(react@19.0.0)
-      convex: 1.19.0(@clerk/clerk-react@5.25.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      convex: 1.19.0(@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
 
   '@csstools/color-helpers@5.0.1': {}
 
@@ -20014,13 +19959,13 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex@1.19.0(@clerk/clerk-react@5.25.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+  convex@1.19.0(@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
       esbuild: 0.23.0
       jwt-decode: 3.1.2
       prettier: 3.4.2
     optionalDependencies:
-      '@clerk/clerk-react': 5.25.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/clerk-react': 5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
@@ -23639,13 +23584,6 @@ snapshots:
       '@swc/core': 1.10.15(@swc/helpers@0.5.15)
       '@swc/counter': 0.1.3
       webpack: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))(esbuild@0.25.4)(webpack-cli@5.1.4)
-
-  swr@2.3.0(react@19.0.0):
-    dependencies:
-      dequal: 2.0.3
-      react: 19.0.0
-      use-sync-external-store: 1.2.2(react@19.0.0)
-    optional: true
 
   swr@2.3.3(react@19.0.0):
     dependencies:

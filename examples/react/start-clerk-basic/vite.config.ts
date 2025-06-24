@@ -12,7 +12,4 @@ export default defineConfig({
     }),
     tanstackStart(),
   ],
-  ssr: {
-    noExternal: ['@clerk/tanstack-react-start'],
-  },
 })
