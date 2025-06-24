@@ -31,6 +31,13 @@ const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
 })
 
 export const Route = createRootRoute({
+  beforeLoad: async () => {
+    const { user } = await fetchClerkAuth()
+
+    return {
+      user,
+    }
+  },
   head: () => ({
     meta: [
       {
@@ -64,13 +71,6 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/favicon.ico' },
     ],
   }),
-  beforeLoad: async () => {
-    const { user } = await fetchClerkAuth()
-
-    return {
-      user,
-    }
-  },
   errorComponent: (props) => {
     return (
       <RootDocument>
