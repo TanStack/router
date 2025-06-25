@@ -25,11 +25,11 @@ export async function serverFnFetcher(
 
     // Arrange the headers
     const headers = new Headers({
+      'x-tsr-redirect': 'manual',
       ...(type === 'payload'
         ? {
             'content-type': 'application/json',
             accept: 'application/json',
-            'x-tsr-redirect': 'manual',
           }
         : {}),
       ...(first.headers instanceof Headers
