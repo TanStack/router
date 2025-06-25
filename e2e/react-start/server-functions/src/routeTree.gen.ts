@@ -22,8 +22,10 @@ import { Route as DeadCodePreserveRouteImport } from './routes/dead-code-preserv
 import { Route as ConsistentRouteImport } from './routes/consistent'
 import { Route as AbortSignalRouteImport } from './routes/abort-signal'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-redirect/index'
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
+import { Route as FormdataRedirectTargetNameRouteImport } from './routes/formdata-redirect/target.$name'
 
 const SubmitPostFormdataRoute = SubmitPostFormdataRouteImport.update({
   id: '/submit-post-formdata',
@@ -90,6 +92,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FormdataRedirectIndexRoute = FormdataRedirectIndexRouteImport.update({
+  id: '/formdata-redirect/',
+  path: '/formdata-redirect/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CookiesIndexRoute = CookiesIndexRouteImport.update({
   id: '/cookies/',
   path: '/cookies/',
@@ -100,6 +107,12 @@ const CookiesSetRoute = CookiesSetRouteImport.update({
   path: '/cookies/set',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FormdataRedirectTargetNameRoute =
+  FormdataRedirectTargetNameRouteImport.update({
+    id: '/formdata-redirect/target/$name',
+    path: '/formdata-redirect/target/$name',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -117,6 +130,8 @@ export interface FileRoutesByFullPath {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
   '/cookies': typeof CookiesIndexRoute
+  '/formdata-redirect': typeof FormdataRedirectIndexRoute
+  '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -134,6 +149,8 @@ export interface FileRoutesByTo {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
   '/cookies': typeof CookiesIndexRoute
+  '/formdata-redirect': typeof FormdataRedirectIndexRoute
+  '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -152,6 +169,8 @@ export interface FileRoutesById {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
   '/cookies/': typeof CookiesIndexRoute
+  '/formdata-redirect/': typeof FormdataRedirectIndexRoute
+  '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,6 +190,8 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/cookies/set'
     | '/cookies'
+    | '/formdata-redirect'
+    | '/formdata-redirect/target/$name'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -188,6 +209,8 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/cookies/set'
     | '/cookies'
+    | '/formdata-redirect'
+    | '/formdata-redirect/target/$name'
   id:
     | '__root__'
     | '/'
@@ -205,6 +228,8 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/cookies/set'
     | '/cookies/'
+    | '/formdata-redirect/'
+    | '/formdata-redirect/target/$name'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -223,6 +248,8 @@ export interface RootRouteChildren {
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
   CookiesSetRoute: typeof CookiesSetRoute
   CookiesIndexRoute: typeof CookiesIndexRoute
+  FormdataRedirectIndexRoute: typeof FormdataRedirectIndexRoute
+  FormdataRedirectTargetNameRoute: typeof FormdataRedirectTargetNameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -318,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/formdata-redirect/': {
+      id: '/formdata-redirect/'
+      path: '/formdata-redirect'
+      fullPath: '/formdata-redirect'
+      preLoaderRoute: typeof FormdataRedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cookies/': {
       id: '/cookies/'
       path: '/cookies'
@@ -330,6 +364,13 @@ declare module '@tanstack/react-router' {
       path: '/cookies/set'
       fullPath: '/cookies/set'
       preLoaderRoute: typeof CookiesSetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/formdata-redirect/target/$name': {
+      id: '/formdata-redirect/target/$name'
+      path: '/formdata-redirect/target/$name'
+      fullPath: '/formdata-redirect/target/$name'
+      preLoaderRoute: typeof FormdataRedirectTargetNameRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -351,6 +392,8 @@ const rootRouteChildren: RootRouteChildren = {
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,
   CookiesSetRoute: CookiesSetRoute,
   CookiesIndexRoute: CookiesIndexRoute,
+  FormdataRedirectIndexRoute: FormdataRedirectIndexRoute,
+  FormdataRedirectTargetNameRoute: FormdataRedirectTargetNameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

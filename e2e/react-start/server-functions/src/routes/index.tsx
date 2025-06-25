@@ -72,6 +72,16 @@ function Home() {
         <li>
           <Link to="/raw-response">server function returns raw response</Link>
         </li>
+        <li>
+          <Link to="/formdata-redirect" search={{ mode: 'js' }}>
+            server function redirects when FormData is submitted (via JS)
+          </Link>
+        </li>
+         <li>
+          <Link to="/formdata-redirect" search={{ mode: 'no-js' }}>
+            server function redirects when FormData is submitted (via no-JS)
+          </Link>
+        </li>
       </ul>
     </div>
   )
