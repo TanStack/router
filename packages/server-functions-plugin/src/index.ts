@@ -184,10 +184,7 @@ export function TanStackServerFnPluginEnv(
     // look up server functions and during build/production to produce a
     // static manifest that can be read by the server build
     Object.assign(directiveFnsById, d)
-    if (debug)
-      console.info(
-        `directiveFnsById after update: `, directiveFnsById
-      )
+    if (debug) console.info(`directiveFnsById after update: `, directiveFnsById)
 
     // during dev, invalidate the module in the server environment
     if (serverDevEnv) {
