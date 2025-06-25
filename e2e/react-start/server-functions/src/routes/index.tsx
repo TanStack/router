@@ -77,7 +77,7 @@ function Home() {
             server function redirects when FormData is submitted (via JS)
           </Link>
         </li>
-         <li>
+        <li>
           <Link to="/formdata-redirect" search={{ mode: 'no-js' }}>
             server function redirects when FormData is submitted (via no-JS)
           </Link>
