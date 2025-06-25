@@ -63,7 +63,7 @@ Or you can use the `--preset` flag with the `build` command to specify the deplo
 npm run build --preset netlify
 ```
 
-Deploy you application to Netlify using their one-click deployment process, and you're ready to go!
+Deploy your application to Netlify using their one-click deployment process, and you're ready to go!
 
 ### Vercel
 
