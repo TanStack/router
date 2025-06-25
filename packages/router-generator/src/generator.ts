@@ -58,7 +58,9 @@ import type { Logger } from './logger'
 import type { TransformPlugin } from './transform/types'
 
 interface fs {
-  stat: (filePath: string) => Promise<{ mtimeMs: bigint }>
+  stat: (
+    filePath: string,
+  ) => Promise<{ mtimeMs: bigint; mode: number; uid: number; gid: number }>
   mkdtempSync: (prefix: string) => string
   rename: (oldPath: string, newPath: string) => Promise<void>
   writeFile: (filePath: string, content: string) => Promise<void>
@@ -67,10 +69,20 @@ interface fs {
   ) => Promise<
     { stat: { mtimeMs: bigint }; fileContent: string } | 'file-not-existing'
   >
+  chmod: (filePath: string, mode: number) => Promise<void>
+  chown: (filePath: string, uid: number, gid: number) => Promise<void>
 }
 
 const DefaultFileSystem: fs = {
-  stat: (filePath) => fsp.stat(filePath, { bigint: true }),
+  stat: async (filePath) => {
+    const res = await fsp.stat(filePath, { bigint: true })
+    return {
+      mtimeMs: res.mtimeMs,
+      mode: Number(res.mode),
+      uid: Number(res.uid),
+      gid: Number(res.gid),
+    }
+  },
   mkdtempSync: mkdtempSync,
   rename: (oldPath, newPath) => fsp.rename(oldPath, newPath),
   writeFile: (filePath, content) => fsp.writeFile(filePath, content),
@@ -90,6 +102,8 @@ const DefaultFileSystem: fs = {
       throw e
     }
   },
+  chmod: (filePath, mode) => fsp.chmod(filePath, mode),
+  chown: (filePath, uid, gid) => fsp.chown(filePath, uid, gid),
 }
 
 interface Rerun {
@@ -1030,6 +1044,31 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
           msg: `File ${opts.filePath} was modified by another process during processing.`,
           event: { type: 'update', path: opts.filePath },
         })
+      }
+      const newFileState = await this.fs.stat(tmpPath)
+      if (newFileState.mode !== beforeStat.mode) {
+        await this.fs.chmod(tmpPath, beforeStat.mode)
+      }
+      if (
+        newFileState.uid !== beforeStat.uid ||
+        newFileState.gid !== beforeStat.gid
+      ) {
+        try {
+          await this.fs.chown(tmpPath, beforeStat.uid, beforeStat.gid)
+        } catch (err) {
+          if (
+            typeof err === 'object' &&
+            err !== null &&
+            'code' in err &&
+            (err as any).code === 'EPERM'
+          ) {
+            console.warn(
+              `[safeFileWrite] chown failed: ${(err as any).message}`,
+            )
+          } else {
+            throw err
+          }
+        }
       }
     } else {
       if (await checkFileExists(opts.filePath)) {

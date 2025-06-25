@@ -9,6 +9,11 @@ import SignInButton from '../components/sign-in-button';
 import type { ReactNode } from 'react';
 
 export const Route = createRootRoute({
+  beforeLoad: async () => {
+    const { user } = await getAuth();
+
+    return { user };
+  },
   head: () => ({
     meta: [
       {
@@ -23,11 +28,6 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  beforeLoad: async () => {
-    const { user } = await getAuth();
-
-    return { user };
-  },
   loader: async ({ context }) => {
     const { user } = context;
     const url = await getSignInUrl();
