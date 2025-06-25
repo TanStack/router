@@ -526,10 +526,10 @@ type ResolveRelativeToParams<
 
 export interface MakeOptionalSearchParams<
   in out TRouter extends AnyRouter,
-  in out TFrom,
-  in out TTo,
+  in out TFrom extends string,
+  in out TTo extends string | undefined,
 > {
-  search?: true | (ParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {})
+  search?: StrictSearchParamsForRoute<TRouter, TFrom, TTo>
 }
 
 export interface MakeOptionalPathParams<
@@ -567,10 +567,10 @@ export interface MakeRequiredPathParams<
 
 export interface MakeRequiredSearchParams<
   in out TRouter extends AnyRouter,
-  in out TFrom,
-  in out TTo,
+  in out TFrom extends string,
+  in out TTo extends string | undefined,
 > {
-  search: MakeRequiredParamsReducer<TRouter, 'SEARCH', TFrom, TTo> & {}
+  search: StrictSearchParamsForRoute<TRouter, TFrom, TTo>
 }
 
 export type IsRequired<
@@ -589,12 +589,33 @@ export type IsRequired<
           >
     : never
 
-export type SearchParamOptions<TRouter extends AnyRouter, TFrom, TTo> =
+export type StrictSearchParamsForRoute<
+  TRouter extends AnyRouter,
+  TFrom extends string,
+  TTo extends string | undefined,
+> =
+  ResolveRelativePath<TFrom, TTo> extends infer TPath
+    ? undefined extends TPath
+      ? never
+      : TPath extends CatchAllPaths<TRouter>
+        ? ResolveAllToParams<TRouter, 'SEARCH'>
+        : ResolveRoute<TRouter, TFrom, TTo>['types']['fullSearchSchemaInput']
+    : never
+
+export type SearchParamOptions<
+  TRouter extends AnyRouter,
+  TFrom extends string,
+  TTo extends string | undefined,
+> =
   IsRequired<TRouter, 'SEARCH', TFrom, TTo> extends never
     ? MakeOptionalSearchParams<TRouter, TFrom, TTo>
     : MakeRequiredSearchParams<TRouter, TFrom, TTo>
 
-export type PathParamOptions<TRouter extends AnyRouter, TFrom, TTo> =
+export type PathParamOptions<
+  TRouter extends AnyRouter,
+  TFrom extends string,
+  TTo extends string | undefined,
+> =
   IsRequired<TRouter, 'PATH', TFrom, TTo> extends never
     ? MakeOptionalPathParams<TRouter, TFrom, TTo>
     : MakeRequiredPathParams<TRouter, TFrom, TTo>
