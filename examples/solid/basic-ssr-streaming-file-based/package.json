@@ -13,7 +13,6 @@
   "dependencies": {
     "@tanstack/solid-router": "^1.121.27",
     "@tanstack/solid-router-devtools": "^1.121.27",
-    "@tanstack/solid-router-ssr": "^1.121.27",
     "autoprefixer": "^10.4.20",
     "compression": "^1.7.5",
     "express": "^4.21.2",

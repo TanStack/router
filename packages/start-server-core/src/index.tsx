@@ -8,8 +8,8 @@ export {
   dehydrateRouter,
   transformReadableStreamWithRouter,
   transformPipeableStreamWithRouter,
-} from '@tanstack/router-ssr-core/server'
-export type { HandlerCallback } from '@tanstack/router-ssr-core/server'
+} from '@tanstack/router-core/ssr/server'
+export type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 
 export { handleServerAction } from './server-functions-handler'
 

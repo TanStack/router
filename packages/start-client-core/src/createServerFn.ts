@@ -1,7 +1,7 @@
 import { default as invariant } from 'tiny-invariant'
 import { default as warning } from 'tiny-warning'
 import { isNotFound, isRedirect } from '@tanstack/router-core'
-import { mergeHeaders, tsrSerializer } from '@tanstack/router-ssr-core/client'
+import { mergeHeaders, tsrSerializer } from '@tanstack/router-core/ssr/client'
 import { globalMiddleware } from './registerGlobalMiddleware'
 
 import type {
@@ -14,7 +14,7 @@ import type {
   SerializerStringifyBy,
   Validator,
 } from '@tanstack/router-core'
-import type { JsonResponse } from '@tanstack/router-ssr-core/client'
+import type { JsonResponse } from '@tanstack/router-core/ssr/client'
 import type { Readable } from 'node:stream'
 import type {
   AnyFunctionMiddleware,

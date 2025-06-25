@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.121.27",
-    "@tanstack/react-router-ssr": "^1.121.32",
     "@tanstack/router-plugin": "^1.121.29",
     "compression": "^1.8.0",
     "express": "^4.21.2",

@@ -3,7 +3,7 @@ import {
   RouterServer,
   createRequestHandler,
   renderRouterToStream,
-} from '@tanstack/solid-router-ssr/server'
+} from '@tanstack/solid-router/ssr/server'
 import { createRouter } from './router'
 import type express from 'express'
 import './fetch-polyfill'
