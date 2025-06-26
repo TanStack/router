@@ -27,7 +27,7 @@ To implement non-streaming SSR with TanStack Router, you will need the following
 - And, either:
   - `defaultRenderHandler` from `@tanstack/react-router`
     - This will render your application in your server entry and also automatically handle application-level hydration/dehydration and also automatically implement the RouterServer component.
-  or:
+      or:
   - `renderRouterToString` from `@tanstack/react-router`
     - This differs from defaultRenderHandler in that it allows you to manually specify the `Wrap` component option on `Router` together with any other providers you may need to wrap it with.
   - `RouterServer` from `@tanstack/react-router`
