@@ -38,7 +38,7 @@
     "test:perf": "vitest bench",
     "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build && tsc -p tsconfig.build.json"
+    "build": "vite build && vite --config vite.ssr.config.ts build && tsc -p tsconfig.build.json"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",
@@ -65,12 +65,12 @@
         "default": "./dist/source/ssr/server.jsx"
       },
       "import": {
-        "types": "./dist/esm/ssr/server.d.ts",
-        "default": "./dist/esm/ssr/server.js"
+        "types": "./dist/ssr/esm/ssr/server.d.ts",
+        "default": "./dist/ssr/esm/ssr/server.js"
       },
       "require": {
-        "types": "./dist/cjs/ssr/server.d.cts",
-        "default": "./dist/cjs/ssr/server.cjs"
+        "types": "./dist/ssr/cjs/ssr/server.d.cts",
+        "default": "./dist/ssr/cjs/ssr/server.cjs"
       }
     },
     "./ssr/client": {
@@ -79,12 +79,12 @@
         "default": "./dist/source/ssr/client.jsx"
       },
       "import": {
-        "types": "./dist/esm/ssr/client.d.ts",
-        "default": "./dist/esm/ssr/client.js"
+        "types": "./dist/ssr/esm/ssr/client.d.ts",
+        "default": "./dist/ssr/esm/ssr/client.js"
       },
       "require": {
-        "types": "./dist/cjs/ssr/client.d.cts",
-        "default": "./dist/cjs/ssr/client.cjs"
+        "types": "./dist/ssr/cjs/ssr/client.d.cts",
+        "default": "./dist/ssr/cjs/ssr/client.cjs"
       }
     },
     "./package.json": "./package.json"

@@ -5,7 +5,7 @@ import packageJson from './package.json'
 import type { ViteUserConfig } from 'vitest/config'
 
 const config = defineConfig({
-  plugins: [solid()] as ViteUserConfig['plugins'],
+  plugins: [solid({ solid: { generate: 'ssr' } })] as ViteUserConfig['plugins'], // [solid({ solid: { generate: 'ssr' } })]
   test: {
     name: packageJson.name,
     dir: './tests',
@@ -19,7 +19,9 @@ const config = defineConfig({
 export default mergeConfig(
   config,
   tanstackViteConfig({
-    entry: ['./src/index.tsx'],
+    entry: ['./src/ssr/client.tsx','./src/ssr/server.tsx'],
     srcDir: './src',
+    outDir: './dist/ssr',
+    externalDeps: ['solid-js/web'],
   }),
 )
