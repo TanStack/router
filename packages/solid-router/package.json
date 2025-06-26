@@ -62,7 +62,7 @@
     "./ssr/server": {
       "solid": {
         "types": "./dist/source/ssr/server.d.ts",
-        "default": "./dist/source/ssr/server.jsx"
+        "default": "./dist/source/ssr/server.js"
       },
       "import": {
         "types": "./dist/esm/ssr/server.d.ts",
@@ -76,7 +76,7 @@
     "./ssr/client": {
       "solid": {
         "types": "./dist/source/ssr/client.d.ts",
-        "default": "./dist/source/ssr/client.jsx"
+        "default": "./dist/source/ssr/client.js"
       },
       "import": {
         "types": "./dist/esm/ssr/client.d.ts",
