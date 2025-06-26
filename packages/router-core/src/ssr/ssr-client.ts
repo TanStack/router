@@ -91,7 +91,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   }
 
   router.clientSsr = {
-    getStreamedValue: <T,>(key: string): T | undefined => {
+    getStreamedValue: <T>(key: string): T | undefined => {
       if (router.isServer) {
         return undefined
       }
