@@ -11,7 +11,6 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { ReactNode } from './route'
 import type {
   AnyRouter,
   DeepPartial,
@@ -154,7 +153,7 @@ export type MakeMatchRouteOptions<
           TRouter['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
-      ) => ReactNode)
+      ) => React.ReactNode)
     | React.ReactNode
 }
 

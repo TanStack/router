@@ -18,7 +18,7 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import type { AnyRoute } from '@tanstack/router-core'
+import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
@@ -77,8 +77,12 @@ export const Match = (props: { matchId: string }) => {
     },
   })
 
+  const ShellComponent = route().isRoot
+    ? ((route().options as RootRouteOptions).shellComponent ?? SafeFragment)
+    : SafeFragment
+
   return (
-    <>
+    <ShellComponent>
       <matchContext.Provider value={() => props.matchId}>
         <Dynamic
           component={ResolvedSuspenseBoundary()}
@@ -124,7 +128,7 @@ export const Match = (props: { matchId: string }) => {
           <ScrollRestoration />
         </>
       ) : null}
-    </>
+    </ShellComponent>
   )
 }
 

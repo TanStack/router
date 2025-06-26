@@ -284,7 +284,6 @@ export {
 } from './route'
 export type {
   AnyRootRoute,
-  ReactNode,
   SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,

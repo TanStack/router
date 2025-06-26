@@ -54,6 +54,14 @@ declare module '@tanstack/router-core' {
     pendingComponent?: RouteComponent
   }
 
+  export interface RootRouteOptionsExtensions {
+    shellComponent?: ({
+      children,
+    }: {
+      children: React.ReactNode
+    }) => React.ReactNode
+  }
+
   export interface RouteExtensions<
     in out TId extends string,
     in out TFullPath extends string,
@@ -534,11 +542,9 @@ export function createRouteMask<
   return opts as any
 }
 
-export type ReactNode = any
-
 export type SyncRouteComponent<TProps> =
-  | ((props: TProps) => ReactNode)
-  | React.LazyExoticComponent<(props: TProps) => ReactNode>
+  | React.FC<TProps>
+  | React.LazyExoticComponent<(props: TProps) => React.ReactNode>
 
 export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
   preload?: () => Promise<void>

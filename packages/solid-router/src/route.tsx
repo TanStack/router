@@ -54,6 +54,14 @@ declare module '@tanstack/router-core' {
     pendingComponent?: RouteComponent
   }
 
+  export interface RootRouteOptionsExtensions {
+    shellComponent?: ({
+      children,
+    }: {
+      children: Solid.JSX.Element
+    }) => Solid.JSX.Element
+  }
+
   export interface RouteExtensions<
     in out TId extends string,
     in out TFullPath extends string,
