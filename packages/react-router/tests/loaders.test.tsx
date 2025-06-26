@@ -356,7 +356,9 @@ test('reproducer #4245', async () => {
       const data = indexRoute.useLoaderData()
       return (
         <div>
-          <Link to="/foo" data-testid="link-to-foo">foo</Link>
+          <Link to="/foo" data-testid="link-to-foo">
+            foo
+          </Link>
           {data}
         </div>
       )
@@ -366,7 +368,11 @@ test('reproducer #4245', async () => {
   const fooRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/foo',
-    component: () => <Link to="/" data-testid="link-to-index">index</Link>,
+    component: () => (
+      <Link to="/" data-testid="link-to-index">
+        index
+      </Link>
+    ),
   })
 
   const routeTree = rootRoute.addChildren([indexRoute, fooRoute])
