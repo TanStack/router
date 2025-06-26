@@ -35,6 +35,7 @@ export type {
   MaskOptions,
   ToSubOptionsProps,
   RequiredToOptions,
+  StrictSearchParamsForRoute,
 } from './link'
 
 export type {
