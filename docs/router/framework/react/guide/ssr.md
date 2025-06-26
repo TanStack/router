@@ -3,6 +3,8 @@ id: ssr
 title: SSR
 ---
 
+<h4 style="background-color:rgba(232,116,116,0.28)"> Note!! While every effort has been made to seperate these APIs from changes to Tanstack Start, there are shared implementations internally and therefore these can be subject to change and should be regarded as being experimental until Start reaches stable status.</h4>
+
 Server Side Rendering (SSR) is the process of rendering a component on the server and sending the HTML markup to the client. The client then hydrates the markup into a fully interactive component.
 
 There are usually two different flavors of SSR to be considered:
