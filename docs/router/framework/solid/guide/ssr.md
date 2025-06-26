@@ -27,7 +27,6 @@ To implement non-streaming SSR with TanStack Router, you will need the following
 - And, either:
   - `defaultRenderHandler` from `@tanstack/solid-router`
     - This will render your application in your server entry and also automatically handle application-level hydration/dehydration and also automatically implement the RouterServer component.
-    
   or:
   - `renderRouterToString` from `@tanstack/solid-router`
     - This differs from defaultRenderHandler in that it allows you to manually specify the `Wrap` component option on `Router` together with any other providers you may need to wrap it with.
@@ -72,40 +71,50 @@ declare module '@tanstack/solid-router' {
 Now that you have a router instance that has loaded all of the critical data for the current URL, you can render your application on the server:
 
 using `defaultRenderToString`
+
 ```tsx
 // src/entry-server.tsx
-import {createRequestHandler, defaultRenderToString} from '@tanstack/solid-router/ssr/server'
+import {
+  createRequestHandler,
+  defaultRenderToString,
+} from '@tanstack/solid-router/ssr/server'
 import { createRouter } from './router'
 
-export async function render({request}: {request: Request}) {
-  const handler = createRequestHandler({request, createRouter})
-  
-  return await handler(defaultRenderToString);
+export async function render({ request }: { request: Request }) {
+  const handler = createRequestHandler({ request, createRouter })
+
+  return await handler(defaultRenderToString)
 }
 ```
 
 using `renderRouterToString`
+
 ```tsx
 // src/entry-server.tsx
-import { createRequestHandler, renderRouterToString, RouterServer } from '@tanstack/solid-router/ssr/server'
+import {
+  createRequestHandler,
+  renderRouterToString,
+  RouterServer,
+} from '@tanstack/solid-router/ssr/server'
 import { createRouter } from './router'
 
-export function render({request}: {request: Request}) {
-  const handler = createRequestHandler({request, createRouter})
-  
-  return handler(({ request, responseHeaders, router }) => renderRouterToString({
+export function render({ request }: { request: Request }) {
+  const handler = createRequestHandler({ request, createRouter })
+
+  return handler(({ request, responseHeaders, router }) =>
+    renderRouterToString({
       request,
       responseHeaders,
       router,
       children: () => <RouterServer router={router} />,
     }),
-  );
+  )
 }
 ```
 
 NOTE: The createRequestHandler method requires a web api standard Request object, while the handler method will return a web api standard Response promise.
 
-Should you be using a server framework like Express that uses its own Request and Response objects you would need to convert from the one to the other. Please have a look at the examples for how such an implementation might look like. 
+Should you be using a server framework like Express that uses its own Request and Response objects you would need to convert from the one to the other. Please have a look at the examples for how such an implementation might look like.
 
 ## Rendering the Application on the Client
 
@@ -135,36 +144,45 @@ This pattern can be useful for pages that have slow or high-latency data fetchin
 
 **This streaming pattern is all automatic as long as you are using either `defaultStreamHandler` or `renderRouterToStream` **.
 
-
 using `defaultStreamHandler`
+
 ```tsx
 // src/entry-server.tsx
-import {createRequestHandler, defaultStreamHandler} from '@tanstack/solid-router/ssr/server'
+import {
+  createRequestHandler,
+  defaultStreamHandler,
+} from '@tanstack/solid-router/ssr/server'
 import { createRouter } from './router'
 
-export async function render({request}: {request: Request}) {
-  const handler = createRequestHandler({request, createRouter})
-  
-  return await handler(defaultStreamHandler);
+export async function render({ request }: { request: Request }) {
+  const handler = createRequestHandler({ request, createRouter })
+
+  return await handler(defaultStreamHandler)
 }
 ```
 
 using `renderRouterToStream`
+
 ```tsx
 // src/entry-server.tsx
-import { createRequestHandler, renderRouterToStream, RouterServer } from '@tanstack/solid-router/ssr/server'
+import {
+  createRequestHandler,
+  renderRouterToStream,
+  RouterServer,
+} from '@tanstack/solid-router/ssr/server'
 import { createRouter } from './router'
 
-export function render({request}: {request: Request}) {
-  const handler = createRequestHandler({request, createRouter})
-  
-  return handler(({ request, responseHeaders, router }) => renderRouterToStream({
+export function render({ request }: { request: Request }) {
+  const handler = createRequestHandler({ request, createRouter })
+
+  return handler(({ request, responseHeaders, router }) =>
+    renderRouterToStream({
       request,
       responseHeaders,
       router,
       children: () => <RouterServer router={router} />,
     }),
-  );
+  )
 }
 ```
 
