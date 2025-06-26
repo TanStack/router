@@ -529,7 +529,7 @@ export interface MakeOptionalSearchParams<
   in out TFrom extends string,
   in out TTo extends string | undefined,
 > {
-  search?: StrictSearchParamsForRoute<TRouter, TFrom, TTo>
+  search?: StrictSearchParamsForRoute<TRouter, TFrom, TTo> & Record<string, never> | ((current: StrictSearchParamsForRoute<TRouter, TFrom, TTo> | undefined) => StrictSearchParamsForRoute<TRouter, TFrom, TTo>)
 }
 
 export interface MakeOptionalPathParams<
