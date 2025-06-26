@@ -12,8 +12,11 @@ import {
   processRouteTree,
   trimPath,
 } from '@tanstack/router-core'
+import {
+  attachRouterServerSsrUtils,
+  dehydrateRouter,
+} from '@tanstack/router-core/ssr/server'
 import { getResponseHeaders, requestHandler } from './h3'
-import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
 import { VIRTUAL_MODULES } from './virtual-modules'
@@ -29,7 +32,7 @@ import type {
   Manifest,
   ProcessRouteTreeResult,
 } from '@tanstack/router-core'
-import type { HandlerCallback } from './handlerCallback'
+import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 
 type TODO = any
 
