@@ -23,16 +23,16 @@ Non-Streaming server-side rendering is the classic process of rendering the mark
 
 To implement non-streaming SSR with TanStack Router, you will need the following utilities:
 
-- `RouterClient` from `@tanstack/react-router`
+- `RouterClient` from `@tanstack/solid-router`
   - e.g. `<RouterClient router={router} />`
   - Rendering this component in your client entry will render your application and also automatically implement the `Wrap` component option on `Router`
 - And, either:
-  - `defaultRenderHandler` from `@tanstack/react-router`
+  - `defaultRenderHandler` from `@tanstack/solid-router`
     - This will render your application in your server entry and also automatically handle application-level hydration/dehydration and also automatically implement the RouterServer component.
       or:
-  - `renderRouterToString` from `@tanstack/react-router`
+  - `renderRouterToString` from `@tanstack/solid-router`
     - This differs from defaultRenderHandler in that it allows you to manually specify the `Wrap` component option on `Router` together with any other providers you may need to wrap it with.
-  - `RouterServer` from `@tanstack/react-router`
+  - `RouterServer` from `@tanstack/solid-router`
     - This implements the `Wrap` component option on `Router`
 
 ### Automatic Server History
@@ -54,14 +54,14 @@ Since your router will exist both on the server and the client, it's important t
 - `src/router.tsx`
 
 ```tsx
-import { createRouter as createTanstackRouter } from '@tanstack/react-router'
+import { createRouter as createTanstackRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
 
 export function createRouter() {
   return createTanstackRouter({ routeTree })
 }
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/solid-router' {
   interface Register {
     router: ReturnType<typeof createRouter>
   }
@@ -79,7 +79,7 @@ using `defaultRenderToString`
 import {
   createRequestHandler,
   defaultRenderToString,
-} from '@tanstack/react-router/ssr/server'
+} from '@tanstack/solid-router/ssr/server'
 import { createRouter } from './router'
 
 export async function render({ request }: { request: Request }) {
@@ -97,7 +97,7 @@ import {
   createRequestHandler,
   renderRouterToString,
   RouterServer,
-} from '@tanstack/react-router/ssr/server'
+} from '@tanstack/solid-router/ssr/server'
 import { createRouter } from './router'
 
 export function render({ request }: { request: Request }) {
@@ -108,7 +108,7 @@ export function render({ request }: { request: Request }) {
       request,
       responseHeaders,
       router,
-      children: <RouterServer router={router} />,
+      children: () => <RouterServer router={router} />,
     }),
   )
 }
@@ -127,13 +127,13 @@ On the client, things are much simpler.
 
 ```tsx
 // src/entry-client.tsx
-import { hydrateRoot } from 'react-dom/client'
-import { RouterClient } from '@tanstack/react-router/ssr/client'
+import { hydrate } from 'solid-js/web'
+import { RouterClient } from '@tanstack/solid-router/ssr/client'
 import { createRouter } from './router'
 
 const router = createRouter()
 
-hydrateRoot(document, <RouterClient router={router} />)
+hydrate(() => <RouterClient router={router} />, document.body)
 ```
 
 With this setup, your application will be rendered on the server and then hydrated on the client!
@@ -153,7 +153,7 @@ using `defaultStreamHandler`
 import {
   createRequestHandler,
   defaultStreamHandler,
-} from '@tanstack/react-router/ssr/server'
+} from '@tanstack/solid-router/ssr/server'
 import { createRouter } from './router'
 
 export async function render({ request }: { request: Request }) {
@@ -171,7 +171,7 @@ import {
   createRequestHandler,
   renderRouterToStream,
   RouterServer,
-} from '@tanstack/react-router/ssr/server'
+} from '@tanstack/solid-router/ssr/server'
 import { createRouter } from './router'
 
 export function render({ request }: { request: Request }) {
@@ -182,7 +182,7 @@ export function render({ request }: { request: Request }) {
       request,
       responseHeaders,
       router,
-      children: <RouterServer router={router} />,
+      children: () => <RouterServer router={router} />,
     }),
   )
 }
