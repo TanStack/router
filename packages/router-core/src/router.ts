@@ -1790,8 +1790,15 @@ export class RouterCore<
       location: this.latestLocation,
       pendingMatches,
       // If a cached moved to pendingMatches, remove it from cachedMatches
-      cachedMatches: s.cachedMatches.filter((d) => {
-        return !pendingMatches.find((e) => e.id === d.id)
+      cachedMatches: s.cachedMatches.filter((cachedMatch) => {
+        const pendingMatch = pendingMatches.find((e) => e.id === cachedMatch.id)
+
+        if (!pendingMatch) return true
+
+        return (
+          cachedMatch.status === 'success' &&
+          (cachedMatch.isFetching || cachedMatch.loaderData !== undefined)
+        )
       }),
     }))
   }
