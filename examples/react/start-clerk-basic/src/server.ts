@@ -9,7 +9,6 @@ const handler = createStartHandler({
   createRouter,
 })
 
-// @ts-expect-error
 const clerkHandler = createClerkHandler(handler)
 
 export default clerkHandler(defaultStreamHandler)
