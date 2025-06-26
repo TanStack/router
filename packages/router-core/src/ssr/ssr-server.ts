@@ -4,7 +4,7 @@ import { TSR_DEFERRED_PROMISE, defer } from '../defer'
 import { isPlainArray, isPlainObject, pick } from '../utils'
 import { tsrSerializer } from '../serializer'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
-import type {DeferredPromise} from '../defer';
+import type { DeferredPromise } from '../defer'
 import type {
   ClientExtractedBaseEntry,
   DehydratedRouter,
