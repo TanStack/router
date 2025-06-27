@@ -71,7 +71,7 @@
   },
   "peerDependencies": {
     "tiny-invariant": "^1.3.3",
-    "@tanstack/router-core": "workspace:^",
+    "@tanstack/router-core": "workspace:*",
     "csstype": "^3.0.10",
     "solid-js": ">=1.9.5"
   },

@@ -64,7 +64,7 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "goober": "^2.1.16",
-    "@tanstack/react-router-devtools": "workspace:^"
+    "@tanstack/react-router-devtools": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
@@ -72,7 +72,7 @@
     "react-dom": "^19.0.0"
   },
   "peerDependencies": {
-    "@tanstack/react-router": "workspace:^",
+    "@tanstack/react-router": "workspace:*",
     "csstype": "^3.0.10",
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0"
