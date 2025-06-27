@@ -88,7 +88,9 @@ export const defaultTransformPlugin: TransformPlugin = {
         }
       }
       if (identifier === undefined) {
-        throw new Error(`expected identifier to be present in ${ctx.routeId} for export ${EXPORT_NAME}`)
+        throw new Error(
+          `expected identifier to be present in ${ctx.routeId} for export ${EXPORT_NAME}`,
+        )
       }
       if (identifier.name === 'createFileRoute' && ctx.lazy) {
         identifier.name = 'createLazyFileRoute'
