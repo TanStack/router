@@ -3,7 +3,8 @@ id: ssr
 title: SSR
 ---
 
-<h4 style="background-color:rgba(232,116,116,0.28)"> Note!! While every effort has been made to separate these APIs from changes to Tanstack Start, there are underlying shared implementations internally. Therefore these can be subject to change and should be regarded as experimental until Start reaches stable status.</h4>
+> [!WARNING]
+> While every effort has been made to separate these APIs from changes to Tanstack Start, there are underlying shared implementations internally. Therefore these can be subject to change and should be regarded as experimental until Start reaches stable status.</h4>
 
 Server Side Rendering (SSR) is the process of rendering a component on the server and sending the HTML markup to the client. The client then hydrates the markup into a fully interactive component.
 
@@ -144,7 +145,8 @@ Streaming SSR is the most modern flavor of SSR and is the process of continuousl
 
 This pattern can be useful for pages that have slow or high-latency data fetching requirements. For example, if you have a page that needs to fetch data from a third-party API, you can stream the critical initial markup and data to the client and then stream the less-critical third-party data to the client as it is resolved.
 
-**This streaming pattern is all automatic as long as you are using either `defaultStreamHandler` or `renderRouterToStream` **.
+> [!NOTE]
+> This streaming pattern is all automatic as long as you are using either `defaultStreamHandler` or `renderRouterToStream`.
 
 using `defaultStreamHandler`
 
