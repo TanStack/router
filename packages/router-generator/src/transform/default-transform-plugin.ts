@@ -4,9 +4,10 @@ import type { TransformImportsConfig, TransformPlugin } from './types'
 
 const b = types.builders
 
+const EXPORT_NAME = 'Route'
 export const defaultTransformPlugin: TransformPlugin = {
   name: 'default-transform',
-  exportName: 'Route',
+  exportName: EXPORT_NAME,
   imports: (ctx) => {
     const imports: TransformImportsConfig = {}
     const targetModule = `@tanstack/${ctx.target}-router`
@@ -87,7 +88,7 @@ export const defaultTransformPlugin: TransformPlugin = {
         }
       }
       if (identifier === undefined) {
-        throw new Error(`expected identifier to be present`)
+        throw new Error(`expected identifier to be present in ${ctx.routeId} for export ${EXPORT_NAME}`)
       }
       if (identifier.name === 'createFileRoute' && ctx.lazy) {
         identifier.name = 'createLazyFileRoute'
