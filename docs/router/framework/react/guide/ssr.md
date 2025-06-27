@@ -52,9 +52,8 @@ For more information on how to utilize data loading, see the [Data Loading](../d
 
 Since your router will exist both on the server and the client, it's important that you create your router in a way that is consistent between both of these environments. The easiest way to do this is to expose a `createRouter` function in a shared file that can be imported and called by both your server and client entry files.
 
-- `src/router.tsx`
-
 ```tsx
+// src/router.tsx
 import { createRouter as createTanstackRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
@@ -126,6 +125,8 @@ On the client, things are much simpler.
 - Create your router instance
 - Render your application using the `<RouterClient />` component
 
+[//]: # 'ClientEntryFileExample'
+
 ```tsx
 // src/entry-client.tsx
 import { hydrateRoot } from 'react-dom/client'
@@ -136,6 +137,8 @@ const router = createRouter()
 
 hydrateRoot(document, <RouterClient router={router} />)
 ```
+
+[//]: # 'ClientEntryFileExample'
 
 With this setup, your application will be rendered on the server and then hydrated on the client!
 
