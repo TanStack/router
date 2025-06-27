@@ -1385,7 +1385,7 @@ export class RouterCore<
 
     if (!match) return
 
-    match.abortController.abort()
+    match.abortController.abort(match.abortController.signal.reason)
     clearTimeout(match.pendingTimeout)
   }
 
