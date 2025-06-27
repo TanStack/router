@@ -49,6 +49,16 @@
         "default": "./dist/cjs/index.cjs"
       }
     },
+    "./vite-plugin": {
+      "import": {
+        "types": "./dist/esm/sitemapPlugin.d.ts",
+        "default": "./dist/esm/sitemapPlugin.js"
+      },
+      "require": {
+        "types": "./dist/cjs/sitemapPlugin.d.cts",
+        "default": "./dist/cjs/sitemapPlugin.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
