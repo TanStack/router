@@ -15,7 +15,7 @@ export const ServerRoute = createServerFileRoute('/sitemap.xml').methods({
           return posts.map((post) => ({
             path: `/posts/${post.id}`,
             priority: 0.8,
-            changeFrequency: 'daily',
+            changefreq: 'daily',
           }))
         },
       },
