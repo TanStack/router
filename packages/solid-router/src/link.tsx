@@ -112,6 +112,7 @@ export function useLinkProps<
     'state',
     'mask',
     'reloadDocument',
+    'unsafeRelative',
   ])
 
   // If this link simply reloads the current route,

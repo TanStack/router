@@ -82,6 +82,7 @@ export function useLinkProps<
     state: _state,
     mask: _mask,
     reloadDocument: _reloadDocument,
+    unsafeRelative: _unsafeRelative,
     ...propsSafeToSpread
   } = rest
 
