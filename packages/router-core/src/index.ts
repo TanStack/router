@@ -187,6 +187,7 @@ export type {
   RouteContextOptions,
   BeforeLoadContextOptions,
   RootRouteOptions,
+  RootRouteOptionsExtensions,
   UpdatableRouteOptionsExtensions,
   RouteConstraints,
   RouteTypesById,

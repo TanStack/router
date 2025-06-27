@@ -2,7 +2,6 @@
 import {
   HeadContent,
   Link,
-  Outlet,
   Scripts,
   createRootRoute,
 } from '@tanstack/solid-router'
@@ -52,24 +51,10 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/favicon.ico' },
     ],
   }),
-  errorComponent: (props) => {
-    return (
-      <RootDocument>
-        <DefaultCatchBoundary {...props} />
-      </RootDocument>
-    )
-  },
+  errorComponent: DefaultCatchBoundary,
   notFoundComponent: () => <NotFound />,
-  component: RootComponent,
+  shellComponent: RootDocument,
 })
-
-function RootComponent() {
-  return (
-    <RootDocument>
-      <Outlet />
-    </RootDocument>
-  )
-}
 
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (

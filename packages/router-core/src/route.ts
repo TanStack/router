@@ -1205,6 +1205,13 @@ export interface LoaderFnContext<
   route: AnyRoute
 }
 
+export interface DefaultRootRouteOptionsExtensions {
+  shellComponent?: unknown
+}
+
+export interface RootRouteOptionsExtensions
+  extends DefaultRootRouteOptionsExtensions {}
+
 export type RootRouteOptions<
   TSearchValidator = undefined,
   TRouterContext = {},
@@ -1234,7 +1241,8 @@ export type RootRouteOptions<
   | 'parseParams'
   | 'stringifyParams'
   | 'params'
->
+> &
+  RootRouteOptionsExtensions
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
