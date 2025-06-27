@@ -1,9 +1,9 @@
 import { createServerFileRoute } from '@tanstack/react-start/server';
-import { getConfig } from '../../../authkit/ssr/config';
-import { saveSession } from '../../../authkit/ssr/session';
-import { getWorkOS } from '../../../authkit/ssr/workos';
+import { getConfig } from '../authkit/ssr/config';
+import { saveSession } from '../authkit/ssr/session';
+import { getWorkOS } from '../authkit/ssr/workos';
 
-export const ServerRoute = createServerFileRoute('/api/auth/callback').methods({
+export const ServerRoute = createServerFileRoute('/callback').methods({
   GET: async ({ request }) => {
     const url = new URL(request.url);
     const code = url.searchParams.get('code');
