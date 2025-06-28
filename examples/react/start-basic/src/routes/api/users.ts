@@ -1,10 +1,12 @@
 import { createServerFileRoute } from '@tanstack/react-start/server'
+import { getRequestHeaders } from "@tanstack/react-start/server";
 import { createMiddleware, json } from '@tanstack/react-start'
 import type { User } from '~/utils/users'
 
 const userLoggerMiddleware = createMiddleware({ type: 'request' }).server(
   async ({ next, request }) => {
     console.info('In: /users')
+    console.info('Request Headers:', getRequestHeaders())
     const result = await next()
     result.response.headers.set('x-users', 'true')
     console.info('Out: /users')
@@ -44,6 +46,7 @@ export const ServerRoute = createServerFileRoute('/api/users')
   .middleware([testMiddleware, userLoggerMiddleware, testParentMiddleware])
   .methods({
     GET: async ({ request }) => {
+      console.info('GET /api/users @', request.url)
       console.info('Fetching users... @', request.url)
       const res = await fetch('https://jsonplaceholder.typicode.com/users')
       if (!res.ok) {
