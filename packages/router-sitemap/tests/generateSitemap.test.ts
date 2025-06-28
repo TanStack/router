@@ -72,7 +72,7 @@ describe('generateSitemap', () => {
     } as SitemapConfig<any>
 
     await expect(generateSitemap(config)).rejects.toThrow(
-      'siteUrl is required and must be a string',
+      'Invalid siteUrl: . Must be a valid URL.',
     )
   })
 
@@ -83,7 +83,7 @@ describe('generateSitemap', () => {
     } as any
 
     await expect(generateSitemap(config)).rejects.toThrow(
-      'siteUrl is required and must be a string',
+      'Invalid siteUrl: null. Must be a valid URL.',
     )
   })
 
@@ -118,7 +118,6 @@ describe('generateSitemap', () => {
     expect(result).toContain('<priority>0.9</priority>')
   })
 
-
   it('should handle function returning array for dynamic routes', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
@@ -140,7 +139,6 @@ describe('generateSitemap', () => {
     expect(result).toContain('<lastmod>2023-12-01</lastmod>')
     expect(result).toContain('<lastmod>2023-12-02</lastmod>')
   })
-
 
   it('should handle array of dynamic entries', async () => {
     const config: SitemapConfig<any> = {
@@ -198,8 +196,6 @@ describe('generateSitemap', () => {
     expect(result).toMatch(/^<\?xml version="1\.0" encoding="UTF-8"\?>/)
   })
 
-
-
   it('should handle siteUrl with trailing slash', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com/',
@@ -207,7 +203,7 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com//home</loc>')
+    expect(result).toContain('<loc>https://example.com/home</loc>')
   })
 
   it('should handle special characters in URLs', async () => {
@@ -235,9 +231,7 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain(
-      '<loc>https://example.com/posts/héllo-wörld</loc>',
-    )
+    expect(result).toContain('<loc>https://example.com/posts/héllo-wörld</loc>')
   })
 
   it('should handle priority value 0', async () => {
@@ -256,7 +250,6 @@ describe('generateSitemap', () => {
     const result = await generateSitemap(config)
     expect(result).toContain('<priority>0</priority>')
   })
-
 
   it('should handle decimal priority values', async () => {
     const config: SitemapConfig<any> = {
@@ -296,8 +289,6 @@ describe('generateSitemap', () => {
     expect(result).not.toContain('<changefreq>')
     expect(result).not.toContain('<priority>')
   })
-
-
 
   it('should handle async static route function', async () => {
     const config: SitemapConfig<any> = {
@@ -507,34 +498,41 @@ describe('generateSitemap', () => {
     await expect(generateSitemap(config)).rejects.toThrow('Test function error')
   })
 
-  it('should handle invalid priority values', async () => {
-    const config: SitemapConfig<any> = {
+  it('should validate invalid priority values', async () => {
+    const negativeConfig: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
-      routes: [
-        ['/negative-priority', { priority: -0.5 }],
-        ['/high-priority', { priority: 1.5 }],
-        ['/nan-priority', { priority: NaN }],
-      ],
+      routes: [['/negative-priority', { priority: -0.5 }]],
     }
+    await expect(generateSitemap(negativeConfig)).rejects.toThrow(
+      'Invalid entry /negative-priority: priority must be a number between 0 and 1',
+    )
 
-    const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/negative-priority</loc>')
-    expect(result).toContain('<loc>https://example.com/high-priority</loc>')
-    expect(result).toContain('<loc>https://example.com/nan-priority</loc>')
-    // Invalid priority values should either be omitted or handled gracefully
+    const highConfig: SitemapConfig<any> = {
+      siteUrl: 'https://example.com',
+      routes: [['/high-priority', { priority: 1.5 }]],
+    }
+    await expect(generateSitemap(highConfig)).rejects.toThrow(
+      'Invalid entry /high-priority: priority must be a number between 0 and 1',
+    )
+
+    const nanConfig: SitemapConfig<any> = {
+      siteUrl: 'https://example.com',
+      routes: [['/nan-priority', { priority: NaN }]],
+    }
+    await expect(generateSitemap(nanConfig)).rejects.toThrow(
+      'Invalid entry /nan-priority: priority must be a number between 0 and 1',
+    )
   })
 
-  it('should handle invalid changefreq values', async () => {
+  it('should validate invalid changefreq values', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
-      routes: [
-        ['/invalid-changefreq', { changefreq: 'invalid' as any }],
-      ],
+      routes: [['/invalid-changefreq', { changefreq: 'invalid' as any }]],
     }
 
-    const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/invalid-changefreq</loc>')
-    // Invalid changefreq should either be omitted or handled gracefully
+    await expect(generateSitemap(config)).rejects.toThrow(
+      'Invalid entry /invalid-changefreq: changefreq must be one of always, hourly, daily, weekly, monthly, yearly, never',
+    )
   })
 
   it('should escape XML special characters in URLs', async () => {
@@ -548,45 +546,62 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/path-with-&lt;brackets&gt;</loc>')
-    expect(result).toContain('<loc>https://example.com/path-with-&quot;quotes&quot;</loc>')
-    expect(result).toContain("<loc>https://example.com/path-with-'apostrophes'</loc>")
+    expect(result).toContain(
+      '<loc>https://example.com/path-with-&lt;brackets&gt;</loc>',
+    )
+    expect(result).toContain(
+      '<loc>https://example.com/path-with-&quot;quotes&quot;</loc>',
+    )
+    expect(result).toContain(
+      '<loc>https://example.com/path-with-&apos;apostrophes&apos;</loc>',
+    )
   })
 
   it('should handle invalid route paths', async () => {
-    const config: SitemapConfig<any> = {
+    const emptyConfig: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
-      routes: [
-        '', // Empty string
-        'no-leading-slash',
-        null as any,
-        undefined as any,
-      ],
+      routes: [''], // Empty string
     }
+    await expect(generateSitemap(emptyConfig)).rejects.toThrow()
 
-    // Should either handle gracefully or throw appropriate errors
-    const result = await generateSitemap(config)
-    // At minimum, should not crash and should produce valid XML
-    expect(result).toContain('<?xml version="1.0" encoding="UTF-8"?>')
-    expect(result).toContain('</urlset>')
+    const nullConfig: SitemapConfig<any> = {
+      siteUrl: 'https://example.com',
+      routes: [null as any],
+    }
+    await expect(generateSitemap(nullConfig)).rejects.toThrow()
+
+    const undefinedConfig: SitemapConfig<any> = {
+      siteUrl: 'https://example.com',
+      routes: [undefined as any],
+    }
+    await expect(generateSitemap(undefinedConfig)).rejects.toThrow()
   })
 
   it('should handle functions returning invalid data', async () => {
-    const config: SitemapConfig<any> = {
+    const nullConfig: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
-      routes: [
-        ['/null-return', () => null],
-        ['/undefined-return', () => undefined],
-        ['/invalid-object', () => ({ invalidProp: 'test' })],
-        ['/string-return', () => 'not-an-object' as any],
-      ],
+      // @ts-ignore - Invalid configuration
+      routes: [['/null-return', () => null]],
     }
+    await expect(generateSitemap(nullConfig)).rejects.toThrow(
+      'Invalid entry for route "/null-return"',
+    )
 
-    const result = await generateSitemap(config)
-    // Should handle gracefully and produce valid XML
-    expect(result).toContain('<?xml version="1.0" encoding="UTF-8"?>')
-    expect(result).toContain('</urlset>')
-    expect(result).toContain('<loc>https://example.com/null-return</loc>')
-    expect(result).toContain('<loc>https://example.com/undefined-return</loc>')
+    const undefinedConfig: SitemapConfig<any> = {
+      siteUrl: 'https://example.com',
+      // @ts-ignore - Invalid configuration
+      routes: [['/undefined-return', () => undefined]],
+    }
+    await expect(generateSitemap(undefinedConfig)).rejects.toThrow(
+      'Invalid entry for route "/undefined-return"',
+    )
+
+    const stringConfig: SitemapConfig<any> = {
+      siteUrl: 'https://example.com',
+      routes: [['/string-return', () => 'not-an-object' as any]],
+    }
+    await expect(generateSitemap(stringConfig)).rejects.toThrow(
+      'Invalid entry for route "/string-return"',
+    )
   })
 })
