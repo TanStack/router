@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start",
-  "version": "1.122.0",
+  "version": "1.122.1",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
