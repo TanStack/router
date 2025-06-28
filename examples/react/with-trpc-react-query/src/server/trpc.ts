@@ -1,12 +1,12 @@
 import { initTRPC } from '@trpc/server'
-import {  createExpressMiddleware } from '@trpc/server/adapters/express'
-import type {CreateExpressContextOptions} from '@trpc/server/adapters/express';
+import { createExpressMiddleware } from '@trpc/server/adapters/express'
+import type { CreateExpressContextOptions } from '@trpc/server/adapters/express'
 
-const createTRPContext = ({req, res}: CreateExpressContextOptions) => ({});
+const createTRPContext = ({ req, res }: CreateExpressContextOptions) => ({})
 
-type TRPCContext = Awaited<ReturnType<typeof createTRPContext>>;
+type TRPCContext = Awaited<ReturnType<typeof createTRPContext>>
 
-const t = initTRPC.context<TRPCContext>().create();
+const t = initTRPC.context<TRPCContext>().create()
 
 const POSTS = [
   { id: '1', title: 'First post' },
@@ -35,8 +35,7 @@ export const appRouter = t.router({
 
 export const trpcMiddleWare = createExpressMiddleware({
   router: appRouter,
-  createContext: createTRPContext
+  createContext: createTRPContext,
 })
-
 
 export type AppRouter = typeof appRouter
