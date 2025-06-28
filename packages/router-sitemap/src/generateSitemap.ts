@@ -1,6 +1,29 @@
 import { XMLBuilder } from 'fast-xml-parser'
 import type { RegisteredRouter, RoutePaths } from '@tanstack/router-core'
 
+export type ChangeFreq =
+  | 'always'
+  | 'hourly'
+  | 'daily'
+  | 'weekly'
+  | 'monthly'
+  | 'yearly'
+  | 'never'
+
+export interface StaticEntryOptions {
+  lastmod?: string | Date
+  changefreq?: ChangeFreq
+  priority?: number
+}
+
+export interface DynamicEntryOptions extends StaticEntryOptions {
+  path?: string
+}
+
+export interface SitemapEntry extends StaticEntryOptions {
+  loc: string
+}
+
 // Utility types for route param detection
 type SplitPath<TSegment extends string> =
   TSegment extends `${infer Segment}/${infer Rest}`
@@ -16,36 +39,13 @@ type ExtractParams<TSegment extends string> = {
 type RouteIsDynamic<TRoute extends string> =
   keyof ExtractParams<TRoute> extends never ? false : true
 
-export type ChangeFreq =
-  | 'always'
-  | 'hourly'
-  | 'daily'
-  | 'weekly'
-  | 'monthly'
-  | 'yearly'
-  | 'never'
-
-export interface SitemapEntryOptions {
-  lastmod?: string | Date
-  changefreq?: ChangeFreq
-  priority?: number
-}
-
-export interface SitemapEntry {
-  url: string
-  lastmod?: string
-  changefreq?: ChangeFreq
-  priority?: number
-}
-
 export type StaticRouteValue =
-  | SitemapEntryOptions
-  | (() => SitemapEntryOptions | Promise<SitemapEntryOptions>)
+  | StaticEntryOptions
+  | (() => StaticEntryOptions | Promise<StaticEntryOptions>)
 
-export type DynamicRouteEntry = SitemapEntryOptions & { path: string }
 export type DynamicRouteValue =
-  | Array<DynamicRouteEntry>
-  | (() => Array<DynamicRouteEntry> | Promise<Array<DynamicRouteEntry>>)
+  | Array<DynamicEntryOptions>
+  | (() => Array<DynamicEntryOptions> | Promise<Array<DynamicEntryOptions>>)
 
 /**
  * Pick which shape to use based on whether `TRoute` is dynamic or static.
@@ -58,27 +58,15 @@ export interface SitemapConfig<
   TRouter extends RegisteredRouter = RegisteredRouter,
 > {
   siteUrl: string
-  defaultPriority?: number
-  defaultChangeFreq?: ChangeFreq
-  routes: {
-    [TRoute in RoutePaths<TRouter['routeTree']>]?: RouteValue<TRoute>
-  }
-}
-
-function createSitemapEntry(
-  entry: SitemapEntryOptions & { path?: string },
-  siteUrl: string,
-  route?: string,
-): SitemapEntry {
-  return {
-    url: entry.path ? `${siteUrl}${entry.path}` : `${siteUrl}${route}`,
-    lastmod:
-      entry.lastmod instanceof Date
-        ? entry.lastmod.toISOString()
-        : entry.lastmod,
-    changefreq: entry.changefreq,
-    priority: entry.priority,
-  }
+  priority?: number
+  changefreq?: ChangeFreq
+  routes: Array<
+    | RoutePaths<TRouter['routeTree']>
+    | [
+        RoutePaths<TRouter['routeTree']>,
+        RouteValue<RoutePaths<TRouter['routeTree']>>,
+      ]
+  >
 }
 
 /**
@@ -87,8 +75,8 @@ function createSitemapEntry(
 export async function generateSitemap<
   TRouter extends RegisteredRouter = RegisteredRouter,
 >(config: SitemapConfig<TRouter>): Promise<string> {
-  const finalEntries: Array<SitemapEntry> = []
-  const { siteUrl, routes, defaultPriority, defaultChangeFreq } = config
+  const urls: Array<SitemapEntry> = []
+  const { siteUrl, routes, priority, changefreq } = config
 
   if (!siteUrl || typeof siteUrl !== 'string') {
     throw new Error('siteUrl is required and must be a string')
@@ -100,60 +88,42 @@ export async function generateSitemap<
     throw new Error(`Invalid siteUrl: ${siteUrl}.`)
   }
 
-  for (const route in routes) {
-    const routeValue = routes[route as keyof typeof routes]
+  const createEntry = (
+    route: string,
+    entry: DynamicEntryOptions | StaticEntryOptions,
+  ): SitemapEntry => ({
+    ...entry,
+    loc: 'path' in entry ? `${siteUrl}${entry.path}` : `${siteUrl}${route}`,
+    lastmod:
+      entry.lastmod instanceof Date
+        ? entry.lastmod.toISOString()
+        : entry.lastmod,
+    priority: entry.priority ?? priority,
+    changefreq: entry.changefreq ?? changefreq,
+  })
 
-    if (typeof routeValue === 'function') {
-      const resolvedValue = await routeValue()
-      if (Array.isArray(resolvedValue)) {
-        finalEntries.push(
-          ...resolvedValue.map((entry) => createSitemapEntry({
-            ...entry,
-            priority: entry.priority ?? defaultPriority,
-            changefreq: entry.changefreq ?? defaultChangeFreq,
-          }, siteUrl)),
-        )
+  for (const routeItem of routes) {
+    if (Array.isArray(routeItem)) {
+      // Tuple with route and configuration
+      const [route, routeValue] = routeItem
+
+      if (typeof routeValue === 'function') {
+        const resolvedValue = await routeValue()
+        if (Array.isArray(resolvedValue)) {
+          urls.push(...resolvedValue.map((entry) => createEntry(route, entry)))
+        } else {
+          urls.push(createEntry(route, resolvedValue))
+        }
+      } else if (Array.isArray(routeValue)) {
+        urls.push(...routeValue.map((entry) => createEntry(route, entry)))
       } else {
-        finalEntries.push(createSitemapEntry({
-          ...resolvedValue,
-          priority: resolvedValue.priority ?? defaultPriority,
-          changefreq: resolvedValue.changefreq ?? defaultChangeFreq,
-        }, siteUrl, route))
+        urls.push(createEntry(route, routeValue))
       }
-    } else if (Array.isArray(routeValue)) {
-      finalEntries.push(
-        ...routeValue.map((entry) => createSitemapEntry({
-          ...entry,
-          priority: entry.priority ?? defaultPriority,
-          changefreq: entry.changefreq ?? defaultChangeFreq,
-        }, siteUrl)),
-      )
-    } else if (routeValue) {
-      finalEntries.push(createSitemapEntry({
-        ...routeValue,
-        priority: routeValue.priority ?? defaultPriority,
-        changefreq: routeValue.changefreq ?? defaultChangeFreq,
-      }, siteUrl, route))
+    } else {
+      // Simple route string without configuration
+      urls.push(createEntry(routeItem, {}))
     }
   }
-
-  const urls = finalEntries.map((entry) => {
-    const xml: any = {
-      loc: entry.url,
-    }
-
-    if (entry.lastmod) {
-      xml.lastmod = entry.lastmod
-    }
-    if (entry.changefreq) {
-      xml.changefreq = entry.changefreq
-    }
-    if (entry.priority !== undefined) {
-      xml.priority = entry.priority
-    }
-
-    return xml
-  })
 
   const xmlObject = {
     '?xml': {
