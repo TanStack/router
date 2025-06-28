@@ -7,5 +7,5 @@ export default defineConfig({
   clean: true,
   outDir: 'dist/server',
   platform: 'node',
-  format: "esm"
+  format: 'esm',
 })

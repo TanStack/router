@@ -13,11 +13,11 @@ if (isProd) {
   const __filename = url.fileURLToPath(import.meta.url)
   const __dirname = path.dirname(__filename)
 
-  app.use(express.static(path.resolve(__dirname,'../client')))
+  app.use(express.static(path.resolve(__dirname, '../client')))
 
   // Handle any requests that don't match an API route by serving the React app's index.html
   app.get('/{*any}', (req, res) => {
-    res.sendFile(path.resolve(__dirname,'../client','index.html'))
+    res.sendFile(path.resolve(__dirname, '../client', 'index.html'))
   })
 }
 

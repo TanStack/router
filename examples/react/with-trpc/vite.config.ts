@@ -6,8 +6,8 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 export default defineConfig({
   server: {
     proxy: {
-      '/trpc': 'http://localhost:3000'
-    }
+      '/trpc': 'http://localhost:3000',
+    },
   },
   plugins: [
     tanstackRouter({
@@ -17,6 +17,6 @@ export default defineConfig({
     react(),
   ],
   build: {
-    outDir: 'dist/client'
-  }
+    outDir: 'dist/client',
+  },
 })
