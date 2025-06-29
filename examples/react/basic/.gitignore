@@ -8,4 +8,4 @@ dist-ssr
 /playwright-report/
 /blob-report/
 /playwright/.cache/
-/public/sitemap.xml
+public/sitemap.xml
