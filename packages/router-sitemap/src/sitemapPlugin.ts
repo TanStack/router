@@ -1,5 +1,6 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { createLogger } from 'vite'
 import { generateSitemap } from './generateSitemap'
 import type { SitemapConfig } from './generateSitemap'
 import type { RegisteredRouter } from '@tanstack/router-core'
@@ -9,37 +10,42 @@ export interface SitemapPluginOptions<
   TRouter extends RegisteredRouter = RegisteredRouter,
 > {
   sitemap: SitemapConfig<TRouter>
-  outputDir?: string
-  filename?: string
+  path?: string
 }
 
 export function sitemapPlugin<
   TRouter extends RegisteredRouter = RegisteredRouter,
 >(options: SitemapPluginOptions<TRouter>): Plugin {
-  const { sitemap, outputDir = 'public', filename = 'sitemap.xml' } = options
+  const { sitemap, path = 'sitemap.xml' } = options
+  const logger = createLogger('info', { prefix: '[sitemap]' })
+  let publicDir = 'public'
+
+  const generateAndWrite = async () => {
+    try {
+      const sitemapXml = await generateSitemap(sitemap)
+      const outputPath = join(publicDir, path)
+      await mkdir(dirname(outputPath), { recursive: true })
+      await writeFile(outputPath, sitemapXml, 'utf8')
+      logger.info(`Sitemap generated: ${outputPath}`)
+    } catch (error) {
+      logger.error(`Failed to generate sitemap: ${error}`)
+      throw error
+    }
+  }
 
   return {
     name: 'sitemap',
-    async buildEnd() {
-      try {
-        const sitemapXml = await generateSitemap(sitemap)
 
-        const outputPath = join(outputDir, filename)
-        const dirPath = dirname(outputPath)
+    configResolved(cfg) {
+      publicDir = cfg.publicDir
+    },
 
-        try {
-          mkdirSync(dirPath, { recursive: true })
-        } catch {
-          // Directory might already exist
-        }
+    async buildStart() {
+      await generateAndWrite()
+    },
 
-        writeFileSync(outputPath, sitemapXml, 'utf8')
-
-        console.log(`Sitemap generated: ${outputPath}`)
-      } catch (error) {
-        console.error('Failed to generate sitemap:', error)
-        throw error
-      }
+    async configureServer() {
+      await generateAndWrite()
     },
   }
 }

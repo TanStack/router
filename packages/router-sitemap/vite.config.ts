@@ -16,5 +16,6 @@ export default mergeConfig(
   tanstackViteConfig({
     entry: ['./src/index.ts', './src/sitemapPlugin.ts'],
     srcDir: './src',
+    externalDeps: ['vite', 'node:fs/promises', 'node:path'],
   }),
 )
