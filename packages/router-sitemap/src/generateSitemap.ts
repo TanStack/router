@@ -76,7 +76,22 @@ function isDefined<T>(value: T | undefined): value is T {
   return value !== undefined
 }
 
-function isValidPriority(priority: unknown): priority is number {
+function parseBaseUrl(url: string) {
+  const parsed = new URL(url)
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error(
+      `Invalid URL protocol: ${parsed.protocol}. Must be http or https.`,
+    )
+  }
+  // Remove trailing slash if present
+  let normalized = parsed.origin + parsed.pathname
+  if (normalized.endsWith('/') && normalized.length > parsed.origin.length) {
+    normalized = normalized.slice(0, -1)
+  }
+  return normalized
+}
+
+function isValidPriority(priority: number): boolean {
   return (
     typeof priority === 'number' &&
     !Number.isNaN(priority) &&
@@ -85,14 +100,14 @@ function isValidPriority(priority: unknown): priority is number {
   )
 }
 
-function isValidChangeFreq(changefreq: unknown): changefreq is ChangeFreq {
+function isValidChangeFreq(changefreq: string): changefreq is ChangeFreq {
   return (
     typeof changefreq === 'string' &&
     CHANGEFREQ.includes(changefreq as ChangeFreq)
   )
 }
 
-function isValidLastMod(lastmod: unknown): lastmod is string | Date {
+function isValidLastMod(lastmod: string | Date): boolean {
   if (lastmod instanceof Date) {
     return !isNaN(lastmod.getTime())
   }
@@ -105,13 +120,13 @@ function isValidLastMod(lastmod: unknown): lastmod is string | Date {
   return false
 }
 
+/** Throw if sitemap entry value is invalid. */
 function validateEntry(
   route: string,
   entry: StaticEntryOptions | DynamicEntryOptions,
 ): asserts entry is StaticEntryOptions | DynamicEntryOptions {
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (!entry || typeof entry !== 'object') {
-    throw new Error(`Invalid entry for route "${route}": must be an object.`)
+  if (!route.startsWith('/')) {
+    throw new Error(`Invalid entry ${route}: route must start with '/'`)
   }
 
   if (isDefined(entry.lastmod) && !isValidLastMod(entry.lastmod)) {
@@ -140,12 +155,7 @@ export async function generateSitemap<
   const urls: Array<SitemapEntry> = []
   const { routes, priority, changefreq } = config
 
-  let siteUrl: string
-  try {
-    siteUrl = new URL(config.siteUrl).toString()
-  } catch {
-    throw new Error(`Invalid siteUrl: ${config.siteUrl}.`)
-  }
+  const siteUrl = parseBaseUrl(config.siteUrl)
 
   if (isDefined(priority) && !isValidPriority(priority)) {
     throw new Error(`Invalid priority: ${priority}. Must be between 0 and 1.`)
@@ -159,7 +169,7 @@ export async function generateSitemap<
 
   const createEntry = (
     route: string,
-    entry: DynamicEntryOptions | StaticEntryOptions,
+    entry: DynamicEntryOptions | StaticEntryOptions = {},
   ): SitemapEntry => {
     validateEntry(route, entry)
 
@@ -182,19 +192,22 @@ export async function generateSitemap<
 
       if (typeof routeValue === 'function') {
         const resolvedValue = await routeValue()
+
         if (Array.isArray(resolvedValue)) {
           urls.push(...resolvedValue.map((entry) => createEntry(route, entry)))
         } else {
           urls.push(createEntry(route, resolvedValue))
         }
-      } else if (Array.isArray(routeValue)) {
-        urls.push(...routeValue.map((entry) => createEntry(route, entry)))
       } else {
-        urls.push(createEntry(route, routeValue))
+        if (Array.isArray(routeValue)) {
+          urls.push(...routeValue.map((entry) => createEntry(route, entry)))
+        } else {
+          urls.push(createEntry(route, routeValue))
+        }
       }
     } else {
       // Simple route string without configuration
-      urls.push(createEntry(routeItem, {}))
+      urls.push(createEntry(routeItem))
     }
   }
 
