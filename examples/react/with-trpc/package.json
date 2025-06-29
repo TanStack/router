@@ -12,9 +12,9 @@
     "start": "NODE_ENV=production node dist/server/server.js"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.122.0",
-    "@tanstack/react-router-devtools": "^1.122.0",
-    "@tanstack/router-plugin": "^1.122.0",
+    "@tanstack/react-router": "^1.123.0",
+    "@tanstack/react-router-devtools": "^1.123.0",
+    "@tanstack/router-plugin": "^1.123.0",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
     "concurrently": "^8.2.2",
