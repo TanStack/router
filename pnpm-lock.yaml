@@ -2537,6 +2537,9 @@ importers:
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
+      '@tanstack/router-sitemap':
+        specifier: workspace:*
+        version: link:../../../packages/router-sitemap
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.3)
