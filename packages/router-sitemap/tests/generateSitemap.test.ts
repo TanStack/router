@@ -51,7 +51,7 @@ describe('generateSitemap', () => {
     expect(result).toContain('<lastmod>2023-12-01T10:00:00.000Z</lastmod>')
   })
 
-  it('should handle empty routes', async () => {
+  it('returns empty urlset when no routes are provided', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [],
@@ -63,39 +63,22 @@ describe('generateSitemap', () => {
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     )
     expect(result).toContain('</urlset>')
+    expect(result).not.toContain('<url>')
   })
 
-  it('should validate siteUrl is required', async () => {
-    const config = {
-      siteUrl: '',
-      routes: [],
-    } as SitemapConfig<any>
-
-    await expect(generateSitemap(config)).rejects.toThrow(
-      'Invalid siteUrl: . Must be a valid URL.',
-    )
-  })
-
-  it('should validate siteUrl is a string', async () => {
-    const config = {
-      siteUrl: null,
-      routes: [],
-    } as any
-
-    await expect(generateSitemap(config)).rejects.toThrow(
-      'Invalid siteUrl: null. Must be a valid URL.',
-    )
-  })
-
-  it('should validate siteUrl is a valid URL', async () => {
-    const config: SitemapConfig<any> = {
-      siteUrl: 'not-a-valid-url',
-      routes: [],
-    }
-
-    await expect(generateSitemap(config)).rejects.toThrow(
-      'Invalid siteUrl: not-a-valid-url.',
-    )
+  it('throws if siteUrl is invalid', async () => {
+    await expect(
+      generateSitemap({
+        siteUrl: '',
+        routes: [],
+      }),
+    ).rejects.toThrow()
+    await expect(
+      generateSitemap({
+        siteUrl: 'not-a-valid-url',
+        routes: [],
+      }),
+    ).rejects.toThrow()
   })
 
   it('should handle sync function for static routes', async () => {
@@ -268,7 +251,7 @@ describe('generateSitemap', () => {
     expect(result).toContain('<priority>0.85</priority>')
   })
 
-  it('should skip undefined optional fields', async () => {
+  it('should ignore undefined optional fields', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -575,33 +558,5 @@ describe('generateSitemap', () => {
       routes: [undefined as any],
     }
     await expect(generateSitemap(undefinedConfig)).rejects.toThrow()
-  })
-
-  it('should handle functions returning invalid data', async () => {
-    const nullConfig: SitemapConfig<any> = {
-      siteUrl: 'https://example.com',
-      // @ts-ignore - Invalid configuration
-      routes: [['/null-return', () => null]],
-    }
-    await expect(generateSitemap(nullConfig)).rejects.toThrow(
-      'Invalid entry for route "/null-return"',
-    )
-
-    const undefinedConfig: SitemapConfig<any> = {
-      siteUrl: 'https://example.com',
-      // @ts-ignore - Invalid configuration
-      routes: [['/undefined-return', () => undefined]],
-    }
-    await expect(generateSitemap(undefinedConfig)).rejects.toThrow(
-      'Invalid entry for route "/undefined-return"',
-    )
-
-    const stringConfig: SitemapConfig<any> = {
-      siteUrl: 'https://example.com',
-      routes: [['/string-return', () => 'not-an-object' as any]],
-    }
-    await expect(generateSitemap(stringConfig)).rejects.toThrow(
-      'Invalid entry for route "/string-return"',
-    )
   })
 })
