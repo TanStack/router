@@ -588,6 +588,7 @@ export type UpdateFn<
 export type InvalidateFn<TRouter extends AnyRouter> = (opts?: {
   filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   sync?: boolean
+  forcePending?: boolean
 }) => Promise<void>
 
 export type ParseLocationFn<TRouteTree extends AnyRoute> = (
@@ -2631,7 +2632,7 @@ export class RouterCore<
         return {
           ...d,
           invalid: true,
-          ...(d.status === 'error'
+          ...(opts?.forcePending || d.status === 'error'
             ? ({ status: 'pending', error: undefined } as const)
             : {}),
         }
