@@ -24,16 +24,6 @@ The `NotFoundError` object accepts/contains the following properties:
 - Optional
 - Custom data that is passed into to `notFoundComponent` when the not-found error is handled
 
-It is possible to override the `any` type with your own more specific type by extending the `NotFoundErrorData` interface:
-
-```ts
-declare module '@tanstack/react-router' {
-  interface NotFoundErrorData {
-    data: /* your type here */
-  }
-}
-```
-
 ### `global` property
 
 - Type: `boolean`

@@ -341,7 +341,7 @@ export {
   CatchNotFound,
   DefaultGlobalNotFound,
 } from './not-found'
-export type { NotFoundError, NotFoundErrorData } from './not-found'
+export type { NotFoundError } from './not-found'
 
 export type { Manifest, RouterManagedTag } from './manifest'
 
