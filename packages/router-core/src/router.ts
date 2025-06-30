@@ -2345,15 +2345,13 @@ export class RouterCore<
                   // there is a loaderPromise, so we are in the middle of a load
                   if (prevMatch.loaderPromise) {
                     // do not block if we already have stale data we can show
-                    if (prevMatch.status === 'success' && !sync) {
-                      // if the ongoing load is a preload, make sure to execute redirects
-                      if (prevMatch.preload) {
-                        prevMatch.loaderPromise.catch((err) => {
-                          if (isRedirect(err)) {
-                            return this.navigate(err.options)
-                          }
-                        })
-                      }
+                    // but only if the ongoing load is not a preload since error handling is different for preloads
+                    // and we don't want to swallow errors
+                    if (
+                      prevMatch.status === 'success' &&
+                      !sync &&
+                      !prevMatch.preload
+                    ) {
                       return this.getMatch(matchId)!
                     }
                     await prevMatch.loaderPromise
