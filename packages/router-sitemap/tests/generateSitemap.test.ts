@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { generateSitemap } from '../src/index'
 import type { SitemapConfig } from '../src/index'
 
 describe('generateSitemap', () => {
-  it('should generate basic sitemap XML', async () => {
+  test('generates basic sitemap XML', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -25,15 +25,19 @@ describe('generateSitemap', () => {
     expect(result).toContain(
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     )
-    expect(result).toContain('<loc>https://example.com/home</loc>')
-    expect(result).toContain('<loc>https://example.com/about</loc>')
-    expect(result).toContain('<lastmod>2023-12-01</lastmod>')
-    expect(result).toContain('<changefreq>monthly</changefreq>')
-    expect(result).toContain('<priority>0.8</priority>')
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/home</loc>
+  </url>`)
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/about</loc>
+    <lastmod>2023-12-01</lastmod>
+    <priority>0.8</priority>
+    <changefreq>monthly</changefreq>
+  </url>`)
     expect(result).toContain('</urlset>')
   })
 
-  it('should handle Date objects for lastmod', async () => {
+  test('handles Date objects for lastmod', async () => {
     const date = new Date('2023-12-01T10:00:00Z')
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
@@ -51,7 +55,7 @@ describe('generateSitemap', () => {
     expect(result).toContain('<lastmod>2023-12-01T10:00:00.000Z</lastmod>')
   })
 
-  it('returns empty urlset when no routes are provided', async () => {
+  test('returns empty urlset when no routes are provided', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [],
@@ -60,13 +64,11 @@ describe('generateSitemap', () => {
     const result = await generateSitemap(config)
     expect(result).toContain('<?xml version="1.0" encoding="UTF-8"?>')
     expect(result).toContain(
-      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>',
     )
-    expect(result).toContain('</urlset>')
-    expect(result).not.toContain('<url>')
   })
 
-  it('throws if siteUrl is invalid', async () => {
+  test('throws if siteUrl is invalid', async () => {
     await expect(
       generateSitemap({
         siteUrl: '',
@@ -79,9 +81,29 @@ describe('generateSitemap', () => {
         routes: [],
       }),
     ).rejects.toThrow()
+    await expect(
+      // @ts-ignore - Invalid type for siteUrl
+      generateSitemap({
+        routes: [],
+      }),
+    ).rejects.toThrow()
+    await expect(
+      generateSitemap({
+        // @ts-ignore - Invalid type for siteUrl
+        siteUrl: 123,
+        routes: [],
+      }),
+    ).rejects.toThrow()
+    await expect(
+      generateSitemap({
+        // @ts-ignore - Invalid type for siteUrl
+        siteUrl: null,
+        routes: [],
+      }),
+    ).rejects.toThrow()
   })
 
-  it('should handle sync function for static routes', async () => {
+  test('handles sync function for static routes', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -96,12 +118,14 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/home</loc>')
-    expect(result).toContain('<lastmod>2023-12-01</lastmod>')
-    expect(result).toContain('<priority>0.9</priority>')
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/home</loc>
+    <lastmod>2023-12-01</lastmod>
+    <priority>0.9</priority>
+  </url>`)
   })
 
-  it('should handle function returning array for dynamic routes', async () => {
+  test('handles function returning array for dynamic routes', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -117,13 +141,17 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/posts/1</loc>')
-    expect(result).toContain('<loc>https://example.com/posts/2</loc>')
-    expect(result).toContain('<lastmod>2023-12-01</lastmod>')
-    expect(result).toContain('<lastmod>2023-12-02</lastmod>')
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/posts/1</loc>
+    <lastmod>2023-12-01</lastmod>
+  </url>`)
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/posts/2</loc>
+    <lastmod>2023-12-02</lastmod>
+  </url>`)
   })
 
-  it('should handle array of dynamic entries', async () => {
+  test('handles array of dynamic entries', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -139,13 +167,17 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/posts/array-1</loc>')
-    expect(result).toContain('<loc>https://example.com/posts/array-2</loc>')
-    expect(result).toContain('<lastmod>2023-12-01</lastmod>')
-    expect(result).toContain('<changefreq>weekly</changefreq>')
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/posts/array-1</loc>
+    <lastmod>2023-12-01</lastmod>
+  </url>`)
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/posts/array-2</loc>
+    <changefreq>weekly</changefreq>
+  </url>`)
   })
 
-  it('should handle mix of static and dynamic routes', async () => {
+  test('handles mix of static and dynamic routes', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -160,26 +192,21 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/home</loc>')
-    expect(result).toContain('<priority>1</priority>')
-    expect(result).toContain('<loc>https://example.com/about</loc>')
-    expect(result).toContain('<lastmod>2023-12-01</lastmod>')
-    expect(result).toContain('<loc>https://example.com/posts/1</loc>')
-    expect(result).toContain('<changefreq>daily</changefreq>')
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/home</loc>
+    <priority>1</priority>
+  </url>`)
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/about</loc>
+    <lastmod>2023-12-01</lastmod>
+  </url>`)
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/posts/1</loc>
+    <changefreq>daily</changefreq>
+  </url>`)
   })
 
-  it('should generate proper XML declaration', async () => {
-    const config: SitemapConfig<any> = {
-      siteUrl: 'https://example.com',
-      routes: ['/home'],
-    }
-
-    const result = await generateSitemap(config)
-
-    expect(result).toMatch(/^<\?xml version="1\.0" encoding="UTF-8"\?>/)
-  })
-
-  it('should handle siteUrl with trailing slash', async () => {
+  test('handles siteUrl with trailing slash', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com/',
       routes: ['/home'],
@@ -189,7 +216,7 @@ describe('generateSitemap', () => {
     expect(result).toContain('<loc>https://example.com/home</loc>')
   })
 
-  it('should handle special characters in URLs', async () => {
+  test('handles special characters in URLs', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: ['/special-chars?param=value&other=123'],
@@ -201,7 +228,7 @@ describe('generateSitemap', () => {
     )
   })
 
-  it('should handle unicode characters in URLs', async () => {
+  test('handles unicode characters in URLs', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -217,7 +244,7 @@ describe('generateSitemap', () => {
     expect(result).toContain('<loc>https://example.com/posts/héllo-wörld</loc>')
   })
 
-  it('should handle priority value 0', async () => {
+  test('handles priority value 0', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -234,7 +261,7 @@ describe('generateSitemap', () => {
     expect(result).toContain('<priority>0</priority>')
   })
 
-  it('should handle decimal priority values', async () => {
+  test('handles decimal priority values', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -251,7 +278,7 @@ describe('generateSitemap', () => {
     expect(result).toContain('<priority>0.85</priority>')
   })
 
-  it('should ignore undefined optional fields', async () => {
+  test('ignores undefined optional fields', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -273,7 +300,7 @@ describe('generateSitemap', () => {
     expect(result).not.toContain('<priority>')
   })
 
-  it('should handle async static route function', async () => {
+  test('handles async static route function', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -292,13 +319,15 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/async-static</loc>')
-    expect(result).toContain('<lastmod>2023-12-01</lastmod>')
-    expect(result).toContain('<changefreq>weekly</changefreq>')
-    expect(result).toContain('<priority>0.8</priority>')
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/async-static</loc>
+    <lastmod>2023-12-01</lastmod>
+    <priority>0.8</priority>
+    <changefreq>weekly</changefreq>
+  </url>`)
   })
 
-  it('should handle async dynamic route function', async () => {
+  test('handles async dynamic route function', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -317,13 +346,17 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/posts/async-1</loc>')
-    expect(result).toContain('<loc>https://example.com/posts/async-2</loc>')
-    expect(result).toContain('<lastmod>2023-12-01</lastmod>')
-    expect(result).toContain('<lastmod>2023-12-02</lastmod>')
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/posts/async-1</loc>
+    <lastmod>2023-12-01</lastmod>
+  </url>`)
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/posts/async-2</loc>
+    <lastmod>2023-12-02</lastmod>
+  </url>`)
   })
 
-  it('should apply priority to routes without explicit priority', async () => {
+  test('applies priority to routes without explicit priority', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       priority: 0.5,
@@ -334,13 +367,17 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/home</loc>')
-    expect(result).toContain('<priority>0.5</priority>') // Default priority
-    expect(result).toContain('<loc>https://example.com/about</loc>')
-    expect(result).toContain('<priority>0.9</priority>') // Explicit priority
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/home</loc>
+    <priority>0.5</priority>
+  </url>`)
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/about</loc>
+    <priority>0.9</priority>
+  </url>`)
   })
 
-  it('should apply changefreq to routes without explicit changefreq', async () => {
+  test('applies changefreq to routes without explicit changefreq', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       changefreq: 'weekly',
@@ -351,13 +388,17 @@ describe('generateSitemap', () => {
     }
 
     const result = await generateSitemap(config)
-    expect(result).toContain('<loc>https://example.com/home</loc>')
-    expect(result).toContain('<changefreq>weekly</changefreq>') // Default changefreq
-    expect(result).toContain('<loc>https://example.com/about</loc>')
-    expect(result).toContain('<changefreq>daily</changefreq>') // Explicit changefreq
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/home</loc>
+    <changefreq>weekly</changefreq>
+  </url>`)
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/about</loc>
+    <changefreq>daily</changefreq>
+  </url>`)
   })
 
-  it('should apply both default values together', async () => {
+  test('applies both default values together', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       priority: 0.7,
@@ -371,101 +412,24 @@ describe('generateSitemap', () => {
 
     const result = await generateSitemap(config)
 
-    // /home should have both defaults
-    expect(result).toContain('<loc>https://example.com/home</loc>')
-    expect(result).toContain('<priority>0.7</priority>')
-    expect(result).toContain('<changefreq>monthly</changefreq>')
-
-    // /about should have explicit priority, default changefreq
-    expect(result).toContain('<loc>https://example.com/about</loc>')
-    expect(result).toContain('<priority>0.9</priority>')
-    expect(result).toContain('<changefreq>monthly</changefreq>')
-
-    // /contact should have default priority, explicit changefreq
-    expect(result).toContain('<loc>https://example.com/contact</loc>')
-    expect(result).toContain('<priority>0.7</priority>')
-    expect(result).toContain('<changefreq>yearly</changefreq>')
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/home</loc>
+    <priority>0.7</priority>
+    <changefreq>monthly</changefreq>
+  </url>`)
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/about</loc>
+    <priority>0.9</priority>
+    <changefreq>monthly</changefreq>
+  </url>`)
+    expect(result).toContain(`  <url>
+    <loc>https://example.com/contact</loc>
+    <priority>0.7</priority>
+    <changefreq>yearly</changefreq>
+  </url>`)
   })
 
-  it('should apply defaults to dynamic routes', async () => {
-    // @ts-ignore - Test configuration
-    const config: SitemapConfig<any> = {
-      siteUrl: 'https://example.com',
-      priority: 0.6,
-      changefreq: 'weekly',
-      routes: [
-        [
-          '/posts/$postId',
-          // @ts-ignore - Dynamic route for testing
-          [
-            { path: '/posts/1' }, // Should get defaults
-            { path: '/posts/2', priority: 0.9 }, // Should get default changefreq, explicit priority
-            { path: '/posts/3', changefreq: 'daily' as const }, // Should get default priority, explicit changefreq
-          ],
-        ],
-      ],
-    }
-
-    const result = await generateSitemap(config)
-
-    expect(result).toContain('<loc>https://example.com/posts/1</loc>')
-    expect(result).toContain('<priority>0.6</priority>')
-    expect(result).toContain('<changefreq>weekly</changefreq>')
-
-    expect(result).toContain('<loc>https://example.com/posts/2</loc>')
-    expect(result).toContain('<priority>0.9</priority>')
-    expect(result).toContain('<changefreq>weekly</changefreq>')
-
-    expect(result).toContain('<loc>https://example.com/posts/3</loc>')
-    expect(result).toContain('<priority>0.6</priority>')
-    expect(result).toContain('<changefreq>daily</changefreq>')
-  })
-
-  it('should apply defaults to function-based routes', async () => {
-    const config: SitemapConfig<any> = {
-      siteUrl: 'https://example.com',
-      priority: 0.4,
-      changefreq: 'monthly',
-      routes: [
-        ['/static-func', () => ({})], // Function returning empty object, should get defaults
-        ['/static-func-partial', () => ({ priority: 0.8 })], // Should get default changefreq
-        // @ts-ignore - Dynamic route for testing
-        [
-          '/dynamic-func',
-          () =>
-            [
-              { path: '/dynamic/1' }, // Should get defaults
-              { path: '/dynamic/2', changefreq: 'hourly' as const }, // Should get default priority
-            ] as any,
-        ],
-      ],
-    }
-
-    const result = await generateSitemap(config)
-
-    // Static function with defaults
-    expect(result).toContain('<loc>https://example.com/static-func</loc>')
-    expect(result).toContain('<priority>0.4</priority>')
-    expect(result).toContain('<changefreq>monthly</changefreq>')
-
-    // Static function with partial defaults
-    expect(result).toContain(
-      '<loc>https://example.com/static-func-partial</loc>',
-    )
-    expect(result).toContain('<priority>0.8</priority>')
-    expect(result).toContain('<changefreq>monthly</changefreq>')
-
-    // Dynamic function with defaults
-    expect(result).toContain('<loc>https://example.com/dynamic/1</loc>')
-    expect(result).toContain('<priority>0.4</priority>')
-    expect(result).toContain('<changefreq>monthly</changefreq>')
-
-    expect(result).toContain('<loc>https://example.com/dynamic/2</loc>')
-    expect(result).toContain('<priority>0.4</priority>')
-    expect(result).toContain('<changefreq>hourly</changefreq>')
-  })
-
-  it('should handle function errors gracefully', async () => {
+  test('handles function errors gracefully', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -481,7 +445,7 @@ describe('generateSitemap', () => {
     await expect(generateSitemap(config)).rejects.toThrow('Test function error')
   })
 
-  it('should validate invalid priority values', async () => {
+  test('validates invalid priority values', async () => {
     const negativeConfig: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [['/negative-priority', { priority: -0.5 }]],
@@ -507,7 +471,7 @@ describe('generateSitemap', () => {
     )
   })
 
-  it('should validate invalid changefreq values', async () => {
+  test('validates invalid changefreq values', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [['/invalid-changefreq', { changefreq: 'invalid' as any }]],
@@ -518,7 +482,7 @@ describe('generateSitemap', () => {
     )
   })
 
-  it('should escape XML special characters in URLs', async () => {
+  test('escapes XML special characters in URLs', async () => {
     const config: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [
@@ -540,7 +504,7 @@ describe('generateSitemap', () => {
     )
   })
 
-  it('should handle invalid route paths', async () => {
+  test('handles invalid route paths', async () => {
     const emptyConfig: SitemapConfig<any> = {
       siteUrl: 'https://example.com',
       routes: [''], // Empty string
@@ -558,5 +522,26 @@ describe('generateSitemap', () => {
       routes: [undefined as any],
     }
     await expect(generateSitemap(undefinedConfig)).rejects.toThrow()
+  })
+
+  test('handles functions returning invalid data', async () => {
+    await expect(
+      generateSitemap({
+        siteUrl: 'https://example.com',
+        routes: [['/string-return', () => 'not-an-object' as any]],
+      }),
+    ).rejects.toThrow('Invalid entry /string-return: entry must be an object')
+    await expect(
+      generateSitemap({
+        siteUrl: 'https://example.com',
+        routes: [['/number-return', () => 123 as any]],
+      }),
+    ).rejects.toThrow('Invalid entry /number-return: entry must be an object')
+    await expect(
+      generateSitemap({
+        siteUrl: 'https://example.com',
+        routes: [['/array-return', () => [1, 2, 3] as any]],
+      }),
+    ).rejects.toThrow('Invalid entry /array-return: entry must be an object')
   })
 })

@@ -28,8 +28,7 @@ export function sitemapPlugin<
       await writeFile(outputPath, sitemapXml, 'utf8')
       logger.info(`Sitemap generated: ${outputPath}`)
     } catch (error) {
-      logger.error(`Failed to generate sitemap: ${error}`)
-      throw error
+      throw new Error('Failed to write sitemap file.', { cause: error })
     }
   }
 

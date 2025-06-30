@@ -129,6 +129,11 @@ function validateEntry(
     throw new Error(`Invalid entry ${route}: route must start with '/'`)
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (typeof entry !== 'object' && entry !== null) {
+    throw new Error(`Invalid entry ${route}: entry must be an object`)
+  }
+
   if (isDefined(entry.lastmod) && !isValidLastMod(entry.lastmod)) {
     throw new Error(`Invalid entry ${route}: lastmod must be a string or Date`)
   }
@@ -174,7 +179,6 @@ export async function generateSitemap<
     validateEntry(route, entry)
 
     return {
-      ...entry,
       loc: 'path' in entry ? `${siteUrl}${entry.path}` : `${siteUrl}${route}`,
       lastmod:
         entry.lastmod instanceof Date
