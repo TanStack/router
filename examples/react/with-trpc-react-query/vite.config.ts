@@ -1,9 +1,9 @@
 import url from 'node:url'
 import path from 'node:path'
-import {  defineConfig } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
-import type {BuildEnvironmentOptions} from 'vite';
+import type { BuildEnvironmentOptions } from 'vite'
 
 const __filename = url.fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -47,6 +47,6 @@ export default defineConfig((configEnv) => {
       }),
       react(),
     ],
-    build: configEnv.mode === 'server' ? serverBuildConfig : clientBuildConfig
+    build: configEnv.mode === 'server' ? serverBuildConfig : clientBuildConfig,
   }
 })
