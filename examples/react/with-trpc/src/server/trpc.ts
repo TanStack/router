@@ -1,8 +1,12 @@
-import { defineEventHandler, toWebRequest } from '@tanstack/react-start/server'
 import { initTRPC } from '@trpc/server'
-import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
+import { createExpressMiddleware } from '@trpc/server/adapters/express'
+import type { CreateExpressContextOptions } from '@trpc/server/adapters/express'
 
-const t = initTRPC.create()
+const createTRPContext = ({ req, res }: CreateExpressContextOptions) => ({})
+
+type TRPCContext = Awaited<ReturnType<typeof createTRPContext>>
+
+const t = initTRPC.context<TRPCContext>().create()
 
 const POSTS = [
   { id: '1', title: 'First post' },
@@ -17,7 +21,7 @@ const POSTS = [
   { id: '10', title: 'Tenth post' },
 ]
 
-const appRouter = t.router({
+export const appRouter = t.router({
   hello: t.procedure.query(() => 'Hello world!'),
   posts: t.procedure.query(async (_) => {
     await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -29,20 +33,9 @@ const appRouter = t.router({
   }),
 })
 
-export type AppRouter = typeof appRouter
-
-export default defineEventHandler((event) => {
-  const request = toWebRequest(event)
-  if (!request) {
-    return new Response('No request', { status: 400 })
-  }
-
-  return fetchRequestHandler({
-    endpoint: '/trpc',
-    req: request,
-    router: appRouter,
-    createContext() {
-      return {}
-    },
-  })
+export const trpcMiddleWare = createExpressMiddleware({
+  router: appRouter,
+  createContext: createTRPContext,
 })
+
+export type AppRouter = typeof appRouter
