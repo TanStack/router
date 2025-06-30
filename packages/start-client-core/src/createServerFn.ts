@@ -1,9 +1,9 @@
 import { default as invariant } from 'tiny-invariant'
 import { default as warning } from 'tiny-warning'
 import { isNotFound, isRedirect } from '@tanstack/router-core'
-import { startSerializer } from './serializer'
-import { mergeHeaders } from './headers'
+import { mergeHeaders, tsrSerializer } from '@tanstack/router-core/ssr/client'
 import { globalMiddleware } from './registerGlobalMiddleware'
+
 import type {
   AnyValidator,
   Constrain,
@@ -14,6 +14,7 @@ import type {
   SerializerStringifyBy,
   Validator,
 } from '@tanstack/router-core'
+import type { JsonResponse } from '@tanstack/router-core/ssr/client'
 import type { Readable } from 'node:stream'
 import type {
   AnyFunctionMiddleware,
@@ -276,10 +277,6 @@ export async function executeMiddleware(
     sendContext: opts.sendContext || {},
     context: opts.context || {},
   })
-}
-
-export interface JsonResponse<TData> extends Response {
-  json: () => Promise<TData>
 }
 
 export type CompiledFetcherFnOptions = {
@@ -740,7 +737,7 @@ setServerFnStaticCache(() => {
         const [cachedResult, readError] = await fs
           .readFile(filePath, 'utf-8')
           .then((c) => [
-            startSerializer.parse(c) as {
+            tsrSerializer.parse(c) as {
               ctx: unknown
               error: any
             },
@@ -770,7 +767,7 @@ setServerFnStaticCache(() => {
       await fs.mkdir(path.dirname(filePath), { recursive: true })
 
       // Store the result with fs
-      await fs.writeFile(filePath, startSerializer.stringify(response))
+      await fs.writeFile(filePath, tsrSerializer.stringify(response))
     },
     fetchItem: async (ctx) => {
       const hash = jsonToFilenameSafeString(ctx.data)
@@ -783,7 +780,7 @@ setServerFnStaticCache(() => {
           method: 'GET',
         })
           .then((r) => r.text())
-          .then((d) => startSerializer.parse(d))
+          .then((d) => tsrSerializer.parse(d))
 
         staticClientCache?.set(url, result)
       }
@@ -805,7 +802,7 @@ export function extractFormDataContext(formData: FormData) {
   }
 
   try {
-    const context = startSerializer.parse(serializedContext)
+    const context = tsrSerializer.parse(serializedContext)
     return {
       context,
       data: formData,

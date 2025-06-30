@@ -409,6 +409,10 @@
             {
               "label": "Static Route Data",
               "to": "framework/solid/guide/static-route-data"
+            },
+            {
+              "label": "SSR",
+              "to": "framework/solid/guide/ssr"
             }
           ]
         }

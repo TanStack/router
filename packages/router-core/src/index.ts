@@ -66,6 +66,7 @@ export type {
 } from './fileRoute'
 
 export type {
+  TsrSerializer,
   StartSerializer,
   Serializable,
   SerializerParse,
@@ -186,6 +187,7 @@ export type {
   RouteContextOptions,
   BeforeLoadContextOptions,
   RootRouteOptions,
+  RootRouteOptionsExtensions,
   UpdatableRouteOptionsExtensions,
   RouteConstraints,
   RouteTypesById,

@@ -222,7 +222,7 @@ function handleCreateServerFileRouteCallExpressionFactory(
         const importSource = importPath.node.source.value
         if (importSource === PACKAGES.start) {
           const specifiers = importPath.node.specifiers
-          isCreateServerFileRouteImported = specifiers.some((specifier) => {
+          isCreateServerFileRouteImported ||= specifiers.some((specifier) => {
             return (
               t.isImportSpecifier(specifier) &&
               t.isIdentifier(specifier.imported) &&

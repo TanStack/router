@@ -77,7 +77,7 @@ import type {
   NavigateFn,
 } from './RouterProvider'
 import type { Manifest } from './manifest'
-import type { StartSerializer } from './serializer'
+import type { TsrSerializer } from './serializer'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
@@ -588,6 +588,7 @@ export type UpdateFn<
 export type InvalidateFn<TRouter extends AnyRouter> = (opts?: {
   filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   sync?: boolean
+  forcePending?: boolean
 }) => Promise<void>
 
 export type ParseLocationFn<TRouteTree extends AnyRoute> = (
@@ -1790,8 +1791,15 @@ export class RouterCore<
       location: this.latestLocation,
       pendingMatches,
       // If a cached moved to pendingMatches, remove it from cachedMatches
-      cachedMatches: s.cachedMatches.filter((d) => {
-        return !pendingMatches.find((e) => e.id === d.id)
+      cachedMatches: s.cachedMatches.filter((cachedMatch) => {
+        const pendingMatch = pendingMatches.find((e) => e.id === cachedMatch.id)
+
+        if (!pendingMatch) return true
+
+        return (
+          cachedMatch.status === 'success' &&
+          (cachedMatch.isFetching || cachedMatch.loaderData !== undefined)
+        )
       }),
     }))
   }
@@ -2624,7 +2632,7 @@ export class RouterCore<
         return {
           ...d,
           invalid: true,
-          ...(d.status === 'error'
+          ...(opts?.forcePending || d.status === 'error'
             ? ({ status: 'pending', error: undefined } as const)
             : {}),
         }
@@ -2857,7 +2865,7 @@ export class RouterCore<
 
   ssr?: {
     manifest: Manifest | undefined
-    serializer: StartSerializer
+    serializer: TsrSerializer
   }
 
   serverSsr?: {

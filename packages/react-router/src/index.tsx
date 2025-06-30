@@ -39,6 +39,7 @@ export {
 
 export type {
   AnyRoute,
+  TsrSerializer,
   StartSerializer,
   Serializable,
   SerializerParse,
@@ -283,7 +284,6 @@ export {
 } from './route'
 export type {
   AnyRootRoute,
-  ReactNode,
   SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,

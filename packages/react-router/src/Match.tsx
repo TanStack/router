@@ -17,7 +17,11 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
-import type { AnyRoute, ParsedLocation } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  ParsedLocation,
+  RootRouteOptions,
+} from '@tanstack/router-core'
 
 export const Match = React.memo(function MatchImpl({
   matchId,
@@ -80,8 +84,11 @@ export const Match = React.memo(function MatchImpl({
     },
   })
 
+  const ShellComponent = route.isRoot
+    ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
+    : SafeFragment
   return (
-    <>
+    <ShellComponent>
       <matchContext.Provider value={matchId}>
         <ResolvedSuspenseBoundary fallback={pendingElement}>
           <ResolvedCatchBoundary
@@ -119,7 +126,7 @@ export const Match = React.memo(function MatchImpl({
           <ScrollRestoration />
         </>
       ) : null}
-    </>
+    </ShellComponent>
   )
 })
 

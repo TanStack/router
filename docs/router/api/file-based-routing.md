@@ -134,7 +134,7 @@ By default, this value is set to `false`.
 
 ### `autoCodeSplitting`
 
-This feature is only available is you are using the TanStack Router Bundler Plugin.
+This feature is only available if you are using the TanStack Router Bundler Plugin.
 
 This option is used to enable automatic code-splitting for non-critical route configuration items. See the "Automatic Code-Splitting" guide for more information.
 

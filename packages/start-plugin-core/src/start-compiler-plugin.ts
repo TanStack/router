@@ -1,6 +1,7 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { logDiff } from '@tanstack/router-utils'
 
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { compileStartOutputFactory } from './compilers'
 import type { Plugin } from 'vite'
 import type { CompileStartFrameworkOptions } from './compilers'
@@ -56,6 +57,9 @@ export function startCompilerPlugin(
     transform: {
       filter: {
         code: tokenRegex,
+        id: {
+          exclude: VIRTUAL_MODULES.serverFnManifest,
+        },
       },
       handler(code, id) {
         const env =
