@@ -3,12 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently 'pnpm run dev:server' 'pnpm run dev:client'",
-    "dev:client": "vite dev",
-    "dev:server": "tsx src/server/server.ts --watch",
-    "build": "concurrently 'pnpm run build:server' 'pnpm run build:client'",
+    "dev": "pnpm tsx ./src/server/server.ts --watch",
+    "build": "pnpm run build:server && pnpm run build:client",
     "build:client": "vite build && tsc --noEmit",
-    "build:server": "tsup",
+    "build:server": "vite build --mode server",
     "start": "NODE_ENV=production node dist/server/server.js"
   },
   "dependencies": {
@@ -17,7 +15,6 @@
     "@tanstack/router-plugin": "^1.123.0",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
-    "concurrently": "^8.2.2",
     "express": "^4.21.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -33,7 +30,6 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "tsx": "^4.20.3",
-    "tsup": "^8.5.0",
     "vite": "^6.3.5"
   }
 }
