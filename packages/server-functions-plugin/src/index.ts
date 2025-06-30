@@ -51,9 +51,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         const mod = viteDevServer.moduleGraph.getModuleById(id)
         if (mod) {
           if (debug) {
-            console.info(
-              `invalidating module ${JSON.stringify(mod.id)}`,
-            )
+            console.info(`invalidating module ${JSON.stringify(mod.id)}`)
           }
           viteDevServer.moduleGraph.invalidateModule(mod)
         }
