@@ -1791,16 +1791,9 @@ export class RouterCore<
       location: this.latestLocation,
       pendingMatches,
       // If a cached moved to pendingMatches, remove it from cachedMatches
-      cachedMatches: s.cachedMatches.filter((cachedMatch) => {
-        const pendingMatch = pendingMatches.find((e) => e.id === cachedMatch.id)
-
-        if (!pendingMatch) return true
-
-        return (
-          cachedMatch.status === 'success' &&
-          (cachedMatch.isFetching || cachedMatch.loaderData !== undefined)
-        )
-      }),
+      cachedMatches: s.cachedMatches.filter(
+        (d) => !pendingMatches.find((e) => e.id === d.id),
+      ),
     }))
   }
 
@@ -2208,7 +2201,15 @@ export class RouterCore<
 
                 // Wait for the beforeLoad to resolve before we continue
                 await existingMatch.beforeLoadPromise
-                executeBeforeLoad = this.getMatch(matchId)!.status === 'error'
+                const match = this.getMatch(matchId)!
+                if (match.status === 'error') {
+                  executeBeforeLoad = true
+                } else if (
+                  match.preload &&
+                  (match.status === 'redirected' || match.status === 'notFound')
+                ) {
+                  handleRedirectAndNotFound(match, match.error)
+                }
               }
               if (executeBeforeLoad) {
                 // If we are not in the middle of a load OR the previous load failed, start it
@@ -2337,14 +2338,23 @@ export class RouterCore<
             validResolvedMatches.forEach(({ id: matchId, routeId }, index) => {
               matchPromises.push(
                 (async () => {
-                  const { loaderPromise: prevLoaderPromise } =
-                    this.getMatch(matchId)!
-
                   let loaderShouldRunAsync = false
                   let loaderIsRunningAsync = false
 
-                  if (prevLoaderPromise) {
-                    await prevLoaderPromise
+                  const prevMatch = this.getMatch(matchId)!
+                  // there is a loaderPromise, so we are in the middle of a load
+                  if (prevMatch.loaderPromise) {
+                    // do not block if we already have stale data we can show
+                    // but only if the ongoing load is not a preload since error handling is different for preloads
+                    // and we don't want to swallow errors
+                    if (
+                      prevMatch.status === 'success' &&
+                      !sync &&
+                      !prevMatch.preload
+                    ) {
+                      return this.getMatch(matchId)!
+                    }
+                    await prevMatch.loaderPromise
                     const match = this.getMatch(matchId)!
                     if (match.error) {
                       handleRedirectAndNotFound(match, match.error)

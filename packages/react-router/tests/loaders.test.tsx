@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   configure,
   fireEvent,
@@ -17,6 +18,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useRouter,
 } from '../src'
 
 import { sleep } from './utils'
@@ -380,7 +382,7 @@ test('reproducer #4245', async () => {
 
   render(<RouterProvider router={router} />)
   // We wait for the initial loader to complete
-  await router.load()
+  await act(() => router.load())
   const fooLink = await screen.findByTestId('link-to-foo')
 
   expect(fooLink).toBeInTheDocument()
@@ -389,27 +391,257 @@ test('reproducer #4245', async () => {
   fireEvent.click(fooLink)
 
   // We immediately see the content of the foo route
-  const indexLink = await screen.findByTestId('link-to-index')
+  const indexLink = await screen.findByTestId('link-to-index', undefined, {
+    timeout: WAIT_TIME,
+  })
   expect(indexLink).toBeInTheDocument()
 
   // We navigate to the index route
   fireEvent.click(indexLink)
 
   // We immediately see the content of the index route because the stale data is still available
-  const fooLink2 = await screen.findByTestId('link-to-foo')
+  const fooLink2 = await screen.findByTestId('link-to-foo', undefined, {
+    timeout: WAIT_TIME,
+  })
   expect(fooLink2).toBeInTheDocument()
 
   // We navigate to the foo route again
   fireEvent.click(fooLink2)
 
   // We immediately see the content of the foo route
-  const indexLink2 = await screen.findByTestId('link-to-index')
+  const indexLink2 = await screen.findByTestId('link-to-index', undefined, {
+    timeout: WAIT_TIME,
+  })
   expect(indexLink2).toBeInTheDocument()
 
   // We navigate to the index route again
   fireEvent.click(indexLink2)
 
   // We now should see the content of the index route immediately because the stale data is still available
-  const fooLink3 = await screen.findByTestId('link-to-foo')
+  const fooLink3 = await screen.findByTestId('link-to-foo', undefined, {
+    timeout: WAIT_TIME,
+  })
   expect(fooLink3).toBeInTheDocument()
+})
+
+test('reproducer #4546', async () => {
+  const rootRoute = createRootRoute({
+    component: () => {
+      return (
+        <>
+          <div className="p-2 flex gap-2 text-lg">
+            <Link
+              data-testid="link-to-index"
+              to="/"
+              activeProps={{
+                className: 'font-bold',
+              }}
+              activeOptions={{ exact: true }}
+            >
+              Home
+            </Link>{' '}
+            <Link
+              data-testid="link-to-id"
+              to="$id"
+              params={{
+                id: '1',
+              }}
+              activeProps={{
+                className: 'font-bold',
+              }}
+            >
+              /1
+            </Link>
+          </div>
+          <hr />
+          <Outlet />
+        </>
+      )
+    },
+  })
+
+  let counter = 0
+  const appRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '_app',
+    beforeLoad: () => {
+      counter += 1
+      return {
+        counter,
+      }
+    },
+    component: () => {
+      return (
+        <div>
+          <Header />
+          <Outlet />
+        </div>
+      )
+    },
+  })
+
+  function Header() {
+    const router = useRouter()
+    const { counter } = appRoute.useRouteContext()
+
+    return (
+      <div>
+        Header Counter: <p data-testid="header-counter">{counter}</p>
+        <button
+          onClick={() => {
+            router.invalidate()
+          }}
+          data-testid="invalidate-router"
+          style={{
+            border: '1px solid blue',
+          }}
+        >
+          Invalidate router
+        </button>
+      </div>
+    )
+  }
+
+  const indexRoute = createRoute({
+    getParentRoute: () => appRoute,
+    path: '/',
+    loader: ({ context }) => {
+      return {
+        counter: context.counter,
+      }
+    },
+
+    component: () => {
+      const data = indexRoute.useLoaderData()
+      const ctx = indexRoute.useRouteContext()
+
+      return (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div>Index route</div>
+          <div>
+            route context:{' '}
+            <p data-testid="index-route-context">{ctx.counter}</p>
+          </div>
+          <div>
+            loader data: <p data-testid="index-loader-data">{data.counter}</p>
+          </div>
+        </div>
+      )
+    },
+  })
+  const idRoute = createRoute({
+    getParentRoute: () => appRoute,
+    path: '$id',
+    loader: ({ context }) => {
+      return {
+        counter: context.counter,
+      }
+    },
+
+    component: () => {
+      const data = idRoute.useLoaderData()
+      const ctx = idRoute.useRouteContext()
+
+      return (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div>$id route</div>
+          <div>
+            route context: <p data-testid="id-route-context">{ctx.counter}</p>
+          </div>
+          <div>
+            loader data: <p data-testid="id-loader-data">{data.counter}</p>
+          </div>
+        </div>
+      )
+    },
+  })
+
+  const routeTree = rootRoute.addChildren([
+    appRoute.addChildren([indexRoute, idRoute]),
+  ])
+  const router = createRouter({ routeTree })
+
+  render(<RouterProvider router={router} />)
+
+  const indexLink = await screen.findByTestId('link-to-index')
+  expect(indexLink).toBeInTheDocument()
+
+  const idLink = await screen.findByTestId('link-to-id')
+  expect(idLink).toBeInTheDocument()
+
+  const invalidateRouterButton = await screen.findByTestId('invalidate-router')
+  expect(invalidateRouterButton).toBeInTheDocument()
+
+  {
+    const headerCounter = await screen.findByTestId('header-counter')
+    expect(headerCounter).toHaveTextContent('1')
+
+    const routeContext = await screen.findByTestId('index-route-context')
+    expect(routeContext).toHaveTextContent('1')
+
+    const loaderData = await screen.findByTestId('index-loader-data')
+    expect(loaderData).toHaveTextContent('1')
+  }
+
+  fireEvent.click(idLink)
+
+  {
+    const headerCounter = await screen.findByTestId('header-counter')
+    expect(headerCounter).toHaveTextContent('2')
+
+    const routeContext = await screen.findByTestId('id-route-context')
+    expect(routeContext).toHaveTextContent('2')
+
+    const loaderData = await screen.findByTestId('id-loader-data')
+    expect(loaderData).toHaveTextContent('2')
+  }
+
+  fireEvent.click(indexLink)
+
+  {
+    const headerCounter = await screen.findByTestId('header-counter')
+    expect(headerCounter).toHaveTextContent('3')
+
+    const routeContext = await screen.findByTestId('index-route-context')
+    expect(routeContext).toHaveTextContent('3')
+
+    const loaderData = await screen.findByTestId('index-loader-data')
+    expect(loaderData).toHaveTextContent('3')
+  }
+
+  fireEvent.click(invalidateRouterButton)
+
+  {
+    const headerCounter = await screen.findByTestId('header-counter')
+    expect(headerCounter).toHaveTextContent('4')
+
+    const routeContext = await screen.findByTestId('index-route-context')
+    expect(routeContext).toHaveTextContent('4')
+
+    const loaderData = await screen.findByTestId('index-loader-data')
+    expect(loaderData).toHaveTextContent('4')
+  }
+
+  fireEvent.click(idLink)
+
+  {
+    const headerCounter = await screen.findByTestId('header-counter')
+    expect(headerCounter).toHaveTextContent('5')
+
+    const routeContext = await screen.findByTestId('id-route-context')
+    expect(routeContext).toHaveTextContent('5')
+
+    const loaderData = await screen.findByTestId('id-loader-data')
+    expect(loaderData).toHaveTextContent('5')
+  }
 })

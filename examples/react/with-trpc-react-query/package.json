@@ -12,9 +12,9 @@
   "dependencies": {
     "@tanstack/react-query": "^5.66.0",
     "@tanstack/react-query-devtools": "^5.66.0",
-    "@tanstack/react-router": "^1.123.0",
-    "@tanstack/react-router-devtools": "^1.123.0",
-    "@tanstack/router-plugin": "^1.123.0",
+    "@tanstack/react-router": "^1.123.2",
+    "@tanstack/react-router-devtools": "^1.123.2",
+    "@tanstack/router-plugin": "^1.123.2",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
     "@trpc/tanstack-react-query": "^11.4.3",
