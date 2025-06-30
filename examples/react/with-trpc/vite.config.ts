@@ -35,11 +35,6 @@ const serverBuildConfig: BuildEnvironmentOptions = {
 // https://vitejs.dev/config/
 export default defineConfig((configEnv) => {
   return {
-    server: {
-      proxy: {
-        '/trpc': 'http://localhost:3000',
-      },
-    },
     plugins: [
       tanstackRouter({
         target: 'react',
