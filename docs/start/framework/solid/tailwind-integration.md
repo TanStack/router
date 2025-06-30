@@ -1,6 +1,6 @@
 ---
-id: tailwind-integration 
-title: Tailwind CSS Integration 
+id: tailwind-integration
+title: Tailwind CSS Integration
 ---
 
 _So you want to use Tailwind CSS in your TanStack Start project?_
@@ -38,13 +38,13 @@ export default defineConfig({
 })
 ```
 
-### Import Tailwind in your CSS file 
+### Import Tailwind in your CSS file
 
 You need to create a CSS file to configure Tailwind CSS instead of the configuration file in version 4. You can do this by creating a `src/styles/app.css` file or name it whatever you want.
 
 ```css
 /* src/styles/app.css */
-@import "tailwindcss";
+@import 'tailwindcss';
 ```
 
 ## Import the CSS file in your `__root.tsx` file
@@ -63,9 +63,7 @@ export const Route = createRootRoute({
     meta: [
       // your meta tags and site config
     ],
-    links: [
-      { rel: 'stylesheet', href: appCss },
-    ]
+    links: [{ rel: 'stylesheet', href: appCss }],
     // other head config
   }),
   component: RootComponent,
@@ -85,11 +83,7 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  return (
-    <div className="bg-red-500 text-white p-4">
-      Hello World
-    </div>
-  )
+  return <div className="bg-red-500 text-white p-4">Hello World</div>
 }
 ```
 
@@ -121,9 +115,7 @@ Add the paths to all of your template files in the `tailwind.config.js` file.
 // tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {},
   },
