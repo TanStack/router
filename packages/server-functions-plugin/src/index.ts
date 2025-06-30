@@ -43,22 +43,21 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
   const directiveFnsById: Record<string, DirectiveFn> = {}
   let viteDevServer: ViteDevServer | undefined
 
-  const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
-    // When directives are compiled, save them to the plugin's state
-    // This state will be used both during development to incrementally
-    // look up server functions and during build/production to produce a
-    // static manifest that can be read by the server build
-    Object.assign(directiveFnsById, d)
-
-    if (viteDevServer) {
-      const mod = viteDevServer.moduleGraph.getModuleById(
-        resolveViteId(opts.manifestVirtualImportId),
-      )
-      if (mod) {
-        viteDevServer.moduleGraph.invalidateModule(mod)
+  const onDirectiveFnsById = buildOnDirectiveFnsByIdCallback({
+    directiveFnsById,
+    manifestVirtualImportId: opts.manifestVirtualImportId,
+    invalidateModule: (id) => {
+      if (viteDevServer) {
+        const mod = viteDevServer.moduleGraph.getModuleById(id)
+        if (mod) {
+          if (debug) {
+            console.info(`invalidating module ${JSON.stringify(mod.id)}`)
+          }
+          viteDevServer.moduleGraph.invalidateModule(mod)
+        }
       }
-    }
-  }
+    },
+  })
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -176,30 +175,23 @@ export function TanStackServerFnPluginEnv(
   const directiveFnsById: Record<string, DirectiveFn> = {}
   let serverDevEnv: DevEnvironment | undefined
 
-  const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
-    if (debug) console.info(`onDirectiveFnsById received: `, d)
-
-    // When directives are compiled, save them to the plugin's state
-    // This state will be used both during development to incrementally
-    // look up server functions and during build/production to produce a
-    // static manifest that can be read by the server build
-    Object.assign(directiveFnsById, d)
-    if (debug) console.info(`directiveFnsById after update: `, directiveFnsById)
-
-    // during dev, invalidate the module in the server environment
-    if (serverDevEnv) {
-      const mod = serverDevEnv.moduleGraph.getModuleById(
-        resolveViteId(opts.manifestVirtualImportId),
-      )
-      if (mod) {
-        if (debug)
-          console.info(
-            `invalidating module ${JSON.stringify(mod.id)} in server environment`,
-          )
-        serverDevEnv.moduleGraph.invalidateModule(mod)
+  const onDirectiveFnsById = buildOnDirectiveFnsByIdCallback({
+    directiveFnsById,
+    manifestVirtualImportId: opts.manifestVirtualImportId,
+    invalidateModule: (id) => {
+      if (serverDevEnv) {
+        const mod = serverDevEnv.moduleGraph.getModuleById(id)
+        if (mod) {
+          if (debug) {
+            console.info(
+              `invalidating module ${JSON.stringify(mod.id)} in server environment`,
+            )
+          }
+          serverDevEnv.moduleGraph.invalidateModule(mod)
+        }
       }
-    }
-  }
+    },
+  })
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -272,4 +264,36 @@ export function TanStackServerFnPluginEnv(
 
 function resolveViteId(id: string) {
   return `\0${id}`
+}
+
+function buildOnDirectiveFnsByIdCallback(opts: {
+  invalidateModule: (resolvedId: string) => void
+  directiveFnsById: Record<string, DirectiveFn>
+  manifestVirtualImportId: string
+}) {
+  const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
+    if (debug) {
+      console.info(`onDirectiveFnsById received: `, d)
+    }
+
+    // When directives are compiled, save them to `directiveFnsById`
+    // This state will be used both during development to incrementally
+    // look up server functions and during build/production to produce a
+    // static manifest that can be read by the server build
+    Object.assign(opts.directiveFnsById, d)
+    if (debug) {
+      console.info(`directiveFnsById after update: `, opts.directiveFnsById)
+    }
+
+    opts.invalidateModule(resolveViteId(opts.manifestVirtualImportId))
+
+    // a single module can contain multiple server functions, only invalidate the module once
+    const uniqueFilenames = new Set(
+      Object.values(d).map((fn) => fn.extractedFilename),
+    )
+    uniqueFilenames.forEach((filename) => {
+      opts.invalidateModule(filename)
+    })
+  }
+  return onDirectiveFnsById
 }
