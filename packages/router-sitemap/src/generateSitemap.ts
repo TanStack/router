@@ -17,7 +17,6 @@ export interface SitemapEntry extends StaticEntryOptions {
   loc: string
 }
 
-// Utility types for route param detection
 type SplitPath<TSegment extends string> =
   TSegment extends `${infer Segment}/${infer Rest}`
     ? Segment | SplitPath<Rest>
@@ -40,13 +39,9 @@ export type DynamicRouteValue =
   | Array<DynamicEntryOptions>
   | (() => Array<DynamicEntryOptions> | Promise<Array<DynamicEntryOptions>>)
 
-/**
- * Pick which shape to use based on whether `TRoute` is dynamic or static.
- */
 type RouteValue<TRoute extends string> =
   RouteIsDynamic<TRoute> extends true ? DynamicRouteValue : StaticRouteValue
 
-/** Sitemap configuration */
 export interface SitemapConfig<
   TRouter extends RegisteredRouter = RegisteredRouter,
 > {
@@ -120,7 +115,7 @@ function isValidLastMod(lastmod: string | Date): boolean {
   return false
 }
 
-/** Throw if sitemap entry value is invalid. */
+/** Throws if sitemap entry value is invalid. */
 function validateEntry(
   route: string,
   entry: StaticEntryOptions | DynamicEntryOptions,
@@ -151,9 +146,7 @@ function validateEntry(
   }
 }
 
-/**
- * Generate sitemap XML from configuration
- */
+/** Generate sitemap XML from configuration */
 export async function generateSitemap<
   TRouter extends RegisteredRouter = RegisteredRouter,
 >(config: SitemapConfig<TRouter>): Promise<string> {
