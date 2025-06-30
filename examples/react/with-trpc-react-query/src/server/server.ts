@@ -39,7 +39,6 @@ export const createServer = async (
 
     // Use vite's connect instance as middleware
     app.use(vite.middlewares)
-    console.log(path.resolve(root, 'index.html'))
 
     // Handle any requests that don't match an API route by serving the React app's index.html
     app.get('*', async (req, res, next) => {
