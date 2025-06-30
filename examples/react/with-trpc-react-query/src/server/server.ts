@@ -19,7 +19,9 @@ export const createServer = async (
   app.use('/trpc', trpcMiddleWare)
 
   if (!isProd) {
-    const vite = await (await import('vite')).createServer({
+    const vite = await (
+      await import('vite')
+    ).createServer({
       root,
       logLevel: isTest ? 'error' : 'info',
       server: {
@@ -64,7 +66,7 @@ export const createServer = async (
     res.sendFile(path.resolve(__dirname, '../client', 'index.html'))
   })
 
-  return {app}
+  return { app }
 }
 
 if (!isTest) {
