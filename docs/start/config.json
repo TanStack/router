@@ -151,6 +151,10 @@
               "to": "framework/solid/static-prerendering"
             },
             {
+              "label": "Tailwind CSS Integration",
+              "to": "framework/solid/tailwind-integration"
+            },
+            {
               "label": "Path Aliases",
               "to": "framework/solid/path-aliases"
             }
