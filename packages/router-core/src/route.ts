@@ -1124,6 +1124,7 @@ export interface UpdatableRouteOptions<
     links?: AnyRouteMatch['links']
     scripts?: AnyRouteMatch['headScripts']
     meta?: AnyRouteMatch['meta']
+    styles?: AnyRouteMatch['styles']
   }>
   scripts?: (
     ctx: AssetFnContextOptions<

@@ -2437,12 +2437,20 @@ export class RouterCore<
                       const meta = headFnContent?.meta
                       const links = headFnContent?.links
                       const headScripts = headFnContent?.scripts
+                      const styles = headFnContent?.styles
 
                       const scripts =
                         await route.options.scripts?.(assetContext)
                       const headers =
                         await route.options.headers?.(assetContext)
-                      return { meta, links, headScripts, headers, scripts }
+                      return {
+                        meta,
+                        links,
+                        headScripts,
+                        headers,
+                        scripts,
+                        styles,
+                      }
                     }
 
                     const runLoader = async () => {
