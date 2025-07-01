@@ -544,4 +544,28 @@ describe('generateSitemap', () => {
       }),
     ).rejects.toThrow('Invalid entry /array-return: entry must be an object')
   })
+
+  test('path property should not appear in XML output', async () => {
+    const result = await generateSitemap({
+      siteUrl: 'https://example.com',
+      routes: [
+        [
+          '/posts/$postId' as any,
+          () => [
+            { path: '/posts/1', priority: 0.8 },
+            { path: '/posts/2', priority: 0.8 },
+          ],
+        ],
+      ],
+    })
+
+    // Should contain the correct loc elements
+    expect(result).toContain('<loc>https://example.com/posts/1</loc>')
+    expect(result).toContain('<loc>https://example.com/posts/2</loc>')
+    
+    // Should NOT contain path elements in XML
+    expect(result).not.toContain('<path>/posts/1</path>')
+    expect(result).not.toContain('<path>/posts/2</path>')
+    expect(result).not.toContain('<path>')
+  })
 })
