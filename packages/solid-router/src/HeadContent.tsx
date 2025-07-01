@@ -116,6 +116,22 @@ export const useTags = () => {
     },
   })
 
+  const styles = useRouterState({
+    select: (state) =>
+      (
+        state.matches
+          .map((match) => match.styles!)
+          .flat(1)
+          .filter(Boolean) as Array<RouterManagedTag>
+      ).map(({ children, ...style }) => ({
+        tag: 'style',
+        attrs: {
+          ...style,
+        },
+        children,
+      })),
+  })
+
   const headScripts = useRouterState({
     select: (state) =>
       (
@@ -138,6 +154,7 @@ export const useTags = () => {
         ...meta(),
         ...preloadMeta(),
         ...links(),
+        ...styles(),
         ...headScripts(),
       ] as Array<RouterManagedTag>,
       (d) => {
