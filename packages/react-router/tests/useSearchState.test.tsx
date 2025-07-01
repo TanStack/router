@@ -1,7 +1,14 @@
 import React from 'react'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, expect, test, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 
 import { z } from 'zod'
 import {
@@ -29,7 +36,9 @@ test('multiple setSearchState calls in the same batch are accumulated (same key)
     return (
       <React.Fragment>
         <output>{page}</output>
-        <button onClick={() => setPage((prev: number) => prev + 1)}>increment</button>
+        <button onClick={() => setPage((prev: number) => prev + 1)}>
+          increment
+        </button>
       </React.Fragment>
     )
   }
@@ -47,8 +56,10 @@ test('multiple setSearchState calls in the same batch are accumulated (same key)
     routeTree: rootRoute.addChildren([indexRoute]),
   })
 
-  const history: Array<Parameters<Parameters<typeof router.history.subscribe>[0]>[0]> = []
-  router.history.subscribe(action => history.push(action))
+  const history: Array<
+    Parameters<Parameters<typeof router.history.subscribe>[0]>[0]
+  > = []
+  router.history.subscribe((action) => history.push(action))
   // @ts-expect-error -- mock function
   router.navigate = vi.fn(router.navigate)
   render(<RouterProvider router={router} />)
@@ -57,7 +68,9 @@ test('multiple setSearchState calls in the same batch are accumulated (same key)
   expect(window.location.search).toBe('?page=0')
   const initialHistoryLength = history.length
 
-  const incrementButton = await screen.findByRole('button', { name: 'increment' })
+  const incrementButton = await screen.findByRole('button', {
+    name: 'increment',
+  })
   await act(() => {
     fireEvent.click(incrementButton)
     fireEvent.click(incrementButton)
@@ -67,7 +80,6 @@ test('multiple setSearchState calls in the same batch are accumulated (same key)
   expect(router.navigate).toHaveBeenCalledTimes(1)
   expect(history).toHaveLength(initialHistoryLength + 1)
 })
-
 
 test('multiple setSearchState calls in the same batch are accumulated (different keys)', async () => {
   const rootRoute = createRootRoute()
@@ -104,8 +116,10 @@ test('multiple setSearchState calls in the same batch are accumulated (different
     routeTree: rootRoute.addChildren([indexRoute]),
   })
 
-  const history: Array<Parameters<Parameters<typeof router.history.subscribe>[0]>[0]> = []
-  router.history.subscribe(action => history.push(action))
+  const history: Array<
+    Parameters<Parameters<typeof router.history.subscribe>[0]>[0]
+  > = []
+  router.history.subscribe((action) => history.push(action))
   // @ts-expect-error -- mock function
   router.navigate = vi.fn(router.navigate)
   render(<RouterProvider router={router} />)
@@ -115,7 +129,9 @@ test('multiple setSearchState calls in the same batch are accumulated (different
   expect(window.location.search).toBe('?a=0&b=0')
   const initialHistoryLength = history.length
 
-  const incrementBothButton = await screen.findByRole('button', { name: 'Increment Both' })
+  const incrementBothButton = await screen.findByRole('button', {
+    name: 'Increment Both',
+  })
   await act(() => fireEvent.click(incrementBothButton))
   await waitFor(() => expect(output).toHaveTextContent('a: 1, b: 1'))
 
@@ -123,7 +139,6 @@ test('multiple setSearchState calls in the same batch are accumulated (different
   expect(router.navigate).toHaveBeenCalledTimes(1)
   expect(history).toHaveLength(initialHistoryLength + 1)
 })
-
 
 test('multiple setSearchState calls in the same batch only cause a single re-render', async () => {
   let renderCount = 0
@@ -136,10 +151,12 @@ test('multiple setSearchState calls in the same batch only cause a single re-ren
     return (
       <>
         <output>{state}</output>
-        <button onClick={() => {
-          setSearchState((p: number) => p + 1)
-          setSearchState((p: number) => p + 1)
-        }}>
+        <button
+          onClick={() => {
+            setSearchState((p: number) => p + 1)
+            setSearchState((p: number) => p + 1)
+          }}
+        >
           Increment
         </button>
       </>
@@ -163,7 +180,9 @@ test('multiple setSearchState calls in the same batch only cause a single re-ren
   const output = await screen.findByRole('status')
   expect(output).toHaveTextContent('0')
 
-  const incrementButton = await screen.findByRole('button', { name: 'Increment' })
+  const incrementButton = await screen.findByRole('button', {
+    name: 'Increment',
+  })
   renderCount = 0 // reset after initial render
 
   await act(() => fireEvent.click(incrementButton))
@@ -172,7 +191,6 @@ test('multiple setSearchState calls in the same batch only cause a single re-ren
   // Should only re-render once for the batch update
   expect(renderCount).toBe(1)
 })
-
 
 test('setSearchState is overridden by a subsequent `navigate` call in the same batch', async () => {
   const rootRoute = createRootRoute()
@@ -236,117 +254,127 @@ test('setSearchState is overridden by a subsequent `navigate` call in the same b
 })
 
 // generally, calling `setSearchState` in the same batch as a `navigate` call is undefined behavior
-test.fails('setSearchState will override a previous `navigate` call in the same batch', async () => {
-  const rootRoute = createRootRoute()
+test.fails(
+  'setSearchState will override a previous `navigate` call in the same batch',
+  async () => {
+    const rootRoute = createRootRoute()
 
-  const IndexComponent = () => {
-    const [state, setSearchState] = useSearchState({ key: 'foo', from: '/' })
-    const navigate = useNavigate()
-    return (
-      <>
-        <output>{state}</output>
-        <button
-          onClick={() => {
-            navigate({ to: '/bar' })
-            setSearchState('foo')
-          }}
-        >
-          Navigate and Set
-        </button>
-      </>
-    )
-  }
+    const IndexComponent = () => {
+      const [state, setSearchState] = useSearchState({ key: 'foo', from: '/' })
+      const navigate = useNavigate()
+      return (
+        <>
+          <output>{state}</output>
+          <button
+            onClick={() => {
+              navigate({ to: '/bar' })
+              setSearchState('foo')
+            }}
+          >
+            Navigate and Set
+          </button>
+        </>
+      )
+    }
 
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    validateSearch: z.object({
-      foo: z.string().optional(),
-    }),
-    component: IndexComponent,
-  })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      validateSearch: z.object({
+        foo: z.string().optional(),
+      }),
+      component: IndexComponent,
+    })
 
-  const barRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/bar',
-    validateSearch: z.object({
-      foo: z.string().optional(),
-    }),
-    component: IndexComponent,
-  })
+    const barRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/bar',
+      validateSearch: z.object({
+        foo: z.string().optional(),
+      }),
+      component: IndexComponent,
+    })
 
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, barRoute]),
-  })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, barRoute]),
+    })
 
-  render(<RouterProvider router={router} />)
-  const output = await screen.findByRole('status')
-  expect(output).toHaveTextContent('')
+    render(<RouterProvider router={router} />)
+    const output = await screen.findByRole('status')
+    expect(output).toHaveTextContent('')
 
-  const button = await screen.findByRole('button', { name: 'Navigate and Set' })
-  await act(() => fireEvent.click(button))
-  // Wait for the search param to be set
-  await waitFor(() => expect(window.location.search).toBe('?foo=foo'))
-  // Pathname should NOT have changed
-  expect(window.location.pathname).toBe('/')
-  // Output should reflect the new search state
-  expect(output).toHaveTextContent('foo')
-})
+    const button = await screen.findByRole('button', {
+      name: 'Navigate and Set',
+    })
+    await act(() => fireEvent.click(button))
+    // Wait for the search param to be set
+    await waitFor(() => expect(window.location.search).toBe('?foo=foo'))
+    // Pathname should NOT have changed
+    expect(window.location.pathname).toBe('/')
+    // Output should reflect the new search state
+    expect(output).toHaveTextContent('foo')
+  },
+)
 
 // generally, calling `setSearchState` in the same batch as a `navigate` call is undefined behavior
-test.fails('setSearchState and a subsequent `navigate` can accumulate in the same batch', async () => {
-  const rootRoute = createRootRoute()
+test.fails(
+  'setSearchState and a subsequent `navigate` can accumulate in the same batch',
+  async () => {
+    const rootRoute = createRootRoute()
 
-  const IndexComponent = () => {
-    const [state, setSearchState] = useSearchState({ key: 'foo', from: '/' })
-    const navigate = useNavigate()
-    return (
-      <>
-        <output>{state}</output>
-        <button
-          onClick={() => {
-            setSearchState('foo')
-            navigate({ to: '/bar', search: (s: unknown) => s })
-          }}
-        >
-          Set and Navigate
-        </button>
-      </>
-    )
-  }
+    const IndexComponent = () => {
+      const [state, setSearchState] = useSearchState({ key: 'foo', from: '/' })
+      const navigate = useNavigate()
+      return (
+        <>
+          <output>{state}</output>
+          <button
+            onClick={() => {
+              setSearchState('foo')
+              navigate({ to: '/bar', search: (s: unknown) => s })
+            }}
+          >
+            Set and Navigate
+          </button>
+        </>
+      )
+    }
 
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    validateSearch: z.object({
-      foo: z.string().optional(),
-    }),
-    component: IndexComponent,
-  })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      validateSearch: z.object({
+        foo: z.string().optional(),
+      }),
+      component: IndexComponent,
+    })
 
-  const barRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/bar',
-    validateSearch: z.object({
-      foo: z.string().optional(),
-    }),
-    component: () => <p>Bar</p>,
-  })
+    const barRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/bar',
+      validateSearch: z.object({
+        foo: z.string().optional(),
+      }),
+      component: () => <p>Bar</p>,
+    })
 
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, barRoute]),
-  })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, barRoute]),
+    })
 
-  render(<RouterProvider router={router} />)
-  const output = await screen.findByRole('status')
-  expect(output).toHaveTextContent('')
+    render(<RouterProvider router={router} />)
+    const output = await screen.findByRole('status')
+    expect(output).toHaveTextContent('')
 
-  const button = await screen.findByRole('button', { name: 'Set and Navigate' })
-  await act(() => fireEvent.click(button))
+    const button = await screen.findByRole('button', {
+      name: 'Set and Navigate',
+    })
+    await act(() => fireEvent.click(button))
 
-  await waitFor(() => expect(window.location.pathname).toBe('/bar'))
-  expect(window.location.search).toBe('?foo=foo')
-})
+    await waitFor(() => expect(window.location.pathname).toBe('/bar'))
+    expect(window.location.search).toBe('?foo=foo')
+  },
+)
 
 test('setSearchState does not generate a history entry if the value is the same', async () => {
   const rootRoute = createRootRoute()
@@ -374,8 +402,10 @@ test('setSearchState does not generate a history entry if the value is the same'
     routeTree: rootRoute.addChildren([indexRoute]),
   })
 
-  const history: Array<Parameters<Parameters<typeof router.history.subscribe>[0]>[0]> = []
-  router.history.subscribe(action => history.push(action))
+  const history: Array<
+    Parameters<Parameters<typeof router.history.subscribe>[0]>[0]
+  > = []
+  router.history.subscribe((action) => history.push(action))
 
   // @ts-expect-error -- mock function
   router.navigate = vi.fn(router.navigate)
@@ -396,7 +426,6 @@ test('setSearchState does not generate a history entry if the value is the same'
   // No new history entry should be added
   expect(history).toHaveLength(initialHistoryLength)
 })
-
 
 // meta
 test.todo('replace / push')

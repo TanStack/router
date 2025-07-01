@@ -1,9 +1,9 @@
 import { useLayoutEffect, useMemo } from 'react'
 import { useRouter } from './useRouter'
 import { useSearch } from './useSearch'
-import type { ConstrainLiteral } from "./utils"
-import type { AnyRouter, RegisteredRouter } from "./router"
-import type { ValidateId } from "./typePrimitives"
+import type { ConstrainLiteral } from './utils'
+import type { AnyRouter, RegisteredRouter } from './router'
+import type { ValidateId } from './typePrimitives'
 
 type SearchSchema<
   TRouter extends AnyRouter,
@@ -13,16 +13,19 @@ type SearchSchema<
 type AnyKey<TRouter extends AnyRouter, TKey extends string> = ConstrainLiteral<
   TKey,
   string &
-  {
-    [K in keyof TRouter['routesById']]: SearchSchema<TRouter, K>
-  }[keyof TRouter['routesById']]
+    {
+      [K in keyof TRouter['routesById']]: SearchSchema<TRouter, K>
+    }[keyof TRouter['routesById']]
 >
 
 type FromKey<
   TRouter extends AnyRouter,
   TFrom extends string,
   TKey extends string,
-> = ConstrainLiteral<TKey, string & SearchSchema<TRouter, TFrom & keyof TRouter['routesById']>>
+> = ConstrainLiteral<
+  TKey,
+  string & SearchSchema<TRouter, TFrom & keyof TRouter['routesById']>
+>
 
 type Params<
   TRouter extends AnyRouter,
@@ -32,17 +35,17 @@ type Params<
   TValue,
 > = TStrict extends false
   ? {
-    from?: never
-    strict: TStrict
-    key: AnyKey<TRouter, TKey>
-    initial?: TValue
-  }
+      from?: never
+      strict: TStrict
+      key: AnyKey<TRouter, TKey>
+      initial?: TValue
+    }
   : {
-    from: ValidateId<TFrom, TRouter>
-    strict?: TStrict
-    key: FromKey<TRouter, TFrom, TKey>
-    initial?: TValue
-  }
+      from: ValidateId<TFrom, TRouter>
+      strict?: TStrict
+      key: FromKey<TRouter, TFrom, TKey>
+      initial?: TValue
+    }
 
 type ValueFrom<
   TRouter extends AnyRouter,
@@ -51,13 +54,14 @@ type ValueFrom<
   TKey extends string,
 > = TStrict extends false
   ?
-  | undefined
-  | {
-    [K in keyof TRouter['routesById']]: TKey extends keyof TRouter['routesById'][K]['types']['searchSchema']
-    ? TRouter['routesById'][K]['types']['searchSchema'][TKey]
-    : never
-  }[keyof TRouter['routesById']]
-  : TRouter['routesById'][TFrom & keyof TRouter['routesById']]['types']['searchSchema'][TKey]
+      | undefined
+      | {
+          [K in keyof TRouter['routesById']]: TKey extends keyof TRouter['routesById'][K]['types']['searchSchema']
+            ? TRouter['routesById'][K]['types']['searchSchema'][TKey]
+            : never
+        }[keyof TRouter['routesById']]
+  : TRouter['routesById'][TFrom &
+      keyof TRouter['routesById']]['types']['searchSchema'][TKey]
 
 export function useSearchState<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -72,7 +76,10 @@ export function useSearchState<
   key,
 }: Params<TRouter, TFrom, TStrict, TKey, NoInfer<TValue>>): readonly [
   state: TValue,
-  setState: (value: TValue | ((prev: TValue) => TValue), pushState?: boolean) => void,
+  setState: (
+    value: TValue | ((prev: TValue) => TValue),
+    pushState?: boolean,
+  ) => void,
 ] {
   // state
   const state = useSearch(
@@ -88,7 +95,10 @@ export function useSearchState<
 
   // setState
   const router = useRouter()
-  const setState = useMemo(() => (setter<TValue>).bind(null, router, key), [router, key])
+  const setState = useMemo(
+    () => (setter<TValue>).bind(null, router, key),
+    [router, key],
+  )
 
   // initial value
   useLayoutEffect(() => {
@@ -109,7 +119,11 @@ const push = Symbol('push accumulator')
 const scheduled = Symbol('microtask scheduled')
 
 function setter<T>(
-  router: AnyRouter & { [store]?: object | null;[push]?: boolean | null;[scheduled]?: boolean | null },
+  router: AnyRouter & {
+    [store]?: object | null
+    [push]?: boolean | null
+    [scheduled]?: boolean | null
+  },
   key: string,
   value: T | ((prev: T) => T),
   pushState?: boolean,
@@ -120,7 +134,7 @@ function setter<T>(
     [key]:
       typeof value === 'function'
         ? // @ts-expect-error -- no need to strictly type this internal function
-        value(prev[key])
+          value(prev[key])
         : value,
   }
 
@@ -145,7 +159,10 @@ function setter<T>(
 
   // if a call to `navigate()` happens in the same tick as this setter,
   // cancel the microtask and let the `navigate()` call handle the state update
-  const unsub = router.subscribe('onBeforeNavigate', () => router[scheduled] = false)
+  const unsub = router.subscribe(
+    'onBeforeNavigate',
+    () => (router[scheduled] = false),
+  )
 
   // we use a microtask to allow for multiple synchronous calls to `setState`
   // to accumulate changes but still call `navigate()` only once
