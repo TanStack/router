@@ -1,11 +1,12 @@
 import React from 'react'
 import '@testing-library/jest-dom/vitest'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import combinate from 'combinate'
 import {
   Link,
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouter,
@@ -13,9 +14,17 @@ import {
   useBlocker,
   useNavigate,
 } from '../src'
-import type { ShouldBlockFn } from '../src'
+import type { RouterHistory, ShouldBlockFn } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
   cleanup()
@@ -37,7 +46,7 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
       const navigate = useNavigate()
       useBlocker({ disabled, shouldBlockFn: _mockBlockerFn })
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <Link to="/posts" ignoreBlocker={ignoreBlocker}>
             link to posts
@@ -46,7 +55,7 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
           <button onClick={() => navigate({ to: '/posts', ignoreBlocker })}>
             button
           </button>
-        </React.Fragment>
+        </>
       )
     },
   })
@@ -55,9 +64,9 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
     getParentRoute: () => rootRoute,
     path: '/posts',
     component: () => (
-      <React.Fragment>
+      <>
         <h1>Posts</h1>
-      </React.Fragment>
+      </>
     ),
   })
 
@@ -68,9 +77,9 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
       throw redirect({ to: '/bar' })
     },
     component: () => (
-      <React.Fragment>
+      <>
         <h1>Foo</h1>
-      </React.Fragment>
+      </>
     ),
   })
 
@@ -78,9 +87,9 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
     getParentRoute: () => rootRoute,
     path: '/bar',
     component: () => (
-      <React.Fragment>
+      <>
         <h1>Bar</h1>
-      </React.Fragment>
+      </>
     ),
   })
 
@@ -91,6 +100,7 @@ async function setup({ blockerFn, disabled, ignoreBlocker }: BlockerTestOpts) {
       fooRoute,
       barRoute,
     ]),
+    history,
   })
 
   render(<RouterProvider router={router} />)

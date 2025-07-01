@@ -2,4 +2,4 @@
 
 # TanStack Directive Functions Plugin
 
-See https://tanstack.com/router/latest/docs/framework/react/guide/file-based-routing
+See https://tanstack.com/router/latest/docs/framework/react/routing/file-based-routing

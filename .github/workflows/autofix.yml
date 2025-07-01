@@ -23,7 +23,9 @@ jobs:
         uses: tanstack/config/.github/setup@main
       - name: Fix formatting
         run: pnpm prettier:write
+      - name: Generate labeler config
+        run: pnpm labeler-generate
       - name: Apply fixes
-        uses: autofix-ci/action@ff86a557419858bb967097bfc916833f5647fa8c
+        uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27
         with:
           commit-message: 'ci: apply automated fixes'

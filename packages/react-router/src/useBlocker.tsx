@@ -5,9 +5,12 @@ import type {
   HistoryAction,
   HistoryLocation,
 } from '@tanstack/history'
-import type { AnyRoute } from './route'
-import type { ParseRoute } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type {
+  AnyRoute,
+  AnyRouter,
+  ParseRoute,
+  RegisteredRouter,
+} from '@tanstack/router-core'
 
 interface ShouldBlockFnLocation<
   out TRouteId,
@@ -174,7 +177,10 @@ export function useBlocker(
         location: HistoryLocation,
       ): AnyShouldBlockFnLocation {
         const parsedLocation = router.parseLocation(undefined, location)
-        const matchedRoutes = router.getMatchedRoutes(parsedLocation)
+        const matchedRoutes = router.getMatchedRoutes(
+          parsedLocation.pathname,
+          undefined,
+        )
         if (matchedRoutes.foundRoute === undefined) {
           throw new Error(`No route found for location ${location.href}`)
         }
@@ -230,7 +236,14 @@ export function useBlocker(
     return disabled
       ? undefined
       : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
-  }, [shouldBlockFn, enableBeforeUnload, disabled, withResolver, history])
+  }, [
+    shouldBlockFn,
+    enableBeforeUnload,
+    disabled,
+    withResolver,
+    history,
+    router,
+  ])
 
   return resolver
 }

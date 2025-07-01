@@ -1,0 +1,121 @@
+{
+  "name": "@tanstack/react-start",
+  "version": "1.123.2",
+  "description": "Modern and scalable routing for React applications",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/react-start"
+  },
+  "homepage": "https://tanstack.com/start",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "react",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test": "pnpm test:build",
+    "test:build": "exit 0; vitest",
+    "build": "vite build"
+  },
+  "type": "module",
+  "types": "dist/esm/client.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/client.d.ts",
+        "default": "./dist/esm/client.js"
+      },
+      "require": {
+        "types": "./dist/cjs/client.d.cts",
+        "default": "./dist/cjs/client.cjs"
+      }
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/esm/client.d.ts",
+        "default": "./dist/esm/client.js"
+      },
+      "require": {
+        "types": "./dist/cjs/client.d.cts",
+        "default": "./dist/cjs/client.cjs"
+      }
+    },
+    "./server": {
+      "import": {
+        "types": "./dist/esm/server.d.ts",
+        "default": "./dist/esm/server.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server.d.cts",
+        "default": "./dist/cjs/server.cjs"
+      }
+    },
+    "./plugin/vite": {
+      "import": {
+        "types": "./dist/esm/plugin-vite.d.ts",
+        "default": "./dist/esm/plugin-vite.js"
+      },
+      "require": {
+        "types": "./dist/cjs/plugin-vite.d.cts",
+        "default": "./dist/cjs/plugin-vite.cjs"
+      }
+    },
+    "./server-functions-client": {
+      "import": {
+        "types": "./dist/esm/server-functions-client.d.ts",
+        "default": "./dist/esm/server-functions-client.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server-functions-client.d.cts",
+        "default": "./dist/cjs/server-functions-client.cjs"
+      }
+    },
+    "./server-functions-server": {
+      "import": {
+        "types": "./dist/esm/server-functions-server.d.ts",
+        "default": "./dist/esm/server-functions-server.js"
+      },
+      "require": {
+        "types": "./dist/cjs/server-functions-server.d.cts",
+        "default": "./dist/cjs/server-functions-server.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
+  "dependencies": {
+    "@tanstack/react-start-client": "workspace:*",
+    "@tanstack/react-start-server": "workspace:*",
+    "@tanstack/react-start-plugin": "workspace:*",
+    "@tanstack/start-server-functions-client": "workspace:*",
+    "@tanstack/start-server-functions-server": "workspace:*"
+  },
+  "peerDependencies": {
+    "@vitejs/plugin-react": ">=4.3.4",
+    "react": ">=18.0.0 || >=19.0.0",
+    "react-dom": ">=18.0.0 || >=19.0.0",
+    "vite": ">=6.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

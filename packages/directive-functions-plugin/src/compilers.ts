@@ -1,16 +1,12 @@
 import * as babel from '@babel/core'
-import _generate from '@babel/generator'
-import { parse } from '@babel/parser'
 import { isIdentifier, isVariableDeclarator } from '@babel/types'
 import { codeFrameColumns } from '@babel/code-frame'
-import { deadCodeElimination } from 'babel-dead-code-elimination'
-import type { ParseResult } from '@babel/parser'
-
-let generate = _generate
-
-if ('default' in generate) {
-  generate = generate.default as typeof generate
-}
+import {
+  deadCodeElimination,
+  findReferencedIdentifiers,
+} from 'babel-dead-code-elimination'
+import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
 export interface DirectiveFn {
   nodePath: SupportedFunctionPath
@@ -44,35 +40,23 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   }) => string
   replacer: ReplacerFn
   // devSplitImporter: string
-}
-
-export type ParseAstOptions = {
-  code: string
   filename: string
   root: string
-}
-
-export function parseAst(opts: ParseAstOptions): ParseResult<babel.types.File> {
-  return parse(opts.code, {
-    plugins: ['jsx', 'typescript'],
-    sourceType: 'module',
-    ...{
-      root: opts.root,
-      filename: opts.filename,
-      sourceMaps: true,
-    },
-  })
 }
 
 function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
   return `tsr-directive-${opts.directive.replace(/[^a-zA-Z0-9]/g, '-')}`
 }
 
-export function compileDirectives(opts: CompileDirectivesOpts) {
+export function compileDirectives(opts: CompileDirectivesOpts): {
+  compiledResult: GeneratorResult
+  directiveFnsById: Record<string, DirectiveFn>
+} {
   const directiveSplitParam = buildDirectiveSplitParam(opts)
   const isDirectiveSplitParam = opts.filename.includes(directiveSplitParam)
 
   const ast = parseAst(opts)
+  const refIdents = findReferencedIdentifiers(ast)
   const directiveFnsById = findDirectives(ast, {
     ...opts,
     directiveSplitParam,
@@ -121,12 +105,12 @@ export function compileDirectives(opts: CompileDirectivesOpts) {
     )
   }
 
-  deadCodeElimination(ast)
+  deadCodeElimination(ast, refIdents)
 
-  const compiledResult = generate(ast, {
+  const compiledResult = generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
-    minified: process.env.NODE_ENV === 'production',
+    filename: opts.filename,
   })
 
   return {
@@ -248,8 +232,10 @@ export function findDirectives(
     directiveLabel: string
     replacer?: ReplacerFn
     directiveSplitParam: string
+    filename: string
+    root: string
   },
-) {
+): Record<string, DirectiveFn> {
   const directiveFnsById: Record<string, DirectiveFn> = {}
   const functionNameSet: Set<string> = new Set()
 
@@ -282,30 +268,43 @@ export function findDirectives(
           compileDirective(path.get('declaration') as SupportedFunctionPath)
         }
       },
+      ExportDeclaration(path) {
+        if (
+          babel.types.isExportNamedDeclaration(path.node) &&
+          babel.types.isVariableDeclaration(path.node.declaration) &&
+          (babel.types.isFunctionExpression(
+            path.node.declaration.declarations[0]?.init,
+          ) ||
+            babel.types.isArrowFunctionExpression(
+              path.node.declaration.declarations[0]?.init,
+            ))
+        ) {
+          compileDirective(
+            path.get(
+              'declaration.declarations.0.init',
+            ) as SupportedFunctionPath,
+          )
+        }
+      },
     })
   } else {
     // Find all directives
     babel.traverse(ast, {
       DirectiveLiteral(nodePath) {
         if (nodePath.node.value === opts.directive) {
-          const directiveFn = nodePath.findParent((p) => p.isFunction()) as
-            | SupportedFunctionPath
-            | undefined
+          const directiveFn = nodePath.findParent((p) => p.isFunction())
 
           if (!directiveFn) return
 
           // Handle class and object methods which are not supported
-          const isGenerator =
-            directiveFn.isFunction() && directiveFn.node.generator
-
           const isClassMethod = directiveFn.isClassMethod()
           const isObjectMethod = directiveFn.isObjectMethod()
 
-          if (isClassMethod || isObjectMethod || isGenerator) {
+          if (isClassMethod || isObjectMethod) {
             throw codeFrameError(
               opts.code,
               directiveFn.node.loc,
-              `"${opts.directive}" in ${isClassMethod ? 'class' : isObjectMethod ? 'object method' : 'generator function'} not supported`,
+              `"${opts.directive}" in ${isClassMethod ? 'class' : isObjectMethod ? 'object method' : ''} not supported`,
             )
           }
 
@@ -347,6 +346,10 @@ export function findDirectives(
   return directiveFnsById
 
   function compileDirective(directiveFn: SupportedFunctionPath) {
+    // Move the function to program level while preserving its position
+    // in the program body
+    const programBody = programPath.node.body
+
     // Remove the directive directive from the function body
     if (
       babel.types.isFunction(directiveFn.node) &&
@@ -356,6 +359,36 @@ export function findDirectives(
         directiveFn.node.body.directives.filter(
           (directive) => directive.value.value !== opts.directive,
         )
+    }
+
+    // if the directive function is a top-level function, we need to create a const declaration
+    // using the same name as the function and replace the function with the variable declaration
+    // that points to the function
+    if (directiveFn.parentPath.isProgram()) {
+      if (!babel.types.isFunctionDeclaration(directiveFn.node)) {
+        throw new Error('Top level functions must be function declarations')
+      }
+
+      const index = programBody.indexOf(directiveFn.node)
+
+      // First get the name of the function
+      const originalFunctionName = directiveFn.node.id!.name
+
+      // Now turn the function into an anonymous function
+      directiveFn.node.id = null
+
+      const variableDeclaration = babel.types.variableDeclaration('const', [
+        babel.types.variableDeclarator(
+          babel.types.identifier(originalFunctionName),
+          babel.types.toExpression(directiveFn.node as any),
+        ),
+      ])
+
+      directiveFn.replaceWith(variableDeclaration)
+
+      directiveFn = programPath.get(
+        `body.${index}.declarations.0.init`,
+      ) as SupportedFunctionPath
     }
 
     // Find the nearest variable name
@@ -381,68 +414,61 @@ export function findDirectives(
 
     functionNameSet.add(functionName)
 
-    // Move the function to program level while preserving its position
-    // in the program body
-    const programBody = programPath.node.body
-
     const topParent =
       directiveFn.findParent((p) => !!p.parentPath?.isProgram()) || directiveFn
 
     const topParentIndex = programBody.indexOf(topParent.node as any)
 
-    // If the reference name came from the function declaration,
-    // // We need to update the function name to match the reference name
-    // if (babel.types.isFunctionDeclaration(directiveFn.node)) {
-    //   directiveFn.node.id!.name = functionName
-    // }
-
     // If the function has a parent that isn't the program,
     // we need to replace it with an identifier and
     // hoist the function to the top level as a const declaration
-    if (!directiveFn.parentPath.isProgram()) {
-      // Then place the function at the top level
+    if (directiveFn.parentPath.isProgram()) {
+      throw new Error(
+        'Top level functions should have already been compiled to variable declarations by this point',
+      )
+    }
+    // Then place the function at the top level
+    programBody.splice(
+      topParentIndex,
+      0,
+      babel.types.variableDeclaration('const', [
+        babel.types.variableDeclarator(
+          babel.types.identifier(functionName),
+          babel.types.toExpression(directiveFn.node as any),
+        ),
+      ]),
+    )
+
+    // If it's an exported named function, we need to swap it with an
+    // export const originalFunctionName = functionName
+    if (
+      babel.types.isExportNamedDeclaration(directiveFn.parentPath.node) &&
+      (babel.types.isFunctionDeclaration(directiveFn.node) ||
+        babel.types.isFunctionExpression(directiveFn.node)) &&
+      babel.types.isIdentifier(directiveFn.node.id)
+    ) {
+      const originalFunctionName = directiveFn.node.id.name
       programBody.splice(
-        topParentIndex,
+        topParentIndex + 1,
         0,
-        babel.types.variableDeclaration('const', [
-          babel.types.variableDeclarator(
-            babel.types.identifier(functionName),
-            babel.types.toExpression(directiveFn.node as any),
-          ),
-        ]),
+        babel.types.exportNamedDeclaration(
+          babel.types.variableDeclaration('const', [
+            babel.types.variableDeclarator(
+              babel.types.identifier(originalFunctionName),
+              babel.types.identifier(functionName),
+            ),
+          ]),
+        ),
       )
 
-      // If it's an exported named function, we need to swap it with an
-      // export const originalFunctionName = functionName
-      if (
-        babel.types.isExportNamedDeclaration(directiveFn.parentPath.node) &&
-        (babel.types.isFunctionDeclaration(directiveFn.node) ||
-          babel.types.isFunctionExpression(directiveFn.node)) &&
-        babel.types.isIdentifier(directiveFn.node.id)
-      ) {
-        const originalFunctionName = directiveFn.node.id.name
-        programBody.splice(
-          topParentIndex + 1,
-          0,
-          babel.types.exportNamedDeclaration(
-            babel.types.variableDeclaration('const', [
-              babel.types.variableDeclarator(
-                babel.types.identifier(originalFunctionName),
-                babel.types.identifier(functionName),
-              ),
-            ]),
-          ),
-        )
-
-        directiveFn.remove()
-      } else {
-        directiveFn.replaceWith(babel.types.identifier(functionName))
-      }
-
-      directiveFn = programPath.get(
-        `body.${topParentIndex}.declarations.0.init`,
-      ) as SupportedFunctionPath
+      directiveFn.remove()
+    } else {
+      directiveFn.replaceWith(babel.types.identifier(functionName))
     }
+
+    directiveFn = programPath.get(
+      `body.${topParentIndex}.declarations.0.init`,
+    ) as SupportedFunctionPath
 
     const [baseFilename, ..._searchParams] = opts.filename.split('?')
     const searchParams = new URLSearchParams(_searchParams.join('&'))
@@ -545,6 +571,15 @@ const safeRemoveExports = (ast: babel.types.File) => {
         const insertIndex = programBody.findIndex(
           (node) => node === path.node.declaration,
         )
+        // do not remove export if it is an anonymous function / class, otherwise this would produce a syntax error
+        if (
+          babel.types.isFunctionDeclaration(path.node.declaration) ||
+          babel.types.isClassDeclaration(path.node.declaration)
+        ) {
+          if (!path.node.declaration.id) {
+            return
+          }
+        }
         programBody.splice(insertIndex, 0, path.node.declaration as any)
       }
     }

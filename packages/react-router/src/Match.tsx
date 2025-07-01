@@ -1,20 +1,27 @@
-'use client'
-
 import * as React from 'react'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
+import {
+  createControlledPromise,
+  getLocationChangeInfo,
+  isNotFound,
+  isRedirect,
+  pick,
+  rootRouteId,
+} from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import { createControlledPromise, pick } from './utils'
-import { CatchNotFound, isNotFound } from './not-found'
-import { isRedirect } from './redirects'
+import { CatchNotFound } from './not-found'
 import { matchContext } from './matchContext'
-import { defaultDeserializeError, isServerSideError } from './isServerSideError'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
-import { rootRouteId } from './root'
-import type { AnyRoute } from './route'
+import { ScrollRestoration } from './scroll-restoration'
+import type {
+  AnyRoute,
+  ParsedLocation,
+  RootRouteOptions,
+} from '@tanstack/router-core'
 
 export const Match = React.memo(function MatchImpl({
   matchId,
@@ -70,40 +77,93 @@ export const Match = React.memo(function MatchImpl({
     select: (s) => s.loadedAt,
   })
 
-  return (
-    <matchContext.Provider value={matchId}>
-      <ResolvedSuspenseBoundary fallback={pendingElement}>
-        <ResolvedCatchBoundary
-          getResetKey={() => resetKey}
-          errorComponent={routeErrorComponent || ErrorComponent}
-          onCatch={(error, errorInfo) => {
-            // Forward not found errors (we don't want to show the error component for these)
-            if (isNotFound(error)) throw error
-            warning(false, `Error in route match: ${matchId}`)
-            routeOnCatch?.(error, errorInfo)
-          }}
-        >
-          <ResolvedNotFoundBoundary
-            fallback={(error) => {
-              // If the current not found handler doesn't exist or it has a
-              // route ID which doesn't match the current route, rethrow the error
-              if (
-                !routeNotFoundComponent ||
-                (error.routeId && error.routeId !== routeId) ||
-                (!error.routeId && !route.isRoot)
-              )
-                throw error
+  const parentRouteId = useRouterState({
+    select: (s) => {
+      const index = s.matches.findIndex((d) => d.id === matchId)
+      return s.matches[index - 1]?.routeId as string
+    },
+  })
 
-              return React.createElement(routeNotFoundComponent, error as any)
+  const ShellComponent = route.isRoot
+    ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
+    : SafeFragment
+  return (
+    <ShellComponent>
+      <matchContext.Provider value={matchId}>
+        <ResolvedSuspenseBoundary fallback={pendingElement}>
+          <ResolvedCatchBoundary
+            getResetKey={() => resetKey}
+            errorComponent={routeErrorComponent || ErrorComponent}
+            onCatch={(error, errorInfo) => {
+              // Forward not found errors (we don't want to show the error component for these)
+              if (isNotFound(error)) throw error
+              warning(false, `Error in route match: ${matchId}`)
+              routeOnCatch?.(error, errorInfo)
             }}
           >
-            <MatchInner matchId={matchId} />
-          </ResolvedNotFoundBoundary>
-        </ResolvedCatchBoundary>
-      </ResolvedSuspenseBoundary>
-    </matchContext.Provider>
+            <ResolvedNotFoundBoundary
+              fallback={(error) => {
+                // If the current not found handler doesn't exist or it has a
+                // route ID which doesn't match the current route, rethrow the error
+                if (
+                  !routeNotFoundComponent ||
+                  (error.routeId && error.routeId !== routeId) ||
+                  (!error.routeId && !route.isRoot)
+                )
+                  throw error
+
+                return React.createElement(routeNotFoundComponent, error as any)
+              }}
+            >
+              <MatchInner matchId={matchId} />
+            </ResolvedNotFoundBoundary>
+          </ResolvedCatchBoundary>
+        </ResolvedSuspenseBoundary>
+      </matchContext.Provider>
+      {parentRouteId === rootRouteId && router.options.scrollRestoration ? (
+        <>
+          <OnRendered />
+          <ScrollRestoration />
+        </>
+      ) : null}
+    </ShellComponent>
   )
 })
+
+// On Rendered can't happen above the root layout because it actually
+// renders a dummy dom element to track the rendered state of the app.
+// We render a script tag with a key that changes based on the current
+// location state.__TSR_key. Also, because it's below the root layout, it
+// allows us to fire onRendered events even after a hydration mismatch
+// error that occurred above the root layout (like bad head/link tags,
+// which is common).
+function OnRendered() {
+  const router = useRouter()
+
+  const prevLocationRef = React.useRef<undefined | ParsedLocation<{}>>(
+    undefined,
+  )
+
+  return (
+    <script
+      key={router.latestLocation.state.__TSR_key}
+      suppressHydrationWarning
+      ref={(el) => {
+        if (
+          el &&
+          (prevLocationRef.current === undefined ||
+            prevLocationRef.current.href !== router.latestLocation.href)
+        ) {
+          router.emit({
+            type: 'onRendered',
+            ...getLocationChangeInfo(router.state),
+          })
+          prevLocationRef.current = router.latestLocation
+        }
+      }}
+    />
+  )
+}
 
 export const MatchInner = React.memo(function MatchInnerImpl({
   matchId,
@@ -112,64 +172,49 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 }): any {
   const router = useRouter()
 
-  const { match, matchIndex, routeId } = useRouterState({
+  const { match, key, routeId } = useRouterState({
     select: (s) => {
       const matchIndex = s.matches.findIndex((d) => d.id === matchId)
       const match = s.matches[matchIndex]!
       const routeId = match.routeId as string
-      return {
+
+      const remountFn =
+        (router.routesById[routeId] as AnyRoute).options.remountDeps ??
+        router.options.defaultRemountDeps
+      const remountDeps = remountFn?.({
         routeId,
-        matchIndex,
+        loaderDeps: match.loaderDeps,
+        params: match._strictParams,
+        search: match._strictSearch,
+      })
+      const key = remountDeps ? JSON.stringify(remountDeps) : undefined
+
+      return {
+        key,
+        routeId,
         match: pick(match, ['id', 'status', 'error']),
       }
     },
     structuralSharing: true as any,
   })
 
-  const route = router.routesById[routeId]!
+  const route = router.routesById[routeId] as AnyRoute
 
   const out = React.useMemo(() => {
     const Comp = route.options.component ?? router.options.defaultComponent
-    return Comp ? <Comp /> : <Outlet />
-  }, [route.options.component, router.options.defaultComponent])
-
-  // function useChangedDiff(value: any) {
-  //   const ref = React.useRef(value)
-  //   const changed = ref.current !== value
-  //   if (changed) {
-  //     console.log(
-  //       'Changed:',
-  //       value,
-  //       Object.fromEntries(
-  //         Object.entries(value).filter(
-  //           ([key, val]) => val !== ref.current[key],
-  //         ),
-  //       ),
-  //     )
-  //   }
-  //   ref.current = value
-  // }
-
-  // useChangedDiff(match)
+    if (Comp) {
+      return <Comp key={key} />
+    }
+    return <Outlet />
+  }, [key, route.options.component, router.options.defaultComponent])
 
   const RouteErrorComponent =
     (route.options.errorComponent ?? router.options.defaultErrorComponent) ||
     ErrorComponent
 
   if (match.status === 'notFound') {
-    let error: unknown
-    if (isServerSideError(match.error)) {
-      const deserializeError =
-        router.options.errorSerializer?.deserialize ?? defaultDeserializeError
-
-      error = deserializeError(match.error.data)
-    } else {
-      error = match.error
-    }
-
-    invariant(isNotFound(error), 'Expected a notFound error')
-
-    return renderRouteNotFound(router, route, error)
+    invariant(isNotFound(match.error), 'Expected a notFound error')
+    return renderRouteNotFound(router, route, match.error)
   }
 
   if (match.status === 'redirected') {
@@ -193,7 +238,8 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     if (router.isServer) {
       return (
         <RouteErrorComponent
-          error={match.error}
+          error={match.error as any}
+          reset={undefined as any}
           info={{
             componentStack: '',
           }}
@@ -201,13 +247,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       )
     }
 
-    if (isServerSideError(match.error)) {
-      const deserializeError =
-        router.options.errorSerializer?.deserialize ?? defaultDeserializeError
-      throw deserializeError(match.error.data)
-    } else {
-      throw match.error
-    }
+    throw match.error
   }
 
   if (match.status === 'pending') {
@@ -241,14 +281,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     throw router.getMatch(match.id)?.loadPromise
   }
 
-  return (
-    <>
-      {out}
-      {router.AfterEachMatch ? (
-        <router.AfterEachMatch match={match} matchIndex={matchIndex} />
-      ) : null}
-    </>
-  )
+  return out
 })
 
 export const Outlet = React.memo(function OutletImpl() {
@@ -280,6 +313,17 @@ export const Outlet = React.memo(function OutletImpl() {
     },
   })
 
+  const pendingElement = router.options.defaultPendingComponent ? (
+    <router.options.defaultPendingComponent />
+  ) : null
+
+  if (router.isShell)
+    return (
+      <React.Suspense fallback={pendingElement}>
+        <ShellInner />
+      </React.Suspense>
+    )
+
   if (parentGlobalNotFound) {
     return renderRouteNotFound(router, route, undefined)
   }
@@ -290,10 +334,6 @@ export const Outlet = React.memo(function OutletImpl() {
 
   const nextMatch = <Match matchId={childMatchId} />
 
-  const pendingElement = router.options.defaultPendingComponent ? (
-    <router.options.defaultPendingComponent />
-  ) : null
-
   if (matchId === rootRouteId) {
     return (
       <React.Suspense fallback={pendingElement}>{nextMatch}</React.Suspense>
@@ -302,3 +342,7 @@ export const Outlet = React.memo(function OutletImpl() {
 
   return nextMatch
 })
+
+function ShellInner(): React.ReactElement {
+  throw new Error('ShellBoundaryError')
+}

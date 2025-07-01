@@ -34,7 +34,7 @@ test('can navigate to the route', async () => {
   }
 
   const search = type({
-    'search?': 'string = "default"',
+    search: 'string = "default"',
   })
 
   const arkTypeRoute = createRoute({
@@ -46,7 +46,7 @@ test('can navigate to the route', async () => {
 
   const routeTree = rootRoute.addChildren([indexRoute, arkTypeRoute])
 
-  const router = createRouter({ routeTree })
+  const router = createRouter({ routeTree, scrollRestoration: true })
 
   render(<RouterProvider router={router as any} />)
 

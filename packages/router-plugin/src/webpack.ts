@@ -37,7 +37,7 @@ const TanStackRouterCodeSplitterWebpack = /* #__PURE__ */ createWebpackPlugin(
  * ```ts
  * export default {
  *   // ...
- *   plugins: [TanStackRouterWebpack()],
+ *   plugins: [tanstackRouter()],
  * }
  * ```
  */
@@ -45,11 +45,13 @@ const TanStackRouterWebpack = /* #__PURE__ */ createWebpackPlugin(
   unpluginRouterComposedFactory,
 )
 
+const tanstackRouter = TanStackRouterWebpack
 export default TanStackRouterWebpack
 export {
   configSchema,
   TanStackRouterWebpack,
   TanStackRouterGeneratorWebpack,
   TanStackRouterCodeSplitterWebpack,
+  tanstackRouter,
 }
 export type { Config }

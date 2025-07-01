@@ -1,138 +1,35 @@
 import type {
-  FromPathOption,
-  LinkComponentProps,
-  NavigateOptions,
-  PathParamOptions,
-  SearchParamOptions,
-  ToPathOption,
-} from './link'
-import type { RouteIds } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
-import type { UseParamsOptions, UseParamsResult } from './useParams'
-import type { UseSearchOptions, UseSearchResult } from './useSearch'
-import type { Constrain, ConstrainLiteral } from './utils'
-
-export type ValidateFromPath<
-  TFrom,
-  TRouter extends AnyRouter = RegisteredRouter,
-> = FromPathOption<TRouter, TFrom>
-
-export type ValidateToPath<
-  TTo extends string | undefined,
-  TFrom extends string = string,
-  TRouter extends AnyRouter = RegisteredRouter,
-> = ToPathOption<TRouter, TFrom, TTo>
-
-export type ValidateSearch<
-  TTo extends string | undefined,
-  TFrom extends string = string,
-  TRouter extends AnyRouter = RegisteredRouter,
-> = SearchParamOptions<TRouter, TFrom, TTo>
-
-export type ValidateParams<
-  TTo extends string | undefined,
-  TFrom extends string = string,
-  TRouter extends AnyRouter = RegisteredRouter,
-> = PathParamOptions<TRouter, TFrom, TTo>
-
-/**
- * @internal
- */
-export type InferFrom<TOptions> = TOptions extends {
-  from: infer TFrom extends string
-}
-  ? TFrom
-  : string
-
-/**
- * @internal
- */
-export type InferTo<TOptions> = TOptions extends {
-  to: infer TTo extends string
-}
-  ? TTo
-  : undefined
-
-/**
- * @internal
- */
-export type InferMaskTo<TOptions> = TOptions extends {
-  mask: { to: infer TTo extends string }
-}
-  ? TTo
-  : ''
-
-export type InferMaskFrom<TOptions> = TOptions extends {
-  mask: { from: infer TFrom extends string }
-}
-  ? TFrom
-  : string
-
-export type ValidateNavigateOptions<
-  TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
-> = Constrain<
-  TOptions,
-  NavigateOptions<
-    TRouter,
-    InferFrom<TOptions>,
-    InferTo<TOptions>,
-    InferMaskFrom<TOptions>,
-    InferMaskTo<TOptions>
-  >
->
-
-export type ValidateNavigateOptionsArray<
-  TOptions extends ReadonlyArray<any>,
-  TRouter extends AnyRouter = RegisteredRouter,
-> = { [K in keyof TOptions]: ValidateNavigateOptions<TOptions[K], TRouter> }
+  AnyRouter,
+  Constrain,
+  InferFrom,
+  InferMaskFrom,
+  InferMaskTo,
+  InferSelected,
+  InferShouldThrow,
+  InferStrict,
+  InferTo,
+  RegisteredRouter,
+} from '@tanstack/router-core'
+import type { LinkComponentProps } from './link'
+import type { UseParamsOptions } from './useParams'
+import type { UseSearchOptions } from './useSearch'
 
 export type ValidateLinkOptions<
-  TOptions,
-  TComp = 'a',
   TRouter extends AnyRouter = RegisteredRouter,
+  TOptions = unknown,
+  TDefaultFrom extends string = string,
+  TComp = 'a',
 > = Constrain<
   TOptions,
   LinkComponentProps<
     TComp,
     TRouter,
-    InferFrom<TOptions>,
+    InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,
     InferMaskFrom<TOptions>,
     InferMaskTo<TOptions>
   >
 >
-
-export type ValidateLinkOptionsArray<
-  TOptions extends ReadonlyArray<any>,
-  TComp = 'a',
-  TRouter extends AnyRouter = RegisteredRouter,
-> = {
-  [K in keyof TOptions]: ValidateLinkOptions<TOptions[K], TComp, TRouter>
-}
-
-export type ValidateId<
-  TId extends string,
-  TRouter extends AnyRouter = RegisteredRouter,
-> = ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>
-
-/**
- * @internal
- */
-export type InferStrict<TOptions> = TOptions extends {
-  strict: infer TStrict extends boolean
-}
-  ? TStrict
-  : true
-
-/**
- * @internal
- */
-export type InferSelected<TOptions> = TOptions extends {
-  select: (...args: Array<any>) => infer TSelected
-}
-  ? TSelected
-  : unknown
 
 /**
  * @internal
@@ -152,19 +49,10 @@ export type ValidateUseSearchOptions<
     TRouter,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
+    InferShouldThrow<TOptions>,
     InferSelected<TOptions>,
     InferStructuralSharing<TOptions>
   >
->
-
-export type ValidateUseSearchResult<
-  TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
-> = UseSearchResult<
-  TRouter,
-  InferFrom<TOptions>,
-  InferStrict<TOptions>,
-  InferSelected<TOptions>
 >
 
 export type ValidateUseParamsOptions<
@@ -176,20 +64,21 @@ export type ValidateUseParamsOptions<
     TRouter,
     InferFrom<TOptions>,
     InferStrict<TOptions>,
+    InferShouldThrow<TOptions>,
     InferSelected<TOptions>,
     InferSelected<TOptions>
   >
 >
-
-export type ValidateUseParamsResult<
-  TOptions,
+export type ValidateLinkOptionsArray<
   TRouter extends AnyRouter = RegisteredRouter,
-> = Constrain<
-  TOptions,
-  UseParamsResult<
+  TOptions extends ReadonlyArray<any> = ReadonlyArray<unknown>,
+  TDefaultFrom extends string = string,
+  TComp = 'a',
+> = {
+  [K in keyof TOptions]: ValidateLinkOptions<
     TRouter,
-    InferFrom<TOptions>,
-    InferStrict<TOptions>,
-    InferSelected<TOptions>
+    TOptions[K],
+    TDefaultFrom,
+    TComp
   >
->
+}

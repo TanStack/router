@@ -1,153 +1,149 @@
-import { isAbsolute, join, normalize, resolve } from 'node:path'
-import { generator, resolveConfigPath } from '@tanstack/router-generator'
-
+import { isAbsolute, join, normalize } from 'node:path'
+import { Generator, resolveConfigPath } from '@tanstack/router-generator'
 import { getConfig } from './config'
+
+import type { GeneratorEvent } from '@tanstack/router-generator'
+import type { FSWatcher } from 'chokidar'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
-
-let lock = false
-const checkLock = () => lock
-const setLock = (bool: boolean) => {
-  lock = bool
-}
 
 const PLUGIN_NAME = 'unplugin:router-generator'
 
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}) => {
-  let ROOT: string = process.cwd()
+  const ROOT: string = process.cwd()
   let userConfig = options as Config
+  let generator: Generator
 
+  const routeGenerationDisabled = () =>
+    userConfig.enableRouteGeneration === false
   const getRoutesDirectoryPath = () => {
     return isAbsolute(userConfig.routesDirectory)
       ? userConfig.routesDirectory
       : join(ROOT, userConfig.routesDirectory)
   }
 
-  const generate = async () => {
-    if (checkLock()) {
+  const initConfigAndGenerator = () => {
+    userConfig = getConfig(options, ROOT)
+    generator = new Generator({
+      config: userConfig,
+      root: ROOT,
+    })
+  }
+
+  const generate = async (opts?: {
+    file: string
+    event: 'create' | 'update' | 'delete'
+  }) => {
+    if (routeGenerationDisabled()) {
       return
     }
-
-    setLock(true)
+    let generatorEvent: GeneratorEvent | undefined = undefined
+    if (opts) {
+      const filePath = normalize(opts.file)
+      if (filePath === resolveConfigPath({ configDirectory: ROOT })) {
+        initConfigAndGenerator()
+        return
+      }
+      generatorEvent = { path: filePath, type: opts.event }
+    }
 
     try {
-      await generator(userConfig, process.cwd())
-    } catch (err) {
-      console.error(err)
-      console.info()
-    } finally {
-      setLock(false)
-    }
-  }
-
-  const handleFile = async (
-    file: string,
-    event: 'create' | 'update' | 'delete',
-  ) => {
-    const filePath = normalize(file)
-
-    if (filePath === resolveConfigPath({ configDirectory: ROOT })) {
-      userConfig = getConfig(options, ROOT)
-      return
-    }
-
-    if (
-      event === 'update' &&
-      filePath === resolve(userConfig.generatedRouteTree)
-    ) {
-      // skip generating routes if the generated route tree is updated
-      return
-    }
-
-    const routesDirectoryPath = getRoutesDirectoryPath()
-    if (filePath.startsWith(routesDirectoryPath)) {
-      await generate()
-    }
-  }
-
-  const run: (cb: () => Promise<void> | void) => Promise<void> = async (cb) => {
-    if (userConfig.enableRouteGeneration ?? true) {
-      await cb()
+      await generator.run(generatorEvent)
+      globalThis.TSR_ROUTES_BY_ID_MAP = generator.getRoutesByFileMap()
+    } catch (e) {
+      console.error(e)
     }
   }
 
   return {
-    name: 'router-generator-plugin',
+    name: 'tanstack:router-generator',
+    enforce: 'pre',
     async watchChange(id, { event }) {
-      await run(async () => {
-        await handleFile(id, event)
+      await generate({
+        file: id,
+        event,
       })
     },
-    vite: {
-      async configResolved(config) {
-        ROOT = config.root
-        userConfig = getConfig(options, ROOT)
-
-        await run(generate)
-      },
+    async buildStart() {
+      await generate()
     },
-    async rspack(compiler) {
-      userConfig = getConfig(options, ROOT)
+    vite: {
+      configResolved() {
+        initConfigAndGenerator()
+      },
+      async buildStart() {
+        // to support vite 5, we need to optionally chain the access to the environment
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (this.environment?.config?.consumer === 'server') {
+          // When building in environment mode, we only need to generate routes
+          // for the client environment
+          return
+        }
+        await generate()
+      },
+      sharedDuringBuild: true,
+    },
+    rspack(compiler) {
+      initConfigAndGenerator()
 
-      if (compiler.options.mode === 'production') {
-        compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
-          await run(generate)
-        })
-      } else {
+      let handle: FSWatcher | null = null
+
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => generate())
+
+      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
+        if (handle) {
+          return
+        }
+
         // rspack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
         const chokidar = await import('chokidar')
-        chokidar
+        handle = chokidar
           .watch(routesDirectoryPath, { ignoreInitial: true })
-          .on('add', async () => {
-            await run(generate)
-          })
+          .on('add', (file) => generate({ file, event: 'create' }))
 
-        let generated = false
-        compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
-          if (!generated) {
-            generated = true
-            return run(generate)
-          }
-        })
-      }
+        await generate()
+      })
+
+      compiler.hooks.watchClose.tap(PLUGIN_NAME, async () => {
+        if (handle) {
+          await handle.close()
+        }
+      })
     },
-    async webpack(compiler) {
-      userConfig = getConfig(options, ROOT)
+    webpack(compiler) {
+      initConfigAndGenerator()
 
-      if (compiler.options.mode === 'production') {
-        compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, async () => {
-          await run(generate)
-        })
-      } else {
+      let handle: FSWatcher | null = null
+
+      compiler.hooks.beforeRun.tapPromise(PLUGIN_NAME, () => generate())
+
+      compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
+        if (handle) {
+          return
+        }
+
         // webpack watcher doesn't register newly created files
         const routesDirectoryPath = getRoutesDirectoryPath()
         const chokidar = await import('chokidar')
-        chokidar
+        handle = chokidar
           .watch(routesDirectoryPath, { ignoreInitial: true })
-          .on('add', async () => {
-            await run(generate)
-          })
+          .on('add', (file) => generate({ file, event: 'create' }))
 
-        let generated = false
-        compiler.hooks.watchRun.tapPromise(PLUGIN_NAME, async () => {
-          if (!generated) {
-            generated = true
-            return run(generate)
-          }
-        })
-      }
+        await generate()
+      })
 
-      if (compiler.options.mode === 'production') {
-        compiler.hooks.done.tap(PLUGIN_NAME, (stats) => {
-          console.info('✅ ' + PLUGIN_NAME + ': route-tree generation done')
-          setTimeout(() => {
-            process.exit(0)
-          })
-        })
-      }
+      compiler.hooks.watchClose.tap(PLUGIN_NAME, async () => {
+        if (handle) {
+          await handle.close()
+        }
+      })
+
+      compiler.hooks.done.tap(PLUGIN_NAME, () => {
+        console.info('✅ ' + PLUGIN_NAME + ': route-tree generation done')
+      })
     },
   }
 }

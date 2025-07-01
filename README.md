@@ -30,17 +30,26 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 ## Partners
 
-<div><a href="https://convex.dev?utm_source=tanstack">
-  <img alt="Convex" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40"
-</a></div><br />
 <div><a href="https://go.clerk.com/wOwHtuJ">
   <img alt="Clerk" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40"
 </a></div><br />
 <div><a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable">
   <img alt="AG Grid" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/ag-grid.svg" height="40"
 </a></div><br />
+<div><a href="https://netlify.com?utm_source=tanstack">
+  <img alt="Netlify" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/netlify.svg" height="40"
+</a></div><br />
+<div><a href="https://neon.tech?utm_source=tanstack">
+  <img alt="Neon" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="40"
+</a></div><br />
+<div><a href="https://convex.dev?utm_source=tanstack">
+  <img alt="Convex" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40"
+</a></div><br />
 <div><a href="https://sentry.io?utm_source=tanstack">
   <img alt="Sentry" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40"
+</a></div><br />
+<div><a href="https://speakeasy.com/?utm_source=tanstack&utm_campaign=tanstack">
+  <img alt="Speakeasy" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/speakeasy.svg" height="40"
 </a></div><br />
 <div><a href="https://nozzle.io/?utm_source=tanstack&utm_campaign=tanstack">
   <img alt="Nozzle.io" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/nozzle.svg" height="40"
@@ -78,4 +87,4 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
 
 To run example React projects with Tanstack Router, see [CONTRIBUTING.md](./CONTRIBUTING.md)
 
-<!-- Use the force, Luke!!!! -->
+<!-- Use the force, Luke!! -->

@@ -1,10 +1,7 @@
 import * as React from 'react'
-import warning from 'tiny-warning'
-import { useRouter } from './useRouter'
-import { defaultSerializeError } from './router'
-import { TSR_DEFERRED_PROMISE, defer } from './defer'
-import { defaultDeserializeError, isServerSideError } from './isServerSideError'
-import type { DeferredPromise } from './defer'
+
+import { TSR_DEFERRED_PROMISE, defer } from '@tanstack/router-core'
+import type { DeferredPromise } from '@tanstack/router-core'
 
 export type AwaitOptions<T> = {
   promise: Promise<T>
@@ -13,7 +10,6 @@ export type AwaitOptions<T> = {
 export function useAwaited<T>({
   promise: _promise,
 }: AwaitOptions<T>): [T, DeferredPromise<T>] {
-  const router = useRouter()
   const promise = defer(_promise)
 
   if (promise[TSR_DEFERRED_PROMISE].status === 'pending') {
@@ -21,27 +17,9 @@ export function useAwaited<T>({
   }
 
   if (promise[TSR_DEFERRED_PROMISE].status === 'error') {
-    if (typeof document !== 'undefined') {
-      if (isServerSideError(promise[TSR_DEFERRED_PROMISE].error)) {
-        throw (
-          router.options.errorSerializer?.deserialize ?? defaultDeserializeError
-        )(promise[TSR_DEFERRED_PROMISE].error.data as any)
-      } else {
-        warning(
-          false,
-          "Encountered a server-side error that doesn't fit the expected shape",
-        )
-        throw promise[TSR_DEFERRED_PROMISE].error
-      }
-    } else {
-      throw {
-        data: (
-          router.options.errorSerializer?.serialize ?? defaultSerializeError
-        )(promise[TSR_DEFERRED_PROMISE].error),
-        __isServerError: true,
-      }
-    }
+    throw promise[TSR_DEFERRED_PROMISE].error
   }
+
   return [promise[TSR_DEFERRED_PROMISE].data, promise]
 }
 

@@ -1,37 +1,19 @@
 import path from 'node:path'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
+import type { GeneratorPlugin } from './plugin/types'
 
-const defaultTemplate = {
-  routeTemplate: [
-    '%%tsrImports%%',
-    '\n\n',
-    '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
-    'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
-  ].join(''),
-  apiTemplate: [
-    'import { json } from "@tanstack/start";\n',
-    '%%tsrImports%%',
-    '\n\n',
-    '%%tsrExportStart%%{ GET: ({ request, params }) => { return json({ message:\'Hello "%%tsrPath%%"!\' }) }}%%tsrExportEnd%%\n',
-  ].join(''),
-}
-
-export const configSchema = z.object({
+export const baseConfigSchema = z.object({
+  target: z.enum(['react', 'solid']).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
   routeFileIgnorePattern: z.string().optional(),
   routesDirectory: z.string().optional().default('./src/routes'),
-  generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   quoteStyle: z.enum(['single', 'double']).optional().default('single'),
   semicolons: z.boolean().optional().default(false),
-  disableTypes: z.boolean().optional().default(false),
-  addExtensions: z.boolean().optional().default(false),
   disableLogging: z.boolean().optional().default(false),
-  disableManifestGeneration: z.boolean().optional().default(false),
-  apiBase: z.string().optional().default('/api'),
   routeTreeFileHeader: z
     .array(z.string())
     .optional()
@@ -40,29 +22,37 @@ export const configSchema = z.object({
       '// @ts-nocheck',
       '// noinspection JSUnusedGlobalSymbols',
     ]),
-  routeTreeFileFooter: z.array(z.string()).optional().default([]),
-  autoCodeSplitting: z.boolean().optional(),
   indexToken: z.string().optional().default('index'),
   routeToken: z.string().optional().default('route'),
   pathParamsAllowedCharacters: z
     .array(z.enum([';', ':', '@', '&', '=', '+', '$', ',']))
     .optional(),
+})
+
+export type BaseConfig = z.infer<typeof baseConfigSchema>
+
+export const configSchema = baseConfigSchema.extend({
+  generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
+  disableTypes: z.boolean().optional().default(false),
+  verboseFileRoutes: z.boolean().optional(),
+  addExtensions: z.boolean().optional().default(false),
+  enableRouteTreeFormatting: z.boolean().optional().default(true),
+  routeTreeFileFooter: z.array(z.string()).optional().default([]),
+  autoCodeSplitting: z.boolean().optional(),
   customScaffolding: z
     .object({
-      routeTemplate: z
-        .string()
-        .optional()
-        .default(defaultTemplate.routeTemplate),
-      apiTemplate: z.string().optional().default(defaultTemplate.apiTemplate),
+      routeTemplate: z.string().optional(),
+      lazyRouteTemplate: z.string().optional(),
     })
-    .optional()
-    .default(defaultTemplate),
+    .optional(),
   experimental: z
     .object({
-      // TODO: Remove this option in the next major release (v2).
+      // TODO: This has been made stable and is now "autoCodeSplitting". Remove in next major version.
       enableCodeSplitting: z.boolean().optional(),
     })
     .optional(),
+  plugins: z.array(z.custom<GeneratorPlugin>()).optional(),
+  tmpDir: z.string().optional().default(''),
 })
 
 export type Config = z.infer<typeof configSchema>
@@ -128,6 +118,25 @@ export function getConfig(
         config.generatedRouteTree,
       )
     }
+  }
+
+  const resolveTmpDir = (dir: string | Array<string>) => {
+    if (Array.isArray(dir)) {
+      dir = path.join(...dir)
+    }
+    if (!path.isAbsolute(dir)) {
+      dir = path.resolve(process.cwd(), dir)
+    }
+    mkdirSync(dir, { recursive: true })
+    return dir
+  }
+
+  if (config.tmpDir) {
+    config.tmpDir = resolveTmpDir(config.tmpDir)
+  } else if (process.env.TSR_TMP_DIR) {
+    config.tmpDir = resolveTmpDir(process.env.TSR_TMP_DIR)
+  } else {
+    config.tmpDir = resolveTmpDir(['.tanstack', 'tmp'])
   }
 
   validateConfig(config)

@@ -117,7 +117,7 @@ describe('router.navigate navigation using a single path param - object syntax f
 
     await router.load()
 
-    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+    expect(router.state.location.pathname).toBe('/posts/tanner')
 
     await router.navigate({
       to: '/posts/$slug',
@@ -135,7 +135,7 @@ describe('router.navigate navigation using a single path param - object syntax f
 
     await router.load()
 
-    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+    expect(router.state.location.pathname).toBe('/posts/tanner')
 
     await router.navigate({
       params: { slug: 'tkdodo' },
@@ -154,7 +154,7 @@ describe('router.navigate navigation using a single path param - function syntax
 
     await router.load()
 
-    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+    expect(router.state.location.pathname).toBe('/posts/tanner')
 
     await router.navigate({
       to: '/posts/$slug',
@@ -172,7 +172,7 @@ describe('router.navigate navigation using a single path param - function syntax
 
     await router.load()
 
-    expect(router.state.resolvedLocation.pathname).toBe('/posts/tanner')
+    expect(router.state.location.pathname).toBe('/posts/tanner')
 
     await router.navigate({
       params: (p: any) => ({ ...p, slug: 'tkdodo' }),
@@ -486,5 +486,101 @@ describe('router.navigate navigation using layout routes resolves correctly', ()
     await router.invalidate()
 
     expect(router.state.location.search).toStrictEqual({ 'foo=bar': 3 })
+  })
+})
+
+describe('relative navigation', () => {
+  it('should navigate to a child route', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts')
+
+    await router.navigate({
+      from: '/posts',
+      to: './$slug',
+      params: { slug: 'tkdodo' },
+    })
+
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tkdodo')
+  })
+
+  it('should navigate to a parent route', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts/tanner')
+
+    await router.navigate({
+      to: '..',
+    })
+
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts')
+  })
+
+  it('should navigate to a sibling route', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts/tanner')
+
+    await router.navigate({
+      from: '/posts/$slug',
+      to: '.',
+      params: { slug: 'tkdodo' },
+    })
+
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tkdodo')
+  })
+
+  it('should navigate to a sibling route without from', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts/tanner')
+
+    await router.navigate({
+      to: '.',
+      params: { slug: 'tkdodo' },
+    })
+
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tkdodo')
+  })
+
+  it('should navigate to a parent route with .. from unsafe relative path', async () => {
+    const { router } = createTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tanner/child'] }),
+    )
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/posts/tanner/child')
+
+    await router.navigate({
+      to: '..',
+      unsafeRelative: 'path',
+    })
+
+    expect(router.state.location.pathname).toBe('/posts/tanner')
   })
 })

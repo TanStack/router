@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { linkOptions } from '@tanstack/react-router'
+import { toRuntimePath } from '@tanstack/router-e2e-utils'
 
 test('Smoke - Renders home', async ({ page }) => {
-  await page.goto('/')
+  await page.goto(toRuntimePath('/'))
   await expect(
     page.getByRole('heading', { name: 'Welcome Home!' }),
   ).toBeVisible()
@@ -11,15 +12,15 @@ test('Smoke - Renders home', async ({ page }) => {
 // Test for scroll related stuff
 ;[
   linkOptions({ to: '/normal-page' }),
-  // linkOptions({to:'/lazy-page'}),
-  // linkOptions({to:'/virtual-page'}),
-  // linkOptions({to:'/lazy-with-loader-page'}),
+  linkOptions({ to: '/lazy-page' }),
+  linkOptions({ to: '/virtual-page' }),
+  linkOptions({ to: '/lazy-with-loader-page' }),
   linkOptions({ to: '/page-with-search', search: { where: 'footer' } }),
 ].forEach((options) => {
   test(`On navigate to ${options.to} (from the header), scroll should be at top`, async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto(toRuntimePath('/'))
     await page.getByRole('link', { name: `Head-${options.to}` }).click()
     await expect(page.getByTestId('at-the-top')).toBeInViewport()
   })
@@ -28,7 +29,7 @@ test('Smoke - Renders home', async ({ page }) => {
   test(`On navigate via index page tests to ${options.to}, scroll should resolve at the bottom`, async ({
     page,
   }) => {
-    await page.goto('/')
+    await page.goto(toRuntimePath('/'))
     await page
       .getByRole('link', { name: `${options.to}#at-the-bottom` })
       .click()
@@ -41,9 +42,9 @@ test('Smoke - Renders home', async ({ page }) => {
   }) => {
     let url: string = options.to
     if ('search' in options) {
-      url = `${url}?where=${options.search}`
+      url = `${url}?where=${options.search.where}`
     }
-    await page.goto(`${url}#at-the-bottom`)
+    await page.goto(toRuntimePath(`${url}#at-the-bottom`))
     await expect(page.getByTestId('at-the-bottom')).toBeInViewport()
   })
 })

@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { retainSearchParams } from '@tanstack/react-router'
 import z from 'zod'
 
 export const Route = createFileRoute('/redirect/$target')({
@@ -13,5 +14,9 @@ export const Route = createFileRoute('/redirect/$target')({
   validateSearch: z.object({
     reloadDocument: z.boolean().optional(),
     preload: z.literal(false).optional(),
+    externalHost: z.string().optional(),
   }),
+  search: {
+    middlewares: [retainSearchParams(['externalHost'])],
+  },
 })

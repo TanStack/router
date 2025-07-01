@@ -8,7 +8,7 @@ export interface NavigateOptions {
 
 type SubscriberHistoryAction =
   | {
-      type: HistoryAction
+      type: Exclude<HistoryAction, 'GO'>
     }
   | {
       type: 'GO'
@@ -53,7 +53,8 @@ export interface ParsedPath {
 export interface HistoryState {}
 
 export type ParsedHistoryState = HistoryState & {
-  key?: string
+  key?: string // TODO: Remove in v2 - use __TSR_key instead
+  __TSR_key?: string
   __TSR_index: number
 }
 
@@ -252,9 +253,11 @@ function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
   if (!state) {
     state = {} as HistoryState
   }
+  const key = createRandomKey()
   return {
     ...state,
-    key: createRandomKey(),
+    key, // TODO: Remove in v2 - use __TSR_key instead
+    __TSR_key: key,
     [stateIndexKey]: index,
   } as ParsedHistoryState
 }
@@ -300,6 +303,19 @@ export function createBrowserHistory(opts?: {
         `${win.location.pathname}${win.location.search}${win.location.hash}`,
         win.history.state,
       ))
+
+  // Ensure there is always a key to start
+  if (!win.history.state?.__TSR_key && !win.history.state?.key) {
+    const addedKey = createRandomKey()
+    win.history.replaceState(
+      {
+        [stateIndexKey]: 0,
+        key: addedKey, // TODO: Remove in v2 - use __TSR_key instead
+        __TSR_key: addedKey,
+      },
+      '',
+    )
+  }
 
   let currentLocation = parseLocation()
   let rollbackLocation: HistoryLocation | undefined
@@ -535,7 +551,13 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
   return createBrowserHistory({
     window: win,
     parseLocation: () => {
-      const hashHref = win.location.hash.split('#').slice(1).join('#') ?? '/'
+      const hashSplit = win.location.hash.split('#').slice(1)
+      const pathPart = hashSplit[0] ?? '/'
+      const searchPart = win.location.search
+      const hashEntries = hashSplit.slice(1)
+      const hashPart =
+        hashEntries.length === 0 ? '' : `#${hashEntries.join('#')}`
+      const hashHref = `${pathPart}${searchPart}${hashPart}`
       return parseHref(hashHref, win.history.state)
     },
     createHref: (href) =>
@@ -598,6 +620,8 @@ export function parseHref(
   const hashIndex = href.indexOf('#')
   const searchIndex = href.indexOf('?')
 
+  const addedKey = createRandomKey()
+
   return {
     href,
     pathname: href.substring(
@@ -615,7 +639,7 @@ export function parseHref(
       searchIndex > -1
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
-    state: state || { [stateIndexKey]: 0 },
+    state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey },
   }
 }
 

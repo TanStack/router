@@ -3,9 +3,13 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRouter, RegisteredRouter } from './router'
-import type { AllLoaderData, RouteById } from './routeInfo'
-import type { Expand, StrictOrFrom } from './utils'
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  ResolveUseLoaderData,
+  StrictOrFrom,
+  UseLoaderDataResult,
+} from '@tanstack/router-core'
 
 export interface UseLoaderDataBaseOptions<
   TRouter extends AnyRouter,
@@ -15,7 +19,7 @@ export interface UseLoaderDataBaseOptions<
   TStructuralSharing,
 > {
   select?: (
-    match: ResolveLoaderData<TRouter, TFrom, TStrict>,
+    match: ResolveUseLoaderData<TRouter, TFrom, TStrict>,
   ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
 }
 
@@ -34,23 +38,6 @@ export type UseLoaderDataOptions<
     TStructuralSharing
   > &
   StructuralSharingOption<TRouter, TSelected, TStructuralSharing>
-
-export type ResolveLoaderData<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean,
-> = TStrict extends false
-  ? AllLoaderData<TRouter['routeTree']>
-  : Expand<RouteById<TRouter['routeTree'], TFrom>['types']['loaderData']>
-
-export type UseLoaderDataResult<
-  TRouter extends AnyRouter,
-  TFrom,
-  TStrict extends boolean,
-  TSelected,
-> = unknown extends TSelected
-  ? ResolveLoaderData<TRouter, TFrom, TStrict>
-  : TSelected
 
 export type UseLoaderDataRoute<out TId> = <
   TRouter extends AnyRouter = RegisteredRouter,

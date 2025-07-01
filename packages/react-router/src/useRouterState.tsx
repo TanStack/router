@@ -1,12 +1,16 @@
 import { useStore } from '@tanstack/react-store'
 import { useRef } from 'react'
+import { replaceEqualDeep } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { replaceEqualDeep } from './utils'
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  RouterState,
+} from '@tanstack/router-core'
 import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { AnyRouter, RegisteredRouter, RouterState } from './router'
 
 export type UseRouterStateOptions<
   TRouter extends AnyRouter,
@@ -36,7 +40,7 @@ export function useRouterState<
   })
   const router = opts?.router || contextRouter
   const previousResult =
-    useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>()
+    useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
 
   return useStore(router.__store, (state) => {
     if (opts?.select) {

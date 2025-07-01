@@ -1,20 +1,32 @@
 import React from 'react'
 import '@testing-library/jest-dom/vitest'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import { z } from 'zod'
 import {
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouter,
   useBlocker,
   useNavigate,
 } from '../src'
+import type { RouterHistory } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
+  vi.clearAllMocks()
+  vi.resetAllMocks()
   cleanup()
 })
 
@@ -28,11 +40,11 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn: () => false })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -47,15 +59,16 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -80,11 +93,11 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn: () => true, disabled: true })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -99,15 +112,16 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -132,11 +146,11 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn: () => true })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -151,15 +165,16 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -186,13 +201,13 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts', replace: true })}>
             Posts
           </button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -207,15 +222,16 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -260,7 +276,7 @@ describe('useBlocker', () => {
       useBlocker({ shouldBlockFn })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button
@@ -274,7 +290,7 @@ describe('useBlocker', () => {
           >
             Posts
           </button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -293,15 +309,16 @@ describe('useBlocker', () => {
       path: '/posts/$postId',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
     })
 
     render(<RouterProvider router={router} />)
@@ -351,14 +368,14 @@ describe('useBlocker', () => {
       })
 
       return (
-        <React.Fragment>
+        <>
           <h1>Index</h1>
           <button onClick={() => navigate({ to: '/' })}>Index</button>
           <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
           <button onClick={() => navigate({ to: '/invoices' })}>
             Invoices
           </button>
-        </React.Fragment>
+        </>
       )
     }
 
@@ -373,9 +390,9 @@ describe('useBlocker', () => {
       path: '/posts',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Posts</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
@@ -385,15 +402,16 @@ describe('useBlocker', () => {
       path: '/invoices',
       component: () => {
         return (
-          <React.Fragment>
+          <>
             <h1>Invoices</h1>
-          </React.Fragment>
+          </>
         )
       },
     })
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute, postsRoute, invoicesRoute]),
+      history,
     })
 
     type Router = typeof router

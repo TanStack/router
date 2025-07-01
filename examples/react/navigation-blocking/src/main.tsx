@@ -7,9 +7,10 @@ import {
   createRouter,
   useBlocker,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './styles.css'
 
 const rootRoute = createRootRoute({
   component: RootComponent,
@@ -129,7 +130,7 @@ const fooRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'foo/$id',
   validateSearch: (search) => ({ hello: search.hello }) as { hello: string },
-  component: () => <>foo {fooRoute.useParams().id}</>,
+  component: () => <div>foo {fooRoute.useParams().id}</div>,
 })
 
 const editor1Route = createRoute({
@@ -217,6 +218,7 @@ const routeTree = rootRoute.addChildren([
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
+  scrollRestoration: true,
 })
 
 // Register things for typesafety

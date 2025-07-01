@@ -1,5 +1,5 @@
 import { Link, Outlet } from '@router-mono-react-query/router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 export function RootComponent() {

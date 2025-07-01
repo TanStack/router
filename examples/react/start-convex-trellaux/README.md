@@ -1,7 +1,7 @@
 # Trello-like example using Convex DB
 
 This is a TanStack Start demo using Convex as the database.
-It is similar to the [start-trellaux](https://github.com/TanStack/router/tree/main/examples/react/start-trellaux) example but uses a cloud Convex deploymnet instead of an in-memory database.
+It is similar to the [start-trellaux](https://github.com/TanStack/router/tree/main/examples/react/start-trellaux) example but uses a cloud Convex deployment instead of an in-memory database.
 
 To run this example:
 

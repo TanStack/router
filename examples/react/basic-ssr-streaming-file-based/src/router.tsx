@@ -1,7 +1,6 @@
 import { createRouter as createReactRouter } from '@tanstack/react-router'
 
 import { routeTree } from './routeTree.gen'
-import SuperJSON from 'superjson'
 
 export function createRouter() {
   return createReactRouter({
@@ -10,7 +9,7 @@ export function createRouter() {
       head: '',
     },
     defaultPreload: 'intent',
-    transformer: SuperJSON,
+    scrollRestoration: true,
   })
 }
 
