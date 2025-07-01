@@ -78,6 +78,10 @@
               "to": "framework/react/path-aliases"
             },
             {
+              "label": "Tailwind CSS Integration",
+              "to": "framework/react/tailwind-integration"
+            },
+            {
               "label": "Migrate from Next.js",
               "to": "framework/react/migrate-from-next-js"
             }
@@ -145,6 +149,10 @@
             {
               "label": "Static Prerendering",
               "to": "framework/solid/static-prerendering"
+            },
+            {
+              "label": "Tailwind CSS Integration",
+              "to": "framework/solid/tailwind-integration"
             },
             {
               "label": "Path Aliases",
