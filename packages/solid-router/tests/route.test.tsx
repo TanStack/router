@@ -398,4 +398,102 @@ describe('route.head', () => {
       [{ href: 'index.css' }],
     ])
   })
+
+  test('styles', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        styles: [
+          {
+            media: 'all and (min-width: 200px)',
+            children: '.inline-div { color: blue; }',
+          },
+        ],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        styles: [
+          {
+            media: 'all and (min-width: 100px)',
+            children: '.inline-div { background-color: yellow; }',
+          },
+        ],
+      }),
+      component: () => <div class="inline-div">Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, history })
+    render(() => <RouterProvider router={router} />)
+    await router.load()
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    const stylesState = router.state.matches.map((m) => m.styles)
+    expect(stylesState).toEqual([
+      [
+        {
+          media: 'all and (min-width: 200px)',
+          children: '.inline-div { color: blue; }',
+        },
+      ],
+      [
+        {
+          media: 'all and (min-width: 100px)',
+          children: '.inline-div { background-color: yellow; }',
+        },
+      ],
+    ])
+  })
+
+  test('styles w/loader', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        styles: [
+          {
+            media: 'all and (min-width: 200px)',
+            children: '.inline-div { color: blue; }',
+          },
+        ],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        styles: [
+          {
+            media: 'all and (min-width: 100px)',
+            children: '.inline-div { background-color: yellow; }',
+          },
+        ],
+      }),
+      loader: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      },
+      component: () => <div>Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, history })
+    render(() => <RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    const stylesState = router.state.matches.map((m) => m.styles)
+    expect(stylesState).toEqual([
+      [
+        {
+          media: 'all and (min-width: 200px)',
+          children: '.inline-div { color: blue; }',
+        },
+      ],
+      [
+        {
+          media: 'all and (min-width: 100px)',
+          children: '.inline-div { background-color: yellow; }',
+        },
+      ],
+    ])
+  })
 })
