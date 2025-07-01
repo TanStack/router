@@ -10,6 +10,10 @@ export const ServerRoute = createServerFileRoute('/sitemap.xml').methods({
       changefreq: 'weekly',
       routes: [
         '/',
+        '/posts',
+        '/route-a',
+        '/route-b',
+        '/deferred',
         [
           '/posts/$postId',
           async () => {
@@ -18,6 +22,17 @@ export const ServerRoute = createServerFileRoute('/sitemap.xml').methods({
               path: `/posts/${post.id}`,
               priority: 0.8,
               changefreq: 'daily',
+            }))
+          },
+        ],
+        [
+          '/posts/$postId/deep',
+          async () => {
+            const posts = await fetchPosts()
+            return posts.map((post) => ({
+              path: `/posts/${post.id}/deep`,
+              priority: 0.7,
+              changefreq: 'weekly',
             }))
           },
         ],
