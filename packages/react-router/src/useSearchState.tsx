@@ -6,7 +6,7 @@ import type {
   ConstrainLiteral,
   RegisteredRouter,
   ValidateId,
-} from "@tanstack/router-core"
+} from '@tanstack/router-core'
 
 type SearchSchema<
   TRouter extends AnyRouter,
@@ -16,9 +16,9 @@ type SearchSchema<
 type AnyKey<TRouter extends AnyRouter, TKey extends string> = ConstrainLiteral<
   TKey,
   string &
-  {
-    [K in keyof TRouter['routesById']]: SearchSchema<TRouter, K>
-  }[keyof TRouter['routesById']]
+    {
+      [K in keyof TRouter['routesById']]: SearchSchema<TRouter, K>
+    }[keyof TRouter['routesById']]
 >
 
 type FromKey<
@@ -38,17 +38,17 @@ type Params<
   TValue,
 > = TStrict extends false
   ? {
-    from?: never
-    strict: TStrict
-    key: AnyKey<TRouter, TKey>
-    initial?: TValue
-  }
+      from?: never
+      strict: TStrict
+      key: AnyKey<TRouter, TKey>
+      initial?: TValue
+    }
   : {
-    from: ValidateId<TRouter, TFrom>
-    strict?: TStrict
-    key: FromKey<TRouter, TFrom, TKey>
-    initial?: TValue
-  }
+      from: ValidateId<TRouter, TFrom>
+      strict?: TStrict
+      key: FromKey<TRouter, TFrom, TKey>
+      initial?: TValue
+    }
 
 type ValueFrom<
   TRouter extends AnyRouter,
@@ -57,14 +57,14 @@ type ValueFrom<
   TKey extends string,
 > = TStrict extends false
   ?
-  | undefined
-  | {
-    [K in keyof TRouter['routesById']]: TKey extends keyof TRouter['routesById'][K]['types']['searchSchema']
-    ? TRouter['routesById'][K]['types']['searchSchema'][TKey]
-    : never
-  }[keyof TRouter['routesById']]
+      | undefined
+      | {
+          [K in keyof TRouter['routesById']]: TKey extends keyof TRouter['routesById'][K]['types']['searchSchema']
+            ? TRouter['routesById'][K]['types']['searchSchema'][TKey]
+            : never
+        }[keyof TRouter['routesById']]
   : TRouter['routesById'][TFrom &
-  keyof TRouter['routesById']]['types']['searchSchema'][TKey]
+      keyof TRouter['routesById']]['types']['searchSchema'][TKey]
 
 export function useSearchState<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -137,7 +137,7 @@ function setter<T>(
     [key]:
       typeof value === 'function'
         ? // @ts-expect-error -- no need to strictly type this internal function
-        value(prev[key])
+          value(prev[key])
         : value,
   }
 
