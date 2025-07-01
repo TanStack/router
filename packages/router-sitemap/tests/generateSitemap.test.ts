@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { generateSitemap } from '../src/index'
-import type { SitemapConfig } from '../src/index'
+import type { SitemapConfig, DynamicEntryOptions } from '../src/index'
 
 describe('generateSitemap', () => {
   test('generates basic sitemap XML', async () => {
@@ -550,12 +550,12 @@ describe('generateSitemap', () => {
       siteUrl: 'https://example.com',
       routes: [
         [
-          '/posts/$postId' as any,
+          '/posts/$postId',
           () => [
             { path: '/posts/1', priority: 0.8 },
             { path: '/posts/2', priority: 0.8 },
           ],
-        ],
+        ] as any,
       ],
     })
 
