@@ -482,7 +482,7 @@ describe('interpolatePath', () => {
     })
   })
 
-  describe('named params (prefix + suffix', () => {
+  describe('named params (prefix + suffix)', () => {
     it.each([
       {
         name: 'regular',
@@ -521,6 +521,48 @@ describe('interpolatePath', () => {
           params,
         }).interpolatedPath,
       ).toBe(result)
+    })
+  })
+
+  describe('splat route missing parameter issue', () => {
+    it.each([
+      {
+        name: 'should handle missing _splat parameter for basic splat route',
+        path: '/hello/$',
+        params: {},
+        expectedResult: '/hello',
+      },
+      {
+        name: 'should handle missing _splat parameter for splat route with prefix',
+        path: '/hello/prefix{$}',
+        params: {},
+        expectedResult: '/hello/prefix',
+      },
+      {
+        name: 'should handle missing _splat parameter for splat route with suffix',
+        path: '/hello/{$}suffix',
+        params: {},
+        expectedResult: '/hello/suffix',
+      },
+      {
+        name: 'should handle missing _splat parameter for splat route with prefix and suffix',
+        path: '/hello/prefix{$}suffix',
+        params: {},
+        expectedResult: '/hello/prefixsuffix',
+      },
+      {
+        name: 'should handle missing _splat parameter for nested splat route',
+        path: '/users/$id/$',
+        params: { id: '123' },
+        expectedResult: '/users/123',
+      },
+    ])('$name', ({ path, params, expectedResult }) => {
+      const result = interpolatePath({
+        path,
+        params,
+      })
+      expect(result.interpolatedPath).toBe(expectedResult)
+      expect(result.isMissingParams).toBe(true)
     })
   })
 })
