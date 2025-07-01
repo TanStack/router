@@ -562,7 +562,7 @@ describe('generateSitemap', () => {
     // Should contain the correct loc elements
     expect(result).toContain('<loc>https://example.com/posts/1</loc>')
     expect(result).toContain('<loc>https://example.com/posts/2</loc>')
-    
+
     // Should NOT contain path elements in XML
     expect(result).not.toContain('<path>/posts/1</path>')
     expect(result).not.toContain('<path>/posts/2</path>')

@@ -49,6 +49,9 @@
 'package: router-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-plugin/**/*'
+'package: router-sitemap':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/router-sitemap/**/*'
 'package: router-utils':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-utils/**/*'
