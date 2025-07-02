@@ -1366,6 +1366,77 @@ test('<Navigate> navigates only once in <StrictMode>', async () => {
   expect(navigateSpy.mock.calls.length).toBe(1)
 })
 
+test('should navigate to current route with search params when using "." in nested route structure', async () => {
+  const rootRoute = createRootRoute()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => {
+      const navigate = useNavigate()
+      return (
+        <>
+          <button
+            onClick={() => {
+              navigate({
+                to: '/post',
+              })
+            }}
+          >
+            Post
+          </button>
+          <button
+            onClick={() =>
+              navigate({
+                to: '.',
+                search: {
+                  param1: 'value1',
+                },
+              })
+            }
+          >
+            Open
+          </button>
+          <Outlet />
+        </>
+      )
+    },
+    validateSearch: z.object({
+      param1: z.string().optional(),
+    }),
+  })
+
+  const postRoute = createRoute({
+    getParentRoute: () => indexRoute,
+    path: 'post',
+    component: () => <div>Post</div>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute.addChildren([postRoute])]),
+    history,
+  })
+
+  render(<RouterProvider router={router} />)
+
+  const postButton = await screen.findByRole('button', { name: 'Post' })
+  act(() => {
+    fireEvent.click(postButton)
+  })
+
+  expect(router.state.location.pathname).toBe('/post')
+
+  const openButton = await screen.findByRole('button', { name: 'Open' })
+
+  console.log('click')
+  await act(async () => {
+    fireEvent.click(openButton)
+  })
+
+  expect(router.state.location.pathname).toBe('/post')
+  expect(router.state.location.search).toEqual({ param1: 'value1' })
+})
+
 describe('when on /posts/$postId and navigating to ../ with default `from` /posts', () => {
   async function runTest(navigateVia: 'Route' | 'RouteApi') {
     const rootRoute = createRootRoute()

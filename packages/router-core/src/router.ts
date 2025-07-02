@@ -1419,7 +1419,7 @@ export class RouterCore<
       // So we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
         fromPath = currentLocation.pathname
-      } else if (dest.to && dest.from) {
+      } else if (dest.to && dest.from && dest.to !== '.') {
         fromPath = dest.from
         const existingFrom = [...allFromMatches].reverse().find((d) => {
           return (
@@ -1706,8 +1706,10 @@ export class RouterCore<
     href,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
+    console.log('start build & commit')
     if (href) {
       const currentIndex = this.history.location.state.__TSR_index
+
       const parsed = parseHref(href, {
         __TSR_index: replace ? currentIndex : currentIndex + 1,
       })
@@ -1721,6 +1723,8 @@ export class RouterCore<
       ...(rest as any),
       _includeValidateSearch: true,
     })
+
+    console.log('return build & commit')
     return this.commitLocation({
       ...location,
       viewTransition,
