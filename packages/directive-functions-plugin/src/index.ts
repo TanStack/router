@@ -150,17 +150,21 @@ function transformCode({
 
   if (debug) console.info(`${envLabel}: Compiling Directives: `, id)
 
-  const { compiledResult, directiveFnsById } = compileDirectives({
-    directive,
-    directiveLabel,
-    getRuntimeCode,
-    replacer,
-    code,
-    root,
-    filename: id,
-  })
-
-  onDirectiveFnsById?.(directiveFnsById)
+  const { compiledResult, directiveFnsById, isDirectiveSplitParam } =
+    compileDirectives({
+      directive,
+      directiveLabel,
+      getRuntimeCode,
+      replacer,
+      code,
+      root,
+      filename: id,
+    })
+  // when we process a file with a directive split param, we have already encountered the directives in that file
+  // (otherwise we wouldn't have gotten here)
+  if (!isDirectiveSplitParam) {
+    onDirectiveFnsById?.(directiveFnsById)
+  }
 
   if (debug) {
     logDiff(code, compiledResult.code)
