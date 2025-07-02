@@ -66,12 +66,17 @@ type ValueFrom<
 
 type SetSearchStateOptions = Pick<
   NavigateOptions,
-  'hashScrollIntoView' | 'reloadDocument' | 'replace' | 'ignoreBlocker' | 'resetScroll' | 'viewTransition'
+  | 'hashScrollIntoView'
+  | 'reloadDocument'
+  | 'replace'
+  | 'ignoreBlocker'
+  | 'resetScroll'
+  | 'viewTransition'
 >
 
 type SetSearchState<TValue> = (
   value: TValue | ((prev: TValue) => TValue),
-  options?: SetSearchStateOptions
+  options?: SetSearchStateOptions,
 ) => void
 
 export function useSearchState<
@@ -126,7 +131,7 @@ function setter<T>(
   },
   key: string,
   value: T | ((prev: T) => T),
-  options?: SetSearchStateOptions
+  options?: SetSearchStateOptions,
 ) {
   const prev = router[store] || router.state.location.search
   const next = {

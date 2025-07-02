@@ -431,10 +431,10 @@ test('setSearchState does not generate a history entry if the value is the same'
 test.todo('replace', async () => {
   // by default, when using `setSearchState`, the `navigate` call is made with `replace: true`
   // if any `setSearchState` call in a batch is made with `replace: false`, the `navigate` call will be made with `replace: false`
-  // 
+  //
   // const onClick = () => setSearchState('foo')
   // => called with `replace: true`
-  // 
+  //
   // const onClick = () => {
   //   setSearchState('foo')
   //   setSearchState('bar', { replace: false })
