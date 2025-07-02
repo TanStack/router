@@ -4,6 +4,7 @@ import { useSearch } from './useSearch'
 import type {
   AnyRouter,
   ConstrainLiteral,
+  NavigateOptions, // It would be better to use `NavigateOptionProps` instead, but it is not exported from the core package
   RegisteredRouter,
   ValidateId,
 } from '@tanstack/router-core'
@@ -63,6 +64,16 @@ type ValueFrom<
   : TRouter['routesById'][TFrom &
       keyof TRouter['routesById']]['types']['searchSchema'][TKey]
 
+type SetSearchStateOptions = Pick<
+  NavigateOptions,
+  'hashScrollIntoView' | 'reloadDocument' | 'replace' | 'ignoreBlocker' | 'resetScroll' | 'viewTransition'
+>
+
+type SetSearchState<TValue> = (
+  value: TValue | ((prev: TValue) => TValue),
+  options?: SetSearchStateOptions
+) => void
+
 export function useSearchState<
   TRouter extends AnyRouter = RegisteredRouter,
   TFrom extends string = string,
@@ -75,10 +86,7 @@ export function useSearchState<
   key,
 }: Params<TRouter, TFrom, TStrict, TKey>): readonly [
   state: TValue,
-  setState: (
-    value: TValue | ((prev: TValue) => TValue),
-    pushState?: boolean,
-  ) => void,
+  setState: SetSearchState<TValue>,
 ] {
   // state
   const state = useSearch(
@@ -107,18 +115,18 @@ const getter = (key: string, state: object) =>
   state[key]
 
 const store = Symbol('search accumulator')
-const push = Symbol('push accumulator')
+const opts = Symbol('options accumulator')
 const scheduled = Symbol('microtask scheduled')
 
 function setter<T>(
   router: AnyRouter & {
     [store]?: object | null
-    [push]?: boolean | null
+    [opts]?: SetSearchStateOptions | null
     [scheduled]?: boolean | null
   },
   key: string,
   value: T | ((prev: T) => T),
-  pushState?: boolean,
+  options?: SetSearchStateOptions
 ) {
   const prev = router[store] || router.state.location.search
   const next = {
@@ -143,7 +151,19 @@ function setter<T>(
    * that we don't own.
    */
   router[store] = next
-  router[push] ||= pushState
+  if (options) {
+    const current = router[opts]
+    if (current) {
+      current.hashScrollIntoView ||= options.hashScrollIntoView
+      current.reloadDocument ||= options.reloadDocument
+      current.replace = current.replace === false ? false : options.replace
+      current.ignoreBlocker ||= options.ignoreBlocker
+      current.resetScroll ||= options.resetScroll
+      current.viewTransition ||= options.viewTransition
+    } else {
+      router[opts] = options
+    }
+  }
 
   // a microtask is already scheduled in this tick, nothing else to do
   if (router[scheduled]) return
@@ -151,7 +171,7 @@ function setter<T>(
 
   // if a call to `navigate()` happens in the same tick as this setter,
   // cancel the microtask and let the `navigate()` call handle the state update
-  const unsub = router.subscribe(
+  const clear = router.subscribe(
     'onBeforeNavigate',
     () => (router[scheduled] = false),
   )
@@ -159,14 +179,17 @@ function setter<T>(
   // we use a microtask to allow for multiple synchronous calls to `setState`
   // to accumulate changes but still call `navigate()` only once
   queueMicrotask(() => {
-    unsub()
+    clear()
     if (!router[scheduled]) return
 
+    const options = router[opts]
+
     void router.navigate({
+      ...router[opts],
       hash: router.state.location.hash,
-      replace: !router[push],
       search: router[store],
       to: router.state.location.pathname,
+      replace: options?.replace !== false,
     })
 
     /**
@@ -175,7 +198,7 @@ function setter<T>(
      * the current search state.
      */
     router[store] = null
-    router[push] = null
+    router[opts] = null
     router[scheduled] = null
   })
 }

@@ -428,7 +428,35 @@ test('setSearchState does not generate a history entry if the value is the same'
 })
 
 // meta
-test.todo('replace / push')
-test.todo('ignoreBlocker')
-test.todo('reloadDocument')
-test.todo('viewTransition')
+test.todo('replace', async () => {
+  // by default, when using `setSearchState`, the `navigate` call is made with `replace: true`
+  // if any `setSearchState` call in a batch is made with `replace: false`, the `navigate` call will be made with `replace: false`
+  // 
+  // const onClick = () => setSearchState('foo')
+  // => called with `replace: true`
+  // 
+  // const onClick = () => {
+  //   setSearchState('foo')
+  //   setSearchState('bar', { replace: false })
+  //   setSearchState('baz', { replace: true })
+  //   setSearchState('qux')
+  // }
+  // => called with `replace: false`
+})
+
+test.todo('ignoreBlocker', async () => {
+  // if any `setSearchState` call in a batch is made with `ignoreBlocker: true`, the `navigate` call will be made with `ignoreBlocker: true`
+})
+test.todo('resetScroll', async () => {
+  // if any `setSearchState` call in a batch is made with `resetScroll: true`, the `navigate` call will be made with `resetScroll: true`
+})
+test.todo('hashScrollIntoView', async () => {
+  // if any `setSearchState` call in a batch is made with `hashScrollIntoView: true`, the `navigate` call will be made with `hashScrollIntoView: true`
+})
+test.todo('viewTransition', async () => {
+  // if any `setSearchState` call in a batch is made with `viewTransition: true`, the `navigate` call will be made with `viewTransition: true`
+  // if using a non-boolean value for `viewTransition`, it's last-write-wins
+})
+test.todo('reloadDocument', async () => {
+  // if any `setSearchState` call in a batch is made with `reloadDocument: true`, the `navigate` call will be made with `reloadDocument: true`
+})
