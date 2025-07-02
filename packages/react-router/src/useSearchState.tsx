@@ -35,19 +35,16 @@ type Params<
   TFrom extends string,
   TStrict extends boolean,
   TKey extends string,
-  TValue,
-> = TStrict extends false
-  ? {
+> =
+  | {
       from?: never
-      strict: TStrict
+      strict: TStrict & false
       key: AnyKey<TRouter, TKey>
-      initial?: TValue
     }
-  : {
+  | {
       from: ValidateId<TRouter, TFrom>
-      strict?: TStrict
+      strict?: TStrict & true
       key: FromKey<TRouter, TFrom, TKey>
-      initial?: TValue
     }
 
 type ValueFrom<
@@ -75,9 +72,8 @@ export function useSearchState<
 >({
   from,
   strict,
-  initial,
   key,
-}: Params<TRouter, TFrom, TStrict, TKey, NoInfer<TValue>>): readonly [
+}: Params<TRouter, TFrom, TStrict, TKey>): readonly [
   state: TValue,
   setState: (
     value: TValue | ((prev: TValue) => TValue),
@@ -102,13 +98,6 @@ export function useSearchState<
     () => (setter<TValue>).bind(null, router, key),
     [router, key],
   )
-
-  // initial value
-  React.useLayoutEffect(() => {
-    if (initial !== undefined && state === undefined) {
-      setState(initial)
-    }
-  }, [])
 
   return [state, setState]
 }
