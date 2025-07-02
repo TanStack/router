@@ -294,13 +294,13 @@ export const updateUser = createServerFn({ method: 'POST' })
 // Somewhere else in your application
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
-import { useServerFunction } from '@tanstack/react-start'
+import { useServerFn } from '@tanstack/react-start'
 import { updateUser, type User } from '...'
 
 export function useUpdateUser() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const _updateUser = useServerFunction(updateUser)
+  const _updateUser = useServerFn(updateUser)
 
   return useCallback(
     async (user: User) => {
