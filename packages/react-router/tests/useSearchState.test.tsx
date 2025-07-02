@@ -491,13 +491,15 @@ test('replace', async () => {
     name: 'Set A Only (default replace)',
   })
   await act(() => fireEvent.click(setAOnlyButton))
-  await waitFor(() => expect(output).toHaveTextContent('a: foo, b: b, c: c, d: d'))
+  await waitFor(() =>
+    expect(output).toHaveTextContent('a: foo, b: b, c: c, d: d'),
+  )
 
   expect(router.navigate).toHaveBeenLastCalledWith(
     expect.objectContaining({
       replace: true,
       search: { a: 'foo', b: 'b', c: 'c', d: 'd' },
-    })
+    }),
   )
 
   // Test 2: Mixed replace options - if any call has replace: false, final navigate should use replace: false
@@ -505,21 +507,23 @@ test('replace', async () => {
     name: 'Mixed Replace Options',
   })
   await act(() => fireEvent.click(mixedButton))
-  await waitFor(() => expect(output).toHaveTextContent('a: foo2, b: bar2, c: baz2, d: qux2'))
+  await waitFor(() =>
+    expect(output).toHaveTextContent('a: foo2, b: bar2, c: baz2, d: qux2'),
+  )
 
   expect(router.navigate).toHaveBeenLastCalledWith(
     expect.objectContaining({
       replace: false, // Should be false because setB was called with replace: false
       search: { a: 'foo2', b: 'bar2', c: 'baz2', d: 'qux2' },
-    })
+    }),
   )
-  expect(history.map(h => h.action.type)).toEqual([
+  expect(history.map((h) => h.action.type)).toEqual([
     // route validateSearch default values
     'REPLACE',
     // setSearchState without options, default to replace:true
     'REPLACE',
     // multiple setSearchState calls with mixed replace options
-    'PUSH'
+    'PUSH',
   ])
 })
 
