@@ -620,7 +620,8 @@ export function compileCodeSplitVirtualRoute(
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
             }
-          } else if (splitNode === undefined) {
+          } else {
+            // handle the case where splitNode === undefined
             programPath.pushContainer(
               'body',
               t.variableDeclaration('const', [
