@@ -276,24 +276,23 @@ function buildOnDirectiveFnsByIdCallback(opts: {
       console.info(`onDirectiveFnsById received: `, d)
     }
 
-    // When directives are compiled, save them to `directiveFnsById`
-    // This state will be used both during development to incrementally
-    // look up server functions and during build/production to produce a
-    // static manifest that can be read by the server build
-    Object.assign(opts.directiveFnsById, d)
-    if (debug) {
-      console.info(`directiveFnsById after update: `, opts.directiveFnsById)
-    }
-
-    opts.invalidateModule(resolveViteId(opts.manifestVirtualImportId))
-
-    // a single module can contain multiple server functions, only invalidate the module once
-    const uniqueFilenames = new Set(
-      Object.values(d).map((fn) => fn.extractedFilename),
+    // do we already know all the server functions? if so, we can exit early
+    // this could happen if the same file is compiled first in the client and then in the server environment
+    const newKeys = Object.keys(d).filter(
+      (key) => !(key in opts.directiveFnsById),
     )
-    uniqueFilenames.forEach((filename) => {
-      opts.invalidateModule(filename)
-    })
+    if (newKeys.length > 0) {
+      // When directives are compiled, save them to `directiveFnsById`
+      // This state will be used both during development to incrementally
+      // look up server functions and during build/production to produce a
+      // static manifest that can be read by the server build
+      Object.assign(opts.directiveFnsById, d)
+      if (debug) {
+        console.info(`directiveFnsById after update: `, opts.directiveFnsById)
+      }
+
+      opts.invalidateModule(resolveViteId(opts.manifestVirtualImportId))
+    }
   }
   return onDirectiveFnsById
 }
