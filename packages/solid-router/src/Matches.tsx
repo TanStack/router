@@ -30,6 +30,7 @@ declare module '@tanstack/router-core' {
     meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
     links?: Array<Solid.JSX.IntrinsicElements['link'] | undefined>
     scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
+    styles?: Array<Solid.JSX.IntrinsicElements['style'] | undefined>
     headScripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
   }
 }

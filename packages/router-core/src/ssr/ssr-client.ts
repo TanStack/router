@@ -217,6 +217,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       match.meta = headFnContent?.meta
       match.links = headFnContent?.links
       match.headScripts = headFnContent?.scripts
+      match.styles = headFnContent?.styles
       match.scripts = scripts
     }),
   )
