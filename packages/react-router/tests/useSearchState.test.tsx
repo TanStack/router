@@ -427,21 +427,100 @@ test('setSearchState does not generate a history entry if the value is the same'
   expect(history).toHaveLength(initialHistoryLength)
 })
 
-// meta
-test.todo('replace', async () => {
-  // by default, when using `setSearchState`, the `navigate` call is made with `replace: true`
-  // if any `setSearchState` call in a batch is made with `replace: false`, the `navigate` call will be made with `replace: false`
-  //
-  // const onClick = () => setSearchState('foo')
-  // => called with `replace: true`
-  //
-  // const onClick = () => {
-  //   setSearchState('foo')
-  //   setSearchState('bar', { replace: false })
-  //   setSearchState('baz', { replace: true })
-  //   setSearchState('qux')
-  // }
-  // => called with `replace: false`
+test('replace', async () => {
+  const rootRoute = createRootRoute()
+
+  const IndexComponent = () => {
+    const [a, setA] = useSearchState({ key: 'a', from: '/' })
+    const [b, setB] = useSearchState({ key: 'b', from: '/' })
+    const [c, setC] = useSearchState({ key: 'c', from: '/' })
+    const [d, setD] = useSearchState({ key: 'd', from: '/' })
+    return (
+      <React.Fragment>
+        <output>{`a: ${a}, b: ${b}, c: ${c}, d: ${d}`}</output>
+        <button
+          onClick={() => {
+            setA('foo')
+          }}
+        >
+          Set A Only (default replace)
+        </button>
+        <button
+          onClick={() => {
+            setA('foo2')
+            setB('bar2', { replace: false })
+            setC('baz2', { replace: true })
+            setD('qux2')
+          }}
+        >
+          Mixed Replace Options
+        </button>
+      </React.Fragment>
+    )
+  }
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    validateSearch: z.object({
+      a: z.string().optional().default('a'),
+      b: z.string().optional().default('b'),
+      c: z.string().optional().default('c'),
+      d: z.string().optional().default('d'),
+    }),
+    component: IndexComponent,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+  })
+
+  const history: Array<
+    Parameters<Parameters<typeof router.history.subscribe>[0]>[0]
+  > = []
+  router.history.subscribe((action) => history.push(action))
+  // @ts-expect-error -- mock function
+  router.navigate = vi.fn(router.navigate)
+  render(<RouterProvider router={router} />)
+
+  const output = await screen.findByRole('status')
+  expect(output).toHaveTextContent('a: a, b: b, c: c, d: d')
+
+  // Test 1: Single setSearchState call should use replace: true by default
+  const setAOnlyButton = await screen.findByRole('button', {
+    name: 'Set A Only (default replace)',
+  })
+  await act(() => fireEvent.click(setAOnlyButton))
+  await waitFor(() => expect(output).toHaveTextContent('a: foo, b: b, c: c, d: d'))
+
+  expect(router.navigate).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      replace: true,
+      search: { a: 'foo', b: 'b', c: 'c', d: 'd' },
+    })
+  )
+
+  // Test 2: Mixed replace options - if any call has replace: false, final navigate should use replace: false
+  const mixedButton = await screen.findByRole('button', {
+    name: 'Mixed Replace Options',
+  })
+  await act(() => fireEvent.click(mixedButton))
+  await waitFor(() => expect(output).toHaveTextContent('a: foo2, b: bar2, c: baz2, d: qux2'))
+
+  expect(router.navigate).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      replace: false, // Should be false because setB was called with replace: false
+      search: { a: 'foo2', b: 'bar2', c: 'baz2', d: 'qux2' },
+    })
+  )
+  expect(history.map(h => h.action.type)).toEqual([
+    // route validateSearch default values
+    'REPLACE',
+    // setSearchState without options, default to replace:true
+    'REPLACE',
+    // multiple setSearchState calls with mixed replace options
+    'PUSH'
+  ])
 })
 
 test.todo('ignoreBlocker', async () => {
