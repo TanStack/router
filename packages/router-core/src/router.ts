@@ -1414,12 +1414,12 @@ export class RouterCore<
       // First let's find the starting pathname
       // By default, start with the current location
       let fromPath = lastMatch.fullPath
+      const routeIsChanging = !!dest.to && this.resolvePathWithBase(fromPath, dest.to.toString()) !== fromPath;
 
-      // If there is a to, it means we are changing the path in some way
-      // So we need to find the relative fromPath
+      // If the route is changing we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
         fromPath = currentLocation.pathname
-      } else if (dest.to && dest.to !== '.' && dest.from) {
+      } else if (routeIsChanging && dest.from) {
         fromPath = dest.from
         const existingFrom = [...allFromMatches].reverse().find((d) => {
           return (
