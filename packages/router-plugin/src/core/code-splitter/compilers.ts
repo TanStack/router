@@ -442,6 +442,11 @@ export function compileCodeSplitVirtualRoute(
 
                       const value = prop.value
 
+                      if (t.isIdentifier(value) && value.name === 'undefined') {
+                        // options: { [splitType]: undefined }
+                        return
+                      }
+
                       let isExported = false
                       if (t.isIdentifier(value)) {
                         isExported = hasExport(ast, value)
@@ -620,17 +625,6 @@ export function compileCodeSplitVirtualRoute(
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
             }
-          } else {
-            // handle the case where splitNode === undefined
-            programPath.pushContainer(
-              'body',
-              t.variableDeclaration('const', [
-                t.variableDeclarator(
-                  t.identifier(splitMeta.localExporterIdent),
-                  t.identifier('undefined'),
-                ),
-              ]),
-            )
           }
 
           // If the splitNode exists at the top of the program
