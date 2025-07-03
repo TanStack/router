@@ -178,6 +178,13 @@ export function compileCodeSplitReferenceRoute(
                         return
                       }
 
+                      if (
+                        t.isIdentifier(prop.value) &&
+                        prop.value.name === 'undefined'
+                      ) {
+                        return
+                      }
+
                       const splitNodeMeta = SPLIT_NODES_CONFIG.get(key as any)!
 
                       // We need to extract the existing search params from the filename, if any
