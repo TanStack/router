@@ -1415,9 +1415,10 @@ export class RouterCore<
       // By default, start with the current location
       let fromPath = lastMatch.fullPath
 
-      const routeIsChanging = !!dest.to
-        && dest.to !== lastMatch.fullPath
-        && this.resolvePathWithBase(fromPath, `${dest.to}`) !== fromPath;
+      const routeIsChanging =
+        !!dest.to &&
+        dest.to !== lastMatch.fullPath &&
+        this.resolvePathWithBase(fromPath, `${dest.to}`) !== fromPath
 
       // If the route is changing we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
