@@ -1394,6 +1394,18 @@ test('should navigate to current route with search params when using "." in nest
         >
           Search
         </button>
+        <button
+          onClick={() =>
+            navigate({
+              to: '/post',
+              search: {
+                param1: 'value2',
+              },
+            })
+          }
+        >
+          Search2
+        </button>
         <Outlet />
       </>
     )
@@ -1433,6 +1445,13 @@ test('should navigate to current route with search params when using "." in nest
 
   expect(router.state.location.pathname).toBe('/post')
   expect(router.state.location.search).toEqual({ param1: 'value1' })
+
+  const searchButton2 = await screen.findByRole('button', { name: 'Search2' })
+
+  fireEvent.click(searchButton2)
+
+  expect(router.state.location.pathname).toBe('/post')
+  expect(router.state.location.search).toEqual({ param1: 'value2' })
 })
 
 describe('when on /posts/$postId and navigating to ../ with default `from` /posts', () => {
