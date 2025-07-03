@@ -2511,6 +2511,22 @@ export class RouterCore<
                             ...head,
                           }))
                         } catch (e) {
+                          if (
+                            e instanceof DOMException &&
+                            e.name === 'AbortError'
+                          ) {
+                            const head = await executeHead()
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              status:
+                                prev.status === 'pending'
+                                  ? 'success'
+                                  : prev.status,
+                              ...head,
+                            }))
+                            return
+                          }
+
                           let error = e
 
                           await potentialPendingMinPromise()
