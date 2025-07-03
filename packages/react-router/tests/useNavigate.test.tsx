@@ -1428,7 +1428,6 @@ test('should navigate to current route with search params when using "." in nest
 
   const openButton = await screen.findByRole('button', { name: 'Open' })
 
-  console.log('click')
   await act(async () => {
     fireEvent.click(openButton)
   })

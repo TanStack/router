@@ -1706,7 +1706,6 @@ export class RouterCore<
     href,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
-    console.log('start build & commit')
     if (href) {
       const currentIndex = this.history.location.state.__TSR_index
 
@@ -1724,7 +1723,6 @@ export class RouterCore<
       _includeValidateSearch: true,
     })
 
-    console.log('return build & commit')
     return this.commitLocation({
       ...location,
       viewTransition,
