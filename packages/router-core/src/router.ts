@@ -1419,7 +1419,7 @@ export class RouterCore<
       // So we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
         fromPath = currentLocation.pathname
-      } else if (dest.to && dest.from && dest.to !== '.') {
+      } else if (dest.to && dest.to !== '.' && dest.from) {
         fromPath = dest.from
         const existingFrom = [...allFromMatches].reverse().find((d) => {
           return (
