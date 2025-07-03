@@ -1,6 +1,6 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/config/vite'
-import react from '@vitejs/plugin-react'
+import react from '@vitejs/plugin-react-swc'
 import packageJson from './package.json'
 import minifyScriptPlugin from './vite-minify-plugin'
 import type { ViteUserConfig } from 'vitest/config'

@@ -72,6 +72,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react-swc": "^3.10.2",
     "esbuild": "^0.25.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
