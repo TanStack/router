@@ -1465,7 +1465,12 @@ test('should navigate to current route with changing path params when using "." 
     return (
       <>
         <h1 data-testid="index-heading">Index</h1>
-        <button data-testid='posts-btn' onClick={() => navigate({ to: '/posts' })}>Posts</button>
+        <button
+          data-testid="posts-btn"
+          onClick={() => navigate({ to: '/posts' })}
+        >
+          Posts
+        </button>
       </>
     )
   }
@@ -1493,7 +1498,7 @@ test('should navigate to current route with changing path params when using "." 
     const navigate = postsRoute.useNavigate()
     return (
       <>
-        <h1 data-testid='posts-index-heading'>Posts</h1>
+        <h1 data-testid="posts-index-heading">Posts</h1>
         <button
           data-testid="first-post-btn"
           onClick={() =>
@@ -1531,7 +1536,9 @@ test('should navigate to current route with changing path params when using "." 
     const params = useParams({ strict: false })
     return (
       <>
-        <span data-testid={`post-${params.postId}`}>Params: {params.postId}</span>
+        <span data-testid={`post-${params.postId}`}>
+          Params: {params.postId}
+        </span>
       </>
     )
   }
@@ -1545,11 +1552,7 @@ test('should navigate to current route with changing path params when using "." 
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       indexRoute,
-      layoutRoute.addChildren([
-        postsRoute.addChildren([
-          postRoute,
-        ]),
-      ]),
+      layoutRoute.addChildren([postsRoute.addChildren([postRoute])]),
     ]),
   })
 
