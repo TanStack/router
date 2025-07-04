@@ -7,6 +7,7 @@ import {
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
+import { isServer } from 'solid-js/web'
 
 export function Transitioner() {
   const router = useRouter()
@@ -66,6 +67,7 @@ export function Transitioner() {
 
   // Try to load the initial location
   Solid.createRenderEffect(() => {
+    if (isServer) return;
     Solid.untrack(() => {
       if (
         (typeof window !== 'undefined' && router.clientSsr) ||
