@@ -1478,7 +1478,7 @@ test('should navigate to current route with changing path params when using "." 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: IndexComponent
+    component: IndexComponent,
   })
 
   const postsRoute = createRoute({
@@ -1489,7 +1489,7 @@ test('should navigate to current route with changing path params when using "." 
   const postsIndexRoute = createRoute({
     getParentRoute: () => postsRoute,
     path: '/',
-    component: function PostsIndex (){
+    component: function PostsIndex() {
       const navigate = useNavigate()
 
       return (
@@ -1521,27 +1521,24 @@ test('should navigate to current route with changing path params when using "." 
           </button>
           <Outlet />
         </>
-    )},
+      )
+    },
   })
 
   const postRoute = createRoute({
     getParentRoute: () => postsIndexRoute,
     path: '$postId',
-    component: function PostComponent (){
-      const params = useParams({strict: false})
+    component: function PostComponent() {
+      const params = useParams({ strict: false })
 
-      return (<div>Post: {params.postId}</div>)
+      return <div>Post: {params.postId}</div>
     },
   })
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       indexRoute,
-      postsRoute.addChildren([
-        postsIndexRoute.addChildren([
-          postRoute
-        ])
-      ])
+      postsRoute.addChildren([postsIndexRoute.addChildren([postRoute])]),
     ]),
     history,
   })
