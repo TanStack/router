@@ -2237,7 +2237,7 @@ export class RouterCore<
                   if (route.options.ssr === undefined) {
                     tempSsr = defaultSsr
                   } else if (typeof route.options.ssr === 'function') {
-                    const { search, params, context } = this.getMatch(matchId)!
+                    const { search, params } = this.getMatch(matchId)!
 
                     function makeMaybe(value: any, error: any) {
                       if (error) {
@@ -2274,7 +2274,7 @@ export class RouterCore<
                     ssr = tempSsr
                   }
                 }
-
+                console.log(`Match ${matchId} ssr:`, ssr)
                 updateMatch(matchId, (prev) => ({
                   ...prev,
                   ssr,
@@ -2456,8 +2456,6 @@ export class RouterCore<
                   let loaderIsRunningAsync = false
                   const route = this.looseRoutesById[routeId]!
 
-                  const prevMatch = this.getMatch(matchId)!
-
                   const executeHead = async () => {
                     const match = this.getMatch(matchId)
                     // in case of a redirecting match during preload, the match does not exist
@@ -2496,6 +2494,7 @@ export class RouterCore<
                     }
                   }
 
+                  const prevMatch = this.getMatch(matchId)!
                   if (shouldSkipLoader(matchId)) {
                     if (this.isServer) {
                       const head = await executeHead()
