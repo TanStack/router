@@ -2598,7 +2598,13 @@ export class RouterCore<
 
                         // Actually run the loader and handle the result
                         try {
-                          this.loadRouteChunk(route)
+                          if (
+                            !this.isServer ||
+                            (this.isServer &&
+                              this.getMatch(matchId)!.ssr === true)
+                          ) {
+                            this.loadRouteChunk(route)
+                          }
 
                           updateMatch(matchId, (prev) => ({
                             ...prev,
