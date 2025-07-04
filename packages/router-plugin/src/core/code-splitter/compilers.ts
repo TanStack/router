@@ -96,7 +96,7 @@ export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions & {
     runtimeEnv: 'dev' | 'prod'
     codeSplitGroupings: CodeSplitGroupings
-    deleteNodes?: DeletableNodes
+    deleteNodes?: Set<DeletableNodes>
     targetFramework: Config['target']
     filename: string
     id: string
@@ -152,14 +152,12 @@ export function compileCodeSplitReferenceRoute(
               }
 
               if (t.isObjectExpression(routeOptions)) {
-                if (opts.deleteNodes && opts.deleteNodes.length > 0) {
+                if (opts.deleteNodes && opts.deleteNodes.size > 0) {
                   routeOptions.properties = routeOptions.properties.filter(
                     (prop) => {
                       if (t.isObjectProperty(prop)) {
                         if (t.isIdentifier(prop.key)) {
-                          if (
-                            opts.deleteNodes?.includes(prop.key.name as any)
-                          ) {
+                          if (opts.deleteNodes?.has(prop.key.name as any)) {
                             return false
                           }
                         }

@@ -60,18 +60,17 @@ export type CodeSplittingOptions = {
    * The nodes that shall be deleted from the route.
    * @default undefined
    */
-  deleteNodes?: DeletableNodes
+  deleteNodes?: Array<DeletableNodes>
 }
 
-// for now, only 'ssr' is supported as a deletable node
-// if a second node is added, we can use `z.union`
-export const deletableNodesSchema = z.array(z.literal('ssr'))
+const DELETABLE_NODES = ['ssr'] as const
+export const deletableNodesSchema = z.enum(DELETABLE_NODES)
 const codeSplittingOptionsSchema = z.object({
   splitBehavior: z.function().optional(),
   defaultBehavior: splitGroupingsSchema.optional(),
-  deleteNodes: deletableNodesSchema.optional(),
+  deleteNodes: z.array(deletableNodesSchema),
 })
-export type DeletableNodes = z.infer<typeof deletableNodesSchema>
+export type DeletableNodes = (typeof DELETABLE_NODES)[number]
 
 export const configSchema = generatorConfigSchema.extend({
   enableRouteGeneration: z.boolean().optional(),
@@ -80,7 +79,15 @@ export const configSchema = generatorConfigSchema.extend({
       return codeSplittingOptionsSchema.parse(v)
     })
     .optional(),
-  environmentName: z.string().optional(),
+  plugin: z
+    .object({
+      vite: z
+        .object({
+          environmentName: z.string().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
 })
 
 export const getConfig = (inlineConfig: Partial<Config>, root: string) => {

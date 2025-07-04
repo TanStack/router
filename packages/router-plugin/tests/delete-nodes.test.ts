@@ -19,7 +19,7 @@ function getFrameworkDir(framework: string) {
 
 const testGroups: Array<{
   name: string
-  deleteNodes: DeletableNodes | undefined
+  deleteNodes: Array<DeletableNodes> | undefined
 }> = [
   {
     deleteNodes: undefined,
@@ -59,7 +59,7 @@ describe('code-splitter delete nodes', () => {
                   id: filename,
                   runtimeEnv: NODE_ENV === 'production' ? 'prod' : 'dev',
                   codeSplitGroupings: [],
-                  deleteNodes,
+                  deleteNodes: new Set(deleteNodes),
                   targetFramework: framework,
                 })
 

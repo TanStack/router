@@ -125,6 +125,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       targetFramework: userConfig.target,
       filename: id,
       id,
+      deleteNodes: new Set(userConfig.codeSplittingOptions?.deleteNodes),
     })
 
     if (debug) {
