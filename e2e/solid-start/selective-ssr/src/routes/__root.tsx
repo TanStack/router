@@ -1,9 +1,5 @@
 /// <reference types="vite/client" />
-import {
-  Link,
-  Outlet,
-  createRootRoute,
-} from '@tanstack/solid-router'
+import { Link, Outlet, createRootRoute } from '@tanstack/solid-router'
 import { z } from 'zod'
 import type * as Solid from 'solid-js'
 import { ssrSchema } from '~/search'
@@ -92,8 +88,7 @@ export const Route = createRootRoute({
       <div data-testid="root-container">
         <h2 data-testid="root-heading">root</h2>
         <div>
-          ssr:{' '}
-          <b>{JSON.stringify(search().root?.ssr ?? 'undefined')}</b>
+          ssr: <b>{JSON.stringify(search().root?.ssr ?? 'undefined')}</b>
         </div>
         <div>
           expected data location execution:{' '}
@@ -105,8 +100,7 @@ export const Route = createRootRoute({
           loader: <b data-testid="root-loader">{loaderData().root}</b>
         </div>
         <div>
-          context:{' '}
-          <b data-testid="root-context">{context().root}</b>
+          context: <b data-testid="root-context">{context().root}</b>
         </div>
         <hr />
         <Outlet />
@@ -118,19 +112,19 @@ export const Route = createRootRoute({
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
     <>
-        <div class="p-2 flex gap-2 text-lg">
-          <h1>Selective SSR E2E Test</h1>
-          <Link
-            to="/"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Home
-          </Link>
-        </div>
-        <hr />
-        {children}
-        </>
+      <div class="p-2 flex gap-2 text-lg">
+        <h1>Selective SSR E2E Test</h1>
+        <Link
+          to="/"
+          activeProps={{
+            class: 'font-bold',
+          }}
+        >
+          Home
+        </Link>
+      </div>
+      <hr />
+      {children}
+    </>
   )
 }

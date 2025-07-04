@@ -69,8 +69,7 @@ export const Route = createFileRoute('/posts/$postId')({
       <div data-testid="postId-container">
         <h4 data-testid="postId-heading">postId</h4>
         <div>
-          ssr:{' '}
-          <b>{JSON.stringify(search().postId?.ssr ?? 'undefined')}</b>
+          ssr: <b>{JSON.stringify(search().postId?.ssr ?? 'undefined')}</b>
         </div>
         <div>
           expected data location execution:{' '}
@@ -79,12 +78,10 @@ export const Route = createFileRoute('/posts/$postId')({
           </b>
         </div>
         <div>
-          loader:{' '}
-          <b data-testid="postId-loader">{loaderData().postId}</b>
+          loader: <b data-testid="postId-loader">{loaderData().postId}</b>
         </div>
         <div>
-          context:{' '}
-          <b data-testid="postId-context">{context().postId}</b>
+          context: <b data-testid="postId-context">{context().postId}</b>
         </div>
       </div>
     )
