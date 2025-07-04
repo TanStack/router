@@ -1374,6 +1374,7 @@ test('should navigate to current route with search params when using "." in nest
     return (
       <>
         <button
+          data-testid="posts-btn"
           onClick={() => {
             navigate({
               to: '/post',
@@ -1383,6 +1384,7 @@ test('should navigate to current route with search params when using "." in nest
           Post
         </button>
         <button
+          data-testid="search-btn"
           onClick={() =>
             navigate({
               to: '.',
@@ -1395,6 +1397,7 @@ test('should navigate to current route with search params when using "." in nest
           Search
         </button>
         <button
+          data-testid="search2-btn"
           onClick={() =>
             navigate({
               to: '/post',
@@ -1433,20 +1436,20 @@ test('should navigate to current route with search params when using "." in nest
 
   render(<RouterProvider router={router} />)
 
-  const postButton = await screen.findByRole('button', { name: 'Post' })
+  const postButton = await screen.findByTestId('posts-btn')
 
   fireEvent.click(postButton)
 
   expect(router.state.location.pathname).toBe('/post')
 
-  const searchButton = await screen.findByRole('button', { name: 'Search' })
+  const searchButton = await screen.findByTestId('search-btn')
 
   fireEvent.click(searchButton)
 
   expect(router.state.location.pathname).toBe('/post')
   expect(router.state.location.search).toEqual({ param1: 'value1' })
 
-  const searchButton2 = await screen.findByRole('button', { name: 'Search2' })
+  const searchButton2 = await screen.findByTestId('search2-btn')
 
   fireEvent.click(searchButton2)
 
@@ -1461,16 +1464,8 @@ test('should navigate to current route with changing path params when using "." 
     const navigate = useNavigate()
     return (
       <>
-        <button
-          onClick={() => {
-            navigate({
-              to: '/posts',
-            })
-          }}
-        >
-          Posts
-        </button>
-        <Outlet />
+        <h1 data-testid="index-heading">Index</h1>
+        <button data-testid='posts-btn' onClick={() => navigate({ to: '/posts' })}>Posts</button>
       </>
     )
   }
@@ -1481,90 +1476,105 @@ test('should navigate to current route with changing path params when using "." 
     component: IndexComponent,
   })
 
-  const postsRoute = createRoute({
-    getParentRoute: () => indexRoute,
-    path: 'posts',
-  })
-
-  const postsIndexRoute = createRoute({
-    getParentRoute: () => postsRoute,
-    path: '/',
-    component: function PostsIndex() {
-      const navigate = useNavigate()
-
+  const layoutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '_layout',
+    component: () => {
       return (
         <>
-          <div>Posts</div>
-          <button
-            onClick={() =>
-              navigate({
-                to: '$postId',
-                params: {
-                  postId: 'id1',
-                },
-              })
-            }
-          >
-            To Post 1
-          </button>
-          <button
-            onClick={() =>
-              navigate({
-                to: '.',
-                params: {
-                  postId: 'id2',
-                },
-              })
-            }
-          >
-            To Post 2
-          </button>
+          <h1>Layout</h1>
           <Outlet />
         </>
       )
     },
   })
 
-  const postRoute = createRoute({
-    getParentRoute: () => postsIndexRoute,
-    path: '$postId',
-    component: function PostComponent() {
-      const params = useParams({ strict: false })
+  const PostsComponent = () => {
+    const navigate = postsRoute.useNavigate()
+    return (
+      <>
+        <h1 data-testid='posts-index-heading'>Posts</h1>
+        <button
+          data-testid="first-post-btn"
+          onClick={() =>
+            navigate({
+              to: '$postId',
+              params: { postId: 'id1' },
+            })
+          }
+        >
+          To first post
+        </button>
+        <button
+          data-testid="second-post-btn"
+          onClick={() =>
+            navigate({
+              to: '.',
+              params: { postId: 'id2' },
+            })
+          }
+        >
+          To second post
+        </button>
+        <Outlet />
+      </>
+    )
+  }
 
-      return <div>Post: {params.postId}</div>
-    },
+  const postsRoute = createRoute({
+    getParentRoute: () => layoutRoute,
+    path: 'posts',
+    component: PostsComponent,
+  })
+
+  const PostComponent = () => {
+    const params = useParams({ strict: false })
+    return (
+      <>
+        <span data-testid={`post-${params.postId}`}>Params: {params.postId}</span>
+      </>
+    )
+  }
+
+  const postRoute = createRoute({
+    getParentRoute: () => postsRoute,
+    path: '$postId',
+    component: PostComponent,
   })
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([
       indexRoute,
-      postsRoute.addChildren([postsIndexRoute.addChildren([postRoute])]),
+      layoutRoute.addChildren([
+        postsRoute.addChildren([
+          postRoute,
+        ]),
+      ]),
     ]),
-    history,
   })
 
   render(<RouterProvider router={router} />)
 
-  const postButton = await screen.findByRole('button', { name: 'Posts' })
+  const postsButton = await screen.findByTestId('posts-btn')
 
-  fireEvent.click(postButton)
+  fireEvent.click(postsButton)
 
-  expect(router.state.location.pathname).toBe('/posts')
-  expect(await screen.findByText('Posts')).toBeInTheDocument()
+  expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
+  expect(window.location.pathname).toEqual('/posts')
 
-  const post1Button = await screen.findByRole('button', { name: 'To Post 1' })
+  const firstPostButton = await screen.findByTestId('first-post-btn')
 
-  fireEvent.click(post1Button)
+  fireEvent.click(firstPostButton)
 
-  expect(router.state.location.pathname).toBe('/posts/id1')
-  expect(await screen.findByText('Post: id1')).toBeInTheDocument()
+  expect(await screen.findByTestId('post-id1')).toBeInTheDocument()
+  expect(window.location.pathname).toEqual('/posts/id1')
 
-  const post2Button = await screen.findByRole('button', { name: 'To Post 2' })
+  const secondPostButton = await screen.findByTestId('second-post-btn')
 
-  fireEvent.click(post2Button)
+  fireEvent.click(secondPostButton)
 
-  expect(router.state.location.pathname).toBe('/posts/id2')
-  expect(await screen.findByText('Post: id2')).toBeInTheDocument()
+  expect(await screen.findByTestId('post-id2')).toBeInTheDocument()
+  expect(window.location.pathname).toEqual('/posts/id2')
 })
 
 describe('when on /posts/$postId and navigating to ../ with default `from` /posts', () => {
