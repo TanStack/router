@@ -42,6 +42,7 @@ export interface SsrMatch {
   extracted?: Array<ClientExtractedEntry>
   updatedAt: MakeRouteMatch['updatedAt']
   status: MakeRouteMatch['status']
+  ssr?: boolean | 'data-only'
 }
 
 export type ClientExtractedEntry =
@@ -123,16 +124,35 @@ export async function hydrate(router: AnyRouter): Promise<any> {
 
   // Right after hydration and before the first render, we need to rehydrate each match
   // First step is to reyhdrate loaderData and __beforeLoadContext
+  let firstNonSsrMatchIndex: number | undefined = undefined
   matches.forEach((match) => {
     const dehydratedMatch = window.__TSR_SSR__!.matches.find(
       (d) => d.id === match.id,
     )
 
     if (!dehydratedMatch) {
+      Object.assign(match, { dehydrated: false, ssr: false })
       return
     }
 
     Object.assign(match, dehydratedMatch)
+
+    if (match.ssr === false) {
+      match._dehydrated = false
+    } else {
+      match._dehydrated = true
+    }
+
+    if (match.ssr === 'data-only' || match.ssr === false) {
+      if (firstNonSsrMatchIndex === undefined) {
+        firstNonSsrMatchIndex = match.index
+        match._forcePending = true
+      }
+    }
+
+    if (match.ssr === false) {
+      return
+    }
 
     // Handle beforeLoadContext
     if (dehydratedMatch.__beforeLoadContext) {
@@ -157,10 +177,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     ;(match as unknown as SsrMatch).extracted?.forEach((ex) => {
       deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
     })
-
-    return match
   })
 
+  console.log(`Hydrated ${matches.length} matches from SSR.`, matches)
   router.__store.setState((s) => {
     return {
       ...s,
@@ -222,10 +241,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }),
   )
 
-  if (matches[matches.length - 1]!.id !== lastMatchId) {
-    return await Promise.all([routeChunkPromise, router.load()])
-  }
-
+  router.load().catch((err) => {
+    console.error('Error during router hydration:', err)
+  })
   return routeChunkPromise
 }
 

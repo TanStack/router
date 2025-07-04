@@ -57,6 +57,7 @@ import type {
   RouteContextOptions,
   RouteMask,
   SearchMiddleware,
+  SsrContextOptions,
 } from './route'
 import type {
   FullSearchSchema,
@@ -342,7 +343,12 @@ export interface RouterOptions<
    */
   isServer?: boolean
 
-  defaultSsr?: boolean
+  /**
+   * The default `ssr` a route should use if no `ssr` is provided.
+   *
+   * @default true
+   */
+  defaultSsr?: boolean | 'data-only'
 
   search?: {
     /**
@@ -946,7 +952,6 @@ export class RouterCore<
       initRoute: (route, i) => {
         route.init({
           originalIndex: i,
-          defaultSsr: this.options.defaultSsr,
         })
       },
     })
@@ -960,7 +965,6 @@ export class RouterCore<
     if (notFoundRoute) {
       notFoundRoute.init({
         originalIndex: 99999999999,
-        defaultSsr: this.options.defaultSsr,
       })
       this.routesById[notFoundRoute.id] = notFoundRoute
     }
@@ -2055,12 +2059,47 @@ export class RouterCore<
     const triggerOnReady = async () => {
       if (!rendered) {
         rendered = true
+
+        // create a minPendingPromise for matches that have forcePending set to true
+        // usually the minPendingPromise is created in the Match component if a pending match is rendered
+        // however, this might be too late if the match synchronously resolves
+        if (!allPreload && !this.isServer) {
+          matches.forEach((match) => {
+            const { id: matchId, routeId, _forcePending: forcePending } = match
+            const route = this.looseRoutesById[routeId]!
+            const pendingMinMs =
+              route.options.pendingMinMs ?? this.options.defaultPendingMinMs
+            if (forcePending && pendingMinMs) {
+              const minPendingPromise = createControlledPromise<void>()
+              updateMatch(matchId, (prev) => ({
+                ...prev,
+                minPendingPromise,
+              }))
+
+              setTimeout(() => {
+                minPendingPromise.resolve()
+                // We've handled the minPendingPromise, so we can delete it
+                updateMatch(matchId, (prev) => ({
+                  ...prev,
+                  minPendingPromise: undefined,
+                }))
+              }, pendingMinMs)
+            }
+          })
+        }
+
         await onReady?.()
       }
     }
 
     const resolvePreload = (matchId: string) => {
       return !!(allPreload && !this.state.matches.find((d) => d.id === matchId))
+    }
+
+    // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
+    // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
+    if (!this.isServer && this.state.matches.find((d) => d._forcePending)) {
+      triggerOnReady()
     }
 
     const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
@@ -2114,6 +2153,21 @@ export class RouterCore<
       }
     }
 
+    const shouldSkipLoader = (matchId: string) => {
+      const match = this.getMatch(matchId)!
+      // upon hydration, we skip the loader if the match has been dehydrated on the server
+      if (!this.isServer && match._dehydrated) {
+        return true
+      }
+
+      if (this.isServer) {
+        if (match.ssr === false) {
+          return true
+        }
+      }
+      return false
+    }
+
     try {
       await new Promise<void>((resolveAll, rejectAll) => {
         ;(async () => {
@@ -2163,11 +2217,71 @@ export class RouterCore<
             for (const [index, { id: matchId, routeId }] of matches.entries()) {
               const existingMatch = this.getMatch(matchId)!
               const parentMatchId = matches[index - 1]?.id
+              const parentMatch = parentMatchId
+                ? this.getMatch(parentMatchId)!
+                : undefined
 
               const route = this.looseRoutesById[routeId]!
 
               const pendingMs =
                 route.options.pendingMs ?? this.options.defaultPendingMs
+
+              if (this.isServer) {
+                let ssr: boolean | 'data-only'
+                if (parentMatch?.ssr === false) {
+                  ssr = false
+                } else {
+                  let tempSsr: boolean | 'data-only'
+                  if (route.options.ssr === undefined) {
+                    tempSsr = this.options.defaultSsr ?? true
+                  } else if (typeof route.options.ssr === 'function') {
+                    const { search, params, context } = this.getMatch(matchId)!
+
+                    function makeMaybe(value: any, error: any) {
+                      if (error) {
+                        return { error }
+                      }
+                      return { value }
+                    }
+
+                    const ssrFnContext: SsrContextOptions<any, any, any> = {
+                      maybeSearch: makeMaybe(search, existingMatch.searchError),
+                      maybeParams: makeMaybe(params, existingMatch.paramsError),
+                      location,
+
+                      matches: matches.map((match) => ({
+                        index: match.index,
+                        pathname: match.pathname,
+                        fullPath: match.fullPath,
+                        staticData: match.staticData,
+                        id: match.id,
+                        routeId: match.routeId,
+                        maybeParams: makeMaybe(match.params, match.paramsError),
+                        maybeSearch: makeMaybe(match.search, match.searchError),
+                        ssr: match.ssr,
+                      })),
+                    }
+                    tempSsr = await route.options.ssr(ssrFnContext)
+                  } else {
+                    tempSsr = route.options.ssr
+                  }
+
+                  if (tempSsr === true && parentMatch?.ssr === 'data-only') {
+                    ssr = 'data-only'
+                  } else {
+                    ssr = tempSsr
+                  }
+                }
+
+                updateMatch(matchId, (prev) => ({
+                  ...prev,
+                  ssr,
+                }))
+              }
+
+              if (shouldSkipLoader(matchId)) {
+                continue
+              }
 
               const shouldPending = !!(
                 onReady &&
@@ -2251,10 +2365,8 @@ export class RouterCore<
                     handleSerialError(index, searchError, 'VALIDATE_SEARCH')
                   }
 
-                  const getParentMatchContext = () =>
-                    parentMatchId
-                      ? this.getMatch(parentMatchId)!.context
-                      : (this.options.context ?? {})
+                  const parentMatchContext =
+                    parentMatch?.context ?? this.options.context ?? {}
 
                   updateMatch(matchId, (prev) => ({
                     ...prev,
@@ -2263,7 +2375,7 @@ export class RouterCore<
                     abortController,
                     pendingTimeout,
                     context: {
-                      ...getParentMatchContext(),
+                      ...parentMatchContext,
                       ...prev.__routeContext,
                     },
                   }))
@@ -2309,7 +2421,7 @@ export class RouterCore<
                       ...prev,
                       __beforeLoadContext: beforeLoadContext,
                       context: {
-                        ...getParentMatchContext(),
+                        ...parentMatchContext,
                         ...prev.__routeContext,
                         ...beforeLoadContext,
                       },
@@ -2340,10 +2452,67 @@ export class RouterCore<
                 (async () => {
                   let loaderShouldRunAsync = false
                   let loaderIsRunningAsync = false
+                  const route = this.looseRoutesById[routeId]!
 
                   const prevMatch = this.getMatch(matchId)!
+
+                  const executeHead = async () => {
+                    const match = this.getMatch(matchId)
+                    // in case of a redirecting match during preload, the match does not exist
+                    if (!match) {
+                      return
+                    }
+                    const assetContext = {
+                      matches,
+                      match,
+                      params: match.params,
+                      loaderData: match.loaderData,
+                    }
+                    const headFnContent =
+                      await route.options.head?.(assetContext)
+                    const meta = headFnContent?.meta
+                    const links = headFnContent?.links
+                    const headScripts = headFnContent?.scripts
+                    const styles = headFnContent?.styles
+
+                    const scripts = await route.options.scripts?.(assetContext)
+                    const headers = await route.options.headers?.(assetContext)
+                    return {
+                      meta,
+                      links,
+                      headScripts,
+                      headers,
+                      scripts,
+                      styles,
+                    }
+                  }
+
+                  const potentialPendingMinPromise = async () => {
+                    const latestMatch = this.getMatch(matchId)!
+                    if (latestMatch.minPendingPromise) {
+                      await latestMatch.minPendingPromise
+                    }
+                  }
+
+                  if (shouldSkipLoader(matchId)) {
+                    if (this.isServer) {
+                      const head = await executeHead()
+                      updateMatch(matchId, (prev) => ({
+                        ...prev,
+                        ...head,
+                      }))
+                      this.serverSsr?.onMatchSettled({
+                        router: this,
+                        match: this.getMatch(matchId)!,
+                      })
+                      return this.getMatch(matchId)!
+                    } else {
+                      const latestMatch = this.getMatch(matchId)!
+                      await potentialPendingMinPromise()
+                    }
+                  }
                   // there is a loaderPromise, so we are in the middle of a load
-                  if (prevMatch.loaderPromise) {
+                  else if (prevMatch.loaderPromise) {
                     // do not block if we already have stale data we can show
                     // but only if the ongoing load is not a preload since error handling is different for preloads
                     // and we don't want to swallow errors
@@ -2361,7 +2530,6 @@ export class RouterCore<
                     }
                   } else {
                     const parentMatchPromise = matchPromises[index - 1] as any
-                    const route = this.looseRoutesById[routeId]!
 
                     const getLoaderContext = (): LoaderFnContext => {
                       const {
@@ -2420,39 +2588,6 @@ export class RouterCore<
                         !this.state.matches.find((d) => d.id === matchId),
                     }))
 
-                    const executeHead = async () => {
-                      const match = this.getMatch(matchId)
-                      // in case of a redirecting match during preload, the match does not exist
-                      if (!match) {
-                        return
-                      }
-                      const assetContext = {
-                        matches,
-                        match,
-                        params: match.params,
-                        loaderData: match.loaderData,
-                      }
-                      const headFnContent =
-                        await route.options.head?.(assetContext)
-                      const meta = headFnContent?.meta
-                      const links = headFnContent?.links
-                      const headScripts = headFnContent?.scripts
-                      const styles = headFnContent?.styles
-
-                      const scripts =
-                        await route.options.scripts?.(assetContext)
-                      const headers =
-                        await route.options.headers?.(assetContext)
-                      return {
-                        meta,
-                        links,
-                        headScripts,
-                        headers,
-                        scripts,
-                        styles,
-                      }
-                    }
-
                     const runLoader = async () => {
                       try {
                         // If the Matches component rendered
@@ -2460,13 +2595,6 @@ export class RouterCore<
                         // a minimum duration, we''ll wait for it to resolve
                         // before committing to the match and resolving
                         // the loadPromise
-                        const potentialPendingMinPromise = async () => {
-                          const latestMatch = this.getMatch(matchId)!
-
-                          if (latestMatch.minPendingPromise) {
-                            await latestMatch.minPendingPromise
-                          }
-                        }
 
                         // Actually run the loader and handle the result
                         try {
@@ -2490,13 +2618,12 @@ export class RouterCore<
                           // so we need to wait for it to resolve before
                           // we can use the options
                           await route._lazyPromise
-
+                          const head = await executeHead()
                           await potentialPendingMinPromise()
 
                           // Last but not least, wait for the the components
                           // to be preloaded before we resolve the match
                           await route._componentsPromise
-
                           updateMatch(matchId, (prev) => ({
                             ...prev,
                             error: undefined,
@@ -2504,10 +2631,6 @@ export class RouterCore<
                             isFetching: false,
                             updatedAt: Date.now(),
                             loaderData,
-                          }))
-                          const head = await executeHead()
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
                             ...head,
                           }))
                         } catch (e) {
@@ -2553,13 +2676,17 @@ export class RouterCore<
                     }
 
                     // If the route is successful and still fresh, just resolve
-                    const { status, invalid } = this.getMatch(matchId)!
+                    const {
+                      status,
+                      invalid,
+                      _forcePending: forcePending,
+                    } = this.getMatch(matchId)!
                     loaderShouldRunAsync =
                       status === 'success' &&
                       (invalid || (shouldReload ?? age > staleAge))
                     if (preload && route.options.preload === false) {
                       // Do nothing
-                    } else if (loaderShouldRunAsync && !sync) {
+                    } else if (loaderShouldRunAsync && !sync && !forcePending) {
                       loaderIsRunningAsync = true
                       ;(async () => {
                         try {
@@ -2584,6 +2711,9 @@ export class RouterCore<
                     ) {
                       await runLoader()
                     } else {
+                      if (forcePending) {
+                        await potentialPendingMinPromise()
+                      }
                       // if the loader did not run, still update head.
                       // reason: parent's beforeLoad may have changed the route context
                       // and only now do we know the route context (and that the loader would not run)
@@ -2608,6 +2738,8 @@ export class RouterCore<
                       ? prev.loaderPromise
                       : undefined,
                     invalid: false,
+                    _dehydrated: undefined,
+                    _forcePending: undefined,
                   }))
                   return this.getMatch(matchId)!
                 })(),

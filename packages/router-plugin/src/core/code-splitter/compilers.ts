@@ -12,7 +12,7 @@ import { createIdentifier } from './path-ids'
 import { getFrameworkOptions } from './framework-options'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
-import type { Config } from '../config'
+import type { Config, DeletableNodes } from '../config'
 
 type SplitNodeMeta = {
   routeIdent: SplitRouteIdentNodes
@@ -96,6 +96,7 @@ export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions & {
     runtimeEnv: 'dev' | 'prod'
     codeSplitGroupings: CodeSplitGroupings
+    deleteNodes?: DeletableNodes
     targetFramework: Config['target']
     filename: string
     id: string
@@ -151,14 +152,30 @@ export function compileCodeSplitReferenceRoute(
               }
 
               if (t.isObjectExpression(routeOptions)) {
+                if (opts.deleteNodes && opts.deleteNodes.length > 0) {
+                  routeOptions.properties = routeOptions.properties.filter(
+                    (prop) => {
+                      if (t.isObjectProperty(prop)) {
+                        if (t.isIdentifier(prop.key)) {
+                          if (
+                            opts.deleteNodes?.includes(prop.key.name as any)
+                          ) {
+                            return false
+                          }
+                        }
+                      }
+                      return true
+                    },
+                  )
+                }
                 routeOptions.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
                     if (t.isIdentifier(prop.key)) {
+                      const key = prop.key.name
+
                       // If the user has not specified a split grouping for this key
                       // then we should not split it
-                      const codeSplitGroupingByKey = findIndexForSplitNode(
-                        prop.key.name,
-                      )
+                      const codeSplitGroupingByKey = findIndexForSplitNode(key)
                       if (codeSplitGroupingByKey === -1) {
                         return
                       }
@@ -168,7 +185,6 @@ export function compileCodeSplitReferenceRoute(
                         ),
                       ]
 
-                      const key = prop.key.name
                       // find key in nodeSplitConfig
                       const isNodeConfigAvailable = SPLIT_NODES_CONFIG.has(
                         key as any,
@@ -249,16 +265,9 @@ export function compileCodeSplitReferenceRoute(
                           ])
                         }
 
-                        // If it's a component, we need to pass the function to check the Route.ssr value
-                        if (key === 'component') {
-                          prop.value = template.expression(
-                            `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr)`,
-                          )()
-                        } else {
-                          prop.value = template.expression(
-                            `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
-                          )()
-                        }
+                        prop.value = template.expression(
+                          `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                        )()
 
                         // add HMR handling
                         if (opts.runtimeEnv !== 'prod') {
@@ -850,12 +859,10 @@ function resolveIdentifier(path: any, node: any): t.Node | undefined {
   return node
 }
 
-function removeIdentifierLiteral(path: any, node: any) {
-  if (t.isIdentifier(node)) {
-    const binding = path.scope.getBinding(node.name)
-    if (binding) {
-      binding.path.remove()
-    }
+function removeIdentifierLiteral(path: babel.NodePath, node: t.Identifier) {
+  const binding = path.scope.getBinding(node.name)
+  if (binding) {
+    binding.path.remove()
   }
 }
 

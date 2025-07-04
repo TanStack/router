@@ -5,5 +5,5 @@ import { lazyFn } from '@tanstack/solid-router';
 import { createFileRoute } from '@tanstack/solid-router';
 export const Route = createFileRoute('/posts')({
   loader: lazyFn($$splitLoaderImporter, 'loader'),
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)
+  component: lazyRouteComponent($$splitComponentImporter, 'component')
 });

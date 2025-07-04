@@ -299,6 +299,8 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
+  createRecoverableError,
+  isRecoverableError,
 } from '@tanstack/router-core'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'

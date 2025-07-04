@@ -292,6 +292,7 @@ export {
   escapeJSON,
   shallow,
   createControlledPromise,
+  isModuleNotFoundError,
 } from './utils'
 export type {
   NoInfer,
@@ -426,3 +427,5 @@ export type {
   ValidateUseSearchResult,
   ValidateUseParamsResult,
 } from './typePrimitives'
+
+export { isRecoverableError, createRecoverableError } from './recoverableError'

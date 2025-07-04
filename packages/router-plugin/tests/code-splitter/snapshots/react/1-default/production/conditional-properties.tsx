@@ -5,6 +5,6 @@ import { isEnabled } from '@features/feature-flags';
 import TrueImport from '@modules/true-component';
 import { falseLoader } from '@modules/false-component';
 export const Route = createFileRoute('/posts')({
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr),
+  component: lazyRouteComponent($$splitComponentImporter, 'component'),
   loader: isEnabled ? TrueImport.loader : falseLoader
 });

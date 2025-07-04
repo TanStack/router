@@ -4,6 +4,7 @@ import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { normalizePath } from 'vite'
 import { deadCodeElimination } from 'babel-dead-code-elimination'
 import { debug } from '../debug'
+import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import type { Plugin } from 'vite'
 import type { Config } from '@tanstack/router-generator'
 
@@ -19,7 +20,7 @@ export function routeTreeClientPlugin(config: Config): Plugin {
     name: 'tanstack-start:route-tree-client-plugin',
     enforce: 'pre',
     // only run this plugin in the client environment
-    applyToEnvironment: (env) => env.config.consumer === 'client',
+    applyToEnvironment: (env) => env.name === VITE_ENVIRONMENT_NAMES.client,
     transform: {
       filter: { id: generatedRouteTreePath },
       handler(code, id) {

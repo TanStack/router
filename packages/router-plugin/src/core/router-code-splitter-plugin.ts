@@ -210,6 +210,12 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           ROOT = config.root
           userConfig = getConfig(options, ROOT)
         },
+        applyToEnvironment(environment) {
+          if (userConfig.environmentName) {
+            return userConfig.environmentName === environment.name
+          }
+          return true
+        },
       },
 
       rspack() {
