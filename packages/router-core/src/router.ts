@@ -2226,6 +2226,7 @@ export class RouterCore<
               const pendingMs =
                 route.options.pendingMs ?? this.options.defaultPendingMs
 
+              // on the server, determine whether SSR the current match or not
               if (this.isServer) {
                 let ssr: boolean | 'data-only'
                 if (parentMatch?.ssr === false) {
@@ -2248,7 +2249,6 @@ export class RouterCore<
                       search: makeMaybe(search, existingMatch.searchError),
                       params: makeMaybe(params, existingMatch.paramsError),
                       location,
-
                       matches: matches.map((match) => ({
                         index: match.index,
                         pathname: match.pathname,
@@ -2507,7 +2507,6 @@ export class RouterCore<
                       })
                       return this.getMatch(matchId)!
                     } else {
-                      const latestMatch = this.getMatch(matchId)!
                       await potentialPendingMinPromise()
                     }
                   }
@@ -2722,6 +2721,10 @@ export class RouterCore<
                         ...prev,
                         ...head,
                       }))
+                      this.serverSsr?.onMatchSettled({
+                        router: this,
+                        match: this.getMatch(matchId)!,
+                      })
                     }
                   }
                   if (!loaderIsRunningAsync) {
