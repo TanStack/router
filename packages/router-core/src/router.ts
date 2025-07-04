@@ -1416,7 +1416,7 @@ export class RouterCore<
       let fromPath = lastMatch.fullPath
 
       const routeIsChanging = !!dest.to
-        && dest.to !== lastMatch.fullPath
+        && dest.to !== fromPath
         && this.resolvePathWithBase(fromPath, `${dest.to}`) !== fromPath;
 
       // If the route is changing we need to find the relative fromPath
