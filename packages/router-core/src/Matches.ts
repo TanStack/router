@@ -159,6 +159,8 @@ export interface RouteMatch<
   ssr?: boolean | 'data-only'
   _dehydrated?: boolean
   _forcePending?: boolean
+  displayPendingPromise?: Promise<void>
+  _displayPending?: boolean
 }
 
 export interface PreValidationErrorHandlingRouteMatch<

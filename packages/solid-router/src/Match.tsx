@@ -3,7 +3,6 @@ import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
   createControlledPromise,
-  createRecoverableError,
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
@@ -20,6 +19,7 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
+import { match } from 'assert'
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
@@ -31,7 +31,7 @@ export const Match = (props: { matchId: string }) => {
         match,
         `Could not find match for matchId "${props.matchId}". Please file an issue!`,
       )
-      return pick(match, ['routeId', 'ssr'])
+      return pick(match, ['routeId', 'ssr', '_displayPending'])
     },
   })
 
@@ -58,7 +58,10 @@ export const Match = (props: { matchId: string }) => {
 
   const ResolvedSuspenseBoundary = () =>
     // If we're on the root route, allow forcefully wrapping in suspense
-    (!route().isRoot || route().options.wrapInSuspense || resolvedNoSsr) &&
+    (!route().isRoot ||
+      route().options.wrapInSuspense ||
+      resolvedNoSsr ||
+      matchState()._displayPending) &&
     (route().options.wrapInSuspense ??
       PendingComponent() ??
       ((route().options.errorComponent as any)?.preload || resolvedNoSsr))
@@ -122,7 +125,7 @@ export const Match = (props: { matchId: string }) => {
               }}
             >
               <Solid.Switch>
-                <Solid.Match when={resolvedNoSsr}>
+                <Solid.Match when={resolvedNoSsr || router.isShell}>
                   <Solid.Show
                     when={!router.isServer}
                     fallback={<Dynamic component={PendingComponent()} />}
@@ -198,7 +201,13 @@ export const MatchInner = (props: { matchId: string }): any => {
       return {
         key,
         routeId,
-        match: pick(match, ['id', 'status', 'error', '_forcePending']),
+        match: pick(match, [
+          'id',
+          'status',
+          'error',
+          '_forcePending',
+          '_displayPending',
+        ]),
       }
     },
   })
@@ -217,6 +226,15 @@ export const MatchInner = (props: { matchId: string }): any => {
 
   return (
     <Solid.Switch>
+      <Solid.Match when={match()._displayPending}>
+        {(_) => {
+          const [displayPendingResult] = Solid.createResource(
+            () => router.getMatch(match().id)?.displayPendingPromise,
+          )
+
+          return <>{displayPendingResult()}</>
+        }}
+      </Solid.Match>
       <Solid.Match when={match().status === 'pending' || match()._forcePending}>
         {(_) => {
           const pendingMinMs =
@@ -331,16 +349,6 @@ export const Outlet = () => {
 
   return (
     <Solid.Switch>
-      <Solid.Match when={router.isShell}>
-        <Solid.Suspense
-          fallback={
-            <Dynamic component={router.options.defaultPendingComponent} />
-          }
-        >
-          <ErrorComponent error={createRecoverableError('ShellBoundary')} />
-        </Solid.Suspense>
-      </Solid.Match>
-
       <Solid.Match when={parentGlobalNotFound()}>
         {renderRouteNotFound(router, route(), undefined)}
       </Solid.Match>

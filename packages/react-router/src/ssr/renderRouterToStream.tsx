@@ -5,7 +5,6 @@ import {
   transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
-import { isRecoverableError } from '@tanstack/router-core'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { ReadableStream } from 'node:stream/web'
 import type { ReactNode } from 'react'
@@ -57,15 +56,11 @@ export const renderRouterToStream = async ({
               },
             }),
         onError: (error, info) => {
-          if (!isRecoverableError(error)) {
-            console.error('Error in renderToPipeableStream:', error, info)
-          }
+          console.error('Error in renderToPipeableStream:', error, info)
         },
       })
     } catch (e) {
-      if (!isRecoverableError(e)) {
-        console.error('Error in renderToPipeableStream:', e)
-      }
+      console.error('Error in renderToPipeableStream:', e)
     }
 
     const responseStream = transformPipeableStreamWithRouter(

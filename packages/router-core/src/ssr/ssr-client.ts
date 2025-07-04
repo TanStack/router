@@ -240,9 +240,38 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }),
   )
 
-  router.load().catch((err) => {
-    console.error('Error during router hydration:', err)
-  })
+  // schedule router.load() to run after the next tick so we can store the promise in the match before loading starts
+  const loadPromise = Promise.resolve()
+    .then(() => router.load())
+    .catch((err) => {
+      console.error('Error during router hydration:', err)
+    })
+
+  // in SPA mode we need to keep the outermost match  pending until router.load() is finished
+  // this will prevent that other pending components are rendered but hydration is not blocked
+  if (matches[matches.length - 1]!.id !== lastMatchId) {
+    const matchId = matches[0]!.id
+    router.updateMatch(matchId, (prev) => {
+      return {
+        ...prev,
+        _displayPending: true,
+        displayPendingPromise: loadPromise,
+        // make sure that the pending component is displayed for at least pendingMinMs
+        _forcePending: true,
+      }
+    })
+    // hide the pending component once the load is finished
+    loadPromise.then(() => {
+      router.updateMatch(matchId, (prev) => {
+        return {
+          ...prev,
+          _displayPending: undefined,
+          displayPendingPromise: undefined,
+        }
+      })
+    })
+  }
+
   return routeChunkPromise
 }
 

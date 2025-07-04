@@ -3,7 +3,6 @@ import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
 import {
   createControlledPromise,
-  createRecoverableError,
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
@@ -23,6 +22,7 @@ import type {
   ParsedLocation,
   RootRouteOptions,
 } from '@tanstack/router-core'
+import { ClientOnly } from './ClientOnly'
 
 export const Match = React.memo(function MatchImpl({
   matchId,
@@ -30,19 +30,19 @@ export const Match = React.memo(function MatchImpl({
   matchId: string
 }) {
   const router = useRouter()
-  const { routeId, ssr } = useRouterState({
+  const matchState = useRouterState({
     select: (s) => {
       const match = s.matches.find((d) => d.id === matchId)
       invariant(
         match,
         `Could not find match for matchId "${matchId}". Please file an issue!`,
       )
-      return pick(match, ['routeId', 'ssr'])
+      return pick(match, ['routeId', 'ssr', '_displayPending'])
     },
     structuralSharing: true as any,
   })
 
-  const route: AnyRoute = router.routesById[routeId]
+  const route: AnyRoute = router.routesById[matchState.routeId]
 
   const PendingComponent =
     route.options.pendingComponent ?? router.options.defaultPendingComponent
@@ -60,7 +60,8 @@ export const Match = React.memo(function MatchImpl({
       router.options.notFoundRoute?.options.component)
     : route.options.notFoundComponent
 
-  const resolvedNoSsr = ssr === false || ssr === 'data-only'
+  const resolvedNoSsr =
+    matchState.ssr === false || matchState.ssr === 'data-only'
   const ResolvedSuspenseBoundary =
     // If we're on the root route, allow forcefully wrapping in suspense
     (!route.isRoot || route.options.wrapInSuspense || resolvedNoSsr) &&
@@ -112,7 +113,7 @@ export const Match = React.memo(function MatchImpl({
                 // route ID which doesn't match the current route, rethrow the error
                 if (
                   !routeNotFoundComponent ||
-                  (error.routeId && error.routeId !== routeId) ||
+                  (error.routeId && error.routeId !== matchState.routeId) ||
                   (!error.routeId && !route.isRoot)
                 )
                   throw error
@@ -120,10 +121,13 @@ export const Match = React.memo(function MatchImpl({
                 return React.createElement(routeNotFoundComponent, error as any)
               }}
             >
-              <MatchInner
-                matchId={matchId}
-                throwSsr={router.isServer && resolvedNoSsr}
-              />
+              {resolvedNoSsr || router.isShell || matchState._displayPending ? (
+                <ClientOnly fallback={pendingElement}>
+                  <MatchInner matchId={matchId} />
+                </ClientOnly>
+              ) : (
+                <MatchInner matchId={matchId} />
+              )}
             </ResolvedNotFoundBoundary>
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
@@ -175,10 +179,8 @@ function OnRendered() {
 
 export const MatchInner = React.memo(function MatchInnerImpl({
   matchId,
-  throwSsr,
 }: {
   matchId: string
-  throwSsr?: boolean
 }): any {
   const router = useRouter()
 
@@ -202,7 +204,13 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       return {
         key,
         routeId,
-        match: pick(match, ['id', 'status', 'error', '_forcePending']),
+        match: pick(match, [
+          'id',
+          'status',
+          'error',
+          '_forcePending',
+          '_displayPending',
+        ]),
       }
     },
     structuralSharing: true as any,
@@ -218,8 +226,8 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     return <Outlet />
   }, [key, route.options.component, router.options.defaultComponent])
 
-  if (throwSsr) {
-    throw createRecoverableError('SSR has been disabled for this route')
+  if (match._displayPending) {
+    throw router.getMatch(match.id)?.displayPendingPromise
   }
 
   // see also triggerOnReady() in packages/router-core/src/router.ts
@@ -332,13 +340,6 @@ export const Outlet = React.memo(function OutletImpl() {
     <router.options.defaultPendingComponent />
   ) : null
 
-  if (router.isShell)
-    return (
-      <React.Suspense fallback={pendingElement}>
-        <ShellInner />
-      </React.Suspense>
-    )
-
   if (parentGlobalNotFound) {
     return renderRouteNotFound(router, route, undefined)
   }
@@ -357,8 +358,3 @@ export const Outlet = React.memo(function OutletImpl() {
 
   return nextMatch
 })
-
-function ShellInner(): React.ReactElement {
-  const error = createRecoverableError('ShellBoundary')
-  throw error
-}

@@ -1785,7 +1785,11 @@ export class RouterCore<
       }
     }
     // Match the routes
-    const pendingMatches = this.matchRoutes(this.latestLocation)
+    let pendingMatches = this.matchRoutes(this.latestLocation)
+    // in SPA mode we only want to load the root route
+    if (this.isShell) {
+      pendingMatches = pendingMatches.slice(0, 1)
+    }
 
     // Ingest the new matches
     this.__store.setState((s) => ({
@@ -1804,7 +1808,6 @@ export class RouterCore<
   load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
-
     let loadPromise: Promise<void>
 
     // eslint-disable-next-line prefer-const
@@ -2065,11 +2068,16 @@ export class RouterCore<
         // however, this might be too late if the match synchronously resolves
         if (!allPreload && !this.isServer) {
           matches.forEach((match) => {
-            const { id: matchId, routeId, _forcePending: forcePending } = match
+            const {
+              id: matchId,
+              routeId,
+              _forcePending,
+              minPendingPromise,
+            } = match
             const route = this.looseRoutesById[routeId]!
             const pendingMinMs =
               route.options.pendingMinMs ?? this.options.defaultPendingMinMs
-            if (forcePending && pendingMinMs) {
+            if (_forcePending && pendingMinMs && !minPendingPromise) {
               const minPendingPromise = createControlledPromise<void>()
               updateMatch(matchId, (prev) => ({
                 ...prev,
@@ -2274,7 +2282,6 @@ export class RouterCore<
                     ssr = tempSsr
                   }
                 }
-                console.log(`Match ${matchId} ssr:`, ssr)
                 updateMatch(matchId, (prev) => ({
                   ...prev,
                   ssr,
@@ -2685,17 +2692,18 @@ export class RouterCore<
                     }
 
                     // If the route is successful and still fresh, just resolve
-                    const {
-                      status,
-                      invalid,
-                      _forcePending: forcePending,
-                    } = this.getMatch(matchId)!
+                    const { status, invalid, _forcePending } =
+                      this.getMatch(matchId)!
                     loaderShouldRunAsync =
                       status === 'success' &&
                       (invalid || (shouldReload ?? age > staleAge))
                     if (preload && route.options.preload === false) {
                       // Do nothing
-                    } else if (loaderShouldRunAsync && !sync && !forcePending) {
+                    } else if (
+                      loaderShouldRunAsync &&
+                      !sync &&
+                      !_forcePending
+                    ) {
                       loaderIsRunningAsync = true
                       ;(async () => {
                         try {
@@ -2720,7 +2728,7 @@ export class RouterCore<
                     ) {
                       await runLoader()
                     } else {
-                      if (forcePending) {
+                      if (_forcePending) {
                         await potentialPendingMinPromise()
                       }
                       // if the loader did not run, still update head.

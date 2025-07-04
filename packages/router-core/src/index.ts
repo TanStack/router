@@ -427,5 +427,3 @@ export type {
   ValidateUseSearchResult,
   ValidateUseParamsResult,
 } from './typePrimitives'
-
-export { isRecoverableError, createRecoverableError } from './recoverableError'

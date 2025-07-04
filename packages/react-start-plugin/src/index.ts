@@ -1,7 +1,6 @@
 import viteReact from '@vitejs/plugin-react'
 import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
 import { getTanStackStartOptions } from './schema'
-import { silenceReactErrorBoundaryPlugin } from './silenceReactErrorBoundaryPlugin'
 import type { TanStackStartInputConfig, WithReactPlugin } from './schema'
 import type { PluginOption } from 'vite'
 
@@ -62,11 +61,8 @@ export default createStartHandler({
       },
       options,
     ),
-    silenceReactErrorBoundaryPlugin(),
     viteReact(options.react),
   ]
 }
 
 export { TanStackStartVitePlugin as tanstackStart }
-
-export { silenceReactErrorBoundaryPlugin } from './silenceReactErrorBoundaryPlugin'
