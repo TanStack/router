@@ -17,12 +17,12 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
+import { ClientOnly } from './ClientOnly'
 import type {
   AnyRoute,
   ParsedLocation,
   RootRouteOptions,
 } from '@tanstack/router-core'
-import { ClientOnly } from './ClientOnly'
 
 export const Match = React.memo(function MatchImpl({
   matchId,

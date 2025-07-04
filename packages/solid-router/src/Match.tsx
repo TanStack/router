@@ -19,7 +19,6 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
-import { match } from 'assert'
 
 export const Match = (props: { matchId: string }) => {
   const router = useRouter()
