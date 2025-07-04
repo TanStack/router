@@ -179,7 +179,6 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     })
   })
 
-  console.log(`Hydrated ${matches.length} matches from SSR.`, matches)
   router.__store.setState((s) => {
     return {
       ...s,
