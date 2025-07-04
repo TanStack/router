@@ -172,8 +172,12 @@ export interface PreValidationErrorHandlingRouteMatch<
   fullPath: TFullPath
   index: number
   pathname: string
-  maybeSearch: { value: TFullSearchSchema } | { error: unknown }
-  maybeParams: { value: TAllParams } | { error: unknown }
+  maybeSearch:
+    | { status: 'success'; value: TFullSearchSchema }
+    | { status: 'error'; error: unknown }
+  maybeParams:
+    | { status: 'success'; value: TAllParams }
+    | { status: 'error'; error: unknown }
   staticData: StaticDataRouteOption
   ssr?: boolean | 'data-only'
 }

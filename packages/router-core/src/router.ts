@@ -2239,9 +2239,9 @@ export class RouterCore<
 
                     function makeMaybe(value: any, error: any) {
                       if (error) {
-                        return { error }
+                        return { status: 'error' as const, error }
                       }
-                      return { value }
+                      return { status: 'success' as const, value }
                     }
 
                     const ssrFnContext: SsrContextOptions<any, any, any> = {

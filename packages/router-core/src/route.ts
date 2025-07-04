@@ -941,11 +941,17 @@ export interface SsrContextOptions<
   in out TParams,
 > {
   maybeParams:
-    | { value: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>> }
-    | { error: unknown }
+    | {
+        status: 'success'
+        value: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
+      }
+    | { status: 'error'; error: unknown }
   maybeSearch:
-    | { value: Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>> }
-    | { error: unknown }
+    | {
+        status: 'success'
+        value: Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
+      }
+    | { status: 'error'; error: unknown }
   location: ParsedLocation
   matches: Array<MakePreValidationErrorHandlingRouteMatchUnion>
 }
