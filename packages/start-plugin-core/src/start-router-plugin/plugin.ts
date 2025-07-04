@@ -14,7 +14,6 @@ import {
   tanstackRouterAutoImport,
   tanstackRouterGenerator,
 } from '@tanstack/router-plugin/vite'
-import { perEnvironmentPlugin } from 'vite'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { routeTreeClientPlugin } from './route-tree-client-plugin'
 import { virtualRouteTreePlugin } from './virtual-route-tree-plugin'
