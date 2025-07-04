@@ -4,10 +4,10 @@ import {
   handleHashScroll,
   trimPathRight,
 } from '@tanstack/router-core'
+import { isServer } from 'solid-js/web'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
-import { isServer } from 'solid-js/web'
 
 export function Transitioner() {
   const router = useRouter()

@@ -1207,27 +1207,18 @@ describe('search params in URL', () => {
       ValidatorFn<Record<string, unknown>, { search: string }>,
       ValidatorObj<Record<string, unknown>, { search: string }>,
     ] = [
-      {
-        ['~standard']: {
-          validate: (input) => {
-            const result = z.object({ search: z.string() }).safeParse(input)
-            if (result.success) {
-              return { value: result.data }
-            }
-            return new TestValidationError(result.error.issues)
+        {
+          ['~standard']: {
+            validate: (input) => {
+              const result = z.object({ search: z.string() }).safeParse(input)
+              if (result.success) {
+                return { value: result.data }
+              }
+              return new TestValidationError(result.error.issues)
+            },
           },
         },
-      },
-      ({ search }) => {
-        if (typeof search !== 'string') {
-          throw new TestValidationError([
-            { message: 'search must be a string' },
-          ])
-        }
-        return { search }
-      },
-      {
-        parse: ({ search }) => {
+        ({ search }) => {
           if (typeof search !== 'string') {
             throw new TestValidationError([
               { message: 'search must be a string' },
@@ -1235,8 +1226,17 @@ describe('search params in URL', () => {
           }
           return { search }
         },
-      },
-    ]
+        {
+          parse: ({ search }) => {
+            if (typeof search !== 'string') {
+              throw new TestValidationError([
+                { message: 'search must be a string' },
+              ])
+            }
+            return { search }
+          },
+        },
+      ]
 
     describe.each(testCases)('search param validation', (validateSearch) => {
       it('does not throw an error when the search param is valid', async () => {
@@ -1574,7 +1574,7 @@ describe('does not strip search params if search validation fails', () => {
     expect(window.location.search).toBe('?root=hello&index=world')
   })
 
-  it('root is missing', async () => {
+  it('root is missing', () => {
     window.history.replaceState(null, 'root', '/?index=world')
     const router = getRouter()
     render(() => <RouterProvider router={router} />)
@@ -1582,7 +1582,7 @@ describe('does not strip search params if search validation fails', () => {
     expect(window.location.search).toBe('?index=world')
   })
 
-  it('index is missing', async () => {
+  it('index is missing', () => {
     window.history.replaceState(null, 'root', '/?root=hello')
     const router = getRouter()
 
