@@ -2613,6 +2613,10 @@ export class RouterCore<
                             this.getMatch(matchId)!,
                             loaderData,
                           )
+                          updateMatch(matchId, (prev) => ({
+                            ...prev,
+                            loaderData,
+                          }))
 
                           // Lazy option can modify the route options,
                           // so we need to wait for it to resolve before
@@ -2630,7 +2634,6 @@ export class RouterCore<
                             status: 'success',
                             isFetching: false,
                             updatedAt: Date.now(),
-                            loaderData,
                             ...head,
                           }))
                         } catch (e) {
