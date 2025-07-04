@@ -36,6 +36,7 @@ export function tanStackStartRouter(config: Config): Array<PluginOption> {
       codeSplittingOptions: {
         ...config.codeSplittingOptions,
         deleteNodes: ['ssr'],
+        addHmr: true, 
       },
       plugin: {
         vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
@@ -43,6 +44,10 @@ export function tanStackStartRouter(config: Config): Array<PluginOption> {
     }),
     tanStackRouterCodeSplitter({
       ...config,
+      codeSplittingOptions: {
+        ...config.codeSplittingOptions,
+        addHmr: false, 
+      },
       plugin: {
         vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
       },

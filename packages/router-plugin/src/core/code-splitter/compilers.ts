@@ -100,6 +100,7 @@ export function compileCodeSplitReferenceRoute(
     targetFramework: Config['target']
     filename: string
     id: string
+    addHmr: boolean
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
@@ -175,7 +176,7 @@ export function compileCodeSplitReferenceRoute(
                 }
                 if (createRouteFn !== 'createFileRoute') {
                   // add HMR handling
-                  if (opts.runtimeEnv !== 'prod') {
+                  if (opts.addHmr && opts.runtimeEnv !== 'prod') {
                     programPath.pushContainer('body', routeHmrStatement)
                   }
                   return programPath.stop()
@@ -282,7 +283,7 @@ export function compileCodeSplitReferenceRoute(
                         )()
 
                         // add HMR handling
-                        if (opts.runtimeEnv !== 'prod') {
+                        if (opts.addHmr && opts.runtimeEnv !== 'prod') {
                           programPath.pushContainer('body', routeHmrStatement)
                         }
                       }

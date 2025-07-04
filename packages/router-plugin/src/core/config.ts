@@ -61,6 +61,11 @@ export type CodeSplittingOptions = {
    * @default undefined
    */
   deleteNodes?: Array<DeletableNodes>
+
+  /**
+   * @default true
+   */
+  addHmr?: boolean
 }
 
 const DELETABLE_NODES = ['ssr'] as const
@@ -68,7 +73,8 @@ export const deletableNodesSchema = z.enum(DELETABLE_NODES)
 const codeSplittingOptionsSchema = z.object({
   splitBehavior: z.function().optional(),
   defaultBehavior: splitGroupingsSchema.optional(),
-  deleteNodes: z.array(deletableNodesSchema),
+  deleteNodes: z.array(deletableNodesSchema).optional(),
+  addHmr: z.boolean().optional().default(true),
 })
 export type DeletableNodes = (typeof DELETABLE_NODES)[number]
 
