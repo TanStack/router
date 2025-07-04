@@ -11,3 +11,10 @@ export const Route = createRootRouteWithContext<{}>()({
     return <div className="p-2">hello world</div>;
   }
 });
+if (import.meta.hot) {
+  import.meta.hot.accept(newModule => {
+    if (newModule && newModule.Route && typeof newModule.Route.clone === 'function') {
+      newModule.Route.clone(Route);
+    }
+  });
+}

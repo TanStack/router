@@ -9,6 +9,12 @@ import type { UnpluginFactory } from 'unplugin'
  * It is only added to the composed plugin in dev when autoCodeSplitting is disabled, since the code splitting plugin
  * handles HMR for code-split routes itself.
  */
+
+const includeCode = [
+  'createFileRoute(',
+  'createRootRoute(',
+  'createRootRouteWithContext(',
+]
 export const unpluginRouterHmrFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = () => {
@@ -19,7 +25,9 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
       filter: {
         // this is necessary for webpack / rspack to avoid matching .html files
         id: /\.(m|c)?(j|t)sx?$/,
-        code: 'createFileRoute(',
+        code: {
+          include: includeCode,
+        },
       },
       handler(code, id) {
         if (!globalThis.TSR_ROUTES_BY_ID_MAP?.has(id)) {

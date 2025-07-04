@@ -174,6 +174,10 @@ export function compileCodeSplitReferenceRoute(
                   )
                 }
                 if (createRouteFn !== 'createFileRoute') {
+                  // add HMR handling
+                  if (opts.runtimeEnv !== 'prod') {
+                    programPath.pushContainer('body', routeHmrStatement)
+                  }
                   return programPath.stop()
                 }
                 routeOptions.properties.forEach((prop) => {
