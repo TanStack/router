@@ -2245,8 +2245,8 @@ export class RouterCore<
                     }
 
                     const ssrFnContext: SsrContextOptions<any, any, any> = {
-                      maybeSearch: makeMaybe(search, existingMatch.searchError),
-                      maybeParams: makeMaybe(params, existingMatch.paramsError),
+                      search: makeMaybe(search, existingMatch.searchError),
+                      params: makeMaybe(params, existingMatch.paramsError),
                       location,
 
                       matches: matches.map((match) => ({
@@ -2256,8 +2256,8 @@ export class RouterCore<
                         staticData: match.staticData,
                         id: match.id,
                         routeId: match.routeId,
-                        maybeParams: makeMaybe(match.params, match.paramsError),
-                        maybeSearch: makeMaybe(match.search, match.searchError),
+                        search: makeMaybe(match.search, match.searchError),
+                        params: makeMaybe(match.params, match.paramsError),
                         ssr: match.ssr,
                       })),
                     }

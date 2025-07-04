@@ -940,13 +940,13 @@ export interface SsrContextOptions<
   in out TSearchValidator,
   in out TParams,
 > {
-  maybeParams:
+  params:
     | {
         status: 'success'
         value: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
       }
     | { status: 'error'; error: unknown }
-  maybeSearch:
+  search:
     | {
         status: 'success'
         value: Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
