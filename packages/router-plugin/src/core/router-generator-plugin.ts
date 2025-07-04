@@ -74,8 +74,8 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         initConfigAndGenerator()
       },
       applyToEnvironment(environment) {
-        if (userConfig.environmentName) {
-          return userConfig.environmentName === environment.name
+        if (userConfig.plugin?.vite?.environmentName) {
+          return userConfig.plugin.vite === environment.name
         }
         return true
       },

@@ -27,7 +27,9 @@ export function tanStackStartRouter(config: Config): Array<PluginOption> {
     tanstackRouterGenerator({
       ...config,
       plugins: [serverRoutesPlugin(), routesManifestPlugin()],
-      environmentName: VITE_ENVIRONMENT_NAMES.client,
+      plugin: {
+        vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
+      },
     }),
     tanStackRouterCodeSplitter({
       ...config,
@@ -35,11 +37,15 @@ export function tanStackStartRouter(config: Config): Array<PluginOption> {
         ...config.codeSplittingOptions,
         deleteNodes: ['ssr'],
       },
-      environmentName: VITE_ENVIRONMENT_NAMES.client,
+      plugin: {
+        vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
+      },
     }),
     tanStackRouterCodeSplitter({
       ...config,
-      environmentName: VITE_ENVIRONMENT_NAMES.server,
+      plugin: {
+        vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
+      },
     }),
     tanstackRouterAutoImport(config),
     routeTreeClientPlugin(config),
