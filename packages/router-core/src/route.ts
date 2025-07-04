@@ -825,11 +825,12 @@ export type FileBaseRouteOptions<
   >
 
   ssr?:
+    | undefined
     | boolean
     | 'data-only'
     | ((
         ctx: SsrContextOptions<TParentRoute, TSearchValidator, TParams>,
-      ) => Awaitable<boolean | 'data-only'>)
+      ) => Awaitable<undefined | boolean | 'data-only'>)
 
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.

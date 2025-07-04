@@ -2228,13 +2228,14 @@ export class RouterCore<
 
               // on the server, determine whether SSR the current match or not
               if (this.isServer) {
+                const defaultSsr = this.options.defaultSsr ?? true
                 let ssr: boolean | 'data-only'
                 if (parentMatch?.ssr === false) {
                   ssr = false
                 } else {
                   let tempSsr: boolean | 'data-only'
                   if (route.options.ssr === undefined) {
-                    tempSsr = this.options.defaultSsr ?? true
+                    tempSsr = defaultSsr
                   } else if (typeof route.options.ssr === 'function') {
                     const { search, params, context } = this.getMatch(matchId)!
 
@@ -2261,7 +2262,8 @@ export class RouterCore<
                         ssr: match.ssr,
                       })),
                     }
-                    tempSsr = await route.options.ssr(ssrFnContext)
+                    tempSsr =
+                      (await route.options.ssr(ssrFnContext)) ?? defaultSsr
                   } else {
                     tempSsr = route.options.ssr
                   }
