@@ -57,7 +57,7 @@ describe('code-splitter delete nodes', () => {
                   code,
                   filename,
                   id: filename,
-                  runtimeEnv: NODE_ENV === 'production' ? 'prod' : 'dev',
+                  addHmr: NODE_ENV === 'development',
                   codeSplitGroupings: [],
                   deleteNodes: new Set(deleteNodes),
                   targetFramework: framework,

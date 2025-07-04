@@ -69,7 +69,7 @@ describe('code-splitter works', () => {
                   code,
                   filename,
                   id: filename,
-                  runtimeEnv: NODE_ENV === 'production' ? 'prod' : 'dev',
+                  addHmr: NODE_ENV === 'development',
                   codeSplitGroupings: grouping,
                   targetFramework: framework,
                 })

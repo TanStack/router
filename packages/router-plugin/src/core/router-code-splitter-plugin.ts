@@ -120,13 +120,12 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
-      runtimeEnv: isProduction ? 'prod' : 'dev',
       codeSplitGroupings: splitGroupings,
       targetFramework: userConfig.target,
       filename: id,
       id,
       deleteNodes: new Set(userConfig.codeSplittingOptions?.deleteNodes),
-      addHmr: options.codeSplittingOptions?.addHmr ?? true,
+      addHmr: options.codeSplittingOptions?.addHmr && !isProduction,
     })
 
     if (debug) {
