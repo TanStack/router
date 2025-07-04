@@ -117,6 +117,10 @@ export function compileCodeSplitReferenceRoute(
   const LAZY_ROUTE_COMPONENT_IDENT = frameworkOptions.idents.lazyRouteComponent
   const LAZY_FN_IDENT = frameworkOptions.idents.lazyFn
 
+  let createRouteFn:
+    | 'createFileRoute'
+    | 'createRootRoute'
+    | 'createRootRouteWithContext'
   babel.traverse(ast, {
     Program: {
       enter(programPath) {
@@ -139,12 +143,15 @@ export function compileCodeSplitReferenceRoute(
 
             if (
               !(
-                path.node.callee.name === 'createRoute' ||
-                path.node.callee.name === 'createFileRoute'
+                path.node.callee.name === 'createFileRoute' ||
+                path.node.callee.name === 'createRootRoute' ||
+                path.node.callee.name === 'createRootRouteWithContext'
               )
             ) {
               return
             }
+
+            createRouteFn = path.node.callee.name
 
             function babelHandleReference(routeOptions: t.Node | undefined) {
               const hasImportedOrDefinedIdentifier = (name: string) => {
@@ -165,6 +172,9 @@ export function compileCodeSplitReferenceRoute(
                       return true
                     },
                   )
+                }
+                if (createRouteFn !== 'createFileRoute') {
+                  return programPath.stop()
                 }
                 routeOptions.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {

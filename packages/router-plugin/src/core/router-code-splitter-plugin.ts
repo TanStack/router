@@ -172,6 +172,11 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     return result
   }
 
+  const includedCode = [
+    'createFileRoute(',
+    'createRootRoute(',
+    'createRootRouteWithContext(',
+  ]
   return [
     {
       name: 'tanstack-router:code-splitter:compile-reference-file',
@@ -184,11 +189,16 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
             // this is necessary for webpack / rspack to avoid matching .html files
             include: /\.(m|c)?(j|t)sx?$/,
           },
-          code: 'createFileRoute(',
+          code: {
+            include: includedCode,
+          },
         },
         handler(code, id) {
           const generatorFileInfo = globalThis.TSR_ROUTES_BY_ID_MAP?.get(id)
-          if (generatorFileInfo && code.includes('createFileRoute(')) {
+          if (
+            generatorFileInfo &&
+            includedCode.some((included) => code.includes(included))
+          ) {
             for (const externalPlugin of bannedBeforeExternalPlugins) {
               if (!externalPlugin.frameworks.includes(framework)) {
                 continue
