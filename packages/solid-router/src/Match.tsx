@@ -121,10 +121,19 @@ export const Match = (props: { matchId: string }) => {
                 )
               }}
             >
-              <MatchInner
-                matchId={props.matchId}
-                throwSsr={router.isServer && resolvedNoSsr}
-              />
+              <Solid.Switch>
+                <Solid.Match when={resolvedNoSsr}>
+                  <Solid.Show
+                    when={!router.isServer}
+                    fallback={<Dynamic component={PendingComponent()} />}
+                  >
+                    <MatchInner matchId={props.matchId} />
+                  </Solid.Show>
+                </Solid.Match>
+                <Solid.Match when={!resolvedNoSsr}>
+                  <MatchInner matchId={props.matchId} />
+                </Solid.Match>
+              </Solid.Switch>
             </Dynamic>
           </Dynamic>
         </Dynamic>
@@ -166,10 +175,7 @@ function OnRendered() {
   return null
 }
 
-export const MatchInner = (props: {
-  matchId: string
-  throwSsr?: boolean
-}): any => {
+export const MatchInner = (props: { matchId: string }): any => {
   const router = useRouter()
 
   const matchState = useRouterState({
@@ -211,11 +217,6 @@ export const MatchInner = (props: {
 
   return (
     <Solid.Switch>
-      <Solid.Match when={props.throwSsr}>
-        <ErrorComponent
-          error={createRecoverableError('SSR has been disabled for this route')}
-        />
-      </Solid.Match>
       <Solid.Match when={match().status === 'pending' || match()._forcePending}>
         {(_) => {
           const pendingMinMs =
