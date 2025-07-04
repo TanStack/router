@@ -1,8 +1,9 @@
 import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { routeHmrStatement } from './route-hmr-statement'
 import { debug } from './utils'
-import type { Config } from './config'
+import { getConfig } from './config'
 import type { UnpluginFactory } from 'unplugin'
+import type { Config } from './config'
 
 /**
  * This plugin adds HMR support for file routes.
@@ -17,7 +18,10 @@ const includeCode = [
 ]
 export const unpluginRouterHmrFactory: UnpluginFactory<
   Partial<Config> | undefined
-> = () => {
+> = (options = {}) => {
+  let ROOT: string = process.cwd()
+  let userConfig = options as Config
+
   return {
     name: 'tanstack-router:hmr',
     enforce: 'pre',
@@ -48,6 +52,18 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
           console.log('Output:\n', result.code + '\n\n')
         }
         return result
+      },
+    },
+    vite: {
+      configResolved(config) {
+        ROOT = config.root
+        userConfig = getConfig(options, ROOT)
+      },
+      applyToEnvironment(environment) {
+        if (userConfig.plugin?.vite?.environmentName) {
+          return userConfig.plugin.vite.environmentName === environment.name
+        }
+        return true
       },
     },
   }
