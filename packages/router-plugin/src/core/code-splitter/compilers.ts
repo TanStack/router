@@ -92,6 +92,16 @@ function removeSplitSearchParamFromFilename(filename: string) {
   return bareFilename!
 }
 
+const splittableCreateRouteFns = ['createFileRoute']
+const unsplittableCreateRouteFns = [
+  'createRootRoute',
+  'createRootRouteWithContext',
+]
+const allCreateRouteFns = [
+  ...splittableCreateRouteFns,
+  ...unsplittableCreateRouteFns,
+]
+
 export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions & {
     codeSplitGroupings: CodeSplitGroupings
@@ -117,10 +127,8 @@ export function compileCodeSplitReferenceRoute(
   const LAZY_ROUTE_COMPONENT_IDENT = frameworkOptions.idents.lazyRouteComponent
   const LAZY_FN_IDENT = frameworkOptions.idents.lazyFn
 
-  let createRouteFn:
-    | 'createFileRoute'
-    | 'createRootRoute'
-    | 'createRootRouteWithContext'
+  let createRouteFn: string
+
   babel.traverse(ast, {
     Program: {
       enter(programPath) {
@@ -141,13 +149,7 @@ export function compileCodeSplitReferenceRoute(
               return
             }
 
-            if (
-              !(
-                path.node.callee.name === 'createFileRoute' ||
-                path.node.callee.name === 'createRootRoute' ||
-                path.node.callee.name === 'createRootRouteWithContext'
-              )
-            ) {
+            if (!allCreateRouteFns.includes(path.node.callee.name)) {
               return
             }
 
@@ -173,11 +175,12 @@ export function compileCodeSplitReferenceRoute(
                     },
                   )
                 }
-                if (createRouteFn !== 'createFileRoute') {
-                  // add HMR handling
+                if (!splittableCreateRouteFns.includes(createRouteFn)) {
+                  // we can't split this route but we still add HMR handling if enabled
                   if (opts.addHmr) {
                     programPath.pushContainer('body', routeHmrStatement)
                   }
+                  // exit traversal so this route is not split
                   return programPath.stop()
                 }
                 routeOptions.properties.forEach((prop) => {
@@ -437,12 +440,7 @@ export function compileCodeSplitVirtualRoute(
               return
             }
 
-            if (
-              !(
-                path.node.callee.name === 'createRoute' ||
-                path.node.callee.name === 'createFileRoute'
-              )
-            ) {
+            if (!splittableCreateRouteFns.includes(path.node.callee.name)) {
               return
             }
 
