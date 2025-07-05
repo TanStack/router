@@ -1415,11 +1415,15 @@ export class RouterCore<
       // By default, start with the current location
       let fromPath = lastMatch.fullPath
 
-      // If there is a to, it means we are changing the path in some way
-      // So we need to find the relative fromPath
+      const routeIsChanging =
+        !!dest.to &&
+        dest.to !== fromPath &&
+        this.resolvePathWithBase(fromPath, `${dest.to}`) !== fromPath
+
+      // If the route is changing we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
         fromPath = currentLocation.pathname
-      } else if (dest.to && dest.from) {
+      } else if (routeIsChanging && dest.from) {
         fromPath = dest.from
         const existingFrom = [...allFromMatches].reverse().find((d) => {
           return (
@@ -1708,6 +1712,7 @@ export class RouterCore<
   }: BuildNextOptions & CommitLocationOptions = {}) => {
     if (href) {
       const currentIndex = this.history.location.state.__TSR_index
+
       const parsed = parseHref(href, {
         __TSR_index: replace ? currentIndex : currentIndex + 1,
       })
@@ -1721,6 +1726,7 @@ export class RouterCore<
       ...(rest as any),
       _includeValidateSearch: true,
     })
+
     return this.commitLocation({
       ...location,
       viewTransition,
