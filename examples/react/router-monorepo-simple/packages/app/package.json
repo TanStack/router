@@ -19,7 +19,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "@tanstack/react-router-devtools": "^1.124.2",
+    "@tanstack/react-router-devtools": "^1.125.0",
     "vite": "^6.3.5",
     "postcss": "^8.5.1",
     "autoprefixer": "^10.4.20",

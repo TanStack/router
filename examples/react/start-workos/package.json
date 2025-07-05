@@ -14,9 +14,9 @@
   "license": "MIT",
   "dependencies": {
     "@radix-ui/themes": "^3.2.1",
-    "@tanstack/react-router": "^1.124.2",
-    "@tanstack/react-router-devtools": "^1.124.2",
-    "@tanstack/react-start": "^1.124.2",
+    "@tanstack/react-router": "^1.125.0",
+    "@tanstack/react-router-devtools": "^1.125.0",
+    "@tanstack/react-start": "^1.125.0",
     "@workos-inc/node": "^7.45.0",
     "iron-session": "^8.0.4",
     "jose": "^6.0.10",
