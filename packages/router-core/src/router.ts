@@ -1391,7 +1391,13 @@ export class RouterCore<
     if (!match) return
 
     match.abortController.abort()
-    clearTimeout(match.pendingTimeout)
+    this.updateMatch(id, (prev) => {
+      clearTimeout(prev.pendingTimeout)
+      return {
+        ...prev,
+        pendingTimeout: undefined,
+      }
+    })
   }
 
   cancelMatches = () => {
@@ -2312,21 +2318,31 @@ export class RouterCore<
               )
 
               let executeBeforeLoad = true
-              if (
-                // If we are in the middle of a load, either of these will be present
-                // (not to be confused with `loadPromise`, which is always defined)
-                existingMatch.beforeLoadPromise ||
-                existingMatch.loaderPromise
-              ) {
-                if (shouldPending) {
-                  setTimeout(() => {
+              const setupPendingTimeout = () => {
+                if (
+                  shouldPending &&
+                  this.getMatch(matchId)!.pendingTimeout === undefined
+                ) {
+                  const pendingTimeout = setTimeout(() => {
                     try {
                       // Update the match and prematurely resolve the loadMatches promise so that
                       // the pending component can start rendering
                       triggerOnReady()
                     } catch {}
                   }, pendingMs)
+                  updateMatch(matchId, (prev) => ({
+                    ...prev,
+                    pendingTimeout,
+                  }))
                 }
+              }
+              if (
+                // If we are in the middle of a load, either of these will be present
+                // (not to be confused with `loadPromise`, which is always defined)
+                existingMatch.beforeLoadPromise ||
+                existingMatch.loaderPromise
+              ) {
+                setupPendingTimeout()
 
                 // Wait for the beforeLoad to resolve before we continue
                 await existingMatch.beforeLoadPromise
@@ -2354,21 +2370,6 @@ export class RouterCore<
                       beforeLoadPromise: createControlledPromise<void>(),
                     }
                   })
-                  const abortController = new AbortController()
-
-                  let pendingTimeout: ReturnType<typeof setTimeout>
-
-                  if (shouldPending) {
-                    // If we might show a pending component, we need to wait for the
-                    // pending promise to resolve before we start showing that state
-                    pendingTimeout = setTimeout(() => {
-                      try {
-                        // Update the match and prematurely resolve the loadMatches promise so that
-                        // the pending component can start rendering
-                        triggerOnReady()
-                      } catch {}
-                    }, pendingMs)
-                  }
 
                   const { paramsError, searchError } = this.getMatch(matchId)!
 
@@ -2380,6 +2381,10 @@ export class RouterCore<
                     handleSerialError(index, searchError, 'VALIDATE_SEARCH')
                   }
 
+                  setupPendingTimeout()
+
+                  const abortController = new AbortController()
+
                   const parentMatchContext =
                     parentMatch?.context ?? this.options.context ?? {}
 
@@ -2388,7 +2393,6 @@ export class RouterCore<
                     isFetching: 'beforeLoad',
                     fetchCount: prev.fetchCount + 1,
                     abortController,
-                    pendingTimeout,
                     context: {
                       ...parentMatchContext,
                       ...prev.__routeContext,
@@ -2758,16 +2762,22 @@ export class RouterCore<
                     loadPromise?.resolve()
                   }
 
-                  updateMatch(matchId, (prev) => ({
-                    ...prev,
-                    isFetching: loaderIsRunningAsync ? prev.isFetching : false,
-                    loaderPromise: loaderIsRunningAsync
-                      ? prev.loaderPromise
-                      : undefined,
-                    invalid: false,
-                    _dehydrated: undefined,
-                    _forcePending: undefined,
-                  }))
+                  updateMatch(matchId, (prev) => {
+                    clearTimeout(prev.pendingTimeout)
+                    return {
+                      ...prev,
+                      isFetching: loaderIsRunningAsync
+                        ? prev.isFetching
+                        : false,
+                      loaderPromise: loaderIsRunningAsync
+                        ? prev.loaderPromise
+                        : undefined,
+                      invalid: false,
+                      pendingTimeout: undefined,
+                      _dehydrated: undefined,
+                      _forcePending: undefined,
+                    }
+                  })
                   return this.getMatch(matchId)!
                 })(),
               )
