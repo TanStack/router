@@ -50,6 +50,10 @@
               "to": "framework/react/server-routes"
             },
             {
+              "label": "Selective SSR",
+              "to": "framework/react/selective-ssr"
+            },
+            {
               "label": "SPA Mode",
               "to": "framework/react/spa-mode"
             },
@@ -125,6 +129,10 @@
             {
               "label": "Server Routes",
               "to": "framework/solid/server-routes"
+            },
+            {
+              "label": "Selective SSR",
+              "to": "framework/solid/selective-ssr"
             },
             {
               "label": "SPA Mode",

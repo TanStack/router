@@ -190,6 +190,7 @@ export function onMatchSettled(opts: {
       extracted: extracted?.map((entry) => pick(entry, ['type', 'path'])),
       updatedAt: match.updatedAt,
       status: match.status,
+      ssr: match.ssr,
     } satisfies SsrMatch,
     {
       isScriptContext: true,

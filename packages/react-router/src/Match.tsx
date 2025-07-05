@@ -17,6 +17,7 @@ import { matchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
+import { ClientOnly } from './ClientOnly'
 import type {
   AnyRoute,
   ParsedLocation,
@@ -29,16 +30,19 @@ export const Match = React.memo(function MatchImpl({
   matchId: string
 }) {
   const router = useRouter()
-  const routeId = useRouterState({
-    select: (s) => s.matches.find((d) => d.id === matchId)?.routeId as string,
+  const matchState = useRouterState({
+    select: (s) => {
+      const match = s.matches.find((d) => d.id === matchId)
+      invariant(
+        match,
+        `Could not find match for matchId "${matchId}". Please file an issue!`,
+      )
+      return pick(match, ['routeId', 'ssr', '_displayPending'])
+    },
+    structuralSharing: true as any,
   })
 
-  invariant(
-    routeId,
-    `Could not find routeId for matchId "${matchId}". Please file an issue!`,
-  )
-
-  const route: AnyRoute = router.routesById[routeId]
+  const route: AnyRoute = router.routesById[matchState.routeId]
 
   const PendingComponent =
     route.options.pendingComponent ?? router.options.defaultPendingComponent
@@ -56,12 +60,14 @@ export const Match = React.memo(function MatchImpl({
       router.options.notFoundRoute?.options.component)
     : route.options.notFoundComponent
 
+  const resolvedNoSsr =
+    matchState.ssr === false || matchState.ssr === 'data-only'
   const ResolvedSuspenseBoundary =
     // If we're on the root route, allow forcefully wrapping in suspense
-    (!route.isRoot || route.options.wrapInSuspense) &&
+    (!route.isRoot || route.options.wrapInSuspense || resolvedNoSsr) &&
     (route.options.wrapInSuspense ??
       PendingComponent ??
-      (route.options.errorComponent as any)?.preload)
+      ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
       ? React.Suspense
       : SafeFragment
 
@@ -107,7 +113,7 @@ export const Match = React.memo(function MatchImpl({
                 // route ID which doesn't match the current route, rethrow the error
                 if (
                   !routeNotFoundComponent ||
-                  (error.routeId && error.routeId !== routeId) ||
+                  (error.routeId && error.routeId !== matchState.routeId) ||
                   (!error.routeId && !route.isRoot)
                 )
                   throw error
@@ -115,7 +121,13 @@ export const Match = React.memo(function MatchImpl({
                 return React.createElement(routeNotFoundComponent, error as any)
               }}
             >
-              <MatchInner matchId={matchId} />
+              {resolvedNoSsr || router.isShell || matchState._displayPending ? (
+                <ClientOnly fallback={pendingElement}>
+                  <MatchInner matchId={matchId} />
+                </ClientOnly>
+              ) : (
+                <MatchInner matchId={matchId} />
+              )}
             </ResolvedNotFoundBoundary>
           </ResolvedCatchBoundary>
         </ResolvedSuspenseBoundary>
@@ -192,7 +204,13 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       return {
         key,
         routeId,
-        match: pick(match, ['id', 'status', 'error']),
+        match: pick(match, [
+          'id',
+          'status',
+          'error',
+          '_forcePending',
+          '_displayPending',
+        ]),
       }
     },
     structuralSharing: true as any,
@@ -208,49 +226,12 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     return <Outlet />
   }, [key, route.options.component, router.options.defaultComponent])
 
-  const RouteErrorComponent =
-    (route.options.errorComponent ?? router.options.defaultErrorComponent) ||
-    ErrorComponent
-
-  if (match.status === 'notFound') {
-    invariant(isNotFound(match.error), 'Expected a notFound error')
-    return renderRouteNotFound(router, route, match.error)
+  if (match._displayPending) {
+    throw router.getMatch(match.id)?.displayPendingPromise
   }
 
-  if (match.status === 'redirected') {
-    // Redirects should be handled by the router transition. If we happen to
-    // encounter a redirect here, it's a bug. Let's warn, but render nothing.
-    invariant(isRedirect(match.error), 'Expected a redirect error')
-
-    // warning(
-    //   false,
-    //   'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
-    // )
-    throw router.getMatch(match.id)?.loadPromise
-  }
-
-  if (match.status === 'error') {
-    // If we're on the server, we need to use React's new and super
-    // wonky api for throwing errors from a server side render inside
-    // of a suspense boundary. This is the only way to get
-    // renderToPipeableStream to not hang indefinitely.
-    // We'll serialize the error and rethrow it on the client.
-    if (router.isServer) {
-      return (
-        <RouteErrorComponent
-          error={match.error as any}
-          reset={undefined as any}
-          info={{
-            componentStack: '',
-          }}
-        />
-      )
-    }
-
-    throw match.error
-  }
-
-  if (match.status === 'pending') {
+  // see also triggerOnReady() in packages/router-core/src/router.ts
+  if (match.status === 'pending' || match._forcePending) {
     // We're pending, and if we have a minPendingMs, we need to wait for it
     const pendingMinMs =
       route.options.pendingMinMs ?? router.options.defaultPendingMinMs
@@ -279,6 +260,48 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       }
     }
     throw router.getMatch(match.id)?.loadPromise
+  }
+
+  if (match.status === 'notFound') {
+    invariant(isNotFound(match.error), 'Expected a notFound error')
+    return renderRouteNotFound(router, route, match.error)
+  }
+
+  if (match.status === 'redirected') {
+    // Redirects should be handled by the router transition. If we happen to
+    // encounter a redirect here, it's a bug. Let's warn, but render nothing.
+    invariant(isRedirect(match.error), 'Expected a redirect error')
+
+    // warning(
+    //   false,
+    //   'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
+    // )
+    throw router.getMatch(match.id)?.loadPromise
+  }
+
+  if (match.status === 'error') {
+    // If we're on the server, we need to use React's new and super
+    // wonky api for throwing errors from a server side render inside
+    // of a suspense boundary. This is the only way to get
+    // renderToPipeableStream to not hang indefinitely.
+    // We'll serialize the error and rethrow it on the client.
+    if (router.isServer) {
+      const RouteErrorComponent =
+        (route.options.errorComponent ??
+          router.options.defaultErrorComponent) ||
+        ErrorComponent
+      return (
+        <RouteErrorComponent
+          error={match.error as any}
+          reset={undefined as any}
+          info={{
+            componentStack: '',
+          }}
+        />
+      )
+    }
+
+    throw match.error
   }
 
   return out
@@ -317,13 +340,6 @@ export const Outlet = React.memo(function OutletImpl() {
     <router.options.defaultPendingComponent />
   ) : null
 
-  if (router.isShell)
-    return (
-      <React.Suspense fallback={pendingElement}>
-        <ShellInner />
-      </React.Suspense>
-    )
-
   if (parentGlobalNotFound) {
     return renderRouteNotFound(router, route, undefined)
   }
@@ -342,7 +358,3 @@ export const Outlet = React.memo(function OutletImpl() {
 
   return nextMatch
 })
-
-function ShellInner(): React.ReactElement {
-  throw new Error('ShellBoundaryError')
-}

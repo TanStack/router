@@ -8,6 +8,7 @@ import type { NavigateOptions, ParsePathParams } from './link'
 import type { ParsedLocation } from './location'
 import type {
   AnyRouteMatch,
+  MakePreValidationErrorHandlingRouteMatchUnion,
   MakeRouteMatchFromRoute,
   MakeRouteMatchUnion,
   RouteMatch,
@@ -612,7 +613,7 @@ export interface Route<
   _lazyPromise?: Promise<void>
   rank: number
   to: TrimPathRight<TFullPath>
-  init: (opts: { originalIndex: number; defaultSsr?: boolean }) => void
+  init: (opts: { originalIndex: number }) => void
   update: (
     options: UpdatableRouteOptions<
       TParentRoute,
@@ -823,6 +824,14 @@ export type FileBaseRouteOptions<
     ) => any
   >
 
+  ssr?:
+    | undefined
+    | boolean
+    | 'data-only'
+    | ((
+        ctx: SsrContextOptions<TParentRoute, TSearchValidator, TParams>,
+      ) => Awaitable<undefined | boolean | 'data-only'>)
+
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.
   // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function.
@@ -925,6 +934,27 @@ export interface RouteContextOptions<
 > extends ContextOptions<TParentRoute, TParams> {
   deps: TLoaderDeps
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
+}
+
+export interface SsrContextOptions<
+  in out TParentRoute extends AnyRoute,
+  in out TSearchValidator,
+  in out TParams,
+> {
+  params:
+    | {
+        status: 'success'
+        value: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
+      }
+    | { status: 'error'; error: unknown }
+  search:
+    | {
+        status: 'success'
+        value: Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
+      }
+    | { status: 'error'; error: unknown }
+  location: ParsedLocation
+  matches: Array<MakePreValidationErrorHandlingRouteMatchUnion>
 }
 
 export interface BeforeLoadContextOptions<
@@ -1140,7 +1170,6 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >,
   ) => Awaitable<AnyRouteMatch['scripts']>
-  ssr?: boolean
   codeSplitGroupings?: Array<
     Array<
       | 'loader'
@@ -1336,7 +1365,6 @@ export class BaseRoute<
   private _path!: TPath
   private _fullPath!: TFullPath
   private _to!: TrimPathRight<TFullPath>
-  private _ssr!: boolean
 
   public get to() {
     return this._to
@@ -1352,10 +1380,6 @@ export class BaseRoute<
 
   public get fullPath() {
     return this._fullPath
-  }
-
-  public get ssr() {
-    return this._ssr
   }
 
   // Optional
@@ -1426,7 +1450,7 @@ export class BaseRoute<
     TFileRouteTypes
   >
 
-  init = (opts: { originalIndex: number; defaultSsr?: boolean }): void => {
+  init = (opts: { originalIndex: number }): void => {
     this.originalIndex = opts.originalIndex
 
     const options = this.options as
@@ -1492,7 +1516,6 @@ export class BaseRoute<
     this._id = id as TId
     this._fullPath = fullPath as TFullPath
     this._to = fullPath as TrimPathRight<TFullPath>
-    this._ssr = options?.ssr ?? opts.defaultSsr ?? true
   }
 
   clone = (other: typeof this) => {
@@ -1500,7 +1523,6 @@ export class BaseRoute<
     this._id = other._id
     this._fullPath = other._fullPath
     this._to = other._to
-    this._ssr = other._ssr
     this.options.getParentRoute = other.options.getParentRoute
     this.children = other.children
   }

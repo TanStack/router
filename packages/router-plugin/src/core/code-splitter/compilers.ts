@@ -12,7 +12,7 @@ import { createIdentifier } from './path-ids'
 import { getFrameworkOptions } from './framework-options'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
-import type { Config } from '../config'
+import type { Config, DeletableNodes } from '../config'
 
 type SplitNodeMeta = {
   routeIdent: SplitRouteIdentNodes
@@ -92,13 +92,24 @@ function removeSplitSearchParamFromFilename(filename: string) {
   return bareFilename!
 }
 
+const splittableCreateRouteFns = ['createFileRoute']
+const unsplittableCreateRouteFns = [
+  'createRootRoute',
+  'createRootRouteWithContext',
+]
+const allCreateRouteFns = [
+  ...splittableCreateRouteFns,
+  ...unsplittableCreateRouteFns,
+]
+
 export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions & {
-    runtimeEnv: 'dev' | 'prod'
     codeSplitGroupings: CodeSplitGroupings
+    deleteNodes?: Set<DeletableNodes>
     targetFramework: Config['target']
     filename: string
     id: string
+    addHmr?: boolean
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
@@ -115,6 +126,8 @@ export function compileCodeSplitReferenceRoute(
   const PACKAGE = frameworkOptions.package
   const LAZY_ROUTE_COMPONENT_IDENT = frameworkOptions.idents.lazyRouteComponent
   const LAZY_FN_IDENT = frameworkOptions.idents.lazyFn
+
+  let createRouteFn: string
 
   babel.traverse(ast, {
     Program: {
@@ -136,14 +149,11 @@ export function compileCodeSplitReferenceRoute(
               return
             }
 
-            if (
-              !(
-                path.node.callee.name === 'createRoute' ||
-                path.node.callee.name === 'createFileRoute'
-              )
-            ) {
+            if (!allCreateRouteFns.includes(path.node.callee.name)) {
               return
             }
+
+            createRouteFn = path.node.callee.name
 
             function babelHandleReference(routeOptions: t.Node | undefined) {
               const hasImportedOrDefinedIdentifier = (name: string) => {
@@ -151,14 +161,36 @@ export function compileCodeSplitReferenceRoute(
               }
 
               if (t.isObjectExpression(routeOptions)) {
+                if (opts.deleteNodes && opts.deleteNodes.size > 0) {
+                  routeOptions.properties = routeOptions.properties.filter(
+                    (prop) => {
+                      if (t.isObjectProperty(prop)) {
+                        if (t.isIdentifier(prop.key)) {
+                          if (opts.deleteNodes?.has(prop.key.name as any)) {
+                            return false
+                          }
+                        }
+                      }
+                      return true
+                    },
+                  )
+                }
+                if (!splittableCreateRouteFns.includes(createRouteFn)) {
+                  // we can't split this route but we still add HMR handling if enabled
+                  if (opts.addHmr) {
+                    programPath.pushContainer('body', routeHmrStatement)
+                  }
+                  // exit traversal so this route is not split
+                  return programPath.stop()
+                }
                 routeOptions.properties.forEach((prop) => {
                   if (t.isObjectProperty(prop)) {
                     if (t.isIdentifier(prop.key)) {
+                      const key = prop.key.name
+
                       // If the user has not specified a split grouping for this key
                       // then we should not split it
-                      const codeSplitGroupingByKey = findIndexForSplitNode(
-                        prop.key.name,
-                      )
+                      const codeSplitGroupingByKey = findIndexForSplitNode(key)
                       if (codeSplitGroupingByKey === -1) {
                         return
                       }
@@ -168,7 +200,6 @@ export function compileCodeSplitReferenceRoute(
                         ),
                       ]
 
-                      const key = prop.key.name
                       // find key in nodeSplitConfig
                       const isNodeConfigAvailable = SPLIT_NODES_CONFIG.has(
                         key as any,
@@ -249,19 +280,12 @@ export function compileCodeSplitReferenceRoute(
                           ])
                         }
 
-                        // If it's a component, we need to pass the function to check the Route.ssr value
-                        if (key === 'component') {
-                          prop.value = template.expression(
-                            `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}', () => Route.ssr)`,
-                          )()
-                        } else {
-                          prop.value = template.expression(
-                            `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
-                          )()
-                        }
+                        prop.value = template.expression(
+                          `${LAZY_ROUTE_COMPONENT_IDENT}(${splitNodeMeta.localImporterIdent}, '${splitNodeMeta.exporterIdent}')`,
+                        )()
 
                         // add HMR handling
-                        if (opts.runtimeEnv !== 'prod') {
+                        if (opts.addHmr) {
                           programPath.pushContainer('body', routeHmrStatement)
                         }
                       }
@@ -416,12 +440,7 @@ export function compileCodeSplitVirtualRoute(
               return
             }
 
-            if (
-              !(
-                path.node.callee.name === 'createRoute' ||
-                path.node.callee.name === 'createFileRoute'
-              )
-            ) {
+            if (!splittableCreateRouteFns.includes(path.node.callee.name)) {
               return
             }
 
@@ -850,12 +869,10 @@ function resolveIdentifier(path: any, node: any): t.Node | undefined {
   return node
 }
 
-function removeIdentifierLiteral(path: any, node: any) {
-  if (t.isIdentifier(node)) {
-    const binding = path.scope.getBinding(node.name)
-    if (binding) {
-      binding.path.remove()
-    }
+function removeIdentifierLiteral(path: babel.NodePath, node: t.Identifier) {
+  const binding = path.scope.getBinding(node.name)
+  if (binding) {
+    binding.path.remove()
   }
 }
 

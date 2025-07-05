@@ -6,7 +6,7 @@ import * as React from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/posts')({
   loader: lazyFn($$splitLoaderImporter, 'loader'),
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)
+  component: lazyRouteComponent($$splitComponentImporter, 'component')
 });
 if (import.meta.hot) {
   import.meta.hot.accept(newModule => {

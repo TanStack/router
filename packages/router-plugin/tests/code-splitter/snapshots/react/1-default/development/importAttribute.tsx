@@ -2,7 +2,7 @@ const $$splitComponentImporter = () => import('importAttribute.tsx?tsr-split=com
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/')({
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr)
+  component: lazyRouteComponent($$splitComponentImporter, 'component')
 });
 if (import.meta.hot) {
   import.meta.hot.accept(newModule => {

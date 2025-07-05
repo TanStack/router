@@ -3,7 +3,7 @@ const $$splitComponentImporter = () => import('imported-errorComponent.tsx?tsr-s
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/')({
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr),
+  component: lazyRouteComponent($$splitComponentImporter, 'component'),
   errorComponent: lazyRouteComponent($$splitErrorComponentImporter, 'errorComponent')
 });
 if (import.meta.hot) {
