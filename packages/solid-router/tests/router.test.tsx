@@ -1574,7 +1574,7 @@ describe('does not strip search params if search validation fails', () => {
     expect(window.location.search).toBe('?root=hello&index=world')
   })
 
-  it('root is missing', async () => {
+  it('root is missing', () => {
     window.history.replaceState(null, 'root', '/?index=world')
     const router = getRouter()
     render(() => <RouterProvider router={router} />)
@@ -1582,7 +1582,7 @@ describe('does not strip search params if search validation fails', () => {
     expect(window.location.search).toBe('?index=world')
   })
 
-  it('index is missing', async () => {
+  it('index is missing', () => {
     window.history.replaceState(null, 'root', '/?root=hello')
     const router = getRouter()
 
