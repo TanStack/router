@@ -8,8 +8,8 @@ import {
 } from '../src/core/code-splitter/compilers'
 import { createIdentifier } from '../src/core/code-splitter/path-ids'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
+import { frameworks } from './constants'
 import type { CodeSplitGroupings } from '../src/core/constants'
-import type { Config } from '../src/core/config'
 
 function getFrameworkDir(framework: string) {
   const files = path.resolve(
@@ -43,8 +43,6 @@ const testGroups: Array<{ name: string; groupings: CodeSplitGroupings }> = [
     ],
   },
 ]
-
-const frameworks: Array<Config['target']> = ['react', 'solid']
 
 describe('code-splitter works', () => {
   describe.each(frameworks)('FRAMEWORK=%s', (framework) => {

@@ -3,7 +3,8 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
-import type { Config, DeletableNodes } from '../src/core/config'
+import { frameworks } from './constants'
+import type { DeletableNodes } from '../src/core/config'
 
 function getFrameworkDir(framework: string) {
   const files = path.resolve(
@@ -31,8 +32,6 @@ const testGroups: Array<{
     name: '3-delete-nodes-ssr',
   },
 ]
-
-const frameworks: Array<Config['target']> = ['react', 'solid']
 
 describe('code-splitter delete nodes', () => {
   describe.each(frameworks)('FRAMEWORK=%s', (framework) => {
