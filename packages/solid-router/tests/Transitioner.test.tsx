@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, waitFor } from '@solidjs/testing-library'
-import { createMemoryHistory, createRootRoute, createRoute, createRouter } from '../src'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from '../src'
 import { RouterProvider } from '../src/RouterProvider'
 
 describe('Transitioner', () => {
@@ -47,7 +52,7 @@ describe('Transitioner', () => {
       history: createMemoryHistory({
         initialEntries: ['/'],
       }),
-      isServer: true
+      isServer: true,
     })
 
     // Mock router.load() to verify it gets called
