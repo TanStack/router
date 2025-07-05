@@ -1,4 +1,5 @@
-import { z } from 'zod'
+import * as z3 from 'zod'
+import * as z4 from 'zod/v4'
 import type { ValidatorAdapter } from '@tanstack/react-router'
 
 export interface ZodTypeLike {
@@ -58,12 +59,32 @@ export const zodValidator = <
   }
 }
 
-export const fallback = <TSchema extends z.ZodTypeAny>(
+const isZod3Schema = (schema: any): schema is z3.ZodSchema => {
+  return (
+    '_def' in schema &&
+    typeof schema._def === 'object' &&
+    'typeName' in schema._def
+  )
+}
+
+export function fallback<TSchema extends z3.ZodTypeAny>(
   schema: TSchema,
   fallback: TSchema['_input'],
-): z.ZodPipeline<
-  z.ZodType<TSchema['_input'], z.ZodTypeDef, TSchema['_input']>,
-  z.ZodCatch<TSchema>
-> => {
-  return z.custom<TSchema['_input']>().pipe(schema.catch(fallback))
+): z3.ZodPipeline<
+  z3.ZodType<TSchema['_input'], z3.ZodTypeDef, TSchema['_input']>,
+  z3.ZodCatch<TSchema>
+>
+export function fallback<TSchema extends z4.ZodTypeAny>(
+  schema: TSchema,
+  fallback: z4.output<TSchema>,
+): z4.ZodPipe<
+  z4.ZodType<TSchema['_input'], TSchema['_input']>,
+  z4.ZodCatch<TSchema>
+>
+export function fallback(schema: any, fallback: any): any {
+  if (isZod3Schema(schema)) {
+    return z3.custom().pipe(schema.catch(fallback))
+  } else {
+    return z4.custom().pipe(schema.catch(fallback))
+  }
 }
