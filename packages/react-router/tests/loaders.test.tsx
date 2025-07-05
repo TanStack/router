@@ -10,6 +10,7 @@ import {
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { z } from 'zod'
+import { useEffect } from 'react'
 import {
   Link,
   Outlet,
@@ -644,4 +645,87 @@ test('reproducer #4546', async () => {
     const loaderData = await screen.findByTestId('id-loader-data')
     expect(loaderData).toHaveTextContent('5')
   }
+})
+
+test('clears pendingTimeout when match resolves', async () => {
+  const defaultPendingComponentOnMountMock = vi.fn()
+  const nestedPendingComponentOnMountMock = vi.fn()
+  const fooPendingComponentOnMountMock = vi.fn()
+
+  function getPendingComponent(onMount: () => void) {
+    const PendingComponent = () => {
+      useEffect(() => {
+        onMount()
+      }, [])
+
+      return <div>Pending...</div>
+    }
+    return PendingComponent
+  }
+
+  const rootRoute = createRootRoute({})
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => {
+      return (
+        <div>
+          <h1>Index page</h1>
+          <Link data-testid="link-to-foo" to="/nested/foo">
+            link to foo
+          </Link>
+        </div>
+      )
+    },
+  })
+  const nestedRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/nested',
+    // this route does not specify pendingMinMs, so it will use the defaultPendingMs from the router
+    // which is set to WAIT_TIME * 2
+    // since the loader immediately resolves, the pending component must NOT be shown
+    pendingComponent: getPendingComponent(nestedPendingComponentOnMountMock),
+    loader: () => {
+      return 'nested'
+    },
+  })
+  const fooRoute = createRoute({
+    getParentRoute: () => nestedRoute,
+    path: '/foo',
+    // this route's loader takes WAIT_TIME * 5, so it will take longer than the defaultPendingMs
+    // however, this route specifies pendingMs as WAIT_TIME * 10,
+    // so this route's pending component must also NOT be shown
+    pendingComponent: getPendingComponent(fooPendingComponentOnMountMock),
+    pendingMs: WAIT_TIME * 10,
+    loader: async () => {
+      await sleep(WAIT_TIME * 5)
+    },
+    component: () => <div>Nested Foo page</div>,
+  })
+  const routeTree = rootRoute.addChildren([
+    nestedRoute.addChildren([fooRoute]),
+    indexRoute,
+  ])
+  const router = createRouter({
+    routeTree,
+    history,
+    defaultPendingMs: WAIT_TIME * 2,
+    defaultPendingComponent: getPendingComponent(
+      defaultPendingComponentOnMountMock,
+    ),
+  })
+
+  render(<RouterProvider router={router} />)
+  const linkToFoo = await screen.findByTestId('link-to-foo')
+  fireEvent.click(linkToFoo)
+  await router.latestLoadPromise
+  const fooElement = await screen.findByText('Nested Foo page')
+  expect(fooElement).toBeInTheDocument()
+
+  expect(router.state.location.href).toBe('/nested/foo')
+
+  // none of the pending components should have been called
+  expect(defaultPendingComponentOnMountMock).not.toHaveBeenCalled()
+  expect(nestedPendingComponentOnMountMock).not.toHaveBeenCalled()
+  expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
 })
