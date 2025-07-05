@@ -14,6 +14,7 @@ export const Route = createFileRoute('/posts/$postId')({
     return <p>Post not found</p>
   },
   component: PostComponent,
+  // staleTime: 0 // This causes e2e to pass
 })
 
 function PostComponent() {
