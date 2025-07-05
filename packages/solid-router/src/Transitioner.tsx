@@ -67,7 +67,7 @@ export function Transitioner() {
 
   // Try to load the initial location
   Solid.createRenderEffect(() => {
-    if (isServer) return
+    if (router.isServer) return
     Solid.untrack(() => {
       if (
         (typeof window !== 'undefined' && router.clientSsr) ||
