@@ -1406,6 +1406,10 @@ export class RouterCore<
     })
   }
 
+  private comparePaths(path1: string, path2: string) {
+    return path1.replace(/(.+)\/$/, '$1') === path2.replace(/(.+)\/$/, '$1')
+  }
+
   buildLocation: BuildLocationFn = (opts) => {
     const build = (
       dest: BuildNextOptions & {
@@ -1424,11 +1428,14 @@ export class RouterCore<
       // First let's find the starting pathname
       // By default, start with the current location
       let fromPath = lastMatch.fullPath
+      const toPath = dest.to
+        ? this.resolvePathWithBase(fromPath, `${dest.to}`)
+        : this.resolvePathWithBase(fromPath, '.')
 
       const routeIsChanging =
         !!dest.to &&
-        dest.to !== fromPath &&
-        this.resolvePathWithBase(fromPath, `${dest.to}`) !== fromPath
+        !this.comparePaths(dest.to.toString(), fromPath) &&
+        !this.comparePaths(toPath, fromPath)
 
       // If the route is changing we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
@@ -1436,13 +1443,11 @@ export class RouterCore<
       } else if (routeIsChanging && dest.from) {
         fromPath = dest.from
         const existingFrom = [...allFromMatches].reverse().find((d) => {
-          return (
-            d.fullPath === fromPath || d.fullPath === joinPaths([fromPath, '/'])
-          )
+          return this.comparePaths(d.fullPath, fromPath)
         })
 
         if (!existingFrom) {
-          console.warn(`Could not find match for from: ${dest.from}`)
+          console.warn(`Could not find match for from: ${fromPath}`)
         }
       }
 
