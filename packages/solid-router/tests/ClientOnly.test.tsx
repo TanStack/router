@@ -46,13 +46,13 @@ function createTestRouter(initialHistory?: RouterHistory) {
 
 describe('ClientOnly', () => {
   beforeEach(() => {
-    window.scrollTo = vi.fn();
-  });
+    window.scrollTo = vi.fn()
+  })
 
   // Clear mocks after each test to prevent interference
   afterEach(() => {
-    vi.clearAllMocks();
-  });
+    vi.clearAllMocks()
+  })
 
   it.skip('should render fallback during SSR', async () => {
     const { router } = createTestRouter()
