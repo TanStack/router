@@ -1366,8 +1366,10 @@ test('<Navigate> navigates only once in <StrictMode>', async () => {
   expect(navigateSpy.mock.calls.length).toBe(1)
 })
 
-test.each([true,false])('should navigate to current route with search params when using "." in nested route structure from Index Route', async (trailingSlash: boolean) => {
-    const tail = trailingSlash ? '/' : '';
+test.each([true, false])(
+  'should navigate to current route with search params when using "." in nested route structure from Index Route',
+  async (trailingSlash: boolean) => {
+    const tail = trailingSlash ? '/' : ''
 
     const rootRoute = createRootRoute()
 
@@ -1458,135 +1460,13 @@ test.each([true,false])('should navigate to current route with search params whe
 
     expect(router.state.location.pathname).toBe(`/post${tail}`)
     expect(router.state.location.search).toEqual({ param1: 'value2' })
-  })
+  },
+)
 
-test.each([true,false])('should navigate to current route with changing path params when using "." in nested route structure', async (trailingSlash) => {
-  const tail = trailingSlash ? '/' : '';
-  const rootRoute = createRootRoute()
-
-  const IndexComponent = () => {
-    const navigate = useNavigate()
-    return (
-      <>
-        <h1 data-testid="index-heading">Index</h1>
-        <button
-          data-testid="posts-btn"
-          onClick={() => navigate({ to: '/posts' })}
-        >
-          Posts
-        </button>
-      </>
-    )
-  }
-
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    component: IndexComponent,
-  })
-
-  const layoutRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    id: '_layout',
-    component: () => {
-      return (
-        <>
-          <h1>Layout</h1>
-          <Outlet />
-        </>
-      )
-    },
-  })
-
-  const PostsComponent = () => {
-    const navigate = postsRoute.useNavigate()
-    return (
-      <>
-        <h1 data-testid="posts-index-heading">Posts</h1>
-        <button
-          data-testid="first-post-btn"
-          onClick={() =>
-            navigate({
-              to: '$postId',
-              params: { postId: 'id1' },
-            })
-          }
-        >
-          To first post
-        </button>
-        <button
-          data-testid="second-post-btn"
-          onClick={() =>
-            navigate({
-              to: '.',
-              params: { postId: 'id2' },
-            })
-          }
-        >
-          To second post
-        </button>
-        <Outlet />
-      </>
-    )
-  }
-
-  const postsRoute = createRoute({
-    getParentRoute: () => layoutRoute,
-    path: 'posts',
-    component: PostsComponent,
-  })
-
-  const PostComponent = () => {
-    const params = useParams({ strict: false })
-    return (
-      <>
-        <span data-testid={`post-${params.postId}`}>
-          Params: {params.postId}
-        </span>
-      </>
-    )
-  }
-
-  const postRoute = createRoute({
-    getParentRoute: () => postsRoute,
-    path: '$postId',
-    component: PostComponent,
-  })
-
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([
-      indexRoute,
-      layoutRoute.addChildren([postsRoute.addChildren([postRoute])]),
-    ]),
-    trailingSlash: trailingSlash ? 'always' : 'never',
-  })
-
-  render(<RouterProvider router={router} />)
-
-  const postsButton = await screen.findByTestId('posts-btn')
-
-  fireEvent.click(postsButton)
-
-  expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
-  expect(window.location.pathname).toEqual(`/posts${tail}`)
-
-  const firstPostButton = await screen.findByTestId('first-post-btn')
-
-  fireEvent.click(firstPostButton)
-
-  expect(await screen.findByTestId('post-id1')).toBeInTheDocument()
-  expect(window.location.pathname).toEqual(`/posts/id1${tail}`)
-
-  const secondPostButton = await screen.findByTestId('second-post-btn')
-
-  fireEvent.click(secondPostButton)
-
-  expect(await screen.findByTestId('post-id2')).toBeInTheDocument()
-  expect(window.location.pathname).toEqual(`/posts/id2${tail}`)
-})
-
-test.each([true,false])('should navigate to current route with search params when using "." in nested route structure from non-Index Route', async (trailingSlash) => {
-    const tail = trailingSlash ? '/' : '';
+test.each([true, false])(
+  'should navigate to current route with changing path params when using "." in nested route structure',
+  async (trailingSlash) => {
+    const tail = trailingSlash ? '/' : ''
     const rootRoute = createRootRoute()
 
     const IndexComponent = () => {
@@ -1594,7 +1474,138 @@ test.each([true,false])('should navigate to current route with search params whe
       return (
         <>
           <h1 data-testid="index-heading">Index</h1>
-          <button data-testid="posts-btn" onClick={() => navigate({ to: '/posts', params: {lang: '1'}})}>
+          <button
+            data-testid="posts-btn"
+            onClick={() => navigate({ to: '/posts' })}
+          >
+            Posts
+          </button>
+        </>
+      )
+    }
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
+    })
+
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      component: () => {
+        return (
+          <>
+            <h1>Layout</h1>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      const navigate = postsRoute.useNavigate()
+      return (
+        <>
+          <h1 data-testid="posts-index-heading">Posts</h1>
+          <button
+            data-testid="first-post-btn"
+            onClick={() =>
+              navigate({
+                to: '$postId',
+                params: { postId: 'id1' },
+              })
+            }
+          >
+            To first post
+          </button>
+          <button
+            data-testid="second-post-btn"
+            onClick={() =>
+              navigate({
+                to: '.',
+                params: { postId: 'id2' },
+              })
+            }
+          >
+            To second post
+          </button>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: 'posts',
+      component: PostsComponent,
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span data-testid={`post-${params.postId}`}>
+            Params: {params.postId}
+          </span>
+        </>
+      )
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      component: PostComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        layoutRoute.addChildren([postsRoute.addChildren([postRoute])]),
+      ]),
+      trailingSlash: trailingSlash ? 'always' : 'never',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsButton = await screen.findByTestId('posts-btn')
+
+    fireEvent.click(postsButton)
+
+    expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
+    expect(window.location.pathname).toEqual(`/posts${tail}`)
+
+    const firstPostButton = await screen.findByTestId('first-post-btn')
+
+    fireEvent.click(firstPostButton)
+
+    expect(await screen.findByTestId('post-id1')).toBeInTheDocument()
+    expect(window.location.pathname).toEqual(`/posts/id1${tail}`)
+
+    const secondPostButton = await screen.findByTestId('second-post-btn')
+
+    fireEvent.click(secondPostButton)
+
+    expect(await screen.findByTestId('post-id2')).toBeInTheDocument()
+    expect(window.location.pathname).toEqual(`/posts/id2${tail}`)
+  },
+)
+
+test.each([true, false])(
+  'should navigate to current route with search params when using "." in nested route structure from non-Index Route',
+  async (trailingSlash) => {
+    const tail = trailingSlash ? '/' : ''
+    const rootRoute = createRootRoute()
+
+    const IndexComponent = () => {
+      const navigate = useNavigate()
+      return (
+        <>
+          <h1 data-testid="index-heading">Index</h1>
+          <button
+            data-testid="posts-btn"
+            onClick={() => navigate({ to: '/posts', params: { lang: '1' } })}
+          >
             Posts
           </button>
         </>
@@ -1637,41 +1648,57 @@ test.each([true,false])('should navigate to current route with search params whe
     const useModal = (name: string) => {
       const currentOpen = postRoute.useSearch({
         select: (search) => search[`_${name}`],
-      });
+      })
 
-      const navigate = useNavigate();
+      const navigate = useNavigate()
 
       const setModal = React.useCallback(
         (open: boolean) => {
           navigate({
-            to: ".",
-            search: (prev: { }) => ({
+            to: '.',
+            search: (prev: {}) => ({
               ...prev,
               [`_${name}`]: open ? true : undefined,
             }),
             resetScroll: false,
-          });
+          })
         },
         [name, navigate],
-      );
+      )
 
-      return [currentOpen, setModal] as const;
+      return [currentOpen, setModal] as const
     }
 
-    function DetailComponent(props: {id: string}) {
-      const params = useParams({strict: false})
-      const [currentTest, setTest] = useModal("test")
+    function DetailComponent(props: { id: string }) {
+      const params = useParams({ strict: false })
+      const [currentTest, setTest] = useModal('test')
 
-      return <>
-        <div data-testid={`detail-heading-${props.id}`}>Post Path "/{params.postId}/detail-{props.id}"!</div>
-        {currentTest
-          ? <button data-testid={`detail-btn-remove-${props.id}`} onClick={() => setTest(false)}>Remove test</button>
-          : <button data-testid={`detail-btn-add-${props.id}`} onClick={() => setTest(true)}>Add test</button>}
-      </>
+      return (
+        <>
+          <div data-testid={`detail-heading-${props.id}`}>
+            Post Path "/{params.postId}/detail-{props.id}"!
+          </div>
+          {currentTest ? (
+            <button
+              data-testid={`detail-btn-remove-${props.id}`}
+              onClick={() => setTest(false)}
+            >
+              Remove test
+            </button>
+          ) : (
+            <button
+              data-testid={`detail-btn-add-${props.id}`}
+              onClick={() => setTest(true)}
+            >
+              Add test
+            </button>
+          )}
+        </>
+      )
     }
 
     const PostComponent = () => {
-      const params = useParams({strict: false})
+      const params = useParams({ strict: false })
 
       return (
         <div>
@@ -1694,17 +1721,15 @@ test.each([true,false])('should navigate to current route with search params whe
     const detailRoute = createRoute({
       getParentRoute: () => postRoute,
       path: 'detail',
-      component: () => <DetailComponent id={'2'}/>,
+      component: () => <DetailComponent id={'2'} />,
     })
 
     const router = createRouter({
       routeTree: rootRoute.addChildren([
         indexRoute,
-        postsRoute.addChildren([
-          postRoute.addChildren([detailRoute])
-        ])
+        postsRoute.addChildren([postRoute.addChildren([detailRoute])]),
       ]),
-      trailingSlash: trailingSlash ? 'always' : 'never'
+      trailingSlash: trailingSlash ? 'always' : 'never',
     })
 
     render(<RouterProvider router={router} />)
@@ -1721,8 +1746,12 @@ test.each([true,false])('should navigate to current route with search params whe
     expect(await screen.findByTestId('post-heading')).toBeInTheDocument()
     expect(await screen.findByTestId('detail-heading-1')).toBeInTheDocument()
     expect(await screen.findByTestId('detail-heading-2')).toBeInTheDocument()
-    expect(await screen.findByTestId('detail-heading-1')).toHaveTextContent('Post Path "/id1/detail-1')
-    expect(await screen.findByTestId('detail-heading-2')).toHaveTextContent('Post Path "/id1/detail-2')
+    expect(await screen.findByTestId('detail-heading-1')).toHaveTextContent(
+      'Post Path "/id1/detail-1',
+    )
+    expect(await screen.findByTestId('detail-heading-2')).toHaveTextContent(
+      'Post Path "/id1/detail-2',
+    )
 
     const detail1AddBtn = await screen.findByTestId('detail-btn-add-1')
 
@@ -1736,7 +1765,7 @@ test.each([true,false])('should navigate to current route with search params whe
     fireEvent.click(detail1RemoveBtn)
 
     expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
-    expect(router.state.location.search).toEqual({ })
+    expect(router.state.location.search).toEqual({})
 
     const detail2AddBtn = await screen.findByTestId('detail-btn-add-2')
 
@@ -1744,7 +1773,8 @@ test.each([true,false])('should navigate to current route with search params whe
 
     expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
     expect(router.state.location.search).toEqual({ _test: true })
-})
+  },
+)
 
 describe('when on /posts/$postId and navigating to ../ with default `from` /posts', () => {
   async function runTest(navigateVia: 'Route' | 'RouteApi') {
