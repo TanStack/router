@@ -74,36 +74,25 @@ export default defineConfig({
 
 Deploy your application to Vercel using their one-click deployment process, and you're ready to go!
 
-### Cloudflare Pages
+### Cloudflare Workers
 
-When deploying to Cloudflare Pages, you'll need to complete a few extra steps before your users can start using your app.
+When deploying to Cloudflare Workers, you'll need to complete a few extra steps before your users can start using your app.
 
-1. Installation
+1. Update `vite.config.ts`
 
-First you will need to install `unenv`
-
-```sh
-npm install unenv
-```
-
-2. Update `app.config.ts`
-
-Set the `server.preset` value to `cloudflare-pages` and the `server.unenv` value to the `cloudflare` from `unenv` in your `app.config.ts` file.
+Set the `target` value to `cloudflare-pages` in your `vite.config.ts` file.
 
 ```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/react-start/config'
-import { cloudflare } from 'unenv'
+// vite.config.ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    preset: 'cloudflare-pages',
-    unenv: cloudflare,
-  },
+  plugins: [tanstackStart({ target: 'cloudflare-module' })],
 })
 ```
 
-3. Add a `wrangler.toml` config file
+2. Add a `wrangler.toml` config file
 
 ```toml
 # wrangler.toml
@@ -117,21 +106,16 @@ Deploy your application to Cloudflare Pages using their one-click deployment pro
 
 ### Node.js
 
-Set the `server.preset` value to `node-server` in your `app.config.ts` file.
+Set the `target` value to `node-server` in your `vite.config.ts` file.
 
 ```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/react-start/config'
+// vite.config.ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    preset: 'node-server',
-  },
+  plugins: [tanstackStart({ target: 'node-server' })],
 })
-
-// Or you can use the --preset flag with the build command
-// to specify the deployment target when building the application:
-// npm run build --preset node-server
 ```
 
 Then you can run the following command to build and start your application:
@@ -157,21 +141,16 @@ Make sure that your `react` and `react-dom` packages are set to version 19.0.0 o
 npm install react@rc react-dom@rc
 ```
 
-Set the `server.preset` value to `bun` in your `app.config.ts` file.
+Set the `target` value to `bun` in your `vite.config.ts` file.
 
 ```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/react-start/config'
+// vite.config.ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    preset: 'bun',
-  },
+  plugins: [tanstackStart({ target: 'bun' })],
 })
-
-// Or you can use the --preset flag with the build command
-// to specify the deployment target when building the application:
-// npm run build --preset bun
 ```
 
 Then you can run the following command to build and start your application:
