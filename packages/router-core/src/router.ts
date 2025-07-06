@@ -1428,7 +1428,8 @@ export class RouterCore<
       const routeIsChanging =
         !!dest.to &&
         dest.to !== fromPath &&
-        joinPaths([this.resolvePathWithBase(fromPath, `${dest.to}`), "/"]) !== joinPaths([fromPath, "/"]);
+        joinPaths([this.resolvePathWithBase(fromPath, `${dest.to}`), '/']) !==
+          joinPaths([fromPath, '/'])
 
       // If the route is changing we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
