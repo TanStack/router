@@ -218,7 +218,11 @@ export const MatchInner = (props: { matchId: string }): any => {
   const out = () => {
     const Comp = route().options.component ?? router.options.defaultComponent
     if (Comp) {
-      return <Comp />
+      return (
+        <Solid.Show when={matchState().match.id} keyed>
+          <Comp />
+        </Solid.Show>
+      )
     }
     return <Outlet />
   }
