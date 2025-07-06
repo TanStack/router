@@ -63,7 +63,7 @@ export const Route = createFileRoute('/posts/$postId')({
     console.log('Executes on the server during the initial request')
     console.log('Executes on the client for subsequent navigation')
   },
-  component: () => <div>This component is rendered on the client</div>,
+  component: () => <div>This component is rendered on the server</div>,
 })
 ```
 
