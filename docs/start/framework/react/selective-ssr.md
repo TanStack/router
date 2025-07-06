@@ -155,7 +155,7 @@ If validation fails, `status` will be `error` and `error` will contain the failu
 
 ### Inheritance
 
-At runtime, a child route inherits the Selective SSR configuration of its parent. For example:
+At runtime, a child route inherits the Selective SSR configuration of its parent. However, the inherited value can only be changed to be more restrictive (i.e. `true` to `data-only` or `false` and `data-only` to `false`). For example:
 
 ```tsx
 root { ssr: undefined }
@@ -165,7 +165,7 @@ root { ssr: undefined }
 
 - `root` defaults to `ssr: true`.
 - `posts` explicitly sets `ssr: false`, so neither `beforeLoad` nor `loader` will run on the server, and the route component won't be rendered on the server.
-- `$postId` sets `ssr: true`, but inherits `ssr: false` from its parent.
+- `$postId` sets `ssr: true`, but inherits `ssr: false` from its parent. Because the inherited value can only be changed to be more restrictive, `ssr: true` has no effect and the inherited `ssr: false` will remain.
 
 Another example:
 
@@ -179,7 +179,7 @@ root { ssr: undefined }
 - `root` defaults to `ssr: true`.
 - `posts` sets `ssr: 'data-only'`, so `beforeLoad` and `loader` run on the server, but the route component isn't rendered on the server.
 - `$postId` sets `ssr: true`, but inherits `ssr: 'data-only'` from its parent.
-- `details` sets `ssr: false`, so neither `beforeLoad` nor `loader` will run on the server, and the route component won't be rendered on the server.
+- `details` sets `ssr: false`, so neither `beforeLoad` nor `loader` will run on the server, and the route component won't be rendered on the server. Here the inherited value is changed to be more restrictive, and therefore, the `ssr: false` will override the inherited value.
 
 ## Fallback Rendering
 
