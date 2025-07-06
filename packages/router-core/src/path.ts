@@ -330,6 +330,21 @@ export function interpolatePath({
         usedParams._splat = params._splat
         const segmentPrefix = segment.prefixSegment || ''
         const segmentSuffix = segment.suffixSegment || ''
+
+        // Check if _splat parameter is missing
+        if (!('_splat' in params)) {
+          isMissingParams = true
+          // For missing splat parameters, just return the prefix and suffix without the wildcard
+          if (leaveWildcards) {
+            return `${segmentPrefix}${segment.value}${segmentSuffix}`
+          }
+          // If there is a prefix or suffix, return them joined, otherwise omit the segment
+          if (segmentPrefix || segmentSuffix) {
+            return `${segmentPrefix}${segmentSuffix}`
+          }
+          return undefined
+        }
+
         const value = encodeParam('_splat')
         if (leaveWildcards) {
           return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`

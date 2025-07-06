@@ -1362,6 +1362,52 @@ importers:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
 
+  e2e/react-start/selective-ssr:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+      vite:
+        specifier: 6.3.5
+        version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.8.3)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.57
+    devDependencies:
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.13.4
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.0.8
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.0.3(@types/react@19.0.8)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.3
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
+
   e2e/react-start/server-functions:
     dependencies:
       '@tanstack/react-router':
@@ -2304,6 +2350,40 @@ importers:
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+
+  e2e/solid-start/selective-ssr:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../../../packages/solid-start
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.57
+    devDependencies:
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.3
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
+      vite:
+        specifier: 6.3.5
+        version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.8.3)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
 
   e2e/solid-start/server-functions:
     dependencies:
@@ -5403,7 +5483,7 @@ importers:
   examples/solid/basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5443,7 +5523,7 @@ importers:
   examples/solid/basic-devtools-panel:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5477,7 +5557,7 @@ importers:
   examples/solid/basic-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5517,7 +5597,7 @@ importers:
   examples/solid/basic-non-nested-devtools:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5563,7 +5643,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5606,7 +5686,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5646,7 +5726,7 @@ importers:
   examples/solid/basic-ssr-streaming-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5704,7 +5784,7 @@ importers:
   examples/solid/kitchen-sink-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5747,7 +5827,7 @@ importers:
   examples/solid/quickstart-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5787,7 +5867,7 @@ importers:
   examples/solid/start-bare:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5836,7 +5916,7 @@ importers:
   examples/solid/start-basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5879,7 +5959,7 @@ importers:
   examples/solid/start-basic-static:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.124.2
+        specifier: ^1.125.4
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -24180,6 +24260,10 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.2
 
+  tsconfck@3.1.4(typescript@5.8.3):
+    optionalDependencies:
+      typescript: 5.8.3
+
   tsconfig-paths@4.2.0:
     dependencies:
       json5: 2.2.3
@@ -24560,6 +24644,17 @@ snapshots:
       debug: 4.4.0
       globrex: 0.1.2
       tsconfck: 3.1.4(typescript@5.8.2)
+    optionalDependencies:
+      vite: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
+
+  vite-tsconfig-paths@5.1.4(typescript@5.8.3)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)):
+    dependencies:
+      debug: 4.4.0
+      globrex: 0.1.2
+      tsconfck: 3.1.4(typescript@5.8.3)
     optionalDependencies:
       vite: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
     transitivePeerDependencies:

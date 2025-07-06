@@ -14,20 +14,44 @@ import {
   tanstackRouterAutoImport,
   tanstackRouterGenerator,
 } from '@tanstack/router-plugin/vite'
+import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { routeTreeClientPlugin } from './route-tree-client-plugin'
 import { virtualRouteTreePlugin } from './virtual-route-tree-plugin'
 import { routesManifestPlugin } from './generator-plugins/routes-manifest-plugin'
 import { serverRoutesPlugin } from './generator-plugins/server-routes-plugin'
 import type { PluginOption } from 'vite'
-import type { Config } from '@tanstack/router-generator'
+import type { Config } from '@tanstack/router-plugin'
 
 export function tanStackStartRouter(config: Config): Array<PluginOption> {
   return [
     tanstackRouterGenerator({
       ...config,
       plugins: [serverRoutesPlugin(), routesManifestPlugin()],
+      plugin: {
+        vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
+      },
     }),
-    tanStackRouterCodeSplitter(config),
+    tanStackRouterCodeSplitter({
+      ...config,
+      codeSplittingOptions: {
+        ...config.codeSplittingOptions,
+        deleteNodes: ['ssr'],
+        addHmr: true,
+      },
+      plugin: {
+        vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
+      },
+    }),
+    tanStackRouterCodeSplitter({
+      ...config,
+      codeSplittingOptions: {
+        ...config.codeSplittingOptions,
+        addHmr: false,
+      },
+      plugin: {
+        vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
+      },
+    }),
     tanstackRouterAutoImport(config),
     routeTreeClientPlugin(config),
     virtualRouteTreePlugin(config),

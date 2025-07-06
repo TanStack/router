@@ -292,6 +292,7 @@ export {
   escapeJSON,
   shallow,
   createControlledPromise,
+  isModuleNotFoundError,
 } from './utils'
 export type {
   NoInfer,

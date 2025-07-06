@@ -156,7 +156,45 @@ export interface RouteMatch<
   staticData: StaticDataRouteOption
   minPendingPromise?: ControlledPromise<void>
   pendingTimeout?: ReturnType<typeof setTimeout>
+  ssr?: boolean | 'data-only'
+  _dehydrated?: boolean
+  _forcePending?: boolean
+  displayPendingPromise?: Promise<void>
+  _displayPending?: boolean
 }
+
+export interface PreValidationErrorHandlingRouteMatch<
+  TRouteId,
+  TFullPath,
+  TAllParams,
+  TFullSearchSchema,
+> {
+  id: string
+  routeId: TRouteId
+  fullPath: TFullPath
+  index: number
+  pathname: string
+  search:
+    | { status: 'success'; value: TFullSearchSchema }
+    | { status: 'error'; error: unknown }
+  params:
+    | { status: 'success'; value: TAllParams }
+    | { status: 'error'; error: unknown }
+  staticData: StaticDataRouteOption
+  ssr?: boolean | 'data-only'
+}
+
+export type MakePreValidationErrorHandlingRouteMatchUnion<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
+> = TRoute extends any
+  ? PreValidationErrorHandlingRouteMatch<
+      TRoute['id'],
+      TRoute['fullPath'],
+      TRoute['types']['allParams'],
+      TRoute['types']['fullSearchSchema']
+    >
+  : never
 
 export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
   TRoute['types']['id'],

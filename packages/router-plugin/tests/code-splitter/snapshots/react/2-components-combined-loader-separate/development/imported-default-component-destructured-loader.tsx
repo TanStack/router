@@ -4,7 +4,7 @@ const $$splitComponentImporter = () => import('imported-default-component-destru
 import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 export const Route = createFileRoute('/')({
-  component: lazyRouteComponent($$splitComponentImporter, 'component', () => Route.ssr),
+  component: lazyRouteComponent($$splitComponentImporter, 'component'),
   loader: lazyFn($$splitLoaderImporter, 'loader')
 });
 if (import.meta.hot) {
