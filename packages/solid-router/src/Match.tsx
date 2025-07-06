@@ -210,6 +210,9 @@ export const MatchInner = (props: { matchId: string }): any => {
   const match = () => matchState().match
 
   const out = () => {
+    // track the match id to remount the component
+    matchState().match.id
+
     const Comp = route().options.component ?? router.options.defaultComponent
     if (Comp) {
       return <Comp />
