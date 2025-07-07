@@ -209,6 +209,9 @@ export function compileCodeSplitReferenceRoute(
                         return
                       }
 
+                      // Exit early if the value is undefined
+                      // Since we don't need to run an import just to get the value of `undefined`
+                      // This is useful for cases like: `createFileRoute('/')({ component: undefined })`
                       if (
                         t.isIdentifier(prop.value) &&
                         prop.value.name === 'undefined'
@@ -260,7 +263,6 @@ export function compileCodeSplitReferenceRoute(
                         // Prepend the import statement to the program along with the importer function
                         // Check to see if lazyRouteComponent is already imported before attempting
                         // to import it again
-
                         if (
                           !hasImportedOrDefinedIdentifier(
                             LAZY_ROUTE_COMPONENT_IDENT,
@@ -468,8 +470,11 @@ export function compileCodeSplitVirtualRoute(
 
                       const value = prop.value
 
+                      // If the value for the `key` is `undefined`, then we don't need to include it
+                      // in the split file, so we can just return, since it will kept in-place in the
+                      // reference file
+                      // This is useful for cases like: `createFileRoute('/')({ component: undefined })`
                       if (t.isIdentifier(value) && value.name === 'undefined') {
-                        // options: { [splitType]: undefined }
                         return
                       }
 
