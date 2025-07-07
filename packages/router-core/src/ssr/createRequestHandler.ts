@@ -39,7 +39,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 
     await router.load()
 
-    dehydrateRouter(router)
+    await dehydrateRouter(router)
 
     const responseHeaders = getRequestHeaders({
       router,

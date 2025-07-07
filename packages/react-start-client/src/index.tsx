@@ -12,19 +12,10 @@ export {
 } from '@tanstack/start-client-core'
 export {
   type DehydratedRouter,
-  type ClientExtractedBaseEntry,
-  type StartSsrGlobal,
-  type ClientExtractedEntry,
-  type SsrMatch,
-  type ClientExtractedPromise,
-  type ClientExtractedStream,
-  type ResolvePromiseState,
   type IsomorphicFn,
   type ServerOnlyFn,
   type ClientOnlyFn,
   type IsomorphicFnBase,
-  type ServerFn as FetchFn,
-  type ServerFnCtx as FetchFnCtx,
   type CompiledFetcherFnOptions,
   type CompiledFetcherFn,
   type Fetcher,
@@ -68,3 +59,4 @@ export { Scripts } from './Scripts'
 export { StartClient } from './StartClient'
 export { renderRsc } from './renderRSC'
 export { useServerFn } from './useServerFn'
+export * from './serializer'

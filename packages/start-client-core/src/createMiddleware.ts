@@ -11,8 +11,8 @@ import type {
   IntersectAssign,
   ResolveValidatorInput,
   ResolveValidatorOutput,
-  SerializerStringify,
 } from '@tanstack/router-core'
+import type { SerializerStringify } from './serializer'
 
 export function createMiddleware<TType extends MiddlewareType>(
   options: {

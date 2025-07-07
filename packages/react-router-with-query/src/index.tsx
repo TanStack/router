@@ -1,16 +1,15 @@
 import { Fragment } from 'react'
 import {
   QueryClientProvider,
-  dehydrate,
-  hashKey,
-  hydrate,
+  dehydrate as queryDehydrate,
+  hydrate as queryHydrate,
 } from '@tanstack/react-query'
 import { isRedirect } from '@tanstack/router-core'
+import '@tanstack/router-core/ssr/client'
 import type { AnyRouter } from '@tanstack/react-router'
 import type {
   QueryClient,
-  QueryObserverResult,
-  UseQueryOptions,
+  DehydratedState as QueryDehydratedState,
 } from '@tanstack/react-query'
 
 type AdditionalOptions = {
@@ -24,6 +23,10 @@ type AdditionalOptions = {
   handleRedirects?: boolean
 }
 
+type DehydratedRouterQueryState = {
+  dehydratedQueryClient: QueryDehydratedState
+  queryStream: ReadableStream<QueryDehydratedState>
+}
 export type ValidateRouter<TRouter extends AnyRouter> =
   NonNullable<TRouter['options']['context']> extends {
     queryClient: QueryClient
@@ -36,79 +39,19 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
   queryClient: QueryClient,
   additionalOpts?: AdditionalOptions,
 ): TRouter {
-  const seenQueryKeys = new Set<string>()
-  const streamedQueryKeys = new Set<string>()
+  let queryStream: PushableStream
+
+  if (router.isServer) {
+    queryStream = createPushableStream()
+  }
 
   const ogClientOptions = queryClient.getDefaultOptions()
   queryClient.setDefaultOptions({
     ...ogClientOptions,
-    queries: {
-      ...ogClientOptions.queries,
-      _experimental_beforeQuery: (options: UseQueryOptions) => {
-        // Call the original beforeQuery
-        ;(ogClientOptions.queries as any)?._experimental_beforeQuery?.(options)
-
-        const hash = options.queryKeyHashFn || hashKey
-        // On the server, check if we've already seen the query before
-        if (router.isServer) {
-          if (seenQueryKeys.has(hash(options.queryKey))) {
-            return
-          }
-
-          seenQueryKeys.add(hash(options.queryKey))
-
-          // If we haven't seen the query and we have data for it,
-          // That means it's going to get dehydrated with critical
-          // data, so we can skip the injection
-          if (queryClient.getQueryData(options.queryKey) !== undefined) {
-            ;(options as any).__skipInjection = true
-            return
-          }
-        } else {
-          // On the client, pick up the deferred data from the stream
-          const dehydratedClient = router.clientSsr!.getStreamedValue<any>(
-            '__QueryClient__' + hash(options.queryKey),
-          )
-
-          // If we have data, hydrate it into the query client
-          if (dehydratedClient && !dehydratedClient.hydrated) {
-            dehydratedClient.hydrated = true
-            hydrate(queryClient, dehydratedClient)
-          }
-        }
-      },
-      _experimental_afterQuery: (
-        options: UseQueryOptions,
-        _result: QueryObserverResult,
-      ) => {
-        // On the server (if we're not skipping injection)
-        // send down the dehydrated query
-        const hash = options.queryKeyHashFn || hashKey
-        if (
-          router.isServer &&
-          !(options as any).__skipInjection &&
-          queryClient.getQueryData(options.queryKey) !== undefined &&
-          !streamedQueryKeys.has(hash(options.queryKey))
-        ) {
-          streamedQueryKeys.add(hash(options.queryKey))
-
-          router.serverSsr!.streamValue(
-            '__QueryClient__' + hash(options.queryKey),
-            dehydrate(queryClient, {
-              shouldDehydrateMutation: () => false,
-              shouldDehydrateQuery: (query) =>
-                hash(query.queryKey) === hash(options.queryKey),
-            }),
-          )
-        }
-
-        // Call the original afterQuery
-        ;(ogClientOptions.queries as any)?._experimental_afterQuery?.(
-          options,
-          _result,
-        )
-      },
-    } as any,
+    dehydrate: {
+      shouldDehydrateQuery: () => true,
+      ...ogClientOptions.dehydrate,
+    },
   })
 
   if (additionalOpts?.handleRedirects ?? true) {
@@ -142,22 +85,62 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
         return ogQueryCacheConfig.onError?.(error, _query)
       },
     }
+    if (router.isServer) {
+      queryClient.getQueryCache().subscribe((event) => {
+        if (event.type === 'added') {
+          if (!router.serverSsr!.isDehydrated()) {
+            return
+          }
+          if (queryStream!.isClosed) {
+            console.warn(
+              `tried to stream query ${event.query.queryHash} after stream was already closed`,
+            )
+          }
+          queryStream!.enqueue(
+            queryDehydrate(queryClient, {
+              shouldDehydrateQuery: (query) => {
+                if (query.queryHash === event.query.queryHash) {
+                  return (
+                    ogClientOptions.dehydrate?.shouldDehydrateQuery?.(query) ??
+                    true
+                  )
+                }
+                return false
+              },
+            }),
+          )
+        }
+      })
+    }
   }
 
   const ogOptions = router.options
   router.options = {
     ...router.options,
-    dehydrate: () => {
+    dehydrate: async (): Promise<DehydratedRouterQueryState> => {
+      router.serverSsr!.onRenderFinished(() => queryStream.close())
+      const ogDehydrated = await ogOptions.dehydrate?.()
       return {
-        ...ogOptions.dehydrate?.(),
+        ...ogDehydrated,
         // When critical data is dehydrated, we also dehydrate the query client
-        dehydratedQueryClient: dehydrate(queryClient),
+        dehydratedQueryClient: queryDehydrate(queryClient),
+        // prepare the stream for queries coming up during rendering
+        queryStream: queryStream.stream,
       }
     },
-    hydrate: (dehydrated: any) => {
-      ogOptions.hydrate?.(dehydrated)
+    hydrate: async (dehydrated: DehydratedRouterQueryState) => {
+      console.log('dehydrated', dehydrated)
+      await ogOptions.hydrate?.(dehydrated)
       // On the client, hydrate the query client with the dehydrated data
-      hydrate(queryClient, dehydrated.dehydratedQueryClient)
+      queryHydrate(queryClient, dehydrated.dehydratedQueryClient)
+      const reader = dehydrated.queryStream.getReader()
+      reader.read().then(function handle({ done, value }): Promise<void> {
+        queryHydrate(queryClient, value)
+        if (done) {
+          return Promise.resolve()
+        }
+        return reader.read().then(handle)
+      })
     },
     context: {
       ...ogOptions.context,
@@ -179,4 +162,32 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
   }
 
   return router
+}
+
+type PushableStream = {
+  stream: ReadableStream
+  enqueue: (chunk: unknown) => void
+  close: () => void
+  isClosed: boolean
+  error: (err: unknown) => void
+}
+function createPushableStream(): PushableStream {
+  let controllerRef: ReadableStreamDefaultController | undefined
+  const stream = new ReadableStream({
+    start(controller) {
+      controllerRef = controller
+    },
+  })
+  let isClosed = false
+
+  return {
+    stream,
+    enqueue: (chunk) => controllerRef?.enqueue(chunk),
+    close: () => {
+      controllerRef?.close()
+      isClosed = true
+    },
+    isClosed,
+    error: (err: unknown) => controllerRef?.error(err),
+  }
 }

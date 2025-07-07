@@ -1,94 +1,69 @@
 import invariant from 'tiny-invariant'
-import { isPlainObject } from '../utils'
-import { tsrSerializer } from '../serializer'
-import type { DeferredPromiseState } from '../defer'
-import type { MakeRouteMatch } from '../Matches'
-import type { AnyRouter, ControllablePromise } from '../router'
+import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
+import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
+import type { GLOBAL_TSR } from './ssr-server'
 
 declare global {
   interface Window {
-    __TSR_SSR__?: TsrSsrGlobal
+    [GLOBAL_TSR]?: TsrSsrGlobal
   }
 }
 
-export interface TsrSsrGlobal {
-  matches: Array<SsrMatch>
-  streamedValues: Record<
-    string,
-    {
-      value: any
-      parsed: any
+declare module '../router' {
+  interface RouterEvents {
+    onStreamedValue: {
+      type: 'onStreamedValue'
+      key: string
     }
-  >
-  cleanScripts: () => void
-  dehydrated?: any
-  initMatch: (match: SsrMatch) => void
-  resolvePromise: (opts: {
-    matchId: string
-    id: number
-    promiseState: DeferredPromiseState<any>
-  }) => void
-  injectChunk: (opts: { matchId: string; id: number; chunk: string }) => void
-  closeStream: (opts: { matchId: string; id: number }) => void
+  }
+}
+export interface TsrSsrGlobal {
+  r?: DehydratedRouter
+  // clean scripts
+  c: () => void
+  v: Record<string, unknown>
 }
 
-export interface SsrMatch {
-  id: string
-  __beforeLoadContext: string
-  loaderData?: string
-  error?: string
-  extracted?: Array<ClientExtractedEntry>
-  updatedAt: MakeRouteMatch['updatedAt']
-  status: MakeRouteMatch['status']
-  ssr?: boolean | 'data-only'
+function assignMatch(deyhydratedMatch: DehydratedMatch, match: AnyRouteMatch) {
+  match = {
+    ...match,
+    id: deyhydratedMatch.i,
+    __beforeLoadContext: deyhydratedMatch.b,
+    loaderData: deyhydratedMatch.l,
+    status: deyhydratedMatch.s,
+    ssr: deyhydratedMatch.ssr,
+    updatedAt: deyhydratedMatch.u,
+  }
 }
-
-export type ClientExtractedEntry =
-  | ClientExtractedStream
-  | ClientExtractedPromise
-
-export interface ClientExtractedPromise extends ClientExtractedBaseEntry {
-  type: 'promise'
-  value?: ControllablePromise<any>
-}
-
-export interface ClientExtractedStream extends ClientExtractedBaseEntry {
-  type: 'stream'
-  value?: ReadableStream & { controller?: ReadableStreamDefaultController }
-}
-
-export interface ClientExtractedBaseEntry {
-  type: string
-  path: Array<string>
-}
-
-export interface ResolvePromiseState {
-  matchId: string
-  id: number
-  promiseState: DeferredPromiseState<any>
+export interface DehydratedMatch {
+  i: MakeRouteMatch['id']
+  b?: MakeRouteMatch['__beforeLoadContext']
+  l?: MakeRouteMatch['loaderData']
+  e?: MakeRouteMatch['error']
+  u: MakeRouteMatch['updatedAt']
+  s: MakeRouteMatch['status']
+  ssr?: MakeRouteMatch['ssr']
 }
 
 export interface DehydratedRouter {
   manifest: Manifest | undefined
-  dehydratedData: any
-  lastMatchId: string
+  dehydratedData?: any
+  lastMatchId?: string
+  matches: Array<DehydratedMatch>
 }
 
 export async function hydrate(router: AnyRouter): Promise<any> {
   invariant(
-    window.__TSR_SSR__?.dehydrated,
-    'Expected to find a dehydrated data on window.__TSR_SSR__.dehydrated... but we did not. Please file an issue!',
+    window.$_TSR?.r,
+    'Expected to find a dehydrated data on window.$_TSR.r... but we did not. Please file an issue!',
   )
 
-  const { manifest, dehydratedData, lastMatchId } = tsrSerializer.parse(
-    window.__TSR_SSR__.dehydrated,
-  ) as DehydratedRouter
+  const { manifest, dehydratedData, lastMatchId } = window.$_TSR.r
 
   router.ssr = {
     manifest,
-    serializer: tsrSerializer,
   }
 
   router.clientSsr = {
@@ -96,18 +71,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       if (router.isServer) {
         return undefined
       }
-
-      const streamedValue = window.__TSR_SSR__?.streamedValues[key]
-
-      if (!streamedValue) {
-        return
-      }
-
-      if (!streamedValue.parsed) {
-        streamedValue.parsed = router.ssr!.serializer.parse(streamedValue.value)
-      }
-
-      return streamedValue.parsed
+      return window.$_TSR?.v[key] as T | undefined
     },
   }
 
@@ -126,15 +90,15 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
   matches.forEach((match) => {
-    const dehydratedMatch = window.__TSR_SSR__!.matches.find(
-      (d) => d.id === match.id,
+    const dehydratedMatch = window.$_TSR!.r!.matches.find(
+      (d) => d.i === match.id,
     )
-
     if (!dehydratedMatch) {
       Object.assign(match, { dehydrated: false, ssr: false })
       return
     }
 
+    assignMatch(dehydratedMatch, match)
     Object.assign(match, dehydratedMatch)
 
     if (match.ssr === false) {
@@ -153,30 +117,6 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     if (match.ssr === false) {
       return
     }
-
-    // Handle beforeLoadContext
-    if (dehydratedMatch.__beforeLoadContext) {
-      match.__beforeLoadContext = router.ssr!.serializer.parse(
-        dehydratedMatch.__beforeLoadContext,
-      ) as any
-    }
-
-    // Handle loaderData
-    if (dehydratedMatch.loaderData) {
-      match.loaderData = router.ssr!.serializer.parse(
-        dehydratedMatch.loaderData,
-      )
-    }
-
-    // Handle error
-    if (dehydratedMatch.error) {
-      match.error = router.ssr!.serializer.parse(dehydratedMatch.error)
-    }
-
-    // Handle extracted
-    ;(match as unknown as SsrMatch).extracted?.forEach((ex) => {
-      deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
-    })
   })
 
   router.__store.setState((s) => {
@@ -273,19 +213,4 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   }
 
   return routeChunkPromise
-}
-
-function deepMutableSetByPath<T>(obj: T, path: Array<string>, value: any) {
-  // mutable set by path retaining array and object references
-  if (path.length === 1) {
-    ;(obj as any)[path[0]!] = value
-  }
-
-  const [key, ...rest] = path
-
-  if (Array.isArray(obj)) {
-    deepMutableSetByPath(obj[Number(key)], rest, value)
-  } else if (isPlainObject(obj)) {
-    deepMutableSetByPath((obj as any)[key!], rest, value)
-  }
 }

@@ -21,7 +21,7 @@ export function ScriptOnce({
           ? `console.info(\`Injected From Server:
 ${jsesc(children.toString(), { quotes: 'backtick' })}\`)`
           : '',
-        'if (typeof __TSR_SSR__ !== "undefined") __TSR_SSR__.cleanScripts()',
+        'if (typeof $_TSR !== "undefined") $_TSR.c()',
       ]
         .filter(Boolean)
         .join('\n')}

@@ -46,7 +46,6 @@ import type {
   Updater,
 } from './utils'
 import type { ParsedLocation } from './location'
-import type { DeferredPromiseState } from './defer'
 import type {
   AnyContext,
   AnyRoute,
@@ -78,7 +77,6 @@ import type {
   NavigateFn,
 } from './RouterProvider'
 import type { Manifest } from './manifest'
-import type { TsrSerializer } from './serializer'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
@@ -288,7 +286,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#dehydrate-method)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration)
    */
-  dehydrate?: () => TDehydrated
+  dehydrate?: () => Awaitable<TDehydrated>
   /**
    * A function that will be called when the router is hydrated.
    *
@@ -451,7 +449,7 @@ type NavigationEventInfo = {
   hashChanged: boolean
 }
 
-export type RouterEvents = {
+export interface RouterEvents {
   onBeforeNavigate: {
     type: 'onBeforeNavigate'
   } & NavigationEventInfo
@@ -467,10 +465,6 @@ export type RouterEvents = {
   onBeforeRouteMount: {
     type: 'onBeforeRouteMount'
   } & NavigationEventInfo
-  onInjectedHtml: {
-    type: 'onInjectedHtml'
-    promise: Promise<string>
-  }
   onRendered: {
     type: 'onRendered'
   } & NavigationEventInfo
@@ -484,6 +478,11 @@ export type RouterListener<TRouterEvent extends RouterEvent> = {
   eventType: TRouterEvent['type']
   fn: ListenerFn<TRouterEvent>
 }
+
+export type SubscribeFn = <TType extends keyof RouterEvents>(
+  eventType: TType,
+  fn: ListenerFn<RouterEvents[TType]>,
+) => () => void
 
 export interface MatchRoutesOpts {
   preload?: boolean
@@ -521,11 +520,6 @@ export type RouterConstructorOptions<
   'context'
 > &
   RouterContextOptions<TRouteTree>
-
-export interface RouterErrorSerializer<TSerializedError> {
-  serialize: (err: unknown) => TSerializedError
-  deserialize: (err: TSerializedError) => unknown
-}
 
 export type PreloadRouteFn<
   TRouteTree extends AnyRoute,
@@ -623,11 +617,6 @@ export type CommitLocationFn = ({
 
 export type StartTransitionFn = (fn: () => void) => void
 
-export type SubscribeFn = <TType extends keyof RouterEvents>(
-  eventType: TType,
-  fn: ListenerFn<RouterEvents[TType]>,
-) => () => void
-
 export interface MatchRoutesFn {
   (
     pathname: string,
@@ -657,7 +646,7 @@ export type ClearCacheFn<TRouter extends AnyRouter> = (opts?: {
   filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
 }) => void
 
-export interface ServerSrr {
+export interface ServerSsr {
   injectedHtml: Array<InjectedHtmlEntry>
   injectHtml: (getHtml: () => string | Promise<string>) => Promise<void>
   injectScript: (
@@ -666,7 +655,8 @@ export interface ServerSrr {
   ) => Promise<void>
   streamValue: (key: string, value: any) => void
   streamedKeys: Set<string>
-  onMatchSettled: (opts: { router: AnyRouter; match: AnyRouteMatch }) => any
+  isDehydrated: () => boolean
+  onRenderFinished: (listener: () => void) => void
 }
 
 export type AnyRouterWithContext<TContext> = RouterCore<
@@ -708,29 +698,6 @@ export function defaultSerializeError(err: unknown) {
   return {
     data: err,
   }
-}
-export interface ExtractedBaseEntry {
-  dataType: '__beforeLoadContext' | 'loaderData'
-  type: string
-  path: Array<string>
-  id: number
-  matchIndex: number
-}
-
-export interface ExtractedStream extends ExtractedBaseEntry {
-  type: 'stream'
-  streamState: StreamState
-}
-
-export interface ExtractedPromise extends ExtractedBaseEntry {
-  type: 'promise'
-  promiseState: DeferredPromiseState<any>
-}
-
-export type ExtractedEntry = ExtractedStream | ExtractedPromise
-
-export type StreamState = {
-  promises: Array<ControlledPromise<string | null>>
 }
 
 export type TrailingSlashOption = 'always' | 'never' | 'preserve'
@@ -837,7 +804,7 @@ export class RouterCore<
     })
 
     if (typeof document !== 'undefined') {
-      ;(window as any).__TSR_ROUTER__ = this
+      self.__TSR_ROUTER__ = this
     }
   }
 
@@ -1292,7 +1259,7 @@ export class RouterCore<
           error: undefined,
           paramsError: parseErrors[index],
           __routeContext: {},
-          __beforeLoadContext: {},
+          __beforeLoadContext: undefined,
           context: {},
           abortController: new AbortController(),
           fetchCount: 0,
@@ -2169,10 +2136,6 @@ export class RouterCore<
           this._handleNotFound(matches, err, {
             updateMatch,
           })
-          this.serverSsr?.onMatchSettled({
-            router: this,
-            match: this.getMatch(match.id)!,
-          })
           throw err
         }
       }
@@ -2430,8 +2393,7 @@ export class RouterCore<
                   }
 
                   const beforeLoadContext =
-                    (await route.options.beforeLoad?.(beforeLoadFnContext)) ??
-                    {}
+                    await route.options.beforeLoad?.(beforeLoadFnContext)
 
                   if (
                     isRedirect(beforeLoadContext) ||
@@ -2524,10 +2486,6 @@ export class RouterCore<
                         ...prev,
                         ...head,
                       }))
-                      this.serverSsr?.onMatchSettled({
-                        router: this,
-                        match: this.getMatch(matchId)!,
-                      })
                       return this.getMatch(matchId)!
                     } else {
                       await potentialPendingMinPromise()
@@ -2689,11 +2647,6 @@ export class RouterCore<
                             ...head,
                           }))
                         }
-
-                        this.serverSsr?.onMatchSettled({
-                          router: this,
-                          match: this.getMatch(matchId)!,
-                        })
                       } catch (err) {
                         const head = await executeHead()
 
@@ -2754,10 +2707,6 @@ export class RouterCore<
                         ...prev,
                         ...head,
                       }))
-                      this.serverSsr?.onMatchSettled({
-                        router: this,
-                        match: this.getMatch(matchId)!,
-                      })
                     }
                   }
                   if (!loaderIsRunningAsync) {
@@ -3057,20 +3006,9 @@ export class RouterCore<
 
   ssr?: {
     manifest: Manifest | undefined
-    serializer: TsrSerializer
   }
 
-  serverSsr?: {
-    injectedHtml: Array<InjectedHtmlEntry>
-    injectHtml: (getHtml: () => string | Promise<string>) => Promise<void>
-    injectScript: (
-      getScript: () => string | Promise<string>,
-      opts?: { logScript?: boolean },
-    ) => Promise<void>
-    streamValue: (key: string, value: any) => void
-    streamedKeys: Set<string>
-    onMatchSettled: (opts: { router: AnyRouter; match: AnyRouteMatch }) => any
-  }
+  serverSsr?: ServerSsr
 
   clientSsr?: {
     getStreamedValue: <T>(key: string) => T | undefined
