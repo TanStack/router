@@ -46,7 +46,6 @@ function Script({
 }) {
   React.useEffect(() => {
     if (attrs?.src) {
-      // Check if a script with the same src already exists to prevent duplication during hydration
       const existingScript = document.querySelector(
         `script[src="${attrs.src}"]`,
       )
