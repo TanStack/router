@@ -3,9 +3,8 @@ import type { MatchLocation } from './RouterProvider'
 import type { AnyPathParams } from './route'
 
 export interface Segment {
-  type: 'pathname' | 'param' | 'wildcard'
+  type: 'pathname' | 'param' | 'wildcard' | 'optional-param'
   value: string
-  // Add a new property to store the static segment if present
   prefixSegment?: string
   suffixSegment?: string
 }
@@ -151,6 +150,18 @@ export function resolvePath({
         return `{$${param}}${segment.suffixSegment}`
       }
     }
+    if (segment.type === 'optional-param') {
+      const param = segment.value.substring(1)
+      if (segment.prefixSegment && segment.suffixSegment) {
+        return `${segment.prefixSegment}{-${param}}${segment.suffixSegment}`
+      } else if (segment.prefixSegment) {
+        return `${segment.prefixSegment}{-${param}}`
+      } else if (segment.suffixSegment) {
+        return `{-${param}}${segment.suffixSegment}`
+      }
+      return `{-${param}}`
+    }
+
     if (segment.type === 'wildcard') {
       if (segment.prefixSegment && segment.suffixSegment) {
         return `${segment.prefixSegment}{$}${segment.suffixSegment}`
@@ -168,6 +179,9 @@ export function resolvePath({
 
 const PARAM_RE = /^\$.{1,}$/ // $paramName
 const PARAM_W_CURLY_BRACES_RE = /^(.*?)\{(\$[a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix{$paramName}suffix
+const OPTIONAL_PARAM_W_CURLY_BRACES_RE =
+  /^(.*?)\{-(\$[a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix{-$paramName}suffix
+
 const WILDCARD_RE = /^\$$/ // $
 const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
 
@@ -220,6 +234,22 @@ export function parsePathname(pathname?: string): Array<Segment> {
         return {
           type: 'wildcard',
           value: '$',
+          prefixSegment: prefix || undefined,
+          suffixSegment: suffix || undefined,
+        }
+      }
+
+      // Check for optional parameter format: prefix{-$paramName}suffix
+      const optionalParamBracesMatch = part.match(
+        OPTIONAL_PARAM_W_CURLY_BRACES_RE,
+      )
+      if (optionalParamBracesMatch) {
+        const prefix = optionalParamBracesMatch[1]
+        const paramName = optionalParamBracesMatch[2]!
+        const suffix = optionalParamBracesMatch[3]
+        return {
+          type: 'optional-param',
+          value: paramName, // Now just $paramName (no prefix)
           prefixSegment: prefix || undefined,
           suffixSegment: suffix || undefined,
         }
@@ -368,6 +398,27 @@ export function interpolatePath({
         return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
       }
 
+      if (segment.type === 'optional-param') {
+        const key = segment.value.substring(1)
+
+        // Check if optional parameter is missing or undefined
+        if (!(key in params) || params[key] == null) {
+          // For optional params, don't set isMissingParams flag
+          // Return undefined to omit the entire segment
+          return undefined
+        }
+
+        usedParams[key] = params[key]
+
+        const segmentPrefix = segment.prefixSegment || ''
+        const segmentSuffix = segment.suffixSegment || ''
+        if (leaveParams) {
+          const value = encodeParam(segment.value)
+          return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
+        }
+        return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
+      }
+
       return segment.value
     }),
   )
@@ -479,21 +530,23 @@ export function matchByPath(
   const params: Record<string, string> = {}
 
   const isMatch = (() => {
-    for (
-      let i = 0;
-      i < Math.max(baseSegments.length, routeSegments.length);
-      i++
-    ) {
-      const baseSegment = baseSegments[i]
-      const routeSegment = routeSegments[i]
+    let baseIndex = 0
+    let routeIndex = 0
 
-      const isLastBaseSegment = i >= baseSegments.length - 1
-      const isLastRouteSegment = i >= routeSegments.length - 1
+    while (
+      baseIndex < baseSegments.length ||
+      routeIndex < routeSegments.length
+    ) {
+      const baseSegment = baseSegments[baseIndex]
+      const routeSegment = routeSegments[routeIndex]
+
+      const isLastBaseSegment = baseIndex >= baseSegments.length - 1
+      const isLastRouteSegment = routeIndex >= routeSegments.length - 1
 
       if (routeSegment) {
         if (routeSegment.type === 'wildcard') {
           // Capture all remaining segments for a wildcard
-          const remainingBaseSegments = baseSegments.slice(i)
+          const remainingBaseSegments = baseSegments.slice(baseIndex)
 
           let _splat: string
 
@@ -551,7 +604,8 @@ export function matchByPath(
 
         if (routeSegment.type === 'pathname') {
           if (routeSegment.value === '/' && !baseSegment?.value) {
-            return true
+            routeIndex++
+            continue
           }
 
           if (baseSegment) {
@@ -565,19 +619,25 @@ export function matchByPath(
             ) {
               return false
             }
+            baseIndex++
+            routeIndex++
+            continue
+          } else {
+            return false
           }
         }
 
-        if (!baseSegment) {
-          return false
-        }
-
         if (routeSegment.type === 'param') {
+          if (!baseSegment) {
+            return false
+          }
+
           if (baseSegment.value === '/') {
             return false
           }
 
-          let _paramValue: string
+          let _paramValue = ''
+          let matched = false
 
           // If this param has prefix/suffix, we need to extract the actual parameter value
           if (routeSegment.prefixSegment || routeSegment.suffixSegment) {
@@ -605,19 +665,143 @@ export function matchByPath(
             }
 
             _paramValue = decodeURIComponent(paramValue)
+            matched = true
           } else {
             // If no prefix/suffix, just decode the base segment value
             _paramValue = decodeURIComponent(baseSegment.value)
+            matched = true
           }
 
-          params[routeSegment.value.substring(1)] = _paramValue
+          if (matched) {
+            params[routeSegment.value.substring(1)] = _paramValue
+            baseIndex++
+          }
+
+          routeIndex++
+          continue
+        }
+
+        if (routeSegment.type === 'optional-param') {
+          // Optional parameters can be missing - don't fail the match
+          if (!baseSegment) {
+            // No base segment for optional param - skip this route segment
+            routeIndex++
+            continue
+          }
+
+          if (baseSegment.value === '/') {
+            // Skip slash segments for optional params
+            routeIndex++
+            continue
+          }
+
+          let _paramValue = ''
+          let matched = false
+
+          // If this optional param has prefix/suffix, we need to extract the actual parameter value
+          if (routeSegment.prefixSegment || routeSegment.suffixSegment) {
+            const prefix = routeSegment.prefixSegment || ''
+            const suffix = routeSegment.suffixSegment || ''
+
+            // Check if the base segment starts with prefix and ends with suffix
+            const baseValue = baseSegment.value
+            if (
+              (!prefix || baseValue.startsWith(prefix)) &&
+              (!suffix || baseValue.endsWith(suffix))
+            ) {
+              let paramValue = baseValue
+              if (prefix && paramValue.startsWith(prefix)) {
+                paramValue = paramValue.slice(prefix.length)
+              }
+              if (suffix && paramValue.endsWith(suffix)) {
+                paramValue = paramValue.slice(
+                  0,
+                  paramValue.length - suffix.length,
+                )
+              }
+
+              _paramValue = decodeURIComponent(paramValue)
+              matched = true
+            }
+          } else {
+            // For optional params without prefix/suffix, we need to check if the current
+            // base segment should match this optional param or a later route segment
+
+            // Look ahead to see if there's a later route segment that matches the current base segment
+            let shouldMatchOptional = true
+            for (
+              let lookAhead = routeIndex + 1;
+              lookAhead < routeSegments.length;
+              lookAhead++
+            ) {
+              const futureRouteSegment = routeSegments[lookAhead]
+              if (
+                futureRouteSegment?.type === 'pathname' &&
+                futureRouteSegment.value === baseSegment.value
+              ) {
+                // The current base segment matches a future pathname segment,
+                // so we should skip this optional parameter
+                shouldMatchOptional = false
+                break
+              }
+
+              // If we encounter a required param or wildcard, stop looking ahead
+              if (
+                futureRouteSegment?.type === 'param' ||
+                futureRouteSegment?.type === 'wildcard'
+              ) {
+                break
+              }
+            }
+
+            if (shouldMatchOptional) {
+              // If no prefix/suffix, just decode the base segment value
+              _paramValue = decodeURIComponent(baseSegment.value)
+              matched = true
+            }
+          }
+
+          if (matched) {
+            params[routeSegment.value.substring(1)] = _paramValue
+            baseIndex++
+          }
+
+          routeIndex++
+          continue
         }
       }
 
       if (!isLastBaseSegment && isLastRouteSegment) {
-        params['**'] = joinPaths(baseSegments.slice(i + 1).map((d) => d.value))
+        params['**'] = joinPaths(
+          baseSegments.slice(baseIndex + 1).map((d) => d.value),
+        )
         return !!matchLocation.fuzzy && routeSegment?.value !== '/'
       }
+
+      // If we have base segments left but no route segments, it's not a match
+      if (
+        baseIndex < baseSegments.length &&
+        routeIndex >= routeSegments.length
+      ) {
+        return false
+      }
+
+      // If we have route segments left but no base segments, check if remaining are optional
+      if (
+        routeIndex < routeSegments.length &&
+        baseIndex >= baseSegments.length
+      ) {
+        // Check if all remaining route segments are optional
+        for (let i = routeIndex; i < routeSegments.length; i++) {
+          if (routeSegments[i]?.type !== 'optional-param') {
+            return false
+          }
+        }
+        // All remaining are optional, so we can finish
+        break
+      }
+
+      break
     }
 
     return true
