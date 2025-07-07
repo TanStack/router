@@ -6319,8 +6319,8 @@ importers:
         specifier: workspace:*
         version: link:../history
       '@tanstack/store':
-        specifier: ^0.7.0
-        version: 0.7.0
+        specifier: ^0.7.2
+        version: 0.7.2
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2
@@ -6599,8 +6599,8 @@ importers:
         specifier: workspace:*
         version: link:../router-core
       '@tanstack/solid-store':
-        specifier: ^0.7.0
-        version: 0.7.0(solid-js@1.9.5)
+        specifier: ^0.7.3
+        version: 0.7.3(solid-js@1.9.5)
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
@@ -10148,8 +10148,8 @@ packages:
     peerDependencies:
       solid-js: ^1.6.0
 
-  '@tanstack/solid-store@0.7.0':
-    resolution: {integrity: sha512-uDQYkUuH3MppitiduZLTEcItkTr8vEJ33jzp2rH2VvlNRMGbuU54GQcqf3dLIlTbZ1/Z2TtIBtBjjl+N/OhwRg==}
+  '@tanstack/solid-store@0.7.3':
+    resolution: {integrity: sha512-fEdiGQdlzG/eS4lOaIWvKp94hopVZiDZ2IgrQ9ntu5QtLPXOABq/2VDSQI7jkx43e3AdLdvlXVrljxw2BVB9tw==}
     peerDependencies:
       solid-js: ^1.6.0
 
@@ -10160,6 +10160,9 @@ packages:
 
   '@tanstack/store@0.7.0':
     resolution: {integrity: sha512-CNIhdoUsmD2NolYuaIs8VfWM467RK6oIBAW4nPEKZhg1smZ+/CwtCdpURgp7nxSqOaV9oKkzdWD80+bC66F/Jg==}
+
+  '@tanstack/store@0.7.2':
+    resolution: {integrity: sha512-RP80Z30BYiPX2Pyo0Nyw4s1SJFH2jyM6f9i3HfX4pA+gm5jsnYryscdq2aIQLnL4TaGuQMO+zXmN9nh1Qck+Pg==}
 
   '@tanstack/virtual-core@3.13.0':
     resolution: {integrity: sha512-NBKJP3OIdmZY3COJdWkSonr50FMVIi+aj5ZJ7hI/DTpEKg2RMfo/KvP8A3B/zOSpMgIe52B5E2yn7rryULzA6g==}
@@ -18977,9 +18980,9 @@ snapshots:
       '@tanstack/query-core': 5.72.2
       solid-js: 1.9.5
 
-  '@tanstack/solid-store@0.7.0(solid-js@1.9.5)':
+  '@tanstack/solid-store@0.7.3(solid-js@1.9.5)':
     dependencies:
-      '@tanstack/store': 0.7.0
+      '@tanstack/store': 0.7.2
       solid-js: 1.9.5
 
   '@tanstack/solid-virtual@3.13.0(solid-js@1.9.5)':
@@ -18988,6 +18991,8 @@ snapshots:
       solid-js: 1.9.5
 
   '@tanstack/store@0.7.0': {}
+
+  '@tanstack/store@0.7.2': {}
 
   '@tanstack/virtual-core@3.13.0': {}
 
