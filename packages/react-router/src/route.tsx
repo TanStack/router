@@ -542,19 +542,22 @@ export function createRouteMask<
   return opts as any
 }
 
-export type SyncRouteComponent<TProps> =
-  | React.FC<TProps>
-  | React.LazyExoticComponent<(props: TProps) => React.ReactNode>
+export interface DefaultRouteTypes<TProps> {
+  component:
+    | ((props: TProps) => any)
+    | React.LazyExoticComponent<(props: TProps) => any>
+}
+export interface RouteTypes<TProps> extends DefaultRouteTypes<TProps> {}
 
-export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
+export type AsyncRouteComponent<TProps> = RouteTypes<TProps>['component'] & {
   preload?: () => Promise<void>
 }
 
-export type RouteComponent<TProps = any> = AsyncRouteComponent<TProps>
+export type RouteComponent = AsyncRouteComponent<{}>
 
-export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
+export type ErrorRouteComponent = AsyncRouteComponent<ErrorComponentProps>
 
-export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
+export type NotFoundRouteComponent = RouteTypes<NotFoundRouteProps>['component']
 
 export class NotFoundRoute<
   TParentRoute extends AnyRootRoute,

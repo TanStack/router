@@ -284,11 +284,12 @@ export {
 } from './route'
 export type {
   AnyRootRoute,
-  SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,
   ErrorRouteComponent,
   NotFoundRouteComponent,
+  DefaultRouteTypes,
+  RouteTypes,
 } from './route'
 
 export { createRouter, Router } from './router'

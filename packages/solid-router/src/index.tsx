@@ -291,7 +291,6 @@ export {
 export type {
   AnyRootRoute,
   SolidNode,
-  SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,
   ErrorRouteComponent,
