@@ -16,13 +16,17 @@ export function ScriptOnce({
   // Validate input to prevent XSS
   invariant(
     typeof children === 'string',
-    'ScriptOnce children must be a string to prevent XSS attacks'
+    'ScriptOnce children must be a string to prevent XSS attacks',
   )
 
   // Additional safety check for potentially dangerous content
-  if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development' && children.includes('<script')) {
+  if (
+    typeof process !== 'undefined' &&
+    process.env.NODE_ENV === 'development' &&
+    children.includes('<script')
+  ) {
     console.warn(
-      'ScriptOnce: Detected potentially unsafe script tag in children. This could lead to XSS vulnerabilities.'
+      'ScriptOnce: Detected potentially unsafe script tag in children. This could lead to XSS vulnerabilities.',
     )
   }
 

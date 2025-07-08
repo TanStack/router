@@ -507,7 +507,7 @@ export function matchByPath(
             // Check if the base segment starts with prefix and ends with suffix
             const baseValue = baseSegment.value
             if ('prefixSegment' in routeSegment) {
-              const prefixCheck = matchLocation.caseSensitive 
+              const prefixCheck = matchLocation.caseSensitive
                 ? baseValue.startsWith(prefix)
                 : baseValue.toLowerCase().startsWith(prefix.toLowerCase())
               if (!prefixCheck) {
@@ -517,7 +517,9 @@ export function matchByPath(
             if ('suffixSegment' in routeSegment) {
               const suffixCheck = matchLocation.caseSensitive
                 ? baseSegments[baseSegments.length - 1]?.value.endsWith(suffix)
-                : baseSegments[baseSegments.length - 1]?.value.toLowerCase().endsWith(suffix.toLowerCase())
+                : baseSegments[baseSegments.length - 1]?.value
+                    .toLowerCase()
+                    .endsWith(suffix.toLowerCase())
               if (!suffixCheck) {
                 return false
               }
