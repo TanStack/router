@@ -507,14 +507,18 @@ export function matchByPath(
             // Check if the base segment starts with prefix and ends with suffix
             const baseValue = baseSegment.value
             if ('prefixSegment' in routeSegment) {
-              if (!baseValue.startsWith(prefix)) {
+              const prefixCheck = matchLocation.caseSensitive 
+                ? baseValue.startsWith(prefix)
+                : baseValue.toLowerCase().startsWith(prefix.toLowerCase())
+              if (!prefixCheck) {
                 return false
               }
             }
             if ('suffixSegment' in routeSegment) {
-              if (
-                !baseSegments[baseSegments.length - 1]?.value.endsWith(suffix)
-              ) {
+              const suffixCheck = matchLocation.caseSensitive
+                ? baseSegments[baseSegments.length - 1]?.value.endsWith(suffix)
+                : baseSegments[baseSegments.length - 1]?.value.toLowerCase().endsWith(suffix.toLowerCase())
+              if (!suffixCheck) {
                 return false
               }
             }
@@ -586,11 +590,21 @@ export function matchByPath(
 
             // Check if the base segment starts with prefix and ends with suffix
             const baseValue = baseSegment.value
-            if (prefix && !baseValue.startsWith(prefix)) {
-              return false
+            if (prefix) {
+              const prefixCheck = matchLocation.caseSensitive
+                ? baseValue.startsWith(prefix)
+                : baseValue.toLowerCase().startsWith(prefix.toLowerCase())
+              if (!prefixCheck) {
+                return false
+              }
             }
-            if (suffix && !baseValue.endsWith(suffix)) {
-              return false
+            if (suffix) {
+              const suffixCheck = matchLocation.caseSensitive
+                ? baseValue.endsWith(suffix)
+                : baseValue.toLowerCase().endsWith(suffix.toLowerCase())
+              if (!suffixCheck) {
+                return false
+              }
             }
 
             let paramValue = baseValue

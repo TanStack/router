@@ -2335,6 +2335,10 @@ export class RouterCore<
                       triggerOnReady()
                     } catch {}
                   }, pendingMs)
+                  
+                  // Store reference for cleanup in error scenarios
+                  pendingTimeoutRef = pendingTimeout
+                  
                   updateMatch(matchId, (prev) => ({
                     ...prev,
                     pendingTimeout,
@@ -2478,6 +2482,9 @@ export class RouterCore<
                   let loaderIsRunningAsync = false
                   const route = this.looseRoutesById[routeId]!
 
+                  // Store reference to timeout for cleanup in error scenarios
+                  let pendingTimeoutRef: NodeJS.Timeout | undefined
+
                   const executeHead = async () => {
                     const match = this.getMatch(matchId)
                     // in case of a redirecting match during preload, the match does not exist
@@ -2516,23 +2523,24 @@ export class RouterCore<
                     }
                   }
 
-                  const prevMatch = this.getMatch(matchId)!
-                  if (shouldSkipLoader(matchId)) {
-                    if (this.isServer) {
-                      const head = await executeHead()
-                      updateMatch(matchId, (prev) => ({
-                        ...prev,
-                        ...head,
-                      }))
-                      this.serverSsr?.onMatchSettled({
-                        router: this,
-                        match: this.getMatch(matchId)!,
-                      })
-                      return this.getMatch(matchId)!
-                    } else {
-                      await potentialPendingMinPromise()
+                  try {
+                    const prevMatch = this.getMatch(matchId)!
+                    if (shouldSkipLoader(matchId)) {
+                      if (this.isServer) {
+                        const head = await executeHead()
+                        updateMatch(matchId, (prev) => ({
+                          ...prev,
+                          ...head,
+                        }))
+                        this.serverSsr?.onMatchSettled({
+                          router: this,
+                          match: this.getMatch(matchId)!,
+                        })
+                        return this.getMatch(matchId)!
+                      } else {
+                        await potentialPendingMinPromise()
+                      }
                     }
-                  }
                   // there is a loaderPromise, so we are in the middle of a load
                   else if (prevMatch.loaderPromise) {
                     // do not block if we already have stale data we can show
@@ -2766,23 +2774,33 @@ export class RouterCore<
                     loaderPromise?.resolve()
                     loadPromise?.resolve()
                   }
-
-                  updateMatch(matchId, (prev) => {
-                    clearTimeout(prev.pendingTimeout)
-                    return {
-                      ...prev,
-                      isFetching: loaderIsRunningAsync
-                        ? prev.isFetching
-                        : false,
-                      loaderPromise: loaderIsRunningAsync
-                        ? prev.loaderPromise
-                        : undefined,
-                      invalid: false,
-                      pendingTimeout: undefined,
-                      _dehydrated: undefined,
-                      _forcePending: undefined,
+                  } catch (error) {
+                    // Re-throw the error after cleanup
+                    throw error
+                  } finally {
+                    // Always clean up the timeout to prevent memory leaks
+                    if (pendingTimeoutRef) {
+                      clearTimeout(pendingTimeoutRef)
+                      pendingTimeoutRef = undefined
                     }
-                  })
+                    
+                    updateMatch(matchId, (prev) => {
+                      clearTimeout(prev.pendingTimeout)
+                      return {
+                        ...prev,
+                        isFetching: loaderIsRunningAsync
+                          ? prev.isFetching
+                          : false,
+                        loaderPromise: loaderIsRunningAsync
+                          ? prev.loaderPromise
+                          : undefined,
+                        invalid: false,
+                        pendingTimeout: undefined,
+                        _dehydrated: undefined,
+                        _forcePending: undefined,
+                      }
+                    })
+                  }
                   return this.getMatch(matchId)!
                 })(),
               )
