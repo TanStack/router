@@ -7,10 +7,12 @@ import type { Options as ViteReactOptions } from '@vitejs/plugin-react'
 
 export type WithReactPlugin = {
   react?: ViteReactOptions
+  customViteReactPlugin?: boolean
 }
 
 const frameworkPlugin = {
   react: z.custom<ViteReactOptions>().optional(),
+  customViteReactPlugin: z.boolean().optional().default(false),
 }
 
 // eslint-disable-next-line unused-imports/no-unused-vars
