@@ -17,6 +17,15 @@ export function TanStackStartVitePlugin(
     WithReactPlugin
   const options: OptionsWithReact = getTanStackStartOptions(opts)
 
+  if (opts?.customViteReactPlugin !== true) {
+    console.warn(
+      `please add the vite-react plugin to your Vite config and set 'customViteReactPlugin: true'`,
+    )
+    console.warn(
+      `TanStack Start will not configure the vite-react plugin in future anymore.`,
+    )
+  }
+
   return [
     TanStackStartVitePluginCore(
       {
@@ -61,7 +70,7 @@ export default createStartHandler({
       },
       options,
     ),
-    viteReact(options.react),
+    !opts?.customViteReactPlugin && viteReact(options.react),
   ]
 }
 
