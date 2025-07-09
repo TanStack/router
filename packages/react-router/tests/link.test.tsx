@@ -1383,6 +1383,132 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/posts/id1')
   })
 
+  test('when navigating from /posts/$postId to "/"', async () => {
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <Link to="/">Home</Link>
+            <Link to="/posts">Posts</Link>
+            <Outlet />
+          </>
+        )
+      }
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <>
+          <h1>Posts</h1>
+          <Link to="/posts/$postId" params={{ postId: 'id1' }}>
+            To first post
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      component: PostsComponent,
+    })
+
+    const PostsIndexComponent = () => {
+      return (
+        <>
+          <h1>Posts Index</h1>
+          <Link from="/posts/" to="./$postId" params={{ postId: 'id1' }}>
+            To the first post
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsIndexRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '/',
+      component: PostsIndexComponent,
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span>Params: {params.postId}</span>
+          <Link to="/">Index</Link>
+        </>
+      )
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      component: PostComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        postsRoute.addChildren([postsIndexRoute, postRoute]),
+      ]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    expect(postsLink).toHaveAttribute('href', '/posts')
+
+    await act(() => fireEvent.click(postsLink))
+
+    const postsText = await screen.findByText('Posts Index')
+    expect(postsText).toBeInTheDocument()
+
+    const postLink = await screen.findByRole('link', {
+      name: 'To the first post',
+    })
+
+    expect(postLink).toHaveAttribute('href', '/posts/id1')
+
+    await act(() => fireEvent.click(postLink))
+
+    const paramText = await screen.findByText('Params: id1')
+    expect(paramText).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts/id1')
+
+    const homeLink = await screen.findByRole('link', {
+      name: 'Home',
+    })
+
+    const consoleWarnSpy = vi.spyOn(console, 'warn')
+
+    await act(() => fireEvent.click(homeLink))
+
+    expect(window.location.pathname).toBe('/')
+
+    expect(consoleWarnSpy).not.toHaveBeenCalledWith(
+      'Could not find match for from: /posts',
+    )
+
+    consoleWarnSpy.mockRestore()
+  })
+
   test('when navigating from /posts to ../posts/$postId', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({

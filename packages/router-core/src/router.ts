@@ -1419,11 +1419,11 @@ export class RouterCore<
       // We allow the caller to override the current location
       const currentLocation = dest._fromLocation || this.latestLocation
 
-      const allFromMatches = this.matchRoutes(currentLocation, {
+      const allCurrentLocationMatches = this.matchRoutes(currentLocation, {
         _buildLocation: true,
       })
 
-      const lastMatch = last(allFromMatches)!
+      const lastMatch = last(allCurrentLocationMatches)!
 
       // First let's find the starting pathname
       // By default, start with the current location
@@ -1442,11 +1442,20 @@ export class RouterCore<
         fromPath = currentLocation.pathname
       } else if (routeIsChanging && dest.from) {
         fromPath = dest.from
-        const existingFrom = [...allFromMatches].reverse().find((d) => {
+
+        const allFromMatches = this.getMatchedRoutes(dest.from, undefined).matchedRoutes;
+
+        const matchedFrom = [...allCurrentLocationMatches].reverse().find((d) => {
           return this.comparePaths(d.fullPath, fromPath)
         })
 
-        if (!existingFrom) {
+        const matchedCurrent = [...allFromMatches].reverse().find((d) => {
+          return this.comparePaths(d.fullPath, currentLocation.pathname)
+        })
+
+        // for from to be invalid it shouldn't just be unmatched to currentLocation
+        // but the currentLocation should also be unmatched to from
+        if (!matchedFrom && !matchedCurrent) {
           console.warn(`Could not find match for from: ${fromPath}`)
         }
       }
