@@ -1443,11 +1443,16 @@ export class RouterCore<
       } else if (routeIsChanging && dest.from) {
         fromPath = dest.from
 
-        const allFromMatches = this.getMatchedRoutes(dest.from, undefined).matchedRoutes;
+        const allFromMatches = this.getMatchedRoutes(
+          dest.from,
+          undefined,
+        ).matchedRoutes
 
-        const matchedFrom = [...allCurrentLocationMatches].reverse().find((d) => {
-          return this.comparePaths(d.fullPath, fromPath)
-        })
+        const matchedFrom = [...allCurrentLocationMatches]
+          .reverse()
+          .find((d) => {
+            return this.comparePaths(d.fullPath, fromPath)
+          })
 
         const matchedCurrent = [...allFromMatches].reverse().find((d) => {
           return this.comparePaths(d.fullPath, currentLocation.pathname)

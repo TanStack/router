@@ -1388,12 +1388,16 @@ describe('Link', () => {
       component: () => {
         return (
           <>
-            <Link to="/" data-testid='home-link'>Home</Link>
-            <Link to="/posts" data-testid='posts-link'>Posts</Link>
+            <Link to="/" data-testid="home-link">
+              Home
+            </Link>
+            <Link to="/posts" data-testid="posts-link">
+              Posts
+            </Link>
             <Outlet />
           </>
         )
-      }
+      },
     })
 
     const indexRoute = createRoute({
@@ -1402,7 +1406,7 @@ describe('Link', () => {
       component: () => {
         return (
           <>
-            <h1 data-testid='home-heading'>Index</h1>
+            <h1 data-testid="home-heading">Index</h1>
           </>
         )
       },
@@ -1412,7 +1416,11 @@ describe('Link', () => {
       return (
         <>
           <h1>Posts</h1>
-          <Link to="/posts/$postId" params={{ postId: 'id1' }} data-testid='post1-link'>
+          <Link
+            to="/posts/$postId"
+            params={{ postId: 'id1' }}
+            data-testid="post1-link"
+          >
             To first post
           </Link>
           <Outlet />
@@ -1429,7 +1437,7 @@ describe('Link', () => {
     const PostsIndexComponent = () => {
       return (
         <>
-          <h1 data-testid='posts-index-heading'>Posts Index</h1>
+          <h1 data-testid="posts-index-heading">Posts Index</h1>
           <Outlet />
         </>
       )
@@ -1445,7 +1453,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span data-testid='post-param'>Params: {params.postId}</span>
+          <span data-testid="post-param">Params: {params.postId}</span>
         </>
       )
     }
