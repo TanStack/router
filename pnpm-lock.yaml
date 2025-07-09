@@ -6599,7 +6599,7 @@ importers:
         specifier: workspace:*
         version: link:../router-core
       '@tanstack/solid-store':
-        specifier: ^0.7.0
+        specifier: 0.7.0
         version: 0.7.0(solid-js@1.9.5)
       isbot:
         specifier: ^5.1.22
