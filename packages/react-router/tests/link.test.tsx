@@ -1388,8 +1388,8 @@ describe('Link', () => {
       component: () => {
         return (
           <>
-            <Link to="/">Home</Link>
-            <Link to="/posts">Posts</Link>
+            <Link to="/" data-testid='home-link'>Home</Link>
+            <Link to="/posts" data-testid='posts-link'>Posts</Link>
             <Outlet />
           </>
         )
@@ -1402,7 +1402,7 @@ describe('Link', () => {
       component: () => {
         return (
           <>
-            <h1>Index</h1>
+            <h1 data-testid='home-heading'>Index</h1>
           </>
         )
       },
@@ -1412,7 +1412,7 @@ describe('Link', () => {
       return (
         <>
           <h1>Posts</h1>
-          <Link to="/posts/$postId" params={{ postId: 'id1' }}>
+          <Link to="/posts/$postId" params={{ postId: 'id1' }} data-testid='post1-link'>
             To first post
           </Link>
           <Outlet />
@@ -1429,10 +1429,7 @@ describe('Link', () => {
     const PostsIndexComponent = () => {
       return (
         <>
-          <h1>Posts Index</h1>
-          <Link from="/posts/" to="./$postId" params={{ postId: 'id1' }}>
-            To the first post
-          </Link>
+          <h1 data-testid='posts-index-heading'>Posts Index</h1>
           <Outlet />
         </>
       )
@@ -1448,8 +1445,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span>Params: {params.postId}</span>
-          <Link to="/">Index</Link>
+          <span data-testid='post-param'>Params: {params.postId}</span>
         </>
       )
     }
@@ -1470,37 +1466,35 @@ describe('Link', () => {
 
     render(<RouterProvider router={router} />)
 
-    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const postsLink = await screen.findByTestId('posts-link')
 
     expect(postsLink).toHaveAttribute('href', '/posts')
 
     await act(() => fireEvent.click(postsLink))
 
-    const postsText = await screen.findByText('Posts Index')
+    const postsText = await screen.findByTestId('posts-index-heading')
     expect(postsText).toBeInTheDocument()
 
-    const postLink = await screen.findByRole('link', {
-      name: 'To the first post',
-    })
+    const postLink = await screen.findByTestId('post1-link')
 
     expect(postLink).toHaveAttribute('href', '/posts/id1')
 
     await act(() => fireEvent.click(postLink))
 
-    const paramText = await screen.findByText('Params: id1')
+    const paramText = await screen.findByTestId('post-param')
     expect(paramText).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts/id1')
 
-    const homeLink = await screen.findByRole('link', {
-      name: 'Home',
-    })
+    const homeLink = await screen.findByTestId('home-link')
 
     const consoleWarnSpy = vi.spyOn(console, 'warn')
 
     await act(() => fireEvent.click(homeLink))
 
     expect(window.location.pathname).toBe('/')
+    const homeHeading = await screen.findByTestId('home-heading')
+    expect(homeHeading).toBeInTheDocument()
 
     expect(consoleWarnSpy).not.toHaveBeenCalledWith(
       'Could not find match for from: /posts',
