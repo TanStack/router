@@ -72,7 +72,7 @@
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
-    "solid-js": "^1.9.5",
+    "solid-js": "^1.9.7",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.2"
   },
