@@ -64,6 +64,6 @@ export function useElementScrollRestoration(
   }
 
   const restoreKey = getKey(router.latestLocation)
-  const byKey = scrollRestorationCache.state[restoreKey]
+  const byKey = scrollRestorationCache?.state[restoreKey]
   return byKey?.[elementSelector]
 }
