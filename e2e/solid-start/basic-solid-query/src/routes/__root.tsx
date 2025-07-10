@@ -7,7 +7,6 @@ import {
 } from '@tanstack/solid-router'
 import { SolidQueryDevtools } from '@tanstack/solid-query-devtools'
 import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
-import * as React from 'react'
 import type { QueryClient } from '@tanstack/solid-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
@@ -122,7 +121,6 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
           Deferred
         </Link>{' '}
         <Link
-          // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{
             class: 'font-bold',
