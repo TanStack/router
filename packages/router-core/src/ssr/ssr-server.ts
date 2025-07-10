@@ -3,12 +3,12 @@ import { ReadableStreamPlugin } from 'seroval-plugins/web'
 import invariant from 'tiny-invariant'
 import { createControlledPromise } from '../utils'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
+import { ShallowErrorPlugin } from './seroval-plugins'
 import type { AnyRouter } from '../router'
 import type { DehydratedMatch } from './ssr-client'
 import type { DehydratedRouter } from './client'
 import type { AnyRouteMatch } from '../Matches'
 import type { Manifest } from '../manifest'
-import { ShallowErrorPlugin } from './seroval-plugins'
 
 declare module '../router' {
   interface ServerSsr {

@@ -1,5 +1,5 @@
-import type { SerovalNode } from 'seroval'
 import { createPlugin } from 'seroval'
+import type { SerovalNode } from 'seroval'
 
 interface ErrorNode {
   message: SerovalNode
