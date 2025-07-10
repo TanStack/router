@@ -69,7 +69,8 @@ export function Transitioner() {
     if (router.isServer) return
     Solid.untrack(() => {
       if (
-        (typeof window !== 'undefined' && router.clientSsr) ||
+        // if we are hydrating from SSR, loading is triggered in ssr-client
+        (typeof window !== 'undefined' && router.ssr) ||
         (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
       ) {
         return

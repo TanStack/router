@@ -1,16 +1,11 @@
-import { isPlainObject } from './utils'
+import { isPlainObject } from '@tanstack/router-core'
 
-export interface TsrSerializer {
+export interface StartSerializer {
   stringify: (obj: unknown) => string
   parse: (str: string) => unknown
   encode: <T>(value: T) => T
   decode: <T>(value: T) => T
 }
-
-/**
- * @deprecated This is re-export of TsrSerializer which is the generic Router serializer interface. Going forward StartSerializer will be used specifically as a Tanstack Start serializer interface.
- */
-export interface StartSerializer extends TsrSerializer {}
 
 export type SerializerStringifyBy<T, TSerializable> = T extends TSerializable
   ? T
@@ -37,7 +32,7 @@ export type Serializable = Date | undefined | Error | FormData | bigint
 export type SerializerStringify<T> = SerializerStringifyBy<T, Serializable>
 
 export type SerializerParse<T> = SerializerParseBy<T, Serializable>
-export const tsrSerializer: TsrSerializer = {
+export const startSerializer: StartSerializer = {
   stringify: (value: any) =>
     JSON.stringify(value, function replacer(key, val) {
       const ogVal = this[key]
@@ -65,12 +60,15 @@ export const tsrSerializer: TsrSerializer = {
   encode: (value: any) => {
     // When encoding, dive first
     if (Array.isArray(value)) {
-      return value.map((v) => tsrSerializer.encode(v))
+      return value.map((v) => startSerializer.encode(v))
     }
 
     if (isPlainObject(value)) {
       return Object.fromEntries(
-        Object.entries(value).map(([key, v]) => [key, tsrSerializer.encode(v)]),
+        Object.entries(value).map(([key, v]) => [
+          key,
+          startSerializer.encode(v),
+        ]),
       )
     }
 
@@ -91,12 +89,15 @@ export const tsrSerializer: TsrSerializer = {
     }
 
     if (Array.isArray(value)) {
-      return value.map((v) => tsrSerializer.decode(v))
+      return value.map((v) => startSerializer.decode(v))
     }
 
     if (isPlainObject(value)) {
       return Object.fromEntries(
-        Object.entries(value).map(([key, v]) => [key, tsrSerializer.decode(v)]),
+        Object.entries(value).map(([key, v]) => [
+          key,
+          startSerializer.decode(v),
+        ]),
       )
     }
 

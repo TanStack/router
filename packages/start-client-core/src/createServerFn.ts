@@ -1,17 +1,20 @@
 import { default as invariant } from 'tiny-invariant'
 import { default as warning } from 'tiny-warning'
 import { isNotFound, isRedirect } from '@tanstack/router-core'
-import { mergeHeaders, tsrSerializer } from '@tanstack/router-core/ssr/client'
+import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 import { globalMiddleware } from './registerGlobalMiddleware'
 
+import { startSerializer } from './serializer'
+import type {
+  SerializerParse,
+  SerializerStringify,
+  SerializerStringifyBy,
+} from './serializer'
 import type {
   AnyValidator,
   Constrain,
   Expand,
   ResolveValidatorInput,
-  SerializerParse,
-  SerializerStringify,
-  SerializerStringifyBy,
   Validator,
 } from '@tanstack/router-core'
 import type { JsonResponse } from '@tanstack/router-core/ssr/client'
@@ -737,7 +740,7 @@ setServerFnStaticCache(() => {
         const [cachedResult, readError] = await fs
           .readFile(filePath, 'utf-8')
           .then((c) => [
-            tsrSerializer.parse(c) as {
+            startSerializer.parse(c) as {
               ctx: unknown
               error: any
             },
@@ -767,7 +770,7 @@ setServerFnStaticCache(() => {
       await fs.mkdir(path.dirname(filePath), { recursive: true })
 
       // Store the result with fs
-      await fs.writeFile(filePath, tsrSerializer.stringify(response))
+      await fs.writeFile(filePath, startSerializer.stringify(response))
     },
     fetchItem: async (ctx) => {
       const hash = jsonToFilenameSafeString(ctx.data)
@@ -780,7 +783,7 @@ setServerFnStaticCache(() => {
           method: 'GET',
         })
           .then((r) => r.text())
-          .then((d) => tsrSerializer.parse(d))
+          .then((d) => startSerializer.parse(d))
 
         staticClientCache?.set(url, result)
       }
@@ -802,7 +805,7 @@ export function extractFormDataContext(formData: FormData) {
   }
 
   try {
-    const context = tsrSerializer.parse(serializedContext)
+    const context = startSerializer.parse(serializedContext)
     return {
       context,
       data: formData,
