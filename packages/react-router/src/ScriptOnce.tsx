@@ -14,7 +14,7 @@ export function ScriptOnce({
 
   return (
     <script
-      className="tsr-once"
+      className="$tsr"
       dangerouslySetInnerHTML={{
         __html: [
           children,

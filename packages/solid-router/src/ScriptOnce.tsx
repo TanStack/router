@@ -14,7 +14,7 @@ export function ScriptOnce({
 
   return (
     <script
-      class="tsr-once"
+      class="$tsr"
       innerHTML={[
         children,
         (log ?? true) && process.env.NODE_ENV === 'development'

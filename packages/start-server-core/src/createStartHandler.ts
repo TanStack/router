@@ -12,10 +12,7 @@ import {
   processRouteTree,
   trimPath,
 } from '@tanstack/router-core'
-import {
-  attachRouterServerSsrUtils,
-  dehydrateRouter,
-} from '@tanstack/router-core/ssr/server'
+import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { getResponseHeaders, requestHandler } from './h3'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
@@ -206,7 +203,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
               return router.state.redirect
             }
 
-            dehydrateRouter(router)
+            await router.serverSsr!.dehydrate()
 
             const responseHeaders = getStartResponseHeaders({ router })
             const response = await cb({

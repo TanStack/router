@@ -653,10 +653,9 @@ export interface ServerSsr {
     getScript: () => string | Promise<string>,
     opts?: { logScript?: boolean },
   ) => Promise<void>
-  streamValue: (key: string, value: any) => void
-  streamedKeys: Set<string>
   isDehydrated: () => boolean
   onRenderFinished: (listener: () => void) => void
+  dehydrate: () => Promise<void>
 }
 
 export type AnyRouterWithContext<TContext> = RouterCore<
@@ -3009,10 +3008,6 @@ export class RouterCore<
   }
 
   serverSsr?: ServerSsr
-
-  clientSsr?: {
-    getStreamedValue: <T>(key: string) => T | undefined
-  }
 
   _handleNotFound = (
     matches: Array<AnyRouteMatch>,

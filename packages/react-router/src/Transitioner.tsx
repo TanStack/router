@@ -69,7 +69,8 @@ export function Transitioner() {
   // Try to load the initial location
   useLayoutEffect(() => {
     if (
-      (typeof window !== 'undefined' && router.clientSsr) ||
+      // if we are hydrating from SSR, loading is triggered in ssr-client
+      (typeof window !== 'undefined' && router.ssr) ||
       (mountLoadForRouter.current.router === router &&
         mountLoadForRouter.current.mounted)
     ) {

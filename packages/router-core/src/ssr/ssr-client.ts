@@ -1,5 +1,5 @@
 import invariant from 'tiny-invariant'
-import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
+import type { MakeRouteMatch } from '../Matches'
 import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
@@ -11,30 +11,23 @@ declare global {
   }
 }
 
-declare module '../router' {
-  interface RouterEvents {
-    onStreamedValue: {
-      type: 'onStreamedValue'
-      key: string
-    }
-  }
-}
 export interface TsrSsrGlobal {
-  r?: DehydratedRouter
-  // clean scripts
+  router?: DehydratedRouter
+  // clean scripts, shortened since this is sent for each streamed script
   c: () => void
-  v: Record<string, unknown>
 }
 
-function assignMatch(deyhydratedMatch: DehydratedMatch, match: AnyRouteMatch) {
-  match = {
-    ...match,
+function hydrateMatch(
+  deyhydratedMatch: DehydratedMatch,
+): Partial<MakeRouteMatch> {
+  return {
     id: deyhydratedMatch.i,
     __beforeLoadContext: deyhydratedMatch.b,
     loaderData: deyhydratedMatch.l,
     status: deyhydratedMatch.s,
     ssr: deyhydratedMatch.ssr,
     updatedAt: deyhydratedMatch.u,
+    error: deyhydratedMatch.e,
   }
 }
 export interface DehydratedMatch {
@@ -56,23 +49,14 @@ export interface DehydratedRouter {
 
 export async function hydrate(router: AnyRouter): Promise<any> {
   invariant(
-    window.$_TSR?.r,
-    'Expected to find a dehydrated data on window.$_TSR.r... but we did not. Please file an issue!',
+    window.$_TSR?.router,
+    'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
   )
 
-  const { manifest, dehydratedData, lastMatchId } = window.$_TSR.r
+  const { manifest, dehydratedData, lastMatchId } = window.$_TSR.router
 
   router.ssr = {
     manifest,
-  }
-
-  router.clientSsr = {
-    getStreamedValue: <T>(key: string): T | undefined => {
-      if (router.isServer) {
-        return undefined
-      }
-      return window.$_TSR?.v[key] as T | undefined
-    },
   }
 
   // Hydrate the router state
@@ -90,7 +74,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
   matches.forEach((match) => {
-    const dehydratedMatch = window.$_TSR!.r!.matches.find(
+    const dehydratedMatch = window.$_TSR!.router!.matches.find(
       (d) => d.i === match.id,
     )
     if (!dehydratedMatch) {
@@ -98,8 +82,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       return
     }
 
-    assignMatch(dehydratedMatch, match)
-    Object.assign(match, dehydratedMatch)
+    Object.assign(match, hydrateMatch(dehydratedMatch))
 
     if (match.ssr === false) {
       match._dehydrated = false
@@ -211,6 +194,5 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       })
     })
   }
-
   return routeChunkPromise
 }
