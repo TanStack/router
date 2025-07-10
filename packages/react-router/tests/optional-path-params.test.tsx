@@ -336,45 +336,47 @@ describe('React Router - Optional Path Parameters', () => {
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts/{-$category}/{-$slug}',
-        component: () => {
-          const navigate = useNavigate()
-          const params = postsRoute.useParams()
-
-          return (
-            <div>
-              <div data-testid="params">{JSON.stringify(params)}</div>
-              <button
-                data-testid="navigate-all"
-                onClick={() => navigate({ to: '/posts/{-$category}/{-$slug}' })}
-              >
-                All Posts
-              </button>
-              <button
-                data-testid="navigate-tech"
-                onClick={() =>
-                  navigate({
-                    to: '/posts/{-$category}/{-$slug}',
-                    params: { category: 'tech' },
-                  })
-                }
-              >
-                Tech Posts
-              </button>
-              <button
-                data-testid="navigate-specific"
-                onClick={() =>
-                  navigate({
-                    to: '/posts/{-$category}/{-$slug}',
-                    params: { category: 'tech', slug: 'hello-world' },
-                  })
-                }
-              >
-                Specific Post
-              </button>
-            </div>
-          )
-        },
+        component: Component,
       })
+
+      function Component() {
+        const navigate = useNavigate()
+        const params = postsRoute.useParams()
+
+        return (
+          <div>
+            <div data-testid="params">{JSON.stringify(params)}</div>
+            <button
+              data-testid="navigate-all"
+              onClick={() => navigate({ to: '/posts/{-$category}/{-$slug}' })}
+            >
+              All Posts
+            </button>
+            <button
+              data-testid="navigate-tech"
+              onClick={() =>
+                navigate({
+                  to: '/posts/{-$category}/{-$slug}',
+                  params: { category: 'tech' },
+                })
+              }
+            >
+              Tech Posts
+            </button>
+            <button
+              data-testid="navigate-specific"
+              onClick={() =>
+                navigate({
+                  to: '/posts/{-$category}/{-$slug}',
+                  params: { category: 'tech', slug: 'hello-world' },
+                })
+              }
+            >
+              Specific Post
+            </button>
+          </div>
+        )
+      }
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
@@ -405,32 +407,34 @@ describe('React Router - Optional Path Parameters', () => {
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts/{-$category}',
-        component: () => {
-          const navigate = useNavigate()
-          const params = postsRoute.useParams()
-
-          return (
-            <div>
-              <h1>Posts</h1>
-              <div data-testid="params">{JSON.stringify(params)}</div>
-              <button
-                data-testid="add-category"
-                onClick={() =>
-                  navigate({ to: '.', params: { category: 'tech' } })
-                }
-              >
-                Add Category
-              </button>
-              <button
-                data-testid="remove-category"
-                onClick={() => navigate({ to: '.', params: {} })}
-              >
-                Remove Category
-              </button>
-            </div>
-          )
-        },
+        component: Component,
       })
+
+      function Component() {
+        const navigate = useNavigate()
+        const params = postsRoute.useParams()
+
+        return (
+          <div>
+            <h1>Posts</h1>
+            <div data-testid="params">{JSON.stringify(params)}</div>
+            <button
+              data-testid="add-category"
+              onClick={() =>
+                navigate({ to: '.', params: { category: 'tech' } })
+              }
+            >
+              Add Category
+            </button>
+            <button
+              data-testid="remove-category"
+              onClick={() => navigate({ to: '.', params: {} })}
+            >
+              Remove Category
+            </button>
+          </div>
+        )
+      }
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
@@ -517,18 +521,20 @@ describe('React Router - Optional Path Parameters', () => {
           page: Number(search.page) || 1,
           sort: (search.sort as string) || 'date',
         }),
-        component: () => {
-          const params = postsRoute.useParams()
-          const search = useSearch({ strict: false })
-          return (
-            <div>
-              <h1>Posts</h1>
-              <div data-testid="params">{JSON.stringify(params)}</div>
-              <div data-testid="search">{JSON.stringify(search)}</div>
-            </div>
-          )
-        },
+        component: Component,
       })
+
+      function Component() {
+        const params = postsRoute.useParams()
+        const search = useSearch({ strict: false })
+        return (
+          <div>
+            <h1>Posts</h1>
+            <div data-testid="params">{JSON.stringify(params)}</div>
+            <div data-testid="search">{JSON.stringify(search)}</div>
+          </div>
+        )
+      }
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
