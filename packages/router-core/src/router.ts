@@ -1444,26 +1444,28 @@ export class RouterCore<
       } else if (routeIsChanging && dest.from) {
         fromPath = dest.from
 
-        const allFromMatches = this.getMatchedRoutes(
-          dest.from,
-          undefined,
-        ).matchedRoutes
+        // do this check only on navigations during test or development
+        if (process.env.NODE_ENV !== 'production' && dest._isNavigate) {
+          const allFromMatches = this.getMatchedRoutes(
+            dest.from,
+            undefined,
+          ).matchedRoutes
 
-        const matchedFrom = [...allCurrentLocationMatches]
-          .reverse()
-          .find((d) => {
-            return this.comparePaths(d.fullPath, fromPath)
+          const matchedFrom = [...allCurrentLocationMatches]
+            .reverse()
+            .find((d) => {
+              return this.comparePaths(d.fullPath, fromPath)
+            })
+
+          const matchedCurrent = [...allFromMatches].reverse().find((d) => {
+            return this.comparePaths(d.fullPath, currentLocation.pathname)
           })
 
-        const matchedCurrent = [...allFromMatches].reverse().find((d) => {
-          return this.comparePaths(d.fullPath, currentLocation.pathname)
-        })
-
-        // for from to be invalid it shouldn't just be unmatched to currentLocation
-        // but the currentLocation should also be unmatched to from
-        // do this check only on navigations
-        if (!!dest._isNavigate && !matchedFrom && !matchedCurrent) {
-          console.warn(`Could not find match for from: ${fromPath}`)
+          // for from to be invalid it shouldn't just be unmatched to currentLocation
+          // but the currentLocation should also be unmatched to from
+          if (!matchedFrom && !matchedCurrent) {
+            console.warn(`Could not find match for from: ${fromPath}`)
+          }
         }
       }
 
