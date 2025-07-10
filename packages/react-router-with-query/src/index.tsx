@@ -62,9 +62,9 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     },
   }
 
-  let queryStream: PushableStream
-
   if (router.isServer) {
+    const queryStream = createPushableStream()
+
     router.options.dehydrate =
       async (): Promise<DehydratedRouterQueryState> => {
         const ogDehydrated = await ogOptions.dehydrate?.()
@@ -83,8 +83,6 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
         return dehydratedRouter
       }
 
-    queryStream = createPushableStream()
-
     const ogClientOptions = queryClient.getDefaultOptions()
     queryClient.setDefaultOptions({
       ...ogClientOptions,
@@ -96,15 +94,18 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
 
     queryClient.getQueryCache().subscribe((event) => {
       if (event.type === 'added') {
+        // before rendering starts, we do not stream individual queries
+        // instead we dehydrate the entire query client in router's dehydrate()
         if (!router.serverSsr!.isDehydrated()) {
           return
         }
-        if (queryStream!.isClosed) {
+        if (queryStream.isClosed()) {
           console.warn(
             `tried to stream query ${event.query.queryHash} after stream was already closed`,
           )
+          return
         }
-        queryStream!.enqueue(
+        queryStream.enqueue(
           queryDehydrate(queryClient, {
             shouldDehydrateQuery: (query) => {
               if (query.queryHash === event.query.queryHash) {
@@ -127,13 +128,19 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
       queryHydrate(queryClient, dehydrated.dehydratedQueryClient)
 
       const reader = dehydrated.queryStream.getReader()
-      reader.read().then(function handle({ done, value }): Promise<void> {
-        queryHydrate(queryClient, value)
-        if (done) {
-          return Promise.resolve()
-        }
-        return reader.read().then(handle)
-      })
+      reader
+        .read()
+        .then(async function handle({ done, value }) {
+          queryHydrate(queryClient, value)
+          if (done) {
+            return
+          }
+          const result = await reader.read()
+          return handle(result)
+        })
+        .catch((err) => {
+          console.error('Error reading query stream:', err)
+        })
     }
     if (additionalOpts?.handleRedirects ?? true) {
       const ogMutationCacheConfig = queryClient.getMutationCache().config
@@ -176,27 +183,27 @@ type PushableStream = {
   stream: ReadableStream
   enqueue: (chunk: unknown) => void
   close: () => void
-  isClosed: boolean
+  isClosed: () => boolean
   error: (err: unknown) => void
 }
 
 function createPushableStream(): PushableStream {
-  let controllerRef: ReadableStreamDefaultController | undefined
+  let controllerRef: ReadableStreamDefaultController
   const stream = new ReadableStream({
     start(controller) {
       controllerRef = controller
     },
   })
-  let isClosed = false
+  let _isClosed = false
 
   return {
     stream,
-    enqueue: (chunk) => controllerRef?.enqueue(chunk),
+    enqueue: (chunk) => controllerRef.enqueue(chunk),
     close: () => {
       controllerRef?.close()
-      isClosed = true
+      _isClosed = true
     },
-    isClosed,
-    error: (err: unknown) => controllerRef?.error(err),
+    isClosed: () => _isClosed,
+    error: (err: unknown) => controllerRef.error(err),
   }
 }
