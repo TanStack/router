@@ -18,7 +18,7 @@
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "@tanstack/zod-adapter": "workspace:^",
-    "solid-js": "^1.9.7",
+    "solid-js": "^1.9.5",
     "redaxios": "^0.5.1",
     "postcss": "^8.5.1",
     "autoprefixer": "^10.4.20",

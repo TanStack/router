@@ -64,7 +64,7 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "goober": "^2.1.16",
-    "solid-js": "^1.9.7"
+    "solid-js": "^1.9.5"
   },
   "devDependencies": {
     "vite-plugin-solid": "^2.11.6"
