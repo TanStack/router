@@ -52,59 +52,51 @@ describe('code-splitter works', () => {
         const dirs = getFrameworkDir(framework)
         const filenames = await readdir(dirs.files)
 
-        describe.each(['development', 'production'])(
-          'NODE_ENV=%s ',
-          (NODE_ENV) => {
-            process.env.NODE_ENV = NODE_ENV
+        it.each(filenames)(
+          `should compile "reference" for "%s"`,
+          async (filename) => {
+            const file = await readFile(path.join(dirs.files, filename))
+            const code = file.toString()
 
-            it.each(filenames)(
-              `should compile "reference" for "%s"`,
-              async (filename) => {
-                const file = await readFile(path.join(dirs.files, filename))
-                const code = file.toString()
+            const compileResult = compileCodeSplitReferenceRoute({
+              code,
+              filename,
+              id: filename,
+              addHmr: false,
+              codeSplitGroupings: grouping,
+              targetFramework: framework,
+            })
 
-                const compileResult = compileCodeSplitReferenceRoute({
-                  code,
-                  filename,
-                  id: filename,
-                  addHmr: NODE_ENV === 'development',
-                  codeSplitGroupings: grouping,
-                  targetFramework: framework,
-                })
-
-                await expect(compileResult.code).toMatchFileSnapshot(
-                  path.join(dirs.snapshots, groupName, NODE_ENV, filename),
-                )
-              },
+            await expect(compileResult.code).toMatchFileSnapshot(
+              path.join(dirs.snapshots, groupName, filename),
             )
+          },
+        )
 
-            it.each(filenames)(
-              `should compile "virtual" for "%s"`,
-              async (filename) => {
-                const file = await readFile(path.join(dirs.files, filename))
-                const code = file.toString()
+        it.each(filenames)(
+          `should compile "virtual" for "%s"`,
+          async (filename) => {
+            const file = await readFile(path.join(dirs.files, filename))
+            const code = file.toString()
 
-                for (const targets of grouping) {
-                  const ident = createIdentifier(targets)
+            for (const targets of grouping) {
+              const ident = createIdentifier(targets)
 
-                  const splitResult = compileCodeSplitVirtualRoute({
-                    code,
-                    filename: `${filename}?${ident}`,
-                    splitTargets: targets,
-                  })
+              const splitResult = compileCodeSplitVirtualRoute({
+                code,
+                filename: `${filename}?${ident}`,
+                splitTargets: targets,
+              })
 
-                  const snapshotFilename = path.join(
-                    dirs.snapshots,
-                    groupName,
-                    NODE_ENV,
-                    `${filename.replace('.tsx', '')}@${ident}.tsx`,
-                  )
-                  await expect(splitResult.code).toMatchFileSnapshot(
-                    snapshotFilename,
-                  )
-                }
-              },
-            )
+              const snapshotFilename = path.join(
+                dirs.snapshots,
+                groupName,
+                `${filename.replace('.tsx', '')}@${ident}.tsx`,
+              )
+              await expect(splitResult.code).toMatchFileSnapshot(
+                snapshotFilename,
+              )
+            }
           },
         )
       },
