@@ -137,6 +137,7 @@ Optional path parameters are defined using curly braces with a dash prefix: `{-$
 
 ```tsx
 // Single optional parameter
+// src/routes/posts/{-$category}.tsx
 export const Route = createFileRoute('/posts/{-$category}')({
   component: PostsComponent,
 })
