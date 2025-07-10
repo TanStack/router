@@ -200,7 +200,7 @@ function createPushableStream(): PushableStream {
     stream,
     enqueue: (chunk) => controllerRef.enqueue(chunk),
     close: () => {
-      controllerRef?.close()
+      controllerRef.close()
       _isClosed = true
     },
     isClosed: () => _isClosed,
