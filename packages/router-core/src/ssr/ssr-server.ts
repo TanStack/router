@@ -25,28 +25,26 @@ declare module '../router' {
 export const GLOBAL_TSR = '$_TSR'
 const SCOPE_ID = 'tsr'
 
-export function getDehydratedMatch(match: AnyRouteMatch): DehydratedMatch {
-  const terseMatch: DehydratedMatch = {
+export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
+  const dehydratedMatch: DehydratedMatch = {
     i: match.id,
     u: match.updatedAt,
     s: match.status,
   }
 
-  if (match.__beforeLoadContext) {
-    terseMatch.b = match.__beforeLoadContext
-  }
-  if (match.loaderData) {
-    terseMatch.l = match.loaderData
-  }
+  const properties = [
+    ['__beforeLoadContext', 'b'],
+    ['loaderData', 'l'],
+    ['error', 'e'],
+    ['ssr', 'ssr'],
+  ] as const
 
-  if (match.error) {
-    terseMatch.e = match.error
+  for (const [key, shorthand] of properties) {
+    if (match[key] !== undefined) {
+      dehydratedMatch[shorthand] = match[key]
+    }
   }
-
-  if (match.ssr !== undefined) {
-    terseMatch.ssr = match.ssr
-  }
-  return terseMatch
+  return dehydratedMatch
 }
 
 export function attachRouterServerSsrUtils(
@@ -89,8 +87,7 @@ export function attachRouterServerSsrUtils(
     },
     dehydrate: async () => {
       invariant(!_dehydrated, 'router is already dehydrated!')
-      const matches: Array<DehydratedMatch> =
-        router.state.matches.map(getDehydratedMatch)
+      const matches = router.state.matches.map(dehydrateMatch)
 
       const dehydratedRouter: DehydratedRouter = {
         manifest: router.ssr!.manifest,
