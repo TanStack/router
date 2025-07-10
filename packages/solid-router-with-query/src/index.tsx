@@ -8,14 +8,14 @@ import { isRedirect } from '@tanstack/router-core'
 import type * as Solid from 'solid-js'
 import type { AnyRouter } from '@tanstack/solid-router'
 import type {
-  CreateQueryOptions,
   QueryClient,
   QueryKey,
   QueryObserverResult,
+  SolidQueryOptions
 } from '@tanstack/solid-query'
 
 // Extended query options to include the properties used in this file
-interface ExtendedQueryOptions extends CreateQueryOptions {
+interface ExtendedQueryOptions extends SolidQueryOptions {
   queryKey: QueryKey
   queryKeyHashFn?: (queryKey: QueryKey) => string
   __skipInjection?: boolean
@@ -52,7 +52,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     ...ogClientOptions,
     queries: {
       ...ogClientOptions.queries,
-      _experimental_beforeQuery: (options: CreateQueryOptions) => {
+      _experimental_beforeQuery: (options: SolidQueryOptions) => {
         // Call the original beforeQuery
         ;(ogClientOptions.queries as any)?._experimental_beforeQuery?.(options)
 
@@ -87,7 +87,7 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
         }
       },
       _experimental_afterQuery: (
-        options: CreateQueryOptions,
+        options: SolidQueryOptions,
         _result: QueryObserverResult,
       ) => {
         // On the server (if we're not skipping injection)

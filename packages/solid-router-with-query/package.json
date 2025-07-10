@@ -64,16 +64,16 @@
     "node": ">=12"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.6",
-    "solid-js": ">=1.9.5",
+    "vite-plugin-solid": "^2.11.7",
+    "solid-js": ">=1.9.7",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
-    "@tanstack/solid-query": ">=5.66.0"
+    "@tanstack/solid-query": ">=5.82.0"
   },
   "peerDependencies": {
-    "solid-js": ">=1.9.5",
-    "@tanstack/router-core": ">=1.114.7",
-    "@tanstack/solid-router": ">=1.43.2",
-    "@tanstack/solid-query": ">=5.49.2"
+    "solid-js": ">=1.9.7",
+    "@tanstack/router-core": ">=1.125.4",
+    "@tanstack/solid-router": ">=1.125.7",
+    "@tanstack/solid-query": ">=5.82.0"
   }
 }
