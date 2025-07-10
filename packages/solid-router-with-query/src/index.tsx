@@ -11,7 +11,7 @@ import type {
   QueryClient,
   QueryKey,
   QueryObserverResult,
-  SolidQueryOptions
+  SolidQueryOptions,
 } from '@tanstack/solid-query'
 
 // Extended query options to include the properties used in this file
