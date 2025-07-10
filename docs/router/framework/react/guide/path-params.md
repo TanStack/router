@@ -149,6 +149,7 @@ export const Route = createFileRoute('/posts/{-$category}/{-$slug}')({
 })
 
 // Mixed required and optional parameters
+// src/routes/users/$id/{-$tab}.tsx
 export const Route = createFileRoute('/users/$id/{-$tab}')({
   component: UserComponent,
 })
