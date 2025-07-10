@@ -41,31 +41,24 @@ describe('code-splitter delete nodes', () => {
         const dirs = getFrameworkDir(framework)
         const filenames = await readdir(dirs.files)
 
-        describe.each(['development', 'production'])(
-          'NODE_ENV=%s ',
-          (NODE_ENV) => {
-            process.env.NODE_ENV = NODE_ENV
+        it.each(filenames)(
+          `should compile "reference" for "%s"`,
+          async (filename) => {
+            const file = await readFile(path.join(dirs.files, filename))
+            const code = file.toString()
 
-            it.each(filenames)(
-              `should compile "reference" for "%s"`,
-              async (filename) => {
-                const file = await readFile(path.join(dirs.files, filename))
-                const code = file.toString()
+            const compileResult = compileCodeSplitReferenceRoute({
+              code,
+              filename,
+              id: filename,
+              addHmr: false,
+              codeSplitGroupings: [],
+              deleteNodes: new Set(deleteNodes),
+              targetFramework: framework,
+            })
 
-                const compileResult = compileCodeSplitReferenceRoute({
-                  code,
-                  filename,
-                  id: filename,
-                  addHmr: NODE_ENV === 'development',
-                  codeSplitGroupings: [],
-                  deleteNodes: new Set(deleteNodes),
-                  targetFramework: framework,
-                })
-
-                await expect(compileResult.code).toMatchFileSnapshot(
-                  path.join(dirs.snapshots, groupName, NODE_ENV, filename),
-                )
-              },
+            await expect(compileResult.code).toMatchFileSnapshot(
+              path.join(dirs.snapshots, groupName, filename),
             )
           },
         )

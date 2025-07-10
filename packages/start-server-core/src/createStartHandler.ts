@@ -110,7 +110,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       }
 
       const url = new URL(request.url)
-      const href = url.href.replace(url.origin, '')
+      const href = decodeURIComponent(url.href.replace(url.origin, ''))
 
       const APP_BASE = process.env.TSS_APP_BASE || '/'
 
