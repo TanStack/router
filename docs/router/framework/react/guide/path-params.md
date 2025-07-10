@@ -143,6 +143,7 @@ export const Route = createFileRoute('/posts/{-$category}')({
 })
 
 // Multiple optional parameters
+// src/routes/posts/{-$category}/{-$slug}.tsx
 export const Route = createFileRoute('/posts/{-$category}/{-$slug}')({
   component: PostComponent,
 })
