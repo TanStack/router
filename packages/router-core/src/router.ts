@@ -441,6 +441,7 @@ export interface BuildNextOptions {
   href?: string
   _fromLocation?: ParsedLocation
   unsafeRelative?: 'path'
+  _isNavigate?:boolean
 }
 
 type NavigationEventInfo = {
@@ -1460,7 +1461,8 @@ export class RouterCore<
 
         // for from to be invalid it shouldn't just be unmatched to currentLocation
         // but the currentLocation should also be unmatched to from
-        if (!matchedFrom && !matchedCurrent) {
+        // do this check only on navigations
+        if (!!dest._isNavigate && !matchedFrom && !matchedCurrent) {
           console.warn(`Could not find match for from: ${fromPath}`)
         }
       }
@@ -1791,6 +1793,7 @@ export class RouterCore<
       ...rest,
       href,
       to: to as string,
+      _isNavigate: true,
     })
   }
 

@@ -1504,9 +1504,7 @@ describe('Link', () => {
     const homeHeading = await screen.findByTestId('home-heading')
     expect(homeHeading).toBeInTheDocument()
 
-    expect(consoleWarnSpy).not.toHaveBeenCalledWith(
-      'Could not find match for from: /posts',
-    )
+    expect(consoleWarnSpy).not.toHaveBeenCalled()
 
     consoleWarnSpy.mockRestore()
   })
@@ -1882,6 +1880,167 @@ describe('Link', () => {
     expect(paramsText2).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
+  })
+
+
+  test('when navigating from /dashboard/posts/$postId to /dashboard/users', async () => {
+    const ErrorComponent = vi.fn(() => <div>Something went wrong!</div>)
+
+    const rootRoute = createRootRoute({
+      errorComponent: ErrorComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/dashboard" data-testid='dashboard-link'>dashboard</Link>
+          </>
+        )
+      },
+    })
+
+    const dashboardRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'dashboard',
+      component: () => {
+        return (
+          <>
+            <h1 data-testid='dashboard-heading'>dashboard</h1>
+            <Link to="/dashboard/posts" data-testid='posts-link'>posts</Link>
+            <Link to="/dashboard/users" data-testid='users-link'>users</Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <>
+          <h1 data-testid='posts-heading'>Posts</h1>
+          <Link to="/dashboard/posts/$postid" data-testid='post1-link' params={{ postid: 'id1' }}>Post1</Link>
+          <Link to="/dashboard/posts/$postid" data-testid='post2-link' params={{ postid: 'id2' }}>Post2</Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const UsersComponent = () => {
+      return (
+        <>
+          <h1 data-testid='users-heading'>Users</h1>
+          <Link to="/dashboard/users/$userid" data-testid='user1-link' params={{ userid: 'id1' }}>User1</Link>
+          <Link to="/dashboard/users/$userid" data-testid='user2-link' params={{ userid: 'id2' }}>User2</Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => dashboardRoute,
+      path: 'posts',
+      component: PostsComponent,
+    })
+
+    const usersRoute = createRoute({
+      getParentRoute: () => dashboardRoute,
+      path: 'users',
+      component: UsersComponent,
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span data-testid='post-component'>Params: {params.postId}</span>
+        </>
+      )
+    }
+
+    const UserComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span data-testid='user-component'>Params: {params.userId}</span>
+        </>
+      )
+    }
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postid',
+      component: PostComponent,
+    })
+
+    const userRoute = createRoute({
+      getParentRoute: () => usersRoute,
+      path: '$userid',
+      component: UserComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        dashboardRoute.addChildren([
+          postsRoute.addChildren([
+            postRoute,
+          ]),
+          usersRoute.addChildren([
+            userRoute,
+          ]),
+        ]),
+      ]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const dashboardLink = await screen.findByTestId('dashboard-link')
+
+    await act(() => fireEvent.click(dashboardLink))
+
+    const dashboardHeading = await screen.findByTestId('dashboard-heading');
+
+    expect(dashboardHeading).toBeInTheDocument()
+
+    const postsLink = await screen.findByTestId('posts-link')
+    await act(() => fireEvent.click(postsLink))
+
+    const postsHeading = await screen.findByTestId('posts-heading')
+
+    expect(window.location.pathname).toEqual('/dashboard/posts')
+    expect(postsHeading).toBeInTheDocument()
+
+    const post1Link = await screen.findByTestId('post1-link')
+    await act(() => fireEvent.click(post1Link))
+    const post1Heading = await screen.findByTestId('post-component')
+
+    expect(window.location.pathname).toEqual('/dashboard/posts/id1')
+    expect(post1Heading).toBeInTheDocument()
+
+    const consoleWarnSpy = vi.spyOn(console, 'warn')
+
+    const usersLink = await screen.findByTestId('users-link')
+    await act(() => fireEvent.click(usersLink))
+
+    const usersHeading = await screen.findByTestId('users-heading')
+
+    expect(window.location.pathname).toEqual('/dashboard/users')
+    expect(usersHeading).toBeInTheDocument()
+
+    const user1Link = await screen.findByTestId('user1-link')
+    await act(() => fireEvent.click(user1Link))
+    const user1Heading = await screen.findByTestId('user-component')
+
+    expect(window.location.pathname).toEqual('/dashboard/users/id1')
+    expect(user1Heading).toBeInTheDocument()
+
+    expect(consoleWarnSpy).not.toHaveBeenCalled()
+
+    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts/$postId to ./info and the current route is /posts/$postId/details', async () => {
@@ -2716,6 +2875,12 @@ describe('Link', () => {
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
     await act(() => fireEvent.click(postsLink))
+
+    const invoicesLink = await screen.findByRole('link', {
+      name: 'To Invoices',
+    })
+
+    fireEvent.click(invoicesLink)
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'Could not find match for from: /invoices',
