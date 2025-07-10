@@ -70,6 +70,7 @@
     "tiny-warning": "^1.0.3"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/vue": "^8.1.0",
     "@types/jsesc": "^3.0.3",
     "@vitejs/plugin-vue": "^5.2.3",
