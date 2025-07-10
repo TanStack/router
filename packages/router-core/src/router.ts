@@ -441,7 +441,7 @@ export interface BuildNextOptions {
   href?: string
   _fromLocation?: ParsedLocation
   unsafeRelative?: 'path'
-  _isNavigate?:boolean
+  _isNavigate?: boolean
 }
 
 type NavigationEventInfo = {

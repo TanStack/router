@@ -1882,7 +1882,6 @@ describe('Link', () => {
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
 
-
   test('when navigating from /dashboard/posts/$postId to /dashboard/users', async () => {
     const ErrorComponent = vi.fn(() => <div>Something went wrong!</div>)
 
@@ -1897,7 +1896,9 @@ describe('Link', () => {
         return (
           <>
             <h1>Index</h1>
-            <Link to="/dashboard" data-testid='dashboard-link'>dashboard</Link>
+            <Link to="/dashboard" data-testid="dashboard-link">
+              dashboard
+            </Link>
           </>
         )
       },
@@ -1909,9 +1910,13 @@ describe('Link', () => {
       component: () => {
         return (
           <>
-            <h1 data-testid='dashboard-heading'>dashboard</h1>
-            <Link to="/dashboard/posts" data-testid='posts-link'>posts</Link>
-            <Link to="/dashboard/users" data-testid='users-link'>users</Link>
+            <h1 data-testid="dashboard-heading">dashboard</h1>
+            <Link to="/dashboard/posts" data-testid="posts-link">
+              posts
+            </Link>
+            <Link to="/dashboard/users" data-testid="users-link">
+              users
+            </Link>
             <Outlet />
           </>
         )
@@ -1921,9 +1926,21 @@ describe('Link', () => {
     const PostsComponent = () => {
       return (
         <>
-          <h1 data-testid='posts-heading'>Posts</h1>
-          <Link to="/dashboard/posts/$postid" data-testid='post1-link' params={{ postid: 'id1' }}>Post1</Link>
-          <Link to="/dashboard/posts/$postid" data-testid='post2-link' params={{ postid: 'id2' }}>Post2</Link>
+          <h1 data-testid="posts-heading">Posts</h1>
+          <Link
+            to="/dashboard/posts/$postid"
+            data-testid="post1-link"
+            params={{ postid: 'id1' }}
+          >
+            Post1
+          </Link>
+          <Link
+            to="/dashboard/posts/$postid"
+            data-testid="post2-link"
+            params={{ postid: 'id2' }}
+          >
+            Post2
+          </Link>
           <Outlet />
         </>
       )
@@ -1932,9 +1949,21 @@ describe('Link', () => {
     const UsersComponent = () => {
       return (
         <>
-          <h1 data-testid='users-heading'>Users</h1>
-          <Link to="/dashboard/users/$userid" data-testid='user1-link' params={{ userid: 'id1' }}>User1</Link>
-          <Link to="/dashboard/users/$userid" data-testid='user2-link' params={{ userid: 'id2' }}>User2</Link>
+          <h1 data-testid="users-heading">Users</h1>
+          <Link
+            to="/dashboard/users/$userid"
+            data-testid="user1-link"
+            params={{ userid: 'id1' }}
+          >
+            User1
+          </Link>
+          <Link
+            to="/dashboard/users/$userid"
+            data-testid="user2-link"
+            params={{ userid: 'id2' }}
+          >
+            User2
+          </Link>
           <Outlet />
         </>
       )
@@ -1956,7 +1985,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span data-testid='post-component'>Params: {params.postId}</span>
+          <span data-testid="post-component">Params: {params.postId}</span>
         </>
       )
     }
@@ -1965,7 +1994,7 @@ describe('Link', () => {
       const params = useParams({ strict: false })
       return (
         <>
-          <span data-testid='user-component'>Params: {params.userId}</span>
+          <span data-testid="user-component">Params: {params.userId}</span>
         </>
       )
     }
@@ -1985,12 +2014,8 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([
         indexRoute,
         dashboardRoute.addChildren([
-          postsRoute.addChildren([
-            postRoute,
-          ]),
-          usersRoute.addChildren([
-            userRoute,
-          ]),
+          postsRoute.addChildren([postRoute]),
+          usersRoute.addChildren([userRoute]),
         ]),
       ]),
       history,
@@ -2002,7 +2027,7 @@ describe('Link', () => {
 
     await act(() => fireEvent.click(dashboardLink))
 
-    const dashboardHeading = await screen.findByTestId('dashboard-heading');
+    const dashboardHeading = await screen.findByTestId('dashboard-heading')
 
     expect(dashboardHeading).toBeInTheDocument()
 
