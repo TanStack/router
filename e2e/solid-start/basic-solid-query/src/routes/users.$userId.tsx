@@ -1,4 +1,4 @@
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
 import { ErrorComponent, createFileRoute } from '@tanstack/solid-router'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 
@@ -22,7 +22,7 @@ export function UserErrorComponent({ error }: ErrorComponentProps) {
 
 function UserComponent() {
   const params = Route.useParams()
-  const userQuery = createQuery(() => userQueryOptions(params().userId))
+  const userQuery = useQuery(() => userQueryOptions(params().userId))
   const user = userQuery.data
 
   return (

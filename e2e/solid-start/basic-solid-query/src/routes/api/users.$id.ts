@@ -1,9 +1,9 @@
 import { json } from '@tanstack/solid-start'
-import { createAPIFileRoute } from '@tanstack/solid-start/api'
+import { createServerFileRoute } from '@tanstack/solid-start/server'
 import axios from 'redaxios'
 import type { User } from '../../utils/users'
 
-export const APIRoute = createAPIFileRoute('/api/users/$id')({
+export const ServerRoute = createServerFileRoute('/api/users/$id').methods({
   GET: async ({ request, params }) => {
     console.info(`Fetching users by id=${params.id}... @`, request.url)
     try {

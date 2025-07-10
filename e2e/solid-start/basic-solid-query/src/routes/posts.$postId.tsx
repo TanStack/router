@@ -1,5 +1,5 @@
 import { ErrorComponent, Link, createFileRoute } from '@tanstack/solid-router'
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 
 import { postQueryOptions } from '~/utils/posts'
@@ -31,7 +31,7 @@ export function PostErrorComponent({ error }: ErrorComponentProps) {
 
 function PostComponent() {
   const params = Route.useParams()
-  const postQuery = createQuery(() => postQueryOptions(params().postId))
+  const postQuery = useQuery(() => postQueryOptions(params().postId))
 
   return (
     <div class="space-y-2">

@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
 import { postQueryOptions } from '../utils/posts'
 import { PostErrorComponent } from './posts.$postId'
 
@@ -22,7 +22,7 @@ export const Route = createFileRoute('/posts_/$postId/deep')({
 
 function PostDeepComponent() {
   const params = Route.useParams()
-  const postQuery = createQuery(() => postQueryOptions(params().postId))
+  const postQuery = useQuery(() => postQueryOptions(params().postId))
 
   return (
     <div class="p-2 space-y-2">

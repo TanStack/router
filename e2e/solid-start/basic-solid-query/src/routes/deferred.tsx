@@ -1,4 +1,4 @@
-import { queryOptions, createQuery } from '@tanstack/solid-query'
+import { queryOptions, useQuery } from '@tanstack/solid-query'
 import { createFileRoute } from '@tanstack/solid-router'
 import { Suspense, createSignal } from 'solid-js'
 
@@ -40,7 +40,7 @@ function Deferred() {
 }
 
 function DeferredQuery() {
-  const deferredQuery = createQuery(() => deferredQueryOptions())
+  const deferredQuery = useQuery(() => deferredQueryOptions())
 
   return (
     <div>

@@ -1,4 +1,4 @@
-import { createQuery } from '@tanstack/solid-query'
+import { useQuery } from '@tanstack/solid-query'
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 
 import { postsQueryOptions } from '~/utils/posts'
@@ -12,7 +12,7 @@ export const Route = createFileRoute('/posts')({
 })
 
 function PostsComponent() {
-  const postsQuery = createQuery(() => postsQueryOptions())
+  const postsQuery = useQuery(() => postsQueryOptions())
 
   return (
     <div class="p-2 flex gap-2">
