@@ -230,8 +230,12 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     throw router.getMatch(match.id)?.displayPendingPromise
   }
 
-  // see also triggerOnReady() in packages/router-core/src/router.ts
-  if (match.status === 'pending' || match._forcePending) {
+  if (match._forcePending) {
+    throw router.getMatch(match.id)?.minPendingPromise
+  }
+
+  // see also hydrate() in packages/router-core/src/ssr/ssr-client.ts
+  if (match.status === 'pending') {
     // We're pending, and if we have a minPendingMs, we need to wait for it
     const pendingMinMs =
       route.options.pendingMinMs ?? router.options.defaultPendingMinMs

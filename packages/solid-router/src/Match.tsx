@@ -238,7 +238,16 @@ export const MatchInner = (props: { matchId: string }): any => {
           return <>{displayPendingResult()}</>
         }}
       </Solid.Match>
-      <Solid.Match when={match().status === 'pending' || match()._forcePending}>
+      <Solid.Match when={match()._forcePending}>
+        {(_) => {
+          const [minPendingResult] = Solid.createResource(
+            () => router.getMatch(match().id)?.minPendingPromise,
+          )
+
+          return <>{minPendingResult()}</>
+        }}
+      </Solid.Match>
+      <Solid.Match when={match().status === 'pending'}>
         {(_) => {
           const pendingMinMs =
             route().options.pendingMinMs ?? router.options.defaultPendingMinMs

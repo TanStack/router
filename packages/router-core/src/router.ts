@@ -2064,40 +2064,6 @@ export class RouterCore<
     const triggerOnReady = async () => {
       if (!rendered) {
         rendered = true
-
-        // create a minPendingPromise for matches that have forcePending set to true
-        // usually the minPendingPromise is created in the Match component if a pending match is rendered
-        // however, this might be too late if the match synchronously resolves
-        if (!allPreload && !this.isServer) {
-          matches.forEach((match) => {
-            const {
-              id: matchId,
-              routeId,
-              _forcePending,
-              minPendingPromise,
-            } = match
-            const route = this.looseRoutesById[routeId]!
-            const pendingMinMs =
-              route.options.pendingMinMs ?? this.options.defaultPendingMinMs
-            if (_forcePending && pendingMinMs && !minPendingPromise) {
-              const minPendingPromise = createControlledPromise<void>()
-              updateMatch(matchId, (prev) => ({
-                ...prev,
-                minPendingPromise,
-              }))
-
-              setTimeout(() => {
-                minPendingPromise.resolve()
-                // We've handled the minPendingPromise, so we can delete it
-                updateMatch(matchId, (prev) => ({
-                  ...prev,
-                  minPendingPromise: undefined,
-                }))
-              }, pendingMinMs)
-            }
-          })
-        }
-
         await onReady?.()
       }
     }
@@ -2678,7 +2644,7 @@ export class RouterCore<
                     }
 
                     // If the route is successful and still fresh, just resolve
-                    const { status, invalid, _forcePending } =
+                    const { status, invalid } =
                       this.getMatch(matchId)!
                     loaderShouldRunAsync =
                       status === 'success' &&
@@ -2687,8 +2653,7 @@ export class RouterCore<
                       // Do nothing
                     } else if (
                       loaderShouldRunAsync &&
-                      !sync &&
-                      !_forcePending
+                      !sync
                     ) {
                       loaderIsRunningAsync = true
                       ;(async () => {
@@ -2714,9 +2679,6 @@ export class RouterCore<
                     ) {
                       await runLoader()
                     } else {
-                      if (_forcePending) {
-                        await potentialPendingMinPromise()
-                      }
                       // if the loader did not run, still update head.
                       // reason: parent's beforeLoad may have changed the route context
                       // and only now do we know the route context (and that the loader would not run)
@@ -2747,7 +2709,6 @@ export class RouterCore<
                       invalid: false,
                       pendingTimeout: undefined,
                       _dehydrated: undefined,
-                      _forcePending: undefined,
                     }
                   })
                   return this.getMatch(matchId)!

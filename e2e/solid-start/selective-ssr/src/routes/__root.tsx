@@ -1,5 +1,11 @@
 /// <reference types="vite/client" />
-import { Link, Outlet, createRootRoute } from '@tanstack/solid-router'
+import {
+  ClientOnly,
+  Link,
+  Outlet,
+  createRootRoute,
+  useRouterState,
+} from '@tanstack/solid-router'
 import { z } from 'zod'
 import type * as Solid from 'solid-js'
 import { ssrSchema } from '~/search'
@@ -110,6 +116,9 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
+  const routerState = useRouterState({
+    select: (state) => ({ isLoading: state.isLoading, status: state.status }),
+  })
   return (
     <>
       <div class="p-2 flex gap-2 text-lg">
@@ -123,6 +132,19 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
           Home
         </Link>
       </div>
+      <hr />
+      <ClientOnly>
+        <div>
+          router isLoading:{' '}
+          <b data-testid="router-isLoading">
+            {routerState().isLoading ? 'true' : 'false'}
+          </b>
+        </div>
+        <div>
+          router status:{' '}
+          <b data-testid="router-status">{routerState().status}</b>
+        </div>
+      </ClientOnly>
       <hr />
       {children}
     </>
