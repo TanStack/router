@@ -57,12 +57,16 @@ export async function getRouteNodes(
         return false
       }
 
-      if (routeFileIgnorePattern) {
-        return !d.name.match(routeFileIgnoreRegExp)
+      if (routeFilePrefix) {
+        if (routeFileIgnorePattern) {
+          return d.name.startsWith(routeFilePrefix) && !d.name.match(routeFileIgnoreRegExp)
+        }
+
+        return d.name.startsWith(routeFilePrefix)
       }
 
-      if (routeFilePrefix) {
-        return d.name.startsWith(routeFilePrefix)
+      if (routeFileIgnorePattern) {
+        return !d.name.match(routeFileIgnoreRegExp)
       }
 
       return true
