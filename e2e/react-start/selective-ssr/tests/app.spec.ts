@@ -32,12 +32,10 @@ test.describe('selective ssr', () => {
           await expect(page.getByTestId(`${route}-context`)).toContainText(
             expectedData!,
           )
-          await expect(page.getByTestId('router-isLoading')).toContainText(
-            'false',
-          )
-          await expect(page.getByTestId('router-status')).toContainText('idle')
         }),
       )
+      await expect(page.getByTestId('router-isLoading')).toContainText('false')
+      await expect(page.getByTestId('router-status')).toContainText('idle')
     })
   }
 })
