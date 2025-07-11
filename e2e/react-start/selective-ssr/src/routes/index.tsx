@@ -96,6 +96,26 @@ const testCases = [
       ...baseTestCase,
       search: {
         root: {
+          ssr: true,
+          expected: { data: 'server', render: 'server-and-client' },
+        },
+        posts: {
+          ssr: 'data-only',
+          expected: { data: 'server', render: 'client-only' },
+        },
+        postId: {
+          ssr: undefined,
+
+          expected: { data: 'server', render: 'client-only' },
+        },
+      },
+    }),
+  },
+  {
+    link: linkOptions({
+      ...baseTestCase,
+      search: {
+        root: {
           ssr: 'data-only',
           expected: { data: 'server', render: 'client-only' },
         },

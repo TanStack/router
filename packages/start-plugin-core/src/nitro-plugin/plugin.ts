@@ -150,8 +150,6 @@ async function buildNitroApp(
 
     const maskUrl = new URL(options.spa.maskPath, 'http://localhost')
 
-    maskUrl.searchParams.set('__TSS_SHELL', 'true')
-
     options.pages.push({
       path: maskUrl.toString().replace('http://localhost', ''),
       prerender: options.spa.prerender,

@@ -1,5 +1,7 @@
 import invariant from 'tiny-invariant'
-import type { MakeRouteMatch } from '../Matches'
+import { batch } from '@tanstack/store'
+import { createControlledPromise } from '../utils'
+import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
 import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
@@ -70,6 +72,29 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }),
   )
 
+  function setMatchForcePending(match: AnyRouteMatch) {
+    // usually the minPendingPromise is created in the Match component if a pending match is rendered
+    // however, this might be too late if the match synchronously resolves
+    const route = router.looseRoutesById[match.routeId]!
+    const pendingMinMs =
+      route.options.pendingMinMs ?? router.options.defaultPendingMinMs
+    if (pendingMinMs) {
+      const minPendingPromise = createControlledPromise<void>()
+      match.minPendingPromise = minPendingPromise
+      match._forcePending = true
+
+      setTimeout(() => {
+        minPendingPromise.resolve()
+        // We've handled the minPendingPromise, so we can delete it
+        router.updateMatch(match.id, (prev) => ({
+          ...prev,
+          minPendingPromise: undefined,
+          _forcePending: undefined,
+        }))
+      }, pendingMinMs)
+    }
+  }
+
   // Right after hydration and before the first render, we need to rehydrate each match
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
@@ -93,12 +118,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     if (match.ssr === 'data-only' || match.ssr === false) {
       if (firstNonSsrMatchIndex === undefined) {
         firstNonSsrMatchIndex = match.index
-        match._forcePending = true
+        setMatchForcePending(match)
       }
-    }
-
-    if (match.ssr === false) {
-      return
     }
   })
 
@@ -163,6 +184,17 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }),
   )
 
+  const isSpaMode = matches[matches.length - 1]!.id !== lastMatchId
+  const hasSsrFalseMatches = matches.some((m) => m.ssr === false)
+  // all matches have data from the server   and we are not in SPA mode so we don't need to kick of router.load()
+  if (!hasSsrFalseMatches && !isSpaMode) {
+    matches.forEach((match) => {
+      // remove the _dehydrate flag since we won't run router.load() which would remove it
+      match._dehydrated = undefined
+    })
+    return routeChunkPromise
+  }
+
   // schedule router.load() to run after the next tick so we can store the promise in the match before loading starts
   const loadPromise = Promise.resolve()
     .then(() => router.load())
@@ -170,27 +202,39 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       console.error('Error during router hydration:', err)
     })
 
-  // in SPA mode we need to keep the outermost match  pending until router.load() is finished
+  // in SPA mode we need to keep the first match below the root route pending until router.load() is finished
   // this will prevent that other pending components are rendered but hydration is not blocked
-  if (matches[matches.length - 1]!.id !== lastMatchId) {
-    const matchId = matches[0]!.id
-    router.updateMatch(matchId, (prev) => {
-      return {
-        ...prev,
-        _displayPending: true,
-        displayPendingPromise: loadPromise,
-        // make sure that the pending component is displayed for at least pendingMinMs
-        _forcePending: true,
-      }
-    })
-    // hide the pending component once the load is finished
+  if (isSpaMode) {
+    const match = matches[1]
+    invariant(
+      match,
+      'Expected to find a match below the root match in SPA mode.',
+    )
+    setMatchForcePending(match)
+
+    match._displayPending = true
+    match.displayPendingPromise = loadPromise
+
     loadPromise.then(() => {
-      router.updateMatch(matchId, (prev) => {
-        return {
-          ...prev,
-          _displayPending: undefined,
-          displayPendingPromise: undefined,
+      batch(() => {
+        // ensure router is not in status 'pending' anymore
+        // this usually happens in Transitioner but if loading synchronously resolves,
+        // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
+        if (router.__store.state.status === 'pending') {
+          router.__store.setState((s) => ({
+            ...s,
+            status: 'idle',
+            resolvedLocation: s.location,
+          }))
         }
+        // hide the pending component once the load is finished
+        router.updateMatch(match.id, (prev) => {
+          return {
+            ...prev,
+            _displayPending: undefined,
+            displayPendingPromise: undefined,
+          }
+        })
       })
     })
   }
