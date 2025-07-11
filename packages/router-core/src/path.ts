@@ -153,13 +153,13 @@ export function resolvePath({
     if (segment.type === 'optional-param') {
       const param = segment.value.substring(1)
       if (segment.prefixSegment && segment.suffixSegment) {
-        return `${segment.prefixSegment}{-${param}}${segment.suffixSegment}`
+        return `${segment.prefixSegment}{-$${param}}${segment.suffixSegment}`
       } else if (segment.prefixSegment) {
-        return `${segment.prefixSegment}{-${param}}`
+        return `${segment.prefixSegment}{-$${param}}`
       } else if (segment.suffixSegment) {
-        return `{-${param}}${segment.suffixSegment}`
+        return `{-$${param}}${segment.suffixSegment}`
       }
-      return `{-${param}}`
+      return `{-$${param}}`
     }
 
     if (segment.type === 'wildcard') {
@@ -401,8 +401,12 @@ export function interpolatePath({
       if (segment.type === 'optional-param') {
         const key = segment.value.substring(1)
 
-        // Check if optional parameter is missing or undefined
-        if (!(key in params) || params[key] == null) {
+        const segmentPrefix = segment.prefixSegment || ''
+        const segmentSuffix = segment.suffixSegment || ''
+
+        const anyPrefixOrSuffix = segmentPrefix || segmentSuffix
+        // Check if optional parameter is missing or undefined and if this segment has neither a prefix nor a suffix
+        if (!anyPrefixOrSuffix && (!(key in params) || params[key] == null)) {
           // For optional params, don't set isMissingParams flag
           // Return undefined to omit the entire segment
           return undefined
@@ -410,13 +414,11 @@ export function interpolatePath({
 
         usedParams[key] = params[key]
 
-        const segmentPrefix = segment.prefixSegment || ''
-        const segmentSuffix = segment.suffixSegment || ''
         if (leaveParams) {
           const value = encodeParam(segment.value)
           return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
         }
-        return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
+        return `${segmentPrefix}${encodeParam(key) ?? ''}${segmentSuffix}`
       }
 
       return segment.value

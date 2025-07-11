@@ -1,6 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { createMemoryHistory } from '@tanstack/history'
 import {
   Link,
   Outlet,
@@ -11,17 +10,12 @@ import {
   useNavigate,
   useSearch,
 } from '../src'
-import type { RouterHistory } from '@tanstack/history'
 
 describe('React Router - Optional Path Parameters', () => {
-  let history: RouterHistory
-
-  beforeEach(() => {
-    history = createMemoryHistory()
-  })
-
   afterEach(() => {
     cleanup()
+    vi.clearAllMocks()
+    window.history.replaceState(null, 'root', '/')
   })
 
   describe('Route matching with optional parameters', () => {
@@ -40,13 +34,12 @@ describe('React Router - Optional Path Parameters', () => {
           )
         },
       })
+      window.history.replaceState({}, '', '/posts')
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
-        history,
       })
 
-      history.push('/posts')
       render(<RouterProvider router={router} />)
 
       const paramsElement = await screen.findByTestId('params')
@@ -68,13 +61,12 @@ describe('React Router - Optional Path Parameters', () => {
           )
         },
       })
+      window.history.replaceState({}, '', '/posts/tech')
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
-        history,
       })
 
-      history.push('/posts/tech')
       render(<RouterProvider router={router} />)
 
       const paramsElement = await screen.findByTestId('params')
@@ -98,13 +90,12 @@ describe('React Router - Optional Path Parameters', () => {
           )
         },
       })
+      window.history.replaceState({}, '', '/posts/tech/hello-world')
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
-        history,
       })
 
-      history.push('/posts/tech/hello-world')
       render(<RouterProvider router={router} />)
 
       const paramsElement = await screen.findByTestId('params')
@@ -114,45 +105,41 @@ describe('React Router - Optional Path Parameters', () => {
       })
     })
 
-    it('should handle mixed required and optional parameters', async () => {
-      const rootRoute = createRootRoute()
-      const usersRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/users/$id/{-tab}',
-        component: () => {
-          const params = usersRoute.useParams()
-          return (
-            <div>
-              <h1>User Profile</h1>
-              <div data-testid="params">{JSON.stringify(params)}</div>
-            </div>
-          )
-        },
-      })
+    it.each([
+      { path: '/users/123', expectedParams: { id: '123' } },
+      {
+        path: '/users/123/settings',
+        expectedParams: { id: '123', tab: 'settings' },
+      },
+    ])(
+      'should handle mixed required and optional parameters',
+      async ({ path, expectedParams }) => {
+        const rootRoute = createRootRoute()
+        const usersRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/users/$id/{-$tab}',
+          component: () => {
+            const params = usersRoute.useParams()
+            return (
+              <div>
+                <h1>User Profile</h1>
+                <div data-testid="params">{JSON.stringify(params)}</div>
+              </div>
+            )
+          },
+        })
+        window.history.replaceState({}, '', path)
 
-      const testCases = [
-        { path: '/users/123', expectedParams: { id: '123' } },
-        {
-          path: '/users/123/settings',
-          expectedParams: { id: '123', tab: 'settings' },
-        },
-      ]
-
-      for (const { path, expectedParams } of testCases) {
         const router = createRouter({
           routeTree: rootRoute.addChildren([usersRoute]),
-          history,
         })
 
-        history.push(path)
-        const { unmount } = render(<RouterProvider router={router} />)
+        render(<RouterProvider router={router} />)
 
         const paramsElement = await screen.findByTestId('params')
         expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
-
-        unmount()
-      }
-    })
+      },
+    )
   })
 
   describe('Link component with optional parameters', () => {
@@ -199,7 +186,6 @@ describe('React Router - Optional Path Parameters', () => {
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
-        history,
       })
 
       render(<RouterProvider router={router} />)
@@ -216,13 +202,25 @@ describe('React Router - Optional Path Parameters', () => {
     })
 
     it('should navigate correctly with optional parameters', async () => {
-      const rootRoute = createRootRoute()
+      const rootRoute = createRootRoute({
+        component: () => {
+          return (
+            <div>
+              <h1>Root Layout</h1>
+              <Link to="/" data-testid="home-link">
+                Home
+              </Link>
+              <Outlet />
+            </div>
+          )
+        },
+      })
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
         component: () => (
           <>
-            <h1>Home</h1>
+            <h1 data-testid="home-heading">Home</h1>
             <Link to="/posts/{-$category}/{-$slug}" data-testid="posts-link">
               All Posts
             </Link>
@@ -253,31 +251,44 @@ describe('React Router - Optional Path Parameters', () => {
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
-        history,
       })
 
       render(<RouterProvider router={router} />)
+      {
+        await expect(
+          screen.findByTestId('home-heading'),
+        ).resolves.toBeInTheDocument()
+        // Test navigation to /posts
+        const postsLink = await screen.findByTestId('posts-link')
+        fireEvent.click(postsLink)
 
-      // Test navigation to /posts
-      const postsLink = await screen.findByTestId('posts-link')
-      fireEvent.click(postsLink)
+        await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
+        const paramsElement = await screen.findByTestId('params')
+        expect(JSON.parse(paramsElement.textContent!)).toEqual({})
+        expect(router.state.location.pathname).toBe('/posts')
+      }
 
-      await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
-      const paramsElement = await screen.findByTestId('params')
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({})
-      expect(router.state.location.pathname).toBe('/posts')
+      {
+        // Navigate back
+        const homeLink = await screen.findByTestId('home-link')
+        fireEvent.click(homeLink)
+        await expect(
+          screen.findByTestId('home-heading'),
+        ).resolves.toBeInTheDocument()
+      }
 
-      // Navigate back and test with parameters
-      history.push('/')
-      const techLink = await screen.findByTestId('tech-link')
-      fireEvent.click(techLink)
+      // test with parameters
+      {
+        const techLink = await screen.findByTestId('tech-link')
+        fireEvent.click(techLink)
 
-      await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
-      const updatedParamsElement = await screen.findByTestId('params')
-      expect(JSON.parse(updatedParamsElement.textContent!)).toEqual({
-        category: 'tech',
-      })
-      expect(router.state.location.pathname).toBe('/posts/tech')
+        await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
+        const updatedParamsElement = await screen.findByTestId('params')
+        expect(JSON.parse(updatedParamsElement.textContent!)).toEqual({
+          category: 'tech',
+        })
+        expect(router.state.location.pathname).toBe('/posts/tech')
+      }
     })
 
     it('should handle optional parameters with prefix and suffix', async () => {
@@ -317,7 +328,6 @@ describe('React Router - Optional Path Parameters', () => {
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, filesRoute]),
-        history,
       })
 
       render(<RouterProvider router={router} />)
@@ -377,14 +387,13 @@ describe('React Router - Optional Path Parameters', () => {
           </div>
         )
       }
+      // Start at a specific post
+      window.history.replaceState({}, '', '/posts/tech/hello-world')
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
-        history,
       })
 
-      // Start at a specific post
-      history.push('/posts/tech/hello-world')
       render(<RouterProvider router={router} />)
 
       // Test navigation scenarios
@@ -435,13 +444,12 @@ describe('React Router - Optional Path Parameters', () => {
           </div>
         )
       }
+      window.history.replaceState({}, '', '/posts')
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
-        history,
       })
 
-      history.push('/posts')
       render(<RouterProvider router={router} />)
 
       const addCategoryBtn = await screen.findByTestId('add-category')
@@ -458,59 +466,56 @@ describe('React Router - Optional Path Parameters', () => {
   })
 
   describe('complex routing scenarios', () => {
-    it('should handle nested routes with optional parameters', async () => {
-      const rootRoute = createRootRoute()
-      const postsRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/posts/{-$category}',
-        component: () => (
-          <div>
-            <h1>Posts Layout</h1>
-            <Outlet />
-          </div>
-        ),
-      })
-
-      const postRoute = createRoute({
-        getParentRoute: () => postsRoute,
-        path: '/{-$slug}',
-        component: () => {
-          const params = postsRoute.useParams()
-          return (
+    it.each([
+      { path: '/posts', expectedParams: {} },
+      { path: '/posts/tech', expectedParams: { category: 'tech' } },
+      {
+        path: '/posts/tech/hello-world',
+        expectedParams: { category: 'tech', slug: 'hello-world' },
+      },
+    ])(
+      'should handle nested routes with optional parameters',
+      async ({ path, expectedParams }) => {
+        const rootRoute = createRootRoute()
+        const postsRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/posts/{-$category}',
+          component: () => (
             <div>
-              <h2>Post Detail</h2>
-              <div data-testid="params">{JSON.stringify(params)}</div>
+              <h1>Posts Layout</h1>
+              <Outlet />
             </div>
-          )
-        },
-      })
+          ),
+        })
 
-      const testCases = [
-        { path: '/posts', expectedParams: {} },
-        { path: '/posts/tech', expectedParams: { category: 'tech' } },
-        {
-          path: '/posts/tech/hello-world',
-          expectedParams: { category: 'tech', slug: 'hello-world' },
-        },
-      ]
+        const postRoute = createRoute({
+          getParentRoute: () => postsRoute,
+          path: '/{-$slug}',
+          component: () => {
+            const params = postsRoute.useParams()
+            return (
+              <div>
+                <h2>Post Detail</h2>
+                <div data-testid="params">{JSON.stringify(params)}</div>
+              </div>
+            )
+          },
+        })
 
-      for (const { path, expectedParams } of testCases) {
+        window.history.replaceState({}, '', path)
+
         const router = createRouter({
           routeTree: rootRoute.addChildren([
             postsRoute.addChildren([postRoute]),
           ]),
-          history,
         })
 
-        history.push(path)
-        const { unmount } = render(<RouterProvider router={router} />)
+        render(<RouterProvider router={router} />)
 
         const paramsElement = await screen.findByTestId('params')
         expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
-
-        unmount()
-      }
-    })
+      },
+    )
 
     it('should work with search parameters', async () => {
       const rootRoute = createRootRoute()
@@ -536,12 +541,11 @@ describe('React Router - Optional Path Parameters', () => {
         )
       }
 
+      window.history.replaceState({}, '', '/posts/tech?page=2&sort=title')
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
-        history,
       })
 
-      history.push('/posts/tech?page=2&sort=title')
       render(<RouterProvider router={router} />)
 
       const paramsElement = await screen.findByTestId('params')
@@ -556,47 +560,44 @@ describe('React Router - Optional Path Parameters', () => {
       })
     })
 
-    it('should handle multiple consecutive optional parameters', async () => {
-      const rootRoute = createRootRoute()
-      const dateRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/{-year}/{-month}/{-day}',
-        component: () => {
-          const params = dateRoute.useParams()
-          return (
-            <div>
-              <h1>Date Route</h1>
-              <div data-testid="params">{JSON.stringify(params)}</div>
-            </div>
-          )
-        },
-      })
-
-      const testCases = [
-        { path: '/', expectedParams: {} },
-        { path: '/2023', expectedParams: { year: '2023' } },
-        { path: '/2023/12', expectedParams: { year: '2023', month: '12' } },
-        {
-          path: '/2023/12/25',
-          expectedParams: { year: '2023', month: '12', day: '25' },
-        },
-      ]
-
-      for (const { path, expectedParams } of testCases) {
-        const router = createRouter({
-          routeTree: rootRoute.addChildren([dateRoute]),
-          history,
+    it.each([
+      { path: '/', expectedParams: {} },
+      { path: '/2023', expectedParams: { year: '2023' } },
+      { path: '/2023/12', expectedParams: { year: '2023', month: '12' } },
+      {
+        path: '/2023/12/25',
+        expectedParams: { year: '2023', month: '12', day: '25' },
+      },
+    ])(
+      'should handle multiple consecutive optional parameters',
+      async ({ path, expectedParams }) => {
+        const rootRoute = createRootRoute()
+        const dateRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/{-year}/{-month}/{-day}',
+          component: () => {
+            const params = dateRoute.useParams()
+            return (
+              <div>
+                <h1>Date Route</h1>
+                <div data-testid="params">{JSON.stringify(params)}</div>
+              </div>
+            )
+          },
         })
 
-        history.push(path)
-        const { unmount } = render(<RouterProvider router={router} />)
+        window.history.replaceState({}, '', path)
+
+        const router = createRouter({
+          routeTree: rootRoute.addChildren([dateRoute]),
+        })
+
+        render(<RouterProvider router={router} />)
 
         const paramsElement = await screen.findByTestId('params')
         expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
-
-        unmount()
-      }
-    })
+      },
+    )
   })
 
   describe('edge cases and error handling', () => {
@@ -625,14 +626,13 @@ describe('React Router - Optional Path Parameters', () => {
           )
         },
       })
+      window.history.replaceState({}, '', '/posts')
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
-        history,
       })
 
       // Test without category
-      history.push('/posts')
       render(<RouterProvider router={router} />)
 
       await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
@@ -675,13 +675,12 @@ describe('React Router - Optional Path Parameters', () => {
           )
         },
       })
+      window.history.replaceState({}, '', '/posts/tech')
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([postsRoute]),
-        history,
       })
 
-      history.push('/posts/tech')
       render(<RouterProvider router={router} />)
 
       await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
