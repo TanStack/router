@@ -7,10 +7,12 @@ import type { Options as ViteSolidOptions } from 'vite-plugin-solid'
 
 export type WithSolidPlugin = {
   solid?: ViteSolidOptions
+  customViteSolidPlugin?: boolean
 }
 
 const frameworkPlugin = {
   solid: z.custom<ViteSolidOptions>().optional(),
+  customViteSolidPlugin: z.boolean().optional().default(false),
 }
 
 // eslint-disable-next-line unused-imports/no-unused-vars

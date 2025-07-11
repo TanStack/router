@@ -7,7 +7,6 @@ import type { Connect, DevEnvironment, Plugin, ViteDevServer } from 'vite'
 /* eslint-disable no-var */
 declare global {
   var TSS_INJECTED_HEAD_SCRIPTS: string | undefined
-  var TSS_VITE_DEV_SERVER: ViteDevServer | undefined
 }
 
 export function devServerPlugin(): Plugin {
@@ -25,7 +24,6 @@ export function devServerPlugin(): Plugin {
         return
       }
 
-      globalThis.TSS_VITE_DEV_SERVER = viteDevServer
       // upon server restart, reset the injected scripts
       globalThis.TSS_INJECTED_HEAD_SCRIPTS = undefined
       return () => {
@@ -34,6 +32,12 @@ export function devServerPlugin(): Plugin {
         viteDevServer.middlewares.use(async (req, res, next) => {
           // Create an H3Event to have it passed into the server entry
           // i.e: event => defineEventHandler(event)
+
+          // fix the request URL to match the original URL
+          // otherwise, the request URL will '/index.html'
+          if (req.originalUrl) {
+            req.url = req.originalUrl
+          }
           const event = createEvent(req, res)
 
           const serverEnv = viteDevServer.environments[

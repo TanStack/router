@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Link, Outlet } from '@tanstack/react-router'
+import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 
 export type PostType = {
   id: string
@@ -7,7 +7,7 @@ export type PostType = {
   body: string
 }
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts')({
   loader: async () => {
     console.info('Fetching posts...')
     await new Promise((r) =>
@@ -42,6 +42,18 @@ function PostsComponent() {
             </li>
           )
         })}
+        <li className="whitespace-nowrap">
+          <Link
+            to="/posts/$postId"
+            params={{
+              postId: 'does-not-exist',
+            }}
+            className="block py-1 text-blue-800 hover:text-blue-600"
+            activeProps={{ className: 'text-black font-bold' }}
+          >
+            <div>This post does not exist</div>
+          </Link>
+        </li>
       </ul>
       <hr />
       <Outlet />

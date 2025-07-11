@@ -221,13 +221,6 @@ const router = createRouter({
   scrollRestoration: true,
 })
 
-// Register things for typesafety
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: typeof router
-  }
-}
-
 const rootElement = document.getElementById('app')!
 
 if (!rootElement.innerHTML) {

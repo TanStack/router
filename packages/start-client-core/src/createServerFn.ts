@@ -1,19 +1,23 @@
 import { default as invariant } from 'tiny-invariant'
 import { default as warning } from 'tiny-warning'
 import { isNotFound, isRedirect } from '@tanstack/router-core'
-import { startSerializer } from './serializer'
-import { mergeHeaders } from './headers'
+import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 import { globalMiddleware } from './registerGlobalMiddleware'
+
+import { startSerializer } from './serializer'
+import type {
+  SerializerParse,
+  SerializerStringify,
+  SerializerStringifyBy,
+} from './serializer'
 import type {
   AnyValidator,
   Constrain,
   Expand,
   ResolveValidatorInput,
-  SerializerParse,
-  SerializerStringify,
-  SerializerStringifyBy,
   Validator,
 } from '@tanstack/router-core'
+import type { JsonResponse } from '@tanstack/router-core/ssr/client'
 import type { Readable } from 'node:stream'
 import type {
   AnyFunctionMiddleware,
@@ -276,10 +280,6 @@ export async function executeMiddleware(
     sendContext: opts.sendContext || {},
     context: opts.context || {},
   })
-}
-
-export interface JsonResponse<TData> extends Response {
-  json: () => Promise<TData>
 }
 
 export type CompiledFetcherFnOptions = {

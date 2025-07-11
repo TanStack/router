@@ -11,6 +11,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
@@ -58,6 +59,12 @@ const groupRoute = groupRouteImport.update({
   id: '/(group)',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char45824Char54620Char48124Char44397Route =
+  Char45824Char54620Char48124Char44397RouteImport.update({
+    id: '/대한민국',
+    path: '/대한민국',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
@@ -272,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/posts': typeof PostsRouteWithChildren
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
@@ -309,6 +317,7 @@ export interface FileRoutesByTo {
   '/anchor': typeof AnchorRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
@@ -349,6 +358,7 @@ export interface FileRoutesById {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/posts': typeof PostsRouteWithChildren
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/(group)': typeof groupRouteWithChildren
   '/(group)/_layout': typeof groupLayoutRouteWithChildren
@@ -393,6 +403,7 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/posts'
+    | '/대한민국'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
@@ -430,6 +441,7 @@ export interface FileRouteTypes {
     | '/anchor'
     | '/editing-a'
     | '/editing-b'
+    | '/대한민국'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
@@ -469,6 +481,7 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/posts'
+    | '/대한민국'
     | '/(another-group)/onlyrouteinside'
     | '/(group)'
     | '/(group)/_layout'
@@ -513,6 +526,7 @@ export interface RootRouteChildren {
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
   PostsRoute: typeof PostsRouteWithChildren
+  Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupRoute: typeof groupRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
@@ -541,6 +555,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof groupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts': {
@@ -928,6 +949,8 @@ const rootRouteChildren: RootRouteChildren = {
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
   PostsRoute: PostsRouteWithChildren,
+  Char45824Char54620Char48124Char44397Route:
+    Char45824Char54620Char48124Char44397Route,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,

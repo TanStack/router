@@ -1,4 +1,4 @@
-import { Await, notFound } from '@tanstack/react-router'
+import { Await, createFileRoute, notFound } from '@tanstack/react-router'
 import * as React from 'react'
 import type { PostType } from './route'
 
@@ -32,7 +32,7 @@ async function fetchComments(postId: string) {
   ).then((r) => r.json() as Promise<Array<CommentType>>)
 }
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId } }) => {
     const commentsPromise = fetchComments(postId)
     const post = await fetchPostById(postId)

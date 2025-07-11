@@ -178,13 +178,14 @@ describe('resolvePath', () => {
     ['/', '/a/b/c', './d', '/a/b/c/d'],
     ['/', '/a/b/c', './../d', '/a/b/d'],
     ['/', '/a/b/c/d', './../d', '/a/b/c/d'],
-    ['/', '/a/b/c', '../d', '/a/b/d'],
     ['/', '/a/b/c', '../../d', '/a/d'],
+    ['/', '/a/b/c', '../d', '/a/b/d'],
     ['/', '/a/b/c', '..', '/a/b'],
     ['/', '/a/b/c', '../..', '/a'],
     ['/', '/a/b/c', '../../..', '/'],
     ['/', '/a/b/c/', '../../..', '/'],
     ['/products', '/', '/products-list', '/products/products-list'],
+    ['/basepath', '/products', '.', '/basepath/products'],
   ])('resolves correctly', (base, a, b, eq) => {
     it(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
       expect(resolvePath({ basepath: base, base: a, to: b })).toEqual(eq)
@@ -481,7 +482,7 @@ describe('interpolatePath', () => {
     })
   })
 
-  describe('named params (prefix + suffix', () => {
+  describe('named params (prefix + suffix)', () => {
     it.each([
       {
         name: 'regular',
@@ -520,6 +521,48 @@ describe('interpolatePath', () => {
           params,
         }).interpolatedPath,
       ).toBe(result)
+    })
+  })
+
+  describe('should handle missing _splat parameter for', () => {
+    it.each([
+      {
+        name: 'basic splat route',
+        path: '/hello/$',
+        params: {},
+        expectedResult: '/hello',
+      },
+      {
+        name: 'splat route with prefix',
+        path: '/hello/prefix{$}',
+        params: {},
+        expectedResult: '/hello/prefix',
+      },
+      {
+        name: 'splat route with suffix',
+        path: '/hello/{$}suffix',
+        params: {},
+        expectedResult: '/hello/suffix',
+      },
+      {
+        name: 'splat route with prefix and suffix',
+        path: '/hello/prefix{$}suffix',
+        params: {},
+        expectedResult: '/hello/prefixsuffix',
+      },
+      {
+        name: 'nested splat route',
+        path: '/users/$id/$',
+        params: { id: '123' },
+        expectedResult: '/users/123',
+      },
+    ])('$name', ({ path, params, expectedResult }) => {
+      const result = interpolatePath({
+        path,
+        params,
+      })
+      expect(result.interpolatedPath).toBe(expectedResult)
+      expect(result.isMissingParams).toBe(true)
     })
   })
 })

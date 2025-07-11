@@ -1,24 +1,6 @@
 import * as React from 'react'
-import { Outlet } from './Match'
-import { ClientOnly } from './ClientOnly'
+import { isModuleNotFoundError } from '@tanstack/router-core'
 import type { AsyncRouteComponent } from './route'
-
-// If the load fails due to module not found, it may mean a new version of
-// the build was deployed and the user's browser is still using an old version.
-// If this happens, the old version in the user's browser would have an outdated
-// URL to the lazy module.
-// In that case, we want to attempt one window refresh to get the latest.
-function isModuleNotFoundError(error: any): boolean {
-  // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
-  // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
-  // safari: "Importing a module script failed."
-  if (typeof error?.message !== 'string') return false
-  return (
-    error.message.startsWith('Failed to fetch dynamically imported module') ||
-    error.message.startsWith('error loading dynamically imported module') ||
-    error.message.startsWith('Importing a module script failed')
-  )
-}
 
 export function lazyRouteComponent<
   T extends Record<string, any>,
@@ -26,7 +8,6 @@ export function lazyRouteComponent<
 >(
   importer: () => Promise<T>,
   exportName?: TKey,
-  ssr?: () => boolean,
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
@@ -36,10 +17,6 @@ export function lazyRouteComponent<
   let reload: boolean
 
   const load = () => {
-    if (typeof document === 'undefined' && ssr?.() === false) {
-      comp = (() => null) as any
-      return Promise.resolve()
-    }
     if (!loadPromise) {
       loadPromise = importer()
         .then((res) => {
@@ -51,6 +28,11 @@ export function lazyRouteComponent<
           // there's nothing we want to do about module not found during preload.
           // Record the error, the rest is handled during the render path.
           error = err
+          // If the load fails due to module not found, it may mean a new version of
+          // the build was deployed and the user's browser is still using an old version.
+          // If this happens, the old version in the user's browser would have an outdated
+          // URL to the lazy module.
+          // In that case, we want to attempt one window refresh to get the latest.
           if (isModuleNotFoundError(error)) {
             if (
               error instanceof Error &&
@@ -91,13 +73,6 @@ export function lazyRouteComponent<
       throw load()
     }
 
-    if (ssr?.() === false) {
-      return (
-        <ClientOnly fallback={<Outlet />}>
-          {React.createElement(comp, props)}
-        </ClientOnly>
-      )
-    }
     return React.createElement(comp, props)
   }
 

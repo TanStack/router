@@ -15,7 +15,7 @@ import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
-import { useMatches } from './Matches'
+import { useMatch } from './useMatch'
 import type {
   AnyRouter,
   Constrain,
@@ -112,6 +112,7 @@ export function useLinkProps<
     'state',
     'mask',
     'reloadDocument',
+    'unsafeRelative',
   ])
 
   // If this link simply reloads the current route,
@@ -132,10 +133,11 @@ export function useLinkProps<
     select: (s) => s.location.searchStr,
   })
 
-  // when `from` is not supplied, use the leaf route of the current matches as the `from` location
+  // when `from` is not supplied, use the route of the current match as the `from` location
   // so relative routing works as expected
-  const from = useMatches({
-    select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
+  const from = useMatch({
+    strict: false,
+    select: (match) => options.from ?? match.fullPath,
   })
 
   const _options = () => ({

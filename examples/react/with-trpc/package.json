@@ -3,28 +3,33 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build && tsc --noEmit",
-    "start": "vite start"
+    "dev": "pnpm tsx ./src/server/server.ts --watch",
+    "build": "pnpm run build:server && pnpm run build:client",
+    "build:client": "vite build && tsc --noEmit",
+    "build:server": "vite build --mode server",
+    "start": "NODE_ENV=production node dist/server/server.js"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.121.27",
-    "@tanstack/react-router-devtools": "^1.121.27",
-    "@tanstack/router-plugin": "^1.121.29",
-    "@tanstack/react-start": "^1.121.32",
-    "@trpc/client": "11.0.0-rc.772",
-    "@trpc/server": "11.0.0-rc.772",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "redaxios": "^0.5.1",
-    "postcss": "^8.5.1",
+    "@tanstack/react-router": "^1.127.0",
+    "@tanstack/react-router-devtools": "^1.127.0",
+    "@tanstack/router-plugin": "^1.127.0",
+    "@trpc/client": "^11.4.3",
+    "@trpc/server": "^11.4.3",
     "autoprefixer": "^10.4.20",
+    "express": "^4.21.2",
+    "postcss": "^8.5.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "redaxios": "^0.5.1",
     "tailwindcss": "^3.4.17",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/express": "^4.17.23",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^4.3.4"
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.20.3",
+    "vite": "^6.3.5"
   }
 }

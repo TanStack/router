@@ -1,1 +1,0 @@
-import { Route } from "imported-default-component.tsx";

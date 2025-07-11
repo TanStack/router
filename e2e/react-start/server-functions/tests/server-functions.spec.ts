@@ -315,3 +315,27 @@ test('raw response', async ({ page }) => {
 
   await expect(page.getByTestId('response')).toContainText(expectedValue)
 })
+;[{ mode: 'js' }, { mode: 'no-js' }].forEach(({ mode }) => {
+  test(`Server function can redirect when sending formdata: mode = ${mode}`, async ({
+    page,
+  }) => {
+    await page.goto('/formdata-redirect?mode=' + mode)
+
+    await page.waitForLoadState('networkidle')
+    const expected =
+      (await page
+        .getByTestId('expected-submit-post-formdata-server-fn-result')
+        .textContent()) || ''
+    expect(expected).not.toBe('')
+
+    await page.getByTestId('test-submit-post-formdata-fn-calls-btn').click()
+
+    await page.waitForLoadState('networkidle')
+
+    await expect(
+      page.getByTestId('formdata-redirect-target-name'),
+    ).toContainText(expected)
+
+    expect(page.url().endsWith(`/formdata-redirect/target/${expected}`))
+  })
+})

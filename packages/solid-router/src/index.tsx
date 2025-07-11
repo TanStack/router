@@ -38,12 +38,6 @@ export {
 } from '@tanstack/router-core'
 
 export type {
-  StartSerializer,
-  Serializable,
-  SerializerParse,
-  SerializerParseBy,
-  SerializerStringify,
-  SerializerStringifyBy,
   DeferredPromiseState,
   DeferredPromise,
   ParsedLocation,
@@ -92,10 +86,6 @@ export type {
   SearchSerializer,
   SearchParser,
   TrailingSlashOption,
-  ExtractedEntry,
-  ExtractedStream,
-  ExtractedPromise,
-  StreamState,
   Manifest,
   RouterManagedTag,
   ControlledPromise,
@@ -208,8 +198,6 @@ export type {
   RouterConstructorOptions,
   ControllablePromise,
   InjectedHtmlEntry,
-  RouterErrorSerializer,
-  SerializerExtensions,
   CreateFileRoute,
   CreateLazyFileRoute,
 } from '@tanstack/router-core'
@@ -293,7 +281,6 @@ export {
 export type {
   AnyRootRoute,
   SolidNode,
-  SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,
   ErrorRouteComponent,

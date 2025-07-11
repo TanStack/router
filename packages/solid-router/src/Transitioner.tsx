@@ -66,9 +66,11 @@ export function Transitioner() {
 
   // Try to load the initial location
   Solid.createRenderEffect(() => {
+    if (router.isServer) return
     Solid.untrack(() => {
       if (
-        (typeof window !== 'undefined' && router.clientSsr) ||
+        // if we are hydrating from SSR, loading is triggered in ssr-client
+        (typeof window !== 'undefined' && router.ssr) ||
         (mountLoadForRouter.router === router && mountLoadForRouter.mounted)
       ) {
         return

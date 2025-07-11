@@ -53,7 +53,8 @@ export interface ParsedPath {
 export interface HistoryState {}
 
 export type ParsedHistoryState = HistoryState & {
-  key?: string
+  key?: string // TODO: Remove in v2 - use __TSR_key instead
+  __TSR_key?: string
   __TSR_index: number
 }
 
@@ -266,9 +267,11 @@ function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
   if (!state) {
     state = {} as HistoryState
   }
+  const key = createRandomKey()
   return {
     ...state,
-    key: createRandomKey(),
+    key, // TODO: Remove in v2 - use __TSR_key instead
+    __TSR_key: key,
     [stateIndexKey]: index,
   } as ParsedHistoryState
 }
@@ -316,11 +319,13 @@ export function createBrowserHistory(opts?: {
       ))
 
   // Ensure there is always a key to start
-  if (!win.history.state?.key) {
+  if (!win.history.state?.__TSR_key && !win.history.state?.key) {
+    const addedKey = createRandomKey()
     win.history.replaceState(
       {
         [stateIndexKey]: 0,
-        key: createRandomKey(),
+        key: addedKey, // TODO: Remove in v2 - use __TSR_key instead
+        __TSR_key: addedKey,
       },
       '',
     )
@@ -629,6 +634,8 @@ export function parseHref(
   const hashIndex = href.indexOf('#')
   const searchIndex = href.indexOf('?')
 
+  const addedKey = createRandomKey()
+
   return {
     href,
     pathname: href.substring(
@@ -646,7 +653,7 @@ export function parseHref(
       searchIndex > -1
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
-    state: state || { [stateIndexKey]: 0, key: createRandomKey() },
+    state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey },
   }
 }
 

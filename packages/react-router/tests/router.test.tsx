@@ -1458,6 +1458,7 @@ describe('search params in URL', () => {
           validateSearch,
           errorComponent: ({ error }) => {
             errorSpy = error
+            return null
           },
         })
 
@@ -1477,6 +1478,7 @@ describe('search params in URL', () => {
           validateSearch,
           errorComponent: ({ error }) => {
             errorSpy = error
+            return null
           },
         })
 

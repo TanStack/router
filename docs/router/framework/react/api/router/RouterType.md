@@ -139,11 +139,12 @@ Navigates to a new location.
 
 Invalidates route matches by forcing their `beforeLoad` and `load` functions to be called again.
 
-- Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean, sync?: boolean}) => Promise<void>`
+- Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean, sync?: boolean, forcePending?: boolean }) => Promise<void>`
 - This is useful any time your loader data might be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up-to-date.
 - if `filter` is not supplied, all matches will be invalidated
 - if `filter` is supplied, only matches for which `filter` returns `true` will be invalidated.
 - if `sync` is true, the promise returned by this function will only resolve once all loaders have finished.
+- if `forcePending` is true, the invalidated matches will be put into `'pending'` state regardless whether they are in `'error'` state or not.
 - You might also want to invalidate the Router if you imperatively `reset` the router's `CatchBoundary` to trigger loaders again.
 
 ### `.clearCache` method

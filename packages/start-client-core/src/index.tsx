@@ -1,16 +1,22 @@
-export { mergeHeaders } from './headers'
+export type {
+  DehydratedRouter,
+  JsonResponse,
+} from '@tanstack/router-core/ssr/client'
+
+export { hydrate, json, mergeHeaders } from '@tanstack/router-core/ssr/client'
+
 export { startSerializer } from './serializer'
-export {
-  type DehydratedRouter,
-  type ClientExtractedBaseEntry,
-  type StartSsrGlobal,
-  type ClientExtractedEntry,
-  type SsrMatch,
-  type ClientExtractedPromise,
-  type ClientExtractedStream,
-  type ResolvePromiseState,
-  hydrate,
-} from './ssr-client'
+
+export type {
+  StartSerializer,
+  Serializable,
+  SerializerParse,
+  SerializerParseBy,
+  SerializerStringify,
+  SerializerStringifyBy,
+  SerializerExtensions,
+} from './serializer'
+
 export {
   createIsomorphicFn,
   type IsomorphicFn,
@@ -19,8 +25,7 @@ export {
   type IsomorphicFnBase,
 } from './createIsomorphicFn'
 export { serverOnly, clientOnly } from './envOnly'
-export { type JsonResponse, createServerFn } from './createServerFn'
-export { json } from './json'
+export { createServerFn } from './createServerFn'
 export {
   createMiddleware,
   type IntersectAllValidatorInputs,
@@ -55,8 +60,6 @@ export {
   globalMiddleware,
 } from './registerGlobalMiddleware'
 export type {
-  ServerFn as FetchFn,
-  ServerFnCtx as FetchFnCtx,
   CompiledFetcherFnOptions,
   CompiledFetcherFn,
   Fetcher,

@@ -11,7 +11,6 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { ReactNode } from './route'
 import type {
   AnyRouter,
   DeepPartial,
@@ -35,6 +34,7 @@ declare module '@tanstack/router-core' {
     meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
     links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
     scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
+    styles?: Array<React.JSX.IntrinsicElements['style'] | undefined>
     headScripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
   }
 }
@@ -48,7 +48,7 @@ export function Matches() {
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && router.clientSsr)
+    router.isServer || (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : React.Suspense
 
@@ -154,7 +154,7 @@ export type MakeMatchRouteOptions<
           TRouter['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
-      ) => ReactNode)
+      ) => React.ReactNode)
     | React.ReactNode
 }
 

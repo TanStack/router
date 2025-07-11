@@ -12,8 +12,8 @@ import {
   processRouteTree,
   trimPath,
 } from '@tanstack/router-core'
+import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { getResponseHeaders, requestHandler } from './h3'
-import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
 import { VIRTUAL_MODULES } from './virtual-modules'
@@ -29,7 +29,7 @@ import type {
   Manifest,
   ProcessRouteTreeResult,
 } from '@tanstack/router-core'
-import type { HandlerCallback } from './handlerCallback'
+import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 
 type TODO = any
 
@@ -107,7 +107,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       }
 
       const url = new URL(request.url)
-      const href = url.href.replace(url.origin, '')
+      const href = decodeURIComponent(url.href.replace(url.origin, ''))
 
       const APP_BASE = process.env.TSS_APP_BASE || '/'
 
@@ -203,7 +203,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
               return router.state.redirect
             }
 
-            dehydrateRouter(router)
+            await router.serverSsr!.dehydrate()
 
             const responseHeaders = getStartResponseHeaders({ router })
             const response = await cb({

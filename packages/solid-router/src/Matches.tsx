@@ -30,6 +30,7 @@ declare module '@tanstack/router-core' {
     meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
     links?: Array<Solid.JSX.IntrinsicElements['link'] | undefined>
     scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
+    styles?: Array<Solid.JSX.IntrinsicElements['style'] | undefined>
     headScripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
   }
 }
@@ -43,7 +44,7 @@ export function Matches() {
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && router.clientSsr)
+    router.isServer || (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : Solid.Suspense
 
