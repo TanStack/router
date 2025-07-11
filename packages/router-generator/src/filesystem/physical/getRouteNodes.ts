@@ -37,7 +37,8 @@ export async function getRouteNodes(
   >,
   root: string,
 ): Promise<GetRouteNodesResult> {
-  const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } = config
+  const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
+    config
 
   const logger = logging({ disabled: config.disableLogging })
   const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
