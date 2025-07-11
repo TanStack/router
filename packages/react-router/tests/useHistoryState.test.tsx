@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { z } from 'zod'
 import {
   Link,
@@ -36,7 +42,9 @@ describe('useHistoryState', () => {
       component: () => (
         <>
           <h1 data-testid="index-title">IndexTitle</h1>
-          <Link to="/posts" state={{ testKey: 'test-value' }}>Posts</Link>
+          <Link to="/posts" state={{ testKey: 'test-value' }}>
+            Posts
+          </Link>
         </>
       ),
     })
@@ -45,10 +53,12 @@ describe('useHistoryState', () => {
       getParentRoute: () => rootRoute,
       path: '/posts',
       validateState: (input: { testKey?: string; color?: string }) =>
-        z.object({
-          testKey: z.string().optional(),
-          color: z.enum(['red', 'green', 'blue']).optional(),
-        }).parse(input),
+        z
+          .object({
+            testKey: z.string().optional(),
+            color: z.enum(['red', 'green', 'blue']).optional(),
+          })
+          .parse(input),
       component: () => <h1>PostsTitle</h1>,
     })
 
@@ -119,19 +129,23 @@ describe('useHistoryState', () => {
         <div>
           <button
             data-testid="valid-state-btn"
-            onClick={() => navigate({
-              to: '/posts',
-              state: { testKey: 'valid-key', color: 'red' }
-            })}
+            onClick={() =>
+              navigate({
+                to: '/posts',
+                state: { testKey: 'valid-key', color: 'red' },
+              })
+            }
           >
             Valid State
           </button>
           <button
             data-testid="invalid-state-btn"
-            onClick={() => navigate({
-              to: '/posts',
-              state: { testKey: 'valid-key', color: 'yellow' }
-            })}
+            onClick={() =>
+              navigate({
+                to: '/posts',
+                state: { testKey: 'valid-key', color: 'yellow' },
+              })
+            }
           >
             Invalid State
           </button>
@@ -159,10 +173,12 @@ describe('useHistoryState', () => {
       getParentRoute: () => rootRoute,
       path: '/posts',
       validateState: (input: { testKey?: string; color?: string }) =>
-        z.object({
-          testKey: z.string(),
-          color: z.enum(['red', 'green', 'blue']),
-        }).parse(input),
+        z
+          .object({
+            testKey: z.string(),
+            color: z.enum(['red', 'green', 'blue']),
+          })
+          .parse(input),
       component: ValidChecker,
     })
 
@@ -177,7 +193,9 @@ describe('useHistoryState', () => {
     fireEvent.click(validButton)
 
     const validState = await screen.findByTestId('valid-state')
-    expect(validState).toHaveTextContent('{"testKey":"valid-key","color":"red"}')
+    expect(validState).toHaveTextContent(
+      '{"testKey":"valid-key","color":"red"}',
+    )
 
     // Invalid state transition
     const invalidButton = await screen.findByTestId('invalid-state-btn')
@@ -208,10 +226,15 @@ describe('useHistoryState', () => {
 
   test('returns undefined when match not found and shouldThrow=false', async () => {
     function RootComponent() {
-      const state = useHistoryState({ from: '/non-existent', shouldThrow: false })
+      const state = useHistoryState({
+        from: '/non-existent',
+        shouldThrow: false,
+      })
       return (
         <div>
-          <div data-testid="state-result">{state === undefined ? 'undefined' : 'defined'}</div>
+          <div data-testid="state-result">
+            {state === undefined ? 'undefined' : 'defined'}
+          </div>
           <Outlet />
         </div>
       )
@@ -239,11 +262,15 @@ describe('useHistoryState', () => {
           </button>
           <button
             data-testid="update-btn"
-            onClick={() => navigate({
-              to: '/posts',
-              state: (prev: { count?: number }) => ({ count: (prev.count || 0) + 1 }),
-              replace: true
-            })}
+            onClick={() =>
+              navigate({
+                to: '/posts',
+                state: (prev: { count?: number }) => ({
+                  count: (prev.count || 0) + 1,
+                }),
+                replace: true,
+              })
+            }
           >
             Increment Count
           </button>
@@ -289,10 +316,12 @@ describe('useHistoryState', () => {
         const navigate = useNavigate()
         return (
           <button
-            onClick={() => navigate({
-              to: '/posts',
-              state: { testValue: 'route-state-value' }
-            })}
+            onClick={() =>
+              navigate({
+                to: '/posts',
+                state: { testValue: 'route-state-value' },
+              })
+            }
           >
             Go to Posts
           </button>

@@ -177,7 +177,7 @@ export class Route<
     >,
     in out TSearchValidator = undefined,
     in out TStateValidator = undefined,
-  in out TParams = ResolveParams<TPath>,
+    in out TParams = ResolveParams<TPath>,
     in out TRouterContext = AnyContext,
     in out TRouteContextFn = AnyContext,
     in out TBeforeLoadFn = AnyContext,
@@ -212,7 +212,7 @@ export class Route<
       TId,
       TSearchValidator,
       TStateValidator,
-  TParams,
+      TParams,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
@@ -411,25 +411,26 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-  in out TSearchValidator = undefined,
-  in out TStateValidator = undefined,
-  in out TRouterContext = {},
-  in out TRouteContextFn = AnyContext,
-  in out TBeforeLoadFn = AnyContext,
-  in out TLoaderDeps extends Record<string, any> = {},
-  in out TLoaderFn = undefined,
-  in out TChildren = unknown,
-  in out TFileRouteTypes = unknown,
-> extends BaseRootRoute<
-  TSearchValidator,
-  TStateValidator,
-  TRouterContext,
-  TRouteContextFn,
-  TBeforeLoadFn,
-  TLoaderDeps,
-  TLoaderFn,
-  TChildren,
-  TFileRouteTypes
+    in out TSearchValidator = undefined,
+    in out TStateValidator = undefined,
+    in out TRouterContext = {},
+    in out TRouteContextFn = AnyContext,
+    in out TBeforeLoadFn = AnyContext,
+    in out TLoaderDeps extends Record<string, any> = {},
+    in out TLoaderFn = undefined,
+    in out TChildren = unknown,
+    in out TFileRouteTypes = unknown,
+  >
+  extends BaseRootRoute<
+    TSearchValidator,
+    TStateValidator,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren,
+    TFileRouteTypes
   >
   implements
     RootRouteCore<

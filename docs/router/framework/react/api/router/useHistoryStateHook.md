@@ -55,10 +55,12 @@ You can validate the state object by defining a `validateState` function on your
 const route = createRoute({
   // ...
   validateState: (input) =>
-    z.object({
-      color: z.enum(['white', 'red', 'green']).catch('white'),
-      key: z.string().catch(''),
-    }).parse(input),
+    z
+      .object({
+        color: z.enum(['white', 'red', 'green']).catch('white'),
+        key: z.string().catch(''),
+      })
+      .parse(input),
 })
 ```
 
@@ -111,10 +113,12 @@ const postRoute = createRoute({
   getParentRoute: () => postsLayoutRoute,
   path: 'post',
   validateState: (input) =>
-    z.object({
-      color: z.enum(['white', 'red', 'green']).catch('white'),
-      key: z.string().catch(''),
-    }).parse(input),
+    z
+      .object({
+        color: z.enum(['white', 'red', 'green']).catch('white'),
+        key: z.string().catch(''),
+      })
+      .parse(input),
   component: PostComponent,
 })
 
