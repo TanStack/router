@@ -1,11 +1,11 @@
 import invariant from 'tiny-invariant'
+import { batch } from '@tanstack/store'
+import { createControlledPromise } from '../utils'
 import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
 import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
 import type { GLOBAL_TSR } from './ssr-server'
-import { createControlledPromise } from '../utils'
-import { batch } from '@tanstack/store'
 
 declare global {
   interface Window {
