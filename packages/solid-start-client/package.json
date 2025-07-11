@@ -63,18 +63,16 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/solid-router": "workspace:*",
     "@tanstack/router-core": "workspace:*",
+    "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "cookie-es": "^1.2.2",
-    "jsesc": "^3.1.0",
     "tiny-invariant": "^1.3.3",
     "tiny-warning": "^1.0.3"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/jest-dom": "^6.6.3",
-    "@types/jsesc": "^3.0.3",
     "vite-plugin-solid": "^2.11.2"
   },
   "peerDependencies": {

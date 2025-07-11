@@ -6095,9 +6095,6 @@ importers:
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
-      jsesc:
-        specifier: ^3.1.0
-        version: 3.1.0
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -6111,9 +6108,6 @@ importers:
       '@testing-library/react':
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.0)(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
@@ -6221,9 +6215,6 @@ importers:
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2
-      jsesc:
-        specifier: ^3.1.0
-        version: 3.1.0
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -6240,9 +6231,6 @@ importers:
       '@testing-library/react':
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.0)(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
@@ -6330,9 +6318,6 @@ importers:
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2
-      jsesc:
-        specifier: ^3.1.0
-        version: 3.1.0
       seroval:
         specifier: ^1.3.2
         version: 1.3.2
@@ -6346,9 +6331,6 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3
     devDependencies:
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       esbuild:
         specifier: ^0.25.0
         version: 0.25.4
@@ -6616,9 +6598,6 @@ importers:
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
-      jsesc:
-        specifier: ^3.0.2
-        version: 3.1.0
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -6632,9 +6611,6 @@ importers:
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
@@ -6712,9 +6688,6 @@ importers:
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2
-      jsesc:
-        specifier: ^3.1.0
-        version: 3.1.0
       solid-js:
         specifier: '>=1.0.0'
         version: 1.9.5
@@ -6731,9 +6704,6 @@ importers:
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       vite-plugin-solid:
         specifier: ^2.11.2
         version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
@@ -6887,9 +6857,6 @@ importers:
       isbot:
         specifier: ^5.1.22
         version: 5.1.22
-      jsesc:
-        specifier: ^3.1.0
-        version: 3.1.0
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -6903,9 +6870,6 @@ importers:
       '@tanstack/directive-functions-plugin':
         specifier: workspace:*
         version: link:../directive-functions-plugin
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       esbuild:
         specifier: ^0.25.0
         version: 0.25.4
@@ -10324,9 +10288,6 @@ packages:
 
   '@types/js-cookie@3.0.6':
     resolution: {integrity: sha512-wkw9yd1kEXOPnvEeEV1Go1MmxtBJL0RR79aOTAApecWFVu7w0NNXNqhcWgvw2YgZDYadliXkl14pa3WXw5jlCQ==}
-
-  '@types/jsesc@3.0.3':
-    resolution: {integrity: sha512-YZZ9ZOAiiSVC6KApWd/fTCDTdTOOMiRU4Lq3/VSmXNPse8IvCVOn5kYRRLu900Ub1lTPurVZFI5unEqLDJR7wg==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -19210,8 +19171,6 @@ snapshots:
       '@types/node': 22.13.4
 
   '@types/js-cookie@3.0.6': {}
-
-  '@types/jsesc@3.0.3': {}
 
   '@types/json-schema@7.0.15': {}
 
