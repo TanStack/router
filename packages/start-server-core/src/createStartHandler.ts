@@ -121,6 +121,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       // Update the client-side router with the history
       router.update({
         history,
+        isShell: process.env.TSS_SPA_MODE === 'true',
       })
 
       const response = await (async () => {

@@ -342,6 +342,11 @@ export interface RouterOptions<
   isServer?: boolean
 
   /**
+   * @default false
+   */
+  isShell?: boolean
+
+  /**
    * The default `ssr` a route should use if no `ssr` is provided.
    *
    * @default true
@@ -813,7 +818,9 @@ export class RouterCore<
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
-  isShell = false
+  isShell() {
+    return this.options.isShell
+  }
 
   update: UpdateFn<
     TRouteTree,
@@ -902,10 +909,6 @@ export class RouterCore<
       this.isViewTransitionTypesSupported = window.CSS.supports(
         'selector(:active-view-transition-type(a)',
       )
-    }
-
-    if ((this.latestLocation.search as any).__TSS_SHELL) {
-      this.isShell = true
     }
   }
 
@@ -1787,11 +1790,7 @@ export class RouterCore<
       }
     }
     // Match the routes
-    let pendingMatches = this.matchRoutes(this.latestLocation)
-    // in SPA mode we only want to load the root route
-    if (this.isShell) {
-      pendingMatches = pendingMatches.slice(0, 1)
-    }
+    const pendingMatches = this.matchRoutes(this.latestLocation)
 
     // Ingest the new matches
     this.__store.setState((s) => ({
@@ -2200,50 +2199,55 @@ export class RouterCore<
 
               // on the server, determine whether SSR the current match or not
               if (this.isServer) {
-                const defaultSsr = this.options.defaultSsr ?? true
                 let ssr: boolean | 'data-only'
-                if (parentMatch?.ssr === false) {
-                  ssr = false
+                // in SPA mode, only SSR the root route
+                if (this.isShell()) {
+                  ssr = matchId === rootRouteId
                 } else {
-                  let tempSsr: boolean | 'data-only'
-                  if (route.options.ssr === undefined) {
-                    tempSsr = defaultSsr
-                  } else if (typeof route.options.ssr === 'function') {
-                    const { search, params } = this.getMatch(matchId)!
+                  const defaultSsr = this.options.defaultSsr ?? true
+                  if (parentMatch?.ssr === false) {
+                    ssr = false
+                  } else {
+                    let tempSsr: boolean | 'data-only'
+                    if (route.options.ssr === undefined) {
+                      tempSsr = defaultSsr
+                    } else if (typeof route.options.ssr === 'function') {
+                      const { search, params } = this.getMatch(matchId)!
 
-                    function makeMaybe(value: any, error: any) {
-                      if (error) {
-                        return { status: 'error' as const, error }
+                      function makeMaybe(value: any, error: any) {
+                        if (error) {
+                          return { status: 'error' as const, error }
+                        }
+                        return { status: 'success' as const, value }
                       }
-                      return { status: 'success' as const, value }
+
+                      const ssrFnContext: SsrContextOptions<any, any, any> = {
+                        search: makeMaybe(search, existingMatch.searchError),
+                        params: makeMaybe(params, existingMatch.paramsError),
+                        location,
+                        matches: matches.map((match) => ({
+                          index: match.index,
+                          pathname: match.pathname,
+                          fullPath: match.fullPath,
+                          staticData: match.staticData,
+                          id: match.id,
+                          routeId: match.routeId,
+                          search: makeMaybe(match.search, match.searchError),
+                          params: makeMaybe(match.params, match.paramsError),
+                          ssr: match.ssr,
+                        })),
+                      }
+                      tempSsr =
+                        (await route.options.ssr(ssrFnContext)) ?? defaultSsr
+                    } else {
+                      tempSsr = route.options.ssr
                     }
 
-                    const ssrFnContext: SsrContextOptions<any, any, any> = {
-                      search: makeMaybe(search, existingMatch.searchError),
-                      params: makeMaybe(params, existingMatch.paramsError),
-                      location,
-                      matches: matches.map((match) => ({
-                        index: match.index,
-                        pathname: match.pathname,
-                        fullPath: match.fullPath,
-                        staticData: match.staticData,
-                        id: match.id,
-                        routeId: match.routeId,
-                        search: makeMaybe(match.search, match.searchError),
-                        params: makeMaybe(match.params, match.paramsError),
-                        ssr: match.ssr,
-                      })),
+                    if (tempSsr === true && parentMatch?.ssr === 'data-only') {
+                      ssr = 'data-only'
+                    } else {
+                      ssr = tempSsr
                     }
-                    tempSsr =
-                      (await route.options.ssr(ssrFnContext)) ?? defaultSsr
-                  } else {
-                    tempSsr = route.options.ssr
-                  }
-
-                  if (tempSsr === true && parentMatch?.ssr === 'data-only') {
-                    ssr = 'data-only'
-                  } else {
-                    ssr = tempSsr
                   }
                 }
                 updateMatch(matchId, (prev) => ({
@@ -2471,8 +2475,6 @@ export class RouterCore<
                         ...head,
                       }))
                       return this.getMatch(matchId)!
-                    } else {
-                      await potentialPendingMinPromise()
                     }
                   }
                   // there is a loaderPromise, so we are in the middle of a load
@@ -2644,17 +2646,13 @@ export class RouterCore<
                     }
 
                     // If the route is successful and still fresh, just resolve
-                    const { status, invalid } =
-                      this.getMatch(matchId)!
+                    const { status, invalid } = this.getMatch(matchId)!
                     loaderShouldRunAsync =
                       status === 'success' &&
                       (invalid || (shouldReload ?? age > staleAge))
                     if (preload && route.options.preload === false) {
                       // Do nothing
-                    } else if (
-                      loaderShouldRunAsync &&
-                      !sync
-                    ) {
+                    } else if (loaderShouldRunAsync && !sync) {
                       loaderIsRunningAsync = true
                       ;(async () => {
                         try {

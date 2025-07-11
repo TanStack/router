@@ -152,7 +152,8 @@ export function TanStackStartVitePluginCore(
 
             ...defineReplaceEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
             ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
-            ...defineReplaceEnv('TSS_APP_BASE', viteAppBase)
+            ...defineReplaceEnv('TSS_APP_BASE', viteAppBase),
+            ...defineReplaceEnv('TSS_SPA_MODE', startConfig.spa?.enabled ? 'true' : 'false'),
           },
         }
       },

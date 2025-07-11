@@ -121,7 +121,7 @@ export const Match = React.memo(function MatchImpl({
                 return React.createElement(routeNotFoundComponent, error as any)
               }}
             >
-              {resolvedNoSsr || router.isShell || matchState._displayPending ? (
+              {resolvedNoSsr || matchState._displayPending ? (
                 <ClientOnly fallback={pendingElement}>
                   <MatchInner matchId={matchId} />
                 </ClientOnly>

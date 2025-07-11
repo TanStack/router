@@ -202,14 +202,18 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       console.error('Error during router hydration:', err)
     })
 
-  // in SPA mode we need to keep the outermost match  pending until router.load() is finished
+  // in SPA mode we need to keep the first match below the root route pending until router.load() is finished
   // this will prevent that other pending components are rendered but hydration is not blocked
   if (isSpaMode) {
-    const rootMatch = matches[0]!
-    setMatchForcePending(rootMatch)
+    const match = matches[1]
+    invariant(
+      match,
+      'Expected to find a match below the root match in SPA mode.',
+    )
+    setMatchForcePending(match)
 
-    rootMatch._displayPending = true
-    rootMatch.displayPendingPromise = loadPromise
+    match._displayPending = true
+    match.displayPendingPromise = loadPromise
 
     loadPromise.then(() => {
       batch(() => {
@@ -224,7 +228,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
           }))
         }
         // hide the pending component once the load is finished
-        router.updateMatch(rootMatch.id, (prev) => {
+        router.updateMatch(match.id, (prev) => {
           return {
             ...prev,
             _displayPending: undefined,

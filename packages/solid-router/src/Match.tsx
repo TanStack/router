@@ -124,7 +124,7 @@ export const Match = (props: { matchId: string }) => {
               }}
             >
               <Solid.Switch>
-                <Solid.Match when={resolvedNoSsr || router.isShell}>
+                <Solid.Match when={resolvedNoSsr}>
                   <Solid.Show
                     when={!router.isServer}
                     fallback={<Dynamic component={PendingComponent()} />}
