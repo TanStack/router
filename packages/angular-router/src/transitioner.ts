@@ -150,7 +150,7 @@ export class Transitioner implements OnInit {
       untracked(() => {
         const window = this.document.defaultView
         if (
-          (typeof window !== 'undefined' && this.router.clientSsr) ||
+          (typeof window !== 'undefined' && this.router.ssr) ||
           (this.mountLoadForRouter.router === this.router &&
             this.mountLoadForRouter.mounted)
         ) {
