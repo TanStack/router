@@ -20,15 +20,35 @@ export default defineConfig({
       prerender: {
         // Enable prerendering
         enabled: true,
+
+        // Enable if you need pages to be at `/page/index.html` instead of `/page.html`
+        autoSubfolderIndex: true,
+
+        // How many prerender jobs to run at once
+        concurrency: 14,
+
+        // Whether to extract links from the HTML and prerender them also
+        crawlLinks: true,
+
+        // Filter function takes the page object and returns whether it should prerender
+        filter: ({ path }) => !path.startsWith('/do-not-render-me'),
+
+        // Number of times to retry a failed prerender job
+        retryCount: 2,
+
+        // Delay between retries in milliseconds
+        retryDelay: 1000,
+
+        // Callback when page is successfully rendered
+        onSuccess: (page) => {
+          console.log(`Rendered ${page.path}!`)
+        },
       },
-      // Optional configuration for specific pages—without this, it will still automatically
-      // prerender all pages
+      // Optional configuration for specific pages (without this it will still automatically
+      // prerender all routes)
       pages: [
         {
           path: '/my-page',
-          // By default, html files will be named the the same as their route, so `my-page.tsx` would become
-          // `/my-page.html`. However, in order to have a URL path like `/my-page`, it should be an index
-          // inside a directory like so:
           prerender: { enabled: true, outputPath: '/my-page/index.html' },
         },
       ],
