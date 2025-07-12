@@ -136,9 +136,11 @@ async function buildNitroApp(
   if (options.prerender?.enabled !== false) {
     options.prerender = {
       ...options.prerender,
-      enabled: options.prerender?.enabled ?? options.pages.some((d) =>
-        typeof d === 'string' ? false : !!d.prerender?.enabled,
-      ),
+      enabled:
+        options.prerender?.enabled ??
+        options.pages.some((d) =>
+          typeof d === 'string' ? false : !!d.prerender?.enabled,
+        ),
     }
   }
 

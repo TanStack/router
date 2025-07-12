@@ -1260,7 +1260,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
 
     node.isNonPath =
       lastRouteSegment.startsWith('_') ||
-      this.routeGroupPatternRegex.test(lastRouteSegment)
+      split.every((part) => this.routeGroupPatternRegex.test(part))
 
     node.cleanedPath = removeGroups(
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
