@@ -181,7 +181,9 @@ const pageBaseSchema = z.object({
 
 const pagePrerenderOptionsSchema = z.object({
   enabled: z.boolean().optional(),
-  outputPath: z.union([z.string(), z.function().args(z.string()).returns(z.string())]).optional(),
+  outputPath: z
+    .union([z.string(), z.function().args(z.string()).returns(z.string())])
+    .optional(),
   autoSubfolderIndex: z.boolean().optional(),
   crawlLinks: z.boolean().optional(),
   retryCount: z.number().optional(),
