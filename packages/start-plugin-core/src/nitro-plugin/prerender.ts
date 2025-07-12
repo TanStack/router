@@ -184,9 +184,15 @@ export async function prerender({
             })
           }
 
-          const cleanPagePath = (
-            prerenderOptions.outputPath || page.path
-          ).split(/[?#]/)[0]!
+          const cleanPagePath = (() => {
+            if (typeof prerenderOptions.outputPath === 'function') {
+              return prerenderOptions.outputPath(page.path);
+            } else if (prerenderOptions.outputPath) {
+              return prerenderOptions.outputPath;
+            }
+            return page.path;
+          })().split(/[?#]/)[0]!
+
 
           // Guess route type and populate fileName
           const contentType = res.headers.get('content-type') || ''
