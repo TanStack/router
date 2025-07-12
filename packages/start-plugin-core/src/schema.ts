@@ -128,7 +128,6 @@ export function createTanStackStartOptionsSchema(
           concurrency: z.number().optional(),
           filter: z.function().args(pageSchema).returns(z.any()).optional(),
           failOnError: z.boolean().optional(),
-          outputPath: z.function().args(z.string()).returns(z.string()).optional(),
         })
         .and(pagePrerenderOptionsSchema.optional())
         .optional(),
@@ -182,7 +181,7 @@ const pageBaseSchema = z.object({
 
 const pagePrerenderOptionsSchema = z.object({
   enabled: z.boolean().optional(),
-  outputPath: z.string().optional(),
+  outputPath: z.union([z.string(), z.function().args(z.string()).returns(z.string())]).optional(),
   autoSubfolderIndex: z.boolean().optional(),
   crawlLinks: z.boolean().optional(),
   retryCount: z.number().optional(),
