@@ -2,6 +2,7 @@ interface PoolConfig {
   concurrency?: number
   started?: boolean
   tasks?: Array<() => Promise<any>>
+  failOnError?: boolean
 }
 
 const defaultConfig: PoolConfig = {
@@ -19,15 +20,17 @@ export class Queue<T> {
   private active: Array<() => Promise<any>> = []
   private pending: Array<() => Promise<any>>
   private currentConcurrency: number
+  private failOnError: boolean
 
   constructor(config: PoolConfig = defaultConfig) {
-    const { concurrency, started, tasks } = {
+    const { concurrency, started, tasks, failOnError } = {
       ...defaultConfig,
       ...config,
     }
     this.running = started!
     this.pending = tasks as Array<() => Promise<any>>
     this.currentConcurrency = concurrency!
+    this.failOnError = Boolean(failOnError)
   }
 
   private tick() {
@@ -51,6 +54,11 @@ export class Queue<T> {
           res = await nextFn()
           success = true
         } catch (e) {
+          if (this.failOnError) {
+            this.stop()
+            this.clear()
+            throw e
+          }
           error = e
         }
         this.active = this.active.filter((d) => d !== nextFn)

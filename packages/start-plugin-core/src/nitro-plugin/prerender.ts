@@ -132,7 +132,10 @@ export async function prerender({
     const retriesByPath = new Map<string, number>()
     const concurrency = options.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
-    const queue = new Queue({ concurrency })
+    const queue = new Queue({
+      concurrency,
+      failOnError: options.prerender?.failOnError,
+    })
 
     options.pages.forEach((page) => addCrawlPageTask(page))
 
