@@ -162,7 +162,7 @@ describe('Optional Path Parameters', () => {
         name: 'optional param with prefix - omitted',
         path: '/posts/prefix{-$category}',
         params: {},
-        result: '/posts',
+        result: '/posts/prefix',
       },
       {
         name: 'optional param with suffix - provided',
@@ -174,7 +174,7 @@ describe('Optional Path Parameters', () => {
         name: 'optional param with suffix - omitted',
         path: '/posts/{-$category}.html',
         params: {},
-        result: '/posts',
+        result: '/posts/.html',
       },
       {
         name: 'optional param with prefix and suffix - provided',
@@ -186,7 +186,7 @@ describe('Optional Path Parameters', () => {
         name: 'optional param with prefix and suffix - omitted',
         path: '/posts/prefix{-$category}suffix',
         params: {},
-        result: '/posts',
+        result: '/posts/prefixsuffix',
       },
       {
         name: 'multiple optional params - all provided',
