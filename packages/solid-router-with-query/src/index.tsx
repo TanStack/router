@@ -50,8 +50,11 @@ export function routerWithQueryClient<TRouter extends AnyRouter>(
     },
     // Wrap the app in a QueryClientProvider
     Wrap: ({ children }) => {
-      const OuterWrapper = additionalOpts?.WrapProvider || ((props: { children: JSX.Element }) => props.children)
-      const OGWrap = ogOptions.Wrap || ((props: { children: JSX.Element }) => props.children)
+      const OuterWrapper =
+        additionalOpts?.WrapProvider ||
+        ((props: { children: JSX.Element }) => props.children)
+      const OGWrap =
+        ogOptions.Wrap || ((props: { children: JSX.Element }) => props.children)
       return (
         <OuterWrapper>
           <QueryClientProvider client={queryClient}>
