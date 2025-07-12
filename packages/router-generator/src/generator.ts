@@ -1259,7 +1259,8 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     const lastRouteSegment = split[split.length - 1] ?? trimmedPath
 
     node.isNonPath =
-      lastRouteSegment.startsWith('_') || split.every(part => this.routeGroupPatternRegex.test(part))
+      lastRouteSegment.startsWith('_') ||
+      split.every((part) => this.routeGroupPatternRegex.test(part))
 
     node.cleanedPath = removeGroups(
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',
