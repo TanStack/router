@@ -10,6 +10,11 @@ import { usePrevious } from './utils'
 
 export function Transitioner() {
   const router = useRouter()
+
+  if (router.isServer) {
+    return null
+  }
+
   let mountLoadForRouter = { router, mounted: false }
   const isLoading = useRouterState({
     select: ({ isLoading }) => isLoading,
@@ -30,12 +35,10 @@ export function Transitioner() {
   const isPagePending = () => isLoading() || hasPendingMatches()
   const previousIsPagePending = usePrevious(isPagePending)
 
-  if (!router.isServer) {
-    router.startTransition = async (fn: () => void | Promise<void>) => {
-      setIsTransitioning(true)
-      await fn()
-      setIsTransitioning(false)
-    }
+  router.startTransition = async (fn: () => void | Promise<void>) => {
+    setIsTransitioning(true)
+    await fn()
+    setIsTransitioning(false)
   }
 
   // Subscribe to location changes
@@ -66,7 +69,6 @@ export function Transitioner() {
 
   // Try to load the initial location
   Solid.createRenderEffect(() => {
-    if (router.isServer) return
     Solid.untrack(() => {
       if (
         // if we are hydrating from SSR, loading is triggered in ssr-client
@@ -100,6 +102,7 @@ export function Transitioner() {
       },
     ),
   )
+
   Solid.createRenderEffect(
     Solid.on(
       [isPagePending, previousIsPagePending],
