@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 import { test } from './fixture'
 
-const testCount = 6
+const testCount = 7
 
 test.describe('selective ssr', () => {
   test('testcount matches', async ({ page }) => {
@@ -34,6 +34,8 @@ test.describe('selective ssr', () => {
           )
         }),
       )
+      await expect(page.getByTestId('router-isLoading')).toContainText('false')
+      await expect(page.getByTestId('router-status')).toContainText('idle')
     })
   }
 })
