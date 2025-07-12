@@ -1457,8 +1457,14 @@ export class RouterCore<
               ...functionalUpdate(dest.params as any, fromParams),
             }
 
+      // Interpolate the path first to get the actual resolved path, then match against that
+      const interpolatedNextTo = interpolatePath({
+        path: nextTo,
+        params: nextParams ?? {},
+      }).interpolatedPath
+
       const destRoutes = this.matchRoutes(
-        nextTo,
+        interpolatedNextTo,
         {},
         {
           _buildLocation: true,
@@ -1479,8 +1485,9 @@ export class RouterCore<
           })
       }
 
-      // Interpolate the next to into the next pathname
       const nextPathname = interpolatePath({
+        // Use the original template path for interpolation
+        // This preserves the original parameter syntax including optional parameters
         path: nextTo,
         params: nextParams ?? {},
         leaveWildcards: false,
@@ -3225,43 +3232,51 @@ export function processRouteTree<TRouteLike extends RouteLike>({
         return 0.75
       }
 
-      if (
-        segment.type === 'param' &&
-        segment.prefixSegment &&
-        segment.suffixSegment
-      ) {
-        return 0.55
-      }
-
-      if (segment.type === 'param' && segment.prefixSegment) {
-        return 0.52
-      }
-
-      if (segment.type === 'param' && segment.suffixSegment) {
-        return 0.51
-      }
-
       if (segment.type === 'param') {
+        if (segment.prefixSegment && segment.suffixSegment) {
+          return 0.55
+        }
+
+        if (segment.prefixSegment) {
+          return 0.52
+        }
+
+        if (segment.suffixSegment) {
+          return 0.51
+        }
+
         return 0.5
       }
 
-      if (
-        segment.type === 'wildcard' &&
-        segment.prefixSegment &&
-        segment.suffixSegment
-      ) {
-        return 0.3
-      }
+      if (segment.type === 'optional-param') {
+        if (segment.prefixSegment && segment.suffixSegment) {
+          return 0.45
+        }
 
-      if (segment.type === 'wildcard' && segment.prefixSegment) {
-        return 0.27
-      }
+        if (segment.prefixSegment) {
+          return 0.42
+        }
 
-      if (segment.type === 'wildcard' && segment.suffixSegment) {
-        return 0.26
+        if (segment.suffixSegment) {
+          return 0.41
+        }
+
+        return 0.4
       }
 
       if (segment.type === 'wildcard') {
+        if (segment.prefixSegment && segment.suffixSegment) {
+          return 0.3
+        }
+
+        if (segment.prefixSegment) {
+          return 0.27
+        }
+
+        if (segment.suffixSegment) {
+          return 0.26
+        }
+
         return 0.25
       }
 
