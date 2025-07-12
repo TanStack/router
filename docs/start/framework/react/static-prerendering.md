@@ -32,6 +32,9 @@ export default defineConfig({
           prerender: { enabled: true, outputPath: '/my-page/index.html' },
         },
       ],
+      // Optional function to do the above globally.
+      outputPath: (path) =>
+        path.endsWith('index') ? `$[path}.html` : `${path}/index.html`,
     }),
   ],
 })
