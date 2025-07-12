@@ -309,24 +309,26 @@ describe('useHistoryState', () => {
       component: () => <Outlet />,
     })
 
+    const IndexComponent = () => {
+      const navigate = useNavigate()
+      return (
+        <button
+          onClick={() =>
+            navigate({
+              to: '/posts',
+              state: { testValue: 'route-state-value' },
+            })
+          }
+        >
+          Go to Posts
+        </button>
+      )
+    }
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => {
-        const navigate = useNavigate()
-        return (
-          <button
-            onClick={() =>
-              navigate({
-                to: '/posts',
-                state: { testValue: 'route-state-value' },
-              })
-            }
-          >
-            Go to Posts
-          </button>
-        )
-      },
+      component: IndexComponent,
     })
 
     const postsRoute = createRoute({
