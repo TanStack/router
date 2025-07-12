@@ -22,31 +22,87 @@ permissions:
   id-token: write
 
 jobs:
-  test:
-    name: Build & Test
+  prepare: # Prepare PNPM Cache
+    name: Prepare
     if: github.repository_owner == 'TanStack'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
+
+  lints:
+    name: Lint ${{ matrix.linter }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        linter: [eslint, types]
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
-      - name: Start Nx Agents
-        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
+
       - name: Setup Tools
         uses: tanstack/config/.github/setup@main
+
+      - name: Run linter
+        run: pnpm run test:${{ matrix.linter }}
+
+  tests:
+    name: Test ${{ matrix.type }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        type: [unit, e2e, build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
+
       - name: Run Tests
-        run: pnpm run test:ci --parallel=3
-      - name: Stop Nx Agents
-        if: ${{ always() }}
-        run: npx nx-cloud stop-all-agents
+        run: pnpm run test:${{ matrix.type}}
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lints, tests]
+    concurrency:
+      group: ${{ github.workflow }}-publish-${{ github.event.number || github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Tools
+        uses: tanstack/config/.github/setup@main
+
+      - name: Build all packages with NX Cache
+        run: pnpm run build:all --parallel=3
+
       - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TAG: ${{ inputs.tag }}
         run: |
           git config --global user.name 'Tanner Linsley'
           git config --global user.email 'tannerlinsley@users.noreply.github.com'
           npm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
           pnpm run cipublish
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          TAG: ${{ inputs.tag }}
