@@ -23,7 +23,6 @@ export function ScrollRestoration() {
   return (
     <ScriptOnce
       children={`(${restoreScroll.toString()})(${JSON.stringify(storageKey)},${JSON.stringify(resolvedKey)}, undefined, true)`}
-      log={false}
     />
   )
 }
