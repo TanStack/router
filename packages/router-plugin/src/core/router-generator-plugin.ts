@@ -3,14 +3,14 @@ import { Generator, resolveConfigPath } from '@tanstack/router-generator'
 import { getConfig } from './config'
 
 import type { GeneratorEvent } from '@tanstack/router-generator'
-import type { Config, ConfigOptions } from './config';
+import type { Config, ConfigInput } from './config';
 import type { FSWatcher } from 'chokidar'
 import type { UnpluginFactory } from 'unplugin'
 
 const PLUGIN_NAME = 'unplugin:router-generator'
 
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
-  ConfigOptions | undefined
+  ConfigInput | undefined
 > = (options = {}) => {
   const ROOT: string = process.cwd()
   let userConfig = options as Config

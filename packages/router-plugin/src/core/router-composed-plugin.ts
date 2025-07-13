@@ -2,14 +2,14 @@ import { unpluginRouterGeneratorFactory } from './router-generator-plugin'
 import { unpluginRouterCodeSplitterFactory } from './router-code-splitter-plugin'
 import { unpluginRouterHmrFactory } from './router-hmr-plugin'
 import { unpluginRouteAutoImportFactory } from './route-autoimport-plugin'
-import type { ConfigOptions } from './config'
+import type { ConfigInput } from './config'
 
 import type { UnpluginFactory } from 'unplugin'
 
 export const unpluginRouterComposedFactory: UnpluginFactory<
-  ConfigOptions | undefined
+  ConfigInput | undefined
 > = (options = {}, meta) => {
-  const getPlugin = (pluginFactory: UnpluginFactory<Partial<ConfigOptions>>) => {
+  const getPlugin = (pluginFactory: UnpluginFactory<ConfigInput>) => {
     const plugin = pluginFactory(options, meta)
     if (!Array.isArray(plugin)) {
       return [plugin]

@@ -183,7 +183,15 @@ export interface ConfigOptions {
    * @default 'route'
    */
   routeToken?: string;
-  pathParamsAllowedCharacters?: Array<string>;
+  /**
+   * Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
+   *
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#pathparamsallowedcharacters-property)
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/path-params#allowed-characters)
+   */
+  pathParamsAllowedCharacters?: Array<
+    ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
+  >
   customScaffolding?: unknown;
   experimental?: {
     enableCodeSplitting?: boolean;

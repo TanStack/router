@@ -2,7 +2,7 @@ import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { routeHmrStatement } from './route-hmr-statement'
 import { debug } from './utils'
 import { getConfig } from './config'
-import type {Config, ConfigOptions} from './config';
+import type {Config, ConfigInput} from './config';
 import type { UnpluginFactory } from 'unplugin'
 
 /**
@@ -17,7 +17,7 @@ const includeCode = [
   'createRootRouteWithContext(',
 ]
 export const unpluginRouterHmrFactory: UnpluginFactory<
-  ConfigOptions | undefined
+  ConfigInput | undefined
 > = (options = {}) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config

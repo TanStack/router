@@ -86,7 +86,7 @@ export interface ConfigOptions extends GeneratorConfigOptions {
    */
   enableRouteGeneration?: boolean
   /**
-   * Additional fine grained control for splitting.
+   * Additional fine grained control for code splitting.
    */
   codeSplittingOptions?: CodeSplittingOptions
 }
@@ -109,7 +109,7 @@ export const configSchema = generatorConfigSchema.extend({
     .optional(),
 }) satisfies z.ZodType<ConfigOptions>
 
-export const getConfig = (inlineConfig: ConfigOptions, root: string) => {
+export const getConfig = (inlineConfig: ConfigInput, root: string) => {
   const config = getGeneratorConfig(inlineConfig, root)
 
   return configSchema.parse({ ...config, ...inlineConfig })

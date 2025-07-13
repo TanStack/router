@@ -17,10 +17,10 @@ import {
   tsrSplit,
 } from './constants'
 import { decodeIdentifier } from './code-splitter/path-ids'
-import { debug  } from './utils'
+import { debug } from './utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
-import type { Config, ConfigOptions   } from './config'
+import type { Config, ConfigInput } from './config'
 
 import type {
   UnpluginContextMeta,
@@ -62,7 +62,7 @@ plugins: [
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
-  ConfigOptions | undefined
+  ConfigInput | undefined
 > = (options = {}, { framework }) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config
