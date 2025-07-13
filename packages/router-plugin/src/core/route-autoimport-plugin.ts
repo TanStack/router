@@ -3,14 +3,14 @@ import babel from '@babel/core'
 import * as template from '@babel/template'
 import { getConfig } from './config'
 import { debug } from './utils'
-import type { Config } from './config'
+import type { Config, ConfigOptions } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
 /**
  * This plugin adds imports for createFileRoute and createLazyFileRoute to the file route.
  */
 export const unpluginRouteAutoImportFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  ConfigOptions | undefined
 > = (options = {}) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config

@@ -2,8 +2,8 @@ import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { routeHmrStatement } from './route-hmr-statement'
 import { debug } from './utils'
 import { getConfig } from './config'
+import type {Config, ConfigOptions} from './config';
 import type { UnpluginFactory } from 'unplugin'
-import type { Config } from './config'
 
 /**
  * This plugin adds HMR support for file routes.
@@ -17,7 +17,7 @@ const includeCode = [
   'createRootRouteWithContext(',
 ]
 export const unpluginRouterHmrFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  ConfigOptions | undefined
 > = (options = {}) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config
