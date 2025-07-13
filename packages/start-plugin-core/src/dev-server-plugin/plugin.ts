@@ -10,13 +10,8 @@ declare global {
 }
 
 export function devServerPlugin(): Plugin {
-  // let config: UserConfig
-
   return {
     name: 'start-dev-ssr-plugin',
-    config() {
-      // config = userConfig
-    },
     configureServer(viteDevServer) {
       // upon server restart, reset the injected scripts
       globalThis.TSS_INJECTED_HEAD_SCRIPTS = undefined
