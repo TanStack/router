@@ -197,6 +197,11 @@ export interface ConfigOptions {
     enableCodeSplitting?: boolean;
   };
   plugins?: Array<GeneratorPlugin>;
+  /**
+   * Atomic file writes (route files and the generated route tree file) are implemented by creating a temporary file first and then renaming it to their actual location.
+   *
+   * This config option allows to configure the path of the temp directory that will be used for creating those temporary files. If it is a relative path, it will be resolved to the current working directory. If this value is not set, process.env.TSR_TMP_DIR will be used. If process.env.TSR_TMP_DIR is not set, it will default to .tanstack/tmp relative to the current working directory.
+   */
   tmpDir?: string;
 }
 
