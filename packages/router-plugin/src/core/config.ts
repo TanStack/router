@@ -3,7 +3,7 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
-import type { ConfigOptions as GeneratorConfigOptions } from '@tanstack/router-generator';
+import type { ConfigOptions as GeneratorConfigOptions } from '@tanstack/router-generator'
 import type { RegisteredRouter, RouteIds } from '@tanstack/router-core'
 import type { CodeSplitGroupings } from './constants'
 

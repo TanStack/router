@@ -2,7 +2,7 @@ import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { routeHmrStatement } from './route-hmr-statement'
 import { debug } from './utils'
 import { getConfig } from './config'
-import type {Config, ConfigInput} from './config';
+import type { Config, ConfigInput } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
 /**

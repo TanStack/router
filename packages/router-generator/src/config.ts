@@ -71,7 +71,7 @@ export interface ConfigOptions {
    *
    * @default 'single'
    */
-  quoteStyle?: 'single' | 'double',
+  quoteStyle?: 'single' | 'double'
   /**
    * When your generated route tree is generated and when you first create a new route, those files will be formatted with semicolons if this option is set to true.
    *
@@ -79,7 +79,7 @@ export interface ConfigOptions {
    *
    * @default false
    */
-  semicolons?: boolean,
+  semicolons?: boolean
   /**
    * This option is used to disable generating types for the route tree.
    *
@@ -87,19 +87,19 @@ export interface ConfigOptions {
    *
    * @default false
    */
-  disableTypes?: boolean;
+  disableTypes?: boolean
   /**
    * This option adds file extensions to the route names in the generated route tree.
    *
    * @default false
    */
-  addExtensions?: boolean;
+  addExtensions?: boolean
   /**
    * This option turns off the console logging for the route generation process.
    *
    * @default false
    */
-  disableLogging?: boolean;
+  disableLogging?: boolean
   /**
    * {@link https://tanstack.com/start TanStack Start} leverages the generatedRouteTree file to also store a JSON tree which allows Start to easily traverse the available route tree to understand the routing structure of the application. This JSON tree is saved at the end of the generated route tree file.
    *
@@ -107,14 +107,14 @@ export interface ConfigOptions {
    *
    * @default false
    */
-  disableManifestGeneration?: boolean;
+  disableManifestGeneration?: boolean
   /**
    * This option turns on the formatting function on the generated route tree file, which can be time-consuming for large projects.
    *
    * @default true
    */
-  enableRouteTreeFormatting?: boolean;
-  __enableAPIRoutesGeneration?: boolean;
+  enableRouteTreeFormatting?: boolean
+  __enableAPIRoutesGeneration?: boolean
   /**
    * As a framework, TanStack Start supports the concept of API routes. This option configures the base path for API routes.
    *
@@ -126,7 +126,7 @@ export interface ConfigOptions {
    *
    * @default '/api'
    */
-  apiBase?: string;
+  apiBase?: string
   /**
    * This option let's you prepend content to the start of the generated route tree file.
    *
@@ -139,13 +139,13 @@ export interface ConfigOptions {
     ]
    * ```
    */
-  routeTreeFileHeader?: Array<string>;
+  routeTreeFileHeader?: Array<string>
   /**
    * This option let's you append content to the end of the generated route tree file.
    *
    * @default []
    */
-  routeTreeFileFooter?: Array<string>;
+  routeTreeFileFooter?: Array<string>
   /**
    * This feature is only available is you are using the TanStack Router Bundler Plugin.
    *
@@ -155,7 +155,7 @@ export interface ConfigOptions {
    *
    * @default false
    */
-  autoCodeSplitting?: boolean;
+  autoCodeSplitting?: boolean
   /**
    * As mentioned in the Routing Concepts guide, an index route is a route that is matched when the URL path is exactly the same as the parent route. The `indexToken` is used to identify the index route file in the route directory.
    *
@@ -168,7 +168,7 @@ export interface ConfigOptions {
    *
    * @default 'index'
    */
-  indexToken?: string;
+  indexToken?: string
   /**
    * As mentioned in the Routing Concepts guide, a layout route is rendered at the specified path, and the child routes are rendered within the layout route. The `routeToken` is used to identify the layout route file in the route directory.
    *
@@ -182,7 +182,7 @@ export interface ConfigOptions {
    *
    * @default 'route'
    */
-  routeToken?: string;
+  routeToken?: string
   /**
    * Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
    *
@@ -192,17 +192,17 @@ export interface ConfigOptions {
   pathParamsAllowedCharacters?: Array<
     ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
   >
-  customScaffolding?: unknown;
+  customScaffolding?: unknown
   experimental?: {
-    enableCodeSplitting?: boolean;
-  };
-  plugins?: Array<GeneratorPlugin>;
+    enableCodeSplitting?: boolean
+  }
+  plugins?: Array<GeneratorPlugin>
   /**
    * Atomic file writes (route files and the generated route tree file) are implemented by creating a temporary file first and then renaming it to their actual location.
    *
    * This config option allows to configure the path of the temp directory that will be used for creating those temporary files. If it is a relative path, it will be resolved to the current working directory. If this value is not set, process.env.TSR_TMP_DIR will be used. If process.env.TSR_TMP_DIR is not set, it will default to .tanstack/tmp relative to the current working directory.
    */
-  tmpDir?: string;
+  tmpDir?: string
 }
 
 export const baseConfigSchema = z.object({

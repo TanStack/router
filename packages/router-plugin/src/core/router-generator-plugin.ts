@@ -3,7 +3,7 @@ import { Generator, resolveConfigPath } from '@tanstack/router-generator'
 import { getConfig } from './config'
 
 import type { GeneratorEvent } from '@tanstack/router-generator'
-import type { Config, ConfigInput } from './config';
+import type { Config, ConfigInput } from './config'
 import type { FSWatcher } from 'chokidar'
 import type { UnpluginFactory } from 'unplugin'
 

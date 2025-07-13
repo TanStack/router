@@ -42,4 +42,4 @@ export const virtualRootRouteSchema = z.object({
   type: z.literal('root'),
   file: z.string(),
   children: z.array(virtualRouteNodeSchema).optional(),
-}) satisfies z.ZodType<VirtualRootRoute>;
+}) satisfies z.ZodType<VirtualRootRoute>
