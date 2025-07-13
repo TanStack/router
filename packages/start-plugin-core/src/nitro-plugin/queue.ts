@@ -1,3 +1,4 @@
+
 interface PoolConfig {
   concurrency?: number
   started?: boolean
@@ -55,9 +56,8 @@ export class Queue<T> {
           success = true
         } catch (e) {
           if (this.failOnError) {
-            this.stop()
-            this.clear()
-            throw e
+            console.error(e);
+            process.exit(1);
           }
           error = e
         }
