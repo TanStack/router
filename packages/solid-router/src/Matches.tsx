@@ -50,7 +50,7 @@ export function Matches() {
 
   const inner = (
     <ResolvedSuspense fallback={pendingElement}>
-      <Transitioner />
+      {!router.isServer && <Transitioner />}
       <MatchesInner />
     </ResolvedSuspense>
   )
