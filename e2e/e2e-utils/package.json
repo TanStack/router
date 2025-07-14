@@ -2,6 +2,8 @@
   "name": "@tanstack/router-e2e-utils",
   "private": true,
   "scripts": {
+    "startPortHandler": "tsx ./src/startPorthandler.ts",
+    "stopPortHandler": "tsx ./src/stopPorthandler.ts",
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint ./src",
     "test:unit": "exit 0; vitest --typecheck"
@@ -14,5 +16,8 @@
     "./package.json": "./package.json"
   },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "get-port": "^7.1.0",
+    "tsx": "^4.20.3"
+  }
 }

@@ -150,7 +150,14 @@ importers:
         specifier: ^3.0.6
         version: 3.0.6(@types/node@22.13.4)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.4.2)(jsdom@25.0.1)(lightningcss@1.29.2)(msw@2.7.0(@types/node@22.13.4)(typescript@5.8.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
-  e2e/e2e-utils: {}
+  e2e/e2e-utils:
+    devDependencies:
+      get-port:
+        specifier: ^7.1.0
+        version: 7.1.0
+      tsx:
+        specifier: ^4.20.3
+        version: 4.20.3
 
   e2e/react-router/basic:
     dependencies:
