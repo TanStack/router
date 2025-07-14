@@ -26,6 +26,7 @@ import type { RequestHandler } from './h3'
 import type {
   AnyRoute,
   AnyRouter,
+  Awaitable,
   Manifest,
   ProcessRouteTreeResult,
 } from '@tanstack/router-core'
@@ -53,7 +54,7 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
 export function createStartHandler<TRouter extends AnyRouter>({
   createRouter,
 }: {
-  createRouter: () => TRouter
+  createRouter: () => Awaitable<TRouter>
 }): CustomizeStartHandler<TRouter> {
   let routeTreeModule: {
     serverRouteTree: AnyServerRouteWithTypes | undefined
@@ -112,7 +113,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       const APP_BASE = process.env.TSS_APP_BASE || '/'
 
       // TODO how does this work with base path? does the router need to be configured the same as APP_BASE?
-      const router = createRouter()
+      const router = await createRouter()
       // Create a history for the client-side router
       const history = createMemoryHistory({
         initialEntries: [href],

@@ -60,7 +60,6 @@ TanStack Start is perfect for you if you want to build a full-stack React applic
 
 TanStack Start is not for you if:
 
-- Your site will be 100% static
 - Your goal is a server-rendered site with zero JS or minimal client-side interactivity
 - You're looking for a React-Server-Component-first framework. (We'll support RSCs soon in our own awesome flavor!)
 
