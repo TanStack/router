@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
-import { derivePort } from '@tanstack/router-e2e-utils'
+import { getPort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
-export const PORT = derivePort(packageJson.name)
+const PORT = await getPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
 
 /**

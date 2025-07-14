@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
-import { derivePort, resolveRuntimeSuffix } from '@tanstack/router-e2e-utils'
+import { getPort, resolveRuntimeSuffix } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
-const PORT = derivePort(packageJson.name + `-${resolveRuntimeSuffix('hash')}`)
+const PORT = await getPort(packageJson.name + `-${resolveRuntimeSuffix('hash')}`)
 const baseURL = `http://localhost:${PORT}`
 /**
  * See https://playwright.dev/docs/test-configuration.
