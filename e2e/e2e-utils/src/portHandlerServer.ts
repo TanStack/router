@@ -1,12 +1,6 @@
 import http from 'node:http'
 import getPort, { portNumbers } from 'get-port'
-import { maxPort, minPort, serverIsRunning } from './getPort'
-
-if (await serverIsRunning()) {
-  await fetch('http://localhost:5600/stopServer', {
-    method: 'POST',
-  })
-}
+import { maxPort, minPort } from './getPort'
 
 export async function portHandlerServer() {
   const issuedPorts: Record<string, number> = {}
