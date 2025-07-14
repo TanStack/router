@@ -4,7 +4,10 @@ export const minPort = 5610
 export const maxPort = 65535
 
 export async function getPort(packageName: string) {
-  if (!(await serverIsRunning())) {
+  const isRunning = await serverIsRunning()
+
+  if (!isRunning) {
+    console.info('Server not found. Issuing port using derivePort')
     return derivePort(packageName, minPort, maxPort)
   }
 
@@ -17,6 +20,7 @@ export async function getPort(packageName: string) {
     )
 
     const json = await res.json()
+    console.info(`Retrieved port: ${json.port} from server.`)
     return json.port
   } catch (error) {
     console.error('Error fetching port:', error)
