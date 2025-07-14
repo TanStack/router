@@ -4,20 +4,23 @@ export const minPort = 5610
 export const maxPort = 65535
 
 export async function getPort(packageName: string) {
-  if (!await serverIsRunning()) {
+  if (!(await serverIsRunning())) {
     return derivePort(packageName, minPort, maxPort)
   }
 
   try {
-    const res = await fetch(`http://localhost:5600/getPort?packageName=${packageName}`, {
-      method: "GET",
-    })
+    const res = await fetch(
+      `http://localhost:5600/getPort?packageName=${packageName}`,
+      {
+        method: 'GET',
+      },
+    )
 
     const json = await res.json()
     return json.port
   } catch (error) {
-    console.error("Error fetching port:", error)
-    console.error("Issuing port using derivePort")
+    console.error('Error fetching port:', error)
+    console.error('Issuing port using derivePort')
 
     return derivePort(packageName, minPort, maxPort)
   }
@@ -50,18 +53,17 @@ export function derivePort(
 }
 
 export async function serverIsRunning() {
-  let result = false;
+  let result = false
 
   try {
-    const serverResponse = await fetch("http://localhost:5600/status", {
-      method: "GET",
+    const serverResponse = await fetch('http://localhost:5600/status', {
+      method: 'GET',
     })
 
     result = serverResponse.ok
-  }
-  catch (error) {
+  } catch (error) {
     result = false
   }
 
-  return result;
+  return result
 }

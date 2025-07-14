@@ -1,25 +1,25 @@
-import http from "node:http"
+import http from 'node:http'
 import getPort, { portNumbers } from 'get-port'
 import { maxPort, minPort, serverIsRunning } from './getPort'
 
 if (await serverIsRunning()) {
-  await fetch("http://localhost:5600/stopServer", {
-    method: "POST",
+  await fetch('http://localhost:5600/stopServer', {
+    method: 'POST',
   })
 }
 
 export async function portHandlerServer() {
   const issuedPorts: Record<string, number> = {}
 
-	const server = http.createServer(async (req, res) => {
-		const url = new URL(req.url || "", `http://${req.headers.host}`)
+  const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url || '', `http://${req.headers.host}`)
 
-		if (req.method === "GET" && url.pathname === "/getPort") {
-      const packageName = url.searchParams.get("packageName")
+    if (req.method === 'GET' && url.pathname === '/getPort') {
+      const packageName = url.searchParams.get('packageName')
 
       if (!packageName) {
-        res.writeHead(400, { "Content-Type": "application/text" })
-        res.end("Missing package parameter")
+        res.writeHead(400, { 'Content-Type': 'application/text' })
+        res.end('Missing package parameter')
         return
       }
 
@@ -33,33 +33,33 @@ export async function portHandlerServer() {
         issuedPorts[packageName] = port
       }
 
-			res.writeHead(200, { "Content-Type": "application/text" })
-			res.end(JSON.stringify({ port }))
-		}
-
-    if (req.method === "GET" && url.pathname === "/status") {
-      res.writeHead(200, { "Content-Type": "text/plain" })
-      res.end("Is alive")
+      res.writeHead(200, { 'Content-Type': 'application/text' })
+      res.end(JSON.stringify({ port }))
     }
 
-		if (req.method === "POST" && url.pathname === "/stopServer") {
-			console.log("Stopping port handler server...")
-			server.close()
-			res.writeHead(200, { "Content-Type": "text/plain" })
-			res.end("Port handler Server stopped")
-		}
-	});
+    if (req.method === 'GET' && url.pathname === '/status') {
+      res.writeHead(200, { 'Content-Type': 'text/plain' })
+      res.end('Is alive')
+    }
 
-	const promise = new Promise<void>((resolve) => {
-		server.listen(5600, "localhost", () => {
-			console.log(`port handler server running at http://localhost:${5600}`)
-			resolve()
-		});
-	});
+    if (req.method === 'POST' && url.pathname === '/stopServer') {
+      console.log('Stopping port handler server...')
+      server.close()
+      res.writeHead(200, { 'Content-Type': 'text/plain' })
+      res.end('Port handler Server stopped')
+    }
+  })
 
-	await promise
+  const promise = new Promise<void>((resolve) => {
+    server.listen(5600, 'localhost', () => {
+      console.log(`port handler server running at http://localhost:${5600}`)
+      resolve()
+    })
+  })
 
-	return server
+  await promise
+
+  return server
 }
 
 export default portHandlerServer
