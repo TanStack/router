@@ -311,6 +311,7 @@ export type {
   StrictOrFrom,
   LooseReturnType,
   LooseAsyncReturnType,
+  Awaitable,
 } from './utils'
 
 export type {
