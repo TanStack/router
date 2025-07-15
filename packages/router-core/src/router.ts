@@ -1785,7 +1785,21 @@ export class RouterCore<
         state: true,
         _includeValidateSearch: true,
       })
-      if (trimPath(this.latestLocation.href) !== trimPath(nextLocation.href)) {
+
+      // Normalize URLs for comparison to handle encoding differences
+      // Browser history always stores encoded URLs while buildLocation may produce decoded URLs
+      const normalizeUrl = (url: string) => {
+        try {
+          return encodeURI(decodeURI(url))
+        } catch {
+          return url
+        }
+      }
+
+      if (
+        trimPath(normalizeUrl(this.latestLocation.href)) !==
+        trimPath(normalizeUrl(nextLocation.href))
+      ) {
         throw redirect({ href: nextLocation.href })
       }
     }
