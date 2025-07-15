@@ -404,11 +404,13 @@ export function interpolatePath({
         const segmentPrefix = segment.prefixSegment || ''
         const segmentSuffix = segment.suffixSegment || ''
 
-        const anyPrefixOrSuffix = segmentPrefix || segmentSuffix
-        // Check if optional parameter is missing or undefined and if this segment has neither a prefix nor a suffix
-        if (!anyPrefixOrSuffix && (!(key in params) || params[key] == null)) {
-          // For optional params, don't set isMissingParams flag
-          // Return undefined to omit the entire segment
+        // Check if optional parameter is missing or undefined
+        if (!(key in params) || params[key] == null) {
+          // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
+          if (segmentPrefix || segmentSuffix) {
+            return `${segmentPrefix}${segmentSuffix}`
+          }
+          // If no prefix/suffix, omit the entire segment
           return undefined
         }
 
