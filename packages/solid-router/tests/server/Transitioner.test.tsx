@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, waitFor } from '@solidjs/testing-library'
+import { renderToStringAsync } from 'solid-js/web'
 import {
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
-} from '../src'
-import { RouterProvider } from '../src/RouterProvider'
+} from '../../src'
+import { RouterProvider } from '../../src/RouterProvider'
 
-describe('Transitioner', () => {
-  it('should call router.load() when Transitioner mounts on the client', async () => {
+describe('Transitioner (server)', () => {
+  it('should call router.load() only once when on the server', async () => {
     const loader = vi.fn()
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -25,6 +25,7 @@ describe('Transitioner', () => {
       history: createMemoryHistory({
         initialEntries: ['/'],
       }),
+      isServer: true,
     })
 
     // Mock router.load() to verify it gets called
@@ -32,13 +33,10 @@ describe('Transitioner', () => {
 
     await router.load()
 
-    render(() => <RouterProvider router={router} />)
+    await renderToStringAsync(() => <RouterProvider router={router} />)
 
-    // Wait for the createRenderEffect to run and call router.load()
-    await waitFor(() => {
-      expect(loadSpy).toHaveBeenCalledTimes(2)
-      expect(loader).toHaveBeenCalledTimes(1)
-    })
+    expect(loadSpy).toHaveBeenCalledTimes(1)
+    expect(loader).toHaveBeenCalledTimes(1)
 
     loadSpy.mockRestore()
   })

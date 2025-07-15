@@ -30,14 +30,12 @@ export function Transitioner() {
   const isPagePending = isLoading || hasPendingMatches
   const previousIsPagePending = usePrevious(isPagePending)
 
-  if (!router.isServer) {
-    router.startTransition = (fn: () => void) => {
-      setIsTransitioning(true)
-      React.startTransition(() => {
-        fn()
-        setIsTransitioning(false)
-      })
-    }
+  router.startTransition = (fn: () => void) => {
+    setIsTransitioning(true)
+    React.startTransition(() => {
+      fn()
+      setIsTransitioning(false)
+    })
   }
 
   // Subscribe to location changes
