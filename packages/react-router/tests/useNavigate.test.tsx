@@ -1777,7 +1777,7 @@ test.each([true, false])(
 )
 
 describe('when on /posts/$postId and navigating to ../ with default `from` /posts', () => {
-  async function runTest(navigateVia: 'Route' | 'RouteApi') {
+  test.each(['Route', 'RouteApi'])('%s', async (navigateVia) => {
     const rootRoute = createRootRoute()
 
     const IndexComponent = () => {
@@ -1920,10 +1920,7 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
 
     expect(await screen.findByTestId('index-heading')).toBeInTheDocument()
     expect(window.location.pathname).toEqual('/')
-  }
-
-  test('Route', () => runTest('Route'))
-  test('RouteApi', () => runTest('RouteApi'))
+  })
 })
 
 describe.each([{ basepath: '' }, { basepath: '/basepath' }])(

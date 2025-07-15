@@ -23,7 +23,6 @@ import {
 
 import { sleep } from './utils'
 import type { RouterHistory } from '../src'
-
 let history: RouterHistory
 
 beforeEach(() => {
@@ -41,8 +40,15 @@ afterEach(() => {
 
 const WAIT_TIME = 100
 
+vi.mock('@tanstack/router-is-server', () => ({
+  isServer: false,
+}))
+
 describe('redirect', () => {
   describe('SPA', () => {
+    beforeEach(() => {
+      vi.doUnmock('@tanstack/router-is-server')
+    })
     configure({ reactStrictMode: true })
     test('when `redirect` is thrown in `beforeLoad`', async () => {
       const nestedLoaderMock = vi.fn()
@@ -289,8 +295,6 @@ describe('redirect', () => {
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
-        // Mock server mode
-        isServer: true,
         history: createMemoryHistory({
           initialEntries: ['/'],
         }),
@@ -342,8 +346,6 @@ describe('redirect', () => {
           initialEntries: ['/'],
         }),
         routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
-        // Mock server mode
-        isServer: true,
       })
 
       await router.load()

@@ -9,6 +9,7 @@ import {
   pick,
   rootRouteId,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-is-server'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -242,7 +243,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
     if (pendingMinMs && !router.getMatch(match.id)?.minPendingPromise) {
       // Create a promise that will resolve after the minPendingMs
-      if (!router.isServer) {
+      if (!isServer) {
         const minPendingPromise = createControlledPromise<void>()
 
         Promise.resolve().then(() => {
@@ -289,7 +290,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     // of a suspense boundary. This is the only way to get
     // renderToPipeableStream to not hang indefinitely.
     // We'll serialize the error and rethrow it on the client.
-    if (router.isServer) {
+    if (isServer) {
       const RouteErrorComponent =
         (route.options.errorComponent ??
           router.options.defaultErrorComponent) ||

@@ -5,6 +5,7 @@ import {
   parseHref,
 } from '@tanstack/history'
 import invariant from 'tiny-invariant'
+import { isServer } from '@tanstack/router-is-server'
 import {
   createControlledPromise,
   deepEqual,
@@ -841,7 +842,7 @@ export class RouterCore<
       ...newOptions,
     }
 
-    this.isServer = this.options.isServer ?? typeof document === 'undefined'
+    this.isServer = isServer
 
     this.pathParamsDecodeCharMap = this.options.pathParamsAllowedCharacters
       ? new Map(
@@ -873,7 +874,7 @@ export class RouterCore<
     ) {
       this.history =
         this.options.history ??
-        ((this.isServer
+        ((isServer
           ? createMemoryHistory({
               initialEntries: [this.basepath || '/'],
             })
@@ -1775,7 +1776,7 @@ export class RouterCore<
     this.cancelMatches()
     this.latestLocation = this.parseLocation(this.latestLocation)
 
-    if (this.isServer) {
+    if (isServer) {
       // for SPAs on the initial load, this is handled by the Transitioner
       const nextLocation = this.buildLocation({
         to: this.latestLocation.pathname,
@@ -1902,7 +1903,7 @@ export class RouterCore<
         } catch (err) {
           if (isRedirect(err)) {
             redirect = err
-            if (!this.isServer) {
+            if (!isServer) {
               this.navigate({
                 ...redirect.options,
                 replace: true,
@@ -2073,7 +2074,7 @@ export class RouterCore<
 
     // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
     // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
-    if (!this.isServer && this.state.matches.find((d) => d._forcePending)) {
+    if (!isServer && this.state.matches.find((d) => d._forcePending)) {
       triggerOnReady()
     }
 
@@ -2127,11 +2128,11 @@ export class RouterCore<
     const shouldSkipLoader = (matchId: string) => {
       const match = this.getMatch(matchId)!
       // upon hydration, we skip the loader if the match has been dehydrated on the server
-      if (!this.isServer && match._dehydrated) {
+      if (!isServer && match._dehydrated) {
         return true
       }
 
-      if (this.isServer) {
+      if (isServer) {
         if (match.ssr === false) {
           return true
         }
@@ -2198,7 +2199,7 @@ export class RouterCore<
                 route.options.pendingMs ?? this.options.defaultPendingMs
 
               // on the server, determine whether SSR the current match or not
-              if (this.isServer) {
+              if (isServer) {
                 let ssr: boolean | 'data-only'
                 // in SPA mode, only SSR the root route
                 if (this.isShell()) {
@@ -2262,7 +2263,7 @@ export class RouterCore<
 
               const shouldPending = !!(
                 onReady &&
-                !this.isServer &&
+                !isServer &&
                 !resolvePreload(matchId) &&
                 (route.options.loader ||
                   route.options.beforeLoad ||
@@ -2468,7 +2469,7 @@ export class RouterCore<
 
                   const prevMatch = this.getMatch(matchId)!
                   if (shouldSkipLoader(matchId)) {
-                    if (this.isServer) {
+                    if (isServer) {
                       const head = await executeHead()
                       updateMatch(matchId, (prev) => ({
                         ...prev,
@@ -2565,9 +2566,8 @@ export class RouterCore<
                         // Actually run the loader and handle the result
                         try {
                           if (
-                            !this.isServer ||
-                            (this.isServer &&
-                              this.getMatch(matchId)!.ssr === true)
+                            !isServer ||
+                            (isServer && this.getMatch(matchId)!.ssr === true)
                           ) {
                             this.loadRouteChunk(route)
                           }

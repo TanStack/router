@@ -4,6 +4,7 @@ import {
   handleHashScroll,
   trimPathRight,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-is-server'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import { usePrevious } from './utils'
@@ -30,7 +31,7 @@ export function Transitioner() {
   const isPagePending = () => isLoading() || hasPendingMatches()
   const previousIsPagePending = usePrevious(isPagePending)
 
-  if (!router.isServer) {
+  if (!isServer) {
     router.startTransition = async (fn: () => void | Promise<void>) => {
       setIsTransitioning(true)
       await fn()
@@ -66,7 +67,7 @@ export function Transitioner() {
 
   // Try to load the initial location
   Solid.createRenderEffect(() => {
-    if (router.isServer) return
+    if (isServer) return
     Solid.untrack(() => {
       if (
         // if we are hydrating from SSR, loading is triggered in ssr-client

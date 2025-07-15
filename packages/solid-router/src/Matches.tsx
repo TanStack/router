@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
+import { isServer } from '@tanstack/router-is-server'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -44,7 +45,7 @@ export function Matches() {
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && router.ssr)
+    isServer || (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : Solid.Suspense
 

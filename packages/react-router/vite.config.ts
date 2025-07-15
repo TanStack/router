@@ -14,6 +14,11 @@ const config = defineConfig({
     typecheck: { enabled: true },
     setupFiles: ['./tests/setupTests.tsx'],
   },
+  resolve: {
+    // this is necessary so that @tanstack/router-is-server resolves to `isServer: false`
+    // for some server side tests we mock this package to get `isServer: true`
+    conditions: ['browser'],
+  },
 })
 
 export default mergeConfig(

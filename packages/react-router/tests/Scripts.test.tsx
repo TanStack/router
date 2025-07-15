@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import ReactDOMServer from 'react-dom/server'
 
@@ -13,8 +13,16 @@ import {
 } from '../src'
 import { Scripts } from '../src/Scripts'
 
+afterEach(() => {
+  vi.resetAllMocks()
+})
+
 describe('ssr scripts', () => {
   test('it works', async () => {
+    vi.mock('@tanstack/router-is-server', () => ({
+      isServer: true,
+    }))
+
     const rootRoute = createRootRoute({
       head: () => {
         return {
@@ -58,7 +66,6 @@ describe('ssr scripts', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
-      isServer: true,
     })
 
     await router.load()
@@ -71,6 +78,10 @@ describe('ssr scripts', () => {
   })
 
   test('excludes `undefined` script values', async () => {
+    vi.mock('@tanstack/router-is-server', () => ({
+      isServer: true,
+    }))
+
     const rootRoute = createRootRoute({
       scripts: () => [
         { src: 'script.js' },
@@ -101,7 +112,6 @@ describe('ssr scripts', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
-      isServer: true,
     })
 
     await router.load()
@@ -126,6 +136,10 @@ describe('ssr scripts', () => {
 
 describe('ssr HeadContent', () => {
   test('derives title, dedupes meta, and allows non-loader HeadContent', async () => {
+    vi.mock('@tanstack/router-is-server', () => ({
+      isServer: true,
+    }))
+
     const rootRoute = createRootRoute({
       loader: () =>
         new Promise((r) => setTimeout(r, 1)).then(() => ({
@@ -196,7 +210,6 @@ describe('ssr HeadContent', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
-      isServer: true,
     })
 
     await router.load()
