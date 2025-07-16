@@ -155,10 +155,8 @@ export function useLinkProps<
 
         const pathIsFuzzyEqual =
           currentPathSplit.startsWith(nextPathSplit) &&
-          (
-            currentPathSplit.length === nextPathSplit.length ||
-            currentPathSplit[nextPathSplit.length] === '/'
-          )
+          (currentPathSplit.length === nextPathSplit.length ||
+            currentPathSplit[nextPathSplit.length] === '/')
 
         if (!pathIsFuzzyEqual) {
           return false
