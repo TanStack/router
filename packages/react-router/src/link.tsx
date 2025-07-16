@@ -548,7 +548,7 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
           })
         : rest.children
 
-    if (typeof _asChild === 'undefined') {
+    if (_asChild === undefined) {
       // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
       // @ts-expect-error
       delete linkProps.disabled
