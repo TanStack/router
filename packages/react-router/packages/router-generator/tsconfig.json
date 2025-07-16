@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src",
+    "vite.config.ts",
+    "tests",
+    "tests/generator/**/*.test-d.ts",
+    "tests/generator/**/routeTree.gen.ts"
+  ],
+  "exclude": [
+    "tests/generator/**/*.tsx",
+    "tests/generator/**/routeTree.gen.js",
+    "tests/generator/**/routeTree.snapshot.js",
+    "tests/generator/**/routeTree.snapshot.ts"
+  ]
+}

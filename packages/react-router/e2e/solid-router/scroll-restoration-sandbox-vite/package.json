@@ -1,0 +1,34 @@
+{
+  "name": "tanstack-router-e2e-solid-scroll-restoration-sandbox-vite",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "dev:hash": "VITE_APP_HISTORY=hash vite --port 3000",
+    "dev:e2e": "vite",
+    "build": "vite build && tsc --noEmit",
+    "serve": "vite preview",
+    "start": "vite",
+    "test:e2e:browser": "VITE_APP_HISTORY=browser playwright test --config=playwright.browser.config.ts --project=chromium",
+    "test:e2e:hash": "exit 0; VITE_APP_HISTORY=hash playwright test --config=playwright.hash.config.ts --project=chromium",
+    "test:e2e": "pnpm run test:e2e:browser && pnpm run test:e2e:hash"
+  },
+  "dependencies": {
+    "@tanstack/solid-router": "workspace:^",
+    "@tanstack/solid-router-devtools": "workspace:^",
+    "@tanstack/router-plugin": "workspace:^",
+    "@tanstack/zod-adapter": "workspace:^",
+    "solid-js": "^1.9.5",
+    "redaxios": "^0.5.1",
+    "postcss": "^8.5.1",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss": "^3.4.17",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.1",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "vite-plugin-solid": "^2.11.2",
+    "vite": "^6.3.5"
+  }
+}

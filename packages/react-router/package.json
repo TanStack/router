@@ -1,89 +1,121 @@
 {
-  "name": "@tanstack/react-router",
-  "version": "1.97.0",
-  "description": "Modern and scalable routing for React applications",
-  "author": "Tanner Linsley",
-  "license": "MIT",
+  "name": "root",
+  "private": true,
   "repository": {
     "type": "git",
-    "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/react-router"
+    "url": "https://github.com/TanStack/router.git"
   },
-  "homepage": "https://tanstack.com/router",
-  "funding": {
-    "type": "github",
-    "url": "https://github.com/sponsors/tannerlinsley"
-  },
-  "keywords": [
-    "react",
-    "location",
-    "router",
-    "routing",
-    "async",
-    "async router",
-    "typescript"
-  ],
-  "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint",
-    "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts52": "node ../../node_modules/typescript52/lib/tsc.js -p tsconfig.legacy.json",
-    "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js -p tsconfig.legacy.json",
-    "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js -p tsconfig.legacy.json",
-    "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js -p tsconfig.legacy.json",
-    "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js -p tsconfig.legacy.json",
-    "test:types:ts57": "tsc -p tsconfig.legacy.json",
-    "test:unit": "vitest",
-    "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
-    "test:perf": "vitest bench",
-    "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",
-    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
-    "build": "vite build"
-  },
+  "packageManager": "pnpm@9.15.5",
   "type": "module",
-  "types": "dist/esm/index.d.ts",
-  "main": "dist/cjs/index.cjs",
-  "module": "dist/esm/index.js",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.cts",
-        "default": "./dist/cjs/index.cjs"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "sideEffects": false,
-  "files": [
-    "dist",
-    "src"
-  ],
-  "engines": {
-    "node": ">=12"
-  },
-  "dependencies": {
-    "@tanstack/history": "workspace:*",
-    "@tanstack/react-store": "^0.7.0",
-    "jsesc": "^3.0.2",
-    "tiny-invariant": "^1.3.3",
-    "tiny-warning": "^1.0.3"
+  "scripts": {
+    "cleanNodeModules": "pnpm -r exec rm -rf node_modules",
+    "clean": "pnpm --filter \"./packages/**\" run clean",
+    "preinstall": "node -e \"if(process.env.CI == 'true') {console.info('Skipping preinstall...')} else {process.exit(1)}\" || npx -y only-allow pnpm",
+    "test": "pnpm run test:ci",
+    "test:pr": "nx affected --targets=test:eslint,test:unit,test:e2e,test:types,test:build,build",
+    "test:ci": "nx run-many --targets=test:eslint,test:unit,test:e2e,test:types,test:build,build",
+    "test:eslint": "nx affected --target=test:eslint --exclude=examples/**,e2e/**",
+    "test:format": "pnpm run prettier --check",
+    "test:unit": "nx affected --target=test:unit --exclude=examples/**,e2e/**",
+    "test:unit:dev": "pnpm run test:unit && nx watch --all -- pnpm run test:unit",
+    "test:build": "nx affected --target=test:build --exclude=examples/**",
+    "test:types": "nx affected --target=test:types --exclude=examples/**",
+    "test:e2e": "nx run-many --target=test:e2e",
+    "build": "nx affected --target=build --exclude=e2e/** --exclude=examples/**",
+    "build:all": "nx run-many --target=build --exclude=examples/** --exclude=e2e/**",
+    "watch": "pnpm run build:all && nx watch --all -- pnpm run build:all",
+    "dev": "pnpm run watch",
+    "prettier": "prettier --ignore-unknown '**/*'",
+    "prettier:write": "pnpm run prettier --write",
+    "cipublish": "node scripts/publish.js",
+    "gpt-generate": "node gpt/generate.js",
+    "set-ts-version": "node scripts/set-ts-version.js",
+    "labeler-generate": "node scripts/generate-labeler-config.mjs",
+    "cleanup-empty-packages": "node scripts/cleanup-empty-packages.mjs",
+    "verify-links": "node scripts/verify-links.ts"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.1.0",
-    "@types/jsesc": "^3.0.3",
-    "@vitejs/plugin-react": "^4.3.4",
-    "combinate": "^1.1.11",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "zod": "^3.23.8"
+    "@arethetypeswrong/cli": "^0.17.3",
+    "@eslint-react/eslint-plugin": "^1.26.2",
+    "@playwright/test": "^1.52.0",
+    "@tanstack/config": "^0.16.1",
+    "@tanstack/react-query": "5.66.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitest/browser": "^3.0.6",
+    "@vitest/ui": "^3.0.6",
+    "eslint": "^9.22.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "fast-glob": "^3.3.3",
+    "jsdom": "^25.0.1",
+    "markdown-link-extractor": "^4.0.2",
+    "nx": "20.8.1",
+    "prettier": "^3.5.0",
+    "publint": "^0.3.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "redaxios": "^0.5.1",
+    "rimraf": "^6.0.1",
+    "tinyglobby": "^0.2.12",
+    "typescript": "^5.8.2",
+    "typescript53": "npm:typescript@5.3",
+    "typescript54": "npm:typescript@5.4",
+    "typescript55": "npm:typescript@5.5",
+    "typescript56": "npm:typescript@5.6",
+    "typescript57": "npm:typescript@5.7",
+    "vite": "6.3.5",
+    "vitest": "^3.0.6"
   },
-  "peerDependencies": {
-    "react": ">=18",
-    "react-dom": ">=18"
+  "resolutions": {
+    "use-sync-external-store": "1.2.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "$react",
+      "react-dom": "$react-dom",
+      "@types/react": "$@types/react",
+      "@types/react-dom": "$@types/react-dom",
+      "eslint": "$eslint",
+      "vite": "$vite",
+      "@playwright/test": "$@playwright/test",
+      "@tanstack/react-query": "5.66.0",
+      "use-sync-external-store": "1.2.2",
+      "@tanstack/history": "workspace:*",
+      "@tanstack/router-core": "workspace:*",
+      "@tanstack/react-router": "workspace:*",
+      "@tanstack/router-cli": "workspace:*",
+      "@tanstack/router-devtools": "workspace:*",
+      "@tanstack/router-devtools-core": "workspace:^",
+      "@tanstack/react-router-devtools": "workspace:^",
+      "@tanstack/solid-router-devtools": "workspace:^",
+      "@tanstack/router-generator": "workspace:*",
+      "@tanstack/virtual-file-routes": "workspace:*",
+      "@tanstack/router-plugin": "workspace:*",
+      "@tanstack/router-vite-plugin": "workspace:*",
+      "@tanstack/react-router-with-query": "workspace:*",
+      "@tanstack/zod-adapter": "workspace:*",
+      "@tanstack/valibot-adapter": "workspace:*",
+      "@tanstack/arktype-adapter": "workspace:*",
+      "@tanstack/react-start": "workspace:*",
+      "@tanstack/react-start-client": "workspace:*",
+      "@tanstack/react-start-plugin": "workspace:*",
+      "@tanstack/react-start-server": "workspace:*",
+      "@tanstack/solid-start": "workspace:*",
+      "@tanstack/solid-start-client": "workspace:*",
+      "@tanstack/solid-start-plugin": "workspace:*",
+      "@tanstack/solid-start-server": "workspace:*",
+      "@tanstack/start-server-functions-fetcher": "workspace:*",
+      "@tanstack/start-server-functions-client": "workspace:*",
+      "@tanstack/start-server-functions-server": "workspace:*",
+      "@tanstack/start-plugin-core": "workspace:*",
+      "@tanstack/start-client-core": "workspace:*",
+      "@tanstack/start-server-core": "workspace:*",
+      "@tanstack/eslint-plugin-router": "workspace:*",
+      "@tanstack/server-functions-plugin": "workspace:*",
+      "@tanstack/directive-functions-plugin": "workspace:*",
+      "@tanstack/router-utils": "workspace:*"
+    }
   }
 }
