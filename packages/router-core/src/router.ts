@@ -1450,12 +1450,14 @@ export class RouterCore<
 
       // Resolve the next params
       let nextParams =
-        (dest.params ?? true) === true
-          ? fromParams
-          : {
-              ...fromParams,
-              ...functionalUpdate(dest.params as any, fromParams),
-            }
+        dest.params === false || dest.params === null
+          ? {}
+          : (dest.params ?? true) === true
+            ? fromParams
+            : {
+                ...fromParams,
+                ...functionalUpdate(dest.params as any, fromParams),
+              }
 
       // Interpolate the path first to get the actual resolved path, then match against that
       const interpolatedNextTo = interpolatePath({
@@ -3357,7 +3359,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
     const result = matchPathname(basepath, trimmedPath, {
       to: route.fullPath,
       caseSensitive: route.options?.caseSensitive ?? caseSensitive,
-      fuzzy: true,
+      fuzzy: false,
     })
     return result
   }

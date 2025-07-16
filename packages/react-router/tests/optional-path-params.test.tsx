@@ -8,7 +8,6 @@ import {
   createRoute,
   createRouter,
   useNavigate,
-  useSearch,
 } from '../src'
 
 describe('React Router - Optional Path Parameters', () => {
@@ -358,7 +357,12 @@ describe('React Router - Optional Path Parameters', () => {
             <div data-testid="params">{JSON.stringify(params)}</div>
             <button
               data-testid="navigate-all"
-              onClick={() => navigate({ to: '/posts/{-$category}/{-$slug}' })}
+              onClick={() =>
+                navigate({
+                  to: '/posts/{-$category}/{-$slug}',
+                  params: false,
+                })
+              }
             >
               All Posts
             </button>
@@ -367,7 +371,7 @@ describe('React Router - Optional Path Parameters', () => {
               onClick={() =>
                 navigate({
                   to: '/posts/{-$category}/{-$slug}',
-                  params: { category: 'tech' },
+                  params: { category: 'tech', slug: undefined },
                 })
               }
             >
@@ -437,7 +441,7 @@ describe('React Router - Optional Path Parameters', () => {
             </button>
             <button
               data-testid="remove-category"
-              onClick={() => navigate({ to: '.', params: {} })}
+              onClick={() => navigate({ to: '.', params: false })}
             >
               Remove Category
             </button>
@@ -546,7 +550,7 @@ describe('React Router - Optional Path Parameters', () => {
         routeTree: rootRoute.addChildren([postsRoute]),
       })
 
-      render(<RouterProvider router={router} />)
+        render(<RouterProvider router={router} />)
 
       const paramsElement = await screen.findByTestId('params')
       const searchElement = await screen.findByTestId('search')
@@ -582,7 +586,7 @@ describe('React Router - Optional Path Parameters', () => {
                 <h1>Date Route</h1>
                 <div data-testid="params">{JSON.stringify(params)}</div>
               </div>
-            )
+    )
           },
         })
 
