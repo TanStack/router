@@ -6,11 +6,8 @@ import { getRandomPort } from 'get-port-please'
  * @param {string} input - port test allocation
  * @returns {number} A random port.
  */
-export async function derivePort(
-  input: string
-): Promise<number> {
-
-  const portFile = `port-${input}.txt`;
+export async function derivePort(input: string): Promise<number> {
+  const portFile = `port-${input}.txt`
 
   if (!fs.existsSync(portFile)) {
     fs.writeFileSync(portFile, (await getRandomPort()).toString())
@@ -18,5 +15,5 @@ export async function derivePort(
 
   const portNumber = parseInt(await fs.promises.readFile(portFile, 'utf-8'))
   console.info(`Mapped "${input}" to port ${portNumber}`)
-  return portNumber;
+  return portNumber
 }
