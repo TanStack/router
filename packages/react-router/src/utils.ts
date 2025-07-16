@@ -39,7 +39,8 @@ export function usePrevious<T>(value: T): T | null {
   return ref.current.prev
 }
 
-const isIntersectionObserverAvailable = typeof IntersectionObserver === 'function'
+const isIntersectionObserverAvailable =
+  typeof IntersectionObserver === 'function'
 
 /**
  * React hook to wrap `IntersectionObserver`.
@@ -72,13 +73,8 @@ export function useIntersectionObserver<T extends Element>(
   intersectionObserverOptions: IntersectionObserverInit = {},
   options: { disabled?: boolean } = {},
 ) {
-
   React.useEffect(() => {
-    if (
-      !isIntersectionObserverAvailable ||
-      !ref.current ||
-      options.disabled
-    ) {
+    if (!isIntersectionObserverAvailable || !ref.current || options.disabled) {
       return
     }
 

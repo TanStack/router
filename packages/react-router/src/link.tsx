@@ -10,10 +10,7 @@ import {
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
-import {
-  useForwardedRef,
-  useIntersectionObserver,
-} from './utils'
+import { useForwardedRef, useIntersectionObserver } from './utils'
 
 import { useMatch } from './useMatch'
 import type {
@@ -127,9 +124,10 @@ export function useLinkProps<
 
   const isExternal = type === 'external'
 
-  const preload = (options.reloadDocument || isExternal)
-    ? false
-    : (userPreload ?? router.options.defaultPreload)
+  const preload =
+    options.reloadDocument || isExternal
+      ? false
+      : (userPreload ?? router.options.defaultPreload)
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
@@ -155,8 +153,9 @@ export function useLinkProps<
           router.basepath,
         )
 
-        const pathIsFuzzyEqual = currentPathSplit.startsWith(nextPathSplit) && currentPathSplit[nextPathSplit.length] === '/'
-
+        const pathIsFuzzyEqual =
+          currentPathSplit.startsWith(nextPathSplit) &&
+          currentPathSplit[nextPathSplit.length] === '/'
 
         if (!pathIsFuzzyEqual) {
           return false
@@ -330,7 +329,9 @@ export function useLinkProps<
 
   // Get the inactive props
   const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive ? STATIC_EMPTY_OBJECT : functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT
+    isActive
+      ? STATIC_EMPTY_OBJECT
+      : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
 
   const resolvedClassName = [
     className,
@@ -340,7 +341,9 @@ export function useLinkProps<
     .filter(Boolean)
     .join(' ')
 
-  const resolvedStyle = (style || resolvedActiveProps.style || resolvedInactiveProps.style) && {
+  const resolvedStyle = (style ||
+    resolvedActiveProps.style ||
+    resolvedInactiveProps.style) && {
     ...style,
     ...resolvedActiveProps.style,
     ...resolvedInactiveProps.style,
@@ -385,25 +388,25 @@ const intersectionObserverOptions: IntersectionObserverInit = {
 
 const composeHandlers =
   (handlers: Array<undefined | React.EventHandler<any>>) =>
-    (e: React.SyntheticEvent) => {
-      handlers.filter(Boolean).forEach((handler) => {
-        if (e.defaultPrevented) return
-        handler!(e)
-      })
-    }
+  (e: React.SyntheticEvent) => {
+    handlers.filter(Boolean).forEach((handler) => {
+      if (e.defaultPrevented) return
+      handler!(e)
+    })
+  }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
   ? React.JSX.IntrinsicElements[TComp]
   : React.PropsWithoutRef<
-    TComp extends React.ComponentType<infer TProps> ? TProps : never
-  > &
-  React.RefAttributes<
-    TComp extends
-    | React.FC<{ ref: React.Ref<infer TRef> }>
-    | React.Component<{ ref: React.Ref<infer TRef> }>
-    ? TRef
-    : never
-  >
+      TComp extends React.ComponentType<infer TProps> ? TProps : never
+    > &
+      React.RefAttributes<
+        TComp extends
+          | React.FC<{ ref: React.Ref<infer TRef> }>
+          | React.Component<{ ref: React.Ref<infer TRef> }>
+          ? TRef
+          : never
+      >
 
 export type UseLinkPropsOptions<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -456,11 +459,11 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-  | React.ReactNode
-  | ((state: {
-    isActive: boolean
-    isTransitioning: boolean
-  }) => React.ReactNode)
+    | React.ReactNode
+    | ((state: {
+        isActive: boolean
+        isTransitioning: boolean
+      }) => React.ReactNode)
 }
 
 type LinkComponentReactProps<TComp> = Omit<
@@ -540,8 +543,8 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
     const children =
       typeof rest.children === 'function'
         ? rest.children({
-          isActive: (linkProps as any)['data-status'] === 'active',
-        })
+            isActive: (linkProps as any)['data-status'] === 'active',
+          })
         : rest.children
 
     if (typeof _asChild === 'undefined') {
@@ -571,8 +574,8 @@ export type LinkOptionsFnOptions<
   TRouter extends AnyRouter = RegisteredRouter,
 > =
   TOptions extends ReadonlyArray<any>
-  ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
-  : ValidateLinkOptions<TRouter, TOptions, string, TComp>
+    ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
+    : ValidateLinkOptions<TRouter, TOptions, string, TComp>
 
 export type LinkOptionsFn<TComp> = <
   const TOptions,
