@@ -893,7 +893,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
             tLazyRouteTemplate.template(),
           {
             tsrImports: tLazyRouteTemplate.imports.tsrImports(),
-            tsrPath: escapedRoutePath.replaceAll(/\{(.+)\}/gm, '$1'),
+            tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
             tsrExportStart:
               tLazyRouteTemplate.imports.tsrExportStart(escapedRoutePath),
             tsrExportEnd: tLazyRouteTemplate.imports.tsrExportEnd(),
@@ -921,7 +921,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
             tRouteTemplate.template(),
           {
             tsrImports: tRouteTemplate.imports.tsrImports(),
-            tsrPath: escapedRoutePath.replaceAll(/\{(.+)\}/gm, '$1'),
+            tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
             tsrExportStart:
               tRouteTemplate.imports.tsrExportStart(escapedRoutePath),
             tsrExportEnd: tRouteTemplate.imports.tsrExportEnd(),
