@@ -186,7 +186,7 @@ export function useLinkProps<
         console.warn(err)
         console.warn(preloadWarning)
       })
-    }, 
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
@@ -206,7 +206,7 @@ export function useLinkProps<
       options.replace,
       options.resetScroll,
       options.viewTransition,
-    ]
+    ],
   )
 
   const preloadViewportIoCallback = React.useCallback(
