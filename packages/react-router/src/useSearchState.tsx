@@ -119,21 +119,28 @@ const getter = (key: string, state: object) =>
   // @ts-expect-error -- no need to strictly type this internal function
   state[key]
 
-const store = Symbol('search accumulator')
-const opts = Symbol('options accumulator')
-const scheduled = Symbol('microtask scheduled')
+/**
+ * We temporarily store the search state so that multiple calls
+ * to setState in the same tick will accumulate changes instead
+ * of overwriting them.
+ *
+ * We use a WeakMap to support potentially multiple routers
+ * in the same app, and to avoid memory leaks.
+ */
+const routerStore = new WeakMap<AnyRouter, {
+  search: object | null
+  opts: SetSearchStateOptions | null
+  scheduled: boolean | null
+}>()
 
 function setter<T>(
-  router: AnyRouter & {
-    [store]?: object | null
-    [opts]?: SetSearchStateOptions | null
-    [scheduled]?: boolean | null
-  },
+  router: AnyRouter,
   key: string,
   value: T | ((prev: T) => T),
   options?: SetSearchStateOptions,
 ) {
-  const prev = router[store] || router.state.location.search
+  let store = routerStore.get(router)
+  const prev = store?.search || router.state.location.search
   const next = {
     ...prev,
     [key]:
@@ -147,17 +154,20 @@ function setter<T>(
   // so we don't need to navigate
   if (next[key] === prev[key]) return
 
-  /**
-   * We temporarily store the search state in the router object
-   * so that multiple calls to setState in the same tick will
-   * accumulate changes in the same object instead of overwriting.
-   *
-   * We use a Symbol to avoid conflicts with other properties
-   * that we don't own.
-   */
-  router[store] = next
+  // create a store for this router if it's the first time
+  if (!store) {
+    store = {
+      search: null,
+      opts: null,
+      scheduled: null,
+    }
+    routerStore.set(router, store)
+  }
+
+  // accumulate changes in the store
+  store.search = next
   if (options) {
-    const current = router[opts]
+    const current = store.opts
     if (current) {
       current.hashScrollIntoView ||= options.hashScrollIntoView
       current.reloadDocument ||= options.reloadDocument
@@ -166,33 +176,33 @@ function setter<T>(
       current.resetScroll ||= options.resetScroll
       current.viewTransition ||= options.viewTransition
     } else {
-      router[opts] = options
+      store.opts = options
     }
   }
 
   // a microtask is already scheduled in this tick, nothing else to do
-  if (router[scheduled]) return
-  router[scheduled] = true
+  if (store.scheduled) return
+  store.scheduled = true
 
   // if a call to `navigate()` happens in the same tick as this setter,
   // cancel the microtask and let the `navigate()` call handle the state update
   const clear = router.subscribe(
     'onBeforeNavigate',
-    () => (router[scheduled] = false),
+    () => (store.scheduled = false),
   )
 
   // we use a microtask to allow for multiple synchronous calls to `setState`
   // to accumulate changes but still call `navigate()` only once
   queueMicrotask(() => {
     clear()
-    if (!router[scheduled]) return
+    if (!store.scheduled) return
 
-    const options = router[opts]
+    const options = store.opts
 
     void router.navigate({
-      ...router[opts],
+      ...store.opts,
       hash: router.state.location.hash,
-      search: router[store],
+      search: store.search,
       to: router.state.location.pathname,
       replace: options?.replace !== false,
     })
@@ -202,8 +212,8 @@ function setter<T>(
      * and to ensure that the next setState call will start from
      * the current search state.
      */
-    router[store] = null
-    router[opts] = null
-    router[scheduled] = null
+    store.search = null
+    store.opts = null
+    store.scheduled = null
   })
 }
