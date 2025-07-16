@@ -45,3 +45,14 @@ test('Navigating to a post page with viewTransition types', async ({
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
+
+test('StatusCode should reset after visiting 404 route', async ({ page }) => {
+  await page.getByRole('link', { name: 'This Route Does Not Exist' }).click()
+  expect(page.getByTestId('status-code')).toContainText('404')
+
+  await page.getByRole('link', { name: 'Start Over' }).click()
+  expect(page.getByTestId('status-code')).toContainText('200')
+
+  await page.getByRole('link', { name: 'Posts', exact: true }).click()
+  expect(page.getByTestId('status-code')).toContainText('200')
+})

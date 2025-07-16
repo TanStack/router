@@ -8,6 +8,7 @@ import {
   createRoute,
   createRouter,
   redirect,
+  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { NotFoundError, fetchPost, fetchPosts } from './posts'
@@ -27,6 +28,7 @@ const rootRoute = createRootRoute({
 })
 
 function RootComponent() {
+  const routerState = useRouterState()
   return (
     <>
       <div className="p-2 flex gap-2 text-lg border-b">
@@ -71,6 +73,7 @@ function RootComponent() {
           This Route Does Not Exist
         </Link>
       </div>
+      <div data-testid="status-code">{routerState.statusCode}</div>
       <Outlet />
       <TanStackRouterDevtools position="bottom-right" />
     </>

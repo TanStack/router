@@ -1796,6 +1796,7 @@ export class RouterCore<
     this.__store.setState((s) => ({
       ...s,
       status: 'pending',
+      statusCode: 200,
       isLoading: true,
       location: this.latestLocation,
       pendingMatches,
