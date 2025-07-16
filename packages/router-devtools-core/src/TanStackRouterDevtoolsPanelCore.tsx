@@ -49,7 +49,14 @@ class TanStackRouterDevtoolsPanelCore {
   #Component: any
 
   constructor(config: TanStackRouterDevtoolsPanelCoreOptions) {
-    const { router, routerState, shadowDOMTarget, setIsOpen, style, className } = config
+    const {
+      router,
+      routerState,
+      shadowDOMTarget,
+      setIsOpen,
+      style,
+      className,
+    } = config
 
     this.#router = createSignal(router)
     this.#routerState = createSignal(routerState)
@@ -145,7 +152,7 @@ class TanStackRouterDevtoolsPanelCore {
     if (options.style !== undefined) {
       this.setStyle(options.style)
     }
-    
+
     if (options.className !== undefined) {
       this.setClassName(options.className)
     }
