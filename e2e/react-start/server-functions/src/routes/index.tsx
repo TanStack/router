@@ -82,6 +82,11 @@ function Home() {
             server function redirects when FormData is submitted (via no-JS)
           </Link>
         </li>
+        <li>
+          <Link to="/merge-server-fn-middleware-context">
+            server function middleware context is merged correctly
+          </Link>
+        </li>
       </ul>
     </div>
   )
