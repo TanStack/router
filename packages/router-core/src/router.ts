@@ -3306,19 +3306,33 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     .sort((a, b) => {
       const minLength = Math.min(a.scores.length, b.scores.length)
 
-      // Sort by min available score
+      // Sort by segment-by-segment score comparison ONLY for the common prefix
       for (let i = 0; i < minLength; i++) {
         if (a.scores[i] !== b.scores[i]) {
           return b.scores[i]! - a.scores[i]!
         }
       }
 
-      // Sort by length of score
+      // If all common segments have equal scores, then consider length and specificity
       if (a.scores.length !== b.scores.length) {
+        // Count optional parameters in each route
+        const aOptionalCount = a.parsed.filter(
+          (seg) => seg.type === 'optional-param',
+        ).length
+        const bOptionalCount = b.parsed.filter(
+          (seg) => seg.type === 'optional-param',
+        ).length
+
+        // If different number of optional parameters, fewer optional parameters wins (more specific)
+        if (aOptionalCount !== bOptionalCount) {
+          return aOptionalCount - bOptionalCount
+        }
+
+        // If same number of optional parameters, longer path wins (for static segments)
         return b.scores.length - a.scores.length
       }
 
-      // Sort by min available parsed value
+      // Sort by min available parsed value for alphabetical ordering
       for (let i = 0; i < minLength; i++) {
         if (a.parsed[i]!.value !== b.parsed[i]!.value) {
           return a.parsed[i]!.value > b.parsed[i]!.value ? 1 : -1
