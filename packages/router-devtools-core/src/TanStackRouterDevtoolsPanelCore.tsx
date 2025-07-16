@@ -40,6 +40,8 @@ interface TanStackRouterDevtoolsPanelCoreOptions {
 class TanStackRouterDevtoolsPanelCore {
   #router: any
   #routerState: any
+  #style: any
+  #className: any
   #shadowDOMTarget?: ShadowRoot
   #isMounted = false
   #setIsOpen?: (isOpen: boolean) => void
@@ -47,10 +49,12 @@ class TanStackRouterDevtoolsPanelCore {
   #Component: any
 
   constructor(config: TanStackRouterDevtoolsPanelCoreOptions) {
-    const { router, routerState, shadowDOMTarget, setIsOpen } = config
+    const { router, routerState, shadowDOMTarget, setIsOpen, style, className } = config
 
     this.#router = createSignal(router)
     this.#routerState = createSignal(routerState)
+    this.#style = createSignal(style)
+    this.#className = createSignal(className)
     this.#shadowDOMTarget = shadowDOMTarget
     this.#setIsOpen = setIsOpen
   }
@@ -63,6 +67,8 @@ class TanStackRouterDevtoolsPanelCore {
     const dispose = render(() => {
       const [router] = this.#router
       const [routerState] = this.#routerState
+      const [style] = this.#style
+      const [className] = this.#className
       const shadowDOMTarget = this.#shadowDOMTarget
       const setIsOpen = this.#setIsOpen
 
@@ -89,6 +95,8 @@ class TanStackRouterDevtoolsPanelCore {
               routerState={routerState}
               shadowDOMTarget={shadowDOMTarget}
               setIsOpen={setIsOpen}
+              style={style}
+              className={className}
             />
           </DevtoolsOnCloseContext.Provider>
         </ShadowDomTargetContext.Provider>
@@ -115,6 +123,14 @@ class TanStackRouterDevtoolsPanelCore {
     this.#routerState[1](routerState)
   }
 
+  setStyle(style: any) {
+    this.#style[1](style)
+  }
+
+  setClassName(className: any) {
+    this.#className[1](className)
+  }
+
   setOptions(options: Partial<TanStackRouterDevtoolsPanelCoreOptions>) {
     if (options.shadowDOMTarget !== undefined) {
       this.#shadowDOMTarget = options.shadowDOMTarget
@@ -124,6 +140,14 @@ class TanStackRouterDevtoolsPanelCore {
     }
     if (options.routerState !== undefined) {
       this.setRouterState(options.routerState)
+    }
+
+    if (options.style !== undefined) {
+      this.setStyle(options.style)
+    }
+    
+    if (options.className !== undefined) {
+      this.setClassName(options.className)
     }
   }
 }
