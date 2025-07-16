@@ -191,8 +191,10 @@ const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
  * Wildcard: `/foo/$` ✅
  * Wildcard with Prefix and Suffix: `/foo/prefix{$}suffix` ✅
  *
+ * Optional param: `/foo/{-$bar}`
+ * Optional param with Prefix and Suffix: `/foo/prefix{-$bar}suffix`
+
  * Future:
- * Optional: `/foo/{-bar}`
  * Optional named segment: `/foo/{bar}`
  * Optional named segment with Prefix and Suffix: `/foo/prefix{-bar}suffix`
  * Escape special characters:

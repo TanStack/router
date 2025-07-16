@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import {
   Link,
   Outlet,
@@ -40,6 +40,7 @@ describe('React Router - Optional Path Parameters', () => {
       })
 
       render(<RouterProvider router={router} />)
+      await act(() => router.load())
 
       const paramsElement = await screen.findByTestId('params')
       expect(JSON.parse(paramsElement.textContent!)).toEqual({})
@@ -67,6 +68,7 @@ describe('React Router - Optional Path Parameters', () => {
       })
 
       render(<RouterProvider router={router} />)
+      await act(() => router.load())
 
       const paramsElement = await screen.findByTestId('params')
       expect(JSON.parse(paramsElement.textContent!)).toEqual({
@@ -96,6 +98,7 @@ describe('React Router - Optional Path Parameters', () => {
       })
 
       render(<RouterProvider router={router} />)
+      await act(() => router.load())
 
       const paramsElement = await screen.findByTestId('params')
       expect(JSON.parse(paramsElement.textContent!)).toEqual({
@@ -111,7 +114,7 @@ describe('React Router - Optional Path Parameters', () => {
         expectedParams: { id: '123', tab: 'settings' },
       },
     ])(
-      'should handle mixed required and optional parameters',
+      'should handle mixed required and optional parameters: $path',
       async ({ path, expectedParams }) => {
         const rootRoute = createRootRoute()
         const usersRoute = createRoute({
@@ -134,6 +137,7 @@ describe('React Router - Optional Path Parameters', () => {
         })
 
         render(<RouterProvider router={router} />)
+        await act(() => router.load())
 
         const paramsElement = await screen.findByTestId('params')
         expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
@@ -253,6 +257,8 @@ describe('React Router - Optional Path Parameters', () => {
       })
 
       render(<RouterProvider router={router} />)
+      await act(() => router.load())
+
       {
         await expect(
           screen.findByTestId('home-heading'),
@@ -455,52 +461,100 @@ describe('React Router - Optional Path Parameters', () => {
       })
 
       render(<RouterProvider router={router} />)
+      await act(() => router.load())
+
+      expect(await screen.findByTestId('params')).toHaveTextContent(
+        JSON.stringify({}),
+      )
 
       const addCategoryBtn = await screen.findByTestId('add-category')
       const removeCategoryBtn = await screen.findByTestId('remove-category')
 
       // Add category
       fireEvent.click(addCategoryBtn)
+      expect(await screen.findByTestId('params')).toHaveTextContent(
+        JSON.stringify({ category: 'tech' }),
+      )
       expect(router.state.location.pathname).toBe('/posts/tech')
 
       // Remove category
       fireEvent.click(removeCategoryBtn)
+      expect(await screen.findByTestId('params')).toHaveTextContent(
+        JSON.stringify({}),
+      )
       expect(router.state.location.pathname).toBe('/posts')
     })
   })
 
   describe('complex routing scenarios', () => {
     it.each([
-      { path: '/posts', expectedParams: {} },
-      { path: '/posts/tech', expectedParams: { category: 'tech' } },
+      {
+        path: '/posts',
+        expected: {
+          posts: {
+            rendered: true,
+            category: 'undefined',
+          },
+          post: {
+            rendered: false,
+          },
+        },
+      },
+      {
+        path: '/posts/tech',
+        expected: {
+          posts: {
+            rendered: true,
+            category: 'tech',
+          },
+          post: {
+            rendered: false,
+          },
+        },
+      },
       {
         path: '/posts/tech/hello-world',
-        expectedParams: { category: 'tech', slug: 'hello-world' },
+        expected: {
+          posts: {
+            rendered: true,
+            category: 'tech',
+          },
+          post: {
+            rendered: true,
+            slug: 'hello-world',
+          },
+        },
       },
     ])(
-      'should handle nested routes with optional parameters',
-      async ({ path, expectedParams }) => {
+      'should handle nested routes with optional parameters: $path',
+      async ({ path, expected }) => {
         const rootRoute = createRootRoute()
         const postsRoute = createRoute({
           getParentRoute: () => rootRoute,
           path: '/posts/{-$category}',
-          component: () => (
-            <div>
-              <h1>Posts Layout</h1>
-              <Outlet />
-            </div>
-          ),
+          component: () => {
+            const { category } = postsRoute.useParams()
+            return (
+              <div>
+                <h1>Posts Layout</h1>
+                <div data-testid="category-param">
+                  {category ?? 'undefined'}
+                </div>
+                <Outlet />
+              </div>
+            )
+          },
         })
 
         const postRoute = createRoute({
           getParentRoute: () => postsRoute,
           path: '/{-$slug}',
           component: () => {
-            const params = postsRoute.useParams()
+            const { slug } = postsRoute.useParams()
             return (
               <div>
                 <h2>Post Detail</h2>
-                <div data-testid="params">{JSON.stringify(params)}</div>
+                <div data-testid="slug-param">{slug ?? undefined}</div>
               </div>
             )
           },
@@ -515,9 +569,15 @@ describe('React Router - Optional Path Parameters', () => {
         })
 
         render(<RouterProvider router={router} />)
-
-        const paramsElement = await screen.findByTestId('params')
-        expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
+        await act(() => router.load())
+        if (expected.posts.rendered) {
+          const categoryParam = await screen.findByTestId('category-param')
+          expect(categoryParam).toHaveTextContent(expected.posts.category)
+        }
+        if (expected.post.rendered) {
+          const slugParam = await screen.findByTestId('slug-param')
+          expect(slugParam).toHaveTextContent(expected.post.slug!)
+        }
       },
     )
 
@@ -551,6 +611,7 @@ describe('React Router - Optional Path Parameters', () => {
       })
 
       render(<RouterProvider router={router} />)
+      await act(() => router.load())
 
       const paramsElement = await screen.findByTestId('params')
       const searchElement = await screen.findByTestId('search')
@@ -573,12 +634,12 @@ describe('React Router - Optional Path Parameters', () => {
         expectedParams: { year: '2023', month: '12', day: '25' },
       },
     ])(
-      'should handle multiple consecutive optional parameters',
+      'should handle multiple consecutive optional parameters: $path',
       async ({ path, expectedParams }) => {
         const rootRoute = createRootRoute()
         const dateRoute = createRoute({
           getParentRoute: () => rootRoute,
-          path: '/{-year}/{-month}/{-day}',
+          path: '/{-$year}/{-$month}/{-$day}',
           component: () => {
             const params = dateRoute.useParams()
             return (
@@ -597,6 +658,7 @@ describe('React Router - Optional Path Parameters', () => {
         })
 
         render(<RouterProvider router={router} />)
+        await act(() => router.load())
 
         const paramsElement = await screen.findByTestId('params')
         expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
@@ -638,6 +700,7 @@ describe('React Router - Optional Path Parameters', () => {
 
       // Test without category
       render(<RouterProvider router={router} />)
+      await act(() => router.load())
 
       await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
       const paramsElement = await screen.findByTestId('params')
