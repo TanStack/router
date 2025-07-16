@@ -150,7 +150,11 @@ importers:
         specifier: ^3.0.6
         version: 3.0.6(@types/node@22.13.4)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.4.2)(jsdom@25.0.1)(lightningcss@1.29.2)(msw@2.7.0(@types/node@22.13.4)(typescript@5.8.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
-  e2e/e2e-utils: {}
+  e2e/e2e-utils:
+    devDependencies:
+      get-port-please:
+        specifier: ^3.2.0
+        version: 3.2.0
 
   e2e/react-router/basic:
     dependencies:
@@ -12352,8 +12356,8 @@ packages:
     resolution: {integrity: sha512-FJhYRoDaiatfEkUK8HKlicmu/3SGFD51q3itKDGoSTysQJBnfOcxU5GxnhE1E6soB76MbT0MBtnKJuXyAx+96Q==}
     engines: {node: '>=6'}
 
-  get-port-please@3.1.2:
-    resolution: {integrity: sha512-Gxc29eLs1fbn6LQ4jSU4vXjlwyZhF5HsGuMAa7gqBP4Rw4yxxltyDUuF5MBclFzDTXO+ACchGQoeela4DSfzdQ==}
+  get-port-please@3.2.0:
+    resolution: {integrity: sha512-I9QVvBw5U/hw3RmWpYKRumUeaDgxTPd401x364rLmWBJcOQ753eov1eTgzDqRG9bqFIfDc7gfzcQEWrUri3o1A==}
 
   get-port@7.1.0:
     resolution: {integrity: sha512-QB9NKEeDg3xxVwCCwJQ9+xycaz6pBB6iQ76wiWMl1927n0Kir6alPiP+yuiICLLU4jpMe08dXfpebuQppFA2zw==}
@@ -21631,7 +21635,7 @@ snapshots:
 
   get-nonce@1.0.1: {}
 
-  get-port-please@3.1.2: {}
+  get-port-please@3.2.0: {}
 
   get-port@7.1.0: {}
 
@@ -22390,7 +22394,7 @@ snapshots:
       consola: 3.4.2
       crossws: 0.3.5
       defu: 6.1.4
-      get-port-please: 3.1.2
+      get-port-please: 3.2.0
       h3: 1.13.0
       http-shutdown: 1.2.2
       jiti: 2.4.2
