@@ -180,30 +180,34 @@ export function useLinkProps<
     },
   })
 
-  const doPreload = React.useCallback(() => {
-    router.preloadRoute({ ...options, from } as any).catch((err) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
-  }, [
-    router,
-    options.to,
-    options._fromLocation,
-    from,
-    options.search,
-    options.hash,
-    options.params,
-    options.state,
-    options.mask,
-    options.unsafeRelative,
-    options.hashScrollIntoView,
-    options.href,
-    options.ignoreBlocker,
-    options.reloadDocument,
-    options.replace,
-    options.resetScroll,
-    options.viewTransition,
-  ])
+  const doPreload = React.useCallback(
+    () => {
+      router.preloadRoute({ ...options, from } as any).catch((err) => {
+        console.warn(err)
+        console.warn(preloadWarning)
+      })
+    }, 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      router,
+      options.to,
+      options._fromLocation,
+      from,
+      options.search,
+      options.hash,
+      options.params,
+      options.state,
+      options.mask,
+      options.unsafeRelative,
+      options.hashScrollIntoView,
+      options.href,
+      options.ignoreBlocker,
+      options.reloadDocument,
+      options.replace,
+      options.resetScroll,
+      options.viewTransition,
+    ]
+  )
 
   const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
