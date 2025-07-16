@@ -335,7 +335,7 @@ describe('React Router - Optional Path Parameters', () => {
       const filesLink = await screen.findByTestId('files-link')
       const docLink = await screen.findByTestId('doc-link')
 
-      expect(filesLink).toHaveAttribute('href', '/files')
+      expect(filesLink).toHaveAttribute('href', '/files/prefix.txt')
       expect(docLink).toHaveAttribute('href', '/files/prefixdocument.txt')
     })
   })
