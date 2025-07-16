@@ -535,7 +535,7 @@ describe('React Router - Optional Path Parameters', () => {
 
       function Component() {
         const params = postsRoute.useParams()
-        const search = useSearch({ strict: false })
+        const search = postsRoute.useSearch()
         return (
           <div>
             <h1>Posts</h1>
