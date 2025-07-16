@@ -643,6 +643,114 @@ describe('Link', () => {
     expect(pageZero).toBeInTheDocument()
   })
 
+  test('when navigation to . from /posts while updating search from /', async () => {
+    const RootComponent = () => {
+      return (
+        <>
+          <div data-testid="root-nav">
+            <Link
+              to="."
+              search={{ page: 2, filter: 'inactive' }}
+              data-testid="update-search"
+            >
+              Update Search
+            </Link>
+          </div>
+          <Outlet />
+        </>
+      )
+    }
+
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link
+              to="/posts"
+              search={{ page: 1, filter: 'active' }}
+              data-testid="to-posts"
+            >
+              Go to Posts
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      const search = useSearch({ strict: false })
+      return (
+        <>
+          <h1>Posts</h1>
+          <span data-testid="current-page">Page: {search.page}</span>
+          <span data-testid="current-filter">Filter: {search.filter}</span>
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      validateSearch: (input: Record<string, unknown>) => {
+        return {
+          page: input.page ? Number(input.page) : 1,
+          filter: (input.filter as string) || 'all',
+        }
+      },
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    // Start at index page
+    const toPostsLink = await screen.findByTestId('to-posts')
+    expect(toPostsLink).toHaveAttribute('href', '/posts?page=1&filter=active')
+
+    // Navigate to posts with initial search params
+    await act(() => fireEvent.click(toPostsLink))
+
+    // Verify we're on posts with initial search
+    const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
+    expect(postsHeading).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/posts')
+    expect(window.location.search).toBe('?page=1&filter=active')
+
+    const currentPage = await screen.findByTestId('current-page')
+    const currentFilter = await screen.findByTestId('current-filter')
+    expect(currentPage).toHaveTextContent('Page: 1')
+    expect(currentFilter).toHaveTextContent('Filter: active')
+
+    // Navigate to current route (.) with updated search
+    const updateSearchLink = await screen.findByTestId('update-search')
+    expect(updateSearchLink).toHaveAttribute(
+      'href',
+      '/posts?page=2&filter=inactive',
+    )
+
+    await act(() => fireEvent.click(updateSearchLink))
+
+    // Verify search was updated
+    expect(window.location.pathname).toBe('/posts')
+    expect(window.location.search).toBe('?page=2&filter=inactive')
+
+    const updatedPage = await screen.findByTestId('current-page')
+    const updatedFilter = await screen.findByTestId('current-filter')
+    expect(updatedPage).toHaveTextContent('Page: 2')
+    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+  })
+
   test('when navigating to /posts with invalid search', async () => {
     const rootRoute = createRootRoute()
     const onError = vi.fn()

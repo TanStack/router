@@ -1450,15 +1450,23 @@ export class RouterCore<
 
       // Resolve the next params
       let nextParams =
-        (dest.params ?? true) === true
-          ? fromParams
-          : {
-              ...fromParams,
-              ...functionalUpdate(dest.params as any, fromParams),
-            }
+        dest.params === false || dest.params === null
+          ? {}
+          : (dest.params ?? true) === true
+            ? fromParams
+            : {
+                ...fromParams,
+                ...functionalUpdate(dest.params as any, fromParams),
+              }
+
+      // Interpolate the path first to get the actual resolved path, then match against that
+      const interpolatedNextTo = interpolatePath({
+        path: nextTo,
+        params: nextParams ?? {},
+      }).interpolatedPath
 
       const destRoutes = this.matchRoutes(
-        nextTo,
+        interpolatedNextTo,
         {},
         {
           _buildLocation: true,
@@ -1479,8 +1487,9 @@ export class RouterCore<
           })
       }
 
-      // Interpolate the next to into the next pathname
       const nextPathname = interpolatePath({
+        // Use the original template path for interpolation
+        // This preserves the original parameter syntax including optional parameters
         path: nextTo,
         params: nextParams ?? {},
         leaveWildcards: false,
@@ -1785,7 +1794,21 @@ export class RouterCore<
         state: true,
         _includeValidateSearch: true,
       })
-      if (trimPath(this.latestLocation.href) !== trimPath(nextLocation.href)) {
+
+      // Normalize URLs for comparison to handle encoding differences
+      // Browser history always stores encoded URLs while buildLocation may produce decoded URLs
+      const normalizeUrl = (url: string) => {
+        try {
+          return encodeURI(decodeURI(url))
+        } catch {
+          return url
+        }
+      }
+
+      if (
+        trimPath(normalizeUrl(this.latestLocation.href)) !==
+        trimPath(normalizeUrl(nextLocation.href))
+      ) {
         throw redirect({ href: nextLocation.href })
       }
     }
@@ -3225,43 +3248,51 @@ export function processRouteTree<TRouteLike extends RouteLike>({
         return 0.75
       }
 
-      if (
-        segment.type === 'param' &&
-        segment.prefixSegment &&
-        segment.suffixSegment
-      ) {
-        return 0.55
-      }
-
-      if (segment.type === 'param' && segment.prefixSegment) {
-        return 0.52
-      }
-
-      if (segment.type === 'param' && segment.suffixSegment) {
-        return 0.51
-      }
-
       if (segment.type === 'param') {
+        if (segment.prefixSegment && segment.suffixSegment) {
+          return 0.55
+        }
+
+        if (segment.prefixSegment) {
+          return 0.52
+        }
+
+        if (segment.suffixSegment) {
+          return 0.51
+        }
+
         return 0.5
       }
 
-      if (
-        segment.type === 'wildcard' &&
-        segment.prefixSegment &&
-        segment.suffixSegment
-      ) {
-        return 0.3
-      }
+      if (segment.type === 'optional-param') {
+        if (segment.prefixSegment && segment.suffixSegment) {
+          return 0.45
+        }
 
-      if (segment.type === 'wildcard' && segment.prefixSegment) {
-        return 0.27
-      }
+        if (segment.prefixSegment) {
+          return 0.42
+        }
 
-      if (segment.type === 'wildcard' && segment.suffixSegment) {
-        return 0.26
+        if (segment.suffixSegment) {
+          return 0.41
+        }
+
+        return 0.4
       }
 
       if (segment.type === 'wildcard') {
+        if (segment.prefixSegment && segment.suffixSegment) {
+          return 0.3
+        }
+
+        if (segment.prefixSegment) {
+          return 0.27
+        }
+
+        if (segment.suffixSegment) {
+          return 0.26
+        }
+
         return 0.25
       }
 
@@ -3275,19 +3306,33 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     .sort((a, b) => {
       const minLength = Math.min(a.scores.length, b.scores.length)
 
-      // Sort by min available score
+      // Sort by segment-by-segment score comparison ONLY for the common prefix
       for (let i = 0; i < minLength; i++) {
         if (a.scores[i] !== b.scores[i]) {
           return b.scores[i]! - a.scores[i]!
         }
       }
 
-      // Sort by length of score
+      // If all common segments have equal scores, then consider length and specificity
       if (a.scores.length !== b.scores.length) {
+        // Count optional parameters in each route
+        const aOptionalCount = a.parsed.filter(
+          (seg) => seg.type === 'optional-param',
+        ).length
+        const bOptionalCount = b.parsed.filter(
+          (seg) => seg.type === 'optional-param',
+        ).length
+
+        // If different number of optional parameters, fewer optional parameters wins (more specific)
+        if (aOptionalCount !== bOptionalCount) {
+          return aOptionalCount - bOptionalCount
+        }
+
+        // If same number of optional parameters, longer path wins (for static segments)
         return b.scores.length - a.scores.length
       }
 
-      // Sort by min available parsed value
+      // Sort by min available parsed value for alphabetical ordering
       for (let i = 0; i < minLength; i++) {
         if (a.parsed[i]!.value !== b.parsed[i]!.value) {
           return a.parsed[i]!.value > b.parsed[i]!.value ? 1 : -1
@@ -3328,7 +3373,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
     const result = matchPathname(basepath, trimmedPath, {
       to: route.fullPath,
       caseSensitive: route.options?.caseSensitive ?? caseSensitive,
-      fuzzy: true,
+      fuzzy: false,
     })
     return result
   }
