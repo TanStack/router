@@ -13,14 +13,12 @@ import { useRouter } from './useRouter'
 import {
   useForwardedRef,
   useIntersectionObserver,
-  useLayoutEffect,
 } from './utils'
 
 import { useMatch } from './useMatch'
 import type {
   AnyRouter,
   Constrain,
-  LinkCurrentTargetElement,
   LinkOptions,
   RegisteredRouter,
   RoutePaths,
@@ -48,8 +46,8 @@ export function useLinkProps<
 
   const {
     // custom props
-    activeProps = () => ({ className: 'active' }),
-    inactiveProps = () => ({}),
+    activeProps,
+    inactiveProps,
     activeOptions,
     to,
     preload: userPreload,
@@ -71,10 +69,6 @@ export function useLinkProps<
     onMouseLeave,
     onTouchStart,
     ignoreBlocker,
-    ...rest
-  } = options
-
-  const {
     // prevent these from being returned
     params: _params,
     search: _search,
@@ -83,8 +77,10 @@ export function useLinkProps<
     mask: _mask,
     reloadDocument: _reloadDocument,
     unsafeRelative: _unsafeRelative,
+    from: _from,
+    _fromLocation,
     ...propsSafeToSpread
-  } = rest
+  } = options
 
   // If this link simply reloads the current route,
   // make sure it has a new key so it will trigger a data refresh
@@ -94,7 +90,7 @@ export function useLinkProps<
 
   const type: 'internal' | 'external' = React.useMemo(() => {
     try {
-      new URL(`${to}`)
+      new URL(to as any)
       return 'external'
     } catch {}
     return 'internal'
@@ -106,33 +102,40 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  const nearestFrom = useMatch({
+  const from = useMatch({
     strict: false,
-    select: (match) => match.fullPath,
+    select: (match) => options.from ?? match.fullPath,
   })
 
-  const from = options.from ?? nearestFrom
-
-  // Use it as the default `from` location
-  options = { ...options, from }
-
   const next = React.useMemo(
-    () => router.buildLocation(options as any),
+    () => router.buildLocation({ ...options, from } as any),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [router, options, currentSearch],
+    [
+      router,
+      currentSearch,
+      options._fromLocation,
+      from,
+      options.hash,
+      options.to,
+      options.search,
+      options.params,
+      options.state,
+      options.mask,
+      options.unsafeRelative,
+    ],
   )
 
-  const preload = React.useMemo(() => {
-    if (options.reloadDocument) {
-      return false
-    }
-    return userPreload ?? router.options.defaultPreload
-  }, [router.options.defaultPreload, userPreload, options.reloadDocument])
+  const isExternal = type === 'external'
+
+  const preload = (options.reloadDocument || isExternal)
+    ? false
+    : (userPreload ?? router.options.defaultPreload)
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   const isActive = useRouterState({
     select: (s) => {
+      if (isExternal) return false
       if (activeOptions?.exact) {
         const testExact = exactPathTest(
           s.location.pathname,
@@ -146,15 +149,15 @@ export function useLinkProps<
         const currentPathSplit = removeTrailingSlash(
           s.location.pathname,
           router.basepath,
-        ).split('/')
+        )
         const nextPathSplit = removeTrailingSlash(
           next.pathname,
           router.basepath,
-        ).split('/')
-
-        const pathIsFuzzyEqual = nextPathSplit.every(
-          (d, i) => d === currentPathSplit[i],
         )
+
+        const pathIsFuzzyEqual = currentPathSplit.startsWith(nextPathSplit) && currentPathSplit[nextPathSplit.length] === '/'
+
+
         if (!pathIsFuzzyEqual) {
           return false
         }
@@ -178,11 +181,29 @@ export function useLinkProps<
   })
 
   const doPreload = React.useCallback(() => {
-    router.preloadRoute(options as any).catch((err) => {
+    router.preloadRoute({ ...options, from } as any).catch((err) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
-  }, [options, router])
+  }, [
+    router,
+    options.to,
+    options._fromLocation,
+    from,
+    options.search,
+    options.hash,
+    options.params,
+    options.state,
+    options.mask,
+    options.unsafeRelative,
+    options.hashScrollIntoView,
+    options.href,
+    options.ignoreBlocker,
+    options.reloadDocument,
+    options.replace,
+    options.resetScroll,
+    options.viewTransition,
+  ])
 
   const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
@@ -196,11 +217,11 @@ export function useLinkProps<
   useIntersectionObserver(
     innerRef,
     preloadViewportIoCallback,
-    { rootMargin: '100px' },
+    intersectionObserverOptions,
     { disabled: !!disabled || !(preload === 'viewport') },
   )
 
-  useLayoutEffect(() => {
+  React.useEffect(() => {
     if (hasRenderFetched.current) {
       return
     }
@@ -210,7 +231,7 @@ export function useLinkProps<
     }
   }, [disabled, doPreload, preload])
 
-  if (type === 'external') {
+  if (isExternal) {
     return {
       ...propsSafeToSpread,
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
@@ -230,7 +251,7 @@ export function useLinkProps<
   }
 
   // The click handler
-  const handleClick = (e: MouseEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
     if (
       !disabled &&
       !isCtrlEvent(e) &&
@@ -253,6 +274,7 @@ export function useLinkProps<
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       return router.navigate({
         ...options,
+        from,
         replace,
         resetScroll,
         hashScrollIntoView,
@@ -264,7 +286,7 @@ export function useLinkProps<
   }
 
   // The click handler
-  const handleFocus = (_: MouseEvent) => {
+  const handleFocus = (_: React.MouseEvent) => {
     if (disabled) return
     if (preload) {
       doPreload()
@@ -273,54 +295,42 @@ export function useLinkProps<
 
   const handleTouchStart = handleFocus
 
-  const handleEnter = (e: MouseEvent) => {
-    if (disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
+  const handleEnter = (e: React.MouseEvent) => {
+    if (disabled || !preload) return
 
-    if (preload) {
-      if (eventTarget.preloadTimeout) {
+    if (!preloadDelay) {
+      doPreload()
+    } else {
+      const eventTarget = e.target
+      if (timeoutMap.has(eventTarget)) {
         return
       }
-
-      if (!preloadDelay) {
+      const id = setTimeout(() => {
+        timeoutMap.delete(eventTarget)
         doPreload()
-      } else {
-        eventTarget.preloadTimeout = setTimeout(() => {
-          eventTarget.preloadTimeout = null
-          doPreload()
-        }, preloadDelay)
-      }
+      }, preloadDelay)
+      timeoutMap.set(eventTarget, id)
     }
   }
 
-  const handleLeave = (e: MouseEvent) => {
-    if (disabled) return
-    const eventTarget = (e.target || {}) as LinkCurrentTargetElement
-
-    if (eventTarget.preloadTimeout) {
-      clearTimeout(eventTarget.preloadTimeout)
-      eventTarget.preloadTimeout = null
+  const handleLeave = (e: React.MouseEvent) => {
+    if (disabled || !preload || !preloadDelay) return
+    const eventTarget = e.target
+    const id = timeoutMap.get(eventTarget)
+    if (id) {
+      clearTimeout(id)
+      timeoutMap.delete(eventTarget)
     }
   }
-
-  const composeHandlers =
-    (handlers: Array<undefined | ((e: any) => void)>) =>
-    (e: { persist?: () => void; defaultPrevented: boolean }) => {
-      e.persist?.()
-      handlers.filter(Boolean).forEach((handler) => {
-        if (e.defaultPrevented) return
-        handler!(e)
-      })
-    }
 
   // Get the active props
   const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
-    ? (functionalUpdate(activeProps as any, {}) ?? {})
-    : {}
+    ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
+    : STATIC_EMPTY_OBJECT
 
   // Get the inactive props
   const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive ? {} : functionalUpdate(inactiveProps, {})
+    isActive ? STATIC_EMPTY_OBJECT : functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT
 
   const resolvedClassName = [
     className,
@@ -330,7 +340,7 @@ export function useLinkProps<
     .filter(Boolean)
     .join(' ')
 
-  const resolvedStyle = {
+  const resolvedStyle = (style || resolvedActiveProps.style || resolvedInactiveProps.style) && {
     ...style,
     ...resolvedActiveProps.style,
     ...resolvedInactiveProps.style,
@@ -353,29 +363,47 @@ export function useLinkProps<
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,
     target,
-    ...(Object.keys(resolvedStyle).length && { style: resolvedStyle }),
+    ...(resolvedStyle && { style: resolvedStyle }),
     ...(resolvedClassName && { className: resolvedClassName }),
-    ...(disabled && {
-      role: 'link',
-      'aria-disabled': true,
-    }),
-    ...(isActive && { 'data-status': 'active', 'aria-current': 'page' }),
-    ...(isTransitioning && { 'data-transitioning': 'transitioning' }),
+    ...(disabled && STATIC_DISABLED_PROPS),
+    ...(isActive && STATIC_ACTIVE_PROPS),
+    ...(isTransitioning && STATIC_TRANSITIONING_PROPS),
   }
 }
+
+const STATIC_EMPTY_OBJECT = {}
+const STATIC_ACTIVE_OBJECT = { className: 'active' }
+const STATIC_DISABLED_PROPS = { role: 'link', 'aria-disabled': true }
+const STATIC_ACTIVE_PROPS = { 'data-status': 'active', 'aria-current': 'page' }
+const STATIC_TRANSITIONING_PROPS = { 'data-transitioning': 'transitioning' }
+
+const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
+
+const intersectionObserverOptions: IntersectionObserverInit = {
+  rootMargin: '100px',
+}
+
+const composeHandlers =
+  (handlers: Array<undefined | React.EventHandler<any>>) =>
+    (e: React.SyntheticEvent) => {
+      handlers.filter(Boolean).forEach((handler) => {
+        if (e.defaultPrevented) return
+        handler!(e)
+      })
+    }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
   ? React.JSX.IntrinsicElements[TComp]
   : React.PropsWithoutRef<
-      TComp extends React.ComponentType<infer TProps> ? TProps : never
-    > &
-      React.RefAttributes<
-        TComp extends
-          | React.FC<{ ref: React.Ref<infer TRef> }>
-          | React.Component<{ ref: React.Ref<infer TRef> }>
-          ? TRef
-          : never
-      >
+    TComp extends React.ComponentType<infer TProps> ? TProps : never
+  > &
+  React.RefAttributes<
+    TComp extends
+    | React.FC<{ ref: React.Ref<infer TRef> }>
+    | React.Component<{ ref: React.Ref<infer TRef> }>
+    ? TRef
+    : never
+  >
 
 export type UseLinkPropsOptions<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -428,11 +456,11 @@ export type LinkProps<
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | React.ReactNode
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => React.ReactNode)
+  | React.ReactNode
+  | ((state: {
+    isActive: boolean
+    isTransitioning: boolean
+  }) => React.ReactNode)
 }
 
 type LinkComponentReactProps<TComp> = Omit<
@@ -512,8 +540,8 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
     const children =
       typeof rest.children === 'function'
         ? rest.children({
-            isActive: (linkProps as any)['data-status'] === 'active',
-          })
+          isActive: (linkProps as any)['data-status'] === 'active',
+        })
         : rest.children
 
     if (typeof _asChild === 'undefined') {
@@ -533,7 +561,7 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   },
 ) as any
 
-function isCtrlEvent(e: MouseEvent) {
+function isCtrlEvent(e: React.MouseEvent) {
   return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
 }
 
@@ -543,8 +571,8 @@ export type LinkOptionsFnOptions<
   TRouter extends AnyRouter = RegisteredRouter,
 > =
   TOptions extends ReadonlyArray<any>
-    ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
-    : ValidateLinkOptions<TRouter, TOptions, string, TComp>
+  ? ValidateLinkOptionsArray<TRouter, TOptions, string, TComp>
+  : ValidateLinkOptions<TRouter, TOptions, string, TComp>
 
 export type LinkOptionsFn<TComp> = <
   const TOptions,
