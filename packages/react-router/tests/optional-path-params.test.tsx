@@ -550,7 +550,7 @@ describe('React Router - Optional Path Parameters', () => {
         routeTree: rootRoute.addChildren([postsRoute]),
       })
 
-        render(<RouterProvider router={router} />)
+      render(<RouterProvider router={router} />)
 
       const paramsElement = await screen.findByTestId('params')
       const searchElement = await screen.findByTestId('search')
@@ -586,7 +586,7 @@ describe('React Router - Optional Path Parameters', () => {
                 <h1>Date Route</h1>
                 <div data-testid="params">{JSON.stringify(params)}</div>
               </div>
-    )
+            )
           },
         })
 
