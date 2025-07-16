@@ -452,7 +452,14 @@ function executeMiddleware(middlewares: TODO, ctx: TODO) {
       // Allow the middleware to call the next middleware in the chain
       next: async (nextCtx: TODO) => {
         // Allow the caller to extend the context for the next middleware
-        const nextResult = await next({ ...ctx, ...nextCtx })
+        const nextResult = await next({
+          ...ctx,
+          ...nextCtx,
+          context: {
+            ...ctx.context,
+            ...(nextCtx?.context || {}),
+          },
+        })
 
         // Merge the result into the context\
         return Object.assign(ctx, handleCtxResult(nextResult))
