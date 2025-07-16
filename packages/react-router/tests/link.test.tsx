@@ -4058,7 +4058,7 @@ describe('Link', () => {
           <>
             <h1>Index Heading</h1>
             <output>{count}</output>
-            <button onClick={() => setCount(c => c + 1)}>Render</button>
+            <button onClick={() => setCount((c) => c + 1)}>Render</button>
             <Link to="/">Index Link</Link>
           </>
         )
