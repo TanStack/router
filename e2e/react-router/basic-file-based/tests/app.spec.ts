@@ -265,3 +265,22 @@ test('structural sharing enabled', async ({ page }) => {
   await page.getByTestId('link').click()
   expect(await getRenderCount(page)).toBe(2)
 })
+
+test('Should change title on client side navigation', async ({ page }) => {
+  await page.goto('/')
+
+  await page.getByRole('link', { name: 'Posts' }).click()
+
+  await expect(page).toHaveTitle('Posts page')
+})
+
+test('Should change post navigating back and forth', async ({ page }) => {
+  await page.goto('/posts/1')
+  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+
+  await page.getByRole('link', { name: 'qui est esse' }).click()
+  await expect(page.getByTestId('post-title')).toContainText('qui est esse')
+
+  await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
+  await expect(page.getByTestId('post-title')).toContainText('sunt aut facere')
+})

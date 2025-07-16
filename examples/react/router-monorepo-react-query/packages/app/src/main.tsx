@@ -10,6 +10,7 @@ import {
 } from '@router-mono-react-query/post-feature'
 import { RootComponent } from './rootComponent'
 import type { RouterIds } from '@router-mono-react-query/router'
+import './style.css'
 
 // Not lazy loaded for simplicity, but you could expose from your library component
 // individually, and enforce here to use react lazy components via typings

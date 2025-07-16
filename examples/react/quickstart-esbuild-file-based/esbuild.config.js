@@ -1,4 +1,4 @@
-import { TanStackRouterEsbuild } from '@tanstack/router-plugin/esbuild'
+import { tanstackRouter } from '@tanstack/router-plugin/esbuild'
 
 export default {
   jsx: 'transform',
@@ -7,5 +7,5 @@ export default {
   bundle: true,
   format: 'esm',
   target: ['esnext'],
-  plugins: [TanStackRouterEsbuild()],
+  plugins: [tanstackRouter({ target: 'react', autoCodeSplitting: true })],
 }

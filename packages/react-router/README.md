@@ -1,5 +1,7 @@
 <img src="https://static.scarf.sh/a.png?x-pxid=d988eb79-b0fc-4a2b-8514-6a1ab932d188" />
 
+# TanStack React Router
+
 ![TanStack Router Header](https://github.com/tanstack/router/raw/main/media/header.png)
 
 🤖 Type-safe router w/ built-in caching & URL state management for React!
@@ -9,7 +11,7 @@
 </a><a href="https://discord.com/invite/WrRKjPJ" target="\_parent">
   <img alt="" src="https://img.shields.io/badge/Discord-TanStack-%235865F2" />
 </a><a href="https://npmjs.com/package/@tanstack/react-router" target="\_parent">
-  <img alt="" src="https://img.shields.io/npm/dm/@tanstack/react-router.svg" />
+  <img alt="" src="https://img.shields.io/npm/dm/@tanstack/router.svg" />
 </a><a href="https://bundlephobia.com/result?p=@tanstack/react-router" target="\_parent">
   <img alt="" src="https://badgen.net/bundlephobia/minzip/@tanstack/react-router" />
 </a><a href="#badge">
@@ -27,64 +29,3 @@
 Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Query](https://github.com/tannerlinsley/react-query), [React Table](https://github.com/tanstack/react-table), [React Charts](https://github.com/tannerlinsley/react-charts), [React Virtual](https://github.com/tannerlinsley/react-virtual)
 
 ## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!
-
-## Partners
-
-<div><a href="https://go.clerk.com/wOwHtuJ">
-  <img alt="Clerk" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40"
-</a></div><br />
-<div><a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable">
-  <img alt="AG Grid" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/ag-grid.svg" height="40"
-</a></div><br />
-<div><a href="https://netlify.com?utm_source=tanstack">
-  <img alt="Netlify" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/netlify.svg" height="40"
-</a></div><br />
-<div><a href="https://neon.tech?utm_source=tanstack">
-  <img alt="Neon" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="40"
-</a></div><br />
-<div><a href="https://convex.dev?utm_source=tanstack">
-  <img alt="Convex" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40"
-</a></div><br />
-<div><a href="https://sentry.io?utm_source=tanstack">
-  <img alt="Sentry" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40"
-</a></div><br />
-<div><a href="https://speakeasy.com/?utm_source=tanstack&utm_campaign=tanstack">
-  <img alt="Speakeasy" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/speakeasy.svg" height="40"
-</a></div><br />
-<div><a href="https://nozzle.io/?utm_source=tanstack&utm_campaign=tanstack">
-  <img alt="Nozzle.io" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/nozzle.svg" height="40"
-</a></div><br />
-
-## Quick Features
-
-- 100% TypeSafe
-  - Route Defs
-  - Navigation
-  - Relative Navigation
-  - Search Params
-  - Path Params
-  - Loaders
-- 1st Class Search Params
-  - Schemas + Validation
-  - Parsing + Serialization
-  - Immutable
-  - Structural Sharing
-  - Pre/Post Processing
-- Built-in Caching
-  - Stale-While-Revalidate
-  - Max-Age
-  - Auto Garbage Collection
-  - Invalidation
-- Prefetching
-- Automatic Prefetching
-- Transitions
-- Error Boundaries
-- Code Splitting
-- Layout Routes
-- Easy Integration w/ external caches and storage (eg. React Query, Apollo, SWR, RTKQuery)
-
-## Example Usage
-
-To run example React projects with Tanstack Router, see [CONTRIBUTING.md](./CONTRIBUTING.md)
-
-<!-- Use the force, Luke!! -->

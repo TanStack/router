@@ -7,9 +7,10 @@ import {
   createRouter,
   useBlocker,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './styles.css'
 
 const rootRoute = createRootRoute({
   component: RootComponent,
@@ -217,14 +218,8 @@ const routeTree = rootRoute.addChildren([
 const router = createRouter({
   routeTree,
   defaultPreload: 'intent',
+  scrollRestoration: true,
 })
-
-// Register things for typesafety
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: typeof router
-  }
-}
 
 const rootElement = document.getElementById('app')!
 

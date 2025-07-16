@@ -18,13 +18,21 @@ export type CreateRouteFunction = (typeof createRouteFunctions)[number]
 
 export const sortRules = [
   [['params', 'validateSearch'], ['search']],
-  [['search'], ['loaderDeps']],
+  [['search'], ['loaderDeps', 'ssr']],
   [['loaderDeps'], ['context']],
   [['context'], ['beforeLoad']],
   [['beforeLoad'], ['loader']],
   [
     ['loader'],
-    ['onEnter', 'onStay', 'onLeave', 'meta', 'links', 'scripts', 'headers'],
+    [
+      'onEnter',
+      'onStay',
+      'onLeave',
+      'head',
+      'scripts',
+      'headers',
+      'remountDeps',
+    ],
   ],
 ] as const
 

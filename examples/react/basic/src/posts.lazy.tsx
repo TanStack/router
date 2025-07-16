@@ -2,10 +2,10 @@ import * as React from 'react'
 import { Link, Outlet, createLazyRoute } from '@tanstack/react-router'
 
 export const Route = createLazyRoute('/posts')({
-  component: PostsComponent,
+  component: PostsLayoutComponent,
 })
 
-function PostsComponent() {
+function PostsLayoutComponent() {
   const posts = Route.useLoaderData()
 
   return (

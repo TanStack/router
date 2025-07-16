@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import { derivePort } from '../../utils.js'
+import { derivePort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
 const PORT = derivePort(packageJson.name)

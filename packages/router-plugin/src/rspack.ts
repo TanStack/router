@@ -47,7 +47,7 @@ const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
  *   // ...
  *   tools: {
  *     rspack: {
- *       plugins: [TanStackRouterRspack()],
+ *       plugins: [tanstackRouter()],
  *     },
  *   },
  * })
@@ -56,12 +56,13 @@ const TanStackRouterCodeSplitterRspack = /* #__PURE__ */ createRspackPlugin(
 const TanStackRouterRspack = /* #__PURE__ */ createRspackPlugin(
   unpluginRouterComposedFactory,
 )
-
+const tanstackRouter = TanStackRouterRspack
 export default TanStackRouterRspack
 export {
   configSchema,
   TanStackRouterRspack,
   TanStackRouterGeneratorRspack,
   TanStackRouterCodeSplitterRspack,
+  tanstackRouter,
 }
 export type { Config }

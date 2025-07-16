@@ -5,7 +5,7 @@ import {
   createRootRouteWithContext,
   useRouterState,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { Spinner } from '../components/Spinner'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import type { Auth } from '../utils/auth'
@@ -40,8 +40,8 @@ function RootComponent() {
                 ['/', 'Home'],
                 ['/dashboard', 'Dashboard'],
                 ['/expensive', 'Expensive'],
-                ['/layout-a', 'Layout A'],
-                ['/layout-b', 'Layout B'],
+                ['/route-a', 'Pathless Layout A'],
+                ['/route-b', 'Pathless Layout B'],
                 ['/profile', 'Profile'],
                 ['/login', 'Login'],
                 ['/route-group', 'Route Group'],

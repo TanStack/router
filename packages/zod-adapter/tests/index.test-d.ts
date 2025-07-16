@@ -178,12 +178,12 @@ test('when using zod schema without adapter', () => {
     .parameter(0)
     .toHaveProperty('search')
     .exclude<Function | true>()
-    .toEqualTypeOf<{ page: number; indexPage: number }>()
+    .toEqualTypeOf<{ page?: number; indexPage?: number } | undefined>()
 
   expectTypeOf(Link<typeof router, string, '/'>)
     .parameter(0)
     .toHaveProperty('search')
-    .returns.toEqualTypeOf<{ page: number; indexPage: number }>()
+    .returns.toEqualTypeOf<{ page?: number; indexPage?: number }>()
 
   expectTypeOf(Link<typeof router, '/', '/'>)
     .parameter(0)

@@ -1,27 +1,8 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "allowJs": true,
-    "allowSyntheticDefaultImports": true,
-    "allowUnreachableCode": false,
-    "allowUnusedLabels": false,
-    "checkJs": true,
-    "declaration": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
-    "noEmit": true,
-    "noImplicitReturns": true,
-    "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "target": "ES2020"
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
   },
-  "include": ["eslint.config.js", "prettier.config.js", "scripts"]
+  "include": ["src", "tests", "vite.config.ts", "eslint.config.ts"]
 }

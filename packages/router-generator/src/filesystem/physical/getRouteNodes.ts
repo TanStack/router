@@ -2,34 +2,49 @@ import path from 'node:path'
 import * as fsp from 'node:fs/promises'
 import {
   determineInitialRoutePath,
-  logging,
   removeExt,
-  removeTrailingSlash,
   replaceBackslash,
   routePathToVariable,
 } from '../../utils'
 import { getRouteNodes as getRouteNodesVirtual } from '../virtual/getRouteNodes'
 import { loadConfigFile } from '../virtual/loadConfigFile'
+import { logging } from '../../logger'
 import { rootPathId } from './rootPathId'
 import type {
   VirtualRootRoute,
   VirtualRouteSubtreeConfig,
 } from '@tanstack/virtual-file-routes'
-import type { GetRouteNodesResult, RouteNode } from '../../types'
+import type { FsRouteType, GetRouteNodesResult, RouteNode } from '../../types'
 import type { Config } from '../../config'
 
 const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
 
+const virtualConfigFileRegExp = /__virtual\.[mc]?[jt]s$/
+export function isVirtualConfigFile(fileName: string): boolean {
+  return virtualConfigFileRegExp.test(fileName)
+}
+
 export async function getRouteNodes(
-  config: Config,
+  config: Pick<
+    Config,
+    | 'routesDirectory'
+    | 'routeFilePrefix'
+    | 'routeFileIgnorePrefix'
+    | 'routeFileIgnorePattern'
+    | 'disableLogging'
+    | 'routeToken'
+    | 'indexToken'
+  >,
   root: string,
 ): Promise<GetRouteNodesResult> {
   const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
     config
+
   const logger = logging({ disabled: config.disableLogging })
   const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
 
   const routeNodes: Array<RouteNode> = []
+  const allPhysicalDirectories: Array<string> = []
 
   async function recurse(dir: string) {
     const fullDir = path.resolve(config.routesDirectory, dir)
@@ -44,6 +59,13 @@ export async function getRouteNodes(
       }
 
       if (routeFilePrefix) {
+        if (routeFileIgnorePattern) {
+          return (
+            d.name.startsWith(routeFilePrefix) &&
+            !d.name.match(routeFileIgnoreRegExp)
+          )
+        }
+
         return d.name.startsWith(routeFilePrefix)
       }
 
@@ -55,7 +77,7 @@ export async function getRouteNodes(
     })
 
     const virtualConfigFile = dirList.find((dirent) => {
-      return dirent.isFile() && dirent.name.match(/__virtual\.[mc]?[jt]s$/)
+      return dirent.isFile() && isVirtualConfigFile(dirent.name)
     })
 
     if (virtualConfigFile !== undefined) {
@@ -73,14 +95,16 @@ export async function getRouteNodes(
         file: '',
         children: virtualRouteSubtreeConfig,
       }
-      const { routeNodes: virtualRouteNodes } = await getRouteNodesVirtual(
-        {
-          ...config,
-          routesDirectory: fullDir,
-          virtualRouteConfig: dummyRoot,
-        },
-        root,
-      )
+      const { routeNodes: virtualRouteNodes, physicalDirectories } =
+        await getRouteNodesVirtual(
+          {
+            ...config,
+            routesDirectory: fullDir,
+            virtualRouteConfig: dummyRoot,
+          },
+          root,
+        )
+      allPhysicalDirectories.push(...physicalDirectories)
       virtualRouteNodes.forEach((node) => {
         const filePath = replaceBackslash(path.join(dir, node.filePath))
         const routePath = `/${dir}${node.routePath}`
@@ -99,7 +123,7 @@ export async function getRouteNodes(
 
     await Promise.all(
       dirList.map(async (dirent) => {
-        const fullPath = path.posix.join(fullDir, dirent.name)
+        const fullPath = replaceBackslash(path.join(fullDir, dirent.name))
         const relativePath = path.posix.join(dir, dirent.name)
 
         if (dirent.isDirectory()) {
@@ -119,40 +143,29 @@ export async function getRouteNodes(
             throw new Error(errorMessage)
           }
 
-          const variableName = routePathToVariable(routePath)
+          const meta = getRouteMeta(routePath, config)
+          const variableName = meta.variableName
+          let routeType: FsRouteType = meta.fsRouteType
 
-          const isLazy = routePath.endsWith('/lazy')
-
-          if (isLazy) {
+          if (routeType === 'lazy') {
             routePath = routePath.replace(/\/lazy$/, '')
           }
 
-          const isRoute = routePath.endsWith(`/${config.routeToken}`)
-          const isComponent = routePath.endsWith('/component')
-          const isErrorComponent = routePath.endsWith('/errorComponent')
-          const isPendingComponent = routePath.endsWith('/pendingComponent')
-          const isLoader = routePath.endsWith('/loader')
-          const isAPIRoute = routePath.startsWith(
-            `${removeTrailingSlash(config.apiBase)}/`,
-          )
-
-          const segments = routePath.split('/')
-          const lastRouteSegment = segments[segments.length - 1]
-          const isLayout =
-            (lastRouteSegment !== config.indexToken &&
-              lastRouteSegment !== config.routeToken &&
-              lastRouteSegment?.startsWith('_')) ||
-            false
+          // this check needs to happen after the lazy route has been cleaned up
+          // since the routePath is used to determine if a route is pathless
+          if (isValidPathlessLayoutRoute(routePath, routeType, config)) {
+            routeType = 'pathless_layout'
+          }
 
           ;(
             [
-              [isComponent, 'component'],
-              [isErrorComponent, 'errorComponent'],
-              [isPendingComponent, 'pendingComponent'],
-              [isLoader, 'loader'],
-            ] as const
-          ).forEach(([isType, type]) => {
-            if (isType) {
+              ['component', 'component'],
+              ['errorComponent', 'errorComponent'],
+              ['pendingComponent', 'pendingComponent'],
+              ['loader', 'loader'],
+            ] satisfies Array<[FsRouteType, string]>
+          ).forEach(([matcher, type]) => {
+            if (routeType === matcher) {
               logger.warn(
                 `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
               )
@@ -178,14 +191,7 @@ export async function getRouteNodes(
             fullPath,
             routePath,
             variableName,
-            isRoute,
-            isComponent,
-            isErrorComponent,
-            isPendingComponent,
-            isLoader,
-            isLazy,
-            isLayout,
-            isAPIRoute,
+            _fsRouteType: routeType,
           })
         }
       }),
@@ -197,5 +203,114 @@ export async function getRouteNodes(
   await recurse('./')
 
   const rootRouteNode = routeNodes.find((d) => d.routePath === `/${rootPathId}`)
-  return { rootRouteNode, routeNodes }
+  if (rootRouteNode) {
+    rootRouteNode._fsRouteType = '__root'
+    rootRouteNode.variableName = 'root'
+  }
+
+  return {
+    rootRouteNode,
+    routeNodes,
+    physicalDirectories: allPhysicalDirectories,
+  }
+}
+
+/**
+ * Determines the metadata for a given route path based on the provided configuration.
+ *
+ * @param routePath - The determined initial routePath.
+ * @param config - The user configuration object.
+ * @returns An object containing the type of the route and the variable name derived from the route path.
+ */
+export function getRouteMeta(
+  routePath: string,
+  config: Pick<Config, 'routeToken' | 'indexToken'>,
+): {
+  // `__root` is can be more easily determined by filtering down to routePath === /${rootPathId}
+  // `pathless` is needs to determined after `lazy` has been cleaned up from the routePath
+  fsRouteType: Extract<
+    FsRouteType,
+    | 'static'
+    | 'layout'
+    | 'api'
+    | 'lazy'
+    | 'loader'
+    | 'component'
+    | 'pendingComponent'
+    | 'errorComponent'
+  >
+  variableName: string
+} {
+  let fsRouteType: FsRouteType = 'static'
+
+  if (routePath.endsWith(`/${config.routeToken}`)) {
+    // layout routes, i.e `/foo/route.tsx` or `/foo/_layout/route.tsx`
+    fsRouteType = 'layout'
+  } else if (routePath.endsWith('/lazy')) {
+    // lazy routes, i.e. `/foo.lazy.tsx`
+    fsRouteType = 'lazy'
+  } else if (routePath.endsWith('/loader')) {
+    // loader routes, i.e. `/foo.loader.tsx`
+    fsRouteType = 'loader'
+  } else if (routePath.endsWith('/component')) {
+    // component routes, i.e. `/foo.component.tsx`
+    fsRouteType = 'component'
+  } else if (routePath.endsWith('/pendingComponent')) {
+    // pending component routes, i.e. `/foo.pendingComponent.tsx`
+    fsRouteType = 'pendingComponent'
+  } else if (routePath.endsWith('/errorComponent')) {
+    // error component routes, i.e. `/foo.errorComponent.tsx`
+    fsRouteType = 'errorComponent'
+  }
+
+  const variableName = routePathToVariable(routePath)
+
+  return { fsRouteType, variableName }
+}
+
+/**
+ * Used to validate if a route is a pathless layout route
+ * @param normalizedRoutePath Normalized route path, i.e `/foo/_layout/route.tsx` and `/foo._layout.route.tsx` to `/foo/_layout/route`
+ * @param config The `router-generator` configuration object
+ * @returns Boolean indicating if the route is a pathless layout route
+ */
+function isValidPathlessLayoutRoute(
+  normalizedRoutePath: string,
+  routeType: FsRouteType,
+  config: Pick<Config, 'routeToken' | 'indexToken'>,
+): boolean {
+  if (routeType === 'lazy') {
+    return false
+  }
+
+  const segments = normalizedRoutePath.split('/').filter(Boolean)
+
+  if (segments.length === 0) {
+    return false
+  }
+
+  const lastRouteSegment = segments[segments.length - 1]!
+  const secondToLastRouteSegment = segments[segments.length - 2]
+
+  // If segment === __root, then exit as false
+  if (lastRouteSegment === rootPathId) {
+    return false
+  }
+
+  // If segment === config.routeToken and secondToLastSegment is a string that starts with _, then exit as true
+  // Since the route is actually a configuration route for a layout/pathless route
+  // i.e. /foo/_layout/route.tsx === /foo/_layout.tsx
+  if (
+    lastRouteSegment === config.routeToken &&
+    typeof secondToLastRouteSegment === 'string'
+  ) {
+    return secondToLastRouteSegment.startsWith('_')
+  }
+
+  // Segment starts with _
+  return (
+    lastRouteSegment !== config.indexToken &&
+    lastRouteSegment !== config.routeToken &&
+    lastRouteSegment.startsWith('_')
+  )
 }

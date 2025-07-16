@@ -1,14 +1,25 @@
 import { expect, test } from '@playwright/test'
 import combinateImport from 'combinate'
-import { derivePort } from '../../../utils'
+import { derivePort, localDummyServer } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
+import { Server } from 'node:http'
+import queryString from 'node:querystring'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
 const PORT = derivePort(packageJson.name)
+const EXTERNAL_HOST_PORT = derivePort(`${packageJson.name}-external`)
 
 test.describe('redirects', () => {
+  let server: Server
+  test.beforeAll(async () => {
+    server = await localDummyServer(EXTERNAL_HOST_PORT)
+  })
+  test.afterAll(async () => {
+    server.close()
+  })
+
   const internalNavigationTestMatrix = combinate({
     thrower: ['beforeLoad', 'loader'] as const,
     reloadDocument: [false, true] as const,
@@ -68,27 +79,24 @@ test.describe('redirects', () => {
   const internalDirectVisitTestMatrix = combinate({
     thrower: ['beforeLoad', 'loader'] as const,
     reloadDocument: [false, true] as const,
-    preload: [false, true] as const,
   })
 
-  internalDirectVisitTestMatrix.forEach(
-    ({ thrower, reloadDocument, preload }) => {
-      test(`internal target, direct visit: thrower: ${thrower}, reloadDocument: ${reloadDocument}, preload: ${preload}`, async ({
-        page,
-      }) => {
-        await page.waitForLoadState('networkidle')
+  internalDirectVisitTestMatrix.forEach(({ thrower, reloadDocument }) => {
+    test(`internal target, direct visit: thrower: ${thrower}, reloadDocument: ${reloadDocument}`, async ({
+      page,
+    }) => {
+      await page.waitForLoadState('networkidle')
 
-        await page.goto(`/redirect/internal/via-${thrower}`)
+      await page.goto(`/redirect/internal/via-${thrower}`)
 
-        const url = `http://localhost:${PORT}/posts`
+      const url = `http://localhost:${PORT}/posts`
 
-        await page.waitForURL(url)
-        expect(page.url()).toBe(url)
-        await page.waitForLoadState('networkidle')
-        await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
-      })
-    },
-  )
+      await page.waitForURL(url)
+      expect(page.url()).toBe(url)
+      await page.waitForLoadState('networkidle')
+      await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
+    })
+  })
 
   const externalTestMatrix = combinate({
     scenario: ['navigate', 'direct_visit'] as const,
@@ -101,14 +109,17 @@ test.describe('redirects', () => {
     }) => {
       await page.waitForLoadState('networkidle')
 
+      let q = queryString.stringify({
+        externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+      })
       if (scenario === 'navigate') {
-        await page.goto(`/redirect/external`)
+        await page.goto(`/redirect/external?${q}`)
         await page.getByTestId(`via-${thrower}`).click()
       } else {
-        await page.goto(`/redirect/external/via-${thrower}`)
+        await page.goto(`/redirect/external/via-${thrower}?${q}`)
       }
 
-      const url = 'http://example.com/'
+      const url = `http://localhost:${EXTERNAL_HOST_PORT}/`
 
       await page.waitForURL(url)
       expect(page.url()).toBe(url)

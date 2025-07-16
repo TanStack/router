@@ -37,13 +37,13 @@ const TanStackRouterCodeSplitterEsbuild = createEsbuildPlugin(
  * @example
  * ```ts
  * export default {
- *   plugins: [TanStackRouterEsbuild()],
+ *   plugins: [tanstackRouter()],
  *   // ...
  * }
  * ```
  */
 const TanStackRouterEsbuild = createEsbuildPlugin(unpluginRouterComposedFactory)
-
+const tanstackRouter = TanStackRouterEsbuild
 export default TanStackRouterEsbuild
 
 export {
@@ -51,6 +51,7 @@ export {
   TanStackRouterGeneratorEsbuild,
   TanStackRouterCodeSplitterEsbuild,
   TanStackRouterEsbuild,
+  tanstackRouter,
 }
 
 export type { Config }

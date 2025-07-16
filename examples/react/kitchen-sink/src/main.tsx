@@ -18,7 +18,7 @@ import {
   useRouterState,
   useSearch,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { z } from 'zod'
 import {
   fetchInvoiceById,
@@ -30,6 +30,7 @@ import {
 } from './mockTodos'
 import { useMutation } from './useMutation'
 import type { Invoice } from './mockTodos'
+import './styles.css'
 
 //
 
@@ -64,10 +65,10 @@ function RootComponent() {
                 ['/', 'Home'],
                 ['/dashboard', 'Dashboard'],
                 ['/expensive', 'Expensive'],
-                ['/layout-a', 'Layout A'],
-                ['/layout-b', 'Layout B'],
+                ['/route-a', 'Pathless Layout A'],
+                ['/route-b', 'Pathless Layout B'],
                 ['/profile', 'Profile'],
-                ['/login', 'Login'],
+                ...(auth.status === 'loggedOut' ? [['/login', 'Login']] : []),
               ] as const
             ).map(([to, label]) => {
               return (
@@ -140,13 +141,13 @@ function IndexComponent() {
   )
 }
 
-const dashboardRoute = createRoute({
+const dashboardLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
-  component: DashboardComponent,
+  component: DashboardLayoutComponent,
 })
 
-function DashboardComponent() {
+function DashboardLayoutComponent() {
   return (
     <>
       <div className="flex items-center border-b">
@@ -180,7 +181,7 @@ function DashboardComponent() {
 }
 
 const dashboardIndexRoute = createRoute({
-  getParentRoute: () => dashboardRoute,
+  getParentRoute: () => dashboardLayoutRoute,
   path: '/',
   loader: () => fetchInvoices(),
   component: DashboardIndexComponent,
@@ -199,15 +200,15 @@ function DashboardIndexComponent() {
   )
 }
 
-const invoicesRoute = createRoute({
-  getParentRoute: () => dashboardRoute,
+const invoicesLayoutRoute = createRoute({
+  getParentRoute: () => dashboardLayoutRoute,
   path: 'invoices',
   loader: () => fetchInvoices(),
-  component: InvoicesComponent,
+  component: InvoicesLayoutComponent,
 })
 
-function InvoicesComponent() {
-  const invoices = invoicesRoute.useLoaderData()
+function InvoicesLayoutComponent() {
+  const invoices = invoicesLayoutRoute.useLoaderData()
 
   return (
     <div className="flex-1 flex">
@@ -253,7 +254,7 @@ function InvoicesComponent() {
 }
 
 const invoicesIndexRoute = createRoute({
-  getParentRoute: () => invoicesRoute,
+  getParentRoute: () => invoicesLayoutRoute,
   path: '/',
   component: InvoicesIndexComponent,
 })
@@ -311,7 +312,7 @@ function InvoicesIndexComponent() {
 }
 
 const invoiceRoute = createRoute({
-  getParentRoute: () => invoicesRoute,
+  getParentRoute: () => invoicesLayoutRoute,
   path: '$invoiceId',
   params: {
     parse: (params) => ({
@@ -427,8 +428,8 @@ function InvoiceComponent() {
   )
 }
 
-const usersRoute = createRoute({
-  getParentRoute: () => dashboardRoute,
+const usersLayoutRoute = createRoute({
+  getParentRoute: () => dashboardLayoutRoute,
   path: 'users',
   validateSearch: z.object({
     usersView: z
@@ -448,13 +449,13 @@ const usersRoute = createRoute({
     sortBy: usersView?.sortBy ?? 'name',
   }),
   loader: ({ deps }) => fetchUsers(deps),
-  component: UsersComponent,
+  component: UsersLayoutComponent,
 })
 
-function UsersComponent() {
-  const navigate = useNavigate({ from: usersRoute.fullPath })
-  const { usersView } = usersRoute.useSearch()
-  const users = usersRoute.useLoaderData()
+function UsersLayoutComponent() {
+  const navigate = useNavigate({ from: usersLayoutRoute.fullPath })
+  const { usersView } = usersLayoutRoute.useSearch()
+  const users = usersLayoutRoute.useLoaderData()
   const sortBy = usersView?.sortBy ?? 'name'
   const filterBy = usersView?.filterBy
 
@@ -571,7 +572,7 @@ function UsersComponent() {
 }
 
 const usersIndexRoute = createRoute({
-  getParentRoute: () => usersRoute,
+  getParentRoute: () => usersLayoutRoute,
   path: '/',
   component: UsersIndexComponent,
 })
@@ -601,7 +602,7 @@ function UsersIndexComponent() {
 }
 
 const userRoute = createRoute({
-  getParentRoute: () => usersRoute,
+  getParentRoute: () => usersLayoutRoute,
   path: 'user',
   validateSearch: z.object({
     userId: z.number(),
@@ -633,7 +634,7 @@ const expensiveRoute = createRoute({
   component: lazyRouteComponent(() => import('./Expensive')),
 })
 
-const authRoute = createRoute({
+const authPathlessLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'auth',
   // Before loading, authenticate the user via our auth context
@@ -641,6 +642,7 @@ const authRoute = createRoute({
   beforeLoad: ({ context, location }) => {
     // If the user is logged out, redirect them to the login page
     if (context.auth.status === 'loggedOut') {
+      console.log(location)
       throw redirect({
         to: loginRoute.to,
         search: {
@@ -660,7 +662,7 @@ const authRoute = createRoute({
 })
 
 const profileRoute = createRoute({
-  getParentRoute: () => authRoute,
+  getParentRoute: () => authPathlessLayoutRoute,
   path: 'profile',
   component: ProfileComponent,
 })
@@ -673,6 +675,15 @@ function ProfileComponent() {
       <div>
         Username:<strong>{username}</strong>
       </div>
+      <button
+        className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
+        onClick={() => {
+          auth.logout()
+          router.invalidate()
+        }}
+      >
+        Log out
+      </button>
     </div>
   )
 }
@@ -713,7 +724,10 @@ function LoginComponent() {
       Logged in as <strong>{auth.username}</strong>
       <div className="h-2" />
       <button
-        onClick={() => auth.logout()}
+        onClick={() => {
+          auth.logout()
+          router.invalidate()
+        }}
         className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
       >
         Log out
@@ -731,10 +745,7 @@ function LoginComponent() {
           placeholder="Username"
           className="border p-1 px-2 rounded"
         />
-        <button
-          onClick={() => auth.logout()}
-          className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
-        >
+        <button className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded">
           Login
         </button>
       </form>
@@ -742,61 +753,61 @@ function LoginComponent() {
   )
 }
 
-const layoutRoute = createRoute({
+const pathlessLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
-  id: 'layout',
-  component: LayoutComponent,
+  id: 'pathless-layout',
+  component: PathlessLayoutComponent,
 })
 
-function LayoutComponent() {
+function PathlessLayoutComponent() {
   return (
     <div>
-      <div>Layout</div>
+      <div>Pathless Layout</div>
       <hr />
       <Outlet />
     </div>
   )
 }
 
-const layoutARoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: 'layout-a',
-  component: LayoutAComponent,
+const pathlessLayoutARoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  path: 'route-a',
+  component: PathlessLayoutAComponent,
 })
 
-function LayoutAComponent() {
+function PathlessLayoutAComponent() {
   return (
     <div>
-      <div>Layout A</div>
+      <div>I'm A</div>
     </div>
   )
 }
 
-const layoutBRoute = createRoute({
-  getParentRoute: () => layoutRoute,
-  path: 'layout-b',
-  component: LayoutBComponent,
+const pathlessLayoutBRoute = createRoute({
+  getParentRoute: () => pathlessLayoutRoute,
+  path: 'route-b',
+  component: PathlessLayoutBComponent,
 })
 
-function LayoutBComponent() {
+function PathlessLayoutBComponent() {
   return (
     <div>
-      <div>Layout B</div>
+      <div>I'm B</div>
     </div>
   )
 }
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  dashboardRoute.addChildren([
+  dashboardLayoutRoute.addChildren([
     dashboardIndexRoute,
-    invoicesRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
-    usersRoute.addChildren([usersIndexRoute, userRoute]),
+    invoicesLayoutRoute.addChildren([invoicesIndexRoute, invoiceRoute]),
+    usersLayoutRoute.addChildren([usersIndexRoute, userRoute]),
   ]),
   expensiveRoute,
-  authRoute.addChildren([profileRoute]),
+  authPathlessLayoutRoute.addChildren([profileRoute]),
   loginRoute,
-  layoutRoute.addChildren([layoutARoute, layoutBRoute]),
+  pathlessLayoutRoute.addChildren([pathlessLayoutARoute, pathlessLayoutBRoute]),
 ])
 
 const router = createRouter({
@@ -811,6 +822,7 @@ const router = createRouter({
     auth: undefined!, // We'll inject this when we render
   },
   defaultPreload: 'intent',
+  scrollRestoration: true,
 })
 
 declare module '@tanstack/react-router' {
