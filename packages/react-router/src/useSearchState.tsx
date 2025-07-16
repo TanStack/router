@@ -155,7 +155,7 @@ function setter<T>(
 
   // this `setState` did not change the search state,
   // so we don't need to navigate
-  if (next[key] === prev[key]) return
+  if (Object.is(next[key], prev[key])) return
 
   // create a store for this router if it's the first time
   if (!store) {
