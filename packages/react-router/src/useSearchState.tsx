@@ -127,11 +127,14 @@ const getter = (key: string, state: object) =>
  * We use a WeakMap to support potentially multiple routers
  * in the same app, and to avoid memory leaks.
  */
-const routerStore = new WeakMap<AnyRouter, {
-  search: object | null
-  opts: SetSearchStateOptions | null
-  scheduled: boolean | null
-}>()
+const routerStore = new WeakMap<
+  AnyRouter,
+  {
+    search: object | null
+    opts: SetSearchStateOptions | null
+    scheduled: boolean | null
+  }
+>()
 
 function setter<T>(
   router: AnyRouter,
