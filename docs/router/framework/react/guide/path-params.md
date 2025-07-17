@@ -111,22 +111,6 @@ function Component() {
 
 Notice that the function style is useful when you need to persist params that are already in the URL for other routes. This is because the function style will receive the current params as an argument, allowing you to modify them as needed and return the final params object.
 
-## Allowed Characters
-
-By default, path params are escaped with `encodeURIComponent`. If you want to allow other valid URI characters (e.g. `@` or `+`), you can specify that in your [RouterOptions](../../api/router/RouterOptionsType.md#pathparamsallowedcharacters-property)
-
-Example usage:
-
-```tsx
-const router = createRouter({
-  ...
-  pathParamsAllowedCharacters: ['@']
-})
-```
-
-The following is the list of accepted allowed characters:
-`;` `:` `@` `&` `=` `+` `$` `,`
-
 ## Optional Path Parameters
 
 Optional path parameters allow you to define route segments that may or may not be present in the URL. They use the `{-$paramName}` syntax and provide flexible routing patterns where certain parameters are optional.
@@ -339,3 +323,27 @@ function PostsComponent() {
   Category 123
 </Link>
 ```
+
+## Allowed Characters
+
+By default, path params are escaped with `encodeURIComponent`. If you want to allow other valid URI characters (e.g. `@` or `+`), you can specify that in your [RouterOptions](../../api/router/RouterOptionsType.md#pathparamsallowedcharacters-property).
+
+Example usage:
+
+```tsx
+const router = createRouter({
+  // ...
+  pathParamsAllowedCharacters: ['@'],
+})
+```
+
+The following is the list of accepted allowed characters:
+
+- `;`
+- `:`
+- `@`
+- `&`
+- `=`
+- `+`
+- `$`
+- `,`
