@@ -98,15 +98,15 @@ interface ResolvePathOptions {
 }
 
 function segmentToString(segment: Segment): string {
-  const {type, value} = segment
+  const { type, value } = segment
 
   if (type === SEGMENT_TYPE_PATHNAME) {
     return value
   }
 
-  const {prefixSegment, suffixSegment} = segment
+  const { prefixSegment, suffixSegment } = segment
 
- if (type === SEGMENT_TYPE_PARAM) {
+  if (type === SEGMENT_TYPE_PARAM) {
     const param = value.substring(1)
     if (prefixSegment && suffixSegment) {
       return `${prefixSegment}{$${param}}${suffixSegment}`
@@ -155,7 +155,7 @@ export function resolvePath({
   base = removeBasepath(basepath, base, caseSensitive)
   to = removeBasepath(basepath, to, caseSensitive)
 
-  let baseSegments = cachedParsePathname(base)
+  let baseSegments = cachedParsePathname(base).slice()
   const toSegments = cachedParsePathname(to)
 
   if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
@@ -319,9 +319,9 @@ export function parsePathname(pathname?: string): Array<Segment> {
         type: SEGMENT_TYPE_PATHNAME,
         value: part.includes('%25')
           ? part
-              .split('%25')
-              .map((segment) => decodeURI(segment))
-              .join('%25')
+            .split('%25')
+            .map((segment) => decodeURI(segment))
+            .join('%25')
           : decodeURI(part),
       }
     }),
@@ -338,12 +338,12 @@ export function parsePathname(pathname?: string): Array<Segment> {
   return segments
 }
 
-const parsedPathnameCache = new Map<string|undefined, ReadonlyArray<Readonly<Segment>>>
+const parsedPathnameCache = new Map<string | undefined, ReadonlyArray<Readonly<Segment>>>
 export function cachedParsePathname(pathname?: string): ReadonlyArray<Readonly<Segment>> {
   const cached = parsedPathnameCache.get(pathname)
   if (cached) return cached
   const computed = parsePathname(pathname)
-  parsedPathnameCache.set(pathname)
+  parsedPathnameCache.set(pathname, computed)
   return computed
 }
 
@@ -462,10 +462,10 @@ export function interpolatePath({
   return { usedParams, interpolatedPath, isMissingParams }
 }
 
-export function compileEncodePathParam(decodeCharMap?: string[]): (value: string) => string {
+export function compileEncodePathParam(decodeCharMap?: Array<string>): (value: string) => string {
   if (!decodeCharMap || decodeCharMap.length === 0) return encodeURIComponent
   return new Function(
-    'value', 
+    'value',
     `return encodeURIComponent(value).${decodeCharMap.map(char => `replaceAll('${encodeURIComponent(char)}', '${char}')`).join('.')}`
   ) as (value: string) => string
 }
@@ -545,21 +545,21 @@ export function matchByPath(
   )
 
   // Parse the from and to
-  const baseSegments = cachedParsePathname(from)
-  const routeSegments = cachedParsePathname(to)
+  let baseSegments = cachedParsePathname(from)
+  let routeSegments = cachedParsePathname(to)
 
   if (!from.startsWith('/')) {
-    baseSegments.unshift({
+    baseSegments = [{
       type: SEGMENT_TYPE_PATHNAME,
       value: '/',
-    })
+    }, ...baseSegments]
   }
 
   if (!to.startsWith('/')) {
-    routeSegments.unshift({
+    routeSegments = [{
       type: SEGMENT_TYPE_PATHNAME,
       value: '/',
-    })
+    }, ...routeSegments]
   }
 
   const params: Record<string, string> = {}

@@ -14,20 +14,19 @@ import {
   replaceEqualDeep,
 } from './utils'
 import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_WILDCARD,
+  cachedParsePathname,
   cleanPath,
+  compileEncodePathParam,
   interpolatePath,
   joinPaths,
   matchPathname,
-  cachedParsePathname,
   resolvePath,
   trimPath,
   trimPathLeft,
   trimPathRight,
-  SEGMENT_TYPE_PATHNAME,
-  SEGMENT_TYPE_PARAM,
-  SEGMENT_TYPE_WILDCARD,
-  SEGMENT_TYPE_OPTIONAL_PARAM,
-  compileEncodePathParam
 } from './path'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
@@ -848,7 +847,7 @@ export class RouterCore<
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 
-    this.encodePathParam = compileEncodePAthParams(this.options.pathParamsAllowedCharacters)
+    this.encodePathParam = compileEncodePathParam(this.options.pathParamsAllowedCharacters)
 
     if (
       !this.basepath ||
@@ -1461,6 +1460,7 @@ export class RouterCore<
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
         params: nextParams ?? {},
+        encodePathParam: this.encodePathParam,
       }).interpolatedPath
 
       const destRoutes = this.matchRoutes(
