@@ -920,6 +920,9 @@ export class RouterCore<
       pathname: string,
       routePathname: string | undefined,
     ) => {
+      if (routePathname !== undefined && !this.routesByPath[routePathname]) {
+        routePathname = undefined
+      }
       if (!routePathname) {
         const cached = getMatchedRoutesCache.get(pathname)
         if (cached) return cached
