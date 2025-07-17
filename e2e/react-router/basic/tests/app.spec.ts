@@ -45,4 +45,3 @@ test('Navigating to a post page with viewTransition types', async ({
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
-
