@@ -1816,3 +1816,41 @@ describe('does not strip search params if search validation fails', () => {
     expect(window.location.search).toBe('?root=hello')
   })
 })
+
+describe('statusCode reset on navigation', () => {
+  it('should reset statusCode to 200 when navigating from 404 to valid route', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home</div>,
+    })
+
+    const validRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/valid',
+      component: () => <div>Valid Route</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, validRoute])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    expect(router.state.statusCode).toBe(200)
+
+    await act(() => router.navigate({ to: '/non-existing' }))
+    expect(router.state.statusCode).toBe(404)
+
+    await act(() => router.navigate({ to: '/valid' }))
+    expect(router.state.statusCode).toBe(200)
+
+    await act(() => router.navigate({ to: '/another-non-existing' }))
+    expect(router.state.statusCode).toBe(404)
+  })
+})
