@@ -610,9 +610,9 @@ export type GetMatchRoutesFn = (
   pathname: string,
   routePathname: string | undefined,
 ) => {
-  matchedRoutes: Array<AnyRoute>
-  routeParams: Record<string, string>
-  foundRoute: AnyRoute | undefined
+  readonly matchedRoutes: ReadonlyArray<AnyRoute>
+  readonly routeParams: Readonly<Record<string, string>>
+  readonly foundRoute: Readonly<AnyRoute> | undefined
 }
 
 export type EmitFn = (routerEvent: RouterEvent) => void
@@ -787,6 +787,7 @@ export class RouterCore<
   flatRoutes!: Array<AnyRoute>
   isServer!: boolean
   encodePathParam!: (value: string) => string
+  getMatchedRoutes!: GetMatchRoutesFn
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -908,6 +909,34 @@ export class RouterCore<
       this.isViewTransitionTypesSupported = window.CSS.supports(
         'selector(:active-view-transition-type(a)',
       )
+    }
+
+    const getMatchedRoutesCache = new Map<
+      string,
+      Readonly<ReturnType<GetMatchRoutesFn>>
+    >()
+    this.getMatchedRoutes = (
+      pathname: string,
+      routePathname: string | undefined,
+    ) => {
+      if (!routePathname) {
+        const cached = getMatchedRoutesCache.get(pathname)
+        if (cached) return cached
+      }
+      const result = getMatchedRoutes({
+        pathname,
+        routePathname,
+        basepath: this.basepath,
+        caseSensitive: this.options.caseSensitive,
+        routesByPath: this.routesByPath,
+        routesById: this.routesById,
+        flatRoutes: this.flatRoutes,
+      })
+      if (!routePathname) {
+        getMatchedRoutesCache.set(pathname, result)
+      }
+
+      return result
     }
   }
 
@@ -1050,10 +1079,12 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const { foundRoute, matchedRoutes, routeParams } = this.getMatchedRoutes(
+    const matchedRoutesResult = this.getMatchedRoutes(
       next.pathname,
       opts?.dest?.to as string,
     )
+    const { foundRoute, routeParams } = matchedRoutesResult
+    let matchedRoutes = matchedRoutesResult.matchedRoutes
     let isGlobalNotFound = false
 
     // Check to see if the route needs a 404 entry
@@ -1066,7 +1097,7 @@ export class RouterCore<
     ) {
       // If the user has defined an (old) 404 route, use it
       if (this.options.notFoundRoute) {
-        matchedRoutes.push(this.options.notFoundRoute)
+        matchedRoutes = [...matchedRoutes, this.options.notFoundRoute]
       } else {
         // If there is no routes found during path matching
         isGlobalNotFound = true
@@ -1337,21 +1368,6 @@ export class RouterCore<
     })
 
     return matches
-  }
-
-  getMatchedRoutes: GetMatchRoutesFn = (
-    pathname: string,
-    routePathname: string | undefined,
-  ) => {
-    return getMatchedRoutes({
-      pathname,
-      routePathname,
-      basepath: this.basepath,
-      caseSensitive: this.options.caseSensitive,
-      routesByPath: this.routesByPath,
-      routesById: this.routesById,
-      flatRoutes: this.flatRoutes,
-    })
   }
 
   cancelMatch = (id: string) => {
@@ -3407,8 +3423,9 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 
   while (routeCursor.parentRoute) {
     routeCursor = routeCursor.parentRoute as TRouteLike
-    matchedRoutes.unshift(routeCursor)
+    matchedRoutes.push(routeCursor)
   }
+  matchedRoutes.reverse()
 
   return { matchedRoutes, routeParams, foundRoute }
 }
