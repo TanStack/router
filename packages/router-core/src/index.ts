@@ -96,7 +96,7 @@ export {
   removeTrailingSlash,
   exactPathTest,
   resolvePath,
-  parsePathname,
+  cachedParsePathname as parsePathname,
   interpolatePath,
   matchPathname,
   removeBasepath,

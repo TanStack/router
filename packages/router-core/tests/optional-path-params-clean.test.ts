@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { interpolatePath, matchPathname, parsePathname } from '../src/path'
+import {
+  interpolatePath,
+  matchPathname,
+  parsePathname,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+} from '../src/path'
 
 describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
   describe('Optional Dynamic Parameters {-$param}', () => {
@@ -7,34 +13,34 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
       it('should parse single optional dynamic param', () => {
         const result = parsePathname('/posts/{-$category}')
         expect(result).toEqual([
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'posts' },
-          { type: 'optional-param', value: '$category' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'posts' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$category' },
         ])
       })
 
       it('should parse multiple optional dynamic params', () => {
         const result = parsePathname('/posts/{-$category}/{-$slug}')
         expect(result).toEqual([
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'posts' },
-          { type: 'optional-param', value: '$category' },
-          { type: 'optional-param', value: '$slug' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'posts' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$category' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$slug' },
         ])
       })
 
       it('should handle prefix/suffix with optional dynamic params', () => {
         const result = parsePathname('/api/v{-$version}/data')
         expect(result).toEqual([
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'api' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'api' },
           {
-            type: 'optional-param',
+            type: SEGMENT_TYPE_OPTIONAL_PARAM,
             value: '$version',
             prefixSegment: 'v',
             suffixSegment: undefined,
           },
-          { type: 'pathname', value: 'data' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'data' },
         ])
       })
     })
@@ -44,6 +50,7 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
         const result = interpolatePath({
           path: '/posts/{-$category}',
           params: { category: 'tech' },
+          encodePathParam: encodeURIComponent,
         })
         expect(result.interpolatedPath).toBe('/posts/tech')
       })
@@ -52,6 +59,7 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
         const result = interpolatePath({
           path: '/posts/{-$category}',
           params: {},
+          encodePathParam: encodeURIComponent,
         })
         expect(result.interpolatedPath).toBe('/posts')
       })
@@ -60,18 +68,21 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
         const result1 = interpolatePath({
           path: '/posts/{-$category}/{-$slug}',
           params: { category: 'tech', slug: 'hello' },
+          encodePathParam: encodeURIComponent,
         })
         expect(result1.interpolatedPath).toBe('/posts/tech/hello')
 
         const result2 = interpolatePath({
           path: '/posts/{-$category}/{-$slug}',
           params: { category: 'tech' },
+          encodePathParam: encodeURIComponent,
         })
         expect(result2.interpolatedPath).toBe('/posts/tech')
 
         const result3 = interpolatePath({
           path: '/posts/{-$category}/{-$slug}',
           params: {},
+          encodePathParam: encodeURIComponent,
         })
         expect(result3.interpolatedPath).toBe('/posts')
       })
@@ -80,12 +91,14 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
         const result = interpolatePath({
           path: '/posts/{-$category}/user/$id',
           params: { category: 'tech', id: '123' },
+          encodePathParam: encodeURIComponent,
         })
         expect(result.interpolatedPath).toBe('/posts/tech/user/123')
 
         const result2 = interpolatePath({
           path: '/posts/{-$category}/user/$id',
           params: { id: '123' },
+          encodePathParam: encodeURIComponent,
         })
         expect(result2.interpolatedPath).toBe('/posts/user/123')
       })
@@ -142,12 +155,14 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
       const result = interpolatePath({
         path: '/docs/{-$version}/$',
         params: { version: 'v1', _splat: 'guide/intro' },
+        encodePathParam: encodeURIComponent,
       })
       expect(result.interpolatedPath).toBe('/docs/v1/guide/intro')
 
       const result2 = interpolatePath({
         path: '/docs/{-$version}/$',
         params: { _splat: 'guide/intro' },
+        encodePathParam: encodeURIComponent,
       })
       expect(result2.interpolatedPath).toBe('/docs/guide/intro')
     })
@@ -159,6 +174,7 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
       const result1 = interpolatePath({
         path: pattern,
         params: { env: 'prod', version: 'v2', id: '123', tab: 'settings' },
+        encodePathParam: encodeURIComponent,
       })
       expect(result1.interpolatedPath).toBe(
         '/app/prod/api/v2/users/123/settings',
@@ -168,6 +184,7 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
       const result2 = interpolatePath({
         path: pattern,
         params: { id: '123' },
+        encodePathParam: encodeURIComponent,
       })
       expect(result2.interpolatedPath).toBe('/app/api/users/123')
 
@@ -175,6 +192,7 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
       const result3 = interpolatePath({
         path: pattern,
         params: { env: 'dev', id: '456', tab: 'profile' },
+        encodePathParam: encodeURIComponent,
       })
       expect(result3.interpolatedPath).toBe('/app/dev/api/users/456/profile')
     })

@@ -14,11 +14,15 @@ import {
   replaceEqualDeep,
 } from './utils'
 import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_WILDCARD,
+  cachedParsePathname,
   cleanPath,
+  compileEncodePathParam,
   interpolatePath,
   joinPaths,
   matchPathname,
-  parsePathname,
   resolvePath,
   trimPath,
   trimPathLeft,
@@ -606,9 +610,9 @@ export type GetMatchRoutesFn = (
   pathname: string,
   routePathname: string | undefined,
 ) => {
-  matchedRoutes: Array<AnyRoute>
-  routeParams: Record<string, string>
-  foundRoute: AnyRoute | undefined
+  readonly matchedRoutes: ReadonlyArray<AnyRoute>
+  readonly routeParams: Readonly<Record<string, string>>
+  readonly foundRoute: Readonly<AnyRoute> | undefined
 }
 
 export type EmitFn = (routerEvent: RouterEvent) => void
@@ -782,7 +786,9 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   flatRoutes!: Array<AnyRoute>
   isServer!: boolean
-  pathParamsDecodeCharMap?: Map<string, string>
+  encodePathParam!: (value: string) => string
+  getMatchedRoutes!: GetMatchRoutesFn
+  resolvePathWithBase!: (from: string, path: string) => string
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -843,14 +849,9 @@ export class RouterCore<
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 
-    this.pathParamsDecodeCharMap = this.options.pathParamsAllowedCharacters
-      ? new Map(
-          this.options.pathParamsAllowedCharacters.map((char) => [
-            encodeURIComponent(char),
-            char,
-          ]),
-        )
-      : undefined
+    this.encodePathParam = compileEncodePathParam(
+      this.options.pathParamsAllowedCharacters,
+    )
 
     if (
       !this.basepath ||
@@ -909,6 +910,53 @@ export class RouterCore<
       this.isViewTransitionTypesSupported = window.CSS.supports(
         'selector(:active-view-transition-type(a)',
       )
+    }
+
+    const getMatchedRoutesCache = new Map<
+      string,
+      ReturnType<GetMatchRoutesFn>
+    >()
+    this.getMatchedRoutes = (
+      pathname: string,
+      routePathname: string | undefined,
+    ) => {
+      if (routePathname !== undefined && !this.routesByPath[routePathname]) {
+        routePathname = undefined
+      }
+      if (!routePathname) {
+        const cached = getMatchedRoutesCache.get(pathname)
+        if (cached) return cached
+      }
+      const result = getMatchedRoutes({
+        pathname,
+        routePathname,
+        basepath: this.basepath,
+        caseSensitive: this.options.caseSensitive,
+        routesByPath: this.routesByPath,
+        routesById: this.routesById,
+        flatRoutes: this.flatRoutes,
+      })
+      if (!routePathname) {
+        getMatchedRoutesCache.set(pathname, result)
+      }
+
+      return result
+    }
+
+    const resolvePathWithBaseCache = new Map<string, string>()
+    this.resolvePathWithBase = (from: string, path: string) => {
+      const key = `:${from}:${path}:`
+      const cached = resolvePathWithBaseCache.get(key)
+      if (cached) return cached
+      const resolvedPath = resolvePath({
+        basepath: this.basepath,
+        base: from,
+        to: cleanPath(path),
+        trailingSlash: this.options.trailingSlash,
+        caseSensitive: this.options.caseSensitive,
+      })
+      resolvePathWithBaseCache.set(key, resolvedPath)
+      return resolvedPath
     }
   }
 
@@ -1005,17 +1053,6 @@ export class RouterCore<
     return location
   }
 
-  resolvePathWithBase = (from: string, path: string) => {
-    const resolvedPath = resolvePath({
-      basepath: this.basepath,
-      base: from,
-      to: cleanPath(path),
-      trailingSlash: this.options.trailingSlash,
-      caseSensitive: this.options.caseSensitive,
-    })
-    return resolvedPath
-  }
-
   get looseRoutesById() {
     return this.routesById as Record<string, AnyRoute>
   }
@@ -1051,10 +1088,12 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const { foundRoute, matchedRoutes, routeParams } = this.getMatchedRoutes(
+    const matchedRoutesResult = this.getMatchedRoutes(
       next.pathname,
       opts?.dest?.to as string,
     )
+    const { foundRoute, routeParams } = matchedRoutesResult
+    let matchedRoutes = matchedRoutesResult.matchedRoutes
     let isGlobalNotFound = false
 
     // Check to see if the route needs a 404 entry
@@ -1067,7 +1106,7 @@ export class RouterCore<
     ) {
       // If the user has defined an (old) 404 route, use it
       if (this.options.notFoundRoute) {
-        matchedRoutes.push(this.options.notFoundRoute)
+        matchedRoutes = [...matchedRoutes, this.options.notFoundRoute]
       } else {
         // If there is no routes found during path matching
         isGlobalNotFound = true
@@ -1193,7 +1232,7 @@ export class RouterCore<
       const { usedParams, interpolatedPath } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
-        decodeCharMap: this.pathParamsDecodeCharMap,
+        encodePathParam: this.encodePathParam,
       })
 
       const matchId =
@@ -1201,7 +1240,7 @@ export class RouterCore<
           path: route.id,
           params: routeParams,
           leaveWildcards: true,
-          decodeCharMap: this.pathParamsDecodeCharMap,
+          encodePathParam: this.encodePathParam,
         }).interpolatedPath + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
@@ -1340,21 +1379,6 @@ export class RouterCore<
     return matches
   }
 
-  getMatchedRoutes: GetMatchRoutesFn = (
-    pathname: string,
-    routePathname: string | undefined,
-  ) => {
-    return getMatchedRoutes({
-      pathname,
-      routePathname,
-      basepath: this.basepath,
-      caseSensitive: this.options.caseSensitive,
-      routesByPath: this.routesByPath,
-      routesById: this.routesById,
-      flatRoutes: this.flatRoutes,
-    })
-  }
-
   cancelMatch = (id: string) => {
     const match = this.getMatch(id)
 
@@ -1463,6 +1487,7 @@ export class RouterCore<
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
         params: nextParams ?? {},
+        encodePathParam: this.encodePathParam,
       }).interpolatedPath
 
       const destRoutes = this.matchRoutes(
@@ -1494,7 +1519,7 @@ export class RouterCore<
         params: nextParams ?? {},
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
-        decodeCharMap: this.pathParamsDecodeCharMap,
+        encodePathParam: this.encodePathParam,
       }).interpolatedPath
 
       // Resolve the next search
@@ -3224,7 +3249,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
   const scoredRoutes: Array<{
     child: TRouteLike
     trimmed: string
-    parsed: ReturnType<typeof parsePathname>
+    parsed: ReturnType<typeof cachedParsePathname>
     index: number
     scores: Array<number>
   }> = []
@@ -3237,19 +3262,21 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     }
 
     const trimmed = trimPathLeft(d.fullPath)
-    const parsed = parsePathname(trimmed)
+    let parsed = cachedParsePathname(trimmed)
 
     // Removes the leading slash if it is not the only remaining segment
-    while (parsed.length > 1 && parsed[0]?.value === '/') {
-      parsed.shift()
+    let skip = 0
+    while (parsed.length > skip + 1 && parsed[skip]?.value === '/') {
+      skip++
     }
+    if (skip > 0) parsed = parsed.slice(skip)
 
     const scores = parsed.map((segment) => {
       if (segment.value === '/') {
         return 0.75
       }
 
-      if (segment.type === 'param') {
+      if (segment.type === SEGMENT_TYPE_PARAM) {
         if (segment.prefixSegment && segment.suffixSegment) {
           return 0.55
         }
@@ -3265,7 +3292,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
         return 0.5
       }
 
-      if (segment.type === 'optional-param') {
+      if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
         if (segment.prefixSegment && segment.suffixSegment) {
           return 0.45
         }
@@ -3281,7 +3308,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
         return 0.4
       }
 
-      if (segment.type === 'wildcard') {
+      if (segment.type === SEGMENT_TYPE_WILDCARD) {
         if (segment.prefixSegment && segment.suffixSegment) {
           return 0.3
         }
@@ -3317,12 +3344,16 @@ export function processRouteTree<TRouteLike extends RouteLike>({
       // If all common segments have equal scores, then consider length and specificity
       if (a.scores.length !== b.scores.length) {
         // Count optional parameters in each route
-        const aOptionalCount = a.parsed.filter(
-          (seg) => seg.type === 'optional-param',
-        ).length
-        const bOptionalCount = b.parsed.filter(
-          (seg) => seg.type === 'optional-param',
-        ).length
+        const aOptionalCount = a.parsed.reduce(
+          (count, seg) =>
+            seg.type === SEGMENT_TYPE_OPTIONAL_PARAM ? count + 1 : count,
+          0,
+        )
+        const bOptionalCount = b.parsed.reduce(
+          (count, seg) =>
+            seg.type === SEGMENT_TYPE_OPTIONAL_PARAM ? count + 1 : count,
+          0,
+        )
 
         // If different number of optional parameters, fewer optional parameters wins (more specific)
         if (aOptionalCount !== bOptionalCount) {
@@ -3402,8 +3433,9 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 
   while (routeCursor.parentRoute) {
     routeCursor = routeCursor.parentRoute as TRouteLike
-    matchedRoutes.unshift(routeCursor)
+    matchedRoutes.push(routeCursor)
   }
+  matchedRoutes.reverse()
 
   return { matchedRoutes, routeParams, foundRoute }
 }

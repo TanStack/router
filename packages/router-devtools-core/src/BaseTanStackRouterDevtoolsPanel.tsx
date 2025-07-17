@@ -163,7 +163,7 @@ function RouteComp({
       params: allParams,
       leaveWildcards: false,
       leaveParams: false,
-      decodeCharMap: router().pathParamsDecodeCharMap,
+      encodePathParam: router().encodePathParam,
     })
 
     // only if `interpolated` is not missing params, return the path since this
