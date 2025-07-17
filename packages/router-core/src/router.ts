@@ -18,11 +18,16 @@ import {
   interpolatePath,
   joinPaths,
   matchPathname,
-  parsePathname,
+  cachedParsePathname,
   resolvePath,
   trimPath,
   trimPathLeft,
   trimPathRight,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_WILDCARD,
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  compileEncodePathParam
 } from './path'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
@@ -782,7 +787,7 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   flatRoutes!: Array<AnyRoute>
   isServer!: boolean
-  pathParamsDecodeCharMap?: Map<string, string>
+  encodePathParam!: (value: string) => string
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -843,14 +848,7 @@ export class RouterCore<
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 
-    this.pathParamsDecodeCharMap = this.options.pathParamsAllowedCharacters
-      ? new Map(
-          this.options.pathParamsAllowedCharacters.map((char) => [
-            encodeURIComponent(char),
-            char,
-          ]),
-        )
-      : undefined
+    this.encodePathParam = compileEncodePAthParams(this.options.pathParamsAllowedCharacters)
 
     if (
       !this.basepath ||
@@ -1193,7 +1191,7 @@ export class RouterCore<
       const { usedParams, interpolatedPath } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
-        decodeCharMap: this.pathParamsDecodeCharMap,
+        encodePathParam: this.encodePathParam,
       })
 
       const matchId =
@@ -1201,7 +1199,7 @@ export class RouterCore<
           path: route.id,
           params: routeParams,
           leaveWildcards: true,
-          decodeCharMap: this.pathParamsDecodeCharMap,
+          encodePathParam: this.encodePathParam,
         }).interpolatedPath + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
@@ -1494,7 +1492,7 @@ export class RouterCore<
         params: nextParams ?? {},
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
-        decodeCharMap: this.pathParamsDecodeCharMap,
+        encodePathParam: this.encodePathParam,
       }).interpolatedPath
 
       // Resolve the next search
@@ -3223,7 +3221,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
   const scoredRoutes: Array<{
     child: TRouteLike
     trimmed: string
-    parsed: ReturnType<typeof parsePathname>
+    parsed: ReturnType<typeof cachedParsePathname>
     index: number
     scores: Array<number>
   }> = []
@@ -3236,19 +3234,21 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     }
 
     const trimmed = trimPathLeft(d.fullPath)
-    const parsed = parsePathname(trimmed)
+    let parsed = cachedParsePathname(trimmed)
 
     // Removes the leading slash if it is not the only remaining segment
-    while (parsed.length > 1 && parsed[0]?.value === '/') {
-      parsed.shift()
+    let skip = 0
+    while (skip < parsed.length && parsed[skip]?.value === '/') {
+      skip++
     }
+    if (skip > 0) parsed = parsed.slice(skip)
 
     const scores = parsed.map((segment) => {
       if (segment.value === '/') {
         return 0.75
       }
 
-      if (segment.type === 'param') {
+      if (segment.type === SEGMENT_TYPE_PARAM) {
         if (segment.prefixSegment && segment.suffixSegment) {
           return 0.55
         }
@@ -3264,7 +3264,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
         return 0.5
       }
 
-      if (segment.type === 'optional-param') {
+      if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
         if (segment.prefixSegment && segment.suffixSegment) {
           return 0.45
         }
@@ -3280,7 +3280,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
         return 0.4
       }
 
-      if (segment.type === 'wildcard') {
+      if (segment.type === SEGMENT_TYPE_WILDCARD) {
         if (segment.prefixSegment && segment.suffixSegment) {
           return 0.3
         }
@@ -3316,12 +3316,14 @@ export function processRouteTree<TRouteLike extends RouteLike>({
       // If all common segments have equal scores, then consider length and specificity
       if (a.scores.length !== b.scores.length) {
         // Count optional parameters in each route
-        const aOptionalCount = a.parsed.filter(
-          (seg) => seg.type === 'optional-param',
-        ).length
-        const bOptionalCount = b.parsed.filter(
-          (seg) => seg.type === 'optional-param',
-        ).length
+        const aOptionalCount = a.parsed.reduce(
+          (count, seg) => seg.type === SEGMENT_TYPE_OPTIONAL_PARAM ? count + 1 : count,
+          0
+        )
+        const bOptionalCount = b.parsed.reduce(
+          (count, seg) => seg.type === SEGMENT_TYPE_OPTIONAL_PARAM ? count + 1 : count,
+          0
+        )
 
         // If different number of optional parameters, fewer optional parameters wins (more specific)
         if (aOptionalCount !== bOptionalCount) {

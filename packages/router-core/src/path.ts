@@ -2,8 +2,13 @@ import { last } from './utils'
 import type { MatchLocation } from './RouterProvider'
 import type { AnyPathParams } from './route'
 
+export const SEGMENT_TYPE_PATHNAME = 0
+export const SEGMENT_TYPE_PARAM = 1
+export const SEGMENT_TYPE_WILDCARD = 2
+export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
+
 export interface Segment {
-  type: 'pathname' | 'param' | 'wildcard' | 'optional-param'
+  type: typeof SEGMENT_TYPE_PATHNAME | typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   value: string
   prefixSegment?: string
   suffixSegment?: string
@@ -92,6 +97,54 @@ interface ResolvePathOptions {
   caseSensitive?: boolean
 }
 
+function segmentToString(segment: Segment): string {
+  const {type, value} = segment
+
+  if (type === SEGMENT_TYPE_PATHNAME) {
+    return value
+  }
+
+  const {prefixSegment, suffixSegment} = segment
+
+ if (type === SEGMENT_TYPE_PARAM) {
+    const param = value.substring(1)
+    if (prefixSegment && suffixSegment) {
+      return `${prefixSegment}{$${param}}${suffixSegment}`
+    } else if (prefixSegment) {
+      return `${prefixSegment}{$${param}}`
+    } else if (suffixSegment) {
+      return `{$${param}}${suffixSegment}`
+    }
+    return value
+  }
+
+  if (type === SEGMENT_TYPE_OPTIONAL_PARAM) {
+    const param = value.substring(1)
+    if (prefixSegment && suffixSegment) {
+      return `${prefixSegment}{-$${param}}${suffixSegment}`
+    } else if (prefixSegment) {
+      return `${prefixSegment}{-$${param}}`
+    } else if (suffixSegment) {
+      return `{-$${param}}${suffixSegment}`
+    }
+    return `{-$${param}}`
+  }
+
+  if (type === SEGMENT_TYPE_WILDCARD) {
+    if (prefixSegment && suffixSegment) {
+      return `${prefixSegment}{$}${suffixSegment}`
+    } else if (prefixSegment) {
+      return `${prefixSegment}{$}`
+    } else if (suffixSegment) {
+      return `{$}${suffixSegment}`
+    }
+    return value
+  }
+
+  // This case should never happen, should we throw instead?
+  return value
+}
+
 export function resolvePath({
   basepath,
   base,
@@ -102,79 +155,48 @@ export function resolvePath({
   base = removeBasepath(basepath, base, caseSensitive)
   to = removeBasepath(basepath, to, caseSensitive)
 
-  let baseSegments = parsePathname(base)
-  const toSegments = parsePathname(to)
+  let baseSegments = cachedParsePathname(base)
+  const toSegments = cachedParsePathname(to)
 
   if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
     baseSegments.pop()
   }
 
-  toSegments.forEach((toSegment, index) => {
-    if (toSegment.value === '/') {
+  for (let index = 0, length = toSegments.length; index < length; index++) {
+    const toSegment = toSegments[index]!
+    const value = toSegment.value
+    if (value === '/') {
       if (!index) {
         // Leading slash
         baseSegments = [toSegment]
-      } else if (index === toSegments.length - 1) {
+      } else if (index === length - 1) {
         // Trailing Slash
         baseSegments.push(toSegment)
       } else {
         // ignore inter-slashes
       }
-    } else if (toSegment.value === '..') {
+    } else if (value === '..') {
       baseSegments.pop()
-    } else if (toSegment.value === '.') {
+    } else if (value === '.') {
       // ignore
     } else {
       baseSegments.push(toSegment)
     }
-  })
+  }
 
   if (baseSegments.length > 1) {
-    if (last(baseSegments)?.value === '/') {
+    if (last(baseSegments)!.value === '/') {
       if (trailingSlash === 'never') {
         baseSegments.pop()
       }
     } else if (trailingSlash === 'always') {
-      baseSegments.push({ type: 'pathname', value: '/' })
+      baseSegments.push({ type: SEGMENT_TYPE_PATHNAME, value: '/' })
     }
   }
 
-  const segmentValues = baseSegments.map((segment) => {
-    if (segment.type === 'param') {
-      const param = segment.value.substring(1)
-      if (segment.prefixSegment && segment.suffixSegment) {
-        return `${segment.prefixSegment}{$${param}}${segment.suffixSegment}`
-      } else if (segment.prefixSegment) {
-        return `${segment.prefixSegment}{$${param}}`
-      } else if (segment.suffixSegment) {
-        return `{$${param}}${segment.suffixSegment}`
-      }
-    }
-    if (segment.type === 'optional-param') {
-      const param = segment.value.substring(1)
-      if (segment.prefixSegment && segment.suffixSegment) {
-        return `${segment.prefixSegment}{-$${param}}${segment.suffixSegment}`
-      } else if (segment.prefixSegment) {
-        return `${segment.prefixSegment}{-$${param}}`
-      } else if (segment.suffixSegment) {
-        return `{-$${param}}${segment.suffixSegment}`
-      }
-      return `{-$${param}}`
-    }
-
-    if (segment.type === 'wildcard') {
-      if (segment.prefixSegment && segment.suffixSegment) {
-        return `${segment.prefixSegment}{$}${segment.suffixSegment}`
-      } else if (segment.prefixSegment) {
-        return `${segment.prefixSegment}{$}`
-      } else if (segment.suffixSegment) {
-        return `{$}${segment.suffixSegment}`
-      }
-    }
-    return segment.value
-  })
+  const segmentValues = baseSegments.map(segmentToString)
   const joined = joinPaths([basepath, ...segmentValues])
-  return cleanPath(joined)
+  return joined
 }
 
 const PARAM_RE = /^\$.{1,}$/ // $paramName
@@ -214,7 +236,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
   if (pathname.slice(0, 1) === '/') {
     pathname = pathname.substring(1)
     segments.push({
-      type: 'pathname',
+      type: SEGMENT_TYPE_PATHNAME,
       value: '/',
     })
   }
@@ -234,7 +256,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
         const prefix = wildcardBracesMatch[1]
         const suffix = wildcardBracesMatch[2]
         return {
-          type: 'wildcard',
+          type: SEGMENT_TYPE_WILDCARD,
           value: '$',
           prefixSegment: prefix || undefined,
           suffixSegment: suffix || undefined,
@@ -250,7 +272,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
         const paramName = optionalParamBracesMatch[2]!
         const suffix = optionalParamBracesMatch[3]
         return {
-          type: 'optional-param',
+          type: SEGMENT_TYPE_OPTIONAL_PARAM,
           value: paramName, // Now just $paramName (no prefix)
           prefixSegment: prefix || undefined,
           suffixSegment: suffix || undefined,
@@ -264,7 +286,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
         const paramName = paramBracesMatch[2]
         const suffix = paramBracesMatch[3]
         return {
-          type: 'param',
+          type: SEGMENT_TYPE_PARAM,
           value: '' + paramName,
           prefixSegment: prefix || undefined,
           suffixSegment: suffix || undefined,
@@ -275,7 +297,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
       if (PARAM_RE.test(part)) {
         const paramName = part.substring(1)
         return {
-          type: 'param',
+          type: SEGMENT_TYPE_PARAM,
           value: '$' + paramName,
           prefixSegment: undefined,
           suffixSegment: undefined,
@@ -285,7 +307,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
       // Check for bare wildcard: $ (without curly braces)
       if (WILDCARD_RE.test(part)) {
         return {
-          type: 'wildcard',
+          type: SEGMENT_TYPE_WILDCARD,
           value: '$',
           prefixSegment: undefined,
           suffixSegment: undefined,
@@ -294,7 +316,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
 
       // Handle regular pathname segment
       return {
-        type: 'pathname',
+        type: SEGMENT_TYPE_PATHNAME,
         value: part.includes('%25')
           ? part
               .split('%25')
@@ -308,7 +330,7 @@ export function parsePathname(pathname?: string): Array<Segment> {
   if (pathname.slice(-1) === '/') {
     pathname = pathname.substring(1)
     segments.push({
-      type: 'pathname',
+      type: SEGMENT_TYPE_PATHNAME,
       value: '/',
     })
   }
@@ -316,13 +338,22 @@ export function parsePathname(pathname?: string): Array<Segment> {
   return segments
 }
 
+const parsedPathnameCache = new Map<string|undefined, ReadonlyArray<Readonly<Segment>>>
+export function cachedParsePathname(pathname?: string): ReadonlyArray<Readonly<Segment>> {
+  const cached = parsedPathnameCache.get(pathname)
+  if (cached) return cached
+  const computed = parsePathname(pathname)
+  parsedPathnameCache.set(pathname)
+  return computed
+}
+
 interface InterpolatePathOptions {
   path?: string
   params: Record<string, unknown>
   leaveWildcards?: boolean
   leaveParams?: boolean
-  // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
-  decodeCharMap?: Map<string, string>
+  // Defaults to `encodeURIComponent`. Using `pathParamsAllowedCharacters` will result in this function keeping some characters un-encoded in path params (e.g. '%40' -> '@')
+  encodePathParam: (value: string) => string
 }
 
 type InterPolatePathResult = {
@@ -335,9 +366,9 @@ export function interpolatePath({
   params,
   leaveWildcards,
   leaveParams,
-  decodeCharMap,
+  encodePathParam,
 }: InterpolatePathOptions): InterPolatePathResult {
-  const interpolatedPathSegments = parsePathname(path)
+  const interpolatedPathSegments = cachedParsePathname(path)
 
   function encodeParam(key: string): any {
     const value = params[key]
@@ -347,7 +378,7 @@ export function interpolatePath({
       // the splat/catch-all routes shouldn't have the '/' encoded out
       return isValueString ? encodeURI(value) : value
     } else {
-      return isValueString ? encodePathParam(value, decodeCharMap) : value
+      return isValueString ? encodePathParam(value) : value
     }
   }
 
@@ -358,7 +389,7 @@ export function interpolatePath({
   const usedParams: Record<string, unknown> = {}
   const interpolatedPath = joinPaths(
     interpolatedPathSegments.map((segment) => {
-      if (segment.type === 'wildcard') {
+      if (segment.type === SEGMENT_TYPE_WILDCARD) {
         usedParams._splat = params._splat
         const segmentPrefix = segment.prefixSegment || ''
         const segmentSuffix = segment.suffixSegment || ''
@@ -384,7 +415,7 @@ export function interpolatePath({
         return `${segmentPrefix}${value}${segmentSuffix}`
       }
 
-      if (segment.type === 'param') {
+      if (segment.type === SEGMENT_TYPE_PARAM) {
         const key = segment.value.substring(1)
         if (!isMissingParams && !(key in params)) {
           isMissingParams = true
@@ -400,7 +431,7 @@ export function interpolatePath({
         return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
       }
 
-      if (segment.type === 'optional-param') {
+      if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
         const key = segment.value.substring(1)
 
         const segmentPrefix = segment.prefixSegment || ''
@@ -431,14 +462,12 @@ export function interpolatePath({
   return { usedParams, interpolatedPath, isMissingParams }
 }
 
-function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
-  let encoded = encodeURIComponent(value)
-  if (decodeCharMap) {
-    for (const [encodedChar, char] of decodeCharMap) {
-      encoded = encoded.replaceAll(encodedChar, char)
-    }
-  }
-  return encoded
+export function compileEncodePathParam(decodeCharMap?: string[]): (value: string) => string {
+  if (!decodeCharMap || decodeCharMap.length === 0) return encodeURIComponent
+  return new Function(
+    'value', 
+    `return encodeURIComponent(value).${decodeCharMap.map(char => `replaceAll('${encodeURIComponent(char)}', '${char}')`).join('.')}`
+  ) as (value: string) => string
 }
 
 export function matchPathname(
@@ -516,19 +545,19 @@ export function matchByPath(
   )
 
   // Parse the from and to
-  const baseSegments = parsePathname(from)
-  const routeSegments = parsePathname(to)
+  const baseSegments = cachedParsePathname(from)
+  const routeSegments = cachedParsePathname(to)
 
   if (!from.startsWith('/')) {
     baseSegments.unshift({
-      type: 'pathname',
+      type: SEGMENT_TYPE_PATHNAME,
       value: '/',
     })
   }
 
   if (!to.startsWith('/')) {
     routeSegments.unshift({
-      type: 'pathname',
+      type: SEGMENT_TYPE_PATHNAME,
       value: '/',
     })
   }
@@ -550,7 +579,7 @@ export function matchByPath(
       const isLastRouteSegment = routeIndex >= routeSegments.length - 1
 
       if (routeSegment) {
-        if (routeSegment.type === 'wildcard') {
+        if (routeSegment.type === SEGMENT_TYPE_WILDCARD) {
           // Capture all remaining segments for a wildcard
           const remainingBaseSegments = baseSegments.slice(baseIndex)
 
@@ -608,7 +637,7 @@ export function matchByPath(
           return true
         }
 
-        if (routeSegment.type === 'pathname') {
+        if (routeSegment.type === SEGMENT_TYPE_PATHNAME) {
           if (routeSegment.value === '/' && !baseSegment?.value) {
             routeIndex++
             continue
@@ -633,7 +662,7 @@ export function matchByPath(
           }
         }
 
-        if (routeSegment.type === 'param') {
+        if (routeSegment.type === SEGMENT_TYPE_PARAM) {
           if (!baseSegment) {
             return false
           }
@@ -687,7 +716,7 @@ export function matchByPath(
           continue
         }
 
-        if (routeSegment.type === 'optional-param') {
+        if (routeSegment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
           // Optional parameters can be missing - don't fail the match
           if (!baseSegment) {
             // No base segment for optional param - skip this route segment
@@ -742,7 +771,7 @@ export function matchByPath(
             ) {
               const futureRouteSegment = routeSegments[lookAhead]
               if (
-                futureRouteSegment?.type === 'pathname' &&
+                futureRouteSegment?.type === SEGMENT_TYPE_PATHNAME &&
                 futureRouteSegment.value === baseSegment.value
               ) {
                 // The current base segment matches a future pathname segment,
@@ -753,8 +782,8 @@ export function matchByPath(
 
               // If we encounter a required param or wildcard, stop looking ahead
               if (
-                futureRouteSegment?.type === 'param' ||
-                futureRouteSegment?.type === 'wildcard'
+                futureRouteSegment?.type === SEGMENT_TYPE_PARAM ||
+                futureRouteSegment?.type === SEGMENT_TYPE_WILDCARD
               ) {
                 break
               }
@@ -799,7 +828,7 @@ export function matchByPath(
       ) {
         // Check if all remaining route segments are optional
         for (let i = routeIndex; i < routeSegments.length; i++) {
-          if (routeSegments[i]?.type !== 'optional-param') {
+          if (routeSegments[i]?.type !== SEGMENT_TYPE_OPTIONAL_PARAM) {
             return false
           }
         }
