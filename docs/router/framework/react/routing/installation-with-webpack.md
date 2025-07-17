@@ -2,6 +2,24 @@
 title: Installation with Webpack
 ---
 
+The following configuration ensures that your dev server works seamlessly with client-side routing:
+
+- `historyApiFallback.rewrites`: Redirects all requests to `index.html`, allowing router to handle navigation.
+- `output.publicPath`: Ensures that the web app can always get the correct path to the assets, even when the app url is with a subpath, for example, `/foo/bar`.
+
+```ts
+export default {
+  devServer: {
+    historyApiFallback: {
+      rewrites: [{ from: /./, to: '/index.html' }],
+    },
+  },
+  output: {
+		publicPath: "/",
+	},
+}
+```
+
 [//]: # 'BundlerConfiguration'
 
 To use file-based routing with **Webpack**, you'll need to install the `@tanstack/router-plugin` package.
