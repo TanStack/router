@@ -292,7 +292,7 @@ describe('Optional Path Parameters', () => {
         result: '/posts/42',
       },
     ])('$name', ({ path, params, result }) => {
-      expect(interpolatePath({ path, params }).interpolatedPath).toBe(result)
+      expect(interpolatePath({ path, params, encodePathParam: encodeURIComponent }).interpolatedPath).toBe(result)
     })
   })
 
@@ -400,7 +400,7 @@ describe('Optional Path Parameters', () => {
       // This test will be expanded when we implement params.parse for optional params
       const path = '/posts/{-$category}'
       const params = { category: 'tech' }
-      expect(interpolatePath({ path, params }).interpolatedPath).toBe(
+      expect(interpolatePath({ path, params, encodePathParam: encodeURIComponent }).interpolatedPath).toBe(
         '/posts/tech',
       )
     })

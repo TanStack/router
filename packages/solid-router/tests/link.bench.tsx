@@ -10,7 +10,7 @@ import {
   interpolatePath,
   useRouter,
 } from '../src'
-import type { LinkProps } from '../src'
+import type { AnyRouter, LinkProps } from '../src'
 import type * as Solid from 'solid-js'
 
 const createRouterRenderer =
@@ -38,8 +38,9 @@ const InterpolatePathLink = ({
   to,
   params,
   children,
-}: Solid.PropsWithChildren<LinkProps>) => {
-  const href = interpolatePath({ path: to, params }).interpolatedPath
+  router,
+}: Solid.PropsWithChildren<LinkProps> & { router: AnyRouter }) => {
+  const href = interpolatePath({ path: to, params, encodePathParam: router.encodePathParam }).interpolatedPath
   return <a href={href}>{children}</a>
 }
 
@@ -95,6 +96,7 @@ describe.each([
           <InterpolatePathLink
             to={`/params/$param${Math.min(i, matchedParamId)}`}
             params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
+            router={router}
           >
             {i}
           </InterpolatePathLink>

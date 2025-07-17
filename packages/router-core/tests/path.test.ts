@@ -12,6 +12,7 @@ import {
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_WILDCARD,
   SEGMENT_TYPE_OPTIONAL_PARAM,
+  compileEncodePathParam,
 } from '../src/path'
 import type { Segment as PathSegment } from '../src/path'
 
@@ -394,9 +395,7 @@ describe('interpolatePath', () => {
         path: '/users/$id',
         params: { id: '?#@john+smith' },
         result: '/users/%3F%23@john+smith',
-        decodeCharMap: new Map(
-          ['@', '+'].map((char) => [encodeURIComponent(char), char]),
-        ),
+        encodePathParam: compileEncodePathParam(['@', '+']),
       },
       {
         name: 'should interpolate the path with the splat param at the end',
@@ -433,12 +432,12 @@ describe('interpolatePath', () => {
         params: { _splat: 'sean/cassiere' },
         result: '/users/sean/cassiere',
       },
-    ])('$name', ({ path, params, decodeCharMap, result }) => {
+    ])('$name', ({ path, params, encodePathParam = encodeURIComponent, result }) => {
       expect(
         interpolatePath({
           path,
           params,
-          decodeCharMap,
+          encodePathParam,
         }).interpolatedPath,
       ).toBe(result)
     })
@@ -481,6 +480,7 @@ describe('interpolatePath', () => {
         interpolatePath({
           path: to,
           params,
+          encodePathParam: encodeURIComponent,
         }).interpolatedPath,
       ).toBe(result)
     })
@@ -523,6 +523,7 @@ describe('interpolatePath', () => {
         interpolatePath({
           path: to,
           params,
+          encodePathParam: encodeURIComponent,
         }).interpolatedPath,
       ).toBe(result)
     })
@@ -564,6 +565,7 @@ describe('interpolatePath', () => {
       const result = interpolatePath({
         path,
         params,
+        encodePathParam: encodeURIComponent,
       })
       expect(result.interpolatedPath).toBe(expectedResult)
       expect(result.isMissingParams).toBe(true)
