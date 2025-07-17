@@ -3240,7 +3240,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 
     // Removes the leading slash if it is not the only remaining segment
     let skip = 0
-    while (skip < parsed.length && parsed[skip]?.value === '/') {
+    while (parsed.length > skip + 1 && parsed[skip]?.value === '/') {
       skip++
     }
     if (skip > 0) parsed = parsed.slice(skip)
