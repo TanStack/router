@@ -89,4 +89,5 @@ export const Route = createFileRoute('/posts')({
       </div>
     )
   },
+  pendingComponent: () => <div>posts Loading...</div>,
 })

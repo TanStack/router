@@ -17,6 +17,15 @@ export function TanStackStartVitePlugin(
     WithSolidPlugin
   const options: OptionsWithSolid = getTanStackStartOptions(opts)
 
+  if (opts?.customViteSolidPlugin !== true) {
+    console.warn(
+      `please add the vite-solid plugin to your Vite config and set 'customViteSolidPlugin: true'`,
+    )
+    console.warn(
+      `TanStack Start will not configure the vite-solid plugin in future anymore.`,
+    )
+  }
+
   return [
     TanStackStartVitePluginCore(
       {
@@ -53,7 +62,7 @@ export default createStartHandler({
       },
       options,
     ),
-    viteSolid({ ...options.solid, ssr: true }),
+    !opts?.customViteSolidPlugin && viteSolid({ ...options.solid, ssr: true }),
   ]
 }
 

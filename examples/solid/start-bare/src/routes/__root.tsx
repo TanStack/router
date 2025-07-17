@@ -8,7 +8,7 @@ export const Route = createRootRoute({
   head: () => ({
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
-  component: RootDocument,
+  shellComponent: RootDocument,
 })
 
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
@@ -18,7 +18,7 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
         <Link to="/">Index</Link>
         <Link to="/about">About</Link>
       </div>
-      <Outlet />
+      {children}
       <TanStackRouterDevtools position="bottom-right" />
     </>
   )

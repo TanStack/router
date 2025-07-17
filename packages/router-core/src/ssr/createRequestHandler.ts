@@ -1,6 +1,6 @@
 import { createMemoryHistory } from '@tanstack/history'
 import { mergeHeaders } from './headers'
-import { attachRouterServerSsrUtils, dehydrateRouter } from './ssr-server'
+import { attachRouterServerSsrUtils } from './ssr-server'
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
@@ -39,7 +39,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 
     await router.load()
 
-    dehydrateRouter(router)
+    await router.serverSsr?.dehydrate()
 
     const responseHeaders = getRequestHeaders({
       router,

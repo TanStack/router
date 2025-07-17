@@ -134,6 +134,14 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'nested-verboseFileRoutes-false':
       config.verboseFileRoutes = false
       break
+    case 'routeFileIgnore':
+      config.routeFileIgnorePattern = 'ignoredPattern'
+      config.routeFileIgnorePrefix = 'imIgnored'
+      break
+    case 'routeFilePrefix':
+      config.routeFileIgnorePattern = 'ignoredPattern'
+      config.routeFilePrefix = 'r&'
+      break
     default:
       break
   }

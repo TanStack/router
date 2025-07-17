@@ -12,10 +12,7 @@ import {
   processRouteTree,
   trimPath,
 } from '@tanstack/router-core'
-import {
-  attachRouterServerSsrUtils,
-  dehydrateRouter,
-} from '@tanstack/router-core/ssr/server'
+import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { getResponseHeaders, requestHandler } from './h3'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
@@ -29,6 +26,7 @@ import type { RequestHandler } from './h3'
 import type {
   AnyRoute,
   AnyRouter,
+  Awaitable,
   Manifest,
   ProcessRouteTreeResult,
 } from '@tanstack/router-core'
@@ -56,7 +54,7 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
 export function createStartHandler<TRouter extends AnyRouter>({
   createRouter,
 }: {
-  createRouter: () => TRouter
+  createRouter: () => Awaitable<TRouter>
 }): CustomizeStartHandler<TRouter> {
   let routeTreeModule: {
     serverRouteTree: AnyServerRouteWithTypes | undefined
@@ -110,12 +108,12 @@ export function createStartHandler<TRouter extends AnyRouter>({
       }
 
       const url = new URL(request.url)
-      const href = url.href.replace(url.origin, '')
+      const href = decodeURIComponent(url.href.replace(url.origin, ''))
 
       const APP_BASE = process.env.TSS_APP_BASE || '/'
 
       // TODO how does this work with base path? does the router need to be configured the same as APP_BASE?
-      const router = createRouter()
+      const router = await createRouter()
       // Create a history for the client-side router
       const history = createMemoryHistory({
         initialEntries: [href],
@@ -124,6 +122,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       // Update the client-side router with the history
       router.update({
         history,
+        isShell: process.env.TSS_SPA_MODE === 'true',
       })
 
       const response = await (async () => {
@@ -206,7 +205,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
               return router.state.redirect
             }
 
-            dehydrateRouter(router)
+            await router.serverSsr!.dehydrate()
 
             const responseHeaders = getStartResponseHeaders({ router })
             const response = await cb({

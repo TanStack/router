@@ -130,7 +130,7 @@ const fooRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'foo/$id',
   validateSearch: (search) => ({ hello: search.hello }) as { hello: string },
-  component: () => <div>foo {fooRoute.useParams().id}</div>,
+  component: () => <>foo {fooRoute.useParams().id}</>,
 })
 
 const editor1Route = createRoute({
@@ -220,13 +220,6 @@ const router = createRouter({
   defaultPreload: 'intent',
   scrollRestoration: true,
 })
-
-// Register things for typesafety
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: typeof router
-  }
-}
 
 const rootElement = document.getElementById('app')!
 

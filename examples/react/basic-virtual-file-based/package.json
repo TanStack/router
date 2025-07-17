@@ -9,9 +9,9 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.125.4",
-    "@tanstack/react-router-devtools": "^1.125.4",
-    "@tanstack/router-plugin": "^1.125.5",
+    "@tanstack/react-router": "^1.128.0",
+    "@tanstack/react-router-devtools": "^1.128.0",
+    "@tanstack/router-plugin": "^1.128.0",
     "@tanstack/virtual-file-routes": "^1.121.21",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

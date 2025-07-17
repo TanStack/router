@@ -488,17 +488,20 @@ export function createRouteMask<
 
 export type SolidNode = Solid.JSX.Element
 
-export type SyncRouteComponent<TProps> = (props: TProps) => Solid.JSX.Element
+export interface DefaultRouteTypes<TProps> {
+  component: (props: TProps) => any
+}
+export interface RouteTypes<TProps> extends DefaultRouteTypes<TProps> {}
 
-export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
+export type AsyncRouteComponent<TProps> = RouteTypes<TProps>['component'] & {
   preload?: () => Promise<void>
 }
 
-export type RouteComponent<TProps = any> = AsyncRouteComponent<TProps>
+export type RouteComponent = AsyncRouteComponent<{}>
 
-export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
+export type ErrorRouteComponent = AsyncRouteComponent<ErrorComponentProps>
 
-export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
+export type NotFoundRouteComponent = RouteTypes<NotFoundRouteProps>['component']
 
 export class NotFoundRoute<
   TParentRoute extends AnyRootRoute,

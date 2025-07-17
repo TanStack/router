@@ -1,114 +1,64 @@
 import invariant from 'tiny-invariant'
-import { isPlainObject } from '../utils'
-import { tsrSerializer } from '../serializer'
-import type { DeferredPromiseState } from '../defer'
-import type { MakeRouteMatch } from '../Matches'
-import type { AnyRouter, ControllablePromise } from '../router'
+import { batch } from '@tanstack/store'
+import { createControlledPromise } from '../utils'
+import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
+import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
+import type { GLOBAL_TSR } from './ssr-server'
 
 declare global {
   interface Window {
-    __TSR_SSR__?: TsrSsrGlobal
+    [GLOBAL_TSR]?: TsrSsrGlobal
   }
 }
 
 export interface TsrSsrGlobal {
-  matches: Array<SsrMatch>
-  streamedValues: Record<
-    string,
-    {
-      value: any
-      parsed: any
-    }
-  >
-  cleanScripts: () => void
-  dehydrated?: any
-  initMatch: (match: SsrMatch) => void
-  resolvePromise: (opts: {
-    matchId: string
-    id: number
-    promiseState: DeferredPromiseState<any>
-  }) => void
-  injectChunk: (opts: { matchId: string; id: number; chunk: string }) => void
-  closeStream: (opts: { matchId: string; id: number }) => void
+  router?: DehydratedRouter
+  // clean scripts, shortened since this is sent for each streamed script
+  c: () => void
 }
 
-export interface SsrMatch {
-  id: string
-  __beforeLoadContext: string
-  loaderData?: string
-  error?: string
-  extracted?: Array<ClientExtractedEntry>
-  updatedAt: MakeRouteMatch['updatedAt']
-  status: MakeRouteMatch['status']
-  ssr?: boolean | 'data-only'
+function hydrateMatch(
+  deyhydratedMatch: DehydratedMatch,
+): Partial<MakeRouteMatch> {
+  return {
+    id: deyhydratedMatch.i,
+    __beforeLoadContext: deyhydratedMatch.b,
+    loaderData: deyhydratedMatch.l,
+    status: deyhydratedMatch.s,
+    ssr: deyhydratedMatch.ssr,
+    updatedAt: deyhydratedMatch.u,
+    error: deyhydratedMatch.e,
+  }
 }
-
-export type ClientExtractedEntry =
-  | ClientExtractedStream
-  | ClientExtractedPromise
-
-export interface ClientExtractedPromise extends ClientExtractedBaseEntry {
-  type: 'promise'
-  value?: ControllablePromise<any>
-}
-
-export interface ClientExtractedStream extends ClientExtractedBaseEntry {
-  type: 'stream'
-  value?: ReadableStream & { controller?: ReadableStreamDefaultController }
-}
-
-export interface ClientExtractedBaseEntry {
-  type: string
-  path: Array<string>
-}
-
-export interface ResolvePromiseState {
-  matchId: string
-  id: number
-  promiseState: DeferredPromiseState<any>
+export interface DehydratedMatch {
+  i: MakeRouteMatch['id']
+  b?: MakeRouteMatch['__beforeLoadContext']
+  l?: MakeRouteMatch['loaderData']
+  e?: MakeRouteMatch['error']
+  u: MakeRouteMatch['updatedAt']
+  s: MakeRouteMatch['status']
+  ssr?: MakeRouteMatch['ssr']
 }
 
 export interface DehydratedRouter {
   manifest: Manifest | undefined
-  dehydratedData: any
-  lastMatchId: string
+  dehydratedData?: any
+  lastMatchId?: string
+  matches: Array<DehydratedMatch>
 }
 
 export async function hydrate(router: AnyRouter): Promise<any> {
   invariant(
-    window.__TSR_SSR__?.dehydrated,
-    'Expected to find a dehydrated data on window.__TSR_SSR__.dehydrated... but we did not. Please file an issue!',
+    window.$_TSR?.router,
+    'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
   )
 
-  const { manifest, dehydratedData, lastMatchId } = tsrSerializer.parse(
-    window.__TSR_SSR__.dehydrated,
-  ) as DehydratedRouter
+  const { manifest, dehydratedData, lastMatchId } = window.$_TSR.router
 
   router.ssr = {
     manifest,
-    serializer: tsrSerializer,
-  }
-
-  router.clientSsr = {
-    getStreamedValue: <T>(key: string): T | undefined => {
-      if (router.isServer) {
-        return undefined
-      }
-
-      const streamedValue = window.__TSR_SSR__?.streamedValues[key]
-
-      if (!streamedValue) {
-        return
-      }
-
-      if (!streamedValue.parsed) {
-        streamedValue.parsed = router.ssr!.serializer.parse(streamedValue.value)
-      }
-
-      return streamedValue.parsed
-    },
   }
 
   // Hydrate the router state
@@ -122,20 +72,42 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }),
   )
 
+  function setMatchForcePending(match: AnyRouteMatch) {
+    // usually the minPendingPromise is created in the Match component if a pending match is rendered
+    // however, this might be too late if the match synchronously resolves
+    const route = router.looseRoutesById[match.routeId]!
+    const pendingMinMs =
+      route.options.pendingMinMs ?? router.options.defaultPendingMinMs
+    if (pendingMinMs) {
+      const minPendingPromise = createControlledPromise<void>()
+      match.minPendingPromise = minPendingPromise
+      match._forcePending = true
+
+      setTimeout(() => {
+        minPendingPromise.resolve()
+        // We've handled the minPendingPromise, so we can delete it
+        router.updateMatch(match.id, (prev) => ({
+          ...prev,
+          minPendingPromise: undefined,
+          _forcePending: undefined,
+        }))
+      }, pendingMinMs)
+    }
+  }
+
   // Right after hydration and before the first render, we need to rehydrate each match
   // First step is to reyhdrate loaderData and __beforeLoadContext
   let firstNonSsrMatchIndex: number | undefined = undefined
   matches.forEach((match) => {
-    const dehydratedMatch = window.__TSR_SSR__!.matches.find(
-      (d) => d.id === match.id,
+    const dehydratedMatch = window.$_TSR!.router!.matches.find(
+      (d) => d.i === match.id,
     )
-
     if (!dehydratedMatch) {
       Object.assign(match, { dehydrated: false, ssr: false })
       return
     }
 
-    Object.assign(match, dehydratedMatch)
+    Object.assign(match, hydrateMatch(dehydratedMatch))
 
     if (match.ssr === false) {
       match._dehydrated = false
@@ -146,37 +118,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     if (match.ssr === 'data-only' || match.ssr === false) {
       if (firstNonSsrMatchIndex === undefined) {
         firstNonSsrMatchIndex = match.index
-        match._forcePending = true
+        setMatchForcePending(match)
       }
     }
-
-    if (match.ssr === false) {
-      return
-    }
-
-    // Handle beforeLoadContext
-    if (dehydratedMatch.__beforeLoadContext) {
-      match.__beforeLoadContext = router.ssr!.serializer.parse(
-        dehydratedMatch.__beforeLoadContext,
-      ) as any
-    }
-
-    // Handle loaderData
-    if (dehydratedMatch.loaderData) {
-      match.loaderData = router.ssr!.serializer.parse(
-        dehydratedMatch.loaderData,
-      )
-    }
-
-    // Handle error
-    if (dehydratedMatch.error) {
-      match.error = router.ssr!.serializer.parse(dehydratedMatch.error)
-    }
-
-    // Handle extracted
-    ;(match as unknown as SsrMatch).extracted?.forEach((ex) => {
-      deepMutableSetByPath(match, ['loaderData', ...ex.path], ex.value)
-    })
   })
 
   router.__store.setState((s) => {
@@ -240,6 +184,17 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     }),
   )
 
+  const isSpaMode = matches[matches.length - 1]!.id !== lastMatchId
+  const hasSsrFalseMatches = matches.some((m) => m.ssr === false)
+  // all matches have data from the server   and we are not in SPA mode so we don't need to kick of router.load()
+  if (!hasSsrFalseMatches && !isSpaMode) {
+    matches.forEach((match) => {
+      // remove the _dehydrate flag since we won't run router.load() which would remove it
+      match._dehydrated = undefined
+    })
+    return routeChunkPromise
+  }
+
   // schedule router.load() to run after the next tick so we can store the promise in the match before loading starts
   const loadPromise = Promise.resolve()
     .then(() => router.load())
@@ -247,45 +202,41 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       console.error('Error during router hydration:', err)
     })
 
-  // in SPA mode we need to keep the outermost match  pending until router.load() is finished
+  // in SPA mode we need to keep the first match below the root route pending until router.load() is finished
   // this will prevent that other pending components are rendered but hydration is not blocked
-  if (matches[matches.length - 1]!.id !== lastMatchId) {
-    const matchId = matches[0]!.id
-    router.updateMatch(matchId, (prev) => {
-      return {
-        ...prev,
-        _displayPending: true,
-        displayPendingPromise: loadPromise,
-        // make sure that the pending component is displayed for at least pendingMinMs
-        _forcePending: true,
-      }
-    })
-    // hide the pending component once the load is finished
+  if (isSpaMode) {
+    const match = matches[1]
+    invariant(
+      match,
+      'Expected to find a match below the root match in SPA mode.',
+    )
+    setMatchForcePending(match)
+
+    match._displayPending = true
+    match.displayPendingPromise = loadPromise
+
     loadPromise.then(() => {
-      router.updateMatch(matchId, (prev) => {
-        return {
-          ...prev,
-          _displayPending: undefined,
-          displayPendingPromise: undefined,
+      batch(() => {
+        // ensure router is not in status 'pending' anymore
+        // this usually happens in Transitioner but if loading synchronously resolves,
+        // Transitioner won't be rendered while loading so it cannot track the change from loading:true to loading:false
+        if (router.__store.state.status === 'pending') {
+          router.__store.setState((s) => ({
+            ...s,
+            status: 'idle',
+            resolvedLocation: s.location,
+          }))
         }
+        // hide the pending component once the load is finished
+        router.updateMatch(match.id, (prev) => {
+          return {
+            ...prev,
+            _displayPending: undefined,
+            displayPendingPromise: undefined,
+          }
+        })
       })
     })
   }
-
   return routeChunkPromise
-}
-
-function deepMutableSetByPath<T>(obj: T, path: Array<string>, value: any) {
-  // mutable set by path retaining array and object references
-  if (path.length === 1) {
-    ;(obj as any)[path[0]!] = value
-  }
-
-  const [key, ...rest] = path
-
-  if (Array.isArray(obj)) {
-    deepMutableSetByPath(obj[Number(key)], rest, value)
-  } else if (isPlainObject(obj)) {
-    deepMutableSetByPath((obj as any)[key!], rest, value)
-  }
 }

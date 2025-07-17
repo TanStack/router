@@ -5,7 +5,6 @@ export {
   attachRouterServerSsrUtils,
   createRequestHandler,
   defineHandlerCallback,
-  dehydrateRouter,
   transformReadableStreamWithRouter,
   transformPipeableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'

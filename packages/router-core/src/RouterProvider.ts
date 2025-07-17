@@ -42,5 +42,6 @@ export type BuildLocationFn = <
   opts: ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
     leaveParams?: boolean
     _includeValidateSearch?: boolean
+    _isNavigate?: boolean
   },
 ) => ParsedLocation

@@ -1,15 +1,18 @@
 /// <reference types="vite/client" />
 import * as React from 'react'
 import {
+  ClientOnly,
   HeadContent,
   Link,
   Outlet,
   Scripts,
   createRootRoute,
+  useRouterState,
 } from '@tanstack/react-router'
 import { z } from 'zod'
 import { ssrSchema } from '~/search'
 import appCss from '~/styles/app.css?url'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -113,9 +116,14 @@ export const Route = createRootRoute({
       </div>
     )
   },
+  pendingComponent: () => <div>__root Loading...</div>,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const { isLoading, status } = useRouterState({
+    select: (state) => ({ isLoading: state.isLoading, status: state.status }),
+    structuralSharing: true,
+  })
   return (
     <html>
       <head>
@@ -134,8 +142,19 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         <hr />
+        <ClientOnly>
+          <div>
+            router isLoading:{' '}
+            <b data-testid="router-isLoading">{isLoading ? 'true' : 'false'}</b>
+          </div>
+          <div>
+            router status: <b data-testid="router-status">{status}</b>
+          </div>
+        </ClientOnly>
+        <hr />
         {children}
         <Scripts />
+        <TanStackRouterDevtools position="bottom-right" />
       </body>
     </html>
   )

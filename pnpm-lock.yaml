@@ -150,7 +150,11 @@ importers:
         specifier: ^3.0.6
         version: 3.0.6(@types/node@22.13.4)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.4.2)(jsdom@25.0.1)(lightningcss@1.29.2)(msw@2.7.0(@types/node@22.13.4)(typescript@5.8.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
-  e2e/e2e-utils: {}
+  e2e/e2e-utils:
+    devDependencies:
+      get-port-please:
+        specifier: ^3.2.0
+        version: 3.2.0
 
   e2e/react-router/basic:
     dependencies:
@@ -1367,6 +1371,9 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
@@ -1480,6 +1487,52 @@ importers:
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+
+  e2e/react-start/spa-mode:
+    dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+    devDependencies:
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.13.4
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.0.8
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.0.3(@types/react@19.0.8)
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.3
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
+      vite:
+        specifier: 6.3.5
+        version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.8.3)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
 
   e2e/react-start/virtual-routes:
     dependencies:
@@ -2448,6 +2501,43 @@ importers:
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+
+  e2e/solid-start/spa-mode:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/solid-router-devtools
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../../../packages/solid-start
+      solid-js:
+        specifier: ^1.9.5
+        version: 1.9.5
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.57
+    devDependencies:
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:^
+        version: link:../../e2e-utils
+      postcss:
+        specifier: ^8.5.1
+        version: 8.5.3
+      tailwindcss:
+        specifier: ^3.4.17
+        version: 3.4.17
+      typescript:
+        specifier: ^5.7.2
+        version: 5.8.3
+      vite:
+        specifier: 6.3.5
+        version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.8.3)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
 
   e2e/solid-start/website:
     dependencies:
@@ -4496,6 +4586,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      '@vitejs/plugin-react':
+        specifier: ^4.6.0
+        version: 4.6.0(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.3)
@@ -4741,8 +4834,8 @@ importers:
   examples/react/start-clerk-basic:
     dependencies:
       '@clerk/tanstack-react-start':
-        specifier: ^0.18.0
-        version: 0.18.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        specifier: ^0.19.0
+        version: 0.19.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -4797,7 +4890,7 @@ importers:
     dependencies:
       '@convex-dev/react-query':
         specifier: 0.0.0-alpha.8
-        version: 0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
+        version: 0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.33.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
       '@tanstack/react-query':
         specifier: 5.66.0
         version: 5.66.0(react@19.0.0)
@@ -4821,7 +4914,7 @@ importers:
         version: 8.2.2
       convex:
         specifier: ^1.19.0
-        version: 1.19.0(@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 1.19.0(@clerk/clerk-react@5.33.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       ky:
         specifier: ^1.7.4
         version: 1.7.4
@@ -5483,7 +5576,7 @@ importers:
   examples/solid/basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5523,7 +5616,7 @@ importers:
   examples/solid/basic-devtools-panel:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5557,7 +5650,7 @@ importers:
   examples/solid/basic-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5597,7 +5690,7 @@ importers:
   examples/solid/basic-non-nested-devtools:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5643,7 +5736,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5686,7 +5779,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5726,7 +5819,7 @@ importers:
   examples/solid/basic-ssr-streaming-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5784,7 +5877,7 @@ importers:
   examples/solid/kitchen-sink-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5827,7 +5920,7 @@ importers:
   examples/solid/quickstart-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5867,7 +5960,7 @@ importers:
   examples/solid/start-bare:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5916,7 +6009,7 @@ importers:
   examples/solid/start-basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5952,6 +6045,9 @@ importers:
       vite:
         specifier: 6.3.5
         version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+      vite-plugin-solid:
+        specifier: ^2.11.7
+        version: 2.11.7(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
@@ -5959,7 +6055,7 @@ importers:
   examples/solid/start-basic-static:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.125.4
+        specifier: ^1.128.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6089,9 +6185,6 @@ importers:
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
-      jsesc:
-        specifier: ^3.1.0
-        version: 3.1.0
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -6105,9 +6198,6 @@ importers:
       '@testing-library/react':
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.0)(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
@@ -6215,9 +6305,6 @@ importers:
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2
-      jsesc:
-        specifier: ^3.1.0
-        version: 3.1.0
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -6234,9 +6321,6 @@ importers:
       '@testing-library/react':
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.0)(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
@@ -6324,9 +6408,12 @@ importers:
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2
-      jsesc:
-        specifier: ^3.1.0
-        version: 3.1.0
+      seroval:
+        specifier: ^1.3.2
+        version: 1.3.2
+      seroval-plugins:
+        specifier: ^1.3.2
+        version: 1.3.2(seroval@1.3.2)
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -6334,9 +6421,6 @@ importers:
         specifier: ^1.0.3
         version: 1.0.3
     devDependencies:
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       esbuild:
         specifier: ^0.25.0
         version: 0.25.4
@@ -6599,14 +6683,11 @@ importers:
         specifier: workspace:*
         version: link:../router-core
       '@tanstack/solid-store':
-        specifier: ^0.7.0
+        specifier: 0.7.0
         version: 0.7.0(solid-js@1.9.5)
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
-      jsesc:
-        specifier: ^3.0.2
-        version: 3.1.0
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -6620,9 +6701,6 @@ importers:
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
@@ -6700,9 +6778,6 @@ importers:
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2
-      jsesc:
-        specifier: ^3.1.0
-        version: 3.1.0
       solid-js:
         specifier: '>=1.0.0'
         version: 1.9.5
@@ -6719,9 +6794,6 @@ importers:
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       vite-plugin-solid:
         specifier: ^2.11.2
         version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
@@ -6875,9 +6947,6 @@ importers:
       isbot:
         specifier: ^5.1.22
         version: 5.1.22
-      jsesc:
-        specifier: ^3.1.0
-        version: 3.1.0
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
@@ -6891,9 +6960,6 @@ importers:
       '@tanstack/directive-functions-plugin':
         specifier: workspace:*
         version: link:../directive-functions-plugin
-      '@types/jsesc':
-        specifier: ^3.0.3
-        version: 3.0.3
       esbuild:
         specifier: ^0.25.0
         version: 0.25.4
@@ -7226,19 +7292,19 @@ packages:
   '@bundled-es-modules/tough-cookie@0.1.6':
     resolution: {integrity: sha512-dvMHbL464C0zI+Yqxbz6kZ5TOEp7GLW+pry/RWndAR8MJQAXZ2rPmIs8tziTZjeIyhSNZgZbCePtfSbdWqStJw==}
 
-  '@clerk/backend@2.2.0':
-    resolution: {integrity: sha512-ppr/ikitOIq1CTZaTbMTN7YRIpii5pHMPyl4TNplFmH6dF1HRVYaOw0Ce2YVMLDnBVALNR60f2Z247/voJMLkA==}
+  '@clerk/backend@2.4.1':
+    resolution: {integrity: sha512-NryqYBslAWMNkw/8ff6qK9kMrbWPIAtNOfkr62Rmtyh/MODRQJI0GmHgLg0DcBQofPrRCIXhauhfJRWqweN3Mw==}
     engines: {node: '>=18.17.0'}
 
-  '@clerk/clerk-react@5.32.1':
-    resolution: {integrity: sha512-ByIukEdfqKirEp7dLIo3ohcAiFAXG6XFtwRSdA2Osv8K5rd0wuzHMFg1drj18fnyhAav0fd06r32iJxqGpC93Q==}
+  '@clerk/clerk-react@5.33.0':
+    resolution: {integrity: sha512-3mDmsLFyup/O4blgS5erCHJnckEexIbWPhRnHEl+nGj9sftyo9h1t8GwFNjZGzLO2U8ALPH/6fe/cCnxk0qBRQ==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@clerk/shared@3.9.8':
-    resolution: {integrity: sha512-gJwABXovbjtvP0ZVO9p5G+zYezyE3UFzvkVhbwsN/QBmwkwwGm7dbnH88HR9PY5MdlNE4feVamwg6WDwa841Vg==}
+  '@clerk/shared@3.11.0':
+    resolution: {integrity: sha512-bSFWbKbW5bVehtELba5fERAJYDQUeQlUgcrn3JGZDFgnkN4j8tjdVv9lgEdEqDe65IwWxt9wRSbh0KRVdk9OLA==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       react: ^19.0.0
@@ -7249,8 +7315,8 @@ packages:
       react-dom:
         optional: true
 
-  '@clerk/tanstack-react-start@0.18.0':
-    resolution: {integrity: sha512-JajGYixktm/B8z4Hi6r062gTXcIOyKJVhkT2hSv9dhjkk9Dcram10d/R6ZWDFmNGVhM+FGRhKQQq6vu9IJBRmw==}
+  '@clerk/tanstack-react-start@0.19.0':
+    resolution: {integrity: sha512-4jotpgIZXtndctloODcTbIPU3a1521SQK9CNlT2v2DIUz8iic9d+I+hE1JjlY3RG6iy/M1MSimnMQn+a3ki3Rw==}
     engines: {node: '>=18.17.0'}
     peerDependencies:
       '@tanstack/react-router': workspace:*
@@ -7258,8 +7324,8 @@ packages:
       react: ^19.0.0
       react-dom: ^19.0.0
 
-  '@clerk/types@4.61.0':
-    resolution: {integrity: sha512-SK58IsUIAmmgm8qg63raiZCXvpwKQobpA9/wCOfQj5GgN8CIEuCqGwqLGzk8xkYabLsLTACLs1l9bx38rLMMzQ==}
+  '@clerk/types@4.64.0':
+    resolution: {integrity: sha512-R9V4aJ8o7A7CJiqleNTTlIWt77pbmWeyD/rkvbN/CQ7By0KE0IPZbsWGXK0q2/WZNcP47LwOYO9aOnuXVrdLYw==}
     engines: {node: '>=18.17.0'}
 
   '@cloudflare/kv-asset-handler@0.4.0':
@@ -9896,6 +9962,9 @@ packages:
   '@speed-highlight/core@1.2.7':
     resolution: {integrity: sha512-0dxmVj4gxg3Jg879kvFS/msl4s9F3T9UXC1InxgOf7t5NvcPD97u/WTA5vL/IxWHMn7qSxBozqrnnE2wvl1m8g==}
 
+  '@stablelib/base64@1.0.1':
+    resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
+
   '@stylistic/eslint-plugin-js@2.13.0':
     resolution: {integrity: sha512-GPPDK4+fcbsQD58a3abbng2Dx+jBoxM5cnYjBM4T24WFZRZdlNSKvR19TxP8CPevzMOodQ9QVzNeqWvMXzfJRA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -10309,9 +10378,6 @@ packages:
 
   '@types/js-cookie@3.0.6':
     resolution: {integrity: sha512-wkw9yd1kEXOPnvEeEV1Go1MmxtBJL0RR79aOTAApecWFVu7w0NNXNqhcWgvw2YgZDYadliXkl14pa3WXw5jlCQ==}
-
-  '@types/jsesc@3.0.3':
-    resolution: {integrity: sha512-YZZ9ZOAiiSVC6KApWd/fTCDTdTOOMiRU4Lq3/VSmXNPse8IvCVOn5kYRRLu900Ub1lTPurVZFI5unEqLDJR7wg==}
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -12073,6 +12139,9 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
 
+  fast-sha256@1.3.0:
+    resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
+
   fast-uri@3.0.6:
     resolution: {integrity: sha512-Atfo14OibSv5wAp4VWNsFYE1AchQRTv9cBGWET4pZWHzYshFSS9NQI6I57rdKn9croWVMbYFbLhJ+yJvmZIIHw==}
 
@@ -12287,8 +12356,8 @@ packages:
     resolution: {integrity: sha512-FJhYRoDaiatfEkUK8HKlicmu/3SGFD51q3itKDGoSTysQJBnfOcxU5GxnhE1E6soB76MbT0MBtnKJuXyAx+96Q==}
     engines: {node: '>=6'}
 
-  get-port-please@3.1.2:
-    resolution: {integrity: sha512-Gxc29eLs1fbn6LQ4jSU4vXjlwyZhF5HsGuMAa7gqBP4Rw4yxxltyDUuF5MBclFzDTXO+ACchGQoeela4DSfzdQ==}
+  get-port-please@3.2.0:
+    resolution: {integrity: sha512-I9QVvBw5U/hw3RmWpYKRumUeaDgxTPd401x364rLmWBJcOQ753eov1eTgzDqRG9bqFIfDc7gfzcQEWrUri3o1A==}
 
   get-port@7.1.0:
     resolution: {integrity: sha512-QB9NKEeDg3xxVwCCwJQ9+xycaz6pBB6iQ76wiWMl1927n0Kir6alPiP+yuiICLLU4jpMe08dXfpebuQppFA2zw==}
@@ -14344,8 +14413,18 @@ packages:
     peerDependencies:
       seroval: ^1.0
 
+  seroval-plugins@1.3.2:
+    resolution: {integrity: sha512-0QvCV2lM3aj/U3YozDiVwx9zpH0q8A60CTWIv4Jszj/givcudPb48B+rkU5D51NJ0pTpweGMttHjboPa9/zoIQ==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      seroval: ^1.0
+
   seroval@1.2.0:
     resolution: {integrity: sha512-GURoU99ko2UiAgUC3qDCk59Jb3Ss4Po8VIMGkG8j5PFo2Q7y0YSMP8QG9NuL/fJCoTz9V1XZUbpNIMXPOfaGpA==}
+    engines: {node: '>=10'}
+
+  seroval@1.3.2:
+    resolution: {integrity: sha512-RbcPH1n5cfwKrru7v7+zrZvjLurgHhGyso3HTyGtRivGWgYjbOmGuivCQaORNELjNONoK35nj28EoWul9sb1zQ==}
     engines: {node: '>=10'}
 
   serve-index@1.9.1:
@@ -14516,6 +14595,9 @@ packages:
 
   standard-as-callback@2.1.0:
     resolution: {integrity: sha512-qoRRSyROncaz1z0mvYqIE4lCd9p2R90i6GxW3uZv5ucSu8tU7B5HXUP1gG8pVZsYNVaXjk8ClXHPttLyxAL48A==}
+
+  standardwebhooks@1.0.0:
+    resolution: {integrity: sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg==}
 
   statuses@1.5.0:
     resolution: {integrity: sha512-OpZ3zP+jT1PI7I8nemJX4AKmAX070ZkYPVWV/AaKTJl+tXCTGyVdC1a4SL8RUQYEwk/f34ZX8UTykN68FwrqAA==}
@@ -15210,6 +15292,16 @@ packages:
 
   vite-plugin-solid@2.11.6:
     resolution: {integrity: sha512-Sl5CTqJTGyEeOsmdH6BOgalIZlwH3t4/y0RQuFLMGnvWMBvxb4+lq7x3BSiAw6etf0QexfNJW7HSOO/Qf7pigg==}
+    peerDependencies:
+      '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
+      solid-js: ^1.7.2
+      vite: 6.3.5
+    peerDependenciesMeta:
+      '@testing-library/jest-dom':
+        optional: true
+
+  vite-plugin-solid@2.11.7:
+    resolution: {integrity: sha512-5TgK1RnE449g0Ryxb9BXqem89RSy7fE8XGVCo+Gw84IHgPuPVP7nYNP6WBVAaY/0xw+OqfdQee+kusL0y3XYNg==}
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
       solid-js: ^1.7.2
@@ -15927,28 +16019,29 @@ snapshots:
       '@types/tough-cookie': 4.0.5
       tough-cookie: 4.1.4
 
-  '@clerk/backend@2.2.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/backend@2.4.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/shared': 3.9.8(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.61.0
+      '@clerk/shared': 3.11.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/types': 4.64.0
       cookie: 1.0.2
       snakecase-keys: 8.0.1
+      standardwebhooks: 1.0.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - react
       - react-dom
 
-  '@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/clerk-react@5.33.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/shared': 3.9.8(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.61.0
+      '@clerk/shared': 3.11.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/types': 4.64.0
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
       tslib: 2.8.1
 
-  '@clerk/shared@3.9.8(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/shared@3.11.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/types': 4.61.0
+      '@clerk/types': 4.64.0
       dequal: 2.0.3
       glob-to-regexp: 0.4.1
       js-cookie: 3.0.5
@@ -15958,19 +16051,19 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@clerk/tanstack-react-start@0.18.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+  '@clerk/tanstack-react-start@0.19.0(@tanstack/react-router@packages+react-router)(@tanstack/react-start@packages+react-start)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
-      '@clerk/backend': 2.2.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/clerk-react': 5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/shared': 3.9.8(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.61.0
+      '@clerk/backend': 2.4.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/clerk-react': 5.33.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/shared': 3.11.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/types': 4.64.0
       '@tanstack/react-router': link:packages/react-router
       '@tanstack/react-start': link:packages/react-start
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
       tslib: 2.8.1
 
-  '@clerk/types@4.61.0':
+  '@clerk/types@4.64.0':
     dependencies:
       csstype: 3.1.3
 
@@ -15994,10 +16087,10 @@ snapshots:
       '@types/conventional-commits-parser': 5.0.1
       chalk: 5.4.1
 
-  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))':
+  '@convex-dev/react-query@0.0.0-alpha.8(@tanstack/react-query@5.66.0(react@19.0.0))(convex@1.19.0(@clerk/clerk-react@5.33.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))':
     dependencies:
       '@tanstack/react-query': 5.66.0(react@19.0.0)
-      convex: 1.19.0(@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      convex: 1.19.0(@clerk/clerk-react@5.33.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
 
   '@csstools/color-helpers@5.0.1': {}
 
@@ -18717,6 +18810,8 @@ snapshots:
 
   '@speed-highlight/core@1.2.7': {}
 
+  '@stablelib/base64@1.0.1': {}
+
   '@stylistic/eslint-plugin-js@2.13.0(eslint@9.22.0(jiti@2.4.2))':
     dependencies:
       eslint: 9.22.0(jiti@2.4.2)
@@ -19166,8 +19261,6 @@ snapshots:
       '@types/node': 22.13.4
 
   '@types/js-cookie@3.0.6': {}
-
-  '@types/jsesc@3.0.3': {}
 
   '@types/json-schema@7.0.15': {}
 
@@ -20420,13 +20513,13 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex@1.19.0(@clerk/clerk-react@5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+  convex@1.19.0(@clerk/clerk-react@5.33.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
       esbuild: 0.23.0
       jwt-decode: 3.1.2
       prettier: 3.4.2
     optionalDependencies:
-      '@clerk/clerk-react': 5.32.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/clerk-react': 5.33.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
@@ -21309,6 +21402,8 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
+  fast-sha256@1.3.0: {}
+
   fast-uri@3.0.6: {}
 
   fastest-levenshtein@1.0.16: {}
@@ -21540,7 +21635,7 @@ snapshots:
 
   get-nonce@1.0.1: {}
 
-  get-port-please@3.1.2: {}
+  get-port-please@3.2.0: {}
 
   get-port@7.1.0: {}
 
@@ -22299,7 +22394,7 @@ snapshots:
       consola: 3.4.2
       crossws: 0.3.5
       defu: 6.1.4
-      get-port-please: 3.1.2
+      get-port-please: 3.2.0
       h3: 1.13.0
       http-shutdown: 1.2.2
       jiti: 2.4.2
@@ -23742,7 +23837,13 @@ snapshots:
     dependencies:
       seroval: 1.2.0
 
+  seroval-plugins@1.3.2(seroval@1.3.2):
+    dependencies:
+      seroval: 1.3.2
+
   seroval@1.2.0: {}
+
+  seroval@1.3.2: {}
 
   serve-index@1.9.1:
     dependencies:
@@ -23951,6 +24052,11 @@ snapshots:
   stackframe@1.3.4: {}
 
   standard-as-callback@2.1.0: {}
+
+  standardwebhooks@1.0.0:
+    dependencies:
+      '@stablelib/base64': 1.0.1
+      fast-sha256: 1.3.0
 
   statuses@1.5.0: {}
 
@@ -24629,6 +24735,21 @@ snapshots:
       '@babel/core': 7.27.4
       '@types/babel__core': 7.20.5
       babel-preset-solid: 1.9.3(@babel/core@7.27.4)
+      merge-anything: 5.1.7
+      solid-js: 1.9.5
+      solid-refresh: 0.6.3(solid-js@1.9.5)
+      vite: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+      vitefu: 1.0.5(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+    optionalDependencies:
+      '@testing-library/jest-dom': 6.6.3
+    transitivePeerDependencies:
+      - supports-color
+
+  vite-plugin-solid@2.11.7(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)):
+    dependencies:
+      '@babel/core': 7.27.7
+      '@types/babel__core': 7.20.5
+      babel-preset-solid: 1.9.3(@babel/core@7.27.7)
       merge-anything: 5.1.7
       solid-js: 1.9.5
       solid-refresh: 0.6.3(solid-js@1.9.5)
