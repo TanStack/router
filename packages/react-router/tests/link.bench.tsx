@@ -75,117 +75,121 @@ describe.each([
   //   matchedParamId: 9999, // range from 0 to numberOfRoutes-1
   //   numberOfLinks: 15000,
   // },
-])('$name', { concurrent: false, sequential: true }, ({ numberOfRoutes, numberOfLinks, matchedParamId }) => {
-  const renderRouter = createRouterRenderer(numberOfRoutes)
+])(
+  '$name',
+  { concurrent: false, sequential: true },
+  ({ numberOfRoutes, numberOfLinks, matchedParamId }) => {
+    const renderRouter = createRouterRenderer(numberOfRoutes)
 
-  bench(
-    'hardcoded href',
-    () => {
-      const router = renderRouter(
-        Array.from({ length: numberOfLinks }).map((_, i) => (
-          <a key={i} href={`/params/${i}`}>
-            {i}
-          </a>
-        )),
-      )
-      render(<RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
+    bench(
+      'hardcoded href',
+      () => {
+        const router = renderRouter(
+          Array.from({ length: numberOfLinks }).map((_, i) => (
+            <a key={i} href={`/params/${i}`}>
+              {i}
+            </a>
+          )),
+        )
+        render(<RouterProvider router={router} />)
+      },
+      { warmupIterations: 1 },
+    )
 
-  bench(
-    'interpolate path',
-    () => {
-      const router = renderRouter(
-        Array.from({ length: numberOfLinks }).map((_, i) => (
-          <InterpolatePathLink
-            key={i}
-            to={`/params/$param${Math.min(i, matchedParamId)}`}
-            params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
-          >
-            {i}
-          </InterpolatePathLink>
-        )),
-      )
-      render(<RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
+    bench(
+      'interpolate path',
+      () => {
+        const router = renderRouter(
+          Array.from({ length: numberOfLinks }).map((_, i) => (
+            <InterpolatePathLink
+              key={i}
+              to={`/params/$param${Math.min(i, matchedParamId)}`}
+              params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
+            >
+              {i}
+            </InterpolatePathLink>
+          )),
+        )
+        render(<RouterProvider router={router} />)
+      },
+      { warmupIterations: 1 },
+    )
 
-  bench(
-    'build location',
-    () => {
-      const router = renderRouter(
-        Array.from({ length: numberOfLinks }).map((_, i) => (
-          <BuildLocationLink
-            key={i}
-            to={`/params/$param${Math.min(i, matchedParamId)}`}
-            params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
-          >
-            {i}
-          </BuildLocationLink>
-        )),
-      )
-      render(<RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
+    bench(
+      'build location',
+      () => {
+        const router = renderRouter(
+          Array.from({ length: numberOfLinks }).map((_, i) => (
+            <BuildLocationLink
+              key={i}
+              to={`/params/$param${Math.min(i, matchedParamId)}`}
+              params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
+            >
+              {i}
+            </BuildLocationLink>
+          )),
+        )
+        render(<RouterProvider router={router} />)
+      },
+      { warmupIterations: 1 },
+    )
 
-  bench(
-    'link to absolute path',
-    () => {
-      const router = renderRouter(
-        Array.from({ length: numberOfLinks }).map((_, i) => (
-          <Link
-            key={i}
-            to={`/params/$param${Math.min(i, matchedParamId)}`}
-            params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
-          >
-            {i}
-          </Link>
-        )),
-      )
-      render(<RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
-
-  bench(
-    'link to relative path',
-    () => {
-      const router = renderRouter(
-        Array.from({ length: numberOfLinks }).map((_, i) => {
-          const to = `./params/$param${Math.min(i, matchedParamId)}`
-
-          return (
+    bench(
+      'link to absolute path',
+      () => {
+        const router = renderRouter(
+          Array.from({ length: numberOfLinks }).map((_, i) => (
             <Link
               key={i}
-              from="/"
-              to={to}
+              to={`/params/$param${Math.min(i, matchedParamId)}`}
               params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
             >
               {i}
             </Link>
-          )
-        }),
-      )
-      render(<RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
+          )),
+        )
+        render(<RouterProvider router={router} />)
+      },
+      { warmupIterations: 1 },
+    )
 
-  bench(
-    'link to current path',
-    () => {
-      const router = renderRouter(
-        Array.from({ length: numberOfLinks }).map((_, i) => (
-          <Link key={i} from="/" search={{ param: i }}>
-            {i}
-          </Link>
-        )),
-      )
-      render(<RouterProvider router={router} />)
-    },
-    { warmupIterations: 1 },
-  )
-})
+    bench(
+      'link to relative path',
+      () => {
+        const router = renderRouter(
+          Array.from({ length: numberOfLinks }).map((_, i) => {
+            const to = `./params/$param${Math.min(i, matchedParamId)}`
+
+            return (
+              <Link
+                key={i}
+                from="/"
+                to={to}
+                params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
+              >
+                {i}
+              </Link>
+            )
+          }),
+        )
+        render(<RouterProvider router={router} />)
+      },
+      { warmupIterations: 1 },
+    )
+
+    bench(
+      'link to current path',
+      () => {
+        const router = renderRouter(
+          Array.from({ length: numberOfLinks }).map((_, i) => (
+            <Link key={i} from="/" search={{ param: i }}>
+              {i}
+            </Link>
+          )),
+        )
+        render(<RouterProvider router={router} />)
+      },
+      { warmupIterations: 1 },
+    )
+  },
+)
