@@ -183,9 +183,12 @@ test.describe('redirects', () => {
     test(`useServerFn redirects to target: ${target}, reloadDocument: ${reloadDocument}`, async ({
       page,
     }) => {
-      await page.goto(
-        `/redirect/${target}/serverFn/via-useServerFn${reloadDocument ? '?reloadDocument=true' : ''}`,
-      )
+      const q = queryString.stringify({
+        externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+        reloadDocument,
+      })
+
+      await page.goto(`/redirect/${target}/serverFn/via-useServerFn?${q}`)
 
       const button = page.getByTestId('redirect-on-click')
 
@@ -199,7 +202,7 @@ test.describe('redirects', () => {
       const url =
         target === 'internal'
           ? `http://localhost:${PORT}/posts`
-          : 'http://example.com/'
+          : `http://localhost:${EXTERNAL_HOST_PORT}/`
       await page.waitForURL(url)
       expect(page.url()).toBe(url)
       if (target === 'internal') {
