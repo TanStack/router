@@ -4,7 +4,7 @@ title: Installation with Webpack
 
 The following configuration ensures that your dev server works seamlessly with client-side routing:
 
-- `historyApiFallback.rewrites`: Redirects all requests to `index.html`, allowing router to handle navigation.
+- `historyApiFallback.rewrites`: Redirects all requests to `index.html`, allowing server can correctly serve the app for any route.
 - `output.publicPath`: Ensures that the web app can always get the correct path to the assets, even when the app url is with a subpath, for example, `/foo/bar`.
 
 ```ts
