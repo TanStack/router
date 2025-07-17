@@ -788,6 +788,7 @@ export class RouterCore<
   isServer!: boolean
   encodePathParam!: (value: string) => string
   getMatchedRoutes!: GetMatchRoutesFn
+  resolvePathWithBase!: (from: string, path: string) => string
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -913,7 +914,7 @@ export class RouterCore<
 
     const getMatchedRoutesCache = new Map<
       string,
-      Readonly<ReturnType<GetMatchRoutesFn>>
+      ReturnType<GetMatchRoutesFn>
     >()
     this.getMatchedRoutes = (
       pathname: string,
@@ -937,6 +938,22 @@ export class RouterCore<
       }
 
       return result
+    }
+
+    const resolvePathWithBaseCache = new Map<string, string>()
+    this.resolvePathWithBase = (from: string, path: string) => {
+      const key = `:${from}:${path}:`
+      const cached = resolvePathWithBaseCache.get(key)
+      if (cached) return cached
+      const resolvedPath = resolvePath({
+        basepath: this.basepath,
+        base: from,
+        to: cleanPath(path),
+        trailingSlash: this.options.trailingSlash,
+        caseSensitive: this.options.caseSensitive,
+      })
+      resolvePathWithBaseCache.set(key, resolvedPath)
+      return resolvedPath
     }
   }
 
@@ -1031,17 +1048,6 @@ export class RouterCore<
     }
 
     return location
-  }
-
-  resolvePathWithBase = (from: string, path: string) => {
-    const resolvedPath = resolvePath({
-      basepath: this.basepath,
-      base: from,
-      to: cleanPath(path),
-      trailingSlash: this.options.trailingSlash,
-      caseSensitive: this.options.caseSensitive,
-    })
-    return resolvedPath
   }
 
   get looseRoutesById() {
