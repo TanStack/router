@@ -15,8 +15,8 @@ export default {
     },
   },
   output: {
-		publicPath: "/",
-	},
+    publicPath: '/',
+  },
 }
 ```
 
