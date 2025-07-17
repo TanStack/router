@@ -9,10 +9,10 @@ export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
 
 export interface Segment {
   type:
-  | typeof SEGMENT_TYPE_PATHNAME
-  | typeof SEGMENT_TYPE_PARAM
-  | typeof SEGMENT_TYPE_WILDCARD
-  | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+    | typeof SEGMENT_TYPE_PATHNAME
+    | typeof SEGMENT_TYPE_PARAM
+    | typeof SEGMENT_TYPE_WILDCARD
+    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   value: string
   prefixSegment?: string
   suffixSegment?: string
@@ -323,9 +323,9 @@ export function parsePathname(pathname?: string): Array<Segment> {
         type: SEGMENT_TYPE_PATHNAME,
         value: part.includes('%25')
           ? part
-            .split('%25')
-            .map((segment) => decodeURI(segment))
-            .join('%25')
+              .split('%25')
+              .map((segment) => decodeURI(segment))
+              .join('%25')
           : decodeURI(part),
       }
     }),
@@ -550,7 +550,11 @@ export function removeBasepath(
 export function matchByPath(
   basepath: string,
   from: string,
-  { to, fuzzy, caseSensitive }: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
+  {
+    to,
+    fuzzy,
+    caseSensitive,
+  }: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
 ): Record<string, string> | undefined {
   // check basepath first
   if (basepath !== '/' && !from.startsWith(basepath)) {
@@ -562,7 +566,9 @@ export function matchByPath(
   to = removeBasepath(basepath, `${to ?? '$'}`, caseSensitive)
 
   // Parse the from and to
-  const baseSegments = cachedParsePathname(from.startsWith('/') ? from : `/${from}`)
+  const baseSegments = cachedParsePathname(
+    from.startsWith('/') ? from : `/${from}`,
+  )
   const routeSegments = cachedParsePathname(to.startsWith('/') ? to : `/${to}`)
 
   const params: Record<string, string> = {}
@@ -588,10 +594,7 @@ function isMatch(
   let baseIndex = 0
   let routeIndex = 0
 
-  while (
-    baseIndex < baseSegments.length ||
-    routeIndex < routeSegments.length
-  ) {
+  while (baseIndex < baseSegments.length || routeIndex < routeSegments.length) {
     const baseSegment = baseSegments[baseIndex]
     const routeSegment = routeSegments[routeIndex]
 
@@ -614,17 +617,14 @@ function isMatch(
             return false
           }
         } else if (
-          routeSegment.value.toLowerCase() !==
-          baseSegment.value.toLowerCase()
+          routeSegment.value.toLowerCase() !== baseSegment.value.toLowerCase()
         ) {
           return false
         }
         baseIndex++
         routeIndex++
         continue
-      }
-
-      else if (routeSegment.type === SEGMENT_TYPE_PARAM) {
+      } else if (routeSegment.type === SEGMENT_TYPE_PARAM) {
         if (!baseSegment) {
           return false
         }
@@ -655,10 +655,7 @@ function isMatch(
             paramValue = paramValue.slice(prefix.length)
           }
           if (suffix && paramValue.endsWith(suffix)) {
-            paramValue = paramValue.slice(
-              0,
-              paramValue.length - suffix.length,
-            )
+            paramValue = paramValue.slice(0, paramValue.length - suffix.length)
           }
 
           _paramValue = decodeURIComponent(paramValue)
@@ -676,9 +673,7 @@ function isMatch(
 
         routeIndex++
         continue
-      }
-
-      else if (routeSegment.type === SEGMENT_TYPE_WILDCARD) {
+      } else if (routeSegment.type === SEGMENT_TYPE_WILDCARD) {
         // Capture all remaining segments for a wildcard
         const remainingBaseSegments = baseSegments.slice(baseIndex)
 
@@ -734,9 +729,7 @@ function isMatch(
         params['*'] = _splat
         params['_splat'] = _splat
         return true
-      }
-
-      else if (routeSegment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
+      } else if (routeSegment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
         // Optional parameters can be missing - don't fail the match
         if (!baseSegment) {
           // No base segment for optional param - skip this route segment
@@ -834,18 +827,12 @@ function isMatch(
     }
 
     // If we have base segments left but no route segments, it's not a match
-    if (
-      baseIndex < baseSegments.length &&
-      routeIndex >= routeSegments.length
-    ) {
+    if (baseIndex < baseSegments.length && routeIndex >= routeSegments.length) {
       return false
     }
 
     // If we have route segments left but no base segments, check if remaining are optional
-    if (
-      routeIndex < routeSegments.length &&
-      baseIndex >= baseSegments.length
-    ) {
+    if (routeIndex < routeSegments.length && baseIndex >= baseSegments.length) {
       // Check if all remaining route segments are optional
       for (let i = routeIndex; i < routeSegments.length; i++) {
         if (routeSegments[i]?.type !== SEGMENT_TYPE_OPTIONAL_PARAM) {
