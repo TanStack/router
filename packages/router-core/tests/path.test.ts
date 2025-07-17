@@ -432,15 +432,18 @@ describe('interpolatePath', () => {
         params: { _splat: 'sean/cassiere' },
         result: '/users/sean/cassiere',
       },
-    ])('$name', ({ path, params, encodePathParam = encodeURIComponent, result }) => {
-      expect(
-        interpolatePath({
-          path,
-          params,
-          encodePathParam,
-        }).interpolatedPath,
-      ).toBe(result)
-    })
+    ])(
+      '$name',
+      ({ path, params, encodePathParam = encodeURIComponent, result }) => {
+        expect(
+          interpolatePath({
+            path,
+            params,
+            encodePathParam,
+          }).interpolatedPath,
+        ).toBe(result)
+      },
+    )
   })
 
   describe('wildcard (prefix + suffix)', () => {

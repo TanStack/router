@@ -9,10 +9,10 @@ export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
 
 export interface Segment {
   type:
-  | typeof SEGMENT_TYPE_PATHNAME
-  | typeof SEGMENT_TYPE_PARAM
-  | typeof SEGMENT_TYPE_WILDCARD
-  | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+    | typeof SEGMENT_TYPE_PATHNAME
+    | typeof SEGMENT_TYPE_PARAM
+    | typeof SEGMENT_TYPE_WILDCARD
+    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   value: string
   prefixSegment?: string
   suffixSegment?: string
@@ -323,9 +323,9 @@ export function parsePathname(pathname?: string): Array<Segment> {
         type: SEGMENT_TYPE_PATHNAME,
         value: part.includes('%25')
           ? part
-            .split('%25')
-            .map((segment) => decodeURI(segment))
-            .join('%25')
+              .split('%25')
+              .map((segment) => decodeURI(segment))
+              .join('%25')
           : decodeURI(part),
       }
     }),
@@ -364,7 +364,7 @@ interface InterpolatePathOptions {
   /**
    * Defaults to `encodeURIComponent`.
    * Using `pathParamsAllowedCharacters` will result in this function keeping some characters un-encoded in path params (e.g. '%40' -> '@')
-   * 
+   *
    * The router will use `router.encodePathParam` as the default `encodePathParam` function.
    */
   encodePathParam: (value: string) => string
@@ -479,7 +479,8 @@ export function interpolatePath({
 export function compileEncodePathParam(
   pathParamsAllowedCharacters?: Array<string>,
 ): (value: string) => string {
-  if (!pathParamsAllowedCharacters || pathParamsAllowedCharacters.length === 0) return encodeURIComponent
+  if (!pathParamsAllowedCharacters || pathParamsAllowedCharacters.length === 0)
+    return encodeURIComponent
   return new Function(
     'value',
     `return encodeURIComponent(value).${pathParamsAllowedCharacters.map((char) => `replaceAll('${encodeURIComponent(char)}', '${char}')`).join('.')}`,
