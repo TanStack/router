@@ -111,21 +111,95 @@ function Component() {
 
 Notice that the function style is useful when you need to persist params that are already in the URL for other routes. This is because the function style will receive the current params as an argument, allowing you to modify them as needed and return the final params object.
 
-## Allowed Characters
+## Prefixes and Suffixes for Path Params
 
-By default, path params are escaped with `encodeURIComponent`. If you want to allow other valid URI characters (e.g. `@` or `+`), you can specify that in your [RouterOptions](../../api/router/RouterOptionsType.md#pathparamsallowedcharacters-property)
+You can also use **prefixes** and **suffixes** with path params to create more complex routing patterns. This allows you to match specific URL structures while still capturing the dynamic segments.
 
-Example usage:
+When using either prefixes or suffixes, you can define them by wrapping the path param in curly braces `{}` and placing the prefix or suffix before or after the variable name.
+
+### Defining Prefixes
+
+Prefixes are defined by placing the prefix text outside the curly braces before the variable name. For example, if you want to match a URL that starts with `post-` followed by a post ID, you can define it like this:
 
 ```tsx
-const router = createRouter({
-  ...
-  pathParamsAllowedCharacters: ['@']
+// src/routes/posts/post-{$postId}.tsx
+export const Route = createFileRoute('/posts/post-{$postId}')({
+  component: PostComponent,
 })
+
+function PostComponent() {
+  const { postId } = Route.useParams()
+  // postId will be the value after 'post-'
+  return <div>Post ID: {postId}</div>
+}
 ```
 
-The following is the list of accepted allowed characters:
-`;` `:` `@` `&` `=` `+` `$` `,`
+You can even combines prefixes with wildcard routes to create more complex patterns:
+
+```tsx
+// src/routes/on-disk/storage-{$}
+export const Route = createFileRoute('/on-disk/storage-{$postId}/$')({
+  component: StorageComponent,
+})
+
+function StorageComponent() {
+  const { _splat } = Route.useParams()
+  // _splat, will be value after 'storage-'
+  // i.e. my-drive/documents/foo.txt
+  return <div>Storage Location: /{_splat}</div>
+}
+```
+
+### Defining Suffixes
+
+Suffixes are defined by placing the suffix text outside the curly braces after the variable name. For example, if you want to match a URL a filename that ends with `txt`, you can define it like this:
+
+```tsx
+// src/routes/files/{$fileName}txt
+export const Route = createFileRoute('/files/{$fileName}.txt')({
+  component: FileComponent,
+})
+
+function FileComponent() {
+  const { fileName } = Route.useParams()
+  // fileName will be the value before 'txt'
+  return <div>File Name: {fileName}</div>
+}
+```
+
+You can also combine suffixes with wildcards for more complex routing patterns:
+
+```tsx
+// src/routes/files/{$}[.]txt
+export const Route = createFileRoute('/files/{$fileName}[.]txt')({
+  component: FileComponent,
+})
+
+function FileComponent() {
+  const { _splat } = Route.useParams()
+  // _splat will be the value before '.txt'
+  return <div>File Splat: {_splat}</div>
+}
+```
+
+### Combining Prefixes and Suffixes
+
+You can combine both prefixes and suffixes to create very specific routing patterns. For example, if you want to match a URL that starts with `user-` and ends with `.json`, you can define it like this:
+
+```tsx
+// src/routes/users/user-{$userId}person
+export const Route = createFileRoute('/users/user-{$userId}person')({
+  component: UserComponent,
+})
+
+function UserComponent() {
+  const { userId } = Route.useParams()
+  // userId will be the value between 'user-' and 'person'
+  return <div>User ID: {userId}</div>
+}
+```
+
+Similar to the previous examples, you can also use wildcards with prefixes and suffixes. Go wild!
 
 ## Optional Path Parameters
 
@@ -339,3 +413,27 @@ function PostsComponent() {
   Category 123
 </Link>
 ```
+
+## Allowed Characters
+
+By default, path params are escaped with `encodeURIComponent`. If you want to allow other valid URI characters (e.g. `@` or `+`), you can specify that in your [RouterOptions](../../api/router/RouterOptionsType.md#pathparamsallowedcharacters-property).
+
+Example usage:
+
+```tsx
+const router = createRouter({
+  // ...
+  pathParamsAllowedCharacters: ['@'],
+})
+```
+
+The following is the list of accepted allowed characters:
+
+- `;`
+- `:`
+- `@`
+- `&`
+- `=`
+- `+`
+- `$`
+- `,`
