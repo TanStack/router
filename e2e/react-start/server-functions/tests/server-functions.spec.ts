@@ -315,7 +315,6 @@ test('raw response', async ({ page }) => {
 
   await expect(page.getByTestId('response')).toContainText(expectedValue)
 })
-
 ;[{ mode: 'js' }, { mode: 'no-js' }].forEach(({ mode }) => {
   test(`Server function can redirect when sending formdata: mode = ${mode}`, async ({
     page,
