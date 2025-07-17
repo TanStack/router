@@ -10,7 +10,7 @@ import {
   interpolatePath,
   useRouter,
 } from '../src'
-import type { AnyRouter, LinkProps } from '../src'
+import type { LinkProps } from '../src'
 
 const createRouterRenderer =
   (routesCount: number) => (children: React.ReactNode) => {
@@ -37,8 +37,8 @@ const InterpolatePathLink = ({
   to,
   params,
   children,
-  router,
-}: React.PropsWithChildren<LinkProps> & { router: AnyRouter }) => {
+}: React.PropsWithChildren<LinkProps>) => {
+  const router = useRouter()
   const href = interpolatePath({
     path: to,
     params,
@@ -75,7 +75,7 @@ describe.each([
   //   matchedParamId: 9999, // range from 0 to numberOfRoutes-1
   //   numberOfLinks: 15000,
   // },
-])('$name', ({ numberOfRoutes, numberOfLinks, matchedParamId }) => {
+])('$name', { concurrent: false, sequential: true }, ({ numberOfRoutes, numberOfLinks, matchedParamId }) => {
   const renderRouter = createRouterRenderer(numberOfRoutes)
 
   bench(
@@ -102,7 +102,6 @@ describe.each([
             key={i}
             to={`/params/$param${Math.min(i, matchedParamId)}`}
             params={{ [`param${Math.min(i, matchedParamId)}`]: i }}
-            router={router}
           >
             {i}
           </InterpolatePathLink>
