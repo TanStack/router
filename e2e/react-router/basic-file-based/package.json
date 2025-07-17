@@ -8,7 +8,7 @@
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
     "start": "vite",
-    "test:e2e": "playwright test --project=chromium"
+    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

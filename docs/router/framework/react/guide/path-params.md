@@ -126,3 +126,216 @@ const router = createRouter({
 
 The following is the list of accepted allowed characters:
 `;` `:` `@` `&` `=` `+` `$` `,`
+
+## Optional Path Parameters
+
+Optional path parameters allow you to define route segments that may or may not be present in the URL. They use the `{-$paramName}` syntax and provide flexible routing patterns where certain parameters are optional.
+
+### Defining Optional Parameters
+
+Optional path parameters are defined using curly braces with a dash prefix: `{-$paramName}`
+
+```tsx
+// Single optional parameter
+// src/routes/posts/{-$category}.tsx
+export const Route = createFileRoute('/posts/{-$category}')({
+  component: PostsComponent,
+})
+
+// Multiple optional parameters
+// src/routes/posts/{-$category}/{-$slug}.tsx
+export const Route = createFileRoute('/posts/{-$category}/{-$slug}')({
+  component: PostComponent,
+})
+
+// Mixed required and optional parameters
+// src/routes/users/$id/{-$tab}.tsx
+export const Route = createFileRoute('/users/$id/{-$tab}')({
+  component: UserComponent,
+})
+```
+
+### How Optional Parameters Work
+
+Optional parameters create flexible URL patterns:
+
+- `/posts/{-$category}` matches both `/posts` and `/posts/tech`
+- `/posts/{-$category}/{-$slug}` matches `/posts`, `/posts/tech`, and `/posts/tech/hello-world`
+- `/users/$id/{-$tab}` matches `/users/123` and `/users/123/settings`
+
+When an optional parameter is not present in the URL, its value will be `undefined` in your route handlers and components.
+
+### Accessing Optional Parameters
+
+Optional parameters work exactly like regular parameters in your components, but their values may be `undefined`:
+
+```tsx
+function PostsComponent() {
+  const { category } = Route.useParams()
+
+  return <div>{category ? `Posts in ${category}` : 'All Posts'}</div>
+}
+```
+
+### Optional Parameters in Loaders
+
+Optional parameters are available in loaders and may be `undefined`:
+
+```tsx
+export const Route = createFileRoute('/posts/{-$category}')({
+  loader: async ({ params }) => {
+    // params.category might be undefined
+    return fetchPosts({ category: params.category })
+  },
+})
+```
+
+### Optional Parameters in beforeLoad
+
+Optional parameters work in `beforeLoad` handlers as well:
+
+```tsx
+export const Route = createFileRoute('/posts/{-$category}')({
+  beforeLoad: async ({ params }) => {
+    if (params.category) {
+      // Validate category exists
+      await validateCategory(params.category)
+    }
+  },
+})
+```
+
+### Advanced Optional Parameter Patterns
+
+#### With Prefix and Suffix
+
+Optional parameters support prefix and suffix patterns:
+
+```tsx
+// File route: /files/prefix{-$name}.txt
+// Matches: /files/prefix.txt and /files/prefixdocument.txt
+export const Route = createFileRoute('/files/prefix{-$name}.txt')({
+  component: FileComponent,
+})
+
+function FileComponent() {
+  const { name } = Route.useParams()
+  return <div>File: {name || 'default'}</div>
+}
+```
+
+#### All Optional Parameters
+
+You can create routes where all parameters are optional:
+
+```tsx
+// Route: /{-$year}/{-$month}/{-$day}
+// Matches: /, /2023, /2023/12, /2023/12/25
+export const Route = createFileRoute('/{-$year}/{-$month}/{-$day}')({
+  component: DateComponent,
+})
+
+function DateComponent() {
+  const { year, month, day } = Route.useParams()
+
+  if (!year) return <div>Select a year</div>
+  if (!month) return <div>Year: {year}</div>
+  if (!day)
+    return (
+      <div>
+        Month: {year}/{month}
+      </div>
+    )
+
+  return (
+    <div>
+      Date: {year}/{month}/{day}
+    </div>
+  )
+}
+```
+
+#### Optional Parameters with Wildcards
+
+Optional parameters can be combined with wildcards for complex routing patterns:
+
+```tsx
+// Route: /docs/{-$version}/$
+// Matches: /docs/extra/path, /docs/v2/extra/path
+export const Route = createFileRoute('/docs/{-$version}/$')({
+  component: DocsComponent,
+})
+
+function DocsComponent() {
+  const { version } = Route.useParams()
+  const { _splat } = Route.useParams()
+
+  return (
+    <div>
+      Version: {version || 'latest'}
+      Path: {_splat}
+    </div>
+  )
+}
+```
+
+### Navigating with Optional Parameters
+
+When navigating to routes with optional parameters, you have fine-grained control over which parameters to include:
+
+```tsx
+function Navigation() {
+  return (
+    <div>
+      {/* Navigate with optional parameter */}
+      <Link to="/posts/{-$category}" params={{ category: 'tech' }}>
+        Tech Posts
+      </Link>
+
+      {/* Navigate without optional parameter */}
+      <Link to="/posts/{-$category}" params={{ category: undefined }}>
+        All Posts
+      </Link>
+
+      {/* Navigate with multiple optional parameters */}
+      <Link
+        to="/posts/{-$category}/{-$slug}"
+        params={{ category: 'tech', slug: 'react-tips' }}
+      >
+        Specific Post
+      </Link>
+    </div>
+  )
+}
+```
+
+### Type Safety with Optional Parameters
+
+TypeScript provides full type safety for optional parameters:
+
+```tsx
+function PostsComponent() {
+  // TypeScript knows category might be undefined
+  const { category } = Route.useParams() // category: string | undefined
+
+  // Safe navigation
+  const categoryUpper = category?.toUpperCase()
+
+  return <div>{categoryUpper || 'All Categories'}</div>
+}
+
+// Navigation is type-safe and flexible
+<Link
+  to="/posts/{-$category}"
+  params={{ category: 'tech' }} // ✅ Valid - string
+>
+  Tech Posts
+</Link>
+
+<Link
+  to="/posts/{-$category}"
+  params={{ category: 123 }} // ✅ Valid - number (auto-stringified)
+>
+  Category 123
+</Link>
+```

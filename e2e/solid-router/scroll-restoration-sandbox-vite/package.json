@@ -9,9 +9,9 @@
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
     "start": "vite",
-    "test:e2e:browser": "VITE_APP_HISTORY=browser playwright test --config=playwright.browser.config.ts --project=chromium",
-    "test:e2e:hash": "exit 0; VITE_APP_HISTORY=hash playwright test --config=playwright.hash.config.ts --project=chromium",
-    "test:e2e": "pnpm run test:e2e:browser && pnpm run test:e2e:hash"
+    "test:e2e:browser": "rm -rf port*.txt; VITE_APP_HISTORY=browser playwright test --config=playwright.browser.config.ts --project=chromium",
+    "test:e2e:hash": "exit 0; rm -rf port*.txt; VITE_APP_HISTORY=hash playwright test --config=playwright.hash.config.ts --project=chromium",
+    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:browser && pnpm run test:e2e:hash"
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",
