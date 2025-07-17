@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SubmitPostFormdataRouteImport } from './routes/submit-post-formdata'
 import { Route as StatusRouteImport } from './routes/status'
@@ -17,7 +15,6 @@ import { Route as SerializeFormDataRouteImport } from './routes/serialize-form-d
 import { Route as ReturnNullRouteImport } from './routes/return-null'
 import { Route as RawResponseRouteImport } from './routes/raw-response'
 import { Route as MultipartRouteImport } from './routes/multipart'
-import { Route as MergeServerFnMiddlewareContextRouteImport } from './routes/merge-server-fn-middleware-context'
 import { Route as IsomorphicFnsRouteImport } from './routes/isomorphic-fns'
 import { Route as HeadersRouteImport } from './routes/headers'
 import { Route as EnvOnlyRouteImport } from './routes/env-only'
@@ -29,9 +26,6 @@ import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-red
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 import { Route as FormdataRedirectTargetNameRouteImport } from './routes/formdata-redirect/target.$name'
-import { ServerRoute as ApiMiddlewareContextServerRouteImport } from './routes/api/middleware-context'
-
-const rootServerRouteImport = createServerRootRoute()
 
 const SubmitPostFormdataRoute = SubmitPostFormdataRouteImport.update({
   id: '/submit-post-formdata',
@@ -63,12 +57,6 @@ const MultipartRoute = MultipartRouteImport.update({
   path: '/multipart',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MergeServerFnMiddlewareContextRoute =
-  MergeServerFnMiddlewareContextRouteImport.update({
-    id: '/merge-server-fn-middleware-context',
-    path: '/merge-server-fn-middleware-context',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const IsomorphicFnsRoute = IsomorphicFnsRouteImport.update({
   id: '/isomorphic-fns',
   path: '/isomorphic-fns',
@@ -125,12 +113,6 @@ const FormdataRedirectTargetNameRoute =
     path: '/formdata-redirect/target/$name',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiMiddlewareContextServerRoute =
-  ApiMiddlewareContextServerRouteImport.update({
-    id: '/api/middleware-context',
-    path: '/api/middleware-context',
-    getParentRoute: () => rootServerRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -140,7 +122,6 @@ export interface FileRoutesByFullPath {
   '/env-only': typeof EnvOnlyRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
-  '/merge-server-fn-middleware-context': typeof MergeServerFnMiddlewareContextRoute
   '/multipart': typeof MultipartRoute
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
@@ -160,7 +141,6 @@ export interface FileRoutesByTo {
   '/env-only': typeof EnvOnlyRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
-  '/merge-server-fn-middleware-context': typeof MergeServerFnMiddlewareContextRoute
   '/multipart': typeof MultipartRoute
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
@@ -181,7 +161,6 @@ export interface FileRoutesById {
   '/env-only': typeof EnvOnlyRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
-  '/merge-server-fn-middleware-context': typeof MergeServerFnMiddlewareContextRoute
   '/multipart': typeof MultipartRoute
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
@@ -203,7 +182,6 @@ export interface FileRouteTypes {
     | '/env-only'
     | '/headers'
     | '/isomorphic-fns'
-    | '/merge-server-fn-middleware-context'
     | '/multipart'
     | '/raw-response'
     | '/return-null'
@@ -223,7 +201,6 @@ export interface FileRouteTypes {
     | '/env-only'
     | '/headers'
     | '/isomorphic-fns'
-    | '/merge-server-fn-middleware-context'
     | '/multipart'
     | '/raw-response'
     | '/return-null'
@@ -243,7 +220,6 @@ export interface FileRouteTypes {
     | '/env-only'
     | '/headers'
     | '/isomorphic-fns'
-    | '/merge-server-fn-middleware-context'
     | '/multipart'
     | '/raw-response'
     | '/return-null'
@@ -264,7 +240,6 @@ export interface RootRouteChildren {
   EnvOnlyRoute: typeof EnvOnlyRoute
   HeadersRoute: typeof HeadersRoute
   IsomorphicFnsRoute: typeof IsomorphicFnsRoute
-  MergeServerFnMiddlewareContextRoute: typeof MergeServerFnMiddlewareContextRoute
   MultipartRoute: typeof MultipartRoute
   RawResponseRoute: typeof RawResponseRoute
   ReturnNullRoute: typeof ReturnNullRoute
@@ -275,27 +250,6 @@ export interface RootRouteChildren {
   CookiesIndexRoute: typeof CookiesIndexRoute
   FormdataRedirectIndexRoute: typeof FormdataRedirectIndexRoute
   FormdataRedirectTargetNameRoute: typeof FormdataRedirectTargetNameRoute
-}
-export interface FileServerRoutesByFullPath {
-  '/api/middleware-context': typeof ApiMiddlewareContextServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/api/middleware-context': typeof ApiMiddlewareContextServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/api/middleware-context': typeof ApiMiddlewareContextServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/middleware-context'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/middleware-context'
-  id: '__root__' | '/api/middleware-context'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  ApiMiddlewareContextServerRoute: typeof ApiMiddlewareContextServerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -340,13 +294,6 @@ declare module '@tanstack/react-router' {
       path: '/multipart'
       fullPath: '/multipart'
       preLoaderRoute: typeof MultipartRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/merge-server-fn-middleware-context': {
-      id: '/merge-server-fn-middleware-context'
-      path: '/merge-server-fn-middleware-context'
-      fullPath: '/merge-server-fn-middleware-context'
-      preLoaderRoute: typeof MergeServerFnMiddlewareContextRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/isomorphic-fns': {
@@ -428,17 +375,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/api/middleware-context': {
-      id: '/api/middleware-context'
-      path: '/api/middleware-context'
-      fullPath: '/api/middleware-context'
-      preLoaderRoute: typeof ApiMiddlewareContextServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-  }
-}
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -448,7 +384,6 @@ const rootRouteChildren: RootRouteChildren = {
   EnvOnlyRoute: EnvOnlyRoute,
   HeadersRoute: HeadersRoute,
   IsomorphicFnsRoute: IsomorphicFnsRoute,
-  MergeServerFnMiddlewareContextRoute: MergeServerFnMiddlewareContextRoute,
   MultipartRoute: MultipartRoute,
   RawResponseRoute: RawResponseRoute,
   ReturnNullRoute: ReturnNullRoute,
@@ -463,9 +398,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  ApiMiddlewareContextServerRoute: ApiMiddlewareContextServerRoute,
-}
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()
