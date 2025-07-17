@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { interpolatePath, matchPathname, parsePathname, SEGMENT_TYPE_PATHNAME, SEGMENT_TYPE_OPTIONAL_PARAM, SEGMENT_TYPE_PARAM, SEGMENT_TYPE_WILDCARD } from '../src/path'
+import {
+  interpolatePath,
+  matchPathname,
+  parsePathname,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_WILDCARD,
+} from '../src/path'
 import type { Segment as PathSegment } from '../src/path'
 
 describe('Optional Path Parameters', () => {

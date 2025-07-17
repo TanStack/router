@@ -847,7 +847,9 @@ export class RouterCore<
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 
-    this.encodePathParam = compileEncodePathParam(this.options.pathParamsAllowedCharacters)
+    this.encodePathParam = compileEncodePathParam(
+      this.options.pathParamsAllowedCharacters,
+    )
 
     if (
       !this.basepath ||
@@ -3317,12 +3319,14 @@ export function processRouteTree<TRouteLike extends RouteLike>({
       if (a.scores.length !== b.scores.length) {
         // Count optional parameters in each route
         const aOptionalCount = a.parsed.reduce(
-          (count, seg) => seg.type === SEGMENT_TYPE_OPTIONAL_PARAM ? count + 1 : count,
-          0
+          (count, seg) =>
+            seg.type === SEGMENT_TYPE_OPTIONAL_PARAM ? count + 1 : count,
+          0,
         )
         const bOptionalCount = b.parsed.reduce(
-          (count, seg) => seg.type === SEGMENT_TYPE_OPTIONAL_PARAM ? count + 1 : count,
-          0
+          (count, seg) =>
+            seg.type === SEGMENT_TYPE_OPTIONAL_PARAM ? count + 1 : count,
+          0,
         )
 
         // If different number of optional parameters, fewer optional parameters wins (more specific)

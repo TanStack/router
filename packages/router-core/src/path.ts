@@ -8,7 +8,11 @@ export const SEGMENT_TYPE_WILDCARD = 2
 export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
 
 export interface Segment {
-  type: typeof SEGMENT_TYPE_PATHNAME | typeof SEGMENT_TYPE_PARAM | typeof SEGMENT_TYPE_WILDCARD | typeof SEGMENT_TYPE_OPTIONAL_PARAM
+  type:
+    | typeof SEGMENT_TYPE_PATHNAME
+    | typeof SEGMENT_TYPE_PARAM
+    | typeof SEGMENT_TYPE_WILDCARD
+    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   value: string
   prefixSegment?: string
   suffixSegment?: string
@@ -319,9 +323,9 @@ export function parsePathname(pathname?: string): Array<Segment> {
         type: SEGMENT_TYPE_PATHNAME,
         value: part.includes('%25')
           ? part
-            .split('%25')
-            .map((segment) => decodeURI(segment))
-            .join('%25')
+              .split('%25')
+              .map((segment) => decodeURI(segment))
+              .join('%25')
           : decodeURI(part),
       }
     }),
@@ -338,8 +342,13 @@ export function parsePathname(pathname?: string): Array<Segment> {
   return segments
 }
 
-const parsedPathnameCache = new Map<string | undefined, ReadonlyArray<Readonly<Segment>>>
-export function cachedParsePathname(pathname?: string): ReadonlyArray<Readonly<Segment>> {
+const parsedPathnameCache = new Map<
+  string | undefined,
+  ReadonlyArray<Readonly<Segment>>
+>()
+export function cachedParsePathname(
+  pathname?: string,
+): ReadonlyArray<Readonly<Segment>> {
   const cached = parsedPathnameCache.get(pathname)
   if (cached) return cached
   const computed = parsePathname(pathname)
@@ -462,11 +471,13 @@ export function interpolatePath({
   return { usedParams, interpolatedPath, isMissingParams }
 }
 
-export function compileEncodePathParam(decodeCharMap?: Array<string>): (value: string) => string {
+export function compileEncodePathParam(
+  decodeCharMap?: Array<string>,
+): (value: string) => string {
   if (!decodeCharMap || decodeCharMap.length === 0) return encodeURIComponent
   return new Function(
     'value',
-    `return encodeURIComponent(value).${decodeCharMap.map(char => `replaceAll('${encodeURIComponent(char)}', '${char}')`).join('.')}`
+    `return encodeURIComponent(value).${decodeCharMap.map((char) => `replaceAll('${encodeURIComponent(char)}', '${char}')`).join('.')}`,
   ) as (value: string) => string
 }
 
@@ -549,17 +560,23 @@ export function matchByPath(
   let routeSegments = cachedParsePathname(to)
 
   if (!from.startsWith('/')) {
-    baseSegments = [{
-      type: SEGMENT_TYPE_PATHNAME,
-      value: '/',
-    }, ...baseSegments]
+    baseSegments = [
+      {
+        type: SEGMENT_TYPE_PATHNAME,
+        value: '/',
+      },
+      ...baseSegments,
+    ]
   }
 
   if (!to.startsWith('/')) {
-    routeSegments = [{
-      type: SEGMENT_TYPE_PATHNAME,
-      value: '/',
-    }, ...routeSegments]
+    routeSegments = [
+      {
+        type: SEGMENT_TYPE_PATHNAME,
+        value: '/',
+      },
+      ...routeSegments,
+    ]
   }
 
   const params: Record<string, string> = {}
