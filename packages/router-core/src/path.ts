@@ -388,7 +388,7 @@ export function interpolatePath({
     const value = params[key]
     const isValueString = typeof value === 'string'
 
-    if (['*', '_splat'].includes(key)) {
+    if (key === '*' || key === '_splat') {
       // the splat/catch-all routes shouldn't have the '/' encoded out
       return isValueString ? encodeURI(value) : value
     } else {
@@ -403,6 +403,10 @@ export function interpolatePath({
   const usedParams: Record<string, unknown> = {}
   const interpolatedPath = joinPaths(
     interpolatedPathSegments.map((segment) => {
+      if (segment.type === SEGMENT_TYPE_PATHNAME) {
+        return segment.value
+      }
+
       if (segment.type === SEGMENT_TYPE_WILDCARD) {
         usedParams._splat = params._splat
         const segmentPrefix = segment.prefixSegment || ''
