@@ -881,7 +881,6 @@ export class RouterCore<
               initialEntries: [this.basepath || '/'],
             })
           : createBrowserHistory()) as TRouterHistory)
-
       this.latestLocation = this.parseLocation()
     }
 
