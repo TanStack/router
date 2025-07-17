@@ -1844,6 +1844,9 @@ describe('statusCode reset on navigation', () => {
 
     expect(router.state.statusCode).toBe(200)
 
+    await act(() => router.navigate({ to: '/' }))
+    expect(router.state.statusCode).toBe(200)
+
     await act(() => router.navigate({ to: '/non-existing' }))
     expect(router.state.statusCode).toBe(404)
 
