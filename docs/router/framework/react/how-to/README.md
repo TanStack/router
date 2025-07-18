@@ -10,6 +10,7 @@ This directory contains terse, step-by-step instructions for common TanStack Rou
 ## Available Guides
 
 - [Install TanStack Router](./install.md) - Basic installation steps
+- [Deploy to Production](./deploy-to-production.md) - Deploy your app to hosting platforms
 
 ## Contributing
 
