@@ -434,8 +434,14 @@ function AboutComponent() {
 
   const content = {
     en: { title: 'About Us', description: 'Learn more about our company.' },
-    fr: { title: 'À Propos', description: 'En savoir plus sur notre entreprise.' },
-    es: { title: 'Acerca de', description: 'Conoce más sobre nuestra empresa.' },
+    fr: {
+      title: 'À Propos',
+      description: 'En savoir plus sur notre entreprise.',
+    },
+    es: {
+      title: 'Acerca de',
+      description: 'Conoce más sobre nuestra empresa.',
+    },
   }
 
   return (
@@ -448,6 +454,7 @@ function AboutComponent() {
 ```
 
 This pattern matches:
+
 - `/about` (default locale)
 - `/en/about` (explicit English)
 - `/fr/about` (French)
@@ -463,19 +470,19 @@ export const Route = createFileRoute('/{-$locale}/blog/{-$category}/$slug')({
   beforeLoad: async ({ params }) => {
     const locale = params.locale || 'en'
     const category = params.category
-    
+
     // Validate locale and category
     const validLocales = ['en', 'fr', 'es', 'de']
     if (locale && !validLocales.includes(locale)) {
       throw new Error('Invalid locale')
     }
-    
+
     return { locale, category }
   },
   loader: async ({ params, context }) => {
     const { locale } = context
     const { slug, category } = params
-    
+
     return fetchBlogPost({ slug, category, locale })
   },
   component: BlogPostComponent,
@@ -484,11 +491,13 @@ export const Route = createFileRoute('/{-$locale}/blog/{-$category}/$slug')({
 function BlogPostComponent() {
   const { locale, category, slug } = Route.useParams()
   const data = Route.useLoaderData()
-  
+
   return (
     <article>
       <h1>{data.title}</h1>
-      <p>Category: {category || 'All'} | Language: {locale || 'en'}</p>
+      <p>
+        Category: {category || 'All'} | Language: {locale || 'en'}
+      </p>
       <div>{data.content}</div>
     </article>
   )
@@ -496,6 +505,7 @@ function BlogPostComponent() {
 ```
 
 This supports URLs like:
+
 - `/blog/tech/my-post` (default locale, tech category)
 - `/fr/blog/my-post` (French, no category)
 - `/en/blog/tech/my-post` (explicit English, tech category)
@@ -508,7 +518,7 @@ Create language switchers using optional i18n parameters with function-style par
 ```tsx
 function LanguageSwitcher() {
   const currentParams = useParams({ strict: false })
-  
+
   const languages = [
     { code: 'en', name: 'English' },
     { code: 'fr', name: 'Français' },
@@ -540,19 +550,19 @@ You can also create more sophisticated language switching logic:
 ```tsx
 function AdvancedLanguageSwitcher() {
   const currentParams = useParams({ strict: false })
-  
+
   const handleLanguageChange = (newLocale: string) => {
     return (prev: any) => {
       // Preserve all existing params but update locale
       const updatedParams = { ...prev }
-      
+
       if (newLocale === 'en') {
         // Remove locale for clean English URLs
         delete updatedParams.locale
       } else {
         updatedParams.locale = newLocale
       }
-      
+
       return updatedParams
     }
   }
@@ -565,14 +575,14 @@ function AdvancedLanguageSwitcher() {
       >
         Français
       </Link>
-      
+
       <Link
         to="/{-$locale}/blog/{-$category}/$slug"
         params={handleLanguageChange('es')}
       >
         Español
       </Link>
-      
+
       <Link
         to="/{-$locale}/blog/{-$category}/$slug"
         params={handleLanguageChange('en')}
@@ -606,7 +616,7 @@ export const Route = createFileRoute('/({-$locale})/')({
 function HomeComponent() {
   const { locale } = Route.useParams()
   const isRTL = ['ar', 'he', 'fa'].includes(locale || '')
-  
+
   return (
     <div dir={isRTL ? 'rtl' : 'ltr'}>
       <h1>Welcome ({locale || 'en'})</h1>
@@ -631,7 +641,7 @@ export const Route = createFileRoute('/{-$locale}/products/$id')({
   head: ({ params, loaderData }) => {
     const locale = params.locale || 'en'
     const product = loaderData
-    
+
     return {
       title: product.title[locale] || product.title.en,
       meta: [
@@ -688,12 +698,15 @@ function validateLocale(locale: string | undefined): locale is Locale {
 export const Route = createFileRoute('/{-$locale}/shop/{-$category}')({
   beforeLoad: async ({ params }) => {
     const { locale } = params
-    
+
     // Type-safe locale validation
     if (locale && !validateLocale(locale)) {
-      throw redirect({ to: '/shop/{-$category}', params: { category: params.category } })
+      throw redirect({
+        to: '/shop/{-$category}',
+        params: { category: params.category },
+      })
     }
-    
+
     return {
       locale: (locale as Locale) || 'en',
       isDefaultLocale: !locale || locale === 'en',
@@ -705,10 +718,10 @@ export const Route = createFileRoute('/{-$locale}/shop/{-$category}')({
 function ShopComponent() {
   const { locale, category } = Route.useParams()
   const { isDefaultLocale } = Route.useRouteContext()
-  
+
   // TypeScript knows locale is Locale | undefined
   // and we have validated it in beforeLoad
-  
+
   return (
     <div>
       <h1>Shop {category ? `- ${category}` : ''}</h1>
