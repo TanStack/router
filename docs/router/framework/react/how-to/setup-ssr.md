@@ -1,22 +1,11 @@
 # How to Set Up Server-Side Rendering (SSR)
 
-This guide shows you how to set up Server-Side Rendering (SSR) with TanStack Router. SSR improves initial page load performance by rendering HTML on the server before sending it to the client.
-
 > [!IMPORTANT]
-> **TanStack Start is the recommended way to use SSR with TanStack Router.** 
+> **[TanStack Start](../guide/tanstack-start.md) is the recommended way to set up SSR** - it provides SSR, streaming, and deployment with zero configuration.
 > 
-> [TanStack Start](../guide/tanstack-start.md) is our official full-stack React framework that provides SSR out-of-the-box with zero configuration. It handles all the complexity shown in this guide automatically.
->
-> **Use this manual setup guide only if:**
-> - You need to integrate with an existing server setup
-> - You're migrating from another SSR solution gradually
-> - You have specific custom requirements that Start doesn't cover
-> 
-> **For new projects, start with [TanStack Start](../guide/tanstack-start.md) instead.**
+> Use the manual setup below only if you need to integrate with an existing server.
 
-## Quick Start
-
-**Recommended: Use TanStack Start**
+## Quick Start with TanStack Start
 
 ```bash
 npx create-tsrouter-app@latest my-app --add-ons=start
@@ -24,27 +13,9 @@ cd my-app
 npm run dev
 ```
 
-TanStack Start gives you SSR with zero configuration, plus:
-
-- ✅ **Automatic SSR & Streaming** - Works out of the box
-- ✅ **File-based routing** - No manual route tree configuration  
-- ✅ **Built-in deployment** - Deploy to Vercel, Netlify, Cloudflare, etc.
-- ✅ **API routes** - Full-stack development
-- ✅ **TypeScript** - Fully typed by default
-- ✅ **Optimized builds** - Production-ready bundling
-- ✅ **Development experience** - Hot reload, error boundaries, dev tools
-
-[Learn more about TanStack Start →](../guide/tanstack-start.md)
-
-**Manual Setup (Only if needed)**
-
-Use the manual setup below only if you need to integrate with an existing server or have specific custom requirements that Start doesn't cover.
-
-## Step-by-Step Manual Setup
+## Manual SSR Setup
 
 ### 1. Create Shared Router Configuration
-
-Create a router factory that can be used by both server and client:
 
 ```tsx
 // src/router.tsx
@@ -70,8 +41,6 @@ declare module '@tanstack/react-router' {
 ```
 
 ### 2. Set Up Server Entry Point
-
-Create a server entry that renders your app to HTML:
 
 ```tsx
 // src/entry-server.tsx
@@ -148,8 +117,6 @@ export async function render({
 
 ### 3. Set Up Client Entry Point
 
-Create a client entry that hydrates the server-rendered HTML:
-
 ```tsx
 // src/entry-client.tsx
 import { hydrateRoot } from 'react-dom/client'
@@ -162,8 +129,6 @@ hydrateRoot(document, <RouterClient router={router} />)
 ```
 
 ### 4. Configure Vite for SSR
-
-Update your Vite configuration:
 
 ```ts
 // vite.config.ts
@@ -191,8 +156,6 @@ export default defineConfig({
 ```
 
 ### 5. Create Express Server
-
-Set up an Express server to handle SSR:
 
 ```js
 // server.js
@@ -277,8 +240,6 @@ if (process.env.NODE_ENV !== 'test') {
 
 ### 6. Update Package Scripts
 
-Add SSR build scripts to your `package.json`:
-
 ```json
 {
   "scripts": {
@@ -291,12 +252,12 @@ Add SSR build scripts to your `package.json`:
 }
 ```
 
-## Streaming SSR (Manual Setup)
+## Streaming SSR
 
-For better performance with slower data fetching, enable streaming SSR:
+Replace `renderRouterToString` with `renderRouterToStream` for better performance:
 
 ```tsx
-// src/entry-server.tsx - Replace renderRouterToString with:
+// src/entry-server.tsx
 import { renderRouterToStream } from '@tanstack/react-router/ssr/server'
 
 const response = await handler(({ request, responseHeaders, router }) =>
@@ -307,59 +268,6 @@ const response = await handler(({ request, responseHeaders, router }) =>
     children: <RouterServer router={router} />,
   }),
 )
-```
-
-## Different Deployment Targets
-
-### Node.js Production
-
-```bash
-# Build for Node.js
-npm run build
-NODE_ENV=production node server.js
-```
-
-### Bun Runtime
-
-Update your server to handle Bun-specific requirements:
-
-```ts
-// Add to entry-server.tsx top
-import './fetch-polyfill' // If using custom fetch polyfill
-
-// For Bun, ensure react-dom/server exports are available
-if (typeof process !== 'undefined' && process.versions?.bun) {
-  // Bun-specific setup if needed
-}
-```
-
-### Edge Runtime
-
-For edge deployments, use Web APIs instead of Node.js APIs:
-
-```tsx
-// src/entry-server-edge.tsx
-import {
-  createRequestHandler,
-  renderRouterToString,
-  RouterServer,
-} from '@tanstack/react-router/ssr/server'
-import { createRouter } from './router'
-
-export async function handleRequest(request: Request): Promise<Response> {
-  const handler = createRequestHandler({
-    request,
-    createRouter,
-  })
-
-  return handler(({ responseHeaders, router }) =>
-    renderRouterToString({
-      responseHeaders,
-      router,
-      children: <RouterServer router={router} />,
-    }),
-  )
-}
 ```
 
 ## Common Problems
