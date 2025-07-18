@@ -189,7 +189,7 @@ export function TanStackStartVitePluginCore(
     {
       name: 'tanstack-start:core:capture-client-bundle',
       applyToEnvironment(e) {
-        return e.config.consumer === 'client'
+        return e.name === VITE_ENVIRONMENT_NAMES.client
       },
       enforce: 'post',
       generateBundle(_options, bundle) {
