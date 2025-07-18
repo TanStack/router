@@ -441,4 +441,3 @@ After deployment, you might want to:
 ## Related Resources
 
 - [Deployment Examples](https://github.com/TanStack/router/tree/main/examples) - Official examples
-- [TanStack Router Documentation](https://tanstack.com/router/latest) - Complete documentation
