@@ -323,8 +323,13 @@ interface InterpolatePathOptions {
   params: Record<string, unknown>
   leaveWildcards?: boolean
   leaveParams?: boolean
-  // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
-  decodeCharMap?: Map<string, string>
+  /**
+   * How to encode strings so they can be used inside a URL path. Defaults to `encodeURIComponent`.
+   *
+   * The router's implementation is exposed as `router.encodePathParam`. Using `pathParamsAllowedCharacters`
+   * will result in the router's `encodePathParam` keeping some characters un-encoded (e.g. '%40' -> '@').
+   */
+  encodePathParam?: (value: string) => string
 }
 
 type InterPolatePathResult = {
@@ -337,7 +342,7 @@ export function interpolatePath({
   params,
   leaveWildcards,
   leaveParams,
-  decodeCharMap,
+  encodePathParam = encodeURIComponent,
 }: InterpolatePathOptions): InterPolatePathResult {
   const interpolatedPathSegments = parsePathname(path)
 
@@ -349,7 +354,7 @@ export function interpolatePath({
       // the splat/catch-all routes shouldn't have the '/' encoded out
       return isValueString ? encodeURI(value) : value
     } else {
-      return isValueString ? encodePathParam(value, decodeCharMap) : value
+      return isValueString ? encodePathParam(value) : value
     }
   }
 
@@ -433,14 +438,20 @@ export function interpolatePath({
   return { usedParams, interpolatedPath, isMissingParams }
 }
 
-function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
-  let encoded = encodeURIComponent(value)
-  if (decodeCharMap) {
-    for (const [encodedChar, char] of decodeCharMap) {
-      encoded = encoded.replaceAll(encodedChar, char)
-    }
-  }
-  return encoded
+export function compileEncodePathParam(
+  pathParamsAllowedCharacters?: Array<string>,
+): (value: string) => string {
+  if (!pathParamsAllowedCharacters || pathParamsAllowedCharacters.length === 0)
+    return encodeURIComponent
+  return new Function(
+    'value',
+    `return encodeURIComponent(value).${pathParamsAllowedCharacters
+      .map(
+        (char) =>
+          `replaceAll('${encodeURIComponent(char)}', ${char === '"' ? `'${char}'` : `"${char}"`})`,
+      )
+      .join('.')}`,
+  ) as (value: string) => string
 }
 
 export function matchPathname(

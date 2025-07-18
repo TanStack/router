@@ -15,6 +15,7 @@ import {
 } from './utils'
 import {
   cleanPath,
+  compileEncodePathParam,
   interpolatePath,
   joinPaths,
   matchPathname,
@@ -783,7 +784,7 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   flatRoutes!: Array<AnyRoute>
   isServer!: boolean
-  pathParamsDecodeCharMap?: Map<string, string>
+  encodePathParam!: (value: string) => string
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -844,14 +845,9 @@ export class RouterCore<
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 
-    this.pathParamsDecodeCharMap = this.options.pathParamsAllowedCharacters
-      ? new Map(
-          this.options.pathParamsAllowedCharacters.map((char) => [
-            encodeURIComponent(char),
-            char,
-          ]),
-        )
-      : undefined
+    this.encodePathParam = compileEncodePathParam(
+      this.options.pathParamsAllowedCharacters,
+    )
 
     if (
       !this.basepath ||
@@ -1194,7 +1190,7 @@ export class RouterCore<
       const { usedParams, interpolatedPath } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
-        decodeCharMap: this.pathParamsDecodeCharMap,
+        encodePathParam: this.encodePathParam,
       })
 
       const matchId =
@@ -1202,7 +1198,7 @@ export class RouterCore<
           path: route.id,
           params: routeParams,
           leaveWildcards: true,
-          decodeCharMap: this.pathParamsDecodeCharMap,
+          encodePathParam: this.encodePathParam,
         }).interpolatedPath + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
@@ -1495,7 +1491,7 @@ export class RouterCore<
         params: nextParams ?? {},
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
-        decodeCharMap: this.pathParamsDecodeCharMap,
+        encodePathParam: this.encodePathParam,
       }).interpolatedPath
 
       // Resolve the next search

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  compileEncodePathParam,
   exactPathTest,
   interpolatePath,
   matchPathname,
@@ -390,9 +391,7 @@ describe('interpolatePath', () => {
         path: '/users/$id',
         params: { id: '?#@john+smith' },
         result: '/users/%3F%23@john+smith',
-        decodeCharMap: new Map(
-          ['@', '+'].map((char) => [encodeURIComponent(char), char]),
-        ),
+        encodePathParam: compileEncodePathParam(['@', '+']),
       },
       {
         name: 'should interpolate the path with the splat param at the end',
@@ -429,12 +428,12 @@ describe('interpolatePath', () => {
         params: { _splat: 'sean/cassiere' },
         result: '/users/sean/cassiere',
       },
-    ])('$name', ({ path, params, decodeCharMap, result }) => {
+    ])('$name', ({ path, params, encodePathParam, result }) => {
       expect(
         interpolatePath({
           path,
           params,
-          decodeCharMap,
+          encodePathParam,
         }).interpolatedPath,
       ).toBe(result)
     })
