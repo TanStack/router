@@ -432,6 +432,8 @@ Before deploying, ensure you have:
 
 After deployment, you might want to:
 
+- [Migrate from React Router v6](./migrate-from-react-router.md) - Complete migration guide if you're coming from React Router
+
 <!-- TODO: Uncomment as how-to guides are created
 - [How to Set Up Server-Side Rendering (SSR)](./setup-ssr.md)
 - [How to Optimize Performance](./optimize-performance.md)
