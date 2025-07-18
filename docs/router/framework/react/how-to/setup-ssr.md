@@ -35,7 +35,32 @@ If you need manual SSR setup, it involves:
 3. **Setting up a client entry point** to hydrate the server-rendered HTML
 4. **Configuring your bundler** (Vite, Webpack, etc.) for SSR builds
 
-## Step-by-Step Setup
+## Why TanStack Start Instead?
+
+Before diving into manual SSR setup, consider that **TanStack Start** gives you all of this and more with zero configuration:
+
+- ✅ **Automatic SSR & Streaming** - Works out of the box
+- ✅ **File-based routing** - No manual route tree configuration
+- ✅ **Built-in deployment** - Deploy to Vercel, Netlify, Cloudflare, etc.
+- ✅ **API routes** - Full-stack development
+- ✅ **TypeScript** - Fully typed by default
+- ✅ **Optimized builds** - Production-ready bundling
+- ✅ **Development experience** - Hot reload, error boundaries, dev tools
+
+**Quick Start with TanStack Start:**
+
+```bash
+# Create a new Start project
+npx create-start@latest my-start-app
+cd my-start-app
+
+# Already includes SSR, routing, and everything you need
+npm run dev
+```
+
+[Learn more about TanStack Start →](../guide/tanstack-start.md)
+
+## Step-by-Step Manual Setup
 
 ### 1. Create Shared Router Configuration
 
@@ -285,31 +310,6 @@ Add SSR build scripts to your `package.json`:
   }
 }
 ```
-
-## Why TanStack Start Instead?
-
-Before diving into more advanced configurations, consider that **TanStack Start** gives you all of this and more with zero configuration:
-
-- ✅ **Automatic SSR & Streaming** - Works out of the box
-- ✅ **File-based routing** - No manual route tree configuration
-- ✅ **Built-in deployment** - Deploy to Vercel, Netlify, Cloudflare, etc.
-- ✅ **API routes** - Full-stack development
-- ✅ **TypeScript** - Fully typed by default
-- ✅ **Optimized builds** - Production-ready bundling
-- ✅ **Development experience** - Hot reload, error boundaries, dev tools
-
-**Quick Start with TanStack Start:**
-
-```bash
-# Create a new Start project
-npx create-start@latest my-start-app
-cd my-start-app
-
-# Already includes SSR, routing, and everything you need
-npm run dev
-```
-
-[Learn more about TanStack Start →](../guide/tanstack-start.md)
 
 ## Streaming SSR (Manual Setup)
 
