@@ -8,6 +8,107 @@ Single Page Applications (SPAs) need special server configuration to handle clie
 
 ---
 
+## Netlify Deployment
+
+### 1. Create `_redirects` File
+
+Create a `public/_redirects` file (or `_redirects` in your build output):
+
+```
+/*    /index.html   200
+```
+
+### 2. Alternative: `netlify.toml`
+
+Create a `netlify.toml` file in your project root:
+
+```toml
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build]
+  publish = "dist"
+  command = "npm run build"
+```
+
+### 3. For TanStack Start (SSR)
+
+```toml
+[build]
+  publish = ".output/public"
+  command = "npm run build"
+
+[functions]
+  directory = ".output/server"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/server"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+```
+
+---
+
+## Cloudflare Pages
+
+### 1. Create `_redirects` File
+
+Create a `public/_redirects` file:
+
+```
+/*    /index.html   200
+```
+
+### 2. Alternative: `_routes.json`
+
+Create a `public/_routes.json` file for more control:
+
+```json
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": ["/api/*"]
+}
+```
+
+### 3. For TanStack Start (SSR)
+
+Create `functions/_middleware.ts` for SSR support:
+
+```ts
+export const onRequest: PagesFunction = async (context) => {
+  // Handle SSR requests
+  return await handleSSR(context)
+}
+```
+
+### 4. Deploy via Git
+
+1. Connect your GitHub repository to Cloudflare Pages
+2. Set build settings:
+   - **Build command:** `npm run build`
+   - **Build output directory:** `dist`
+   - **Root directory:** (leave empty)
+
+### 5. Deploy via Wrangler CLI
+
+```bash
+# Install Wrangler
+npm install -g wrangler
+
+# Deploy
+wrangler pages publish dist --project-name=my-app
+```
+
+---
+
 ## Vercel Deployment
 
 ### 1. Create `vercel.json`
@@ -66,54 +167,6 @@ npm i -g vercel
 
 # Deploy
 vercel
-```
-
----
-
-## Netlify Deployment
-
-### 1. Create `_redirects` File
-
-Create a `public/_redirects` file (or `_redirects` in your build output):
-
-```
-/*    /index.html   200
-```
-
-### 2. Alternative: `netlify.toml`
-
-Create a `netlify.toml` file in your project root:
-
-```toml
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-[build]
-  publish = "dist"
-  command = "npm run build"
-```
-
-### 3. For TanStack Start (SSR)
-
-```toml
-[build]
-  publish = ".output/public"
-  command = "npm run build"
-
-[functions]
-  directory = ".output/server"
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/server"
-  status = 200
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
 ```
 
 ---
