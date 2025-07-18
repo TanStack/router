@@ -400,9 +400,12 @@ const composeHandlers =
     })
   }
 
-type UseLinkReactProps<TComp> = TComp extends React.ElementType
-  ? React.ComponentPropsWithRef<TComp>
-  : never
+type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
+  ? React.JSX.IntrinsicElements[TComp]
+  : TComp extends React.ComponentType<any>
+    ? React.ComponentPropsWithoutRef<TComp> &
+        React.RefAttributes<React.ComponentRef<TComp>>
+    : never
 
 export type UseLinkPropsOptions<
   TRouter extends AnyRouter = RegisteredRouter,
