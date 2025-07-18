@@ -109,7 +109,7 @@ function segmentToString(segment: Segment): string {
       return `{$${param}}${segment.suffixSegment}`
     }
   }
-  
+
   if (segment.type === 'optional-param') {
     const param = segment.value.substring(1)
     if (segment.prefixSegment && segment.suffixSegment) {
@@ -517,7 +517,11 @@ export function removeBasepath(
 export function matchByPath(
   basepath: string,
   from: string,
-  {to, fuzzy, caseSensitive}: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
+  {
+    to,
+    fuzzy,
+    caseSensitive,
+  }: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
 ): Record<string, string> | undefined {
   // check basepath first
   if (basepath !== '/' && !from.startsWith(basepath)) {
@@ -555,10 +559,7 @@ function isMatch(
   let baseIndex = 0
   let routeIndex = 0
 
-  while (
-    baseIndex < baseSegments.length ||
-    routeIndex < routeSegments.length
-  ) {
+  while (baseIndex < baseSegments.length || routeIndex < routeSegments.length) {
     const baseSegment = baseSegments[baseIndex]
     const routeSegment = routeSegments[routeIndex]
 
@@ -636,8 +637,7 @@ function isMatch(
               return false
             }
           } else if (
-            routeSegment.value.toLowerCase() !==
-            baseSegment.value.toLowerCase()
+            routeSegment.value.toLowerCase() !== baseSegment.value.toLowerCase()
           ) {
             return false
           }
@@ -680,10 +680,7 @@ function isMatch(
             paramValue = paramValue.slice(prefix.length)
           }
           if (suffix && paramValue.endsWith(suffix)) {
-            paramValue = paramValue.slice(
-              0,
-              paramValue.length - suffix.length,
-            )
+            paramValue = paramValue.slice(0, paramValue.length - suffix.length)
           }
 
           _paramValue = decodeURIComponent(paramValue)
@@ -801,18 +798,12 @@ function isMatch(
     }
 
     // If we have base segments left but no route segments, it's not a match
-    if (
-      baseIndex < baseSegments.length &&
-      routeIndex >= routeSegments.length
-    ) {
+    if (baseIndex < baseSegments.length && routeIndex >= routeSegments.length) {
       return false
     }
 
     // If we have route segments left but no base segments, check if remaining are optional
-    if (
-      routeIndex < routeSegments.length &&
-      baseIndex >= baseSegments.length
-    ) {
+    if (routeIndex < routeSegments.length && baseIndex >= baseSegments.length) {
       // Check if all remaining route segments are optional
       for (let i = routeIndex; i < routeSegments.length; i++) {
         if (routeSegments[i]?.type !== 'optional-param') {
