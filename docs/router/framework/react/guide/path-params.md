@@ -416,7 +416,7 @@ function PostsComponent() {
 
 ## Internationalization (i18n) with Optional Path Parameters
 
-Optional path parameters are excellent for implementing internationalization (i18n) routing patterns. You can use prefix or suffix patterns to handle multiple languages while maintaining clean, SEO-friendly URLs.
+Optional path parameters are excellent for implementing internationalization (i18n) routing patterns. You can use prefix patterns to handle multiple languages while maintaining clean, SEO-friendly URLs.
 
 ### Prefix-based i18n
 
@@ -452,35 +452,6 @@ This pattern matches:
 - `/en/about` (explicit English)
 - `/fr/about` (French)
 - `/es/about` (Spanish)
-
-### Suffix-based i18n
-
-Use optional language suffixes for URLs like `/about.en`, `/about.fr`, or just `/about`:
-
-```tsx
-// Route: /about{-$locale}
-// With suffix pattern: /about{-$locale}.html
-export const Route = createFileRoute('/about{-$locale}.html')({
-  component: AboutComponent,
-})
-
-function AboutComponent() {
-  const { locale } = Route.useParams()
-  const currentLocale = locale || 'en'
-
-  return (
-    <div>
-      <h1>About Us ({currentLocale.toUpperCase()})</h1>
-      {/* Content based on locale */}
-    </div>
-  )
-}
-```
-
-This pattern matches:
-- `/about.html` (default locale)
-- `/about.en.html` (explicit English)
-- `/about.fr.html` (French)
 
 ### Complex i18n Patterns
 
@@ -705,7 +676,7 @@ function ShopComponent() {
 }
 ```
 
-Optional path parameters provide a powerful and flexible foundation for implementing internationalization in your TanStack Router applications. Whether you prefer prefix-based, suffix-based, or combined approaches, you can create clean, SEO-friendly URLs while maintaining excellent developer experience and type safety.
+Optional path parameters provide a powerful and flexible foundation for implementing internationalization in your TanStack Router applications. Whether you prefer prefix-based or combined approaches, you can create clean, SEO-friendly URLs while maintaining excellent developer experience and type safety.
 
 ## Allowed Characters
 
