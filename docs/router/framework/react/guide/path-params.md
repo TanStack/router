@@ -503,13 +503,11 @@ This supports URLs like:
 
 ### Language Navigation
 
-Create language switchers using optional i18n parameters:
+Create language switchers using optional i18n parameters with function-style params:
 
 ```tsx
 function LanguageSwitcher() {
-  const router = useRouter()
   const currentParams = useParams({ strict: false })
-  const currentPath = router.state.location.pathname
   
   const languages = [
     { code: 'en', name: 'English' },
@@ -523,15 +521,64 @@ function LanguageSwitcher() {
         <Link
           key={code}
           to="/{-$locale}/blog/{-$category}/$slug"
-          params={{
-            ...currentParams,
+          params={(prev) => ({
+            ...prev,
             locale: code === 'en' ? undefined : code, // Remove 'en' for clean URLs
-          }}
+          })}
           className={currentParams.locale === code ? 'active' : ''}
         >
           {name}
         </Link>
       ))}
+    </div>
+  )
+}
+```
+
+You can also create more sophisticated language switching logic:
+
+```tsx
+function AdvancedLanguageSwitcher() {
+  const currentParams = useParams({ strict: false })
+  
+  const handleLanguageChange = (newLocale: string) => {
+    return (prev: any) => {
+      // Preserve all existing params but update locale
+      const updatedParams = { ...prev }
+      
+      if (newLocale === 'en') {
+        // Remove locale for clean English URLs
+        delete updatedParams.locale
+      } else {
+        updatedParams.locale = newLocale
+      }
+      
+      return updatedParams
+    }
+  }
+
+  return (
+    <div className="language-switcher">
+      <Link
+        to="/{-$locale}/blog/{-$category}/$slug"
+        params={handleLanguageChange('fr')}
+      >
+        Français
+      </Link>
+      
+      <Link
+        to="/{-$locale}/blog/{-$category}/$slug"
+        params={handleLanguageChange('es')}
+      >
+        Español
+      </Link>
+      
+      <Link
+        to="/{-$locale}/blog/{-$category}/$slug"
+        params={handleLanguageChange('en')}
+      >
+        English
+      </Link>
     </div>
   )
 }
