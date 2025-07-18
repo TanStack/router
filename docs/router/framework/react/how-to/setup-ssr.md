@@ -16,7 +16,7 @@ This guide shows you how to set up Server-Side Rendering (SSR) with TanStack Rou
 
 ## Quick Start
 
-**Option 1: TanStack Start (Recommended)**
+**Recommended: Use TanStack Start**
 
 ```bash
 npx create-tsrouter-app@latest my-app --add-ons=start
@@ -24,41 +24,21 @@ cd my-app
 npm run dev
 ```
 
-That's it! You get SSR, streaming, file-based routing, and much more with zero configuration.
-
-**Option 2: Manual SSR Setup**
-
-If you need manual SSR setup, it involves:
-
-1. **Creating shared router configuration** that works on both server and client
-2. **Setting up a server entry point** to render your app server-side
-3. **Setting up a client entry point** to hydrate the server-rendered HTML
-4. **Configuring your bundler** (Vite, Webpack, etc.) for SSR builds
-
-## Why TanStack Start Instead?
-
-Before diving into manual SSR setup, consider that **TanStack Start** gives you all of this and more with zero configuration:
+TanStack Start gives you SSR with zero configuration, plus:
 
 - ✅ **Automatic SSR & Streaming** - Works out of the box
-- ✅ **File-based routing** - No manual route tree configuration
+- ✅ **File-based routing** - No manual route tree configuration  
 - ✅ **Built-in deployment** - Deploy to Vercel, Netlify, Cloudflare, etc.
 - ✅ **API routes** - Full-stack development
 - ✅ **TypeScript** - Fully typed by default
 - ✅ **Optimized builds** - Production-ready bundling
 - ✅ **Development experience** - Hot reload, error boundaries, dev tools
 
-**Quick Start with TanStack Start:**
-
-```bash
-# Create a new Start project
-npx create-tsrouter-app@latest my-start-app --add-ons=start
-cd my-start-app
-
-# Already includes SSR, routing, and everything you need
-npm run dev
-```
-
 [Learn more about TanStack Start →](../guide/tanstack-start.md)
+
+**Manual Setup (Only if needed)**
+
+Use the manual setup below only if you need to integrate with an existing server or have specific custom requirements that Start doesn't cover.
 
 ## Step-by-Step Manual Setup
 
