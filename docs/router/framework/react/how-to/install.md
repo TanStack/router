@@ -47,8 +47,3 @@ title: How to Install TanStack Router
      }
    }
    ```
-
-## Next Steps
-
-- [Quick Start Guide](../quick-start.md) - Get your first router running
-- [Creating a Router](../guide/creating-a-router.md) - Learn router setup basics
