@@ -1,8 +1,7 @@
 # How to Set Up Server-Side Rendering (SSR)
 
-> [!IMPORTANT]
-> **[TanStack Start](../guide/tanstack-start.md) is the recommended way to set up SSR** - it provides SSR, streaming, and deployment with zero configuration.
-> 
+> [!IMPORTANT] > **[TanStack Start](../guide/tanstack-start.md) is the recommended way to set up SSR** - it provides SSR, streaming, and deployment with zero configuration.
+>
 > Use the manual setup below only if you need to integrate with an existing server.
 
 ## Quick Start with TanStack Start
@@ -64,7 +63,7 @@ export async function render({
 }) {
   // Convert Express request to Web API Request
   const url = new URL(req.originalUrl || req.url, 'https://localhost:3000').href
-  
+
   const request = new Request(url, {
     method: req.method,
     headers: (() => {
@@ -81,7 +80,7 @@ export async function render({
     request,
     createRouter: () => {
       const router = createRouter()
-      
+
       // Inject server context (like head tags from Vite)
       router.update({
         context: {
@@ -137,10 +136,7 @@ import react from '@vitejs/plugin-react'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
-  plugins: [
-    react(),
-    TanStackRouterVite(),
-  ],
+  plugins: [react(), TanStackRouterVite()],
   build: {
     rollupOptions: {
       input: {
@@ -171,7 +167,9 @@ export async function createServer() {
   let vite
   if (!isProduction) {
     // Development: Use Vite dev server
-    vite = await (await import('vite')).createServer({
+    vite = await (
+      await import('vite')
+    ).createServer({
       server: { middlewareMode: true },
       appType: 'custom',
     })
@@ -272,8 +270,7 @@ const response = await handler(({ request, responseHeaders, router }) =>
 
 ## Common Problems
 
-> [!TIP]
-> **Most of these problems are automatically solved by [TanStack Start](../guide/tanstack-start.md).** The issues below are primarily relevant for manual SSR setups.
+> [!TIP] > **Most of these problems are automatically solved by [TanStack Start](../guide/tanstack-start.md).** The issues below are primarily relevant for manual SSR setups.
 
 ### React Import Errors
 
@@ -287,7 +284,7 @@ import React from 'react' // Add explicit import
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
-  component: () => <div>Hello</div> // React is now available
+  component: () => <div>Hello</div>, // React is now available
 })
 ```
 
@@ -301,7 +298,7 @@ export const Route = createFileRoute('/')({
 // Use useIsomorphicLayoutEffect for browser-only effects
 import { useLayoutEffect, useEffect } from 'react'
 
-const useIsomorphicLayoutEffect = 
+const useIsomorphicLayoutEffect =
   typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 function MyComponent() {
@@ -363,8 +360,8 @@ export default defineConfig({
       },
       output: {
         entryFileNames: (chunkInfo) => {
-          return chunkInfo.name === 'server' 
-            ? '[name].js' 
+          return chunkInfo.name === 'server'
+            ? '[name].js'
             : 'assets/[name]-[hash].js'
         },
       },
