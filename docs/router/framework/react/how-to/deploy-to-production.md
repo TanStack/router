@@ -430,7 +430,9 @@ Before deploying, ensure you have:
 
 ---
 
-## Next Steps
+## Common Next Steps
+
+After deployment, you might want to:
 
 - [How to Set Up Server-Side Rendering (SSR)](./setup-ssr.md)
 - [How to Optimize Performance](./optimize-performance.md)
