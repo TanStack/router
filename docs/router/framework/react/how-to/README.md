@@ -31,3 +31,4 @@ When adding new how-to guides:
 3. Include complete, working code examples
 4. Address the most frequent problems at the end
 5. Link to related guides in "Common next steps" (not required steps)
+6. In "Related Resources", link to specific relevant resources, not generic documentation
