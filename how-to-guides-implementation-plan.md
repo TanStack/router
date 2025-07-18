@@ -14,7 +14,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 1. **Create the guide** in `docs/router/framework/react/how-to/[guide-name].md`
 2. **Follow the established structure:**
    - Quick Start section
-   - Step-by-step platform/scenario-specific instructions  
+   - Step-by-step platform/scenario-specific instructions
    - Production checklist (if applicable)
    - Common Problems section
    - Common Next Steps (commented out until guides exist)
@@ -39,12 +39,14 @@ This document outlines the multi-PR process for implementing the remaining how-t
 **File:** `docs/router/framework/react/how-to/setup-ssr.md`
 
 **Context for Agent:**
+
 - Multiple GitHub issues show React import errors in SSR
 - Bun runtime SSR issues need addressing
 - Focus on TanStack Router SSR (not Start framework)
 - Reference existing guide: `docs/router/framework/react/guide/ssr.md` but create focused how-to
 
 **Content Requirements:**
+
 - Setting up SSR with Vite
 - Configuring entry-client.tsx and entry-server.tsx
 - Handling hydration mismatches
@@ -53,6 +55,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 - Common Problems: React import errors, hydration issues, Bun compatibility
 
 **Cross-References to Add:**
+
 - Uncomment SSR link in deploy-to-production.md "Common Next Steps"
 
 ---
@@ -62,11 +65,13 @@ This document outlines the multi-PR process for implementing the remaining how-t
 **File:** `docs/router/framework/react/how-to/migrate-from-react-router.md`
 
 **Context for Agent:**
+
 - Large user base needs migration path
 - Existing migration guide exists at `docs/router/framework/react/migrate-from-react-router.md`
 - Transform existing guide into focused how-to format or create complementary step-by-step version
 
 **Content Requirements:**
+
 - Step-by-step migration checklist
 - Converting Route components to file-based routing
 - Updating Link and Navigate usage
@@ -81,11 +86,13 @@ This document outlines the multi-PR process for implementing the remaining how-t
 **File:** `docs/router/framework/react/how-to/fix-build-issues.md`
 
 **Context for Agent:**
+
 - Check existing installation guides in `docs/router/framework/react/routing/` for bundler setup
 - Focus on troubleshooting rather than initial setup
 - Address type generation failures and module resolution errors
 
 **Content Requirements:**
+
 - Plugin setup for different bundlers (Vite, Webpack, ESBuild, Rspack)
 - Fixing TypeScript route generation
 - Resolving import/export errors
@@ -99,10 +106,12 @@ This document outlines the multi-PR process for implementing the remaining how-t
 **File:** `docs/router/framework/react/how-to/integrate-ui-libraries.md`
 
 **Context for Agent:**
+
 - GitHub Issue #939 shows Shadcn/ui animation conflicts
 - Focus on most popular libraries with known integration challenges
 
 **Content Requirements:**
+
 - Shadcn/ui integration and animation fixes
 - Material-UI/MUI setup
 - Chakra UI integration
@@ -116,11 +125,13 @@ This document outlines the multi-PR process for implementing the remaining how-t
 **File:** `docs/router/framework/react/how-to/setup-authentication.md`
 
 **Context for Agent:**
+
 - Reference existing guide: `docs/router/framework/react/guide/authenticated-routes.md`
 - Create practical, step-by-step version focused on implementation
 - Include popular auth provider integrations
 
 **Content Requirements:**
+
 - Setting up route context for auth
 - Creating auth-protected route patterns
 - Implementing login redirects
@@ -148,7 +159,7 @@ When implementing each guide, use this template for your agent task:
 Create a comprehensive how-to guide for [GUIDE_TITLE] following the established pattern:
 
 1. **Read the priority document** at how-to-guides-implementation-plan.md for context
-2. **Check existing documentation** mentioned in the Context section  
+2. **Check existing documentation** mentioned in the Context section
 3. **Follow the structure** from deploy-to-production.md:
    - Quick Start
    - Platform/scenario-specific instructions
@@ -186,7 +197,7 @@ Update this section as guides are completed:
 
 ```
 ✅ Guide #1: Deploy to Production - COMPLETED
-⏳ Guide #2: Setup SSR - IN PROGRESS  
+⏳ Guide #2: Setup SSR - IN PROGRESS
 ⏳ Guide #3: Migrate from React Router - PENDING
 ⏳ Guide #4: Fix Build Issues - PENDING
 ⏳ Guide #5: Integrate UI Libraries - PENDING

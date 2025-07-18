@@ -213,34 +213,34 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: npm ci
-    
-    - name: Build
-      run: npm run build
-    
-    - name: Create 404.html
-      run: cp dist/index.html dist/404.html
-    
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./dist
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Create 404.html
+        run: cp dist/index.html dist/404.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
 ```
 
 ---
@@ -253,11 +253,7 @@ jobs:
 {
   "hosting": {
     "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
         "source": "**",
@@ -399,6 +395,7 @@ Before deploying, ensure you have:
 **Problem:** App works in development but shows errors in production.
 
 **Solutions:**
+
 - **Subdirectory deployment:** Configure base path in `vite.config.js`:
   ```js
   export default defineConfig({
@@ -424,6 +421,7 @@ Before deploying, ensure you have:
 **Problem:** App loads but styling is broken or JavaScript fails to load.
 
 **Solutions:**
+
 - Check build output directory in hosting configuration
 - Verify public path configuration in Vite
 - Ensure static file serving is properly configured
