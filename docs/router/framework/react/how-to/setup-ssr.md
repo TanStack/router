@@ -2,9 +2,33 @@
 
 This guide shows you how to set up Server-Side Rendering (SSR) with TanStack Router. SSR improves initial page load performance by rendering HTML on the server before sending it to the client.
 
+> [!IMPORTANT]
+> **TanStack Start is the recommended way to use SSR with TanStack Router.** 
+> 
+> [TanStack Start](../guide/tanstack-start.md) is our official full-stack React framework that provides SSR out-of-the-box with zero configuration. It handles all the complexity shown in this guide automatically.
+>
+> **Use this manual setup guide only if:**
+> - You need to integrate with an existing server setup
+> - You're migrating from another SSR solution gradually
+> - You have specific custom requirements that Start doesn't cover
+> 
+> **For new projects, start with [TanStack Start](../guide/tanstack-start.md) instead.**
+
 ## Quick Start
 
-SSR with TanStack Router involves:
+**Option 1: TanStack Start (Recommended)**
+
+```bash
+npx create-start@latest my-app
+cd my-app
+npm run dev
+```
+
+That's it! You get SSR, streaming, file-based routing, and much more with zero configuration.
+
+**Option 2: Manual SSR Setup**
+
+If you need manual SSR setup, it involves:
 
 1. **Creating shared router configuration** that works on both server and client
 2. **Setting up a server entry point** to render your app server-side
@@ -262,7 +286,32 @@ Add SSR build scripts to your `package.json`:
 }
 ```
 
-## Streaming SSR (Optional)
+## Why TanStack Start Instead?
+
+Before diving into more advanced configurations, consider that **TanStack Start** gives you all of this and more with zero configuration:
+
+- ✅ **Automatic SSR & Streaming** - Works out of the box
+- ✅ **File-based routing** - No manual route tree configuration
+- ✅ **Built-in deployment** - Deploy to Vercel, Netlify, Cloudflare, etc.
+- ✅ **API routes** - Full-stack development
+- ✅ **TypeScript** - Fully typed by default
+- ✅ **Optimized builds** - Production-ready bundling
+- ✅ **Development experience** - Hot reload, error boundaries, dev tools
+
+**Quick Start with TanStack Start:**
+
+```bash
+# Create a new Start project
+npx create-start@latest my-start-app
+cd my-start-app
+
+# Already includes SSR, routing, and everything you need
+npm run dev
+```
+
+[Learn more about TanStack Start →](../guide/tanstack-start.md)
+
+## Streaming SSR (Manual Setup)
 
 For better performance with slower data fetching, enable streaming SSR:
 
@@ -334,6 +383,9 @@ export async function handleRequest(request: Request): Promise<Response> {
 ```
 
 ## Common Problems
+
+> [!TIP]
+> **Most of these problems are automatically solved by [TanStack Start](../guide/tanstack-start.md).** The issues below are primarily relevant for manual SSR setups.
 
 ### React Import Errors
 
@@ -435,8 +487,8 @@ export default defineConfig({
 
 ## Related Resources
 
+- [TanStack Start](../guide/tanstack-start.md) - **Recommended full-stack React framework with SSR**
 - [SSR Guide (Detailed)](../guide/ssr.md) - Comprehensive SSR concepts
-- [TanStack Start](../guide/tanstack-start.md) - Full-stack React framework
 - [Data Loading](../guide/data-loading.md) - SSR-compatible data patterns
 
 <!-- Common Next Steps (commented out until guides exist)
