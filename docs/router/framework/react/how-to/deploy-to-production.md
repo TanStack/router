@@ -440,5 +440,5 @@ After deployment, you might want to:
 
 ## Related Resources
 
-- [Issue #3144](https://github.com/TanStack/router/issues/3144) - 404 errors on Vercel deployment
 - [Deployment Examples](https://github.com/TanStack/router/tree/main/examples) - Official examples
+- [TanStack Router Documentation](https://tanstack.com/router/latest) - Complete documentation
