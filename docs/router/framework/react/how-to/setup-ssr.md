@@ -5,14 +5,14 @@ This guide shows you how to set up Server-Side Rendering (SSR) with TanStack Rou
 > [!IMPORTANT]
 > **TanStack Start is the recommended way to use SSR with TanStack Router.** 
 > 
-> [TanStack Start](https://tanstack.com/start) is our official full-stack React framework that provides SSR out-of-the-box with zero configuration. It handles all the complexity shown in this guide automatically.
+> [TanStack Start](../guide/tanstack-start.md) is our official full-stack React framework that provides SSR out-of-the-box with zero configuration. It handles all the complexity shown in this guide automatically.
 >
 > **Use this manual setup guide only if:**
 > - You need to integrate with an existing server setup
 > - You're migrating from another SSR solution gradually
 > - You have specific custom requirements that Start doesn't cover
 > 
-> **For new projects, start with [TanStack Start](https://tanstack.com/start) instead.**
+> **For new projects, start with [TanStack Start](../guide/tanstack-start.md) instead.**
 
 ## Quick Start
 
@@ -309,7 +309,7 @@ cd my-start-app
 npm run dev
 ```
 
-[Learn more about TanStack Start →](https://tanstack.com/start)
+[Learn more about TanStack Start →](../guide/tanstack-start.md)
 
 ## Streaming SSR (Manual Setup)
 
@@ -385,7 +385,7 @@ export async function handleRequest(request: Request): Promise<Response> {
 ## Common Problems
 
 > [!TIP]
-> **Most of these problems are automatically solved by [TanStack Start](https://tanstack.com/start).** The issues below are primarily relevant for manual SSR setups.
+> **Most of these problems are automatically solved by [TanStack Start](../guide/tanstack-start.md).** The issues below are primarily relevant for manual SSR setups.
 
 ### React Import Errors
 
@@ -487,7 +487,7 @@ export default defineConfig({
 
 ## Related Resources
 
-- [TanStack Start](https://tanstack.com/start) - **Recommended full-stack React framework with SSR**
+- [TanStack Start](../guide/tanstack-start.md) - **Recommended full-stack React framework with SSR**
 - [SSR Guide (Detailed)](../guide/ssr.md) - Comprehensive SSR concepts
 - [Data Loading](../guide/data-loading.md) - SSR-compatible data patterns
 
