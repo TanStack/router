@@ -7,6 +7,8 @@ export interface Segment {
   value: string
   prefixSegment?: string
   suffixSegment?: string
+  // Indicates if there is a static segment after this required/optional param
+  hasStaticAfter?: boolean
 }
 
 export function joinPaths(paths: Array<string | undefined>) {
