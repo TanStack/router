@@ -2,21 +2,9 @@
 
 Based on analysis of GitHub issues, existing documentation, repository structure, and common developer pain points, here are the top 10 how-to guides that would most increase developer and AI productivity:
 
-## 1. **How to Deploy TanStack Router to Production Hosting Platforms**
+## ✅ 1. **How to Deploy TanStack Router to Production Hosting Platforms** - COMPLETED
 
-**Priority: Critical** - Multiple GitHub issues show deployment failures
-
-**Key Pain Points:**
-- 404 errors on refresh for SPAs on Vercel/Netlify ([Issue #3144](https://github.com/TanStack/router/issues/3144))
-- Missing server configuration for file-based routing
-- Incorrect handling of client-side routing in production
-
-**Content Should Cover:**
-- Vercel deployment configuration (`vercel.json` setup)
-- Netlify deployment (`_redirects` and `netlify.toml`)
-- Static hosting setup (Apache, Nginx)
-- Server-side rendering deployment considerations
-- CDN configuration for proper routing
+**Status:** ✅ Complete - Available at `docs/router/framework/react/how-to/deploy-to-production.md`
 
 ---
 
@@ -167,7 +155,26 @@ Based on analysis of GitHub issues, existing documentation, repository structure
 
 ---
 
-## 10. **How to Implement Advanced Routing Patterns**
+## 10. **How to Handle Search Parameters and URL State**
+
+**Priority: Medium-High** - Common developer confusion
+
+**Key Pain Points:**
+- Search param type safety confusion
+- URL state synchronization issues
+- Complex search param validation
+- Performance issues with search param updates
+
+**Content Should Cover:**
+- Setting up type-safe search params
+- Validation with Zod/Valibot adapters
+- URL state management patterns
+- Search param performance optimization
+- Complex search param scenarios (arrays, objects)
+
+---
+
+## 11. **How to Implement Advanced Routing Patterns**
 
 **Priority: Medium** - Advanced use cases
 
