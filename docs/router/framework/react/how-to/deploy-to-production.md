@@ -1,12 +1,10 @@
 # How to Deploy TanStack Router to Production
 
-This guide covers deploying TanStack Router applications to popular hosting platforms, solving common issues like 404 errors on page refresh.
+This guide covers deploying TanStack Router applications to popular hosting platforms.
 
-## The Problem
+## Quick Start
 
-Single Page Applications (SPAs) built with TanStack Router handle routing on the client side. When a user navigates to `/about` and refreshes the page, the server looks for a file at `/about/index.html` which doesn't exist, resulting in a 404 error.
-
-**Solution:** Configure your hosting platform to serve `index.html` for all routes, allowing the client-side router to handle navigation.
+Single Page Applications (SPAs) need special server configuration to handle client-side routing. Configure your hosting platform to serve `index.html` for all routes, allowing TanStack Router to handle navigation.
 
 ---
 
@@ -321,69 +319,61 @@ docker run -p 80:80 my-tanstack-app
 
 ---
 
-## Troubleshooting
+## Production Checklist
 
-### Issue: 404 Errors on Refresh
+Before deploying, ensure you have:
 
-**Symptoms:** Routes work when navigating within the app, but refreshing the page shows 404.
-
-**Solution:** Ensure your hosting platform serves `index.html` for all routes. Check the configuration files above.
-
-### Issue: Base Path Problems
-
-**Symptoms:** App works locally but breaks when deployed to a subdirectory.
-
-**Solution:** Configure the base path in `vite.config.js`:
-
-```js
-export default defineConfig({
-  base: '/my-app/', // Match your deployment path
-  // ... other config
-})
-```
-
-### Issue: Build Assets Not Found
-
-**Symptoms:** App loads but CSS/JS files return 404.
-
-**Solution:** Check your build output directory matches hosting configuration:
-
-```js
-// vite.config.js
-export default defineConfig({
-  build: {
-    outDir: 'dist', // Ensure this matches your hosting config
-  },
-})
-```
-
-### Issue: Environment Variables
-
-**Symptoms:** App works locally but environment variables are undefined in production.
-
-**Solution:** Prefix variables with `VITE_` and rebuild:
-
-```bash
-# .env
-VITE_API_URL=https://api.example.com
-
-# Access in code
-const apiUrl = import.meta.env.VITE_API_URL
-```
+- [ ] Created hosting platform configuration file
+- [ ] Set correct base path if deploying to subdirectory
+- [ ] Configured environment variables with `VITE_` prefix
+- [ ] Tested all routes by direct URL access
+- [ ] Verified static assets load correctly
 
 ---
 
-## Production Checklist
+## Common Problems
 
-- [ ] Create hosting platform configuration file
-- [ ] Set correct base path if deploying to subdirectory
-- [ ] Configure environment variables with `VITE_` prefix
-- [ ] Test all routes by direct URL access
-- [ ] Verify static assets load correctly
-- [ ] Enable GZIP compression if possible
-- [ ] Set up CDN for better performance
-- [ ] Configure proper cache headers
-- [ ] Test on multiple devices and browsers
+### 404 Errors on Page Refresh
+
+**Problem:** Routes work when navigating within the app, but refreshing the page shows 404.
+
+**Cause:** The server looks for files like `/about/index.html` which don't exist in SPAs.
+
+**Solution:** Add the configuration files shown above for your hosting platform.
+
+### App Works Locally But Breaks When Deployed
+
+**Problem:** App works in development but shows errors in production.
+
+**Solutions:**
+- **Subdirectory deployment:** Configure base path in `vite.config.js`:
+  ```js
+  export default defineConfig({
+    base: '/my-app/', // Match your deployment path
+  })
+  ```
+- **Build output mismatch:** Ensure build directory matches hosting config:
+  ```js
+  export default defineConfig({
+    build: {
+      outDir: 'dist', // Must match hosting platform setting
+    },
+  })
+  ```
+- **Environment variables:** Prefix with `VITE_` and rebuild:
+  ```bash
+  # .env
+  VITE_API_URL=https://api.example.com
+  ```
+
+### Assets Not Loading (CSS/JS 404s)
+
+**Problem:** App loads but styling is broken or JavaScript fails to load.
+
+**Solutions:**
+- Check build output directory in hosting configuration
+- Verify public path configuration in Vite
+- Ensure static file serving is properly configured
 
 ---
 
@@ -393,7 +383,7 @@ const apiUrl = import.meta.env.VITE_API_URL
 - [How to Optimize Performance](./optimize-performance.md)
 - [How to Set Up Analytics](./setup-analytics.md)
 
-## Related Issues
+## Related Resources
 
 - [Issue #3144](https://github.com/TanStack/router/issues/3144) - 404 errors on Vercel deployment
-- [Deployment Examples](https://github.com/TanStack/router/tree/main/examples) - Official deployment examples
+- [Deployment Examples](https://github.com/TanStack/router/tree/main/examples) - Official examples
