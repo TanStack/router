@@ -1,6 +1,8 @@
-# Top 10 How-To Guides for TanStack Router
+# Top 9 How-To Guides for TanStack Router
 
-Based on analysis of GitHub issues, existing documentation, repository structure, and common developer pain points, here are the top 10 how-to guides that would most increase developer and AI productivity:
+Based on analysis of GitHub issues, existing documentation, repository structure, and common developer pain points, here are the top 9 how-to guides that would most increase developer and AI productivity:
+
+> **Note:** Build/bundler issues and router debugging have been moved to a separate [Debugging & Troubleshooting](docs/router/framework/react/debugging/) directory as they are problem-solving references rather than step-by-step how-to guides.
 
 ## ✅ 1. **How to Deploy TanStack Router to Production Hosting Platforms** - COMPLETED
 
@@ -49,28 +51,7 @@ Based on analysis of GitHub issues, existing documentation, repository structure
 
 ---
 
-## 4. **How to Fix Common Build and Bundler Issues**
-
-**Priority: High** - Blocking developer productivity
-
-**Key Pain Points:**
-
-- Webpack/Vite plugin configuration
-- Type generation failures
-- Build optimization problems
-- Module resolution errors
-
-**Content Should Cover:**
-
-- Plugin setup for different bundlers (Vite, Webpack, ESBuild, Rspack)
-- Fixing TypeScript route generation
-- Resolving import/export errors
-- Optimizing bundle size
-- Development vs production build differences
-
----
-
-## 5. **How to Integrate with Popular UI Libraries**
+## 4. **How to Integrate with Popular UI Libraries**
 
 **Priority: High** - Common integration challenges
 
@@ -90,7 +71,7 @@ Based on analysis of GitHub issues, existing documentation, repository structure
 
 ---
 
-## 6. **How to Set Up Authentication and Protected Routes**
+## 5. **How to Set Up Authentication and Protected Routes**
 
 **Priority: High** - Security-critical feature
 
@@ -110,28 +91,7 @@ Based on analysis of GitHub issues, existing documentation, repository structure
 
 ---
 
-## 7. **How to Debug Common Router Issues**
-
-**Priority: High** - Improves developer experience
-
-**Key Pain Points:**
-
-- Route matching problems
-- Type errors with parameters
-- Navigation not working as expected
-- Performance debugging
-
-**Content Should Cover:**
-
-- Using TanStack Router DevTools effectively
-- Debugging route matching failures
-- Troubleshooting navigation issues
-- Performance profiling and optimization
-- Common error patterns and solutions
-
----
-
-## 8. **How to Set Up Testing with TanStack Router**
+## 6. **How to Set Up Testing with TanStack Router**
 
 **Priority: Medium-High** - Critical for production apps
 
@@ -151,7 +111,7 @@ Based on analysis of GitHub issues, existing documentation, repository structure
 
 ---
 
-## 9. **How to Set Up Development Environment and Tooling**
+## 7. **How to Set Up Development Environment and Tooling**
 
 **Priority: Medium-High** - Onboarding efficiency
 
@@ -171,7 +131,7 @@ Based on analysis of GitHub issues, existing documentation, repository structure
 
 ---
 
-## 10. **How to Handle Search Parameters and URL State**
+## 8. **How to Handle Search Parameters and URL State**
 
 **Priority: Medium-High** - Common developer confusion
 
@@ -192,7 +152,7 @@ Based on analysis of GitHub issues, existing documentation, repository structure
 
 ---
 
-## 11. **How to Implement Advanced Routing Patterns**
+## 9. **How to Implement Advanced Routing Patterns**
 
 **Priority: Medium** - Advanced use cases
 

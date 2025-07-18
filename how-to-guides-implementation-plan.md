@@ -81,27 +81,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 
 ---
 
-### Priority 3: Guide #4 - How to Fix Common Build and Bundler Issues
-
-**File:** `docs/router/framework/react/how-to/fix-build-issues.md`
-
-**Context for Agent:**
-
-- Check existing installation guides in `docs/router/framework/react/routing/` for bundler setup
-- Focus on troubleshooting rather than initial setup
-- Address type generation failures and module resolution errors
-
-**Content Requirements:**
-
-- Plugin setup for different bundlers (Vite, Webpack, ESBuild, Rspack)
-- Fixing TypeScript route generation
-- Resolving import/export errors
-- Optimizing bundle size
-- Common Problems: Type generation failures, build optimization, module resolution
-
----
-
-### Priority 4: Guide #5 - How to Integrate with Popular UI Libraries
+### Priority 3: Guide #4 - How to Integrate with Popular UI Libraries
 
 **File:** `docs/router/framework/react/how-to/integrate-ui-libraries.md`
 
@@ -120,7 +100,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 
 ---
 
-### Priority 5: Guide #6 - How to Set Up Authentication and Protected Routes
+### Priority 4: Guide #5 - How to Set Up Authentication and Protected Routes
 
 **File:** `docs/router/framework/react/how-to/setup-authentication.md`
 
@@ -141,13 +121,32 @@ This document outlines the multi-PR process for implementing the remaining how-t
 
 ---
 
-### Remaining Guides (Priority 6-11):
+### Remaining How-To Guides (Priority 5-8):
 
-**Priority 6:** Debug Common Router Issues (`debug-router-issues.md`)
-**Priority 7:** Set Up Testing (`setup-testing.md`)  
-**Priority 8:** Set Up Development Environment (`setup-dev-environment.md`)
-**Priority 9:** Handle Search Parameters and URL State (`handle-search-parameters.md`)
-**Priority 10:** Implement Advanced Routing Patterns (`advanced-routing-patterns.md`)
+**Priority 5:** Set Up Testing (`setup-testing.md`)  
+**Priority 6:** Set Up Development Environment (`setup-dev-environment.md`)
+**Priority 7:** Handle Search Parameters and URL State (`handle-search-parameters.md`)
+**Priority 8:** Implement Advanced Routing Patterns (`advanced-routing-patterns.md`)
+
+---
+
+## Debugging Guides (Separate Directory)
+
+The following guides have been moved to `docs/router/framework/react/debugging/` as they are troubleshooting/FAQ style rather than step-by-step how-to guides:
+
+**Debug Build and Bundler Issues** (`debugging/build-issues.md`)
+- Plugin setup troubleshooting for different bundlers (Vite, Webpack, ESBuild, Rspack)
+- Fixing TypeScript route generation failures
+- Resolving import/export errors
+- Bundle optimization problems
+- Module resolution debugging
+
+**Debug Common Router Issues** (`debugging/router-issues.md`)
+- Route matching problems
+- Type errors with parameters
+- Navigation not working as expected
+- Performance debugging
+- Common error patterns and solutions
 
 ---
 
@@ -195,18 +194,23 @@ Before marking any guide as complete:
 
 Update this section as guides are completed:
 
+**How-To Guides:**
 ```
 ✅ Guide #1: Deploy to Production - COMPLETED
 ⏳ Guide #2: Setup SSR - IN PROGRESS
-⏳ Guide #3: Migrate from React Router - PENDING
-⏳ Guide #4: Fix Build Issues - PENDING
-⏳ Guide #5: Integrate UI Libraries - PENDING
-⏳ Guide #6: Setup Authentication - PENDING
-⏳ Guide #7: Debug Router Issues - PENDING
-⏳ Guide #8: Setup Testing - PENDING
-⏳ Guide #9: Setup Dev Environment - PENDING
-⏳ Guide #10: Handle Search Parameters - PENDING
-⏳ Guide #11: Advanced Routing Patterns - PENDING
+⏳ Guide #3: Migrate from React Router - IN PROGRESS
+✅ Guide #4: Integrate UI Libraries - COMPLETED
+⏳ Guide #5: Setup Authentication - PENDING
+⏳ Guide #6: Setup Testing - PENDING
+⏳ Guide #7: Setup Dev Environment - PENDING
+⏳ Guide #8: Handle Search Parameters - PENDING
+⏳ Guide #9: Advanced Routing Patterns - PENDING
+```
+
+**Debugging Guides:**
+```
+⏳ Debug Build Issues - PENDING
+⏳ Debug Router Issues - PENDING
 ```
 
 This systematic approach ensures consistent quality and enables incremental progress across multiple agent sessions.
