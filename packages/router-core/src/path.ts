@@ -578,9 +578,6 @@ function isMatch(
     const baseSegment = baseSegments[baseIndex]
     const routeSegment = routeSegments[routeIndex]
 
-    const isLastBaseSegment = baseIndex >= baseSegments.length - 1
-    const isLastRouteSegment = routeIndex >= routeSegments.length - 1
-
     if (routeSegment) {
       if (routeSegment.type === SEGMENT_TYPE_WILDCARD) {
         // Capture all remaining segments for a wildcard
@@ -805,16 +802,12 @@ function isMatch(
       }
     }
 
-    if (!isLastBaseSegment && isLastRouteSegment) {
-      params['**'] = joinPaths(
-        baseSegments.slice(baseIndex + 1).map((d) => d.value),
-      )
-      return !!fuzzy && routeSegment?.value !== '/'
-    }
-
-    // If we have base segments left but no route segments, it's not a match
+    // If we have base segments left but no route segments, it's a fuzzy match
     if (baseIndex < baseSegments.length && routeIndex >= routeSegments.length) {
-      return false
+      params['**'] = joinPaths(
+        baseSegments.slice(baseIndex).map((d) => d.value),
+      )
+      return !!fuzzy && routeSegments[routeSegments.length - 1]?.value !== '/'
     }
 
     // If we have route segments left but no base segments, check if remaining are optional
