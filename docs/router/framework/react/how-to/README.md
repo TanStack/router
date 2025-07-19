@@ -11,6 +11,7 @@ This directory contains focused, step-by-step instructions for common TanStack R
 
 - [Install TanStack Router](./install.md) - Basic installation steps
 - [Deploy to Production](./deploy-to-production.md) - Deploy your app to hosting platforms
+- [Migrate from React Router v6](./migrate-from-react-router.md) - Complete migration guide from React Router v6
 
 ## Using These Guides
 
