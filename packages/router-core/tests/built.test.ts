@@ -203,7 +203,11 @@ describe('work in progress', () => {
       console.log('\u001b[34m' + fn + '\u001b[0m')
       const currentSegment = routeSegments[depth]
       if (!currentSegment) {
-        throw new Error('Implementation error: this should not happen, depth=' + depth + `, route=${rebuildPath(routeSegments)}`)
+        throw new Error(
+          'Implementation error: this should not happen, depth=' +
+            depth +
+            `, route=${rebuildPath(routeSegments)}`,
+        )
       }
       const candidates = parsedRoutes.filter((r) => {
         const rParsed = r[depth]
