@@ -1,7 +1,25 @@
 import { expect, test } from '@playwright/test'
+import { derivePort } from '@tanstack/router-e2e-utils'
+import packageJson from '../package.json' with { type: 'json' }
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
+})
+
+test('GetPosts', async () => {
+  const port = await derivePort(`${packageJson.name}-external`)
+  const res = await fetch(`http://localhost:${port}/posts`)
+
+  expect(res.status).toBe(200)
+
+  const posts = await res.json()
+
+  expect(posts.length).toBeGreaterThan(0)
+
+  const postRes = await fetch(`http://localhost:${port}/posts/1`)
+  expect(postRes.status).toBe(200)
+  const post = await postRes.json()
+  expect(post).toEqual(posts[0])
 })
 
 test('Navigating to a post page', async ({ page }) => {

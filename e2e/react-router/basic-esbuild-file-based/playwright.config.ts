@@ -4,6 +4,7 @@ import packageJson from './package.json' with { type: 'json' }
 
 const PORT = await derivePort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
+const EXTERNAL_PORT = await derivePort(`${packageJson.name}-external`)
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -13,13 +14,16 @@ export default defineConfig({
 
   reporter: [['line']],
 
+  globalSetup: './tests/setup/global.setup.ts',
+  globalTeardown: './tests/setup/global.teardown.ts',
+
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL,
   },
 
   webServer: {
-    command: `pnpm run build && pnpm run serve --serve=${PORT}`,
+    command: `NODE_ENV="test" EXTERNAL_PORT="${EXTERNAL_PORT}" pnpm run build && pnpm run serve --serve=${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
