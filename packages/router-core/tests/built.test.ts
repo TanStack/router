@@ -320,7 +320,7 @@ describe('work in progress', () => {
         const leaf = candidates[0]!
 
         // Check if this route contains a wildcard segment
-        const wildcardIndex = leaf.findIndex(s => s && s.type === 2)
+        const wildcardIndex = leaf.findIndex((s) => s && s.type === 2)
 
         if (wildcardIndex !== -1 && wildcardIndex >= depth) {
           // This route has a wildcard at or after the current depth
@@ -342,7 +342,9 @@ describe('work in progress', () => {
             if (segment.type === 1) {
               // Parameter segment
               if (segment.prefixSegment) {
-                conditions.push(`${value}.startsWith('${segment.prefixSegment}')`)
+                conditions.push(
+                  `${value}.startsWith('${segment.prefixSegment}')`,
+                )
               }
               if (segment.suffixSegment) {
                 conditions.push(`${value}.endsWith('${segment.suffixSegment}')`)
@@ -357,11 +359,15 @@ describe('work in progress', () => {
           if (wildcardSegment.prefixSegment || wildcardSegment.suffixSegment) {
             const wildcardValue = `baseSegments[${wildcardIndex}].value`
             if (wildcardSegment.prefixSegment) {
-              conditions.push(`${wildcardValue}.startsWith('${wildcardSegment.prefixSegment}')`)
+              conditions.push(
+                `${wildcardValue}.startsWith('${wildcardSegment.prefixSegment}')`,
+              )
             }
             if (wildcardSegment.suffixSegment) {
               // For suffix wildcard, we need to check the last segment
-              conditions.push(`baseSegments[l - 1].value.endsWith('${wildcardSegment.suffixSegment}')`)
+              conditions.push(
+                `baseSegments[l - 1].value.endsWith('${wildcardSegment.suffixSegment}')`,
+              )
             }
           }
 
