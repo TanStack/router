@@ -432,6 +432,8 @@ Before deploying, ensure you have:
 
 After deployment, you might want to:
 
+- [How to Set Up Basic Authentication](./setup-authentication.md) - Secure your application with auth
+
 <!-- TODO: Uncomment as how-to guides are created
 - [How to Set Up Server-Side Rendering (SSR)](./setup-ssr.md)
 - [How to Optimize Performance](./optimize-performance.md)
