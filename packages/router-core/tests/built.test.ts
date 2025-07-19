@@ -98,6 +98,9 @@ const routeTree = createRouteTree([
   '/z/y/x/v',
   '/z/y/x/u',
   '/z/y/x',
+  '/images/thumb_{$}', // wildcard with prefix
+  '/logs/{$}.txt', // wildcard with suffix
+  '/cache/temp_{$}.log', // wildcard with prefix and suffix
 ])
 
 const result = processRouteTree({ routeTree })
@@ -139,6 +142,9 @@ describe('work in progress', () => {
         "/a/{-$slug}",
         "/b/{-$slug}",
         "/posts/{-$slug}",
+        "/cache/temp_{$}.log",
+        "/images/thumb_{$}",
+        "/logs/{$}.txt",
         "/a/$",
         "/b/$",
         "/files/$",
@@ -210,6 +216,15 @@ describe('work in progress', () => {
           )
         }
 
+        // For SEGMENT_TYPE_WILDCARD (type 2), match only on type and prefix/suffix constraints
+        if (currentSegment.type === 2) {
+          return (
+            rParsed.type === 2 &&
+            rParsed.prefixSegment === currentSegment.prefixSegment &&
+            rParsed.suffixSegment === currentSegment.suffixSegment
+          )
+        }
+
         // For all other segment types (SEGMENT_TYPE_PATHNAME, etc.), use exact matching
         return (
           rParsed.type === currentSegment.type &&
@@ -257,6 +272,10 @@ describe('work in progress', () => {
               }
               return conditions.join(' && ')
             }
+            if (segment.type === 2) {
+              // Wildcards consume all remaining segments, no checking needed
+              return ''
+            }
             return `baseSegments[${depth + i}].value === '${segment.value}'`
           })
             .filter(Boolean)
@@ -282,6 +301,9 @@ describe('work in progress', () => {
           )
         }
         if (leaves.length > 1) {
+          // WARN: we should probably support "multiple leaves"
+          // 1. user error: it's possible that a user created both `/a/$id` and `/a/$foo`, they'd be both matched, just use the 1st one
+          // 2. wildcards: if a user created both `/a/$` and `/a/b`, we could have 2 leaves. the order in `leaves` will be `[/a/b, /a/$]` which is correct, try to match `/a/b` first, then `/a/$`
           throw new Error(
             `Multiple candidates found for depth ${depth} with type ${routeSegments[depth]!.type} and value ${routeSegments[depth]!.value}: ${leaves.map(logParsed).join(', ')}`,
           )
@@ -296,32 +318,85 @@ describe('work in progress', () => {
         }
       } else {
         const leaf = candidates[0]!
-        const done = `return '${rebuildPath(leaf)}';`
-        fn += `\n${indent}if (l === ${leaf.length}`
-        for (let i = depth; i < leaf.length; i++) {
-          const segment = leaf[i]!
-          const value = `baseSegments[${i}].value`
 
-          // For SEGMENT_TYPE_PARAM (type 1), check if base has static segment (type 0) that satisfies constraints
-          if (segment.type === 1) {
-            if (segment.prefixSegment || segment.suffixSegment) {
-              fn += `\n${indent}  `
+        // Check if this route contains a wildcard segment
+        const wildcardIndex = leaf.findIndex(s => s && s.type === 2)
+
+        if (wildcardIndex !== -1 && wildcardIndex >= depth) {
+          // This route has a wildcard at or after the current depth
+          const wildcardSegment = leaf[wildcardIndex]!
+          const done = `return '${rebuildPath(leaf)}';`
+
+          // For wildcards, we need to check:
+          // 1. All static/param segments before the wildcard match
+          // 2. There are remaining segments for the wildcard to consume (l >= wildcardIndex)
+          // 3. Handle prefix/suffix constraints for the wildcard if present
+
+          const conditions = [`l >= ${wildcardIndex}`]
+
+          // Add conditions for all segments before the wildcard
+          for (let i = depth; i < wildcardIndex; i++) {
+            const segment = leaf[i]!
+            const value = `baseSegments[${i}].value`
+
+            if (segment.type === 1) {
+              // Parameter segment
+              if (segment.prefixSegment) {
+                conditions.push(`${value}.startsWith('${segment.prefixSegment}')`)
+              }
+              if (segment.suffixSegment) {
+                conditions.push(`${value}.endsWith('${segment.suffixSegment}')`)
+              }
+            } else if (segment.type === 0) {
+              // Static segment
+              conditions.push(`${value} === '${segment.value}'`)
             }
-            // Add prefix/suffix checks for parameters with prefix/suffix
-            if (segment.prefixSegment) {
-              fn += ` && ${value}.startsWith('${segment.prefixSegment}')`
-            }
-            if (segment.suffixSegment) {
-              fn += ` && ${value}.endsWith('${segment.suffixSegment}')`
-            }
-          } else {
-            // For other segment types, use exact matching
-            fn += `\n${indent}  && ${value} === '${segment.value}'`
           }
+
+          // Handle prefix/suffix for the wildcard itself
+          if (wildcardSegment.prefixSegment || wildcardSegment.suffixSegment) {
+            const wildcardValue = `baseSegments[${wildcardIndex}].value`
+            if (wildcardSegment.prefixSegment) {
+              conditions.push(`${wildcardValue}.startsWith('${wildcardSegment.prefixSegment}')`)
+            }
+            if (wildcardSegment.suffixSegment) {
+              // For suffix wildcard, we need to check the last segment
+              conditions.push(`baseSegments[l - 1].value.endsWith('${wildcardSegment.suffixSegment}')`)
+            }
+          }
+
+          fn += `\n${indent}if (${conditions.join(' && ')}) {`
+          fn += `\n${indent}  ${done}`
+          fn += `\n${indent}}`
+        } else {
+          // No wildcard in this route, use the original logic
+          const done = `return '${rebuildPath(leaf)}';`
+          fn += `\n${indent}if (l === ${leaf.length}`
+          for (let i = depth; i < leaf.length; i++) {
+            const segment = leaf[i]!
+            const value = `baseSegments[${i}].value`
+
+            // For SEGMENT_TYPE_PARAM (type 1), check if base has static segment (type 0) that satisfies constraints
+            if (segment.type === 1) {
+              if (segment.prefixSegment || segment.suffixSegment) {
+                fn += `\n${indent}  `
+              }
+              // Add prefix/suffix checks for parameters with prefix/suffix
+              if (segment.prefixSegment) {
+                fn += ` && ${value}.startsWith('${segment.prefixSegment}')`
+              }
+              if (segment.suffixSegment) {
+                fn += ` && ${value}.endsWith('${segment.suffixSegment}')`
+              }
+            } else {
+              // For other segment types, use exact matching
+              fn += `\n${indent}  && ${value} === '${segment.value}'`
+            }
+          }
+          fn += `\n${indent}) {`
+          fn += `\n${indent}  ${done}`
+          fn += `\n${indent}}`
         }
-        fn += `\n${indent}) {`
-        fn += `\n${indent}  ${done}`
-        fn += `\n${indent}}`
       }
       candidates.forEach((c) => resolved.add(c))
     }
@@ -367,9 +442,7 @@ describe('work in progress', () => {
         ) {
           return '/a/$slug';
         }
-        if (l === 3
-          && baseSegments[2].value === '$'
-        ) {
+        if (l >= 2) {
           return '/a/$';
         }
         if (l === 2) {
@@ -424,9 +497,7 @@ describe('work in progress', () => {
         ) {
           return '/b/$slug';
         }
-        if (l === 3
-          && baseSegments[2].value === '$'
-        ) {
+        if (l >= 2) {
           return '/b/$';
         }
         if (l === 2) {
@@ -500,10 +571,16 @@ describe('work in progress', () => {
       ) {
         return '/posts/$slug';
       }
-      if (l === 3
-        && baseSegments[1].value === 'files'
-        && baseSegments[2].value === '$'
-      ) {
+      if (l >= 2 && baseSegments[1].value === 'cache' && baseSegments[2].value.startsWith('temp_') && baseSegments[l - 1].value.endsWith('.log')) {
+        return '/cache/temp_{$}.log';
+      }
+      if (l >= 2 && baseSegments[1].value === 'images' && baseSegments[2].value.startsWith('thumb_')) {
+        return '/images/thumb_{$}';
+      }
+      if (l >= 2 && baseSegments[1].value === 'logs' && baseSegments[l - 1].value.endsWith('.txt')) {
+        return '/logs/{$}.txt';
+      }
+      if (l >= 2 && baseSegments[1].value === 'files') {
         return '/files/$';
       }
       if (l === 2
@@ -540,8 +617,16 @@ describe('work in progress', () => {
     '/foo/123/qux',
     '/foo/qux',
     '/a/user-123',
+    '/a/123',
+    '/a/123/more',
+    '/files',
     '/files/hello-world.txt',
     '/something/foo/bar',
+    '/files/deep/nested/file.json',
+    '/files/',
+    '/images/thumb_200x300.jpg',
+    '/logs/error.txt',
+    '/cache/temp_user456.log',
   ])('matching %s', (s) => {
     const originalMatch = originalMatcher(s)
     const buildMatch = buildMatcher(parsePathname, s)
