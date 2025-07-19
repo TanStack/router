@@ -14,6 +14,10 @@ import {
   replaceEqualDeep,
 } from './utils'
 import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
   cleanPath,
   interpolatePath,
   joinPaths,
@@ -3278,12 +3282,12 @@ export function processRouteTree<TRouteLike extends RouteLike>({
       }
 
       let baseScore: number | undefined = undefined
-      if (segment.type === 'param') {
+      if (segment.type === SEGMENT_TYPE_PARAM) {
         baseScore = REQUIRED_PARAM_BASE_SCORE
-      } else if (segment.type === 'optional-param') {
+      } else if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
         baseScore = OPTIONAL_PARAM_BASE_SCORE
         optionalParamCount++
-      } else if (segment.type === 'wildcard') {
+      } else if (segment.type === SEGMENT_TYPE_WILDCARD) {
         baseScore = WILDCARD_PARAM_BASE_SCORE
       }
 
@@ -3293,7 +3297,10 @@ export function processRouteTree<TRouteLike extends RouteLike>({
         // JUST FOR SORTING, NOT FOR MATCHING
         for (let i = index + 1; i < parsed.length; i++) {
           const nextSegment = parsed[i]!
-          if (nextSegment.type === 'pathname' && nextSegment.value !== '/') {
+          if (
+            nextSegment.type === SEGMENT_TYPE_PATHNAME &&
+            nextSegment.value !== '/'
+          ) {
             hasStaticAfter = true
             return handleParam(segment, baseScore + 0.2)
           }
