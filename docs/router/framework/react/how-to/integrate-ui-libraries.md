@@ -677,7 +677,6 @@ export const RouterLink = createRouterComponent(Link)
    // Use CSS Modules with UI libraries
    import styles from './component.module.css'
    import { Button } from '@mui/material'
-
    ;<Button className={styles.customButton}>Click me</Button>
    ```
 
