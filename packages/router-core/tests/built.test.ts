@@ -173,12 +173,12 @@ describe('work in progress', () => {
     indent = '',
   ) {
     const resolved = new Set<ReturnType<typeof parsePathname>>()
-    for (const parsed of parsedRoutes) {
-      if (resolved.has(parsed)) continue // already resolved
+    for (const routeSegments of parsedRoutes) {
+      if (resolved.has(routeSegments)) continue // already resolved
       console.log('\n')
-      console.log('resolving: depth=', depth, 'parsed=', logParsed(parsed))
+      console.log('resolving: depth=', depth, 'parsed=', logParsed(routeSegments))
       console.log('\u001b[34m' + fn + '\u001b[0m')
-      const currentSegment = parsed[depth]
+      const currentSegment = routeSegments[depth]
       if (!currentSegment) {
         throw new Error('Implementation error: this should not happen')
       }
@@ -198,7 +198,7 @@ describe('work in progress', () => {
         throw new Error('Implementation error: this should not happen')
       }
       if (candidates.length > 1) {
-        let skipDepth = parsed.slice(depth + 1).findIndex((s, i) =>
+        let skipDepth = routeSegments.slice(depth + 1).findIndex((s, i) =>
           candidates.some((c) => {
             const segment = c[depth + 1 + i]
             return (
@@ -211,21 +211,19 @@ describe('work in progress', () => {
             )
           }),
         )
-        if (skipDepth === -1) skipDepth = parsed.length - depth - 1
+        if (skipDepth === -1) skipDepth = routeSegments.length - depth - 1
         const lCondition =
           skipDepth || depth > initialDepth
             ? `l > ${depth + skipDepth} && `
             : ''
-        const skipConditions = skipDepth
-          ? `\n${indent}  && ` +
-            Array.from(
-              { length: skipDepth },
-              (_, i) =>
-                `baseSegments[${depth + 1 + i}].type === ${candidates[0]![depth + 1 + i]!.type} && baseSegments[${depth + 1 + i}].value === '${candidates[0]![depth + 1 + i]!.value}'`,
-            ).join(`\n${indent}  && `) +
-            `\n${indent}`
-          : ''
-        fn += `\n${indent}if (${lCondition}baseSegments[${depth}].type === ${parsed[depth]!.type} && baseSegments[${depth}].value === '${parsed[depth]!.value}'${skipConditions}) {`
+        const skipConditions =
+          Array.from(
+            { length: skipDepth + 1 },
+            (_, i) =>
+              `baseSegments[${depth + i}].type === ${candidates[0]![depth + i]!.type} && baseSegments[${depth + i}].value === '${candidates[0]![depth + i]!.value}'`,
+          ).join(`\n${indent}  && `) +
+          (skipDepth ? `\n${indent}` : '')
+        fn += `\n${indent}if (${lCondition}${skipConditions}) {`
         const deeper = candidates.filter(
           (c) => c.length > depth + 1 + skipDepth,
         )
@@ -240,7 +238,7 @@ describe('work in progress', () => {
         }
         if (leaves.length > 1) {
           throw new Error(
-            `Multiple candidates found for depth ${depth} with type ${parsed[depth]!.type} and value ${parsed[depth]!.value}: ${leaves.map(logParsed).join(', ')}`,
+            `Multiple candidates found for depth ${depth} with type ${routeSegments[depth]!.type} and value ${routeSegments[depth]!.value}: ${leaves.map(logParsed).join(', ')}`,
           )
         } else if (leaves.length === 1) {
           // WARN: is it ok that the leaf is matched last?
