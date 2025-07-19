@@ -1,10 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import {
-  joinPaths,
-  parsePathname,
-  processRouteTree,
-  removeBasepath,
-} from '../src'
+import { expect, it } from 'vitest'
+import { joinPaths, parsePathname, processRouteTree } from '../src'
 
 interface TestRoute {
   id: string
@@ -115,21 +110,27 @@ it('work in progress', () => {
       console.log('\n')
       console.log('resolving: depth=', depth, 'parsed=', logParsed(parsed))
       console.log('\u001b[34m' + fn + '\u001b[0m')
+      const currentSegment = parsed[depth]
+      if (!currentSegment) {
+        // should not be possible
+        throw new Error(
+          `No segment found at depth ${depth} in parsed route: ${logParsed(parsed)}`,
+        ) // no segment at this depth, so we can't match
+      }
       const candidates = parsedRoutes.filter((r) => {
         const rParsed = r[depth]
         if (!rParsed) return false
         return (
-          parsed[depth] &&
-          rParsed.type === parsed[depth].type &&
-          rParsed.value === parsed[depth].value &&
-          rParsed.hasStaticAfter === parsed[depth].hasStaticAfter &&
-          rParsed.prefixSegment === parsed[depth].prefixSegment &&
-          rParsed.suffixSegment === parsed[depth].suffixSegment
+          rParsed.type === currentSegment.type &&
+          rParsed.value === currentSegment.value &&
+          rParsed.hasStaticAfter === currentSegment.hasStaticAfter &&
+          rParsed.prefixSegment === currentSegment.prefixSegment &&
+          rParsed.suffixSegment === currentSegment.suffixSegment
         )
       })
       console.log('candidates:', candidates.map(logParsed))
       if (candidates.length === 0) {
-        continue // TODO: this should not happen but it does, fix this
+        // should not be possible
         console.log(
           parsedRoutes.length,
           parsedRoutes.map((r) => r.map((s) => s.value).join('/')),
@@ -141,8 +142,8 @@ it('work in progress', () => {
       const indent = '  '.repeat(depth - initialDepth)
       fn += `\n${indent}if (l > ${depth} && s.type === ${parsed[depth]!.type} && s.value === '${parsed[depth]!.value}') {`
       if (candidates.length > 1) {
-        const deeper = candidates.filter((c) => c.length > depth - 1)
-        const leaves = candidates.filter((c) => c.length === depth - 1)
+        const deeper = candidates.filter((c) => c.length > depth + 1)
+        const leaves = candidates.filter((c) => c.length <= depth + 1)
         if (deeper.length > 0) {
           fn += `\n${indent}  const s = toSegments[${depth + 1}];`
           recursiveStaticMatch(deeper, depth + 1)
@@ -185,7 +186,7 @@ it('work in progress', () => {
         if (l > 3 && s.type === 0 && s.value === 'settings') {
           return '/a/profile/settings';
         }
-        return undefined;
+        return '/a/profile';
       }
       if (l > 2 && s.type === 1 && s.value === '$id') {
         return '/a/$id';
@@ -199,7 +200,7 @@ it('work in progress', () => {
       if (l > 2 && s.type === 2 && s.value === '$') {
         return '/a/$';
       }
-      return undefined;
+      return '/a';
     }
     if (l > 1 && s.type === 0 && s.value === 'b') {
       const s = toSegments[2];
@@ -208,7 +209,7 @@ it('work in progress', () => {
         if (l > 3 && s.type === 0 && s.value === 'settings') {
           return '/b/profile/settings';
         }
-        return undefined;
+        return '/b/profile';
       }
       if (l > 2 && s.type === 1 && s.value === '$id') {
         return '/b/$id';
@@ -222,7 +223,7 @@ it('work in progress', () => {
       if (l > 2 && s.type === 2 && s.value === '$') {
         return '/b/$';
       }
-      return undefined;
+      return '/b';
     }
     if (l > 1 && s.type === 0 && s.value === 'users') {
       const s = toSegments[2];
@@ -231,7 +232,7 @@ it('work in progress', () => {
         if (l > 3 && s.type === 0 && s.value === 'settings') {
           return '/users/profile/settings';
         }
-        return undefined;
+        return '/users/profile';
       }
       if (l > 2 && s.type === 1 && s.value === '$id') {
         return '/users/$id';
