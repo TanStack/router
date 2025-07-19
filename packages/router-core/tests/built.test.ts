@@ -5,6 +5,7 @@ import {
   parsePathname,
   processRouteTree,
 } from '../src'
+import { SEGMENT_TYPE_OPTIONAL_PARAM, SEGMENT_TYPE_PARAM, SEGMENT_TYPE_PATHNAME, SEGMENT_TYPE_WILDCARD } from "../src/path"
 
 interface TestRoute {
   id: string
@@ -177,7 +178,7 @@ describe('work in progress', () => {
       .map((s) =>
         s.value === '/'
           ? ''
-          : `${s.prefixSegment ?? ''}${s.prefixSegment || s.suffixSegment ? '{' : ''}${s.value}${s.prefixSegment || s.suffixSegment ? '}' : ''}${s.suffixSegment ?? ''}`,
+          : `${s.prefixSegment ?? ''}${s.prefixSegment || s.suffixSegment || s.type === SEGMENT_TYPE_OPTIONAL_PARAM ? '{' : ''}${s.type === SEGMENT_TYPE_OPTIONAL_PARAM ? '-' : ''}${s.value}${s.prefixSegment || s.suffixSegment || s.type === SEGMENT_TYPE_OPTIONAL_PARAM ? '}' : ''}${s.suffixSegment ?? ''}`,
       )
       .join('/')}`
 
@@ -205,8 +206,8 @@ describe('work in progress', () => {
       if (!currentSegment) {
         throw new Error(
           'Implementation error: this should not happen, depth=' +
-            depth +
-            `, route=${rebuildPath(routeSegments)}`,
+          depth +
+          `, route=${rebuildPath(routeSegments)}`,
         )
       }
       const candidates = parsedRoutes.filter((r) => {
@@ -214,18 +215,18 @@ describe('work in progress', () => {
         if (!rParsed) return false
 
         // For SEGMENT_TYPE_PARAM (type 1), match only on type and prefix/suffix constraints
-        if (currentSegment.type === 1) {
+        if (currentSegment.type === SEGMENT_TYPE_PARAM) {
           return (
-            rParsed.type === 1 &&
+            rParsed.type === SEGMENT_TYPE_PARAM &&
             rParsed.prefixSegment === currentSegment.prefixSegment &&
             rParsed.suffixSegment === currentSegment.suffixSegment
           )
         }
 
         // For SEGMENT_TYPE_WILDCARD (type 2), match only on type and prefix/suffix constraints
-        if (currentSegment.type === 2) {
+        if (currentSegment.type === SEGMENT_TYPE_WILDCARD) {
           return (
-            rParsed.type === 2 &&
+            rParsed.type === SEGMENT_TYPE_WILDCARD &&
             rParsed.prefixSegment === currentSegment.prefixSegment &&
             rParsed.suffixSegment === currentSegment.suffixSegment
           )
@@ -264,7 +265,7 @@ describe('work in progress', () => {
         const skipConditions =
           Array.from({ length: skipDepth + 1 }, (_, i) => {
             const segment = candidates[0]![depth + i]!
-            if (segment.type === 1) {
+            if (segment.type === SEGMENT_TYPE_PARAM) {
               const conditions = []
               if (segment.prefixSegment) {
                 conditions.push(
@@ -278,7 +279,7 @@ describe('work in progress', () => {
               }
               return conditions.join(' && ')
             }
-            if (segment.type === 2) {
+            if (segment.type === SEGMENT_TYPE_WILDCARD) {
               // Wildcards consume all remaining segments, no checking needed
               return ''
             }
@@ -326,7 +327,7 @@ describe('work in progress', () => {
         const leaf = candidates[0]!
 
         // Check if this route contains a wildcard segment
-        const wildcardIndex = leaf.findIndex((s) => s && s.type === 2)
+        const wildcardIndex = leaf.findIndex((s) => s && s.type === SEGMENT_TYPE_WILDCARD)
 
         if (wildcardIndex !== -1 && wildcardIndex >= depth) {
           // This route has a wildcard at or after the current depth
@@ -345,7 +346,7 @@ describe('work in progress', () => {
             const segment = leaf[i]!
             const value = `baseSegments[${i}].value`
 
-            if (segment.type === 1) {
+            if (segment.type === SEGMENT_TYPE_PARAM) {
               // Parameter segment
               if (segment.prefixSegment) {
                 conditions.push(
@@ -355,7 +356,7 @@ describe('work in progress', () => {
               if (segment.suffixSegment) {
                 conditions.push(`${value}.endsWith('${segment.suffixSegment}')`)
               }
-            } else if (segment.type === 0) {
+            } else if (segment.type === SEGMENT_TYPE_PATHNAME) {
               // Static segment
               conditions.push(`${value} === '${segment.value}'`)
             }
@@ -389,7 +390,7 @@ describe('work in progress', () => {
             const value = `baseSegments[${i}].value`
 
             // For SEGMENT_TYPE_PARAM (type 1), check if base has static segment (type 0) that satisfies constraints
-            if (segment.type === 1) {
+            if (segment.type === SEGMENT_TYPE_PARAM) {
               if (segment.prefixSegment || segment.suffixSegment) {
                 fn += `\n${indent}  `
               }
@@ -453,7 +454,7 @@ describe('work in progress', () => {
           if (l === 3
             && baseSegments[2].value === '$slug'
           ) {
-            return '/a/$slug';
+            return '/a/{-$slug}';
           }
           if (l >= 2) {
             return '/a/$';
@@ -508,7 +509,7 @@ describe('work in progress', () => {
           if (l === 3
             && baseSegments[2].value === '$slug'
           ) {
-            return '/b/$slug';
+            return '/b/{-$slug}';
           }
           if (l >= 2) {
             return '/b/$';
@@ -553,7 +554,7 @@ describe('work in progress', () => {
             && baseSegments[2].value === '$bar'
             && baseSegments[3].value === 'qux'
           ) {
-            return '/foo/$bar/qux';
+            return '/foo/{-$bar}/qux';
           }
         }
         if (l === 3
@@ -582,7 +583,7 @@ describe('work in progress', () => {
           && baseSegments[1].value === 'posts'
           && baseSegments[2].value === '$slug'
         ) {
-          return '/posts/$slug';
+          return '/posts/{-$slug}';
         }
         if (l >= 2 && baseSegments[1].value === 'cache' && baseSegments[2].value.startsWith('temp_') && baseSegments[l - 1].value.endsWith('.log')) {
           return '/cache/temp_{$}.log';
