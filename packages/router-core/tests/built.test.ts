@@ -94,6 +94,10 @@ const routeTree = createRouteTree([
   '/beep/boop',
   '/one/two',
   '/one',
+  '/z/y/x/w',
+  '/z/y/x/v',
+  '/z/y/x/u',
+  '/z/y/x',
 ])
 
 const result = processRouteTree({ routeTree })
@@ -110,9 +114,13 @@ describe('work in progress', () => {
     expect(result.flatRoutes.map((r) => r.id)).toMatchInlineSnapshot(`
       [
         "/a/b/c/d/e/f",
+        "/z/y/x/u",
+        "/z/y/x/v",
+        "/z/y/x/w",
         "/a/profile/settings",
         "/b/profile/settings",
         "/users/profile/settings",
+        "/z/y/x",
         "/foo/bar/$id",
         "/a/profile",
         "/b/profile",
@@ -158,11 +166,11 @@ describe('work in progress', () => {
   const initialDepth = 1
   let fn = 'const baseSegments = parsePathname(from);'
   fn += '\nconst l = baseSegments.length;'
-  fn += `\nconst {type, value} = baseSegments[${initialDepth}];`
 
   function recursiveStaticMatch(
     parsedRoutes: Array<ReturnType<typeof parsePathname>>,
     depth = initialDepth,
+    indent = '',
   ) {
     const resolved = new Set<ReturnType<typeof parsePathname>>()
     for (const parsed of parsedRoutes) {
@@ -189,24 +197,31 @@ describe('work in progress', () => {
       if (candidates.length === 0) {
         throw new Error('Implementation error: this should not happen')
       }
-      const indent = '  '.repeat(depth - initialDepth)
-      const lCondition = depth > initialDepth ? `l > ${depth} && ` : ''
       if (candidates.length > 1) {
-        fn += `\n${indent}if (${lCondition}type === ${parsed[depth]!.type} && value === '${parsed[depth]!.value}') {`
-        const deeper = candidates.filter((c) => c.length > depth + 1)
-        const leaves = candidates.filter((c) => c.length === depth + 1)
+        let skipDepth = parsed.slice(depth + 1).findIndex((s, i) => candidates.some(c => {
+          const segment = c[depth + 1 + i]
+          return !segment || segment.type !== s.type || segment.value !== s.value || segment.hasStaticAfter !== s.hasStaticAfter || segment.prefixSegment !== s.prefixSegment || segment.suffixSegment !== s.suffixSegment
+        }))
+        if (skipDepth === -1) skipDepth = parsed.length - depth - 1
+        const lCondition = skipDepth || depth > initialDepth ? `l > ${depth + skipDepth} && ` : ''
+        const skipConditions = skipDepth
+          ? `\n${indent}  && ` + Array.from({ length: skipDepth }, (_, i) => `baseSegments[${depth + 1 + i}].type === ${candidates[0]![depth + 1 + i]!.type} && baseSegments[${depth + 1 + i}].value === '${candidates[0]![depth + 1 + i]!.value}'`).join(`\n${indent}  && `) + `\n${indent}`
+          : ''
+        fn += `\n${indent}if (${lCondition}baseSegments[${depth}].type === ${parsed[depth]!.type} && baseSegments[${depth}].value === '${parsed[depth]!.value}'${skipConditions}) {`
+        const deeper = candidates.filter((c) => c.length > depth + 1 + skipDepth)
+        const leaves = candidates.filter((c) => c.length <= depth + 1 + skipDepth)
         if (deeper.length + leaves.length !== candidates.length) {
           throw new Error('Implementation error: this should not happen')
         }
         if (deeper.length > 0) {
-          fn += `\n${indent}  const {type, value} = baseSegments[${depth + 1}];`
-          recursiveStaticMatch(deeper, depth + 1)
+          recursiveStaticMatch(deeper, depth + 1 + skipDepth, indent + '  ')
         }
         if (leaves.length > 1) {
           throw new Error(
             `Multiple candidates found for depth ${depth} with type ${parsed[depth]!.type} and value ${parsed[depth]!.value}: ${leaves.map(logParsed).join(', ')}`,
           )
         } else if (leaves.length === 1) {
+          // WARN: is it ok that the leaf is matched last?
           fn += `\n${indent}  if (l === ${leaves[0]!.length}) {`
           fn += `\n${indent}    return '/${leaves[0]!
             .slice(1)
@@ -223,8 +238,8 @@ describe('work in progress', () => {
         fn += `\n${indent}if (l === ${leaf.length}`
         for (let i = depth; i < leaf.length; i++) {
           const segment = leaf[i]!
-          const type = i === depth ? 'type' : `baseSegments[${i}].type`
-          const value = i === depth ? 'value' : `baseSegments[${i}].value`
+          const type = `baseSegments[${i}].type`
+          const value = `baseSegments[${i}].value`
           fn += `\n${indent}  && ${type} === ${segment.type} && ${value} === '${segment.value}'`
         }
         fn += `\n${indent}) {`
@@ -241,11 +256,9 @@ describe('work in progress', () => {
     expect(fn).toMatchInlineSnapshot(`
       "const baseSegments = parsePathname(from);
       const l = baseSegments.length;
-      const {type, value} = baseSegments[1];
-      if (type === 0 && value === 'a') {
-        const {type, value} = baseSegments[2];
+      if (baseSegments[1].type === 0 && baseSegments[1].value === 'a') {
         if (l === 7
-          && type === 0 && value === 'b'
+          && baseSegments[2].type === 0 && baseSegments[2].value === 'b'
           && baseSegments[3].type === 0 && baseSegments[3].value === 'c'
           && baseSegments[4].type === 0 && baseSegments[4].value === 'd'
           && baseSegments[5].type === 0 && baseSegments[5].value === 'e'
@@ -253,10 +266,9 @@ describe('work in progress', () => {
         ) {
           return '/a/b/c/d/e/f';
         }
-        if (l > 2 && type === 0 && value === 'profile') {
-          const {type, value} = baseSegments[3];
+        if (l > 2 && baseSegments[2].type === 0 && baseSegments[2].value === 'profile') {
           if (l === 4
-            && type === 0 && value === 'settings'
+            && baseSegments[3].type === 0 && baseSegments[3].value === 'settings'
           ) {
             return '/a/profile/settings';
           }
@@ -265,22 +277,22 @@ describe('work in progress', () => {
           }
         }
         if (l === 3
-          && type === 1 && value === '$id'
+          && baseSegments[2].type === 1 && baseSegments[2].value === '$id'
         ) {
           return '/a/$id';
         }
         if (l === 3
-          && type === 1 && value === '$id'
+          && baseSegments[2].type === 1 && baseSegments[2].value === '$id'
         ) {
           return '/a/$id';
         }
         if (l === 3
-          && type === 3 && value === '$slug'
+          && baseSegments[2].type === 3 && baseSegments[2].value === '$slug'
         ) {
           return '/a/$slug';
         }
         if (l === 3
-          && type === 2 && value === '$'
+          && baseSegments[2].type === 2 && baseSegments[2].value === '$'
         ) {
           return '/a/$';
         }
@@ -288,12 +300,33 @@ describe('work in progress', () => {
           return '/a';
         }
       }
-      if (type === 0 && value === 'b') {
-        const {type, value} = baseSegments[2];
-        if (l > 2 && type === 0 && value === 'profile') {
-          const {type, value} = baseSegments[3];
+      if (l > 3 && baseSegments[1].type === 0 && baseSegments[1].value === 'z'
+        && baseSegments[2].type === 0 && baseSegments[2].value === 'y'
+        && baseSegments[3].type === 0 && baseSegments[3].value === 'x'
+      ) {
+        if (l === 5
+          && baseSegments[4].type === 0 && baseSegments[4].value === 'u'
+        ) {
+          return '/z/y/x/u';
+        }
+        if (l === 5
+          && baseSegments[4].type === 0 && baseSegments[4].value === 'v'
+        ) {
+          return '/z/y/x/v';
+        }
+        if (l === 5
+          && baseSegments[4].type === 0 && baseSegments[4].value === 'w'
+        ) {
+          return '/z/y/x/w';
+        }
+        if (l === 4) {
+          return '/z/y/x';
+        }
+      }
+      if (baseSegments[1].type === 0 && baseSegments[1].value === 'b') {
+        if (l > 2 && baseSegments[2].type === 0 && baseSegments[2].value === 'profile') {
           if (l === 4
-            && type === 0 && value === 'settings'
+            && baseSegments[3].type === 0 && baseSegments[3].value === 'settings'
           ) {
             return '/b/profile/settings';
           }
@@ -302,22 +335,22 @@ describe('work in progress', () => {
           }
         }
         if (l === 3
-          && type === 1 && value === '$id'
+          && baseSegments[2].type === 1 && baseSegments[2].value === '$id'
         ) {
           return '/b/$id';
         }
         if (l === 3
-          && type === 1 && value === '$id'
+          && baseSegments[2].type === 1 && baseSegments[2].value === '$id'
         ) {
           return '/b/$id';
         }
         if (l === 3
-          && type === 3 && value === '$slug'
+          && baseSegments[2].type === 3 && baseSegments[2].value === '$slug'
         ) {
           return '/b/$slug';
         }
         if (l === 3
-          && type === 2 && value === '$'
+          && baseSegments[2].type === 2 && baseSegments[2].value === '$'
         ) {
           return '/b/$';
         }
@@ -325,12 +358,10 @@ describe('work in progress', () => {
           return '/b';
         }
       }
-      if (type === 0 && value === 'users') {
-        const {type, value} = baseSegments[2];
-        if (l > 2 && type === 0 && value === 'profile') {
-          const {type, value} = baseSegments[3];
+      if (baseSegments[1].type === 0 && baseSegments[1].value === 'users') {
+        if (l > 2 && baseSegments[2].type === 0 && baseSegments[2].value === 'profile') {
           if (l === 4
-            && type === 0 && value === 'settings'
+            && baseSegments[3].type === 0 && baseSegments[3].value === 'settings'
           ) {
             return '/users/profile/settings';
           }
@@ -339,48 +370,46 @@ describe('work in progress', () => {
           }
         }
         if (l === 3
-          && type === 1 && value === '$id'
+          && baseSegments[2].type === 1 && baseSegments[2].value === '$id'
         ) {
           return '/users/$id';
         }
       }
-      if (type === 0 && value === 'foo') {
-        const {type, value} = baseSegments[2];
+      if (baseSegments[1].type === 0 && baseSegments[1].value === 'foo') {
         if (l === 4
-          && type === 0 && value === 'bar'
+          && baseSegments[2].type === 0 && baseSegments[2].value === 'bar'
           && baseSegments[3].type === 1 && baseSegments[3].value === '$id'
         ) {
           return '/foo/bar/$id';
         }
         if (l === 4
-          && type === 1 && value === '$id'
+          && baseSegments[2].type === 1 && baseSegments[2].value === '$id'
           && baseSegments[3].type === 0 && baseSegments[3].value === 'bar'
         ) {
           return '/foo/$id/bar';
         }
         if (l === 4
-          && type === 3 && value === '$bar'
+          && baseSegments[2].type === 3 && baseSegments[2].value === '$bar'
           && baseSegments[3].type === 0 && baseSegments[3].value === 'qux'
         ) {
           return '/foo/$bar/qux';
         }
         if (l === 4
-          && type === 1 && value === '$bar'
+          && baseSegments[2].type === 1 && baseSegments[2].value === '$bar'
           && baseSegments[3].type === 0 && baseSegments[3].value === '/'
         ) {
           return '/foo/$bar/';
         }
       }
       if (l === 3
-        && type === 0 && value === 'beep'
+        && baseSegments[1].type === 0 && baseSegments[1].value === 'beep'
         && baseSegments[2].type === 0 && baseSegments[2].value === 'boop'
       ) {
         return '/beep/boop';
       }
-      if (type === 0 && value === 'one') {
-        const {type, value} = baseSegments[2];
+      if (baseSegments[1].type === 0 && baseSegments[1].value === 'one') {
         if (l === 3
-          && type === 0 && value === 'two'
+          && baseSegments[2].type === 0 && baseSegments[2].value === 'two'
         ) {
           return '/one/two';
         }
@@ -389,38 +418,37 @@ describe('work in progress', () => {
         }
       }
       if (l === 3
-        && type === 0 && value === 'api'
+        && baseSegments[1].type === 0 && baseSegments[1].value === 'api'
         && baseSegments[2].type === 1 && baseSegments[2].value === '$id'
       ) {
         return '/api/$id';
       }
       if (l === 3
-        && type === 0 && value === 'posts'
+        && baseSegments[1].type === 0 && baseSegments[1].value === 'posts'
         && baseSegments[2].type === 3 && baseSegments[2].value === '$slug'
       ) {
         return '/posts/$slug';
       }
       if (l === 3
-        && type === 0 && value === 'files'
+        && baseSegments[1].type === 0 && baseSegments[1].value === 'files'
         && baseSegments[2].type === 2 && baseSegments[2].value === '$'
       ) {
         return '/files/$';
       }
       if (l === 2
-        && type === 0 && value === 'about'
+        && baseSegments[1].type === 0 && baseSegments[1].value === 'about'
       ) {
         return '/about';
       }
-      if (type === 1 && value === '$id') {
-        const {type, value} = baseSegments[2];
+      if (baseSegments[1].type === 1 && baseSegments[1].value === '$id') {
         if (l === 4
-          && type === 0 && value === 'bar'
+          && baseSegments[2].type === 0 && baseSegments[2].value === 'bar'
           && baseSegments[3].type === 0 && baseSegments[3].value === 'foo'
         ) {
           return '/$id/bar/foo';
         }
         if (l === 4
-          && type === 0 && value === 'foo'
+          && baseSegments[2].type === 0 && baseSegments[2].value === 'foo'
           && baseSegments[3].type === 0 && baseSegments[3].value === 'bar'
         ) {
           return '/$id/foo/bar';
@@ -440,6 +468,9 @@ describe('work in progress', () => {
     '/foo/123',
     '/b/$id',
     '/b/123',
+    '/foo/{-$bar}/qux',
+    '/foo/123/qux',
+    '/foo/qux',
   ])('matching %s', (s) => {
     const originalMatch = originalMatcher(s)
     const buildMatch = buildMatcher(parsePathname, s)
