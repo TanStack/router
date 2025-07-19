@@ -2,8 +2,17 @@ import { last } from './utils'
 import type { MatchLocation } from './RouterProvider'
 import type { AnyPathParams } from './route'
 
+export const SEGMENT_TYPE_PATHNAME = 0
+export const SEGMENT_TYPE_PARAM = 1
+export const SEGMENT_TYPE_WILDCARD = 2
+export const SEGMENT_TYPE_OPTIONAL_PARAM = 3
+
 export interface Segment {
-  readonly type: 'pathname' | 'param' | 'wildcard' | 'optional-param'
+  readonly type:
+    | typeof SEGMENT_TYPE_PATHNAME
+    | typeof SEGMENT_TYPE_PARAM
+    | typeof SEGMENT_TYPE_WILDCARD
+    | typeof SEGMENT_TYPE_OPTIONAL_PARAM
   readonly value: string
   readonly prefixSegment?: string
   readonly suffixSegment?: string
@@ -95,45 +104,48 @@ interface ResolvePathOptions {
 }
 
 function segmentToString(segment: Segment): string {
-  if (segment.type === 'pathname') {
-    return segment.value
+  const { type, value } = segment
+  if (type === SEGMENT_TYPE_PATHNAME) {
+    return value
   }
 
-  if (segment.type === 'param') {
-    const param = segment.value.substring(1)
-    if (segment.prefixSegment && segment.suffixSegment) {
-      return `${segment.prefixSegment}{$${param}}${segment.suffixSegment}`
-    } else if (segment.prefixSegment) {
-      return `${segment.prefixSegment}{$${param}}`
-    } else if (segment.suffixSegment) {
-      return `{$${param}}${segment.suffixSegment}`
+  const { prefixSegment, suffixSegment } = segment
+
+  if (type === SEGMENT_TYPE_PARAM) {
+    const param = value.substring(1)
+    if (prefixSegment && suffixSegment) {
+      return `${prefixSegment}{$${param}}${suffixSegment}`
+    } else if (prefixSegment) {
+      return `${prefixSegment}{$${param}}`
+    } else if (suffixSegment) {
+      return `{$${param}}${suffixSegment}`
     }
   }
 
-  if (segment.type === 'optional-param') {
-    const param = segment.value.substring(1)
-    if (segment.prefixSegment && segment.suffixSegment) {
-      return `${segment.prefixSegment}{-$${param}}${segment.suffixSegment}`
-    } else if (segment.prefixSegment) {
-      return `${segment.prefixSegment}{-$${param}}`
-    } else if (segment.suffixSegment) {
-      return `{-$${param}}${segment.suffixSegment}`
+  if (type === SEGMENT_TYPE_OPTIONAL_PARAM) {
+    const param = value.substring(1)
+    if (prefixSegment && suffixSegment) {
+      return `${prefixSegment}{-$${param}}${suffixSegment}`
+    } else if (prefixSegment) {
+      return `${prefixSegment}{-$${param}}`
+    } else if (suffixSegment) {
+      return `{-$${param}}${suffixSegment}`
     }
     return `{-$${param}}`
   }
 
-  if (segment.type === 'wildcard') {
-    if (segment.prefixSegment && segment.suffixSegment) {
-      return `${segment.prefixSegment}{$}${segment.suffixSegment}`
-    } else if (segment.prefixSegment) {
-      return `${segment.prefixSegment}{$}`
-    } else if (segment.suffixSegment) {
-      return `{$}${segment.suffixSegment}`
+  if (type === SEGMENT_TYPE_WILDCARD) {
+    if (prefixSegment && suffixSegment) {
+      return `${prefixSegment}{$}${suffixSegment}`
+    } else if (prefixSegment) {
+      return `${prefixSegment}{$}`
+    } else if (suffixSegment) {
+      return `{$}${suffixSegment}`
     }
   }
 
   // This case should never happen, should we throw instead?
-  return segment.value
+  return value
 }
 
 export function resolvePath({
@@ -181,7 +193,7 @@ export function resolvePath({
         baseSegments.pop()
       }
     } else if (trailingSlash === 'always') {
-      baseSegments.push({ type: 'pathname', value: '/' })
+      baseSegments.push({ type: SEGMENT_TYPE_PATHNAME, value: '/' })
     }
   }
 
@@ -227,7 +239,7 @@ export function parsePathname(pathname?: string): ReadonlyArray<Segment> {
   if (pathname.slice(0, 1) === '/') {
     pathname = pathname.substring(1)
     segments.push({
-      type: 'pathname',
+      type: SEGMENT_TYPE_PATHNAME,
       value: '/',
     })
   }
@@ -247,7 +259,7 @@ export function parsePathname(pathname?: string): ReadonlyArray<Segment> {
         const prefix = wildcardBracesMatch[1]
         const suffix = wildcardBracesMatch[2]
         return {
-          type: 'wildcard',
+          type: SEGMENT_TYPE_WILDCARD,
           value: '$',
           prefixSegment: prefix || undefined,
           suffixSegment: suffix || undefined,
@@ -263,7 +275,7 @@ export function parsePathname(pathname?: string): ReadonlyArray<Segment> {
         const paramName = optionalParamBracesMatch[2]!
         const suffix = optionalParamBracesMatch[3]
         return {
-          type: 'optional-param',
+          type: SEGMENT_TYPE_OPTIONAL_PARAM,
           value: paramName, // Now just $paramName (no prefix)
           prefixSegment: prefix || undefined,
           suffixSegment: suffix || undefined,
@@ -277,7 +289,7 @@ export function parsePathname(pathname?: string): ReadonlyArray<Segment> {
         const paramName = paramBracesMatch[2]
         const suffix = paramBracesMatch[3]
         return {
-          type: 'param',
+          type: SEGMENT_TYPE_PARAM,
           value: '' + paramName,
           prefixSegment: prefix || undefined,
           suffixSegment: suffix || undefined,
@@ -288,7 +300,7 @@ export function parsePathname(pathname?: string): ReadonlyArray<Segment> {
       if (PARAM_RE.test(part)) {
         const paramName = part.substring(1)
         return {
-          type: 'param',
+          type: SEGMENT_TYPE_PARAM,
           value: '$' + paramName,
           prefixSegment: undefined,
           suffixSegment: undefined,
@@ -298,7 +310,7 @@ export function parsePathname(pathname?: string): ReadonlyArray<Segment> {
       // Check for bare wildcard: $ (without curly braces)
       if (WILDCARD_RE.test(part)) {
         return {
-          type: 'wildcard',
+          type: SEGMENT_TYPE_WILDCARD,
           value: '$',
           prefixSegment: undefined,
           suffixSegment: undefined,
@@ -307,7 +319,7 @@ export function parsePathname(pathname?: string): ReadonlyArray<Segment> {
 
       // Handle regular pathname segment
       return {
-        type: 'pathname',
+        type: SEGMENT_TYPE_PATHNAME,
         value: part.includes('%25')
           ? part
               .split('%25')
@@ -321,7 +333,7 @@ export function parsePathname(pathname?: string): ReadonlyArray<Segment> {
   if (pathname.slice(-1) === '/') {
     pathname = pathname.substring(1)
     segments.push({
-      type: 'pathname',
+      type: SEGMENT_TYPE_PATHNAME,
       value: '/',
     })
   }
@@ -371,11 +383,11 @@ export function interpolatePath({
   const usedParams: Record<string, unknown> = {}
   const interpolatedPath = joinPaths(
     interpolatedPathSegments.map((segment) => {
-      if (segment.type === 'pathname') {
+      if (segment.type === SEGMENT_TYPE_PATHNAME) {
         return segment.value
       }
 
-      if (segment.type === 'wildcard') {
+      if (segment.type === SEGMENT_TYPE_WILDCARD) {
         usedParams._splat = params._splat
         const segmentPrefix = segment.prefixSegment || ''
         const segmentSuffix = segment.suffixSegment || ''
@@ -401,7 +413,7 @@ export function interpolatePath({
         return `${segmentPrefix}${value}${segmentSuffix}`
       }
 
-      if (segment.type === 'param') {
+      if (segment.type === SEGMENT_TYPE_PARAM) {
         const key = segment.value.substring(1)
         if (!isMissingParams && !(key in params)) {
           isMissingParams = true
@@ -417,7 +429,7 @@ export function interpolatePath({
         return `${segmentPrefix}${encodeParam(key) ?? 'undefined'}${segmentSuffix}`
       }
 
-      if (segment.type === 'optional-param') {
+      if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
         const key = segment.value.substring(1)
 
         const segmentPrefix = segment.prefixSegment || ''
@@ -567,7 +579,7 @@ function isMatch(
     const isLastRouteSegment = routeIndex >= routeSegments.length - 1
 
     if (routeSegment) {
-      if (routeSegment.type === 'wildcard') {
+      if (routeSegment.type === SEGMENT_TYPE_WILDCARD) {
         // Capture all remaining segments for a wildcard
         const remainingBaseSegments = baseSegments.slice(baseIndex)
 
@@ -625,7 +637,7 @@ function isMatch(
         return true
       }
 
-      if (routeSegment.type === 'pathname') {
+      if (routeSegment.type === SEGMENT_TYPE_PATHNAME) {
         if (routeSegment.value === '/' && !baseSegment?.value) {
           routeIndex++
           continue
@@ -649,7 +661,7 @@ function isMatch(
         }
       }
 
-      if (routeSegment.type === 'param') {
+      if (routeSegment.type === SEGMENT_TYPE_PARAM) {
         if (!baseSegment) {
           return false
         }
@@ -700,7 +712,7 @@ function isMatch(
         continue
       }
 
-      if (routeSegment.type === 'optional-param') {
+      if (routeSegment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
         // Optional parameters can be missing - don't fail the match
         if (!baseSegment) {
           // No base segment for optional param - skip this route segment
@@ -755,7 +767,7 @@ function isMatch(
           ) {
             const futureRouteSegment = routeSegments[lookAhead]
             if (
-              futureRouteSegment?.type === 'pathname' &&
+              futureRouteSegment?.type === SEGMENT_TYPE_PATHNAME &&
               futureRouteSegment.value === baseSegment.value
             ) {
               // The current base segment matches a future pathname segment,
@@ -766,8 +778,8 @@ function isMatch(
 
             // If we encounter a required param or wildcard, stop looking ahead
             if (
-              futureRouteSegment?.type === 'param' ||
-              futureRouteSegment?.type === 'wildcard'
+              futureRouteSegment?.type === SEGMENT_TYPE_PARAM ||
+              futureRouteSegment?.type === SEGMENT_TYPE_WILDCARD
             ) {
               break
             }
@@ -806,7 +818,7 @@ function isMatch(
     if (routeIndex < routeSegments.length && baseIndex >= baseSegments.length) {
       // Check if all remaining route segments are optional
       for (let i = routeIndex; i < routeSegments.length; i++) {
-        if (routeSegments[i]?.type !== 'optional-param') {
+        if (routeSegments[i]?.type !== SEGMENT_TYPE_OPTIONAL_PARAM) {
           return false
         }
       }
