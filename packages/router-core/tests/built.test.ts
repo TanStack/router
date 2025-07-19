@@ -198,18 +198,40 @@ describe('work in progress', () => {
         throw new Error('Implementation error: this should not happen')
       }
       if (candidates.length > 1) {
-        let skipDepth = parsed.slice(depth + 1).findIndex((s, i) => candidates.some(c => {
-          const segment = c[depth + 1 + i]
-          return !segment || segment.type !== s.type || segment.value !== s.value || segment.hasStaticAfter !== s.hasStaticAfter || segment.prefixSegment !== s.prefixSegment || segment.suffixSegment !== s.suffixSegment
-        }))
+        let skipDepth = parsed.slice(depth + 1).findIndex((s, i) =>
+          candidates.some((c) => {
+            const segment = c[depth + 1 + i]
+            return (
+              !segment ||
+              segment.type !== s.type ||
+              segment.value !== s.value ||
+              segment.hasStaticAfter !== s.hasStaticAfter ||
+              segment.prefixSegment !== s.prefixSegment ||
+              segment.suffixSegment !== s.suffixSegment
+            )
+          }),
+        )
         if (skipDepth === -1) skipDepth = parsed.length - depth - 1
-        const lCondition = skipDepth || depth > initialDepth ? `l > ${depth + skipDepth} && ` : ''
+        const lCondition =
+          skipDepth || depth > initialDepth
+            ? `l > ${depth + skipDepth} && `
+            : ''
         const skipConditions = skipDepth
-          ? `\n${indent}  && ` + Array.from({ length: skipDepth }, (_, i) => `baseSegments[${depth + 1 + i}].type === ${candidates[0]![depth + 1 + i]!.type} && baseSegments[${depth + 1 + i}].value === '${candidates[0]![depth + 1 + i]!.value}'`).join(`\n${indent}  && `) + `\n${indent}`
+          ? `\n${indent}  && ` +
+            Array.from(
+              { length: skipDepth },
+              (_, i) =>
+                `baseSegments[${depth + 1 + i}].type === ${candidates[0]![depth + 1 + i]!.type} && baseSegments[${depth + 1 + i}].value === '${candidates[0]![depth + 1 + i]!.value}'`,
+            ).join(`\n${indent}  && `) +
+            `\n${indent}`
           : ''
         fn += `\n${indent}if (${lCondition}baseSegments[${depth}].type === ${parsed[depth]!.type} && baseSegments[${depth}].value === '${parsed[depth]!.value}'${skipConditions}) {`
-        const deeper = candidates.filter((c) => c.length > depth + 1 + skipDepth)
-        const leaves = candidates.filter((c) => c.length <= depth + 1 + skipDepth)
+        const deeper = candidates.filter(
+          (c) => c.length > depth + 1 + skipDepth,
+        )
+        const leaves = candidates.filter(
+          (c) => c.length <= depth + 1 + skipDepth,
+        )
         if (deeper.length + leaves.length !== candidates.length) {
           throw new Error('Implementation error: this should not happen')
         }
