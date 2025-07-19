@@ -3246,7 +3246,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
   const scoredRoutes: Array<{
     child: TRouteLike
     trimmed: string
-    parsed: Array<Segment>
+    parsed: ReadonlyArray<Segment>
     index: number
     scores: Array<number>
     hasStaticAfter: boolean
@@ -3261,12 +3261,14 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     }
 
     const trimmed = trimPathLeft(d.fullPath)
-    const parsed = parsePathname(trimmed)
+    let parsed = parsePathname(trimmed)
 
     // Removes the leading slash if it is not the only remaining segment
-    while (parsed.length > 1 && parsed[0]?.value === '/') {
-      parsed.shift()
+    let skip = 0
+    while (parsed.length > skip + 1 && parsed[skip]?.value === '/') {
+      skip++
     }
+    if (skip > 0) parsed = parsed.slice(skip)
 
     let optionalParamCount = 0
     let hasStaticAfter = false
@@ -3412,8 +3414,9 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 
   while (routeCursor.parentRoute) {
     routeCursor = routeCursor.parentRoute as TRouteLike
-    matchedRoutes.unshift(routeCursor)
+    matchedRoutes.push(routeCursor)
   }
+  matchedRoutes.reverse()
 
   return { matchedRoutes, routeParams, foundRoute }
 }
