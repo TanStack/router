@@ -11,6 +11,7 @@ This directory contains focused, step-by-step instructions for common TanStack R
 
 - [Install TanStack Router](./install.md) - Basic installation steps
 - [Deploy to Production](./deploy-to-production.md) - Deploy your app to hosting platforms
+- [Set Up Authentication and Protected Routes](./setup-authentication.md) - Implement auth patterns and route protection
 
 ## Using These Guides
 
