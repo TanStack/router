@@ -11,7 +11,9 @@ This directory contains focused, step-by-step instructions for common TanStack R
 
 - [Install TanStack Router](./install.md) - Basic installation steps
 - [Deploy to Production](./deploy-to-production.md) - Deploy your app to hosting platforms
-- [Set Up Authentication and Protected Routes](./setup-authentication.md) - Implement auth patterns and route protection
+- [Set Up Basic Authentication](./setup-authentication.md) - Implement basic auth with React Context
+- [Integrate Authentication Providers](./setup-auth-providers.md) - Use Auth0, Clerk, or Supabase
+- [Set Up Role-Based Access Control](./setup-rbac.md) - Add permission-based routing
 
 ## Using These Guides
 
