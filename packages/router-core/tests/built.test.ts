@@ -79,11 +79,54 @@ const routeTree = createRouteTree([
   '/b/{-$slug}',
   '/b/$',
   '/b',
+  '/foo/bar/$id',
+  '/foo/$id/bar',
+  '/$id/bar/foo',
+  '/$id/foo/bar',
+  '/a/b/c/d/e/f',
+  '/beep/boop',
+  '/one/two',
+  '/one'
 ])
 
 const result = processRouteTree({ routeTree })
 
 it('work in progress', () => {
+
+  expect(result.flatRoutes.map(r => r.id)).toMatchInlineSnapshot(`
+    [
+      "/a/b/c/d/e/f",
+      "/a/profile/settings",
+      "/b/profile/settings",
+      "/users/profile/settings",
+      "/foo/bar/$id",
+      "/a/profile",
+      "/b/profile",
+      "/beep/boop",
+      "/one/two",
+      "/users/profile",
+      "/foo/$id/bar",
+      "/a/user-{$id}",
+      "/api/user-{$id}",
+      "/b/user-{$id}",
+      "/a/$id",
+      "/b/$id",
+      "/users/$id",
+      "/a/{-$slug}",
+      "/b/{-$slug}",
+      "/posts/{-$slug}",
+      "/a/$",
+      "/b/$",
+      "/files/$",
+      "/a",
+      "/about",
+      "/b",
+      "/one",
+      "/$id/bar/foo",
+      "/$id/foo/bar",
+    ]
+  `)
+
   const parsedRoutes = result.flatRoutes.map((route) =>
     parsePathname(route.fullPath),
   )
@@ -96,9 +139,9 @@ it('work in progress', () => {
       .join('/')
 
   const initialDepth = 1
-  let fn = 'const toSegments = parsePathname(to);'
-  fn += '\nconst l = toSegments.length;'
-  fn += `\nconst s = toSegments[${initialDepth}];`
+  let fn = 'const baseSegments = parsePathname(from);'
+  fn += '\nconst l = baseSegments.length;'
+  fn += `\nconst {type, value} = baseSegments[${initialDepth}];`
 
   function recursiveStaticMatch(
     parsedRoutes: Array<ReturnType<typeof parsePathname>>,
@@ -112,10 +155,7 @@ it('work in progress', () => {
       console.log('\u001b[34m' + fn + '\u001b[0m')
       const currentSegment = parsed[depth]
       if (!currentSegment) {
-        // should not be possible
-        throw new Error(
-          `No segment found at depth ${depth} in parsed route: ${logParsed(parsed)}`,
-        ) // no segment at this depth, so we can't match
+        throw new Error("Implementation error: this should not happen")
       }
       const candidates = parsedRoutes.filter((r) => {
         const rParsed = r[depth]
@@ -130,22 +170,19 @@ it('work in progress', () => {
       })
       console.log('candidates:', candidates.map(logParsed))
       if (candidates.length === 0) {
-        // should not be possible
-        console.log(
-          parsedRoutes.length,
-          parsedRoutes.map((r) => r.map((s) => s.value).join('/')),
-        )
-        throw new Error(
-          `No candidates found for depth ${depth} with type ${parsed[depth]!.type} and value ${parsed[depth]!.value}`,
-        )
+        throw new Error("Implementation error: this should not happen")
       }
       const indent = '  '.repeat(depth - initialDepth)
-      fn += `\n${indent}if (l > ${depth} && s.type === ${parsed[depth]!.type} && s.value === '${parsed[depth]!.value}') {`
+      const lCondition = depth > initialDepth ? `l > ${depth} && ` : ''
       if (candidates.length > 1) {
+        fn += `\n${indent}if (${lCondition}type === ${parsed[depth]!.type} && value === '${parsed[depth]!.value}') {`
         const deeper = candidates.filter((c) => c.length > depth + 1)
-        const leaves = candidates.filter((c) => c.length <= depth + 1)
+        const leaves = candidates.filter((c) => c.length === depth + 1)
+        if (deeper.length + leaves.length !== candidates.length) {
+          throw new Error("Implementation error: this should not happen")
+        }
         if (deeper.length > 0) {
-          fn += `\n${indent}  const s = toSegments[${depth + 1}];`
+          fn += `\n${indent}  const {type, value} = baseSegments[${depth + 1}];`
           recursiveStaticMatch(deeper, depth + 1)
         }
         if (leaves.length > 1) {
@@ -153,18 +190,25 @@ it('work in progress', () => {
             `Multiple candidates found for depth ${depth} with type ${parsed[depth]!.type} and value ${parsed[depth]!.value}: ${leaves.map(logParsed).join(', ')}`,
           )
         } else if (leaves.length === 1) {
-          fn += `\n${indent}  return '/${leaves[0]!
-            .slice(1)
-            .map((s) => s.value)
-            .join('/')}';` // return the full path
-        } else {
-          fn += `\n${indent}  return undefined;` // no match found
+          fn += `\n${indent}  if (l === ${leaves[0]!.length}) {`
+          fn += `\n${indent}    return '/${leaves[0]!.slice(1).map((s) => s.value).join('/')}';`
+          fn += `\n${indent}  }`
         }
       } else {
-        fn += `\n${indent}  return '/${candidates[0]!
+        const leaf = candidates[0]!
+        const done = `return '/${leaf
           .slice(1)
           .map((s) => s.value)
-          .join('/')}';` // return the full path
+          .join('/')}';`
+        fn += `\n${indent}if (l === ${leaf.length}`
+        for (let i = depth; i < leaf.length; i++) {
+          const segment = leaf[i]!
+          const type = i === depth ? 'type' : `baseSegments[${i}].type`
+          const value = i === depth ? 'value' : `baseSegments[${i}].value`
+          fn += `\n${indent}  && ${type} === ${segment.type} && ${value} === '${segment.value}'`
+        }
+        fn += `\n${indent}) {`
+        fn += `\n${indent}  ${done}`
       }
       fn += `\n${indent}}`
       candidates.forEach((c) => resolved.add(c))
@@ -176,86 +220,186 @@ it('work in progress', () => {
   console.log('\u001b[34m' + fn + '\u001b[0m')
 
   expect(fn).toMatchInlineSnapshot(`
-    "const toSegments = parsePathname(to);
-    const l = toSegments.length;
-    const s = toSegments[1];
-    if (l > 1 && s.type === 0 && s.value === 'a') {
-      const s = toSegments[2];
-      if (l > 2 && s.type === 0 && s.value === 'profile') {
-        const s = toSegments[3];
-        if (l > 3 && s.type === 0 && s.value === 'settings') {
+    "const baseSegments = parsePathname(from);
+    const l = baseSegments.length;
+    const {type, value} = baseSegments[1];
+    if (type === 0 && value === 'a') {
+      const {type, value} = baseSegments[2];
+      if (l === 7
+        && type === 0 && value === 'b'
+        && baseSegments[3].type === 0 && baseSegments[3].value === 'c'
+        && baseSegments[4].type === 0 && baseSegments[4].value === 'd'
+        && baseSegments[5].type === 0 && baseSegments[5].value === 'e'
+        && baseSegments[6].type === 0 && baseSegments[6].value === 'f'
+      ) {
+        return '/a/b/c/d/e/f';
+      }
+      if (l > 2 && type === 0 && value === 'profile') {
+        const {type, value} = baseSegments[3];
+        if (l === 4
+          && type === 0 && value === 'settings'
+        ) {
           return '/a/profile/settings';
         }
-        return '/a/profile';
+        if (l === 3) {
+          return '/a/profile';
+        }
       }
-      if (l > 2 && s.type === 1 && s.value === '$id') {
+      if (l === 3
+        && type === 1 && value === '$id'
+      ) {
         return '/a/$id';
       }
-      if (l > 2 && s.type === 1 && s.value === '$id') {
+      if (l === 3
+        && type === 1 && value === '$id'
+      ) {
         return '/a/$id';
       }
-      if (l > 2 && s.type === 3 && s.value === '$slug') {
+      if (l === 3
+        && type === 3 && value === '$slug'
+      ) {
         return '/a/$slug';
       }
-      if (l > 2 && s.type === 2 && s.value === '$') {
+      if (l === 3
+        && type === 2 && value === '$'
+      ) {
         return '/a/$';
       }
-      return '/a';
+      if (l === 2) {
+        return '/a';
+      }
     }
-    if (l > 1 && s.type === 0 && s.value === 'b') {
-      const s = toSegments[2];
-      if (l > 2 && s.type === 0 && s.value === 'profile') {
-        const s = toSegments[3];
-        if (l > 3 && s.type === 0 && s.value === 'settings') {
+    if (type === 0 && value === 'b') {
+      const {type, value} = baseSegments[2];
+      if (l > 2 && type === 0 && value === 'profile') {
+        const {type, value} = baseSegments[3];
+        if (l === 4
+          && type === 0 && value === 'settings'
+        ) {
           return '/b/profile/settings';
         }
-        return '/b/profile';
+        if (l === 3) {
+          return '/b/profile';
+        }
       }
-      if (l > 2 && s.type === 1 && s.value === '$id') {
+      if (l === 3
+        && type === 1 && value === '$id'
+      ) {
         return '/b/$id';
       }
-      if (l > 2 && s.type === 1 && s.value === '$id') {
+      if (l === 3
+        && type === 1 && value === '$id'
+      ) {
         return '/b/$id';
       }
-      if (l > 2 && s.type === 3 && s.value === '$slug') {
+      if (l === 3
+        && type === 3 && value === '$slug'
+      ) {
         return '/b/$slug';
       }
-      if (l > 2 && s.type === 2 && s.value === '$') {
+      if (l === 3
+        && type === 2 && value === '$'
+      ) {
         return '/b/$';
       }
-      return '/b';
+      if (l === 2) {
+        return '/b';
+      }
     }
-    if (l > 1 && s.type === 0 && s.value === 'users') {
-      const s = toSegments[2];
-      if (l > 2 && s.type === 0 && s.value === 'profile') {
-        const s = toSegments[3];
-        if (l > 3 && s.type === 0 && s.value === 'settings') {
+    if (type === 0 && value === 'users') {
+      const {type, value} = baseSegments[2];
+      if (l > 2 && type === 0 && value === 'profile') {
+        const {type, value} = baseSegments[3];
+        if (l === 4
+          && type === 0 && value === 'settings'
+        ) {
           return '/users/profile/settings';
         }
-        return '/users/profile';
+        if (l === 3) {
+          return '/users/profile';
+        }
       }
-      if (l > 2 && s.type === 1 && s.value === '$id') {
+      if (l === 3
+        && type === 1 && value === '$id'
+      ) {
         return '/users/$id';
       }
-      return undefined;
     }
-    if (l > 1 && s.type === 0 && s.value === 'api') {
+    if (type === 0 && value === 'foo') {
+      const {type, value} = baseSegments[2];
+      if (l === 4
+        && type === 0 && value === 'bar'
+        && baseSegments[3].type === 1 && baseSegments[3].value === '$id'
+      ) {
+        return '/foo/bar/$id';
+      }
+      if (l === 4
+        && type === 1 && value === '$id'
+        && baseSegments[3].type === 0 && baseSegments[3].value === 'bar'
+      ) {
+        return '/foo/$id/bar';
+      }
+    }
+    if (l === 3
+      && type === 0 && value === 'beep'
+      && baseSegments[2].type === 0 && baseSegments[2].value === 'boop'
+    ) {
+      return '/beep/boop';
+    }
+    if (type === 0 && value === 'one') {
+      const {type, value} = baseSegments[2];
+      if (l === 3
+        && type === 0 && value === 'two'
+      ) {
+        return '/one/two';
+      }
+      if (l === 2) {
+        return '/one';
+      }
+    }
+    if (l === 3
+      && type === 0 && value === 'api'
+      && baseSegments[2].type === 1 && baseSegments[2].value === '$id'
+    ) {
       return '/api/$id';
     }
-    if (l > 1 && s.type === 0 && s.value === 'posts') {
+    if (l === 3
+      && type === 0 && value === 'posts'
+      && baseSegments[2].type === 3 && baseSegments[2].value === '$slug'
+    ) {
       return '/posts/$slug';
     }
-    if (l > 1 && s.type === 0 && s.value === 'files') {
+    if (l === 3
+      && type === 0 && value === 'files'
+      && baseSegments[2].type === 2 && baseSegments[2].value === '$'
+    ) {
       return '/files/$';
     }
-    if (l > 1 && s.type === 0 && s.value === 'about') {
+    if (l === 2
+      && type === 0 && value === 'about'
+    ) {
       return '/about';
+    }
+    if (type === 1 && value === '$id') {
+      const {type, value} = baseSegments[2];
+      if (l === 4
+        && type === 0 && value === 'bar'
+        && baseSegments[3].type === 0 && baseSegments[3].value === 'foo'
+      ) {
+        return '/$id/bar/foo';
+      }
+      if (l === 4
+        && type === 0 && value === 'foo'
+        && baseSegments[3].type === 0 && baseSegments[3].value === 'bar'
+      ) {
+        return '/$id/foo/bar';
+      }
     }"
   `)
 
-  const yo = new Function('parsePathname', 'to', fn) as (
+  const yo = new Function('parsePathname', 'from', fn) as (
     parser: typeof parsePathname,
-    to: string,
+    from: string,
   ) => string | undefined
   expect(yo(parsePathname, '/users/profile/settings')).toBe(
     '/users/profile/settings',
