@@ -3,6 +3,8 @@ import * as fsp from 'node:fs/promises'
 import { mkdtempSync } from 'node:fs'
 import crypto from 'node:crypto'
 import { deepEqual, rootRouteId } from '@tanstack/router-core'
+import { parseAst } from '@tanstack/router-utils'
+import { parse } from 'recast'
 import { logging } from './logger'
 import {
   isVirtualConfigFile,
@@ -215,6 +217,79 @@ export class Generator {
         this.transformPlugins.push(plugin.transformPlugin)
       }
     })
+  }
+
+  private detectExportsUsingAST(
+    fileContent: string,
+    exportNames: Array<string>,
+  ): Array<string> {
+    try {
+      const ast = parse(fileContent, {
+        sourceFileName: 'detect-exports.ts',
+        parser: {
+          parse(code: string) {
+            return parseAst({
+              code,
+              tokens: true,
+            })
+          },
+        },
+      })
+
+      const program = ast.program
+      const foundExports: Array<string> = []
+
+      for (const n of program.body) {
+        if (n.type === 'ExportNamedDeclaration') {
+          if (n.declaration?.type === 'VariableDeclaration') {
+            const decl = n.declaration.declarations[0]
+            if (
+              decl &&
+              decl.type === 'VariableDeclarator' &&
+              decl.id.type === 'Identifier' &&
+              exportNames.includes(decl.id.name)
+            ) {
+              foundExports.push(decl.id.name)
+            }
+          } else if (n.declaration === null && n.specifiers) {
+            for (const spec of n.specifiers) {
+              if (
+                typeof spec.exported.name === 'string' &&
+                exportNames.includes(spec.exported.name)
+              ) {
+                const variableName = spec.local?.name || spec.exported.name
+                for (const decl of program.body) {
+                  if (
+                    decl.type === 'VariableDeclaration' &&
+                    decl.declarations[0]
+                  ) {
+                    const variable = decl.declarations[0]
+                    if (
+                      variable.type === 'VariableDeclarator' &&
+                      variable.id.type === 'Identifier' &&
+                      variable.id.name === variableName
+                    ) {
+                      foundExports.push(spec.exported.name)
+                      break
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return foundExports
+    } catch (error) {
+      this.logger.error(
+        'Failed to parse AST for export detection, falling back to string matching',
+        error,
+      )
+      return exportNames.filter((exportName) =>
+        fileContent.includes(`export const ${exportName}`),
+      )
+    }
   }
 
   private getRoutesDirectoryPath() {
@@ -1207,15 +1282,13 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
       updatedCacheEntry.mtimeMs = stats.mtimeMs
     }
 
-    const rootRouteExports: Array<string> = []
-    for (const plugin of this.pluginsWithTransform) {
-      const exportName = plugin.transformPlugin.exportName
-      // TODO we need to parse instead of just string match
-      // otherwise a commented out export will still be detected
-      if (rootNodeFile.fileContent.includes(`export const ${exportName}`)) {
-        rootRouteExports.push(exportName)
-      }
-    }
+    const exportNames = this.pluginsWithTransform.map(
+      (plugin) => plugin.transformPlugin.exportName,
+    )
+    const rootRouteExports = this.detectExportsUsingAST(
+      rootNodeFile.fileContent,
+      exportNames,
+    )
 
     updatedCacheEntry.exports = rootRouteExports
     node.exports = rootRouteExports
