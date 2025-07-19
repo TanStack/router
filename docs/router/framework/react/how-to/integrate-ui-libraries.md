@@ -87,7 +87,7 @@ export const Route = createRootRoute({
 
 ```tsx
 // src/components/ui/router-sheet.tsx
-import * as React from "react"
+import * as React from 'react'
 import {
   Sheet,
   SheetContent,
@@ -95,7 +95,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet"
+} from '@/components/ui/sheet'
 
 interface RouterSheetProps {
   children: React.ReactNode
@@ -104,14 +104,17 @@ interface RouterSheetProps {
   description?: string
 }
 
-export function RouterSheet({ children, trigger, title, description }: RouterSheetProps) {
+export function RouterSheet({
+  children,
+  trigger,
+  title,
+  description,
+}: RouterSheetProps) {
   const [open, setOpen] = React.useState(false)
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        {trigger}
-      </SheetTrigger>
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent>
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
@@ -193,7 +196,7 @@ export function RouterNavigation({ items, className }: RouterNavigationProps) {
               className={({ isActive }) =>
                 cn(
                   navigationMenuTriggerStyle(),
-                  isActive && "bg-accent text-accent-foreground"
+                  isActive && 'bg-accent text-accent-foreground',
                 )
               }
             >
@@ -278,7 +281,7 @@ import { forwardRef } from 'react'
 export const RouterLink = createLink(
   forwardRef<HTMLAnchorElement, LinkProps>((props, ref) => {
     return <MuiLink ref={ref} {...props} />
-  })
+  }),
 )
 ```
 
@@ -294,7 +297,7 @@ import { forwardRef } from 'react'
 export const RouterButton = createLink(
   forwardRef<HTMLButtonElement, ButtonProps>((props, ref) => {
     return <Button ref={ref} component="button" {...props} />
-  })
+  }),
 )
 ```
 
@@ -316,17 +319,13 @@ function PostPage() {
   return (
     <Container>
       <Typography variant="h4">Post {postId}</Typography>
-      
+
       {/* Fully typed router navigation */}
       <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-        <RouterLink 
-          to="/posts" 
-          color="primary"
-          underline="hover"
-        >
+        <RouterLink to="/posts" color="primary" underline="hover">
           Back to Posts
         </RouterLink>
-        
+
         <RouterButton
           to="/posts/$postId/edit"
           params={{ postId }}
@@ -363,11 +362,10 @@ interface MuiNavTabsProps extends Omit<TabsProps, 'value' | 'onChange'> {
 
 export function MuiNavTabs({ tabs, ...tabsProps }: MuiNavTabsProps) {
   const matchRoute = useMatchRoute()
-  
+
   // Find active tab based on current route
-  const activeTab = tabs.find(tab => 
-    matchRoute({ to: tab.to, fuzzy: true })
-  )?.value || false
+  const activeTab =
+    tabs.find((tab) => matchRoute({ to: tab.to, fuzzy: true }))?.value || false
 
   return (
     <Tabs value={activeTab} {...tabsProps}>
@@ -422,7 +420,10 @@ const pageTransition = {
   duration: 0.3,
 }
 
-export function AnimatedRoute({ children, ...motionProps }: AnimatedRouteProps) {
+export function AnimatedRoute({
+  children,
+  ...motionProps
+}: AnimatedRouteProps) {
   return (
     <motion.div
       initial="initial"
@@ -462,7 +463,7 @@ function PostsPage() {
         >
           Posts
         </motion.h1>
-        
+
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -502,7 +503,7 @@ export function AnimatedNav({ items }: AnimatedNavProps) {
     <nav className="flex space-x-1 p-2 bg-gray-100 rounded-lg">
       {items.map((item) => {
         const isActive = matchRoute({ to: item.to, fuzzy: true })
-        
+
         return (
           <Link
             key={item.to}
@@ -514,7 +515,7 @@ export function AnimatedNav({ items }: AnimatedNavProps) {
                 layoutId="activeTab"
                 className="absolute inset-0 bg-white rounded-md shadow-sm"
                 initial={false}
-                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
               />
             )}
             <span className="relative z-10">{item.label}</span>
@@ -586,16 +587,12 @@ function AboutPage() {
       <VStack spacing={6} align="start">
         <Heading>About Us</Heading>
         <Text>Welcome to our application!</Text>
-        
+
         <RouterLink to="/" color="blue.500">
           Back to Home
         </RouterLink>
-        
-        <RouterButton
-          to="/contact"
-          colorScheme="blue"
-          variant="solid"
-        >
+
+        <RouterButton to="/contact" colorScheme="blue" variant="solid">
           Contact Us
         </RouterButton>
       </VStack>
@@ -615,28 +612,26 @@ function AboutPage() {
 **Solutions:**
 
 1. **Ensure proper DOM structure for portals:**
+
    ```tsx
    // Add portal root in your HTML
    <div id="portal-root"></div>
-   
+
    // Or in your root route
    <div id="modal-root"></div>
    ```
 
 2. **Check CSS-in-JS integration:**
+
    ```tsx
    // For Emotion-based libraries
    import { CacheProvider } from '@emotion/react'
    import createCache from '@emotion/cache'
-   
+
    const cache = createCache({ key: 'css' })
-   
+
    export function App() {
-     return (
-       <CacheProvider value={cache}>
-         {/* Your app */}
-       </CacheProvider>
-     )
+     return <CacheProvider value={cache}>{/* Your app */}</CacheProvider>
    }
    ```
 
@@ -661,7 +656,7 @@ import { ComponentType, forwardRef } from 'react'
 
 function createRouterComponent<T extends ComponentType<any>>(Component: T) {
   return createLink(
-    forwardRef((props, ref) => <Component ref={ref} {...props} />)
+    forwardRef((props, ref) => <Component ref={ref} {...props} />),
   )
 }
 
@@ -677,17 +672,17 @@ export const RouterLink = createRouterComponent(Link)
 **Solutions:**
 
 1. **CSS Module integration:**
+
    ```tsx
    // Use CSS Modules with UI libraries
    import styles from './component.module.css'
    import { Button } from '@mui/material'
-   
-   <Button className={styles.customButton}>
-     Click me
-   </Button>
+
+   ;<Button className={styles.customButton}>Click me</Button>
    ```
 
 2. **Theme integration:**
+
    ```tsx
    // Extend UI library themes
    const theme = createTheme({
@@ -720,22 +715,24 @@ export const RouterLink = createRouterComponent(Link)
 **Solutions:**
 
 1. **Tree shaking:**
+
    ```tsx
    // Import only what you need
    import Button from '@mui/material/Button'
    import TextField from '@mui/material/TextField'
-   
+
    // Instead of
    import { Button, TextField } from '@mui/material'
    ```
 
 2. **Code splitting with lazy loading:**
+
    ```tsx
    import { createLazyFileRoute } from '@tanstack/react-router'
    import { lazy } from 'react'
-   
+
    const HeavyUIComponent = lazy(() => import('@/components/heavy-ui'))
-   
+
    export const Route = createLazyFileRoute('/heavy-page')({
      component: () => (
        <Suspense fallback={<div>Loading...</div>}>
@@ -752,24 +749,28 @@ export const RouterLink = createRouterComponent(Link)
 Before deploying your app with UI library integration:
 
 ### Performance
+
 - [ ] Tree shaking enabled for UI library imports
 - [ ] CSS-in-JS properly configured for SSR (if applicable)
 - [ ] Bundle size optimized with code splitting
 - [ ] Animation performance tested on slower devices
 
 ### Functionality
+
 - [ ] All navigation components work with router state
 - [ ] Animations and transitions work on route changes
 - [ ] TypeScript compilation successful with UI library integration
 - [ ] Active states properly reflected in navigation components
 
 ### Styling
+
 - [ ] Theme consistency across router and UI library
 - [ ] CSS conflicts resolved
 - [ ] Responsive design working with UI library components
 - [ ] Dark mode integration (if applicable)
 
 ### Accessibility
+
 - [ ] Keyboard navigation works with router-integrated components
 - [ ] Screen reader compatibility maintained
 - [ ] Focus management working across route transitions

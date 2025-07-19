@@ -135,6 +135,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 The following guides have been moved to `docs/router/framework/react/debugging/` as they are troubleshooting/FAQ style rather than step-by-step how-to guides:
 
 **Debug Build and Bundler Issues** (`debugging/build-issues.md`)
+
 - Plugin setup troubleshooting for different bundlers (Vite, Webpack, ESBuild, Rspack)
 - Fixing TypeScript route generation failures
 - Resolving import/export errors
@@ -142,6 +143,7 @@ The following guides have been moved to `docs/router/framework/react/debugging/`
 - Module resolution debugging
 
 **Debug Common Router Issues** (`debugging/router-issues.md`)
+
 - Route matching problems
 - Type errors with parameters
 - Navigation not working as expected
@@ -195,6 +197,7 @@ Before marking any guide as complete:
 Update this section as guides are completed:
 
 **How-To Guides:**
+
 ```
 ✅ Guide #1: Deploy to Production - COMPLETED
 ⏳ Guide #2: Setup SSR - IN PROGRESS
@@ -208,6 +211,7 @@ Update this section as guides are completed:
 ```
 
 **Debugging Guides:**
+
 ```
 ⏳ Debug Build Issues - PENDING
 ⏳ Debug Router Issues - PENDING

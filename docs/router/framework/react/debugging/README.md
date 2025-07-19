@@ -3,7 +3,7 @@
 This directory contains troubleshooting guides and debugging help for common TanStack Router issues. Each guide is designed to be:
 
 - **Problem-focused**: Organized by symptoms and error messages
-- **Solution-oriented**: Multiple approaches for different scenarios  
+- **Solution-oriented**: Multiple approaches for different scenarios
 - **Searchable**: Easy to find solutions by error message or problem type
 - **Reference-style**: Quick lookup rather than step-by-step tutorials
 
