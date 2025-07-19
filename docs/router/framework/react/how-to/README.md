@@ -11,6 +11,7 @@ This directory contains focused, step-by-step instructions for common TanStack R
 
 - [Install TanStack Router](./install.md) - Basic installation steps
 - [Deploy to Production](./deploy-to-production.md) - Deploy your app to hosting platforms
+- [Integrate with Popular UI Libraries](./integrate-ui-libraries.md) - Set up Shadcn/ui, Material-UI, Framer Motion, and Chakra UI
 
 ## Using These Guides
 
