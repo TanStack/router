@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PATHNAME,
   interpolatePath,
   matchPathname,
   parsePathname,
-  SEGMENT_TYPE_PATHNAME,
-  SEGMENT_TYPE_OPTIONAL_PARAM,
 } from '../src/path'
 
 describe('Optional Path Parameters - Clean Comprehensive Tests', () => {

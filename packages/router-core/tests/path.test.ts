@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
   exactPathTest,
   interpolatePath,
   matchPathname,
@@ -8,9 +11,6 @@ import {
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
-  SEGMENT_TYPE_PARAM,
-  SEGMENT_TYPE_PATHNAME,
-  SEGMENT_TYPE_WILDCARD,
 } from '../src/path'
 import type { Segment as PathSegment } from '../src/path'
 
