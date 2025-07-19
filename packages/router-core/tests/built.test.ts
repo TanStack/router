@@ -166,7 +166,11 @@ describe('work in progress', () => {
   const rebuildPath = (leaf: ReturnType<typeof parsePathname>) =>
     `/${leaf
       .slice(1)
-      .map((s) => (s.value === '/' ? '' : `${s.prefixSegment ?? ''}${s.prefixSegment || s.suffixSegment ? '{' : ''}${s.value}${s.prefixSegment || s.suffixSegment ? '}' : ''}${s.suffixSegment ?? ''}`))
+      .map((s) =>
+        s.value === '/'
+          ? ''
+          : `${s.prefixSegment ?? ''}${s.prefixSegment || s.suffixSegment ? '{' : ''}${s.value}${s.prefixSegment || s.suffixSegment ? '}' : ''}${s.suffixSegment ?? ''}`,
+      )
       .join('/')}`
 
   const initialDepth = 1
@@ -182,7 +186,12 @@ describe('work in progress', () => {
     for (const routeSegments of parsedRoutes) {
       if (resolved.has(routeSegments)) continue // already resolved
       console.log('\n')
-      console.log('resolving: depth=', depth, 'parsed=', logParsed(routeSegments))
+      console.log(
+        'resolving: depth=',
+        depth,
+        'parsed=',
+        logParsed(routeSegments),
+      )
       console.log('\u001b[34m' + fn + '\u001b[0m')
       const currentSegment = routeSegments[depth]
       if (!currentSegment) {
@@ -230,28 +239,28 @@ describe('work in progress', () => {
         )
         if (skipDepth === -1) skipDepth = routeSegments.length - depth - 1
         const lCondition =
-          skipDepth || depth > initialDepth
-            ? `l > ${depth + skipDepth}`
-            : ''
+          skipDepth || depth > initialDepth ? `l > ${depth + skipDepth}` : ''
         const skipConditions =
-          Array.from(
-            { length: skipDepth + 1 },
-            (_, i) => {
-              const segment = candidates[0]![depth + i]!
-              if (segment.type === 1) {
-                const conditions = []
-                if (segment.prefixSegment) {
-                  conditions.push(`baseSegments[${depth + i}].value.startsWith('${segment.prefixSegment}')`)
-                }
-                if (segment.suffixSegment) {
-                  conditions.push(`baseSegments[${depth + i}].value.endsWith('${segment.suffixSegment}')`)
-                }
-                return conditions.join(' && ')
+          Array.from({ length: skipDepth + 1 }, (_, i) => {
+            const segment = candidates[0]![depth + i]!
+            if (segment.type === 1) {
+              const conditions = []
+              if (segment.prefixSegment) {
+                conditions.push(
+                  `baseSegments[${depth + i}].value.startsWith('${segment.prefixSegment}')`,
+                )
               }
-              return `baseSegments[${depth + i}].value === '${segment.value}'`
+              if (segment.suffixSegment) {
+                conditions.push(
+                  `baseSegments[${depth + i}].value.endsWith('${segment.suffixSegment}')`,
+                )
+              }
+              return conditions.join(' && ')
             }
-          ).filter(Boolean).join(`\n${indent}  && `) +
-          (skipDepth ? `\n${indent}` : '')
+            return `baseSegments[${depth + i}].value === '${segment.value}'`
+          })
+            .filter(Boolean)
+            .join(`\n${indent}  && `) + (skipDepth ? `\n${indent}` : '')
         const hasCondition = Boolean(lCondition || skipConditions)
         if (hasCondition) {
           fn += `\n${indent}if (${lCondition}${lCondition && skipConditions ? ' && ' : ''}${skipConditions}) {`
@@ -266,7 +275,11 @@ describe('work in progress', () => {
           throw new Error('Implementation error: this should not happen')
         }
         if (deeper.length > 0) {
-          recursiveStaticMatch(deeper, depth + 1 + skipDepth, hasCondition ? indent + '  ' : indent)
+          recursiveStaticMatch(
+            deeper,
+            depth + 1 + skipDepth,
+            hasCondition ? indent + '  ' : indent,
+          )
         }
         if (leaves.length > 1) {
           throw new Error(
@@ -528,7 +541,7 @@ describe('work in progress', () => {
     '/foo/qux',
     '/a/user-123',
     '/files/hello-world.txt',
-    '/something/foo/bar'
+    '/something/foo/bar',
   ])('matching %s', (s) => {
     const originalMatch = originalMatcher(s)
     const buildMatch = buildMatcher(parsePathname, s)
@@ -538,4 +551,3 @@ describe('work in progress', () => {
     expect(buildMatch).toBe(originalMatch)
   })
 })
-
