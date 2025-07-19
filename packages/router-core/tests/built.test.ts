@@ -63,6 +63,7 @@ function createRouteTree(pathOrChildren: Array<PathOrChildren>): TestRoute {
 }
 
 const routeTree = createRouteTree([
+  '/',
   '/users/profile/settings', // static-deep (longest static path)
   '/users/profile', // static-medium (medium static path)
   '/api/user-{$id}', // param-with-prefix (param with prefix has higher score)
@@ -152,6 +153,7 @@ describe('work in progress', () => {
         "/about",
         "/b",
         "/one",
+        "/",
         "/$id/bar/foo",
         "/$id/foo/bar",
       ]
@@ -179,7 +181,7 @@ describe('work in progress', () => {
       )
       .join('/')}`
 
-  const initialDepth = 1
+  const initialDepth = 0
   let fn = 'const baseSegments = parsePathname(from);'
   fn += '\nconst l = baseSegments.length;'
 
@@ -201,7 +203,7 @@ describe('work in progress', () => {
       console.log('\u001b[34m' + fn + '\u001b[0m')
       const currentSegment = routeSegments[depth]
       if (!currentSegment) {
-        throw new Error('Implementation error: this should not happen')
+        throw new Error('Implementation error: this should not happen, depth=' + depth + `, route=${rebuildPath(routeSegments)}`)
       }
       const candidates = parsedRoutes.filter((r) => {
         const rParsed = r[depth]
@@ -414,197 +416,204 @@ describe('work in progress', () => {
     expect(fn).toMatchInlineSnapshot(`
       "const baseSegments = parsePathname(from);
       const l = baseSegments.length;
-      if (baseSegments[1].value === 'a') {
-        if (l === 7
-          && baseSegments[2].value === 'b'
-          && baseSegments[3].value === 'c'
-          && baseSegments[4].value === 'd'
-          && baseSegments[5].value === 'e'
-          && baseSegments[6].value === 'f'
-        ) {
-          return '/a/b/c/d/e/f';
-        }
-        if (l > 2 && baseSegments[2].value === 'profile') {
-          if (l === 4
-            && baseSegments[3].value === 'settings'
+      if (baseSegments[0].value === '/') {
+        if (l > 1 && baseSegments[1].value === 'a') {
+          if (l === 7
+            && baseSegments[2].value === 'b'
+            && baseSegments[3].value === 'c'
+            && baseSegments[4].value === 'd'
+            && baseSegments[5].value === 'e'
+            && baseSegments[6].value === 'f'
           ) {
-            return '/a/profile/settings';
+            return '/a/b/c/d/e/f';
           }
-          if (l === 3) {
-            return '/a/profile';
+          if (l > 2 && baseSegments[2].value === 'profile') {
+            if (l === 4
+              && baseSegments[3].value === 'settings'
+            ) {
+              return '/a/profile/settings';
+            }
+            if (l === 3) {
+              return '/a/profile';
+            }
+          }
+          if (l === 3
+             && baseSegments[2].value.startsWith('user-')
+          ) {
+            return '/a/user-{$id}';
+          }
+          if (l === 3
+          ) {
+            return '/a/$id';
+          }
+          if (l === 3
+            && baseSegments[2].value === '$slug'
+          ) {
+            return '/a/$slug';
+          }
+          if (l >= 2) {
+            return '/a/$';
+          }
+          if (l === 2) {
+            return '/a';
+          }
+        }
+        if (l > 3 && baseSegments[1].value === 'z'
+          && baseSegments[2].value === 'y'
+          && baseSegments[3].value === 'x'
+        ) {
+          if (l === 5
+            && baseSegments[4].value === 'u'
+          ) {
+            return '/z/y/x/u';
+          }
+          if (l === 5
+            && baseSegments[4].value === 'v'
+          ) {
+            return '/z/y/x/v';
+          }
+          if (l === 5
+            && baseSegments[4].value === 'w'
+          ) {
+            return '/z/y/x/w';
+          }
+          if (l === 4) {
+            return '/z/y/x';
+          }
+        }
+        if (l > 1 && baseSegments[1].value === 'b') {
+          if (l > 2 && baseSegments[2].value === 'profile') {
+            if (l === 4
+              && baseSegments[3].value === 'settings'
+            ) {
+              return '/b/profile/settings';
+            }
+            if (l === 3) {
+              return '/b/profile';
+            }
+          }
+          if (l === 3
+             && baseSegments[2].value.startsWith('user-')
+          ) {
+            return '/b/user-{$id}';
+          }
+          if (l === 3
+          ) {
+            return '/b/$id';
+          }
+          if (l === 3
+            && baseSegments[2].value === '$slug'
+          ) {
+            return '/b/$slug';
+          }
+          if (l >= 2) {
+            return '/b/$';
+          }
+          if (l === 2) {
+            return '/b';
+          }
+        }
+        if (l > 1 && baseSegments[1].value === 'users') {
+          if (l > 2 && baseSegments[2].value === 'profile') {
+            if (l === 4
+              && baseSegments[3].value === 'settings'
+            ) {
+              return '/users/profile/settings';
+            }
+            if (l === 3) {
+              return '/users/profile';
+            }
+          }
+          if (l === 3
+          ) {
+            return '/users/$id';
+          }
+        }
+        if (l > 1 && baseSegments[1].value === 'foo') {
+          if (l === 4
+            && baseSegments[2].value === 'bar'
+          ) {
+            return '/foo/bar/$id';
+          }
+          if (l > 2) {
+            if (l === 4
+              && baseSegments[3].value === 'bar'
+            ) {
+              return '/foo/$id/bar';
+            }
+            if (l === 3) {
+              return '/foo/$bar';
+            }
+          }
+          if (l === 4
+            && baseSegments[2].value === '$bar'
+            && baseSegments[3].value === 'qux'
+          ) {
+            return '/foo/$bar/qux';
           }
         }
         if (l === 3
+          && baseSegments[1].value === 'beep'
+          && baseSegments[2].value === 'boop'
+        ) {
+          return '/beep/boop';
+        }
+        if (l > 1 && baseSegments[1].value === 'one') {
+          if (l === 3
+            && baseSegments[2].value === 'two'
+          ) {
+            return '/one/two';
+          }
+          if (l === 2) {
+            return '/one';
+          }
+        }
+        if (l === 3
+          && baseSegments[1].value === 'api'
            && baseSegments[2].value.startsWith('user-')
         ) {
-          return '/a/user-{$id}';
+          return '/api/user-{$id}';
         }
         if (l === 3
-        ) {
-          return '/a/$id';
-        }
-        if (l === 3
+          && baseSegments[1].value === 'posts'
           && baseSegments[2].value === '$slug'
         ) {
-          return '/a/$slug';
+          return '/posts/$slug';
         }
-        if (l >= 2) {
-          return '/a/$';
+        if (l >= 2 && baseSegments[1].value === 'cache' && baseSegments[2].value.startsWith('temp_') && baseSegments[l - 1].value.endsWith('.log')) {
+          return '/cache/temp_{$}.log';
         }
-        if (l === 2) {
-          return '/a';
+        if (l >= 2 && baseSegments[1].value === 'images' && baseSegments[2].value.startsWith('thumb_')) {
+          return '/images/thumb_{$}';
         }
-      }
-      if (l > 3 && baseSegments[1].value === 'z'
-        && baseSegments[2].value === 'y'
-        && baseSegments[3].value === 'x'
-      ) {
-        if (l === 5
-          && baseSegments[4].value === 'u'
+        if (l >= 2 && baseSegments[1].value === 'logs' && baseSegments[l - 1].value.endsWith('.txt')) {
+          return '/logs/{$}.txt';
+        }
+        if (l >= 2 && baseSegments[1].value === 'files') {
+          return '/files/$';
+        }
+        if (l === 2
+          && baseSegments[1].value === 'about'
         ) {
-          return '/z/y/x/u';
+          return '/about';
         }
-        if (l === 5
-          && baseSegments[4].value === 'v'
-        ) {
-          return '/z/y/x/v';
-        }
-        if (l === 5
-          && baseSegments[4].value === 'w'
-        ) {
-          return '/z/y/x/w';
-        }
-        if (l === 4) {
-          return '/z/y/x';
-        }
-      }
-      if (baseSegments[1].value === 'b') {
-        if (l > 2 && baseSegments[2].value === 'profile') {
+        if (l > 1) {
           if (l === 4
-            && baseSegments[3].value === 'settings'
+            && baseSegments[2].value === 'bar'
+            && baseSegments[3].value === 'foo'
           ) {
-            return '/b/profile/settings';
+            return '/$id/bar/foo';
           }
-          if (l === 3) {
-            return '/b/profile';
-          }
-        }
-        if (l === 3
-           && baseSegments[2].value.startsWith('user-')
-        ) {
-          return '/b/user-{$id}';
-        }
-        if (l === 3
-        ) {
-          return '/b/$id';
-        }
-        if (l === 3
-          && baseSegments[2].value === '$slug'
-        ) {
-          return '/b/$slug';
-        }
-        if (l >= 2) {
-          return '/b/$';
-        }
-        if (l === 2) {
-          return '/b';
-        }
-      }
-      if (baseSegments[1].value === 'users') {
-        if (l > 2 && baseSegments[2].value === 'profile') {
           if (l === 4
-            && baseSegments[3].value === 'settings'
-          ) {
-            return '/users/profile/settings';
-          }
-          if (l === 3) {
-            return '/users/profile';
-          }
-        }
-        if (l === 3
-        ) {
-          return '/users/$id';
-        }
-      }
-      if (baseSegments[1].value === 'foo') {
-        if (l === 4
-          && baseSegments[2].value === 'bar'
-        ) {
-          return '/foo/bar/$id';
-        }
-        if (l > 2) {
-          if (l === 4
+            && baseSegments[2].value === 'foo'
             && baseSegments[3].value === 'bar'
           ) {
-            return '/foo/$id/bar';
-          }
-          if (l === 3) {
-            return '/foo/$bar';
+            return '/$id/foo/bar';
           }
         }
-        if (l === 4
-          && baseSegments[2].value === '$bar'
-          && baseSegments[3].value === 'qux'
-        ) {
-          return '/foo/$bar/qux';
+        if (l === 1) {
+          return '/';
         }
-      }
-      if (l === 3
-        && baseSegments[1].value === 'beep'
-        && baseSegments[2].value === 'boop'
-      ) {
-        return '/beep/boop';
-      }
-      if (baseSegments[1].value === 'one') {
-        if (l === 3
-          && baseSegments[2].value === 'two'
-        ) {
-          return '/one/two';
-        }
-        if (l === 2) {
-          return '/one';
-        }
-      }
-      if (l === 3
-        && baseSegments[1].value === 'api'
-         && baseSegments[2].value.startsWith('user-')
-      ) {
-        return '/api/user-{$id}';
-      }
-      if (l === 3
-        && baseSegments[1].value === 'posts'
-        && baseSegments[2].value === '$slug'
-      ) {
-        return '/posts/$slug';
-      }
-      if (l >= 2 && baseSegments[1].value === 'cache' && baseSegments[2].value.startsWith('temp_') && baseSegments[l - 1].value.endsWith('.log')) {
-        return '/cache/temp_{$}.log';
-      }
-      if (l >= 2 && baseSegments[1].value === 'images' && baseSegments[2].value.startsWith('thumb_')) {
-        return '/images/thumb_{$}';
-      }
-      if (l >= 2 && baseSegments[1].value === 'logs' && baseSegments[l - 1].value.endsWith('.txt')) {
-        return '/logs/{$}.txt';
-      }
-      if (l >= 2 && baseSegments[1].value === 'files') {
-        return '/files/$';
-      }
-      if (l === 2
-        && baseSegments[1].value === 'about'
-      ) {
-        return '/about';
-      }
-      if (l === 4
-        && baseSegments[2].value === 'bar'
-        && baseSegments[3].value === 'foo'
-      ) {
-        return '/$id/bar/foo';
-      }
-      if (l === 4
-        && baseSegments[2].value === 'foo'
-        && baseSegments[3].value === 'bar'
-      ) {
-        return '/$id/foo/bar';
       }"
     `)
   })
@@ -616,6 +625,7 @@ describe('work in progress', () => {
 
   // WARN: some of these don't work yet, they're just here to show the differences
   test.each([
+    '/',
     '/users/profile/settings',
     '/foo/123',
     '/b/123',
