@@ -58,13 +58,15 @@ export function Auth0Wrapper({ children }: { children: React.ReactNode }) {
 }
 
 function Auth0ContextProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user, loginWithRedirect, logout, isLoading } = useAuth0()
+  const { isAuthenticated, user, loginWithRedirect, logout, isLoading } =
+    useAuth0()
 
   const contextValue = {
     isAuthenticated,
     user,
     login: loginWithRedirect,
-    logout: () => logout({ logoutParams: { returnTo: window.location.origin } }),
+    logout: () =>
+      logout({ logoutParams: { returnTo: window.location.origin } }),
     isLoading,
   }
 
@@ -95,9 +97,13 @@ import { router } from './router'
 
 function InnerApp() {
   const auth = useAuth0Context()
-  
+
   if (auth.isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    )
   }
 
   return <RouterProvider router={router} context={{ auth }} />
@@ -172,11 +178,14 @@ export function useClerkAuth() {
 
   return {
     isAuthenticated: isSignedIn,
-    user: user ? {
-      id: user.id,
-      username: user.username || user.primaryEmailAddress?.emailAddress || '',
-      email: user.primaryEmailAddress?.emailAddress || '',
-    } : null,
+    user: user
+      ? {
+          id: user.id,
+          username:
+            user.username || user.primaryEmailAddress?.emailAddress || '',
+          email: user.primaryEmailAddress?.emailAddress || '',
+        }
+      : null,
     isLoading: !isLoaded,
     login: () => {
       // Clerk handles login through components
@@ -201,10 +210,7 @@ import { SignIn } from '@clerk/clerk-react'
 export const Route = createFileRoute('/sign-in')({
   component: () => (
     <div className="flex items-center justify-center min-h-screen">
-      <SignIn 
-        redirectUrl="/dashboard" 
-        signUpUrl="/sign-up"
-      />
+      <SignIn redirectUrl="/dashboard" signUpUrl="/sign-up" />
     </div>
   ),
 })
@@ -219,10 +225,7 @@ import { SignUp } from '@clerk/clerk-react'
 export const Route = createFileRoute('/sign-up')({
   component: () => (
     <div className="flex items-center justify-center min-h-screen">
-      <SignUp 
-        redirectUrl="/dashboard" 
-        signInUrl="/sign-in"
-      />
+      <SignUp redirectUrl="/dashboard" signInUrl="/sign-in" />
     </div>
   ),
 })
@@ -239,9 +242,13 @@ import { router } from './router'
 
 function InnerApp() {
   const auth = useClerkAuth()
-  
+
   if (auth.isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    )
   }
 
   return <RouterProvider router={router} context={{ auth }} />
@@ -309,7 +316,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
 )
 
 interface SupabaseAuthState {
@@ -320,9 +327,15 @@ interface SupabaseAuthState {
   isLoading: boolean
 }
 
-const SupabaseAuthContext = createContext<SupabaseAuthState | undefined>(undefined)
+const SupabaseAuthContext = createContext<SupabaseAuthState | undefined>(
+  undefined,
+)
 
-export function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
+export function SupabaseAuthProvider({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const [user, setUser] = useState(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -336,13 +349,13 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null)
-        setIsAuthenticated(!!session?.user)
-        setIsLoading(false)
-      }
-    )
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      setIsAuthenticated(!!session?.user)
+      setIsLoading(false)
+    })
 
     return () => subscription.unsubscribe()
   }, [])
@@ -361,13 +374,15 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   }
 
   return (
-    <SupabaseAuthContext.Provider value={{ 
-      isAuthenticated, 
-      user, 
-      login, 
-      logout, 
-      isLoading 
-    }}>
+    <SupabaseAuthContext.Provider
+      value={{
+        isAuthenticated,
+        user,
+        login,
+        logout,
+        isLoading,
+      }}
+    >
       {children}
     </SupabaseAuthContext.Provider>
   )
@@ -428,9 +443,12 @@ function LoginComponent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <form onSubmit={handleSubmit} className="max-w-md w-full space-y-4 p-6 border rounded-lg">
+      <form
+        onSubmit={handleSubmit}
+        className="max-w-md w-full space-y-4 p-6 border rounded-lg"
+      >
         <h1 className="text-2xl font-bold text-center">Sign In</h1>
-        
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {error}
@@ -489,9 +507,13 @@ import { router } from './router'
 
 function InnerApp() {
   const auth = useSupabaseAuth()
-  
+
   if (auth.isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    )
   }
 
   return <RouterProvider router={router} context={{ auth }} />
@@ -512,15 +534,15 @@ export default App
 
 ## Provider Comparison
 
-| Feature | Auth0 | Clerk | Supabase |
-|---------|-------|-------|----------|
-| **Setup Complexity** | Medium | Low | Medium |
-| **UI Components** | Basic | Excellent | None |
-| **Customization** | High | Medium | High |
-| **Pricing** | Freemium | Freemium | Freemium |
-| **Social Login** | ✅ | ✅ | ✅ |
-| **Enterprise Features** | ✅ | ✅ | ✅ |
-| **Database Included** | ❌ | ❌ | ✅ |
+| Feature                 | Auth0    | Clerk     | Supabase |
+| ----------------------- | -------- | --------- | -------- |
+| **Setup Complexity**    | Medium   | Low       | Medium   |
+| **UI Components**       | Basic    | Excellent | None     |
+| **Customization**       | High     | Medium    | High     |
+| **Pricing**             | Freemium | Freemium  | Freemium |
+| **Social Login**        | ✅       | ✅        | ✅       |
+| **Enterprise Features** | ✅       | ✅        | ✅       |
+| **Database Included**   | ❌       | ❌        | ✅       |
 
 ### When to Choose Each:
 
@@ -606,5 +628,5 @@ After integrating authentication providers, you might want to:
 ## Related Resources
 
 - [Auth0 React SDK](https://auth0.com/docs/libraries/auth0-react) - Official Auth0 documentation
-- [Clerk React SDK](https://clerk.com/docs/references/react/overview) - Official Clerk documentation  
+- [Clerk React SDK](https://clerk.com/docs/references/react/overview) - Official Clerk documentation
 - [Supabase Auth](https://supabase.com/docs/guides/auth) - Official Supabase auth guide

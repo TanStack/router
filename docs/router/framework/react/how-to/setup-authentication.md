@@ -43,8 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetch('/api/validate-token', {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then(response => response.json())
-        .then(userData => {
+        .then((response) => response.json())
+        .then((userData) => {
           if (userData.valid) {
             setUser(userData.user)
             setIsAuthenticated(true)
@@ -65,7 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Show loading state while checking auth
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    )
   }
 
   const login = async (username: string, password: string) => {
@@ -264,9 +268,12 @@ function LoginComponent() {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <form onSubmit={handleSubmit} className="max-w-md w-full space-y-4 p-6 border rounded-lg">
+      <form
+        onSubmit={handleSubmit}
+        className="max-w-md w-full space-y-4 p-6 border rounded-lg"
+      >
         <h1 className="text-2xl font-bold text-center">Sign In</h1>
-        
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
             {error}
@@ -339,15 +346,14 @@ function DashboardComponent() {
           Sign Out
         </button>
       </div>
-      
+
       <div className="bg-white p-6 rounded-lg shadow">
         <h2 className="text-xl font-semibold mb-2">Welcome back!</h2>
         <p className="text-gray-600">
-          Hello, <strong>{auth.user?.username}</strong>! You are successfully authenticated.
+          Hello, <strong>{auth.user?.username}</strong>! You are successfully
+          authenticated.
         </p>
-        <p className="text-sm text-gray-500 mt-2">
-          Email: {auth.user?.email}
-        </p>
+        <p className="text-sm text-gray-500 mt-2">Email: {auth.user?.email}</p>
       </div>
     </div>
   )
@@ -374,8 +380,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetch('/api/validate-token', {
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then(response => response.json())
-        .then(userData => {
+        .then((response) => response.json())
+        .then((userData) => {
           if (userData.valid) {
             setUser(userData.user)
             setIsAuthenticated(true)
@@ -396,7 +402,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Show loading state while checking auth
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    )
   }
 
   // ... rest of the provider logic

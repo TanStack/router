@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const hasAnyRole = (roles: string[]) => {
-    return roles.some(role => user?.roles.includes(role)) ?? false
+    return roles.some((role) => user?.roles.includes(role)) ?? false
   }
 
   const hasPermission = (permission: string) => {
@@ -56,7 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const hasAnyPermission = (permissions: string[]) => {
-    return permissions.some(permission => user?.permissions.includes(permission)) ?? false
+    return (
+      permissions.some((permission) =>
+        user?.permissions.includes(permission),
+      ) ?? false
+    )
   }
 
   const login = async (username: string, password: string) => {
@@ -81,16 +85,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ 
-      isAuthenticated, 
-      user, 
-      hasRole, 
-      hasAnyRole, 
-      hasPermission, 
-      hasAnyPermission, 
-      login, 
-      logout 
-    }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        user,
+        hasRole,
+        hasAnyRole,
+        hasPermission,
+        hasAnyPermission,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
@@ -204,7 +210,7 @@ export const Route = createFileRoute('/_authenticated/_moderator')({
 
 function ModeratorLayout() {
   const { auth } = Route.useRouteContext()
-  
+
   return (
     <div>
       <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
@@ -261,7 +267,7 @@ function AdminDashboard() {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-2">User Management</h2>
@@ -270,7 +276,7 @@ function AdminDashboard() {
             View Users
           </button>
         </div>
-        
+
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-2">System Settings</h2>
           <p className="text-gray-600">Configure system-wide settings</p>
@@ -278,7 +284,7 @@ function AdminDashboard() {
             Open Settings
           </button>
         </div>
-        
+
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-2">Reports</h2>
           <p className="text-gray-600">View system reports and analytics</p>
@@ -325,15 +331,23 @@ function UserManagement() {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">User Management</h1>
-      
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Email
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Role
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -365,7 +379,7 @@ function UserManagement() {
       <div className="mt-6 p-4 bg-blue-50 rounded">
         <h3 className="font-semibold text-blue-800">Your Permissions:</h3>
         <ul className="text-blue-700 text-sm">
-          {auth.user?.permissions.map(permission => (
+          {auth.user?.permissions.map((permission) => (
             <li key={permission}>✓ {permission}</li>
           ))}
         </ul>
@@ -398,31 +412,49 @@ function UnauthorizedPage() {
 
   const reasonMessages = {
     insufficient_role: 'You do not have the required role to access this page.',
-    insufficient_permissions: 'You do not have the required permissions to access this page.',
+    insufficient_permissions:
+      'You do not have the required permissions to access this page.',
     default: 'You are not authorized to access this page.',
   }
 
-  const message = reasonMessages[reason as keyof typeof reasonMessages] || reasonMessages.default
+  const message =
+    reasonMessages[reason as keyof typeof reasonMessages] ||
+    reasonMessages.default
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8 text-center">
         <div className="mb-6">
           <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            <svg
+              className="w-8 h-8 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
             </svg>
           </div>
         </div>
-        
+
         <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
         <p className="text-gray-600 mb-6">{message}</p>
-        
+
         <div className="mb-6 text-sm text-gray-500">
-          <p><strong>Your roles:</strong> {auth.user?.roles.join(', ') || 'None'}</p>
-          <p><strong>Your permissions:</strong> {auth.user?.permissions.join(', ') || 'None'}</p>
+          <p>
+            <strong>Your roles:</strong> {auth.user?.roles.join(', ') || 'None'}
+          </p>
+          <p>
+            <strong>Your permissions:</strong>{' '}
+            {auth.user?.permissions.join(', ') || 'None'}
+          </p>
         </div>
-        
+
         <div className="space-y-3">
           <Link
             to="/dashboard"
@@ -430,7 +462,7 @@ function UnauthorizedPage() {
           >
             Go to Dashboard
           </Link>
-          
+
           <Link
             to={redirect}
             className="block w-full bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
@@ -489,19 +521,18 @@ export function PermissionGuard({
   requireAll = false,
   fallback = null,
 }: PermissionGuardProps) {
-  const { hasAnyRole, hasAnyPermission, hasRole, hasPermission } = usePermissions()
+  const { hasAnyRole, hasAnyPermission, hasRole, hasPermission } =
+    usePermissions()
 
-  const hasRequiredRoles = roles.length === 0 || (
-    requireAll 
-      ? roles.every(role => hasRole(role))
-      : hasAnyRole(roles)
-  )
+  const hasRequiredRoles =
+    roles.length === 0 ||
+    (requireAll ? roles.every((role) => hasRole(role)) : hasAnyRole(roles))
 
-  const hasRequiredPermissions = permissions.length === 0 || (
-    requireAll 
-      ? permissions.every(permission => hasPermission(permission))
-      : hasAnyPermission(permissions)
-  )
+  const hasRequiredPermissions =
+    permissions.length === 0 ||
+    (requireAll
+      ? permissions.every((permission) => hasPermission(permission))
+      : hasAnyPermission(permissions))
 
   if (hasRequiredRoles && hasRequiredPermissions) {
     return <>{children}</>
@@ -520,14 +551,14 @@ function SomeComponent() {
   return (
     <div>
       <h1>Dashboard</h1>
-      
+
       <PermissionGuard roles={['admin']}>
         <button className="bg-red-600 text-white px-4 py-2 rounded">
           Admin Only Button
         </button>
       </PermissionGuard>
-      
-      <PermissionGuard 
+
+      <PermissionGuard
         permissions={['users:write']}
         fallback={<p className="text-gray-500">You cannot edit users</p>}
       >
@@ -535,8 +566,8 @@ function SomeComponent() {
           Edit Users
         </button>
       </PermissionGuard>
-      
-      <PermissionGuard 
+
+      <PermissionGuard
         roles={['admin', 'moderator']}
         permissions={['content:moderate']}
         requireAll={true}
@@ -561,24 +592,26 @@ function SomeComponent() {
 function canEditResource(auth: AuthState, resourceId: string, ownerId: string) {
   // Admin can edit anything
   if (auth.hasRole('admin')) return true
-  
+
   // Owner can edit their own resources
-  if (auth.user?.id === ownerId && auth.hasPermission('resource:edit:own')) return true
-  
+  if (auth.user?.id === ownerId && auth.hasPermission('resource:edit:own'))
+    return true
+
   // Moderators can edit with permission
-  if (auth.hasRole('moderator') && auth.hasPermission('resource:edit:any')) return true
-  
+  if (auth.hasRole('moderator') && auth.hasPermission('resource:edit:any'))
+    return true
+
   return false
 }
 
 // Usage in component
 function ResourceEditor({ resource }) {
   const { auth } = Route.useRouteContext()
-  
+
   if (!canEditResource(auth, resource.id, resource.ownerId)) {
     return <div>You cannot edit this resource</div>
   }
-  
+
   return <EditForm resource={resource} />
 }
 ```
@@ -589,18 +622,20 @@ function ResourceEditor({ resource }) {
 function hasTimeBasedPermission(auth: AuthState, permission: string) {
   const userPermissions = auth.user?.permissions || []
   const hasPermission = userPermissions.includes(permission)
-  
+
   // Check if permission has time restrictions
-  const timeRestricted = userPermissions.find(p => 
-    p.startsWith(`${permission}:time:`)
+  const timeRestricted = userPermissions.find((p) =>
+    p.startsWith(`${permission}:time:`),
   )
-  
+
   if (timeRestricted) {
     const [, , startHour, endHour] = timeRestricted.split(':')
     const currentHour = new Date().getHours()
-    return currentHour >= parseInt(startHour) && currentHour <= parseInt(endHour)
+    return (
+      currentHour >= parseInt(startHour) && currentHour <= parseInt(endHour)
+    )
   }
-  
+
   return hasPermission
 }
 ```
@@ -643,13 +678,13 @@ const login = async (username: string, password: string) => {
 const roleHierarchy = {
   admin: ['admin', 'moderator', 'user'],
   moderator: ['moderator', 'user'],
-  user: ['user']
+  user: ['user'],
 }
 
 const hasRole = (requiredRole: string) => {
   const userRoles = user?.roles || []
-  return userRoles.some(userRole => 
-    roleHierarchy[userRole]?.includes(requiredRole)
+  return userRoles.some((userRole) =>
+    roleHierarchy[userRole]?.includes(requiredRole),
   )
 }
 ```
@@ -665,14 +700,17 @@ import { useMemo } from 'react'
 
 function usePermissions() {
   const { auth } = Route.useRouteContext()
-  
-  const permissions = useMemo(() => ({
-    canEditUsers: auth.hasPermission('users:write'),
-    canDeleteUsers: auth.hasPermission('users:delete'),
-    isAdmin: auth.hasRole('admin'),
-    isModerator: auth.hasAnyRole(['admin', 'moderator']),
-  }), [auth.user?.roles, auth.user?.permissions])
-  
+
+  const permissions = useMemo(
+    () => ({
+      canEditUsers: auth.hasPermission('users:write'),
+      canDeleteUsers: auth.hasPermission('users:delete'),
+      isAdmin: auth.hasRole('admin'),
+      isModerator: auth.hasAnyRole(['admin', 'moderator']),
+    }),
+    [auth.user?.roles, auth.user?.permissions],
+  )
+
   return permissions
 }
 ```
