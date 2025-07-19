@@ -86,14 +86,13 @@ const routeTree = createRouteTree([
   '/a/b/c/d/e/f',
   '/beep/boop',
   '/one/two',
-  '/one'
+  '/one',
 ])
 
 const result = processRouteTree({ routeTree })
 
 it('work in progress', () => {
-
-  expect(result.flatRoutes.map(r => r.id)).toMatchInlineSnapshot(`
+  expect(result.flatRoutes.map((r) => r.id)).toMatchInlineSnapshot(`
     [
       "/a/b/c/d/e/f",
       "/a/profile/settings",
@@ -155,7 +154,7 @@ it('work in progress', () => {
       console.log('\u001b[34m' + fn + '\u001b[0m')
       const currentSegment = parsed[depth]
       if (!currentSegment) {
-        throw new Error("Implementation error: this should not happen")
+        throw new Error('Implementation error: this should not happen')
       }
       const candidates = parsedRoutes.filter((r) => {
         const rParsed = r[depth]
@@ -170,7 +169,7 @@ it('work in progress', () => {
       })
       console.log('candidates:', candidates.map(logParsed))
       if (candidates.length === 0) {
-        throw new Error("Implementation error: this should not happen")
+        throw new Error('Implementation error: this should not happen')
       }
       const indent = '  '.repeat(depth - initialDepth)
       const lCondition = depth > initialDepth ? `l > ${depth} && ` : ''
@@ -179,7 +178,7 @@ it('work in progress', () => {
         const deeper = candidates.filter((c) => c.length > depth + 1)
         const leaves = candidates.filter((c) => c.length === depth + 1)
         if (deeper.length + leaves.length !== candidates.length) {
-          throw new Error("Implementation error: this should not happen")
+          throw new Error('Implementation error: this should not happen')
         }
         if (deeper.length > 0) {
           fn += `\n${indent}  const {type, value} = baseSegments[${depth + 1}];`
@@ -191,7 +190,10 @@ it('work in progress', () => {
           )
         } else if (leaves.length === 1) {
           fn += `\n${indent}  if (l === ${leaves[0]!.length}) {`
-          fn += `\n${indent}    return '/${leaves[0]!.slice(1).map((s) => s.value).join('/')}';`
+          fn += `\n${indent}    return '/${leaves[0]!
+            .slice(1)
+            .map((s) => s.value)
+            .join('/')}';`
           fn += `\n${indent}  }`
         }
       } else {
