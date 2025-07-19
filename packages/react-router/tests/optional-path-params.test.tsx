@@ -143,6 +143,86 @@ describe('React Router - Optional Path Parameters', () => {
         expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
       },
     )
+
+    it.each([
+      {
+        path: '/',
+        expectedLocale: 'en' as const,
+      },
+      {
+        path: '/en',
+        expectedLocale: 'en' as const,
+      },
+      {
+        path: '/fr',
+        expectedLocale: 'fr' as const,
+      },
+    ])(
+      'should correctly render matches with and without optional parameter',
+      async ({ path, expectedLocale }) => {
+        const content = {
+          en: {
+            title: 'About Us',
+            description: 'Learn more about our company.',
+          },
+          fr: {
+            title: 'À Propos',
+            description: 'En savoir plus sur notre entreprise.',
+          },
+          es: {
+            title: 'Acerca de',
+            description: 'Conoce más sobre nuestra empresa.',
+          },
+        } as const
+
+        const rootRoute = createRootRoute()
+        const localeRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/{-$locale}',
+          beforeLoad: ({ params }) => {
+            const currentLocale = (params.locale ||
+              'en') as keyof typeof content
+
+            return {
+              content: content[currentLocale],
+            }
+          },
+        })
+
+        const indexRoute = createRoute({
+          getParentRoute: () => localeRoute,
+          path: '/',
+          component: () => {
+            const { content } = indexRoute.useRouteContext()
+            return (
+              <div data-testid="index-content">
+                <h1 data-testid="index-title">{content.title}</h1>
+                <p data-testid="index-description">{content.description}</p>
+              </div>
+            )
+          },
+        })
+
+        window.history.replaceState({}, '', path)
+
+        const router = createRouter({
+          routeTree: rootRoute.addChildren([
+            localeRoute.addChildren([indexRoute]),
+          ]),
+        })
+
+        render(<RouterProvider router={router} />)
+        await act(() => router.load())
+
+        await screen.findByTestId('index-content')
+        const titleElement = screen.getByTestId('index-title')
+        const descriptionElement = screen.getByTestId('index-description')
+        expect(titleElement).toHaveTextContent(content[expectedLocale].title)
+        expect(descriptionElement).toHaveTextContent(
+          content[expectedLocale].description,
+        )
+      },
+    )
   })
 
   describe('Link component with optional parameters', () => {
