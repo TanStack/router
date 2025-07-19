@@ -594,9 +594,9 @@ function AdvancedLanguageSwitcher() {
 }
 ```
 
-### Advanced i18n with Route Groups
+### Advanced i18n with Optional Parameters
 
-Organize i18n routes using route groups for better structure:
+Organize i18n routes using optional parameters for flexible locale handling:
 
 ```tsx
 // Route structure:
