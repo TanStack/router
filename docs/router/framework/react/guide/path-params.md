@@ -594,22 +594,22 @@ function AdvancedLanguageSwitcher() {
 }
 ```
 
-### Advanced i18n with Route Groups
+### Advanced i18n with Optional Parameters
 
-Organize i18n routes using route groups for better structure:
+Organize i18n routes using optional parameters for flexible locale handling:
 
 ```tsx
 // Route structure:
 // routes/
-//   ({-$locale})/
+//   {-$locale}/
 //     index.tsx        // /, /en, /fr
 //     about.tsx        // /about, /en/about, /fr/about
 //     blog/
 //       index.tsx      // /blog, /en/blog, /fr/blog
 //       $slug.tsx      // /blog/post, /en/blog/post, /fr/blog/post
 
-// routes/({-$locale})/index.tsx
-export const Route = createFileRoute('/({-$locale})/')({
+// routes/{-$locale}/index.tsx
+export const Route = createFileRoute('/{-$locale}/')({
   component: HomeComponent,
 })
 
@@ -625,8 +625,8 @@ function HomeComponent() {
   )
 }
 
-// routes/({-$locale})/about.tsx
-export const Route = createFileRoute('/({-$locale})/about')({
+// routes/{-$locale}/about.tsx
+export const Route = createFileRoute('/{-$locale}/about')({
   component: AboutComponent,
 })
 ```
