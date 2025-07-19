@@ -437,6 +437,9 @@ export function interpolatePath({
 
         // Check if optional parameter is missing or undefined
         if (!(key in params) || params[key] == null) {
+          if (leaveWildcards) {
+            return `${segmentPrefix}${key}${segmentSuffix}`
+          }
           // For optional params with prefix/suffix, keep the prefix/suffix but omit the param
           if (segmentPrefix || segmentSuffix) {
             return `${segmentPrefix}${segmentSuffix}`
