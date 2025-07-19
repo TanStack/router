@@ -81,6 +81,8 @@ const routeTree = createRouteTree([
   '/b',
   '/foo/bar/$id',
   '/foo/$id/bar',
+  '/foo/$bar/',
+  '/foo/{-$bar}/qux',
   '/$id/bar/foo',
   '/$id/foo/bar',
   '/a/b/c/d/e/f',
@@ -105,9 +107,11 @@ it('work in progress', () => {
       "/one/two",
       "/users/profile",
       "/foo/$id/bar",
+      "/foo/{-$bar}/qux",
       "/a/user-{$id}",
       "/api/user-{$id}",
       "/b/user-{$id}",
+      "/foo/$bar/",
       "/a/$id",
       "/b/$id",
       "/users/$id",
@@ -340,6 +344,18 @@ it('work in progress', () => {
         && baseSegments[3].type === 0 && baseSegments[3].value === 'bar'
       ) {
         return '/foo/$id/bar';
+      }
+      if (l === 4
+        && type === 3 && value === '$bar'
+        && baseSegments[3].type === 0 && baseSegments[3].value === 'qux'
+      ) {
+        return '/foo/$bar/qux';
+      }
+      if (l === 4
+        && type === 1 && value === '$bar'
+        && baseSegments[3].type === 0 && baseSegments[3].value === '/'
+      ) {
+        return '/foo/$bar//';
       }
     }
     if (l === 3
