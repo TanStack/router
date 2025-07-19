@@ -1317,8 +1317,8 @@ export type ErrorRouteProps = {
   reset: () => void
 }
 
-export type ErrorComponentProps = {
-  error: unknown
+export type ErrorComponentProps<TError = Error> = {
+  error: TError
   info?: { componentStack: string }
   reset: () => void
 }
