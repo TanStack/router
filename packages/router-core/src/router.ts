@@ -14,6 +14,10 @@ import {
   replaceEqualDeep,
 } from './utils'
 import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
   cleanPath,
   interpolatePath,
   joinPaths,
@@ -29,6 +33,7 @@ import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
+import type { Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -1819,6 +1824,7 @@ export class RouterCore<
     this.__store.setState((s) => ({
       ...s,
       status: 'pending',
+      statusCode: 200,
       isLoading: true,
       location: this.latestLocation,
       pendingMatches,
@@ -3177,6 +3183,27 @@ export type ProcessRouteTreeResult<TRouteLike extends RouteLike> = {
   routesByPath: Record<string, TRouteLike>
   flatRoutes: Array<TRouteLike>
 }
+
+const REQUIRED_PARAM_BASE_SCORE = 0.5
+const OPTIONAL_PARAM_BASE_SCORE = 0.4
+const WILDCARD_PARAM_BASE_SCORE = 0.25
+
+function handleParam(segment: Segment, baseScore: number) {
+  if (segment.prefixSegment && segment.suffixSegment) {
+    return baseScore + 0.05
+  }
+
+  if (segment.prefixSegment) {
+    return baseScore + 0.02
+  }
+
+  if (segment.suffixSegment) {
+    return baseScore + 0.01
+  }
+
+  return baseScore
+}
+
 export function processRouteTree<TRouteLike extends RouteLike>({
   routeTree,
   initRoute,
@@ -3223,9 +3250,11 @@ export function processRouteTree<TRouteLike extends RouteLike>({
   const scoredRoutes: Array<{
     child: TRouteLike
     trimmed: string
-    parsed: ReturnType<typeof parsePathname>
+    parsed: ReadonlyArray<Segment>
     index: number
     scores: Array<number>
+    hasStaticAfter: boolean
+    optionalParamCount: number
   }> = []
 
   const routes: Array<TRouteLike> = Object.values(routesById)
@@ -3236,70 +3265,62 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     }
 
     const trimmed = trimPathLeft(d.fullPath)
-    const parsed = parsePathname(trimmed)
+    let parsed = parsePathname(trimmed)
 
     // Removes the leading slash if it is not the only remaining segment
-    while (parsed.length > 1 && parsed[0]?.value === '/') {
-      parsed.shift()
+    let skip = 0
+    while (parsed.length > skip + 1 && parsed[skip]?.value === '/') {
+      skip++
     }
+    if (skip > 0) parsed = parsed.slice(skip)
 
-    const scores = parsed.map((segment) => {
+    let optionalParamCount = 0
+    let hasStaticAfter = false
+    const scores = parsed.map((segment, index) => {
       if (segment.value === '/') {
         return 0.75
       }
 
-      if (segment.type === 'param') {
-        if (segment.prefixSegment && segment.suffixSegment) {
-          return 0.55
-        }
-
-        if (segment.prefixSegment) {
-          return 0.52
-        }
-
-        if (segment.suffixSegment) {
-          return 0.51
-        }
-
-        return 0.5
+      let baseScore: number | undefined = undefined
+      if (segment.type === SEGMENT_TYPE_PARAM) {
+        baseScore = REQUIRED_PARAM_BASE_SCORE
+      } else if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
+        baseScore = OPTIONAL_PARAM_BASE_SCORE
+        optionalParamCount++
+      } else if (segment.type === SEGMENT_TYPE_WILDCARD) {
+        baseScore = WILDCARD_PARAM_BASE_SCORE
       }
 
-      if (segment.type === 'optional-param') {
-        if (segment.prefixSegment && segment.suffixSegment) {
-          return 0.45
+      if (baseScore) {
+        // if there is any static segment (that is not an index) after a required / optional param,
+        // we will boost this param so it ranks higher than a required/optional param without a static segment after it
+        // JUST FOR SORTING, NOT FOR MATCHING
+        for (let i = index + 1; i < parsed.length; i++) {
+          const nextSegment = parsed[i]!
+          if (
+            nextSegment.type === SEGMENT_TYPE_PATHNAME &&
+            nextSegment.value !== '/'
+          ) {
+            hasStaticAfter = true
+            return handleParam(segment, baseScore + 0.2)
+          }
         }
 
-        if (segment.prefixSegment) {
-          return 0.42
-        }
-
-        if (segment.suffixSegment) {
-          return 0.41
-        }
-
-        return 0.4
-      }
-
-      if (segment.type === 'wildcard') {
-        if (segment.prefixSegment && segment.suffixSegment) {
-          return 0.3
-        }
-
-        if (segment.prefixSegment) {
-          return 0.27
-        }
-
-        if (segment.suffixSegment) {
-          return 0.26
-        }
-
-        return 0.25
+        return handleParam(segment, baseScore)
       }
 
       return 1
     })
 
-    scoredRoutes.push({ child: d, trimmed, parsed, index: i, scores })
+    scoredRoutes.push({
+      child: d,
+      trimmed,
+      parsed,
+      index: i,
+      scores,
+      optionalParamCount,
+      hasStaticAfter,
+    })
   })
 
   const flatRoutes = scoredRoutes
@@ -3315,17 +3336,16 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 
       // If all common segments have equal scores, then consider length and specificity
       if (a.scores.length !== b.scores.length) {
-        // Count optional parameters in each route
-        const aOptionalCount = a.parsed.filter(
-          (seg) => seg.type === 'optional-param',
-        ).length
-        const bOptionalCount = b.parsed.filter(
-          (seg) => seg.type === 'optional-param',
-        ).length
-
         // If different number of optional parameters, fewer optional parameters wins (more specific)
-        if (aOptionalCount !== bOptionalCount) {
-          return aOptionalCount - bOptionalCount
+        // only if both or none of the routes has static segments after the params
+        if (a.optionalParamCount !== b.optionalParamCount) {
+          if (a.hasStaticAfter === b.hasStaticAfter) {
+            return a.optionalParamCount - b.optionalParamCount
+          } else if (a.hasStaticAfter && !b.hasStaticAfter) {
+            return -1
+          } else if (!a.hasStaticAfter && b.hasStaticAfter) {
+            return 1
+          }
         }
 
         // If same number of optional parameters, longer path wins (for static segments)
@@ -3401,8 +3421,9 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 
   while (routeCursor.parentRoute) {
     routeCursor = routeCursor.parentRoute as TRouteLike
-    matchedRoutes.unshift(routeCursor)
+    matchedRoutes.push(routeCursor)
   }
+  matchedRoutes.reverse()
 
   return { matchedRoutes, routeParams, foundRoute }
 }
