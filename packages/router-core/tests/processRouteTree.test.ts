@@ -384,5 +384,46 @@ describe('processRouteTree', () => {
         '/foo/{-$p1}/{-$p1}',
       ])
     })
+
+    it.each([
+      {
+        routes: ['/foo/{-$p1}/bar', '/foo/{-$p1}', '/foo/$p1', '/foo/$p1/'],
+        expected: ['/foo/{-$p1}/bar', '/foo/$p1/', '/foo/$p1', '/foo/{-$p1}'],
+      },
+      {
+        routes: ['/foo/{-$p1}/{-$p2}/bar', '/foo/$p1/$p2/'],
+        expected: ['/foo/{-$p1}/{-$p2}/bar', '/foo/$p1/$p2/'],
+      },
+      {
+        routes: ['/foo/{-$p1}/$p2/bar', '/foo/$p1/{-$p2}/bar'],
+        expected: ['/foo/$p1/{-$p2}/bar', '/foo/{-$p1}/$p2/bar'],
+      },
+      {
+        routes: [
+          '/foo',
+          '/admin-levels/$adminLevelId/',
+          '/admin-levels/$adminLevelId',
+          '/about',
+          '/admin-levels/{-$adminLevelId}/reports',
+          '/admin-levels/{-$adminLevelId}',
+          '/',
+        ],
+        expected: [
+          '/admin-levels/{-$adminLevelId}/reports',
+          '/admin-levels/$adminLevelId/',
+          '/admin-levels/$adminLevelId',
+          '/about',
+          '/foo',
+          '/admin-levels/{-$adminLevelId}',
+          '/',
+        ],
+      },
+    ])(
+      'static segment after param ranks param higher: $routes',
+      ({ routes, expected }) => {
+        const result = processRouteTree({ routeTree: createRouteTree(routes) })
+        expect(result.flatRoutes.map((r) => r.id)).toEqual(expected)
+      },
+    )
   })
 })
