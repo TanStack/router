@@ -95,6 +95,7 @@ const routeTree = createRouteTree([
   '/foo/bar/$id',
   '/foo/$id/bar',
   '/foo/$bar',
+  '/foo/$bar/',
   '/foo/{-$bar}/qux',
   '/$id/bar/foo',
   '/$id/foo/bar',
@@ -143,6 +144,7 @@ describe('work in progress', () => {
         "/a/user-{$id}",
         "/api/user-{$id}",
         "/b/user-{$id}",
+        "/foo/$bar/",
         "/a/$id",
         "/b/$id",
         "/foo/$bar",
@@ -491,6 +493,24 @@ describe('work in progress', () => {
     }
   }
 
+  function prepareIndexRoutes(
+    parsedRoutes: Array<ParsedRoute>,
+  ): Array<ParsedRoute> {
+    const result: Array<ParsedRoute> = []
+    for (const route of parsedRoutes) {
+      result.push(route)
+      const last = route.segments.at(-1)!
+      if (route.segments.length > 1 && last.type === SEGMENT_TYPE_PATHNAME && last.value === '/') {
+        const clone: ParsedRoute = {
+          ...route,
+          segments: route.segments.slice(0, -1),
+        }
+        result.push(clone)
+      }
+    }
+    return result
+  }
+
   function prepareOptionalParams(
     parsedRoutes: Array<ParsedRoute>,
   ): Array<ParsedRoute> {
@@ -530,7 +550,9 @@ describe('work in progress', () => {
     | { key: string; kind: 'wildcardEndsWith'; value: string }
 
   const withConditions: Array<WithConditions> = prepareOptionalParams(
-    parsedRoutes,
+    prepareIndexRoutes(
+      parsedRoutes
+    ),
   ).map((r) => {
     let minLength = 0
     let maxLength = 0
@@ -652,8 +674,8 @@ describe('work in progress', () => {
             if (s2.startsWith("user-")) {
               propose(16, "/a/user-{$id}");
             }
-            propose(19, "/a/$id");
-            propose(23, "/a/{-$slug}");
+            propose(20, "/a/$id");
+            propose(24, "/a/{-$slug}");
           }
           if (s1 === "b" && rank > 10) {
             if (s2 === "profile") {
@@ -662,20 +684,21 @@ describe('work in progress', () => {
             if (s2.startsWith("user-")) {
               propose(18, "/b/user-{$id}");
             }
-            propose(20, "/b/$id");
-            propose(24, "/b/{-$slug}");
+            propose(21, "/b/$id");
+            propose(25, "/b/{-$slug}");
+          }
+          if (s1 === "foo" && rank > 15) {
+            if (s2 === "qux") {
+              propose(15, "/foo/{-$bar}/qux");
+            }
+            propose(19, "/foo/$bar/");
+            propose(22, "/foo/$bar");
           }
           if (s1 === "users") {
             if (s2 === "profile") {
               propose(13, "/users/profile");
             }
-            propose(22, "/users/$id");
-          }
-          if (s1 === "foo") {
-            if (s2 === "qux") {
-              propose(15, "/foo/{-$bar}/qux");
-            }
-            propose(21, "/foo/$bar");
+            propose(23, "/users/$id");
           }
           if (s1 === "beep" && s2 === "boop") {
             propose(11, "/beep/boop");
@@ -687,30 +710,30 @@ describe('work in progress', () => {
             propose(17, "/api/user-{$id}");
           }
           if (s1 === "posts") {
-            propose(25, "/posts/{-$slug}");
+            propose(26, "/posts/{-$slug}");
           }
         }
-        if (l === 2 && rank > 23) {
+        if (l === 2 && rank > 24) {
           if (s1 === "a") {
-            propose(23, "/a/{-$slug}");
-            propose(32, "/a");
+            propose(24, "/a/{-$slug}");
+            propose(33, "/a");
           }
           if (s1 === "b") {
-            propose(24, "/b/{-$slug}");
-            propose(34, "/b");
+            propose(25, "/b/{-$slug}");
+            propose(35, "/b");
           }
           if (s1 === "posts") {
-            propose(25, "/posts/{-$slug}");
+            propose(26, "/posts/{-$slug}");
           }
           if (s1 === "about") {
-            propose(33, "/about");
+            propose(34, "/about");
           }
           if (s1 === "one") {
-            propose(35, "/one");
+            propose(36, "/one");
           }
         }
         if (l === 1) {
-          propose(36, "/");
+          propose(37, "/");
         }
       }
       if (l >= 4) {
@@ -742,7 +765,21 @@ describe('work in progress', () => {
           }
         }
         if (l === 4 && rank > 4) {
-          if (s2 === "profile") {
+          if (s1 === "foo" && rank > 8) {
+            if (s2 === "bar") {
+              propose(8, "/foo/bar/$id");
+            }
+            if (s3 === "bar") {
+              propose(14, "/foo/$id/bar");
+            }
+            if (s3 === "qux") {
+              propose(15, "/foo/{-$bar}/qux");
+            }
+            if (s3 === "/") {
+              propose(19, "/foo/$bar/");
+            }
+          }
+          if (s2 === "profile" && rank > 4) {
             if (s1 === "a" && s3 === "settings") {
               return "/a/profile/settings";
             }
@@ -753,49 +790,38 @@ describe('work in progress', () => {
               return "/users/profile/settings";
             }
           }
-          if (s1 === "foo" && rank > 8) {
-            if (s2 === "bar") {
-              return "/foo/bar/$id";
-            }
-            if (s3 === "bar") {
-              return "/foo/$id/bar";
-            }
-            if (s3 === "qux") {
-              propose(15, "/foo/{-$bar}/qux");
-            }
-          }
           if (s2 === "bar" && s3 === "foo") {
-            propose(37, "/$id/bar/foo");
+            propose(38, "/$id/bar/foo");
           }
           if (s2 === "foo" && s3 === "bar") {
-            propose(38, "/$id/foo/bar");
+            propose(39, "/$id/foo/bar");
           }
         }
       }
-      if (l >= 3 && rank > 26) {
+      if (l >= 3 && rank > 27) {
         if (
           s1 === "cache" &&
           s2.startsWith("temp_") &&
           baseSegments[l - 1].endsWith(".log")
         ) {
-          propose(26, "/cache/temp_{$}.log");
+          propose(27, "/cache/temp_{$}.log");
         }
         if (s1 === "images" && s2.startsWith("thumb_")) {
-          propose(27, "/images/thumb_{$}");
+          propose(28, "/images/thumb_{$}");
         }
         if (s1 === "logs" && baseSegments[l - 1].endsWith(".txt")) {
-          propose(28, "/logs/{$}.txt");
+          propose(29, "/logs/{$}.txt");
         }
       }
-      if (l >= 2 && rank > 29) {
+      if (l >= 2 && rank > 30) {
         if (s1 === "a") {
-          propose(29, "/a/$");
+          propose(30, "/a/$");
         }
         if (s1 === "b") {
-          propose(30, "/b/$");
+          propose(31, "/b/$");
         }
         if (s1 === "files") {
-          propose(31, "/files/$");
+          propose(32, "/files/$");
         }
       }
       return path;
@@ -817,6 +843,7 @@ describe('work in progress', () => {
     '/',
     '/users/profile/settings',
     '/foo/123',
+    '/foo/123/',
     '/b/123',
     '/foo/qux',
     '/foo/123/qux',
