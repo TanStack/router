@@ -215,6 +215,7 @@ describe('work in progress', () => {
     route: WithConditions,
     length: { min: number; max: number },
     preconditions: Array<string> = [],
+    allSeenRanks: Array<number> = [],
   ) {
     const flags: Array<string> = []
     let min = length.min
@@ -252,8 +253,20 @@ describe('work in progress', () => {
     if (flags.length) {
       fn += `if (${flags.join(' && ')}) {`
     }
-    if (route.rank === 0) {
+    allSeenRanks.sort((a, b) => a - b)
+    let maxContinuousRank = -1
+    for (let i = 0; i < allSeenRanks.length; i++) {
+      if (allSeenRanks[i] === i) {
+        maxContinuousRank = i
+      } else {
+        break
+      }
+    }
+    allSeenRanks.push(route.rank)
+    if (route.rank === maxContinuousRank + 1) {
+      // if we know at this point of the function, we can't do better than this, return it directly
       fn += `return '${route.path}';`
+      console.log('maxContinuousRank', maxContinuousRank, 'all', allSeenRanks.join(','))
     } else {
       fn += `propose(${route.rank}, '${route.path}');`
     }
@@ -267,6 +280,7 @@ describe('work in progress', () => {
     length: { min: number; max: number } = { min: 0, max: Infinity },
     preconditions: Array<string> = [],
     lastRank?: number,
+    allSeenRanks: Array<number> = [],
   ) {
     // count all conditions by `key`
     // determine the condition that would match as close to 50% of the routes as possible
@@ -387,7 +401,7 @@ describe('work in progress', () => {
         }
       }
       if (matchingRoutes.length === 1) {
-        outputRoute(matchingRoutes[0]!, length, preconditions)
+        outputRoute(matchingRoutes[0]!, length, preconditions, allSeenRanks)
       } else if (matchingRoutes.length) {
         // add `if` for the discriminant
         const bestChildRank = matchingRoutes.reduce(
@@ -451,21 +465,22 @@ describe('work in progress', () => {
             ? [...preconditions, discriminant.key]
             : preconditions,
           rankTest ? bestChildRank : lastRank,
+          allSeenRanks
         )
         fn += '}'
       }
       if (nonMatchingRoutes.length === 1) {
-        outputRoute(nonMatchingRoutes[0]!, length, preconditions)
+        outputRoute(nonMatchingRoutes[0]!, length, preconditions, allSeenRanks)
       } else if (nonMatchingRoutes.length) {
         // recurse
-        recursiveStaticMatch(nonMatchingRoutes, length, preconditions)
+        recursiveStaticMatch(nonMatchingRoutes, length, preconditions, undefined, allSeenRanks)
       }
     } else {
       const [route, ...rest] = parsedRoutes
-      if (route) outputRoute(route, length, preconditions)
+      if (route) outputRoute(route, length, preconditions, allSeenRanks)
       if (rest.length) {
         // try again w/ 1 fewer route, it might find a good discriminant now
-        recursiveStaticMatch(rest, length, preconditions)
+        recursiveStaticMatch(rest, length, preconditions, undefined, allSeenRanks)
       }
     }
   }
@@ -700,13 +715,13 @@ describe('work in progress', () => {
         if (s1 === "z" && rank > 1) {
           if (l === 5) {
             if (s2 === "y" && s3 === "x" && s4 === "u") {
-              propose(1, "/z/y/x/u");
+              return "/z/y/x/u";
             }
             if (s2 === "y" && s3 === "x" && s4 === "v") {
-              propose(2, "/z/y/x/v");
+              return "/z/y/x/v";
             }
             if (s2 === "y" && s3 === "x" && s4 === "w") {
-              propose(3, "/z/y/x/w");
+              return "/z/y/x/w";
             }
           }
           if (l === 4 && s2 === "y" && s3 === "x") {
@@ -716,21 +731,21 @@ describe('work in progress', () => {
         if (l === 4 && rank > 4) {
           if (s2 === "profile") {
             if (s1 === "a" && s3 === "settings") {
-              propose(4, "/a/profile/settings");
+              return "/a/profile/settings";
             }
             if (s1 === "b" && s3 === "settings") {
-              propose(5, "/b/profile/settings");
+              return "/b/profile/settings";
             }
             if (s1 === "users" && s3 === "settings") {
-              propose(6, "/users/profile/settings");
+              return "/users/profile/settings";
             }
           }
           if (s1 === "foo" && rank > 8) {
             if (s2 === "bar") {
-              propose(8, "/foo/bar/$id");
+              return "/foo/bar/$id";
             }
             if (s3 === "bar") {
-              propose(14, "/foo/$id/bar");
+              return "/foo/$id/bar";
             }
             if (s3 === "qux") {
               propose(15, "/foo/{-$bar}/qux");
