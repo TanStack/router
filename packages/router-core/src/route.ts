@@ -1072,7 +1072,7 @@ export interface UpdatableRouteOptions<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
   onCatch?: (error: Error) => void
-  onError?: (err: any) => void
+  onError?: (err: any, routerCode?: string) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
   onEnter?: (

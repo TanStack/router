@@ -2145,7 +2145,7 @@ export class RouterCore<
           err = this.resolveRedirect(err)
           throw err
         } else if (isNotFound(err)) {
-          this._handleNotFound(matches, err, {
+          this._handleNotFound(matches, err, undefined, {
             updateMatch,
           })
           throw err
@@ -2187,12 +2187,11 @@ export class RouterCore<
                 throw err
               }
 
-              err.routerCode = routerCode
               firstBadMatchIndex = firstBadMatchIndex ?? index
               handleRedirectAndNotFound(this.getMatch(matchId)!, err)
 
               try {
-                route.options.onError?.(err)
+                route.options.onError?.(err, routerCode)
               } catch (errorHandlerErr) {
                 err = errorHandlerErr
                 handleRedirectAndNotFound(this.getMatch(matchId)!, err)
@@ -3019,6 +3018,7 @@ export class RouterCore<
   _handleNotFound = (
     matches: Array<AnyRouteMatch>,
     err: NotFoundError,
+    routerCode?: string,
     {
       updateMatch = this.updateMatch,
     }: {
@@ -3069,10 +3069,9 @@ export class RouterCore<
       error: err,
       isFetching: false,
     }))
-
-    if ((err as any).routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute) {
+    if (routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute) {
       err.routeId = routeCursor.parentRoute.id
-      this._handleNotFound(matches, err, {
+      this._handleNotFound(matches, err, routerCode, {
         updateMatch,
       })
     }
