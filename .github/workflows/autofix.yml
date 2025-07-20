@@ -16,6 +16,7 @@ jobs:
   autofix:
     name: autofix
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || !github.event.pull_request.draft }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
