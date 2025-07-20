@@ -183,6 +183,14 @@ describe('work in progress', () => {
 
   let fn = 'const baseSegments = parsePathname(from).map(s => s.value);'
   fn += '\nconst l = baseSegments.length;'
+  fn += `\nlet rank = Infinity;`
+  fn += `\nlet path = undefined;`
+  fn += `\nconst propose = (r, p) => {`
+  fn += `\n  if (r < rank) {`
+  fn += `\n    rank = r;`
+  fn += `\n    path = p;`
+  fn += `\n  }`
+  fn += `\n};`
 
   type WithConditions = ParsedRoute & {
     conditions: Array<Condition>
@@ -244,7 +252,11 @@ describe('work in progress', () => {
     if (flags.length) {
       fn += `if (${flags.join(' && ')}) {`
     }
-    fn += `propose(${route.rank}, '${route.path}');`
+    if (route.rank === 0) {
+      fn += `return '${route.path}';`
+    } else {
+      fn += `propose(${route.rank}, '${route.path}');`
+    }
     if (flags.length) {
       fn += '}'
     }
@@ -254,6 +266,7 @@ describe('work in progress', () => {
     parsedRoutes: Array<WithConditions>,
     length: { min: number; max: number } = { min: 0, max: Infinity },
     preconditions: Array<string> = [],
+    lastRank?: number,
   ) {
     // count all conditions by `key`
     // determine the condition that would match as close to 50% of the routes as possible
@@ -377,6 +390,16 @@ describe('work in progress', () => {
         outputRoute(matchingRoutes[0]!, length, preconditions)
       } else if (matchingRoutes.length) {
         // add `if` for the discriminant
+        const bestChildRank = matchingRoutes.reduce(
+          (min, r) => Math.min(min, r.rank),
+          Infinity,
+        )
+        const rankTest =
+          matchingRoutes.length > 2 &&
+          bestChildRank !== Infinity &&
+          bestChildRank !== lastRank
+            ? ` && rank > ${bestChildRank}`
+            : ''
         const nextLength = {
           min:
             discriminant.type === 'minLength' ? discriminant.key : length.min,
@@ -387,31 +410,31 @@ describe('work in progress', () => {
           const condition = matchingRoutes[0]!.conditions.find(
             (c) => c.key === discriminant.key,
           )!
-          fn += `if (${conditionToString(condition) || 'true'}) {`
+          fn += `if (${conditionToString(condition) || 'true'}${rankTest}) {`
         } else if (discriminant.type === 'minLength') {
           if (discriminant.key === length.max) {
-            fn += `if (l === ${discriminant.key}) {`
+            fn += `if (l === ${discriminant.key}${rankTest}) {`
           } else {
             if (
               matchingRoutes.every((r) => r.length.max === discriminant.key)
             ) {
               nextLength.max = discriminant.key
-              fn += `if (l === ${discriminant.key}) {`
+              fn += `if (l === ${discriminant.key}${rankTest}) {`
             } else {
-              fn += `if (l >= ${discriminant.key}) {`
+              fn += `if (l >= ${discriminant.key}${rankTest}) {`
             }
           }
         } else if (discriminant.type === 'maxLength') {
           if (discriminant.key === length.min) {
-            fn += `if (l === ${discriminant.key}) {`
+            fn += `if (l === ${discriminant.key}${rankTest}) {`
           } else {
             if (
               matchingRoutes.every((r) => r.length.min === discriminant.key)
             ) {
               nextLength.min = discriminant.key
-              fn += `if (l === ${discriminant.key}) {`
+              fn += `if (l === ${discriminant.key}${rankTest}) {`
             } else {
-              fn += `if (l <= ${discriminant.key}) {`
+              fn += `if (l <= ${discriminant.key}${rankTest}) {`
             }
           }
         } else {
@@ -426,6 +449,7 @@ describe('work in progress', () => {
           discriminant.type === 'condition'
             ? [...preconditions, discriminant.key]
             : preconditions,
+          rankTest ? bestChildRank : lastRank,
         )
         fn += '}'
       }
@@ -575,12 +599,22 @@ describe('work in progress', () => {
 
   recursiveStaticMatch(withConditions)
 
+  fn += `return path;`
+
   it('generates a matching function', async () => {
     expect(await format(fn, { parser: 'typescript' })).toMatchInlineSnapshot(`
       "const baseSegments = parsePathname(from).map((s) => s.value);
       const l = baseSegments.length;
+      let rank = Infinity;
+      let path = undefined;
+      const propose = (r, p) => {
+        if (r < rank) {
+          rank = r;
+          path = p;
+        }
+      };
       const [s0, s1, s2, s3, s4, s5, s6] = baseSegments;
-      if (l <= 3) {
+      if (l <= 3 && rank > 9) {
         if (l === 3) {
           if (s1 === "a") {
             if (s2 === "profile") {
@@ -592,7 +626,7 @@ describe('work in progress', () => {
             propose(19, "/a/$id");
             propose(23, "/a/{-$slug}");
           }
-          if (s1 === "b") {
+          if (s1 === "b" && rank > 10) {
             if (s2 === "profile") {
               propose(10, "/b/profile");
             }
@@ -627,7 +661,7 @@ describe('work in progress', () => {
             propose(25, "/posts/{-$slug}");
           }
         }
-        if (l === 2) {
+        if (l === 2 && rank > 23) {
           if (s1 === "a") {
             propose(23, "/a/{-$slug}");
             propose(32, "/a");
@@ -650,7 +684,7 @@ describe('work in progress', () => {
           propose(36, "/");
         }
       }
-      if (l >= 4) {
+      if (l >= 4 && rank > 0) {
         if (
           l <= 7 &&
           s1 === "a" &&
@@ -660,9 +694,9 @@ describe('work in progress', () => {
           s5 === "e" &&
           s6 === "f"
         ) {
-          propose(0, "/a/b/c/d/e/f");
+          return "/a/b/c/d/e/f";
         }
-        if (s1 === "z") {
+        if (s1 === "z" && rank > 1) {
           if (l === 5) {
             if (s2 === "y" && s3 === "x" && s4 === "u") {
               propose(1, "/z/y/x/u");
@@ -678,7 +712,7 @@ describe('work in progress', () => {
             propose(7, "/z/y/x");
           }
         }
-        if (l === 4) {
+        if (l === 4 && rank > 4) {
           if (s2 === "profile") {
             if (s1 === "a" && s3 === "settings") {
               propose(4, "/a/profile/settings");
@@ -690,7 +724,7 @@ describe('work in progress', () => {
               propose(6, "/users/profile/settings");
             }
           }
-          if (s1 === "foo") {
+          if (s1 === "foo" && rank > 8) {
             if (s2 === "bar") {
               propose(8, "/foo/bar/$id");
             }
@@ -709,7 +743,7 @@ describe('work in progress', () => {
           }
         }
       }
-      if (l >= 3) {
+      if (l >= 3 && rank > 26) {
         if (
           s1 === "cache" &&
           s2.startsWith("temp_") &&
@@ -724,7 +758,7 @@ describe('work in progress', () => {
           propose(28, "/logs/{$}.txt");
         }
       }
-      if (l >= 2) {
+      if (l >= 2 && rank > 29) {
         if (s1 === "a") {
           propose(29, "/a/$");
         }
@@ -735,27 +769,18 @@ describe('work in progress', () => {
           propose(31, "/files/$");
         }
       }
+      return path;
       "
     `)
   })
 
-  const buildMatcher = new Function('parsePathname', 'propose', 'from', fn) as (
+  const buildMatcher = new Function('parsePathname', 'from', fn) as (
     parser: typeof parsePathname,
-    propose: (rank: number, path: string) => void,
     from: string,
   ) => string | undefined
 
   const wrappedMatcher = (from: string): string | undefined => {
-    let bestRank = Infinity
-    let bestPath: string | undefined = undefined
-    const propose = (rank: number, path: string) => {
-      if (rank < bestRank) {
-        bestRank = rank
-        bestPath = path
-      }
-    }
-    buildMatcher(parsePathname, propose, from)
-    return bestPath
+    return buildMatcher(parsePathname, from)
   }
 
   // WARN: some of these don't work yet, they're just here to show the differences
