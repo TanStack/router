@@ -737,8 +737,8 @@ test('reproducer for #4696', async () => {
       return {
         ...context,
         isAuthenticated: true,
-        isAdmin :false,
-      };
+        isAdmin: false,
+      }
     },
     loader: ({ context }) => context,
     pendingComponent: () => 'Loading...',
@@ -746,15 +746,17 @@ test('reproducer for #4696', async () => {
     component: RootRouteContent,
   })
 
-  function RootRouteContent () {
-    const routeData = rootRoute.useLoaderData();
-    const isAuthenticated = routeData.isAuthenticated;
+  function RootRouteContent() {
+    const routeData = rootRoute.useLoaderData()
+    const isAuthenticated = routeData.isAuthenticated
     return (
       <>
-        {!!isAuthenticated && <nav style={{ display: 'flex', gap: 8 }}>
-          <Link to="/">Index</Link>
-          <Link to="/dashboard">Dashboard</Link>
-        </nav>}
+        {!!isAuthenticated && (
+          <nav style={{ display: 'flex', gap: 8 }}>
+            <Link to="/">Index</Link>
+            <Link to="/dashboard">Dashboard</Link>
+          </nav>
+        )}
         <hr />
         <Outlet />
       </>
@@ -774,35 +776,43 @@ test('reproducer for #4696', async () => {
     validateSearch: () => {
       return {
         page: 0,
-      };
+      }
     },
     component: () => <h1>Dashboard</h1>,
   })
 
-  const routeTree = rootRoute.addChildren([
-    indexRoute, dashboardRoute
-  ])
+  const routeTree = rootRoute.addChildren([indexRoute, dashboardRoute])
   const router = createRouter({ routeTree })
 
   render(<RouterProvider router={router} />)
-  await act(async () => { /* no-op */ })
-  expect(screen.getByRole('heading', {name:'Index'})).toBeInTheDocument()
+  await act(async () => {
+    /* no-op */
+  })
+  expect(screen.getByRole('heading', { name: 'Index' })).toBeInTheDocument()
   expect(screen.getByRole('navigation')).toBeInTheDocument()
 
   cleanup()
 
-  const historyWithSearchParam = createMemoryHistory({ initialEntries: ['/dashboard?page=0'] })
+  const historyWithSearchParam = createMemoryHistory({
+    initialEntries: ['/dashboard?page=0'],
+  })
   render(<RouterProvider history={historyWithSearchParam} router={router} />)
-  await act(async () => { /* no-op */ })
-  expect(screen.getByRole('heading', {name:'Dashboard'})).toBeInTheDocument()
+  await act(async () => {
+    /* no-op */
+  })
+  expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
   expect(screen.getByRole('navigation')).toBeInTheDocument()
 
   cleanup()
 
-  const historyWithoutSearchParam = createMemoryHistory({ initialEntries: ['/dashboard'] })
+  const historyWithoutSearchParam = createMemoryHistory({
+    initialEntries: ['/dashboard'],
+  })
   render(<RouterProvider history={historyWithoutSearchParam} router={router} />)
-  await act(async () => { /* no-op */ })
-  expect(screen.getByRole('heading', {name:'Dashboard'})).toBeInTheDocument()
+  await act(async () => {
+    /* no-op */
+  })
+  expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
   // Fails here!
   expect(screen.getByRole('navigation')).toBeInTheDocument()
 })
