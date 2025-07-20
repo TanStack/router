@@ -11,7 +11,7 @@ The magic behind automatic code splitting is a build-time code transformation pr
 1.  **Reference File Transformation**: The plugin takes your original route file (e.g., `posts.route.tsx`) and replaces properties like `component` or `loader` with special lazy-loading wrappers (`lazyRouteComponent` or `lazyFn`). These wrappers point to a "virtual" file that the bundler will request later.
 2.  **Virtual File Generation**: When the bundler sees a request for one of these virtual files (e.g., `posts.route.tsx?tsr-split=component`), the plugin intercepts it. It then generates a new, minimal file on-the-fly that contains _only_ the code for the requested property (e.g., just the `PostsComponent`).
 
-This process ensures that your original code remains clean and readable, while the final bundled output is highly optimized for performance.
+This process ensures that your original code remains clean and readable, while the final bundled output is optimized for initial bundle size.
 
 ## Configuration Deep Dive
 
@@ -56,7 +56,7 @@ Now, `component`, `pendingComponent`, `errorComponent`, and `notFoundComponent` 
 
 ### Splitting the Data Loader
 
-> [!IMPORTANT] > **Be warned!!!** Splitting a route loader is a dangerous game.
+> [!IMPORTANT] > **Be warned!** Splitting a route loader needs to be considered carefully.
 > Splitting the `loader` introduces an additional asynchronous step before data fetching can even begin, which can negatively impact performance. The `loader` is often a critical asset for preloading data. We recommend keeping it in the initial bundle.
 
 However, if your loader contains significant logic or large dependencies and you've decided to split it, you can add it to your split groupings:
@@ -97,7 +97,7 @@ function AdminComponent() {
 
 ### Advanced Programmatic Control (`splitBehavior`)
 
-For complex rulesets, you can use the `splitBehavior` function in your config. This function receives the `routeId` and can programmatically return the desired split groupings.
+For complex rulesets, you can use the `splitBehavior` function in your vite config. This function receives the `routeId` and can programmatically return the desired split groupings.
 
 ```ts
 // vite.config.ts
@@ -115,20 +115,3 @@ tanstackRouter({
 })
 ```
 
-### Optimizing for Production (`deleteNodes`)
-
-In some cases, you may want to completely remove certain properties from a build. A common use case is removing server-side rendering (`ssr`) logic from the client bundle. The `deleteNodes` option allows you to do this.
-
-```ts
-// vite.config.ts
-tanstackRouter({
-  autoCodeSplitting: true,
-  codeSplittingOptions: {
-    // This will remove the `ssr` property from all route definitions
-    // during the build process, reducing the client bundle size.
-    deleteNodes: ['ssr'],
-  },
-})
-```
-
-This is a powerful optimization for isomorphic applications.
