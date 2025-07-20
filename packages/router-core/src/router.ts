@@ -679,6 +679,8 @@ export type AnyRouterWithContext<TContext> = RouterCore<
 
 export type AnyRouter = RouterCore<any, any, any, any, any>
 
+export type RouterCode = 'BEFORE_LOAD' | 'PARSE_PARAMS' | 'VALIDATE_SEARCH'
+
 export interface ViewTransitionOptions {
   types:
     | Array<string>
@@ -2175,7 +2177,7 @@ export class RouterCore<
             const handleSerialError = (
               index: number,
               err: any,
-              routerCode: string,
+              routerCode: RouterCode,
             ) => {
               const { id: matchId, routeId } = matches[index]!
               const route = this.looseRoutesById[routeId]!
