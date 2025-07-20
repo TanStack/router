@@ -112,6 +112,7 @@
       "@tanstack/start-plugin-core": "workspace:*",
       "@tanstack/start-client-core": "workspace:*",
       "@tanstack/start-server-core": "workspace:*",
+      "@tanstack/start-storage-context": "workspace:*",
       "@tanstack/eslint-plugin-router": "workspace:*",
       "@tanstack/server-functions-plugin": "workspace:*",
       "@tanstack/directive-functions-plugin": "workspace:*",
