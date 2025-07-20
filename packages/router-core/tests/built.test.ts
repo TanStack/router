@@ -161,57 +161,43 @@ describe('work in progress', () => {
     `)
   })
 
-  const parsedRoutes = result.flatRoutes.map((route) =>
-    parsePathname(route.fullPath),
-  )
-
-  const logParsed = (parsed: ReturnType<typeof parsePathname>) =>
-    '/' +
-    parsed
-      .slice(1)
-      .map((s) => s.value)
-      .join('/')
-
-  const rebuildPath = (leaf: ReturnType<typeof parsePathname>) =>
-    `/${leaf
-      .slice(1)
-      .map((s) =>
-        s.value === '/'
-          ? ''
-          : `${s.prefixSegment ?? ''}${s.prefixSegment || s.suffixSegment || s.type === SEGMENT_TYPE_OPTIONAL_PARAM ? '{' : ''}${s.type === SEGMENT_TYPE_OPTIONAL_PARAM ? '-' : ''}${s.value}${s.prefixSegment || s.suffixSegment || s.type === SEGMENT_TYPE_OPTIONAL_PARAM ? '}' : ''}${s.suffixSegment ?? ''}`,
-      )
-      .join('/')}`
+  const parsedRoutes = result.flatRoutes.map((route) => ({
+    path: route.fullPath,
+    segments: parsePathname(route.fullPath),
+  }))
 
   const initialDepth = 0
   let fn = 'const baseSegments = parsePathname(from);'
   fn += '\nconst l = baseSegments.length;'
 
+  type ParsedRoute = { path: string, segments: ReturnType<typeof parsePathname> }
+
   function recursiveStaticMatch(
-    parsedRoutes: Array<ReturnType<typeof parsePathname>>,
+    parsedRoutes: Array<ParsedRoute>,
     depth = initialDepth,
     indent = '',
   ) {
-    const resolved = new Set<ReturnType<typeof parsePathname>>()
-    for (const routeSegments of parsedRoutes) {
-      if (resolved.has(routeSegments)) continue // already resolved
+    const resolved = new Set<ParsedRoute>()
+    for (const route of parsedRoutes) {
+      if (resolved.has(route)) continue // already resolved
       console.log('\n')
       console.log(
         'resolving: depth=',
         depth,
         'parsed=',
-        logParsed(routeSegments),
+        route.path,
       )
       console.log('\u001b[34m' + fn + '\u001b[0m')
-      const currentSegment = routeSegments[depth]
+      const currentSegment = route.segments[depth]
       if (!currentSegment) {
         throw new Error(
           'Implementation error: this should not happen, depth=' +
           depth +
-          `, route=${rebuildPath(routeSegments)}`,
+          `, route=${route.path}`,
         )
       }
       const candidates = parsedRoutes.filter((r) => {
-        const rParsed = r[depth]
+        const rParsed = r.segments[depth]
         if (!rParsed) return false
 
         // For SEGMENT_TYPE_PARAM (type 1), match only on type and prefix/suffix constraints
@@ -241,14 +227,14 @@ describe('work in progress', () => {
           rParsed.suffixSegment === currentSegment.suffixSegment
         )
       })
-      console.log('candidates:', candidates.map(logParsed))
+      console.log('candidates:', candidates.map(r => r.path))
       if (candidates.length === 0) {
         throw new Error('Implementation error: this should not happen')
       }
       if (candidates.length > 1) {
-        let skipDepth = routeSegments.slice(depth + 1).findIndex((s, i) =>
+        let skipDepth = route.segments.slice(depth + 1).findIndex((s, i) =>
           candidates.some((c) => {
-            const segment = c[depth + 1 + i]
+            const segment = c.segments[depth + 1 + i]
             return (
               !segment ||
               segment.type !== s.type ||
@@ -259,12 +245,12 @@ describe('work in progress', () => {
             )
           }),
         )
-        if (skipDepth === -1) skipDepth = routeSegments.length - depth - 1
+        if (skipDepth === -1) skipDepth = route.segments.length - depth - 1
         const lCondition =
           skipDepth || depth > initialDepth ? `l > ${depth + skipDepth}` : ''
         const skipConditions =
           Array.from({ length: skipDepth + 1 }, (_, i) => {
-            const segment = candidates[0]![depth + i]!
+            const segment = candidates[0]!.segments[depth + i]!
             if (segment.type === SEGMENT_TYPE_PARAM) {
               const conditions = []
               if (segment.prefixSegment) {
@@ -291,34 +277,42 @@ describe('work in progress', () => {
         if (hasCondition) {
           fn += `\n${indent}if (${lCondition}${lCondition && skipConditions ? ' && ' : ''}${skipConditions}) {`
         }
-        const deeper = candidates.filter(
-          (c) => c.length > depth + 1 + skipDepth,
-        )
-        const leaves = candidates.filter(
-          (c) => c.length <= depth + 1 + skipDepth,
-        )
-        if (deeper.length + leaves.length !== candidates.length) {
-          throw new Error('Implementation error: this should not happen')
+        const deeperBefore: Array<ParsedRoute> = []
+        const deeperAfter: Array<ParsedRoute> = []
+        let leaf: ParsedRoute | undefined
+        for (const c of candidates) {
+          const isLeaf = c.segments.length <= depth + 1 + skipDepth
+          if (isLeaf && !leaf) {
+            leaf = c
+            continue
+          }
+          if (isLeaf) {
+            continue // ignore subsequent leaves, they can never be matched
+          }
+          if (!leaf) {
+            deeperBefore.push(c)
+          } else {
+            deeperAfter.push(c)
+          }
         }
-        if (deeper.length > 0) {
+        if (deeperBefore.length > 0) {
           recursiveStaticMatch(
-            deeper,
+            deeperBefore,
             depth + 1 + skipDepth,
             hasCondition ? indent + '  ' : indent,
           )
         }
-        if (leaves.length > 1) {
-          // WARN: we should probably support "multiple leaves"
-          // 1. user error: it's possible that a user created both `/a/$id` and `/a/$foo`, they'd be both matched, just use the 1st one
-          // 2. wildcards: if a user created both `/a/$` and `/a/b`, we could have 2 leaves. the order in `leaves` will be `[/a/b, /a/$]` which is correct, try to match `/a/b` first, then `/a/$`
-          throw new Error(
-            `Multiple candidates found for depth ${depth} with type ${routeSegments[depth]!.type} and value ${routeSegments[depth]!.value}: ${leaves.map(logParsed).join(', ')}`,
-          )
-        } else if (leaves.length === 1) {
-          // WARN: is it ok that the leaf is matched last?
-          fn += `\n${indent}  if (l === ${leaves[0]!.length}) {`
-          fn += `\n${indent}    return '${rebuildPath(leaves[0]!)}';`
+        if (leaf) {
+          fn += `\n${indent}  if (l === ${leaf.segments.length}) {`
+          fn += `\n${indent}    return '${leaf.path}';`
           fn += `\n${indent}  }`
+        }
+        if (deeperAfter.length > 0) {
+          recursiveStaticMatch(
+            deeperAfter,
+            depth + 1 + skipDepth,
+            hasCondition ? indent + '  ' : indent,
+          )
         }
         if (hasCondition) {
           fn += `\n${indent}}`
@@ -327,12 +321,12 @@ describe('work in progress', () => {
         const leaf = candidates[0]!
 
         // Check if this route contains a wildcard segment
-        const wildcardIndex = leaf.findIndex((s) => s && s.type === SEGMENT_TYPE_WILDCARD)
+        const wildcardIndex = leaf.segments.findIndex((s) => s && s.type === SEGMENT_TYPE_WILDCARD)
 
         if (wildcardIndex !== -1 && wildcardIndex >= depth) {
           // This route has a wildcard at or after the current depth
-          const wildcardSegment = leaf[wildcardIndex]!
-          const done = `return '${rebuildPath(leaf)}';`
+          const wildcardSegment = leaf.segments[wildcardIndex]!
+          const done = `return '${leaf.path}';`
 
           // For wildcards, we need to check:
           // 1. All static/param segments before the wildcard match
@@ -343,7 +337,7 @@ describe('work in progress', () => {
 
           // Add conditions for all segments before the wildcard
           for (let i = depth; i < wildcardIndex; i++) {
-            const segment = leaf[i]!
+            const segment = leaf.segments[i]!
             const value = `baseSegments[${i}].value`
 
             if (segment.type === SEGMENT_TYPE_PARAM) {
@@ -383,10 +377,10 @@ describe('work in progress', () => {
           fn += `\n${indent}}`
         } else {
           // No wildcard in this route, use the original logic
-          const done = `return '${rebuildPath(leaf)}';`
-          fn += `\n${indent}if (l === ${leaf.length}`
-          for (let i = depth; i < leaf.length; i++) {
-            const segment = leaf[i]!
+          const done = `return '${leaf.path}';`
+          fn += `\n${indent}if (l === ${leaf.segments.length}`
+          for (let i = depth; i < leaf.segments.length; i++) {
+            const segment = leaf.segments[i]!
             const value = `baseSegments[${i}].value`
 
             // For SEGMENT_TYPE_PARAM (type 1), check if base has static segment (type 0) that satisfies constraints
@@ -602,6 +596,9 @@ describe('work in progress', () => {
         ) {
           return '/about';
         }
+        if (l === 1) {
+          return '/';
+        }
         if (l > 1) {
           if (l === 4
             && baseSegments[2].value === 'bar'
@@ -615,9 +612,6 @@ describe('work in progress', () => {
           ) {
             return '/$id/foo/bar';
           }
-        }
-        if (l === 1) {
-          return '/';
         }
       }"
     `)
