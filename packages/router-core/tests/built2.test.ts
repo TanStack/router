@@ -377,6 +377,12 @@ describe('work in progress', () => {
         outputRoute(matchingRoutes[0]!, length, preconditions)
       } else if (matchingRoutes.length) {
         // add `if` for the discriminant
+        const nextLength = {
+          min:
+            discriminant.type === 'minLength' ? discriminant.key : length.min,
+          max:
+            discriminant.type === 'maxLength' ? discriminant.key : length.max,
+        }
         if (discriminant.type === 'condition') {
           const condition = matchingRoutes[0]!.conditions.find(
             (c) => c.key === discriminant.key,
@@ -386,13 +392,27 @@ describe('work in progress', () => {
           if (discriminant.key === length.max) {
             fn += `if (l === ${discriminant.key}) {`
           } else {
-            fn += `if (l >= ${discriminant.key}) {`
+            if (
+              matchingRoutes.every((r) => r.length.max === discriminant.key)
+            ) {
+              nextLength.max = discriminant.key
+              fn += `if (l === ${discriminant.key}) {`
+            } else {
+              fn += `if (l >= ${discriminant.key}) {`
+            }
           }
         } else if (discriminant.type === 'maxLength') {
           if (discriminant.key === length.min) {
             fn += `if (l === ${discriminant.key}) {`
           } else {
-            fn += `if (l <= ${discriminant.key}) {`
+            if (
+              matchingRoutes.every((r) => r.length.min === discriminant.key)
+            ) {
+              nextLength.min = discriminant.key
+              fn += `if (l === ${discriminant.key}) {`
+            } else {
+              fn += `if (l <= ${discriminant.key}) {`
+            }
           }
         } else {
           throw new Error(
@@ -402,12 +422,7 @@ describe('work in progress', () => {
         // recurse
         recursiveStaticMatch(
           matchingRoutes,
-          {
-            min:
-              discriminant.type === 'minLength' ? discriminant.key : length.min,
-            max:
-              discriminant.type === 'maxLength' ? discriminant.key : length.max,
-          },
+          nextLength,
           discriminant.type === 'condition'
             ? [...preconditions, discriminant.key]
             : preconditions,
@@ -590,25 +605,23 @@ describe('work in progress', () => {
             propose(25, "/posts/{-$slug}");
           }
         }
-        if (l >= 2) {
-          if (l === 2) {
-            if (baseSegments[1] === "a") {
-              propose(23, "/a/{-$slug}");
-              propose(32, "/a");
-            }
-            if (baseSegments[1] === "b") {
-              propose(24, "/b/{-$slug}");
-              propose(34, "/b");
-            }
-            if (baseSegments[1] === "posts") {
-              propose(25, "/posts/{-$slug}");
-            }
-            if (baseSegments[1] === "about") {
-              propose(33, "/about");
-            }
-            if (baseSegments[1] === "one") {
-              propose(35, "/one");
-            }
+        if (l === 2) {
+          if (baseSegments[1] === "a") {
+            propose(23, "/a/{-$slug}");
+            propose(32, "/a");
+          }
+          if (baseSegments[1] === "b") {
+            propose(24, "/b/{-$slug}");
+            propose(34, "/b");
+          }
+          if (baseSegments[1] === "posts") {
+            propose(25, "/posts/{-$slug}");
+          }
+          if (baseSegments[1] === "about") {
+            propose(33, "/about");
+          }
+          if (baseSegments[1] === "one") {
+            propose(35, "/one");
           }
         }
         if (l === 1) {
@@ -628,29 +641,27 @@ describe('work in progress', () => {
           propose(0, "/a/b/c/d/e/f");
         }
         if (baseSegments[1] === "z") {
-          if (l >= 5) {
-            if (l === 5) {
-              if (
-                baseSegments[2] === "y" &&
-                baseSegments[3] === "x" &&
-                baseSegments[4] === "u"
-              ) {
-                propose(1, "/z/y/x/u");
-              }
-              if (
-                baseSegments[2] === "y" &&
-                baseSegments[3] === "x" &&
-                baseSegments[4] === "v"
-              ) {
-                propose(2, "/z/y/x/v");
-              }
-              if (
-                baseSegments[2] === "y" &&
-                baseSegments[3] === "x" &&
-                baseSegments[4] === "w"
-              ) {
-                propose(3, "/z/y/x/w");
-              }
+          if (l === 5) {
+            if (
+              baseSegments[2] === "y" &&
+              baseSegments[3] === "x" &&
+              baseSegments[4] === "u"
+            ) {
+              propose(1, "/z/y/x/u");
+            }
+            if (
+              baseSegments[2] === "y" &&
+              baseSegments[3] === "x" &&
+              baseSegments[4] === "v"
+            ) {
+              propose(2, "/z/y/x/v");
+            }
+            if (
+              baseSegments[2] === "y" &&
+              baseSegments[3] === "x" &&
+              baseSegments[4] === "w"
+            ) {
+              propose(3, "/z/y/x/w");
             }
           }
           if (l <= 4 && baseSegments[2] === "y" && baseSegments[3] === "x") {
