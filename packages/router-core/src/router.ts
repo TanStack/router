@@ -86,12 +86,6 @@ import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
 
-declare global {
-  interface Window {
-    __TSR_ROUTER__?: AnyRouter
-  }
-}
-
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
   reject: (value?: any) => void
