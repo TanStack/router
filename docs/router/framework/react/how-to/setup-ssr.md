@@ -51,7 +51,7 @@ declare module '@tanstack/react-router' {
 ```tsx
 // src/routerContext.tsx
 export type RouterContext = {
-	head: string
+  head: string
 }
 ```
 
@@ -149,64 +149,64 @@ hydrateRoot(document, <RouterClient router={router} />)
 
 ### 4. Configure Vite for SSR
 
-When setting up server rendering, we need to ensure that vite builds both a client side and server side bundle. 
+When setting up server rendering, we need to ensure that vite builds both a client side and server side bundle.
 Our server and client bundles will be saved to and served from dist/server and dist/client respectively.
 
 ```ts
 // vite.config.ts
-import path from "node:path";
-import url from "node:url";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import type { BuildEnvironmentOptions } from "vite";
+import path from 'node:path'
+import url from 'node:url'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import type { BuildEnvironmentOptions } from 'vite'
 
-const __filename = url.fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = url.fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // SSR configuration
 const ssrBuildConfig: BuildEnvironmentOptions = {
-	ssr: true,
-	outDir: "dist/server",
-	ssrEmitAssets: true,
-	copyPublicDir: false,
-	emptyOutDir: true,
-	rollupOptions: {
-		input: path.resolve(__dirname, "src/entry-server.tsx"),
-		output: {
-			entryFileNames: "[name].js",
-			chunkFileNames: "assets/[name]-[hash].js",
-			assetFileNames: "assets/[name]-[hash][extname]",
-		},
-	},
-};
+  ssr: true,
+  outDir: 'dist/server',
+  ssrEmitAssets: true,
+  copyPublicDir: false,
+  emptyOutDir: true,
+  rollupOptions: {
+    input: path.resolve(__dirname, 'src/entry-server.tsx'),
+    output: {
+      entryFileNames: '[name].js',
+      chunkFileNames: 'assets/[name]-[hash].js',
+      assetFileNames: 'assets/[name]-[hash][extname]',
+    },
+  },
+}
 
 // Client-specific configuration
 const clientBuildConfig: BuildEnvironmentOptions = {
-	outDir: "dist/client",
-	emitAssets: true,
-	copyPublicDir: true,
-	emptyOutDir: true,
-	rollupOptions: {
-		input: path.resolve(__dirname, "src/entry-client.tsx"),
-		output: {
-			entryFileNames: "[name].js",
-			chunkFileNames: "assets/[name]-[hash].js",
-			assetFileNames: "assets/[name]-[hash][extname]",
-		},
-	},
-};
+  outDir: 'dist/client',
+  emitAssets: true,
+  copyPublicDir: true,
+  emptyOutDir: true,
+  rollupOptions: {
+    input: path.resolve(__dirname, 'src/entry-client.tsx'),
+    output: {
+      entryFileNames: '[name].js',
+      chunkFileNames: 'assets/[name]-[hash].js',
+      assetFileNames: 'assets/[name]-[hash][extname]',
+    },
+  },
+}
 
 // https://vitejs.dev/config/
 export default defineConfig((configEnv) => {
-	return {
-		plugins: [
-			tanstackRouter({ target: "react", autoCodeSplitting: true }),
-			react(),
-		],
-		build: configEnv.isSsrBuild ? ssrBuildConfig : clientBuildConfig,
-	};
-});
+  return {
+    plugins: [
+      tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+      react(),
+    ],
+    build: configEnv.isSsrBuild ? ssrBuildConfig : clientBuildConfig,
+  }
+})
 ```
 
 ### 5. Update our project files
@@ -215,79 +215,79 @@ Since the HTML will be rendered on the server before being sent to the client, w
 
 ```tsx
 //src/routes/__root.tsx
-import type { RouterContext } from "@/routerContext";
+import type { RouterContext } from '@/routerContext'
 import {
-	HeadContent,
-	Outlet,
-	createRootRouteWithContext,
-} from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import appCss from "../App.css?url";
+  HeadContent,
+  Outlet,
+  createRootRouteWithContext,
+} from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import appCss from '../App.css?url'
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-	head: () => ({
-		links: [
-			{ rel: "icon", href: "/favicon.ico" },
-			{ rel: "apple-touch-icon", href: "/logo192.png" },
-			{ rel: "manifest", href: "/manifest.json" },
-			{ rel: "stylesheet", href: appCss },
-		],
-		meta: [
-			{
-				name: "theme-color",
-				content: "#000000",
-			},
-			{
-				title: "TanStack Router SSR File Based",
-			},
-			{
-				charSet: "UTF-8",
-			},
-			{
-				name: "viewport",
-				content: "width=device-width, initial-scale=1.0",
-			},
-		],
-		scripts: [
-			...(!import.meta.env.PROD
-				? [
-					{
-						type: "module",
-						children: `import RefreshRuntime from "/@react-refresh"
+  head: () => ({
+    links: [
+      { rel: 'icon', href: '/favicon.ico' },
+      { rel: 'apple-touch-icon', href: '/logo192.png' },
+      { rel: 'manifest', href: '/manifest.json' },
+      { rel: 'stylesheet', href: appCss },
+    ],
+    meta: [
+      {
+        name: 'theme-color',
+        content: '#000000',
+      },
+      {
+        title: 'TanStack Router SSR File Based',
+      },
+      {
+        charSet: 'UTF-8',
+      },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1.0',
+      },
+    ],
+    scripts: [
+      ...(!import.meta.env.PROD
+        ? [
+            {
+              type: 'module',
+              children: `import RefreshRuntime from "/@react-refresh"
   							RefreshRuntime.injectIntoGlobalHook(window)
   							window.$RefreshReg$ = () => {}
  							window.$RefreshSig$ = () => (type) => type
   							window.__vite_plugin_react_preamble_installed__ = true`,
-					},
-					{
-						type: "module",
-						src: "/@vite/client",
-					},
-				]
-				: []),
-			{
-				type: "module",
-				src: import.meta.env.PROD
-					? "/entry-client.js"
-					: "/src/entry-client.tsx",
-			},
-		],
-	}),
-	component: RootComponent,
-});
+            },
+            {
+              type: 'module',
+              src: '/@vite/client',
+            },
+          ]
+        : []),
+      {
+        type: 'module',
+        src: import.meta.env.PROD
+          ? '/entry-client.js'
+          : '/src/entry-client.tsx',
+      },
+    ],
+  }),
+  component: RootComponent,
+})
 
 function RootComponent() {
-	return (
-		<html lang="en">
-			<head>
-				<HeadContent />
-			</head>
-			<body>
-				<Outlet />
-				<TanStackRouterDevtools />
-			</body>
-		</html>
-	);
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <Outlet />
+        <TanStackRouterDevtools />
+      </body>
+    </html>
+  )
 }
 ```
 
@@ -297,115 +297,118 @@ Now we can remove safely index.html and main.tsx
 
 ```js
 // server.js
-import path from "node:path";
-import express from "express";
-import * as zlib from "node:zlib";
+import path from 'node:path'
+import express from 'express'
+import * as zlib from 'node:zlib'
 
-const isTest = process.env.NODE_ENV === "test" || !!process.env.VITE_TEST_BUILD;
+const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITE_TEST_BUILD
 
 export async function createServer(
-	root = process.cwd(),
-	isProd = process.env.NODE_ENV === "production",
-	hmrPort = process.env.VITE_DEV_SERVER_PORT
+  root = process.cwd(),
+  isProd = process.env.NODE_ENV === 'production',
+  hmrPort = process.env.VITE_DEV_SERVER_PORT,
 ) {
-	const app = express();
+  const app = express()
 
-	/**
-	 * @type {import('vite').ViteDevServer}
-	 */
-	let vite;
-	if (!isProd) {
-		vite = await (await import("vite")).createServer({
-			root,
-			logLevel: isTest ? "error" : "info",
-			server: {
-				middlewareMode: true,
-				watch: {
-					// During tests we edit the files too fast and sometimes chokidar
-					// misses change events, so enforce polling for consistency
-					usePolling: true,
-					interval: 100,
-				},
-				hmr: {
-					port: hmrPort,
-				},
-			},
-			appType: "custom",
-		});
-		// use vite's connect instance as middleware
-		app.use(vite.middlewares);
-	} else {
-		app.use(
-			(await import("compression")).default({
-				brotli: {
-					flush: zlib.constants.BROTLI_OPERATION_FLUSH,
-				},
-				flush: zlib.constants.Z_SYNC_FLUSH,
-			}),
-		);
-	}
+  /**
+   * @type {import('vite').ViteDevServer}
+   */
+  let vite
+  if (!isProd) {
+    vite = await (
+      await import('vite')
+    ).createServer({
+      root,
+      logLevel: isTest ? 'error' : 'info',
+      server: {
+        middlewareMode: true,
+        watch: {
+          // During tests we edit the files too fast and sometimes chokidar
+          // misses change events, so enforce polling for consistency
+          usePolling: true,
+          interval: 100,
+        },
+        hmr: {
+          port: hmrPort,
+        },
+      },
+      appType: 'custom',
+    })
+    // use vite's connect instance as middleware
+    app.use(vite.middlewares)
+  } else {
+    app.use(
+      (await import('compression')).default({
+        brotli: {
+          flush: zlib.constants.BROTLI_OPERATION_FLUSH,
+        },
+        flush: zlib.constants.Z_SYNC_FLUSH,
+      }),
+    )
+  }
 
-	if (isProd) app.use(express.static("./dist/client"));
+  if (isProd) app.use(express.static('./dist/client'))
 
-	app.use("/{*splat}", async (req, res) => {
-		try {
-			const url = req.originalUrl;
+  app.use('/{*splat}', async (req, res) => {
+    try {
+      const url = req.originalUrl
 
-			if (path.extname(url) !== "") {
-				console.warn(`${url} is not valid router path`);
-				res.status(404);
-				res.end(`${url} is not valid router path`);
-				return;
-			}
+      if (path.extname(url) !== '') {
+        console.warn(`${url} is not valid router path`)
+        res.status(404)
+        res.end(`${url} is not valid router path`)
+        return
+      }
 
-			// Best effort extraction of the head from vite's index transformation hook
-			let viteHead = !isProd
-				? await vite.transformIndexHtml(
-					url,
-					`<html><head></head><body></body></html>`,
-				)
-				: "";
+      // Best effort extraction of the head from vite's index transformation hook
+      let viteHead = !isProd
+        ? await vite.transformIndexHtml(
+            url,
+            `<html><head></head><body></body></html>`,
+          )
+        : ''
 
-			viteHead = viteHead.substring(
-				viteHead.indexOf("<head>") + 6,
-				viteHead.indexOf("</head>"),
-			);
+      viteHead = viteHead.substring(
+        viteHead.indexOf('<head>') + 6,
+        viteHead.indexOf('</head>'),
+      )
 
-			const entry = await (async () => {
-				if (!isProd) {
-					return vite.ssrLoadModule("/src/entry-server.tsx");
-				} else {
-					return import("./dist/server/entry-server.js");
-				}
-			})();
+      const entry = await (async () => {
+        if (!isProd) {
+          return vite.ssrLoadModule('/src/entry-server.tsx')
+        } else {
+          return import('./dist/server/entry-server.js')
+        }
+      })()
 
-			console.info("Rendering: ", url, "...");
-			entry.render({ req, res, head: viteHead });
-		} catch (e) {
-			!isProd && vite.ssrFixStacktrace(e);
-			console.info(e.stack);
-			res.status(500).end(e.stack);
-		}
-	});
+      console.info('Rendering: ', url, '...')
+      entry.render({ req, res, head: viteHead })
+    } catch (e) {
+      !isProd && vite.ssrFixStacktrace(e)
+      console.info(e.stack)
+      res.status(500).end(e.stack)
+    }
+  })
 
-	return { app, vite };
+  return { app, vite }
 }
 
 if (!isTest) {
-	createServer().then(async ({ app }) =>
-		app.listen(3000, () => {
-			console.info("Client Server: http://localhost:3000");
-		}),
-	);
+  createServer().then(async ({ app }) =>
+    app.listen(3000, () => {
+      console.info('Client Server: http://localhost:3000')
+    }),
+  )
 }
 ```
 
 ### 7. Update Package Scripts
 
 The below update ensures that:
-1) During development our express server will serve the app using the vite dev server using vite middleware mode.
-2) Separate build processes are used for client and server bundles. 
-3) In production, it will be served over the express server directly.
+
+1. During development our express server will serve the app using the vite dev server using vite middleware mode.
+2. Separate build processes are used for client and server bundles.
+3. In production, it will be served over the express server directly.
 
 ```json
 {
@@ -522,37 +525,36 @@ export default defineConfig({
 
 // SSR configuration
 const ssrBuildConfig: BuildEnvironmentOptions = {
-    // server specific config is here 
-	rollupOptions: {
-		input: path.resolve(__dirname, "src/entry-server.tsx"),
-		output: {
-			entryFileNames: "[name].js",
-			chunkFileNames: "assets/[name]-[hash].js",
-			assetFileNames: "assets/[name]-[hash][extname]",
-		},
-	},
-};
+  // server specific config is here
+  rollupOptions: {
+    input: path.resolve(__dirname, 'src/entry-server.tsx'),
+    output: {
+      entryFileNames: '[name].js',
+      chunkFileNames: 'assets/[name]-[hash].js',
+      assetFileNames: 'assets/[name]-[hash][extname]',
+    },
+  },
+}
 
 // Client-specific configuration
 const clientBuildConfig: BuildEnvironmentOptions = {
-    // client specific config is here
-	rollupOptions: {
-		input: path.resolve(__dirname, "src/entry-client.tsx"),
-		output: {
-			entryFileNames: "[name].js",
-			chunkFileNames: "assets/[name]-[hash].js",
-			assetFileNames: "assets/[name]-[hash][extname]",
-		},
-	},
-};
+  // client specific config is here
+  rollupOptions: {
+    input: path.resolve(__dirname, 'src/entry-client.tsx'),
+    output: {
+      entryFileNames: '[name].js',
+      chunkFileNames: 'assets/[name]-[hash].js',
+      assetFileNames: 'assets/[name]-[hash][extname]',
+    },
+  },
+}
 
 export default defineConfig((configEnv) => {
-	return {
-		// global config
-		build: configEnv.isSsrBuild ? ssrBuildConfig : clientBuildConfig,
-	};
-});
-
+  return {
+    // global config
+    build: configEnv.isSsrBuild ? ssrBuildConfig : clientBuildConfig,
+  }
+})
 ```
 
 ## Related Resources
