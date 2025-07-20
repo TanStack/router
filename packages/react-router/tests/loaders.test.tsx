@@ -785,7 +785,7 @@ test('reproducer for #4696', async () => {
   const router = createRouter({ routeTree })
 
   render(<RouterProvider router={router} />)
-  await router.load()
+  await act(async () => {})
   expect(screen.getByTestId('heading-index')).toBeInTheDocument()
   expect(screen.getByTestId('nav')).toBeInTheDocument()
 
@@ -795,7 +795,7 @@ test('reproducer for #4696', async () => {
     initialEntries: ['/dashboard?page=0'],
   })
   render(<RouterProvider history={historyWithSearchParam} router={router} />)
-  await router.load()
+  await act(async () => {})
   expect(screen.getByTestId('heading-dashboard')).toBeInTheDocument()
   expect(screen.getByTestId('nav')).toBeInTheDocument()
 
@@ -805,7 +805,7 @@ test('reproducer for #4696', async () => {
     initialEntries: ['/dashboard'],
   })
   render(<RouterProvider history={historyWithoutSearchParam} router={router} />)
-  await router.load()
+  await act(async () => {})
   expect(screen.getByTestId('heading-dashboard')).toBeInTheDocument()
   // Fails here!
   expect(screen.getByTestId('nav')).toBeInTheDocument()
