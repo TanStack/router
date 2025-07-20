@@ -218,20 +218,20 @@ describe('work in progress', () => {
   ) {
     const flags: Array<string> = []
     let min = length.min
-    if (route.length.min > length.min) min = route.length.min
+    if (route.length.min > min) min = route.length.min
     let max = length.max
-    if (route.length.max < length.max) max = route.length.max
+    if (route.length.max < max) max = route.length.max
     for (const condition of route.conditions) {
-      if (condition.kind === 'static' && condition.index + 1 < min) {
+      if (condition.kind === 'static' && condition.index + 1 > min) {
         min = condition.index + 1
-      } else if (condition.kind === 'startsWith' && condition.index + 1 < min) {
+      } else if (condition.kind === 'startsWith' && condition.index + 1 > min) {
         min = condition.index + 1
-      } else if (condition.kind === 'endsWith' && condition.index + 1 < min) {
+      } else if (condition.kind === 'endsWith' && condition.index + 1 > min) {
         min = condition.index + 1
       }
     }
 
-    if (min > length.min && max < length.max && min === max) {
+    if (min === max && (min !== length.min || max !== length.max)) {
       flags.push(`l === ${min}`)
     } else {
       if (min > length.min) {
@@ -345,14 +345,14 @@ describe('work in progress', () => {
     // determine which of the 3 discriminants to use (condition, minLength, maxLength) to match as close to 50% of the routes as possible
     const discriminant =
       bestKey &&
-      (!bestMinLength ||
-        conditionCounts[bestKey] > minLengths[bestMinLength!]) &&
-      (!bestMaxLength || conditionCounts[bestKey] > maxLengths[bestMaxLength!])
+        (!bestMinLength ||
+          conditionCounts[bestKey] > minLengths[bestMinLength!]) &&
+        (!bestMaxLength || conditionCounts[bestKey] > maxLengths[bestMaxLength!])
         ? ({ key: bestKey, type: 'condition' } as const)
         : bestMinLength &&
-            (!bestMaxLength ||
-              minLengths[bestMinLength!] > maxLengths[bestMaxLength!]) &&
-            (!bestKey || minLengths[bestMinLength!] > conditionCounts[bestKey])
+          (!bestMaxLength ||
+            minLengths[bestMinLength!] > maxLengths[bestMaxLength!]) &&
+          (!bestKey || minLengths[bestMinLength!] > conditionCounts[bestKey])
           ? ({ key: bestMinLength!, type: 'minLength' } as const)
           : bestMaxLength
             ? ({ key: bestMaxLength!, type: 'maxLength' } as const)
@@ -396,8 +396,9 @@ describe('work in progress', () => {
         )
         const rankTest =
           matchingRoutes.length > 2 &&
-          bestChildRank !== Infinity &&
-          bestChildRank !== lastRank
+            bestChildRank !== 0 &&
+            bestChildRank !== Infinity &&
+            bestChildRank !== lastRank
             ? ` && rank > ${bestChildRank}`
             : ''
         const nextLength = {
@@ -684,9 +685,9 @@ describe('work in progress', () => {
           propose(36, "/");
         }
       }
-      if (l >= 4 && rank > 0) {
+      if (l >= 4) {
         if (
-          l <= 7 &&
+          l === 7 &&
           s1 === "a" &&
           s2 === "b" &&
           s3 === "c" &&
@@ -708,7 +709,7 @@ describe('work in progress', () => {
               propose(3, "/z/y/x/w");
             }
           }
-          if (l <= 4 && s2 === "y" && s3 === "x") {
+          if (l === 4 && s2 === "y" && s3 === "x") {
             propose(7, "/z/y/x");
           }
         }
