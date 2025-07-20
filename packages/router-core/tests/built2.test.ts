@@ -5,7 +5,12 @@ import {
   parsePathname,
   processRouteTree,
 } from '../src'
-import { SEGMENT_TYPE_OPTIONAL_PARAM, SEGMENT_TYPE_PARAM, SEGMENT_TYPE_PATHNAME, SEGMENT_TYPE_WILDCARD } from "../src/path"
+import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
+} from '../src/path'
 import { format } from 'prettier'
 
 interface TestRoute {
@@ -162,13 +167,19 @@ describe('work in progress', () => {
     `)
   })
 
-  const parsedRoutes = result.flatRoutes.map((route): ParsedRoute => ({
-    path: route.fullPath,
-    segments: parsePathname(route.fullPath),
-    rank: route.rank!
-  }))
+  const parsedRoutes = result.flatRoutes.map(
+    (route): ParsedRoute => ({
+      path: route.fullPath,
+      segments: parsePathname(route.fullPath),
+      rank: route.rank!,
+    }),
+  )
 
-  type ParsedRoute = { path: string, segments: ReturnType<typeof parsePathname>, rank: number }
+  type ParsedRoute = {
+    path: string
+    segments: ReturnType<typeof parsePathname>
+    rank: number
+  }
 
   let fn = 'const baseSegments = parsePathname(from).map(s => s.value);'
   fn += '\nconst l = baseSegments.length;'
@@ -280,16 +291,22 @@ describe('work in progress', () => {
         maxLengths[maxLength] = (maxLengths[maxLength] || 0) + 1
       }
     })
-    const allMinLengths = Object.keys(minLengths).sort((a, b) => Number(a) - Number(b))
+    const allMinLengths = Object.keys(minLengths).sort(
+      (a, b) => Number(a) - Number(b),
+    )
     for (let i = 0; i < allMinLengths.length; i++) {
       for (let j = i + 1; j < allMinLengths.length; j++) {
-        minLengths[Number(allMinLengths[i]!)]! += minLengths[Number(allMinLengths[j]!)]!
+        minLengths[Number(allMinLengths[i]!)]! +=
+          minLengths[Number(allMinLengths[j]!)]!
       }
     }
-    const allMaxLengths = Object.keys(maxLengths).sort((a, b) => Number(b) - Number(a))
+    const allMaxLengths = Object.keys(maxLengths).sort(
+      (a, b) => Number(b) - Number(a),
+    )
     for (let i = 0; i < allMaxLengths.length; i++) {
       for (let j = i + 1; j < allMaxLengths.length; j++) {
-        maxLengths[Number(allMaxLengths[i]!)]! += maxLengths[Number(allMaxLengths[j]!)]!
+        maxLengths[Number(allMaxLengths[i]!)]! +=
+          maxLengths[Number(allMaxLengths[j]!)]!
       }
     }
     let bestMinLength
@@ -313,13 +330,20 @@ describe('work in progress', () => {
     // console.log(`Best maxLength: ${bestMaxLength} with score: ${maxLengths[bestMaxLength!]} / ${total}`)
 
     // determine which of the 3 discriminants to use (condition, minLength, maxLength) to match as close to 50% of the routes as possible
-    const discriminant = bestKey && (!bestMinLength || conditionCounts[bestKey] > minLengths[bestMinLength!]) && (!bestMaxLength || conditionCounts[bestKey] > maxLengths[bestMaxLength!])
-      ? { key: bestKey, type: 'condition', } as const
-      : bestMinLength && (!bestMaxLength || minLengths[bestMinLength!] > maxLengths[bestMaxLength!]) && (!bestKey || minLengths[bestMinLength!] > conditionCounts[bestKey])
-        ? { key: bestMinLength!, type: 'minLength' } as const
-        : bestMaxLength
-          ? { key: bestMaxLength!, type: 'maxLength' } as const
-          : undefined
+    const discriminant =
+      bestKey &&
+      (!bestMinLength ||
+        conditionCounts[bestKey] > minLengths[bestMinLength!]) &&
+      (!bestMaxLength || conditionCounts[bestKey] > maxLengths[bestMaxLength!])
+        ? ({ key: bestKey, type: 'condition' } as const)
+        : bestMinLength &&
+            (!bestMaxLength ||
+              minLengths[bestMinLength!] > maxLengths[bestMaxLength!]) &&
+            (!bestKey || minLengths[bestMinLength!] > conditionCounts[bestKey])
+          ? ({ key: bestMinLength!, type: 'minLength' } as const)
+          : bestMaxLength
+            ? ({ key: bestMaxLength!, type: 'maxLength' } as const)
+            : undefined
 
     if (discriminant) {
       // split all routes into 2 groups (matching and not matching) based on the discriminant
@@ -327,7 +351,9 @@ describe('work in progress', () => {
       const nonMatchingRoutes: Array<WithConditions> = []
       for (const route of parsedRoutes) {
         if (discriminant.type === 'condition') {
-          const condition = route.conditions.find(c => c.key === discriminant.key)
+          const condition = route.conditions.find(
+            (c) => c.key === discriminant.key,
+          )
           if (condition) {
             matchingRoutes.push(route)
           } else {
@@ -352,7 +378,9 @@ describe('work in progress', () => {
       } else if (matchingRoutes.length) {
         // add `if` for the discriminant
         if (discriminant.type === 'condition') {
-          const condition = matchingRoutes[0]!.conditions.find(c => c.key === discriminant.key)!
+          const condition = matchingRoutes[0]!.conditions.find(
+            (c) => c.key === discriminant.key,
+          )!
           fn += `if (${conditionToString(condition) || 'true'}) {`
         } else if (discriminant.type === 'minLength') {
           if (discriminant.key === length.max) {
@@ -367,13 +395,22 @@ describe('work in progress', () => {
             fn += `if (l <= ${discriminant.key}) {`
           }
         } else {
-          throw new Error(`Unknown discriminant type: ${JSON.stringify(discriminant)}`)
+          throw new Error(
+            `Unknown discriminant type: ${JSON.stringify(discriminant)}`,
+          )
         }
         // recurse
         recursiveStaticMatch(
           matchingRoutes,
-          { min: discriminant.type === 'minLength' ? discriminant.key : length.min, max: discriminant.type === 'maxLength' ? discriminant.key : length.max },
-          discriminant.type === 'condition' ? [...preconditions, discriminant.key] : preconditions
+          {
+            min:
+              discriminant.type === 'minLength' ? discriminant.key : length.min,
+            max:
+              discriminant.type === 'maxLength' ? discriminant.key : length.max,
+          },
+          discriminant.type === 'condition'
+            ? [...preconditions, discriminant.key]
+            : preconditions,
         )
         fn += '}'
       }
@@ -381,23 +418,26 @@ describe('work in progress', () => {
         outputRoute(nonMatchingRoutes[0]!, length, preconditions)
       } else if (nonMatchingRoutes.length) {
         // recurse
-        recursiveStaticMatch(
-          nonMatchingRoutes,
-          length,
-          preconditions,
-        )
+        recursiveStaticMatch(nonMatchingRoutes, length, preconditions)
       }
     } else {
-      for (const route of parsedRoutes) {
-        outputRoute(route, length, preconditions)
+      const [route, ...rest] = parsedRoutes
+      if (route) outputRoute(route, length, preconditions)
+      if (rest.length) {
+        // try again w/ 1 fewer route, it might find a good discriminant now
+        recursiveStaticMatch(rest, length, preconditions)
       }
     }
   }
 
-  function prepareOptionalParams(parsedRoutes: Array<ParsedRoute>): Array<ParsedRoute> {
+  function prepareOptionalParams(
+    parsedRoutes: Array<ParsedRoute>,
+  ): Array<ParsedRoute> {
     const result: Array<ParsedRoute> = []
     for (const route of parsedRoutes) {
-      const index = route.segments.findIndex((s) => s.type === SEGMENT_TYPE_OPTIONAL_PARAM)
+      const index = route.segments.findIndex(
+        (s) => s.type === SEGMENT_TYPE_OPTIONAL_PARAM,
+      )
       if (index === -1) {
         result.push(route)
         continue
@@ -412,7 +452,9 @@ describe('work in progress', () => {
       }
       const withRegular: ParsedRoute = {
         ...route,
-        segments: route.segments.map((s, i) => i === index ? { ...s, type: SEGMENT_TYPE_PARAM } : s),
+        segments: route.segments.map((s, i) =>
+          i === index ? { ...s, type: SEGMENT_TYPE_PARAM } : s,
+        ),
       }
       const chunk = prepareOptionalParams([withRegular, withoutOptional])
       result.push(...chunk)
@@ -421,12 +463,14 @@ describe('work in progress', () => {
   }
 
   type Condition =
-    | { key: string, kind: 'static'; index: number; value: string }
-    | { key: string, kind: 'startsWith'; index: number; value: string }
-    | { key: string, kind: 'endsWith'; index: number; value: string }
-    | { key: string, kind: 'wildcardEndsWith'; value: string }
+    | { key: string; kind: 'static'; index: number; value: string }
+    | { key: string; kind: 'startsWith'; index: number; value: string }
+    | { key: string; kind: 'endsWith'; index: number; value: string }
+    | { key: string; kind: 'wildcardEndsWith'; value: string }
 
-  const withConditions: Array<WithConditions> = prepareOptionalParams(parsedRoutes).map(r => {
+  const withConditions: Array<WithConditions> = prepareOptionalParams(
+    parsedRoutes,
+  ).map((r) => {
     let minLength = 0
     let maxLength = 0
     const conditions: Array<Condition> = r.segments.flatMap((s, i) => {
@@ -437,17 +481,32 @@ describe('work in progress', () => {
           return []
         }
         return [
-          { kind: 'static', index: i, value: s.value, key: `static-${i}-${s.value}` },
+          {
+            kind: 'static',
+            index: i,
+            value: s.value,
+            key: `static-${i}-${s.value}`,
+          },
         ]
       } else if (s.type === SEGMENT_TYPE_PARAM) {
         minLength += 1
         maxLength += 1
         const conds: Array<Condition> = []
         if (s.prefixSegment) {
-          conds.push({ kind: 'startsWith', index: i, value: s.prefixSegment, key: `startsWith-${i}-${s.prefixSegment}` })
+          conds.push({
+            kind: 'startsWith',
+            index: i,
+            value: s.prefixSegment,
+            key: `startsWith-${i}-${s.prefixSegment}`,
+          })
         }
         if (s.suffixSegment) {
-          conds.push({ kind: 'endsWith', index: i, value: s.suffixSegment, key: `endsWith-${i}-${s.suffixSegment}` })
+          conds.push({
+            kind: 'endsWith',
+            index: i,
+            value: s.suffixSegment,
+            key: `endsWith-${i}-${s.suffixSegment}`,
+          })
         }
         return conds
       } else if (s.type === SEGMENT_TYPE_WILDCARD) {
@@ -457,10 +516,19 @@ describe('work in progress', () => {
           minLength += 1
         }
         if (s.prefixSegment) {
-          conds.push({ kind: 'startsWith', index: i, value: s.prefixSegment, key: `startsWith-${i}-${s.prefixSegment}` })
+          conds.push({
+            kind: 'startsWith',
+            index: i,
+            value: s.prefixSegment,
+            key: `startsWith-${i}-${s.prefixSegment}`,
+          })
         }
         if (s.suffixSegment) {
-          conds.push({ kind: 'wildcardEndsWith', value: s.suffixSegment, key: `wildcardEndsWith-${s.suffixSegment}` })
+          conds.push({
+            kind: 'wildcardEndsWith',
+            value: s.suffixSegment,
+            key: `wildcardEndsWith-${s.suffixSegment}`,
+          })
         }
         return conds
       }
@@ -559,79 +627,65 @@ describe('work in progress', () => {
         ) {
           propose(0, "/a/b/c/d/e/f");
         }
-        if (
-          l <= 5 &&
-          baseSegments[1] === "z" &&
-          baseSegments[2] === "y" &&
-          baseSegments[3] === "x" &&
-          baseSegments[4] === "u"
-        ) {
-          propose(1, "/z/y/x/u");
+        if (baseSegments[1] === "z") {
+          if (l >= 5) {
+            if (l === 5) {
+              if (
+                baseSegments[2] === "y" &&
+                baseSegments[3] === "x" &&
+                baseSegments[4] === "u"
+              ) {
+                propose(1, "/z/y/x/u");
+              }
+              if (
+                baseSegments[2] === "y" &&
+                baseSegments[3] === "x" &&
+                baseSegments[4] === "v"
+              ) {
+                propose(2, "/z/y/x/v");
+              }
+              if (
+                baseSegments[2] === "y" &&
+                baseSegments[3] === "x" &&
+                baseSegments[4] === "w"
+              ) {
+                propose(3, "/z/y/x/w");
+              }
+            }
+          }
+          if (l <= 4 && baseSegments[2] === "y" && baseSegments[3] === "x") {
+            propose(7, "/z/y/x");
+          }
         }
-        if (
-          l <= 5 &&
-          baseSegments[1] === "z" &&
-          baseSegments[2] === "y" &&
-          baseSegments[3] === "x" &&
-          baseSegments[4] === "v"
-        ) {
-          propose(2, "/z/y/x/v");
-        }
-        if (
-          l <= 5 &&
-          baseSegments[1] === "z" &&
-          baseSegments[2] === "y" &&
-          baseSegments[3] === "x" &&
-          baseSegments[4] === "w"
-        ) {
-          propose(3, "/z/y/x/w");
-        }
-        if (
-          l <= 4 &&
-          baseSegments[1] === "a" &&
-          baseSegments[2] === "profile" &&
-          baseSegments[3] === "settings"
-        ) {
-          propose(4, "/a/profile/settings");
-        }
-        if (
-          l <= 4 &&
-          baseSegments[1] === "b" &&
-          baseSegments[2] === "profile" &&
-          baseSegments[3] === "settings"
-        ) {
-          propose(5, "/b/profile/settings");
-        }
-        if (
-          l <= 4 &&
-          baseSegments[1] === "users" &&
-          baseSegments[2] === "profile" &&
-          baseSegments[3] === "settings"
-        ) {
-          propose(6, "/users/profile/settings");
-        }
-        if (
-          l <= 4 &&
-          baseSegments[1] === "z" &&
-          baseSegments[2] === "y" &&
-          baseSegments[3] === "x"
-        ) {
-          propose(7, "/z/y/x");
-        }
-        if (l <= 4 && baseSegments[1] === "foo" && baseSegments[2] === "bar") {
-          propose(8, "/foo/bar/$id");
-        }
-        if (l <= 4 && baseSegments[1] === "foo" && baseSegments[3] === "bar") {
-          propose(14, "/foo/$id/bar");
-        }
-        if (l <= 4 && baseSegments[1] === "foo" && baseSegments[3] === "qux") {
-          propose(15, "/foo/{-$bar}/qux");
-        }
-        if (l <= 4 && baseSegments[2] === "bar" && baseSegments[3] === "foo") {
-          propose(37, "/$id/bar/foo");
-        }
-        if (l <= 4 && baseSegments[2] === "foo" && baseSegments[3] === "bar") {
-          propose(38, "/$id/foo/bar");
+        if (l === 4) {
+          if (baseSegments[2] === "profile") {
+            if (baseSegments[1] === "a" && baseSegments[3] === "settings") {
+              propose(4, "/a/profile/settings");
+            }
+            if (baseSegments[1] === "b" && baseSegments[3] === "settings") {
+              propose(5, "/b/profile/settings");
+            }
+            if (baseSegments[1] === "users" && baseSegments[3] === "settings") {
+              propose(6, "/users/profile/settings");
+            }
+          }
+          if (baseSegments[1] === "foo") {
+            if (baseSegments[2] === "bar") {
+              propose(8, "/foo/bar/$id");
+            }
+            if (baseSegments[3] === "bar") {
+              propose(14, "/foo/$id/bar");
+            }
+            if (baseSegments[3] === "qux") {
+              propose(15, "/foo/{-$bar}/qux");
+            }
+          }
+          if (baseSegments[2] === "bar" && baseSegments[3] === "foo") {
+            propose(37, "/$id/bar/foo");
+          }
+          if (baseSegments[2] === "foo" && baseSegments[3] === "bar") {
+            propose(38, "/$id/foo/bar");
+          }
         }
       }
       if (l >= 3) {
@@ -703,6 +757,7 @@ describe('work in progress', () => {
     '/images/thumb_200x300.jpg',
     '/logs/error.txt',
     '/cache/temp_user456.log',
+    '/a/b/c/d/e',
   ])('matching %s', (s) => {
     const originalMatch = originalMatcher(s)
     const buildMatch = wrappedMatcher(s)

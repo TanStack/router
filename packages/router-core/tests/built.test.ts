@@ -5,7 +5,12 @@ import {
   parsePathname,
   processRouteTree,
 } from '../src'
-import { SEGMENT_TYPE_OPTIONAL_PARAM, SEGMENT_TYPE_PARAM, SEGMENT_TYPE_PATHNAME, SEGMENT_TYPE_WILDCARD } from "../src/path"
+import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
+} from '../src/path'
 
 interface TestRoute {
   id: string
@@ -170,7 +175,10 @@ describe('work in progress', () => {
   let fn = 'const baseSegments = parsePathname(from);'
   fn += '\nconst l = baseSegments.length;'
 
-  type ParsedRoute = { path: string, segments: ReturnType<typeof parsePathname> }
+  type ParsedRoute = {
+    path: string
+    segments: ReturnType<typeof parsePathname>
+  }
 
   function recursiveStaticMatch(
     parsedRoutes: Array<ParsedRoute>,
@@ -181,19 +189,14 @@ describe('work in progress', () => {
     for (const route of parsedRoutes) {
       if (resolved.has(route)) continue // already resolved
       console.log('\n')
-      console.log(
-        'resolving: depth=',
-        depth,
-        'parsed=',
-        route.path,
-      )
+      console.log('resolving: depth=', depth, 'parsed=', route.path)
       console.log('\u001b[34m' + fn + '\u001b[0m')
       const currentSegment = route.segments[depth]
       if (!currentSegment) {
         throw new Error(
           'Implementation error: this should not happen, depth=' +
-          depth +
-          `, route=${route.path}`,
+            depth +
+            `, route=${route.path}`,
         )
       }
       const candidates = parsedRoutes.filter((r) => {
@@ -227,7 +230,10 @@ describe('work in progress', () => {
           rParsed.suffixSegment === currentSegment.suffixSegment
         )
       })
-      console.log('candidates:', candidates.map(r => r.path))
+      console.log(
+        'candidates:',
+        candidates.map((r) => r.path),
+      )
       if (candidates.length === 0) {
         throw new Error('Implementation error: this should not happen')
       }
@@ -321,7 +327,9 @@ describe('work in progress', () => {
         const leaf = candidates[0]!
 
         // Check if this route contains a wildcard segment
-        const wildcardIndex = leaf.segments.findIndex((s) => s && s.type === SEGMENT_TYPE_WILDCARD)
+        const wildcardIndex = leaf.segments.findIndex(
+          (s) => s && s.type === SEGMENT_TYPE_WILDCARD,
+        )
 
         if (wildcardIndex !== -1 && wildcardIndex >= depth) {
           // This route has a wildcard at or after the current depth
@@ -642,6 +650,7 @@ describe('work in progress', () => {
     '/images/thumb_200x300.jpg',
     '/logs/error.txt',
     '/cache/temp_user456.log',
+    '/a/b/c/d/e',
   ])('matching %s', (s) => {
     const originalMatch = originalMatcher(s)
     const buildMatch = buildMatcher(parsePathname, s)
