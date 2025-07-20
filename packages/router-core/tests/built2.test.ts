@@ -192,11 +192,11 @@ describe('work in progress', () => {
   function conditionToString(condition: Condition) {
     if (condition.kind === 'static') {
       if (condition.index === 0 && condition.value === '/') return undefined // root segment is always `/`
-      return `baseSegments[${condition.index}] === '${condition.value}'`
+      return `s${condition.index} === '${condition.value}'`
     } else if (condition.kind === 'startsWith') {
-      return `baseSegments[${condition.index}].startsWith('${condition.value}')`
+      return `s${condition.index}.startsWith('${condition.value}')`
     } else if (condition.kind === 'endsWith') {
-      return `baseSegments[${condition.index}].endsWith('${condition.value}')`
+      return `s${condition.index}.endsWith('${condition.value}')`
     } else if (condition.kind === 'wildcardEndsWith') {
       return `baseSegments[l - 1].endsWith('${condition.value}')`
     }
@@ -552,75 +552,97 @@ describe('work in progress', () => {
     return { ...r, conditions, length: { min: minLength, max: maxLength } }
   })
 
+  const max = withConditions.reduce(
+    (max, r) =>
+      Math.max(
+        max,
+        r.conditions.reduce((max, c) => {
+          if (
+            c.kind === 'static' ||
+            c.kind === 'startsWith' ||
+            c.kind === 'endsWith'
+          ) {
+            return Math.max(max, c.index)
+          }
+          return max
+        }, 0),
+      ),
+    0,
+  )
+
+  if (max > 0)
+    fn += `const [${Array.from({ length: max + 1 }, (_, i) => `s${i}`).join(', ')}] = baseSegments;\n`
+
   recursiveStaticMatch(withConditions)
 
   it('generates a matching function', async () => {
     expect(await format(fn, { parser: 'typescript' })).toMatchInlineSnapshot(`
       "const baseSegments = parsePathname(from).map((s) => s.value);
       const l = baseSegments.length;
+      const [s0, s1, s2, s3, s4, s5, s6] = baseSegments;
       if (l <= 3) {
         if (l === 3) {
-          if (baseSegments[1] === "a") {
-            if (baseSegments[2] === "profile") {
+          if (s1 === "a") {
+            if (s2 === "profile") {
               propose(9, "/a/profile");
             }
-            if (baseSegments[2].startsWith("user-")) {
+            if (s2.startsWith("user-")) {
               propose(16, "/a/user-{$id}");
             }
             propose(19, "/a/$id");
             propose(23, "/a/{-$slug}");
           }
-          if (baseSegments[1] === "b") {
-            if (baseSegments[2] === "profile") {
+          if (s1 === "b") {
+            if (s2 === "profile") {
               propose(10, "/b/profile");
             }
-            if (baseSegments[2].startsWith("user-")) {
+            if (s2.startsWith("user-")) {
               propose(18, "/b/user-{$id}");
             }
             propose(20, "/b/$id");
             propose(24, "/b/{-$slug}");
           }
-          if (baseSegments[1] === "users") {
-            if (baseSegments[2] === "profile") {
+          if (s1 === "users") {
+            if (s2 === "profile") {
               propose(13, "/users/profile");
             }
             propose(22, "/users/$id");
           }
-          if (baseSegments[1] === "foo") {
-            if (baseSegments[2] === "qux") {
+          if (s1 === "foo") {
+            if (s2 === "qux") {
               propose(15, "/foo/{-$bar}/qux");
             }
             propose(21, "/foo/$bar");
           }
-          if (baseSegments[1] === "beep" && baseSegments[2] === "boop") {
+          if (s1 === "beep" && s2 === "boop") {
             propose(11, "/beep/boop");
           }
-          if (baseSegments[1] === "one" && baseSegments[2] === "two") {
+          if (s1 === "one" && s2 === "two") {
             propose(12, "/one/two");
           }
-          if (baseSegments[1] === "api" && baseSegments[2].startsWith("user-")) {
+          if (s1 === "api" && s2.startsWith("user-")) {
             propose(17, "/api/user-{$id}");
           }
-          if (baseSegments[1] === "posts") {
+          if (s1 === "posts") {
             propose(25, "/posts/{-$slug}");
           }
         }
         if (l === 2) {
-          if (baseSegments[1] === "a") {
+          if (s1 === "a") {
             propose(23, "/a/{-$slug}");
             propose(32, "/a");
           }
-          if (baseSegments[1] === "b") {
+          if (s1 === "b") {
             propose(24, "/b/{-$slug}");
             propose(34, "/b");
           }
-          if (baseSegments[1] === "posts") {
+          if (s1 === "posts") {
             propose(25, "/posts/{-$slug}");
           }
-          if (baseSegments[1] === "about") {
+          if (s1 === "about") {
             propose(33, "/about");
           }
-          if (baseSegments[1] === "one") {
+          if (s1 === "one") {
             propose(35, "/one");
           }
         }
@@ -631,97 +653,85 @@ describe('work in progress', () => {
       if (l >= 4) {
         if (
           l <= 7 &&
-          baseSegments[1] === "a" &&
-          baseSegments[2] === "b" &&
-          baseSegments[3] === "c" &&
-          baseSegments[4] === "d" &&
-          baseSegments[5] === "e" &&
-          baseSegments[6] === "f"
+          s1 === "a" &&
+          s2 === "b" &&
+          s3 === "c" &&
+          s4 === "d" &&
+          s5 === "e" &&
+          s6 === "f"
         ) {
           propose(0, "/a/b/c/d/e/f");
         }
-        if (baseSegments[1] === "z") {
+        if (s1 === "z") {
           if (l === 5) {
-            if (
-              baseSegments[2] === "y" &&
-              baseSegments[3] === "x" &&
-              baseSegments[4] === "u"
-            ) {
+            if (s2 === "y" && s3 === "x" && s4 === "u") {
               propose(1, "/z/y/x/u");
             }
-            if (
-              baseSegments[2] === "y" &&
-              baseSegments[3] === "x" &&
-              baseSegments[4] === "v"
-            ) {
+            if (s2 === "y" && s3 === "x" && s4 === "v") {
               propose(2, "/z/y/x/v");
             }
-            if (
-              baseSegments[2] === "y" &&
-              baseSegments[3] === "x" &&
-              baseSegments[4] === "w"
-            ) {
+            if (s2 === "y" && s3 === "x" && s4 === "w") {
               propose(3, "/z/y/x/w");
             }
           }
-          if (l <= 4 && baseSegments[2] === "y" && baseSegments[3] === "x") {
+          if (l <= 4 && s2 === "y" && s3 === "x") {
             propose(7, "/z/y/x");
           }
         }
         if (l === 4) {
-          if (baseSegments[2] === "profile") {
-            if (baseSegments[1] === "a" && baseSegments[3] === "settings") {
+          if (s2 === "profile") {
+            if (s1 === "a" && s3 === "settings") {
               propose(4, "/a/profile/settings");
             }
-            if (baseSegments[1] === "b" && baseSegments[3] === "settings") {
+            if (s1 === "b" && s3 === "settings") {
               propose(5, "/b/profile/settings");
             }
-            if (baseSegments[1] === "users" && baseSegments[3] === "settings") {
+            if (s1 === "users" && s3 === "settings") {
               propose(6, "/users/profile/settings");
             }
           }
-          if (baseSegments[1] === "foo") {
-            if (baseSegments[2] === "bar") {
+          if (s1 === "foo") {
+            if (s2 === "bar") {
               propose(8, "/foo/bar/$id");
             }
-            if (baseSegments[3] === "bar") {
+            if (s3 === "bar") {
               propose(14, "/foo/$id/bar");
             }
-            if (baseSegments[3] === "qux") {
+            if (s3 === "qux") {
               propose(15, "/foo/{-$bar}/qux");
             }
           }
-          if (baseSegments[2] === "bar" && baseSegments[3] === "foo") {
+          if (s2 === "bar" && s3 === "foo") {
             propose(37, "/$id/bar/foo");
           }
-          if (baseSegments[2] === "foo" && baseSegments[3] === "bar") {
+          if (s2 === "foo" && s3 === "bar") {
             propose(38, "/$id/foo/bar");
           }
         }
       }
       if (l >= 3) {
         if (
-          baseSegments[1] === "cache" &&
-          baseSegments[2].startsWith("temp_") &&
+          s1 === "cache" &&
+          s2.startsWith("temp_") &&
           baseSegments[l - 1].endsWith(".log")
         ) {
           propose(26, "/cache/temp_{$}.log");
         }
-        if (baseSegments[1] === "images" && baseSegments[2].startsWith("thumb_")) {
+        if (s1 === "images" && s2.startsWith("thumb_")) {
           propose(27, "/images/thumb_{$}");
         }
-        if (baseSegments[1] === "logs" && baseSegments[l - 1].endsWith(".txt")) {
+        if (s1 === "logs" && baseSegments[l - 1].endsWith(".txt")) {
           propose(28, "/logs/{$}.txt");
         }
       }
       if (l >= 2) {
-        if (baseSegments[1] === "a") {
+        if (s1 === "a") {
           propose(29, "/a/$");
         }
-        if (baseSegments[1] === "b") {
+        if (s1 === "b") {
           propose(30, "/b/$");
         }
-        if (baseSegments[1] === "files") {
+        if (s1 === "files") {
           propose(31, "/files/$");
         }
       }
