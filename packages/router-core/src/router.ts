@@ -2147,7 +2147,7 @@ export class RouterCore<
           err = this.resolveRedirect(err)
           throw err
         } else if (isNotFound(err)) {
-          this._handleNotFound(matches, err, undefined, {
+          this._handleNotFound(matches, err, 'BEFORE_LOAD', {
             updateMatch,
           })
           throw err
