@@ -181,6 +181,8 @@ describe('work in progress', () => {
     rank: number
   }
 
+  const caseSensitive = true
+
   let fn = 'const baseSegments = parsePathname(from).map(s => s.value);'
   fn += '\nconst l = baseSegments.length;'
   fn += `\nlet rank = Infinity;`
@@ -197,10 +199,12 @@ describe('work in progress', () => {
     length: { min: number; max: number }
   }
 
-  function conditionToString(condition: Condition) {
+  function conditionToString(condition: Condition, caseSensitive = true) {
     if (condition.kind === 'static') {
       if (condition.index === 0 && condition.value === '/') return undefined // root segment is always `/`
-      return `s${condition.index} === '${condition.value}'`
+      return caseSensitive
+        ? `s${condition.index} === '${condition.value}'`
+        : `sc${condition.index} === '${condition.value}'`
     } else if (condition.kind === 'startsWith') {
       return `s${condition.index}.startsWith('${condition.value}')`
     } else if (condition.kind === 'endsWith') {
@@ -213,6 +217,7 @@ describe('work in progress', () => {
 
   function outputRoute(
     route: WithConditions,
+    caseSensitive = true,
     length: { min: number; max: number },
     preconditions: Array<string> = [],
     allSeenRanks: Array<number> = [],
@@ -244,7 +249,7 @@ describe('work in progress', () => {
     }
     for (const condition of route.conditions) {
       if (!preconditions.includes(condition.key)) {
-        const str = conditionToString(condition)
+        const str = conditionToString(condition, caseSensitive)
         if (str) {
           flags.push(str)
         }
@@ -266,7 +271,6 @@ describe('work in progress', () => {
     if (route.rank === maxContinuousRank + 1) {
       // if we know at this point of the function, we can't do better than this, return it directly
       fn += `return '${route.path}';`
-      console.log('maxContinuousRank', maxContinuousRank, 'all', allSeenRanks.join(','))
     } else {
       fn += `propose(${route.rank}, '${route.path}');`
     }
@@ -277,6 +281,7 @@ describe('work in progress', () => {
 
   function recursiveStaticMatch(
     parsedRoutes: Array<WithConditions>,
+    caseSensitive = true,
     length: { min: number; max: number } = { min: 0, max: Infinity },
     preconditions: Array<string> = [],
     lastRank?: number,
@@ -401,7 +406,7 @@ describe('work in progress', () => {
         }
       }
       if (matchingRoutes.length === 1) {
-        outputRoute(matchingRoutes[0]!, length, preconditions, allSeenRanks)
+        outputRoute(matchingRoutes[0]!, caseSensitive, length, preconditions, allSeenRanks)
       } else if (matchingRoutes.length) {
         // add `if` for the discriminant
         const bestChildRank = matchingRoutes.reduce(
@@ -425,7 +430,7 @@ describe('work in progress', () => {
           const condition = matchingRoutes[0]!.conditions.find(
             (c) => c.key === discriminant.key,
           )!
-          fn += `if (${conditionToString(condition) || 'true'}${rankTest}) {`
+          fn += `if (${conditionToString(condition, caseSensitive) || 'true'}${rankTest}) {`
         } else if (discriminant.type === 'minLength') {
           if (discriminant.key === length.max) {
             fn += `if (l === ${discriminant.key}${rankTest}) {`
@@ -460,6 +465,7 @@ describe('work in progress', () => {
         // recurse
         recursiveStaticMatch(
           matchingRoutes,
+          caseSensitive,
           nextLength,
           discriminant.type === 'condition'
             ? [...preconditions, discriminant.key]
@@ -470,17 +476,17 @@ describe('work in progress', () => {
         fn += '}'
       }
       if (nonMatchingRoutes.length === 1) {
-        outputRoute(nonMatchingRoutes[0]!, length, preconditions, allSeenRanks)
+        outputRoute(nonMatchingRoutes[0]!, caseSensitive, length, preconditions, allSeenRanks)
       } else if (nonMatchingRoutes.length) {
         // recurse
-        recursiveStaticMatch(nonMatchingRoutes, length, preconditions, undefined, allSeenRanks)
+        recursiveStaticMatch(nonMatchingRoutes, caseSensitive, length, preconditions, undefined, allSeenRanks)
       }
     } else {
       const [route, ...rest] = parsedRoutes
-      if (route) outputRoute(route, length, preconditions, allSeenRanks)
+      if (route) outputRoute(route, caseSensitive, length, preconditions, allSeenRanks)
       if (rest.length) {
         // try again w/ 1 fewer route, it might find a good discriminant now
-        recursiveStaticMatch(rest, length, preconditions, undefined, allSeenRanks)
+        recursiveStaticMatch(rest, caseSensitive, length, preconditions, undefined, allSeenRanks)
       }
     }
   }
@@ -539,7 +545,7 @@ describe('work in progress', () => {
           {
             kind: 'static',
             index: i,
-            value: s.value,
+            value: caseSensitive ? s.value : s.value.toLowerCase(),
             key: `static-${i}-${s.value}`,
           },
         ]
@@ -610,10 +616,17 @@ describe('work in progress', () => {
     0,
   )
 
-  if (max > 0)
+  if (max > 0) {
     fn += `const [${Array.from({ length: max + 1 }, (_, i) => `s${i}`).join(', ')}] = baseSegments;\n`
+    if (!caseSensitive) {
+      for (let i = 0; i <= max; i++) {
+        fn += `const sc${i} = s${i}?.toLowerCase();\n`
+      }
+    }
+  }
 
-  recursiveStaticMatch(withConditions)
+
+  recursiveStaticMatch(withConditions, caseSensitive)
 
   fn += `return path;`
 
