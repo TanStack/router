@@ -23,7 +23,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `NODE_ENV="test" EXTERNAL_PORT="${EXTERNAL_PORT}" pnpm run build && pnpm run serve --serve=${PORT}`,
+    command: `pnpm run build && pnpm run serve --serve=${PORT} --define:process.env.NODE_ENV=\\"test\\" --define:process.env.EXTERNAL_PORT="${EXTERNAL_PORT}"`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',

@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm run build && node esbuild.config.js --serve=5601",
-    "build": "rm -rf ./dist/*; node esbuild.config.js --build && tsc --noEmit",
-    "serve": "node esbuild.config.js",
+    "dev": "esbuild src/main.tsx --serve=5601 --bundle --outfile=dist/main.js --watch --servedir=.",
+    "build": "esbuild src/main.tsx --bundle --outfile=dist/main.js && tsc --noEmit",
+    "serve": "esbuild src/main.tsx --bundle --outfile=dist/main.js --servedir=.",
     "start": "dev",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
