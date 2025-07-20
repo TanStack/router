@@ -3393,7 +3393,8 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
     const result = matchPathname(basepath, trimmedPath, {
       to: route.fullPath,
       caseSensitive: route.options?.caseSensitive ?? caseSensitive,
-      fuzzy: false,
+      // we need fuzzy matching for `notFoundMode: 'fuzzy'`
+      fuzzy: true,
     })
     return result
   }
@@ -3403,16 +3404,34 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   if (foundRoute) {
     routeParams = getMatchedParams(foundRoute)!
   } else {
-    foundRoute = flatRoutes.find((route) => {
+    // iterate over flatRoutes to find the best match
+    // if we find a fuzzy matching route, keep looking for a perfect fit
+    let fuzzyMatch:
+      | { foundRoute: TRouteLike; routeParams: Record<string, string> }
+      | undefined = undefined
+    for (const route of flatRoutes) {
       const matchedParams = getMatchedParams(route)
 
       if (matchedParams) {
-        routeParams = matchedParams
-        return true
+        if (
+          route.path !== '/' &&
+          (matchedParams as Record<string, string>)['**']
+        ) {
+          if (!fuzzyMatch) {
+            fuzzyMatch = { foundRoute: route, routeParams: matchedParams }
+          }
+        } else {
+          foundRoute = route
+          routeParams = matchedParams
+          break
+        }
       }
-
-      return false
-    })
+    }
+    // did not find a perfect fit, so take the fuzzy matching route if it exists
+    if (!foundRoute && fuzzyMatch) {
+      foundRoute = fuzzyMatch.foundRoute
+      routeParams = fuzzyMatch.routeParams
+    }
   }
 
   let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!
