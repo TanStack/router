@@ -185,7 +185,7 @@ describe('work in progress', () => {
 
   const caseSensitive = true
 
-  let fn = 'const baseSegments = parsePathname(from).map(s => s.value);'
+  let fn = 'const baseSegments = parsePathname(from[0] === "/" ? from : "/" + from).map((s) => s.value);'
   fn += '\nconst l = baseSegments.length;'
   fn += `\nlet rank = Infinity;`
   fn += `\nlet path = undefined;`
@@ -654,7 +654,9 @@ describe('work in progress', () => {
 
   it('generates a matching function', async () => {
     expect(await format(fn, { parser: 'typescript' })).toMatchInlineSnapshot(`
-      "const baseSegments = parsePathname(from).map((s) => s.value);
+      "const baseSegments = parsePathname(from[0] === "/" ? from : "/" + from).map(
+        (s) => s.value,
+      );
       const l = baseSegments.length;
       let rank = Infinity;
       let path = undefined;
@@ -840,6 +842,7 @@ describe('work in progress', () => {
 
   // WARN: some of these don't work yet, they're just here to show the differences
   test.each([
+    '',
     '/',
     '/users/profile/settings',
     '/foo/123',
