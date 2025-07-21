@@ -1,11 +1,15 @@
 import { defineConfig, devices } from '@playwright/test'
-import { derivePort, resolveRuntimeSuffix } from '@tanstack/router-e2e-utils'
+import {
+  getDummyServerPort,
+  getTestServerPort,
+  resolveRuntimeSuffix,
+} from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
-const PORT = await derivePort(
+const PORT = await getTestServerPort(
   packageJson.name + `-${resolveRuntimeSuffix('browser')}`,
 )
-const EXTERNAL_PORT = await derivePort(packageJson.name + `-external`)
+const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 
 const baseURL = `http://localhost:${PORT}`
 /**

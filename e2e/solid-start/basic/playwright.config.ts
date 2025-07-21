@@ -1,9 +1,12 @@
 import { defineConfig, devices } from '@playwright/test'
-import { derivePort } from '@tanstack/router-e2e-utils'
+import {
+  getDummyServerPort,
+  getTestServerPort,
+} from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
-const PORT = await derivePort(packageJson.name)
-const EXTERNAL_PORT = await derivePort(packageJson.name + '-external')
+const PORT = await getTestServerPort(packageJson.name)
+const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
 
 /**

@@ -1,4 +1,5 @@
 import http from 'node:http'
+import { posts } from './posts'
 
 // some tests redirect to an external host
 // however, in CI this is unstable due to network conditions
@@ -19,7 +20,7 @@ export async function localDummyServer(port: number) {
     }
   })
 
-  server.on('request', async (req, res) => {
+  server.on('request', (req, res) => {
     const url = new URL(req.url!, 'http://localhost')
 
     if (res.req.method === 'GET' && url.pathname === '/') {
@@ -28,7 +29,7 @@ export async function localDummyServer(port: number) {
     }
   })
 
-  server.on('request', async (req, res) => {
+  server.on('request', (req, res) => {
     const url = new URL(req.url!, `http://localhost`)
 
     if (res.req.method === 'POST' && url.pathname === '/stop') {
@@ -39,6 +40,40 @@ export async function localDummyServer(port: number) {
 
       res.writeHead(200)
       res.end()
+    }
+  })
+
+  server.on('request', (req, res) => {
+    const url = new URL(req.url ?? '/', `http://localhost`)
+
+    if (req.method === 'GET' && url.pathname.startsWith('/posts')) {
+      const parts = url.pathname.split('/')
+
+      if (parts.length === 2) {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify(posts))
+        return
+      }
+
+      if (parts[2]) {
+        const postId = parseInt(parts[2])
+
+        if (isNaN(postId)) {
+          res.writeHead(404)
+          res.end(JSON.stringify({ error: 'invalid post id' }))
+          return
+        }
+
+        const post = posts.find((post) => post.id === postId)
+
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify(post))
+        return
+      }
+
+      res.writeHead(404)
+      res.end(JSON.stringify({ error: 'invalid posts path' }))
+      return
     }
   })
 

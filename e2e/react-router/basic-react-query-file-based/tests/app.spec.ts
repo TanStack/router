@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { derivePort } from '@tanstack/router-e2e-utils'
+import { getDummyServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 
 test.beforeEach(async ({ page }) => {
@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('GetPosts', async () => {
-  const port = await derivePort(`${packageJson.name}-external`)
+  const port = await getDummyServerPort(packageJson.name)
   const res = await fetch(`http://localhost:${port}/posts`)
 
   expect(res.status).toBe(200)

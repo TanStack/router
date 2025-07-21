@@ -1,14 +1,17 @@
 import queryString from 'node:querystring'
 import { expect, test } from '@playwright/test'
 import combinateImport from 'combinate'
-import { derivePort } from '@tanstack/router-e2e-utils'
+import {
+  getDummyServerPort,
+  getTestServerPort,
+} from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
-const PORT = await derivePort(packageJson.name)
-const EXTERNAL_HOST_PORT = await derivePort(`${packageJson.name}-external`)
+const PORT = await getTestServerPort(packageJson.name)
+const EXTERNAL_HOST_PORT = await getDummyServerPort(packageJson.name)
 
 test.describe('redirects', () => {
   const internalNavigationTestMatrix = combinate({
