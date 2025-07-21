@@ -1184,6 +1184,55 @@ describe('Link', () => {
     expect(onError).toHaveBeenCalledOnce()
   })
 
+  test('when navigating to /posts with a beforeLoad that throws an primitive type error', async () => {
+    const onError = vi.fn()
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/posts">Posts</Link>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return <h1>Posts</h1>
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      beforeLoad: () => {
+        throw 'This is a string error'
+      },
+      onError,
+      errorComponent: () => <span>Oops! Something went wrong!</span>,
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      context: { userId: 'userId' },
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+
+    await act(() => fireEvent.click(postsLink))
+
+    const errorText = await screen.findByText('Oops! Something went wrong!')
+    expect(errorText).toBeInTheDocument()
+
+    expect(onError).toHaveBeenCalledOnce()
+  })
+
   test('when navigating to /posts with a beforeLoad that throws an error bubbles to the root', async () => {
     const rootRoute = createRootRoute({
       errorComponent: () => <span>Oops! Something went wrong!</span>,
