@@ -25,6 +25,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MiddlewareIndexRouteImport } from './routes/middleware/index'
 import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-redirect/index'
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
+import { Route as MiddlewareRetryNextRouteImport } from './routes/middleware/retry-next'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 import { Route as FormdataRedirectTargetNameRouteImport } from './routes/formdata-redirect/target.$name'
@@ -109,6 +110,11 @@ const CookiesIndexRoute = CookiesIndexRouteImport.update({
   path: '/cookies/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MiddlewareRetryNextRoute = MiddlewareRetryNextRouteImport.update({
+  id: '/middleware/retry-next',
+  path: '/middleware/retry-next',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MiddlewareClientMiddlewareRouterRoute =
   MiddlewareClientMiddlewareRouterRouteImport.update({
     id: '/middleware/client-middleware-router',
@@ -143,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/retry-next': typeof MiddlewareRetryNextRoute
   '/cookies': typeof CookiesIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
@@ -164,6 +171,7 @@ export interface FileRoutesByTo {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/retry-next': typeof MiddlewareRetryNextRoute
   '/cookies': typeof CookiesIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/retry-next': typeof MiddlewareRetryNextRoute
   '/cookies/': typeof CookiesIndexRoute
   '/formdata-redirect/': typeof FormdataRedirectIndexRoute
   '/middleware/': typeof MiddlewareIndexRoute
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/retry-next'
     | '/cookies'
     | '/formdata-redirect'
     | '/middleware'
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/retry-next'
     | '/cookies'
     | '/formdata-redirect'
     | '/middleware'
@@ -251,6 +262,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/retry-next'
     | '/cookies/'
     | '/formdata-redirect/'
     | '/middleware/'
@@ -273,6 +285,7 @@ export interface RootRouteChildren {
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
   CookiesSetRoute: typeof CookiesSetRoute
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
+  MiddlewareRetryNextRoute: typeof MiddlewareRetryNextRoute
   CookiesIndexRoute: typeof CookiesIndexRoute
   FormdataRedirectIndexRoute: typeof FormdataRedirectIndexRoute
   MiddlewareIndexRoute: typeof MiddlewareIndexRoute
@@ -393,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CookiesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/retry-next': {
+      id: '/middleware/retry-next'
+      path: '/middleware/retry-next'
+      fullPath: '/middleware/retry-next'
+      preLoaderRoute: typeof MiddlewareRetryNextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/middleware/client-middleware-router': {
       id: '/middleware/client-middleware-router'
       path: '/middleware/client-middleware-router'
@@ -433,6 +453,7 @@ const rootRouteChildren: RootRouteChildren = {
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,
   CookiesSetRoute: CookiesSetRoute,
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
+  MiddlewareRetryNextRoute: MiddlewareRetryNextRoute,
   CookiesIndexRoute: CookiesIndexRoute,
   FormdataRedirectIndexRoute: FormdataRedirectIndexRoute,
   MiddlewareIndexRoute: MiddlewareIndexRoute,

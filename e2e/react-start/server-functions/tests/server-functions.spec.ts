@@ -371,4 +371,24 @@ test.describe('middleware', () => {
       await runTest(page)
     })
   })
+
+  test.describe('middleware can call next() multiple times', () => {
+    async function runRetryTest(page: Page) {
+      await page.waitForLoadState('networkidle')
+      await expect(page.getByTestId('retry-success-result')).toContainText(
+        'success',
+      )
+    }
+
+    test('direct visit', async ({ page }) => {
+      await page.goto('/middleware/retry-next')
+      await runRetryTest(page)
+    })
+
+    test('client navigation', async ({ page }) => {
+      await page.goto('/middleware')
+      await page.getByTestId('retry-next-link').click()
+      await runRetryTest(page)
+    })
+  })
 })

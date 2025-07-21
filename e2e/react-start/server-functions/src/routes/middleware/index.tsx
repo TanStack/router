@@ -19,6 +19,11 @@ function RouteComponent() {
             Client Middleware has access to router instance
           </Route.Link>
         </li>
+        <li>
+          <Route.Link to="./retry-next" data-testid="retry-next-link">
+            Middleware can call next() multiple times
+          </Route.Link>
+        </li>
       </ul>
     </div>
   )
