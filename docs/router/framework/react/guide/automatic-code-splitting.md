@@ -31,7 +31,7 @@ TanStack Router's automatic code splitting works by transforming your route file
 
 So when your application loads, it doesn't include all the code for every route. Instead, it only includes the code for the routes that are initially needed. As users navigate through your application, additional chunks are loaded on demand.
 
-This happens seamlessly, without requiring you to manually split your code or manage lazy loading. The router plugin takes care of everything, ensuring that your routes are optimized for performance right out of the box.
+This happens seamlessly, without requiring you to manually split your code or manage lazy loading. The TanStack Router bundler plugin takes care of everything, ensuring that your routes are optimized for performance right out of the box.
 
 ### The transformation process
 
@@ -39,7 +39,7 @@ When you enable automatic code splitting, TanStack Router uses a bundler plugin 
 
 This transformation process produces two key outputs when each of your route files are processed:
 
-1. **Reference File**: The plugin takes your original route file (e.g., `posts.route.tsx`) and modifies the values for properties like `component` or `pendingComponent` to use special lazy-loading wrappers that'll fetch the actual code later. These wrappers point to a "virtual" file that the bundler will resolve later on.
+1. **Reference File**: The bundler plugin takes your original route file (e.g., `posts.route.tsx`) and modifies the values for properties like `component` or `pendingComponent` to use special lazy-loading wrappers that'll fetch the actual code later. These wrappers point to a "virtual" file that the bundler will resolve later on.
 2. **Virtual File**: When the bundler sees a request for one of these virtual files (e.g., `posts.route.tsx?tsr-split=component`), it intercepts it to generate a new, minimal on-the-fly file that _only_ contains the code for the requested properties (e.g., just the `PostsComponent`).
 
 This process ensures that your original code remains clean and readable, while the actual bundled output is optimized for initial bundle size.
