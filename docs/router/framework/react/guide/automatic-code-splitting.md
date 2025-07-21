@@ -35,7 +35,7 @@ This happens seamlessly, without requiring you to manually split your code or ma
 
 ### The transformation process
 
-When you enable automatic code splitting, the bundler plugin does this by static code analysis to transform your route files into optimized outputs.
+When you enable automatic code splitting, the bundler plugin does this by using static code analysis look at your the code in your route files to transform them into optimized outputs.
 
 This transformation process produces two key outputs when each of your route files are processed:
 
