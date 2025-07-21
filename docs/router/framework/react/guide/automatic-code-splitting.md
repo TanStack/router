@@ -22,13 +22,12 @@ export default defineConfig({
 
 But that's just the beginning! TanStack Router's automatic code splitting is not only easy to enable, but it also provides powerful customization options to tailor how your routes are split into chunks. This allows you to optimize your application's performance based on your specific needs and usage patterns.
 
-## What is a Chunk?
-
-In the context of web applications, a "chunk" refers to a separate file that contains a portion of your application's code. When you enable automatic code splitting, the router generates these chunks for each route or specific properties of a route (like components and loaders). This means that when a user navigates to a route, only the necessary code for that route is loaded, rather than the entire application at once.
-
 ## How does it work?
 
-TanStack Router's automatic code splitting works by transforming your route files at build time. It rewrites the route definitions to use lazy-loading wrappers for components and loaders, which allows the bundler to group these properties into separate chunks.
+TanStack Router's automatic code splitting works by transforming your route files both during 'dev' and 'build' time. It rewrites the route definitions to use lazy-loading wrappers for components and loaders, which allows the bundler to group these properties into separate chunks.
+
+> [!TIP]
+> A chunk is a file that contains a portion of your application's code, which can be loaded on demand. This helps reduce the initial load time of your application by only loading the code that is needed for the current route.
 
 So when your application loads, it doesn't include all the code for every route. Instead, it only includes the code for the routes that are initially needed. As users navigate through your application, additional chunks are loaded on demand.
 
@@ -37,7 +36,7 @@ This magic happens seamlessly, without requiring you to manually split your code
 This transformation process produces two key outputs when each of your route files are processed:
 
 1. **Reference File**: The plugin takes your original route file (e.g., `posts.route.tsx`) and modifies the values for properties like `component` or `pendingComponent` to use special lazy-loading wrappers that'll fetch the actual code later. These wrappers point to a "virtual" file that the bundler will resolve later on.
-2. **Virtual File Generation**: When the bundler sees a request for one of these virtual files (e.g., `posts.route.tsx?tsr-split=component`), it intercepts it to generate a new, minimal file on-the-fly that _only_ contains the code for the requested property (e.g., just the `PostsComponent`).
+2. **Virtual File**: When the bundler sees a request for one of these virtual files (e.g., `posts.route.tsx?tsr-split=component`), it intercepts it to generate a new, minimal on-the-fly file that _only_ contains the code for the requested properties (e.g., just the `PostsComponent`).
 
 This process ensures that your original code remains clean and readable, while the actual bundled output is optimized for initial bundle size.
 
@@ -61,7 +60,7 @@ The available properties to split are:
 
 ### Default behavior
 
-By default, the TanStack Router uses the following split groupings:
+By default, TanStack Router uses the following split groupings:
 
 ```sh
 [
@@ -154,6 +153,16 @@ export default defineConfig({
   ],
 })
 ```
+
+### The order of configuration
+
+This guide has so far describe three different ways to configure how TanStack Router splits your routes into chunks.
+
+To make sure that the different configurations do not conflict with each other, TanStack Router uses the following order of precedence:
+
+1. **Per-route overrides**: The `codeSplitGroupings` property inside a route file takes the highest precedence. This allows you to define specific split groupings for individual routes.
+2. **Programmatic split behavior**: The `splitBehavior` function in your bundler config allows you to define custom logic for how routes should be split based on their `routeId`.
+3. **Default behavior**: The `defaultBehavior` option in your bundler config serves as the fallback for any routes that do not have specific overrides or custom logic defined. This is the base configuration that applies to all routes unless overridden.
 
 ### Splitting the Data Loader
 
