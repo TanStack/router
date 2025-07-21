@@ -24,14 +24,18 @@ But that's just the beginning! TanStack Router's automatic code splitting is not
 
 ## How does it work?
 
-TanStack Router's automatic code splitting works by transforming your route files both during 'dev' and 'build' time. It rewrites the route definitions to use lazy-loading wrappers for components and loaders, which allows the bundler to group these properties into separate chunks.
+TanStack Router's automatic code splitting works by transforming your route files both during 'development' and at 'build' time. It rewrites the route definitions to use lazy-loading wrappers for components and loaders, which allows the bundler to group these properties into separate chunks.
 
 > [!TIP]
-> A chunk is a file that contains a portion of your application's code, which can be loaded on demand. This helps reduce the initial load time of your application by only loading the code that is needed for the current route.
+> A **chunk** is a file that contains a portion of your application's code, which can be loaded on demand. This helps reduce the initial load time of your application by only loading the code that is needed for the current route.
 
 So when your application loads, it doesn't include all the code for every route. Instead, it only includes the code for the routes that are initially needed. As users navigate through your application, additional chunks are loaded on demand.
 
 This magic happens seamlessly, without requiring you to manually split your code or manage lazy loading. The router plugin takes care of everything, ensuring that your routes are optimized for performance right out of the box.
+
+### The transformation process
+
+When you enable automatic code splitting, TanStack Router uses a bundler plugin to transform your route files.
 
 This transformation process produces two key outputs when each of your route files are processed:
 
@@ -40,13 +44,9 @@ This transformation process produces two key outputs when each of your route fil
 
 This process ensures that your original code remains clean and readable, while the actual bundled output is optimized for initial bundle size.
 
-## Granular control
+### What gets code split?
 
-For most applications, the default behavior of using `autoCodeSplitting: true` is sufficient. However, TanStack Router provides several options to customize how your routes are split into chunks, allowing you to optimize for specific use cases or performance needs.
-
-### Understanding the Split Groupings
-
-The core of automatic code splitting is this concept of "Split Groupings".
+The decision of what to split into separate chunks is crucial for optimizing your application's performance. TanStack Router uses a concept called "**Split Groupings**" to determine how different parts of your route should be bundled together.
 
 Split groupings are arrays of properties that tell TanStack Router how to bundle different parts of your route together. Each grouping is an list of property names that you want to bundle together into a single lazy-loaded chunk.
 
@@ -58,8 +58,6 @@ The available properties to split are:
 - `notFoundComponent`
 - `loader`
 
-### Default behavior
-
 By default, TanStack Router uses the following split groupings:
 
 ```sh
@@ -70,13 +68,17 @@ By default, TanStack Router uses the following split groupings:
 ]
 ```
 
-This means that it creates three separate lazy-loaded chunks for each route:
+This means that it creates three separate lazy-loaded chunks for each route. Resulting in:
 
 - One for the main component
 - One for the error component
 - And one for the not-found component.
 
-### Changing the default code splitting behavior
+## Granular control
+
+For most applications, the default behavior of using `autoCodeSplitting: true` is sufficient. However, TanStack Router provides several options to customize how your routes are split into chunks, allowing you to optimize for specific use cases or performance needs.
+
+### Global code splitting behavior (`defaultBehavior`)
 
 You can change how TanStack Router splits your routes by changing the `defaultBehavior` option in your bundler plugin configuration. This allows you to define how different properties of your routes should be bundled together.
 
