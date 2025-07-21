@@ -1,5 +1,6 @@
 import http from 'node:http'
 import { posts } from './posts'
+import { users } from './users'
 
 // some tests redirect to an external host
 // however, in CI this is unstable due to network conditions
@@ -73,6 +74,40 @@ export async function localDummyServer(port: number) {
 
       res.writeHead(404)
       res.end(JSON.stringify({ error: 'invalid posts path' }))
+      return
+    }
+  })
+
+  server.on('request', (req, res) => {
+    const url = new URL(req.url ?? '/', `http://localhost`)
+
+    if (req.method === 'GET' && url.pathname.startsWith('/users')) {
+      const parts = url.pathname.split('/')
+
+      if (parts.length === 2) {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify(users))
+        return
+      }
+
+      if (parts[2]) {
+        const userId = parseInt(parts[2])
+
+        if (isNaN(userId)) {
+          res.writeHead(404)
+          res.end(JSON.stringify({ error: 'invalid user id' }))
+          return
+        }
+
+        const user = users.find((user) => user.id === userId)
+
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify(user))
+        return
+      }
+
+      res.writeHead(404)
+      res.end(JSON.stringify({ error: 'invalid users path' }))
       return
     }
   })
