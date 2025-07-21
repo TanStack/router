@@ -360,7 +360,7 @@ describe('work in progress', () => {
             break // no more candidates in this group
           }
         }
-        if (candidates.length > 2) {
+        if (candidates.length > 1) {
           const [deeperBefore, leaf, deeperAfter] = groupRoutesInOrder(candidates, route.segments.length)
           if (leaf && deeperBefore.length || leaf && deeperAfter.length) {
             throw new Error(`Implementation error: length-based leaf route ${leaf.path} should not have deeper routes, but has ${deeperBefore.length} before and ${deeperAfter.length} after`)
