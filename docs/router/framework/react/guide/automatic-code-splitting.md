@@ -2,16 +2,43 @@
 title: Automatic Code Splitting
 ---
 
-Automatic code splitting is the most powerful and recommended method for optimizing your application's bundle size when using TanStack Router with a supported bundler. It gives you fine-grained, declarative control over how and what parts of your route definitions are lazy-loaded.
+The automatic code splitting feature in TanStack Router allows you to optimize your application's bundle size by lazily loading route components and their associated data. This is particularly useful for large applications where you want to minimize the initial load time by only loading the necessary code for the current route.
 
-## How it Works: Under the Hood
+To turn this feature on, simply set the `autoCodeSplitting` option to `true` in your bundler plugin configuration. This enables the router to automatically handle code splitting for your routes without requiring any additional setup.
 
-The magic behind automatic code splitting is a build-time code transformation process handled by the router plugin. It analyzes your route files and rewrites them into an optimized format. This happens in two phases:
+```ts
+// vite.config.ts
+import { tanstackRouter } from '@tanstack/react-router/vite'
 
-1.  **Reference File Transformation**: The plugin takes your original route file (e.g., `posts.route.tsx`) and replaces properties like `component` or `loader` with special lazy-loading wrappers (`lazyRouteComponent` or `lazyFn`). These wrappers point to a "virtual" file that the bundler will request later.
-2.  **Virtual File Generation**: When the bundler sees a request for one of these virtual files (e.g., `posts.route.tsx?tsr-split=component`), the plugin intercepts it. It then generates a new, minimal file on-the-fly that contains _only_ the code for the requested property (e.g., just the `PostsComponent`).
+export default {
+  plugins: [
+    tanstackRouter({
+      autoCodeSplitting: true, // Enable automatic code splitting
+    }),
+  ],
+}
+```
 
-This process ensures that your original code remains clean and readable, while the final bundled output is optimized for initial bundle size.
+But that's just the beginning! TanStack Router's automatic code splitting is not only easy to enable, but it also provides powerful customization options to tailor how your routes are split into chunks. This allows you to optimize your application's performance based on your specific needs and usage patterns.
+
+## What is a Chunk?
+
+In the context of web applications, a "chunk" refers to a separate file that contains a portion of your application's code. When you enable automatic code splitting, the router generates these chunks for each route or specific properties of a route (like components and loaders). This means that when a user navigates to a route, only the necessary code for that route is loaded, rather than the entire application at once.
+
+## How does it work?
+
+TanStack Router's automatic code splitting works by transforming your route files at build time. It rewrites the route definitions to use lazy-loading wrappers for components and loaders, which allows the bundler to group these properties into separate chunks.
+
+So when your application loads, it doesn't include all the code for every route. Instead, it only includes the code for the routes that are initially needed. As users navigate through your application, additional chunks are loaded on demand.
+
+This magic happens seamlessly, without requiring you to manually split your code or manage lazy loading. The router plugin takes care of everything, ensuring that your routes are optimized for performance right out of the box.
+
+This transformation process produces two key outputs when each of your route files are processed:
+
+1. **Reference File**: The plugin takes your original route file (e.g., `posts.route.tsx`) and modifies the values for properties like `component` or `pendingComponent` to use special lazy-loading wrappers that'll fetch the actual code later. These wrappers point to a "virtual" file that the bundler will resolve later on.
+2. **Virtual File Generation**: When the bundler sees a request for one of these virtual files (e.g., `posts.route.tsx?tsr-split=component`), it intercepts it to generate a new, minimal file on-the-fly that _only_ contains the code for the requested property (e.g., just the `PostsComponent`).
+
+This process ensures that your original code remains clean and readable, while the actual bundled output is optimized for initial bundle size.
 
 ## Configuration Deep Dive
 
