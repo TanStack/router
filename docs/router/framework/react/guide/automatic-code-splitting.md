@@ -8,15 +8,16 @@ To turn this feature on, simply set the `autoCodeSplitting` option to `true` in 
 
 ```ts
 // vite.config.ts
+import { defineConfig } from 'vite'
 import { tanstackRouter } from '@tanstack/react-router/vite'
 
-export default {
+export default defineConfig({
   plugins: [
     tanstackRouter({
       autoCodeSplitting: true, // Enable automatic code splitting
     }),
   ],
-}
+})
 ```
 
 But that's just the beginning! TanStack Router's automatic code splitting is not only easy to enable, but it also provides powerful customization options to tailor how your routes are split into chunks. This allows you to optimize your application's performance based on your specific needs and usage patterns.
@@ -40,13 +41,15 @@ This transformation process produces two key outputs when each of your route fil
 
 This process ensures that your original code remains clean and readable, while the actual bundled output is optimized for initial bundle size.
 
-## Configuration Deep Dive
+## Granular control
 
-While `autoCodeSplitting: true` works out of the box, you can customize its behavior in your bundler plugin's configuration.
+For most applications, the default behavior of using `autoCodeSplitting: true` is sufficient. However, TanStack Router provides several options to customize how your routes are split into chunks, allowing you to optimize for specific use cases or performance needs.
 
-### Understanding `CodeSplitGroupings`
+### Understanding the Split Groupings
 
-The core of customization is the concept of "split groupings". A split grouping is an array of property names that you want to bundle together into a single lazy-loaded chunk. The configuration is an array of these groups.
+The core of automatic code splitting is this concept of "Split Groupings".
+
+Split groupings are arrays of properties that tell TanStack Router how to bundle different parts of your route together. Each grouping is an list of property names that you want to bundle together into a single lazy-loaded chunk.
 
 The available properties to split are:
 
@@ -56,64 +59,67 @@ The available properties to split are:
 - `notFoundComponent`
 - `loader`
 
-### Default Behavior
+### Default behavior
 
-By default, the plugin uses the following groupings:
-`[['component'], ['errorComponent'], ['notFoundComponent']]`
+By default, the TanStack Router uses the following split groupings:
 
-This means it creates up to three separate lazy-loaded chunks for each route: one for the main component, one for the error component, and one for the not-found component.
+```sh
+[
+  ['component'],
+  ['errorComponent'],
+  ['notFoundComponent']
+]
+```
 
-### Customizing Global Behavior (`defaultBehavior`)
+This means that it creates three separate lazy-loaded chunks for each route:
 
-You can change the default for all routes using the `defaultBehavior` option. For example, to bundle all UI-related components into a single chunk, you could configure it like this:
+- One for the main component
+- One for the error component
+- And one for the not-found component.
+
+### Changing the default code splitting behavior
+
+You can change how TanStack Router splits your routes by changing the `defaultBehavior` option in your bundler plugin configuration. This allows you to define how different properties of your routes should be bundled together.
+
+For example, to bundle all UI-related components into a single chunk, you could configure it like this:
 
 ```ts
 // vite.config.ts
-tanstackRouter({
-  autoCodeSplitting: true,
-  codeSplittingOptions: {
-    defaultBehavior: [
-      ['component', 'pendingComponent', 'errorComponent', 'notFoundComponent'],
-    ],
-  },
+import { defineConfig } from 'vite'
+import { tanstackRouter } from '@tanstack/react-router/vite'
+
+export default defineConfig({
+  plugins: [
+    tanstackRouter({
+      autoCodeSplitting: true,
+      codeSplittingOptions: {
+        defaultBehavior: [
+          [
+            'component',
+            'pendingComponent',
+            'errorComponent',
+            'notFoundComponent',
+          ], // Bundle all UI components together
+        ],
+      },
+    }),
+  ],
 })
 ```
 
-Now, `component`, `pendingComponent`, `errorComponent`, and `notFoundComponent` will all be included in the same network request, reducing request overhead if they are often used together.
-
-### Splitting the Data Loader
-
-> [!IMPORTANT] > **Be warned!** Splitting a route loader needs to be considered carefully.
-> Splitting the `loader` introduces an additional asynchronous step before data fetching can even begin, which can negatively impact performance. The `loader` is often a critical asset for preloading data. We recommend keeping it in the initial bundle.
-
-However, if your loader contains significant logic or large dependencies and you've decided to split it, you can add it to your split groupings:
-
-```ts
-// vite.config.ts
-tanstackRouter({
-  autoCodeSplitting: true,
-  codeSplittingOptions: {
-    defaultBehavior: [
-      ['loader'], // The loader will be in its own chunk
-      ['component'],
-      // ... other component groupings
-    ],
-  },
-})
-```
-
-### Per-Route Overrides (`codeSplitGroupings`)
+### Per-route overrides (`codeSplitGroupings`)
 
 For ultimate control, you can override the global configuration directly inside a route file by adding a `codeSplitGroupings` property. This is useful for routes that have unique optimization needs.
 
 ```tsx
 // src/routes/admin.route.tsx
 import { createFileRoute } from '@tanstack/react-router'
+import { loadAdminData } from './-heavy-admin-utils'
 
 export const Route = createFileRoute('/admin')({
   // For this specific route, bundle the loader and component together.
   codeSplitGroupings: [['loader', 'component']],
-  loader: () => import('./-heavy-admin-utils').then((d) => d.loadAdminData()),
+  loader: () => loadAdminData(),
   component: AdminComponent,
 })
 
@@ -122,22 +128,60 @@ function AdminComponent() {
 }
 ```
 
-### Advanced Programmatic Control (`splitBehavior`)
+### Advanced programmatic control (`splitBehavior`)
 
-For complex rulesets, you can use the `splitBehavior` function in your vite config. This function receives the `routeId` and can programmatically return the desired split groupings.
+For complex rulesets, you can use the `splitBehavior` function in your vite config to programmatically define how routes should be split into chunks based on their `routeId`. This function allows you to implement custom logic for grouping properties together, giving you fine-grained control over the code splitting behavior.
 
 ```ts
 // vite.config.ts
-tanstackRouter({
-  autoCodeSplitting: true,
-  codeSplittingOptions: {
-    splitBehavior: ({ routeId }) => {
-      // For all routes under /admin, bundle the loader and component together
-      if (routeId.startsWith('/admin')) {
-        return [['loader', 'component']]
-      }
-      // All other routes will use the `defaultBehavior`
-    },
-  },
+import { defineConfig } from 'vite'
+import { tanstackRouter } from '@tanstack/react-router/vite'
+
+export default defineConfig({
+  plugins: [
+    tanstackRouter({
+      autoCodeSplitting: true,
+      codeSplittingOptions: {
+        splitBehavior: ({ routeId }) => {
+          // For all routes under /admin, bundle the loader and component together
+          if (routeId.startsWith('/admin')) {
+            return [['loader', 'component']]
+          }
+          // All other routes will use the `defaultBehavior`
+        },
+      },
+    }),
+  ],
 })
 ```
+
+### Splitting the Data Loader
+
+The `loader` function is responsible for fetching data needed by the route. By default, it is bundled with into your "reference file" and loaded in the intial bundle. However, you can also split the `loader` into its own chunk if you want to optimize further.
+
+> [!CAUTION]
+> Moving the `loader` into its own chunk is a **performance trade-off**. It introduces an additional trip to the server before the data can be fetched, which can lead to slower initial page loads. This is because the `loader` **must** be fetched and executed before the route can render its component.
+> Therefore, we recommend keeping the `loader` in the initial bundle unless you have a specific reason to split it.
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import { tanstackRouter } from '@tanstack/react-router/vite'
+
+export default defineConfig({
+  plugins: [
+    tanstackRouter({
+      autoCodeSplitting: true,
+      codeSplittingOptions: {
+        defaultBehavior: [
+          ['loader'], // The loader will be in its own chunk
+          ['component'],
+          // ... other component groupings
+        ],
+      },
+    }),
+  ],
+})
+```
+
+We highly discourage splitting the `loader` unless you have a specific use case that requires it. In most cases, keeping the `loader` bundled with the component is the best choice for performance.
