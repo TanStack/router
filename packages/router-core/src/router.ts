@@ -14,6 +14,10 @@ import {
   replaceEqualDeep,
 } from './utils'
 import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
   cleanPath,
   interpolatePath,
   joinPaths,
@@ -29,6 +33,7 @@ import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
+import type { Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -80,12 +85,6 @@ import type { Manifest } from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
-
-declare global {
-  interface Window {
-    __TSR_ROUTER__?: AnyRouter
-  }
-}
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -1450,15 +1449,23 @@ export class RouterCore<
 
       // Resolve the next params
       let nextParams =
-        (dest.params ?? true) === true
-          ? fromParams
-          : {
-              ...fromParams,
-              ...functionalUpdate(dest.params as any, fromParams),
-            }
+        dest.params === false || dest.params === null
+          ? {}
+          : (dest.params ?? true) === true
+            ? fromParams
+            : {
+                ...fromParams,
+                ...functionalUpdate(dest.params as any, fromParams),
+              }
+
+      // Interpolate the path first to get the actual resolved path, then match against that
+      const interpolatedNextTo = interpolatePath({
+        path: nextTo,
+        params: nextParams ?? {},
+      }).interpolatedPath
 
       const destRoutes = this.matchRoutes(
-        nextTo,
+        interpolatedNextTo,
         {},
         {
           _buildLocation: true,
@@ -1479,8 +1486,9 @@ export class RouterCore<
           })
       }
 
-      // Interpolate the next to into the next pathname
       const nextPathname = interpolatePath({
+        // Use the original template path for interpolation
+        // This preserves the original parameter syntax including optional parameters
         path: nextTo,
         params: nextParams ?? {},
         leaveWildcards: false,
@@ -1785,7 +1793,21 @@ export class RouterCore<
         state: true,
         _includeValidateSearch: true,
       })
-      if (trimPath(this.latestLocation.href) !== trimPath(nextLocation.href)) {
+
+      // Normalize URLs for comparison to handle encoding differences
+      // Browser history always stores encoded URLs while buildLocation may produce decoded URLs
+      const normalizeUrl = (url: string) => {
+        try {
+          return encodeURI(decodeURI(url))
+        } catch {
+          return url
+        }
+      }
+
+      if (
+        trimPath(normalizeUrl(this.latestLocation.href)) !==
+        trimPath(normalizeUrl(nextLocation.href))
+      ) {
         throw redirect({ href: nextLocation.href })
       }
     }
@@ -1796,6 +1818,7 @@ export class RouterCore<
     this.__store.setState((s) => ({
       ...s,
       status: 'pending',
+      statusCode: 200,
       isLoading: true,
       location: this.latestLocation,
       pendingMatches,
@@ -3154,6 +3177,27 @@ export type ProcessRouteTreeResult<TRouteLike extends RouteLike> = {
   routesByPath: Record<string, TRouteLike>
   flatRoutes: Array<TRouteLike>
 }
+
+const REQUIRED_PARAM_BASE_SCORE = 0.5
+const OPTIONAL_PARAM_BASE_SCORE = 0.4
+const WILDCARD_PARAM_BASE_SCORE = 0.25
+
+function handleParam(segment: Segment, baseScore: number) {
+  if (segment.prefixSegment && segment.suffixSegment) {
+    return baseScore + 0.05
+  }
+
+  if (segment.prefixSegment) {
+    return baseScore + 0.02
+  }
+
+  if (segment.suffixSegment) {
+    return baseScore + 0.01
+  }
+
+  return baseScore
+}
+
 export function processRouteTree<TRouteLike extends RouteLike>({
   routeTree,
   initRoute,
@@ -3200,9 +3244,11 @@ export function processRouteTree<TRouteLike extends RouteLike>({
   const scoredRoutes: Array<{
     child: TRouteLike
     trimmed: string
-    parsed: ReturnType<typeof parsePathname>
+    parsed: ReadonlyArray<Segment>
     index: number
     scores: Array<number>
+    hasStaticAfter: boolean
+    optionalParamCount: number
   }> = []
 
   const routes: Array<TRouteLike> = Object.values(routesById)
@@ -3213,81 +3259,94 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     }
 
     const trimmed = trimPathLeft(d.fullPath)
-    const parsed = parsePathname(trimmed)
+    let parsed = parsePathname(trimmed)
 
     // Removes the leading slash if it is not the only remaining segment
-    while (parsed.length > 1 && parsed[0]?.value === '/') {
-      parsed.shift()
+    let skip = 0
+    while (parsed.length > skip + 1 && parsed[skip]?.value === '/') {
+      skip++
     }
+    if (skip > 0) parsed = parsed.slice(skip)
 
-    const scores = parsed.map((segment) => {
+    let optionalParamCount = 0
+    let hasStaticAfter = false
+    const scores = parsed.map((segment, index) => {
       if (segment.value === '/') {
         return 0.75
       }
 
-      if (
-        segment.type === 'param' &&
-        segment.prefixSegment &&
-        segment.suffixSegment
-      ) {
-        return 0.55
+      let baseScore: number | undefined = undefined
+      if (segment.type === SEGMENT_TYPE_PARAM) {
+        baseScore = REQUIRED_PARAM_BASE_SCORE
+      } else if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
+        baseScore = OPTIONAL_PARAM_BASE_SCORE
+        optionalParamCount++
+      } else if (segment.type === SEGMENT_TYPE_WILDCARD) {
+        baseScore = WILDCARD_PARAM_BASE_SCORE
       }
 
-      if (segment.type === 'param' && segment.prefixSegment) {
-        return 0.52
-      }
+      if (baseScore) {
+        // if there is any static segment (that is not an index) after a required / optional param,
+        // we will boost this param so it ranks higher than a required/optional param without a static segment after it
+        // JUST FOR SORTING, NOT FOR MATCHING
+        for (let i = index + 1; i < parsed.length; i++) {
+          const nextSegment = parsed[i]!
+          if (
+            nextSegment.type === SEGMENT_TYPE_PATHNAME &&
+            nextSegment.value !== '/'
+          ) {
+            hasStaticAfter = true
+            return handleParam(segment, baseScore + 0.2)
+          }
+        }
 
-      if (segment.type === 'param' && segment.suffixSegment) {
-        return 0.51
-      }
-
-      if (segment.type === 'param') {
-        return 0.5
-      }
-
-      if (
-        segment.type === 'wildcard' &&
-        segment.prefixSegment &&
-        segment.suffixSegment
-      ) {
-        return 0.3
-      }
-
-      if (segment.type === 'wildcard' && segment.prefixSegment) {
-        return 0.27
-      }
-
-      if (segment.type === 'wildcard' && segment.suffixSegment) {
-        return 0.26
-      }
-
-      if (segment.type === 'wildcard') {
-        return 0.25
+        return handleParam(segment, baseScore)
       }
 
       return 1
     })
 
-    scoredRoutes.push({ child: d, trimmed, parsed, index: i, scores })
+    scoredRoutes.push({
+      child: d,
+      trimmed,
+      parsed,
+      index: i,
+      scores,
+      optionalParamCount,
+      hasStaticAfter,
+    })
   })
 
   const flatRoutes = scoredRoutes
     .sort((a, b) => {
       const minLength = Math.min(a.scores.length, b.scores.length)
 
-      // Sort by min available score
+      // Sort by segment-by-segment score comparison ONLY for the common prefix
       for (let i = 0; i < minLength; i++) {
         if (a.scores[i] !== b.scores[i]) {
           return b.scores[i]! - a.scores[i]!
         }
       }
 
-      // Sort by length of score
+      // If all common segments have equal scores, then consider length and specificity
       if (a.scores.length !== b.scores.length) {
+        // If different number of optional parameters, fewer optional parameters wins (more specific)
+        // only if both or none of the routes has static segments after the params
+        if (a.optionalParamCount !== b.optionalParamCount) {
+          if (a.hasStaticAfter === b.hasStaticAfter) {
+            return a.optionalParamCount - b.optionalParamCount
+          } else if (a.hasStaticAfter && !b.hasStaticAfter) {
+            return -1
+          } else if (!a.hasStaticAfter && b.hasStaticAfter) {
+            return 1
+          }
+        }
+
+        // If same number of optional parameters, longer path wins (for static segments)
         return b.scores.length - a.scores.length
       }
 
-      // Sort by min available parsed value
+      // Sort by min available parsed value for alphabetical ordering
       for (let i = 0; i < minLength; i++) {
         if (a.parsed[i]!.value !== b.parsed[i]!.value) {
           return a.parsed[i]!.value > b.parsed[i]!.value ? 1 : -1
@@ -3328,6 +3387,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
     const result = matchPathname(basepath, trimmedPath, {
       to: route.fullPath,
       caseSensitive: route.options?.caseSensitive ?? caseSensitive,
+      // we need fuzzy matching for `notFoundMode: 'fuzzy'`
       fuzzy: true,
     })
     return result
@@ -3338,16 +3398,34 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   if (foundRoute) {
     routeParams = getMatchedParams(foundRoute)!
   } else {
-    foundRoute = flatRoutes.find((route) => {
+    // iterate over flatRoutes to find the best match
+    // if we find a fuzzy matching route, keep looking for a perfect fit
+    let fuzzyMatch:
+      | { foundRoute: TRouteLike; routeParams: Record<string, string> }
+      | undefined = undefined
+    for (const route of flatRoutes) {
       const matchedParams = getMatchedParams(route)
 
       if (matchedParams) {
-        routeParams = matchedParams
-        return true
+        if (
+          route.path !== '/' &&
+          (matchedParams as Record<string, string>)['**']
+        ) {
+          if (!fuzzyMatch) {
+            fuzzyMatch = { foundRoute: route, routeParams: matchedParams }
+          }
+        } else {
+          foundRoute = route
+          routeParams = matchedParams
+          break
+        }
       }
-
-      return false
-    })
+    }
+    // did not find a perfect fit, so take the fuzzy matching route if it exists
+    if (!foundRoute && fuzzyMatch) {
+      foundRoute = fuzzyMatch.foundRoute
+      routeParams = fuzzyMatch.routeParams
+    }
   }
 
   let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!
@@ -3356,8 +3434,9 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 
   while (routeCursor.parentRoute) {
     routeCursor = routeCursor.parentRoute as TRouteLike
-    matchedRoutes.unshift(routeCursor)
+    matchedRoutes.push(routeCursor)
   }
+  matchedRoutes.reverse()
 
   return { matchedRoutes, routeParams, foundRoute }
 }

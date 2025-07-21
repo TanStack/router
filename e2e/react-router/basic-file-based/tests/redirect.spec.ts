@@ -8,8 +8,8 @@ import queryString from 'node:querystring'
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
-const PORT = derivePort(packageJson.name)
-const EXTERNAL_HOST_PORT = derivePort(`${packageJson.name}-external`)
+const PORT = await derivePort(packageJson.name)
+const EXTERNAL_HOST_PORT = await derivePort(`${packageJson.name}-external`)
 
 test.describe('redirects', () => {
   let server: Server

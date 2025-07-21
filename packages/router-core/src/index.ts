@@ -1,3 +1,5 @@
+export * from './global'
+
 export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
 export { preloadWarning } from './link'
@@ -311,6 +313,7 @@ export type {
   StrictOrFrom,
   LooseReturnType,
   LooseAsyncReturnType,
+  Awaitable,
 } from './utils'
 
 export type {

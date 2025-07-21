@@ -584,3 +584,657 @@ describe('relative navigation', () => {
     expect(router.state.location.pathname).toBe('/posts/tanner')
   })
 })
+
+describe('router.navigate navigation using optional path parameters - object syntax for updates', () => {
+  function createOptionalParamTestRouter(initialHistory?: RouterHistory) {
+    const history =
+      initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({})
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+
+    // Single optional parameter
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/{-$category}',
+    })
+
+    // Multiple optional parameters
+    const articlesRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/articles/{-$category}/{-$slug}',
+    })
+
+    // Mixed required and optional parameters
+    const projectRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/p/$projectId/{-$version}/{-$framework}',
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      postsRoute,
+      articlesRoute,
+      projectRoute,
+    ])
+    const router = createRouter({ routeTree, history })
+
+    return {
+      router,
+      routes: {
+        indexRoute,
+        postsRoute,
+        articlesRoute,
+        projectRoute,
+      },
+    }
+  }
+
+  it('should navigate from "/posts/tech" to "/posts" by setting category to undefined', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    await router.navigate({
+      to: '/posts/{-$category}',
+      params: { category: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts')
+  })
+
+  it('should navigate from "/posts/tech" to "/posts" by setting category to undefined', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    await router.navigate({
+      to: '/posts/{-$category}',
+      params: { category: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts')
+  })
+
+  it('should navigate from "/posts" to "/posts/tech" by setting category', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts')
+
+    await router.navigate({
+      to: '/posts/{-$category}',
+      params: { category: 'tech' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tech')
+  })
+
+  it('should navigate from "/posts/tech" to "/posts/news" by changing category', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    await router.navigate({
+      to: '/posts/{-$category}',
+      params: { category: 'news' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/news')
+  })
+
+  it('should navigate without "to" path and set category to undefined', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    await router.navigate({
+      params: { category: undefined },
+    } as any)
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts')
+  })
+
+  it('should handle multiple optional parameters - set one to undefined', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/articles/tech/hello-world'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/articles/tech/hello-world')
+
+    await router.navigate({
+      to: '/articles/{-$category}/{-$slug}',
+      params: { category: 'tech', slug: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/articles/tech')
+  })
+
+  it('should handle multiple optional parameters - set both to undefined', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/articles/tech/hello-world'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/articles/tech/hello-world')
+
+    await router.navigate({
+      to: '/articles/{-$category}/{-$slug}',
+      params: { category: undefined, slug: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/articles')
+  })
+
+  it('should handle mixed required and optional parameters', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
+
+    await router.navigate({
+      to: '/p/$projectId/{-$version}/{-$framework}',
+      params: { projectId: 'router', version: undefined, framework: 'vue' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/p/router/vue')
+  })
+
+  it('should carry over optional parameters from current route when using empty params', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    // Navigate to a different route with optional params
+    await router.navigate({
+      to: '/articles/{-$category}/{-$slug}',
+      params: { category: 'news' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/articles/news')
+
+    // Navigate back to posts - should carry over 'news' from current params
+    await router.navigate({
+      to: '/posts/{-$category}',
+      params: {},
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/news')
+  })
+})
+
+describe('router.navigate navigation using optional path parameters - function syntax for updates', () => {
+  function createOptionalParamTestRouter(initialHistory?: RouterHistory) {
+    const history =
+      initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({})
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/{-$category}',
+    })
+
+    const articlesRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/articles/{-$category}/{-$slug}',
+    })
+
+    const projectRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/p/$projectId/{-$version}/{-$framework}',
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      postsRoute,
+      articlesRoute,
+      projectRoute,
+    ])
+    const router = createRouter({ routeTree, history })
+
+    return { router }
+  }
+
+  it('should navigate from "/posts/tech" to "/posts" by setting category to undefined using function', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    await router.navigate({
+      to: '/posts/{-$category}',
+      params: (p: any) => ({ ...p, category: undefined }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts')
+  })
+
+  it('should navigate from "/posts/tech" to "/posts" by setting category to undefined in function', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    await router.navigate({
+      to: '/posts/{-$category}',
+      params: (p: any) => ({ ...p, category: undefined }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts')
+  })
+
+  it('should navigate from "/posts" to "/posts/tech" by setting category using function', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts')
+
+    await router.navigate({
+      to: '/posts/{-$category}',
+      params: (p: any) => ({ ...p, category: 'tech' }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/tech')
+  })
+
+  it('should navigate from "/posts/tech" to "/posts/news" by changing category using function', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    await router.navigate({
+      to: '/posts/{-$category}',
+      params: (p: any) => ({ ...p, category: 'news' }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/news')
+  })
+
+  it('should navigate without "to" path and set category to undefined using function', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    await router.navigate({
+      params: (p: any) => ({ ...p, category: undefined }),
+    } as any)
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts')
+  })
+
+  it('should handle multiple optional parameters - remove one using function', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/articles/tech/hello-world'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/articles/tech/hello-world')
+
+    await router.navigate({
+      to: '/articles/{-$category}/{-$slug}',
+      params: (p: any) => ({ ...p, slug: undefined }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/articles/tech')
+  })
+
+  it('should handle multiple optional parameters - clear all using function', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/articles/tech/hello-world'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/articles/tech/hello-world')
+
+    await router.navigate({
+      to: '/articles/{-$category}/{-$slug}',
+      params: (p: any) => ({ ...p, category: undefined, slug: undefined }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/articles')
+  })
+
+  it('should handle mixed required and optional parameters using function', async () => {
+    const { router } = createOptionalParamTestRouter(
+      createMemoryHistory({ initialEntries: ['/p/router/v1/react'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/p/router/v1/react')
+
+    await router.navigate({
+      to: '/p/$projectId/{-$version}/{-$framework}',
+      params: (p: any) => ({
+        ...p,
+        projectId: 'router',
+        version: undefined,
+        framework: 'vue',
+      }),
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/p/router/vue')
+  })
+})
+
+describe('router.navigate navigation using optional path parameters - parameter inheritance and isolation', () => {
+  function createInheritanceTestRouter(initialHistory?: RouterHistory) {
+    const history =
+      initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({})
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+
+    // Route with same optional param names but different paths
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/{-$category}',
+    })
+
+    const articlesRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/articles/{-$category}',
+    })
+
+    // Route with nested optional params
+    const docsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/docs/{-$version}',
+    })
+
+    const docsTopicRoute = createRoute({
+      getParentRoute: () => docsRoute,
+      path: '/{-$topic}',
+    })
+
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      postsRoute,
+      articlesRoute,
+      docsRoute.addChildren([docsTopicRoute]),
+    ])
+    const router = createRouter({ routeTree, history })
+
+    return { router }
+  }
+
+  it('should carry over optional parameters between different routes with same param names', async () => {
+    const { router } = createInheritanceTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    // Navigate to articles without specifying category
+    await router.navigate({
+      to: '/articles/{-$category}',
+      params: {},
+    })
+    await router.invalidate()
+
+    // Should carry over 'tech' from current route params
+    expect(router.state.location.pathname).toBe('/articles/tech')
+  })
+
+  it('should properly handle navigation between routes with different optional param structures', async () => {
+    const { router } = createInheritanceTestRouter(
+      createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/posts/tech')
+
+    // Navigate to articles with explicit category
+    await router.navigate({
+      to: '/articles/{-$category}',
+      params: { category: 'news' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/articles/news')
+
+    // Navigate back to posts without explicit category removal
+    await router.navigate({
+      to: '/posts/{-$category}',
+      params: {},
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/posts/news')
+  })
+
+  it('should handle nested optional parameters correctly', async () => {
+    const { router } = createInheritanceTestRouter(
+      createMemoryHistory({ initialEntries: ['/docs/v1/getting-started'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/docs/v1/getting-started')
+
+    // Remove topic but keep version
+    await router.navigate({
+      to: '/docs/{-$version}/{-$topic}',
+      params: { version: 'v1', topic: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/docs/v1')
+
+    // Remove version but add topic
+    await router.navigate({
+      to: '/docs/{-$version}/{-$topic}',
+      params: { version: undefined, topic: 'api' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/docs/api')
+
+    // Remove both
+    await router.navigate({
+      to: '/docs/{-$version}/{-$topic}',
+      params: { version: undefined, topic: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/docs')
+  })
+})
+
+describe('router.navigate navigation using optional path parameters - edge cases and validations', () => {
+  function createEdgeCaseTestRouter(initialHistory?: RouterHistory) {
+    const history =
+      initialHistory ?? createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({})
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+
+    // Route with prefix/suffix
+    const filesRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/files/prefix{-$name}.txt',
+    })
+
+    // Route with all optional params
+    const dateRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/date/{-$year}/{-$month}/{-$day}',
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, filesRoute, dateRoute])
+    const router = createRouter({ routeTree, history })
+
+    return { router }
+  }
+
+  it('should handle optional parameters with prefix/suffix correctly', async () => {
+    const { router } = createEdgeCaseTestRouter(
+      createMemoryHistory({ initialEntries: ['/files/prefixdocument.txt'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/files/prefixdocument.txt')
+
+    // Remove the name parameter
+    await router.navigate({
+      to: '/files/prefix{-$name}.txt',
+      params: { name: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/files/prefix.txt')
+
+    // Add the name parameter back
+    await router.navigate({
+      to: '/files/prefix{-$name}.txt',
+      params: { name: 'report' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/files/prefixreport.txt')
+  })
+
+  it('should handle route with all optional parameters', async () => {
+    const { router } = createEdgeCaseTestRouter(
+      createMemoryHistory({ initialEntries: ['/date/2024/03/15'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/date/2024/03/15')
+
+    // Remove day only
+    await router.navigate({
+      to: '/date/{-$year}/{-$month}/{-$day}',
+      params: { year: '2024', month: '03', day: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/date/2024/03')
+
+    // Remove month and day
+    await router.navigate({
+      to: '/date/{-$year}/{-$month}/{-$day}',
+      params: { year: '2024', month: undefined, day: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/date/2024')
+
+    // Remove all parameters
+    await router.navigate({
+      to: '/date/{-$year}/{-$month}/{-$day}',
+      params: { year: undefined, month: undefined, day: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/date')
+
+    // Add all parameters back
+    await router.navigate({
+      to: '/date/{-$year}/{-$month}/{-$day}',
+      params: { year: '2025', month: '12', day: '31' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/date/2025/12/31')
+  })
+
+  it('should handle empty string vs undefined distinction', async () => {
+    const { router } = createEdgeCaseTestRouter(
+      createMemoryHistory({ initialEntries: ['/files/prefix.txt'] }),
+    )
+
+    await router.load()
+    expect(router.state.location.pathname).toBe('/files/prefix.txt')
+
+    // Set name to empty string (should still include the param)
+    await router.navigate({
+      to: '/files/prefix{-$name}.txt',
+      params: { name: '' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/files/prefix.txt')
+
+    // Set name to a value
+    await router.navigate({
+      to: '/files/prefix{-$name}.txt',
+      params: { name: 'test' },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/files/prefixtest.txt')
+
+    // Set name to undefined (should remove the param)
+    await router.navigate({
+      to: '/files/prefix{-$name}.txt',
+      params: { name: undefined },
+    })
+    await router.invalidate()
+
+    expect(router.state.location.pathname).toBe('/files/prefix.txt')
+  })
+})

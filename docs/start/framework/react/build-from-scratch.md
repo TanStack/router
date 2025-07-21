@@ -84,17 +84,25 @@ We'll then update our `package.json` to use Vite's CLI and set `"type": "module"
 
 Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 
+> [!NOTE]
+> TanStack Start will stop auto-configuring React/Solid Vite plugins. You’ll get full control - choose `@vitejs/plugin-react`, `@vitejs/plugin-react-oxc`, etc. Set `customViteReactPlugin: true` to opt in to this feature right now!
+
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
   server: {
     port: 3000,
   },
-  plugins: [tsConfigPaths(), tanstackStart()],
+  plugins: [
+    tsConfigPaths(),
+    tanstackStart({ customViteReactPlugin: true }),
+    viteReact(),
+  ],
 })
 ```
 
