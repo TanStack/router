@@ -2,13 +2,17 @@ import { json } from '@tanstack/react-start'
 import axios from 'redaxios'
 import type { User } from '~/utils/users'
 
+let queryURL = 'https://jsonplaceholder.typicode.com'
+
+if (import.meta.env.VITE_NODE_ENV === 'test') {
+  queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
+}
+
 export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ request, params }) => {
     console.info(`Fetching users by id=${params.id}... @`, request.url)
     try {
-      const res = await axios.get<User>(
-        'https://jsonplaceholder.typicode.com/users/' + params.id,
-      )
+      const res = await axios.get<User>(`${queryURL}/users/` + params.id)
 
       return json({
         id: res.data.id,

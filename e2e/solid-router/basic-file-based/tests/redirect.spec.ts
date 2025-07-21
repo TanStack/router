@@ -1,25 +1,21 @@
+import queryString from 'node:querystring'
 import { expect, test } from '@playwright/test'
 import combinateImport from 'combinate'
-import { derivePort, localDummyServer } from '@tanstack/router-e2e-utils'
+import {
+  getDummyServerPort,
+  getTestServerPort,
+  localDummyServer,
+} from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
-import { Server } from 'node:http'
-import queryString from 'node:querystring'
+import type { Server } from 'node:http'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
-const PORT = await derivePort(packageJson.name)
-const EXTERNAL_HOST_PORT = await derivePort(`${packageJson.name}-external`)
+const PORT = await getTestServerPort(packageJson.name)
+const EXTERNAL_HOST_PORT = await getDummyServerPort(packageJson.name)
 
 test.describe('redirects', () => {
-  let server: Server
-  test.beforeAll(async () => {
-    server = await localDummyServer(EXTERNAL_HOST_PORT)
-  })
-  test.afterAll(async () => {
-    server.close()
-  })
-
   const internalNavigationTestMatrix = combinate({
     thrower: ['beforeLoad', 'loader'] as const,
     reloadDocument: [false, true] as const,
@@ -45,7 +41,7 @@ test.describe('redirects', () => {
         const requestPromise = new Promise<void>((resolve) => {
           page.on('request', (request) => {
             if (
-              request.url() === 'https://jsonplaceholder.typicode.com/posts'
+              request.url() === `http://localhost:${EXTERNAL_HOST_PORT}/posts`
             ) {
               requestHappened = true
               resolve()
