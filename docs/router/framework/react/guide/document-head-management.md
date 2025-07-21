@@ -45,7 +45,7 @@ export const Route = createRootRoute({
                   background-color: yellow;
                 }`
       }
-    ]
+    ],
     scripts: [
       {
         src: 'https://www.google-analytics.com/analytics.js',
