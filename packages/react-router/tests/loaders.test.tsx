@@ -752,9 +752,13 @@ test('reproducer for #4696', async () => {
     return (
       <>
         {!!isAuthenticated && (
-          <nav data-testid='nav' style={{ display: 'flex', gap: 8 }}>
-            <Link data-testid='link-index' to="/">Index</Link>
-            <Link data-testid='link-dashboard' to="/dashboard">Dashboard</Link>
+          <nav data-testid="nav" style={{ display: 'flex', gap: 8 }}>
+            <Link data-testid="link-index" to="/">
+              Index
+            </Link>
+            <Link data-testid="link-dashboard" to="/dashboard">
+              Dashboard
+            </Link>
           </nav>
         )}
         <hr />
@@ -766,7 +770,7 @@ test('reproducer for #4696', async () => {
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: () => <h1 data-testid='heading-index'>Index</h1>,
+    component: () => <h1 data-testid="heading-index">Index</h1>,
   })
 
   const dashboardRoute = createRoute({
@@ -778,7 +782,7 @@ test('reproducer for #4696', async () => {
         page: 0,
       }
     },
-    component: () => <h1 data-testid='heading-dashboard'>Dashboard</h1>,
+    component: () => <h1 data-testid="heading-dashboard">Dashboard</h1>,
   })
 
   const routeTree = rootRoute.addChildren([indexRoute, dashboardRoute])
