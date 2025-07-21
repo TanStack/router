@@ -35,7 +35,7 @@ export async function localDummyServer(port: number) {
 
     if (res.req.method === 'POST' && url.pathname === '/stop') {
       server.close()
-      console.log(
+      console.info(
         `stopped local dummy server running at http://localhost:${port}`,
       )
 
@@ -114,7 +114,7 @@ export async function localDummyServer(port: number) {
 
   const startServer = new Promise<void>((resolve) => {
     server.listen(port, 'localhost', () => {
-      console.log(
+      console.info(
         `started local dummy server running at http://localhost:${port}`,
       )
       resolve()

@@ -1,3 +1,5 @@
+// dummy data from https://jsonplaceholder.typicode.com/posts
+
 export type Post = {
   userId: number
   id: number

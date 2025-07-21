@@ -1,3 +1,5 @@
+// dummy data from https://jsonplaceholder.typicode.com/users
+
 export type User = {
   id: number
   name: string
