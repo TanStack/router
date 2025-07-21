@@ -31,7 +31,7 @@ TanStack Router's automatic code splitting works by transforming your route file
 
 So when your application loads, it doesn't include all the code for every route. Instead, it only includes the code for the routes that are initially needed. As users navigate through your application, additional chunks are loaded on demand.
 
-This magic happens seamlessly, without requiring you to manually split your code or manage lazy loading. The router plugin takes care of everything, ensuring that your routes are optimized for performance right out of the box.
+This happens seamlessly, without requiring you to manually split your code or manage lazy loading. The router plugin takes care of everything, ensuring that your routes are optimized for performance right out of the box.
 
 ### The transformation process
 
