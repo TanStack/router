@@ -2,15 +2,19 @@ import { default as invariant } from 'tiny-invariant'
 import { default as warning } from 'tiny-warning'
 import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
+import { getStartContext } from '@tanstack/start-storage-context'
 import { globalMiddleware } from './registerGlobalMiddleware'
 
 import { startSerializer } from './serializer'
+
+import { createIsomorphicFn } from './createIsomorphicFn'
 import type {
   SerializerParse,
   SerializerStringify,
   SerializerStringifyBy,
 } from './serializer'
 import type {
+  AnyRouter,
   AnyValidator,
   Constrain,
   Expand,
@@ -30,6 +34,10 @@ import type {
 } from './createMiddleware'
 
 type TODO = any
+
+const getRouterInstance = createIsomorphicFn()
+  .client(() => window.__TSR_ROUTER__!)
+  .server(() => getStartContext({ throwIfNotFound: false })?.router)
 
 export function createServerFn<
   TMethod extends Method,
@@ -133,6 +141,7 @@ export function createServerFn<
             headers: opts?.headers,
             signal: opts?.signal,
             context: {},
+            router: getRouterInstance(),
           }).then((d) => {
             if (resolvedOptions.response === 'full') {
               return d
@@ -289,6 +298,7 @@ export type CompiledFetcherFnOptions = {
   headers?: HeadersInit
   signal?: AbortSignal
   context?: any
+  // router?: AnyRouter
 }
 
 export type Fetcher<
@@ -851,6 +861,7 @@ export type ServerFnMiddlewareOptions = {
   context?: any
   type: ServerFnTypeOrTypeFn<any, any, any, any>
   functionId: string
+  router?: AnyRouter
 }
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {

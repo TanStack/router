@@ -82,6 +82,9 @@ function Home() {
             server function redirects when FormData is submitted (via no-JS)
           </Link>
         </li>
+        <li>
+          <Link to="/middleware">Server Functions Middlware E2E tests</Link>
+        </li>
       </ul>
     </div>
   )
