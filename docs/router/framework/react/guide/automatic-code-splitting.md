@@ -168,7 +168,7 @@ To make sure that the different configurations do not conflict with each other, 
 
 ### Splitting the Data Loader
 
-The `loader` function is responsible for fetching data needed by the route. By default, it is bundled with into your "reference file" and loaded in the intial bundle. However, you can also split the `loader` into its own chunk if you want to optimize further.
+The `loader` function is responsible for fetching data needed by the route. By default, it is bundled with into your "reference file" and loaded in the initial bundle. However, you can also split the `loader` into its own chunk if you want to optimize further.
 
 > [!CAUTION]
 > Moving the `loader` into its own chunk is a **performance trade-off**. It introduces an additional trip to the server before the data can be fetched, which can lead to slower initial page loads. This is because the `loader` **must** be fetched and executed before the route can render its component.
