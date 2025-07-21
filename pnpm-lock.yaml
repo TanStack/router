@@ -44,6 +44,7 @@ overrides:
   '@tanstack/start-plugin-core': workspace:*
   '@tanstack/start-client-core': workspace:*
   '@tanstack/start-server-core': workspace:*
+  '@tanstack/start-storage-context': workspace:*
   '@tanstack/eslint-plugin-router': workspace:*
   '@tanstack/server-functions-plugin': workspace:*
   '@tanstack/directive-functions-plugin': workspace:*
@@ -5713,7 +5714,7 @@ importers:
   examples/solid/basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5753,7 +5754,7 @@ importers:
   examples/solid/basic-devtools-panel:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5787,7 +5788,7 @@ importers:
   examples/solid/basic-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5827,7 +5828,7 @@ importers:
   examples/solid/basic-non-nested-devtools:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5873,7 +5874,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5916,7 +5917,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5956,7 +5957,7 @@ importers:
   examples/solid/basic-ssr-streaming-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6014,7 +6015,7 @@ importers:
   examples/solid/kitchen-sink-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6057,7 +6058,7 @@ importers:
   examples/solid/quickstart-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6097,7 +6098,7 @@ importers:
   examples/solid/start-bare:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6146,7 +6147,7 @@ importers:
   examples/solid/start-basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6192,7 +6193,7 @@ importers:
   examples/solid/start-basic-static:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.128.8
+        specifier: ^1.129.0
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6993,6 +6994,9 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
+      '@tanstack/start-storage-context':
+        specifier: workspace:*
+        version: link:../start-storage-context
       cookie-es:
         specifier: ^1.2.2
         version: 1.2.2
@@ -7078,6 +7082,9 @@ importers:
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core
+      '@tanstack/start-storage-context':
+        specifier: workspace:*
+        version: link:../start-storage-context
       h3:
         specifier: 1.13.0
         version: 1.13.0
@@ -7145,6 +7152,12 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
+
+  packages/start-storage-context:
+    dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
 
   packages/valibot-adapter:
     devDependencies:
