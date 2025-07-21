@@ -106,27 +106,6 @@ export default defineConfig({
 })
 ```
 
-### Per-route overrides (`codeSplitGroupings`)
-
-For ultimate control, you can override the global configuration directly inside a route file by adding a `codeSplitGroupings` property. This is useful for routes that have unique optimization needs.
-
-```tsx
-// src/routes/admin.route.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { loadAdminData } from './-heavy-admin-utils'
-
-export const Route = createFileRoute('/admin')({
-  // For this specific route, bundle the loader and component together.
-  codeSplitGroupings: [['loader', 'component']],
-  loader: () => loadAdminData(),
-  component: AdminComponent,
-})
-
-function AdminComponent() {
-  // ...
-}
-```
-
 ### Advanced programmatic control (`splitBehavior`)
 
 For complex rulesets, you can use the `splitBehavior` function in your vite config to programmatically define how routes should be split into chunks based on their `routeId`. This function allows you to implement custom logic for grouping properties together, giving you fine-grained control over the code splitting behavior.
@@ -142,8 +121,8 @@ export default defineConfig({
       autoCodeSplitting: true,
       codeSplittingOptions: {
         splitBehavior: ({ routeId }) => {
-          // For all routes under /admin, bundle the loader and component together
-          if (routeId.startsWith('/admin')) {
+          // For all routes under /posts, bundle the loader and component together
+          if (routeId.startsWith('/posts')) {
             return [['loader', 'component']]
           }
           // All other routes will use the `defaultBehavior`
@@ -153,6 +132,29 @@ export default defineConfig({
   ],
 })
 ```
+
+### Per-route overrides (`codeSplitGroupings`)
+
+For ultimate control, you can override the global configuration directly inside a route file by adding a `codeSplitGroupings` property. This is useful for routes that have unique optimization needs.
+
+```tsx
+// src/routes/posts.route.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { loadPostsData } from './-heavy-posts-utils'
+
+export const Route = createFileRoute('/posts')({
+  // For this specific route, bundle the loader and component together.
+  codeSplitGroupings: [['loader', 'component']],
+  loader: () => loadPostsData(),
+  component: PostsComponent,
+})
+
+function PostsComponent() {
+  // ...
+}
+```
+
+This will create a single chunk that includes both the `loader` and the `component` for this specific route, overriding both the default behavior and any programmatic split behavior defined in your bundler config.
 
 ### The order of configuration
 
