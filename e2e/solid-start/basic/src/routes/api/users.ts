@@ -40,12 +40,18 @@ const testMiddleware = createMiddleware({ type: 'request' })
     return result
   })
 
+let queryURL = 'https://jsonplaceholder.typicode.com'
+
+if (import.meta.env.VITE_NODE_ENV === 'test') {
+  queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
+}
+
 export const ServerRoute = createServerFileRoute('/api/users')
   .middleware([testMiddleware, userLoggerMiddleware, testParentMiddleware])
   .methods({
     GET: async ({ request }) => {
       console.info('Fetching users... @', request.url)
-      const res = await fetch('https://jsonplaceholder.typicode.com/users')
+      const res = await fetch(`${queryURL}/users`)
       if (!res.ok) {
         throw new Error('Failed to fetch users')
       }
