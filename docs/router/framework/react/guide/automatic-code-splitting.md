@@ -158,7 +158,7 @@ function PostsComponent() {
 
 This will create a single chunk that includes both the `loader` and the `component` for this specific route, overriding both the default behavior and any programmatic split behavior defined in your bundler config.
 
-### The order of configuration matters
+### Configuration order matters
 
 This guide has so far describe three different ways to configure how TanStack Router splits your routes into chunks.
 
