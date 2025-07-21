@@ -605,7 +605,7 @@ describe('work in progress', () => {
     '/files/deep/nested/file.json',
     '/files/',
     '/images/thumb_200x300.jpg',
-    '/logs/error.txt',
+    '/logs/2020/01/01/error.txt',
     '/cache/temp_user456.log',
     '/a/b/c/d/e',
   ])('matching %s', (s) => {
