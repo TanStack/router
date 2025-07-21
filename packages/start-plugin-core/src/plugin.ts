@@ -126,23 +126,17 @@ export function TanStackStartVitePluginCore(
           },
           resolve: {
             noExternal: [
-              '@tanstack/start-client',
-              '@tanstack/start-client-core',
-              '@tanstack/start-server',
-              '@tanstack/start-server-core',
-              '@tanstack/start-server-functions-fetcher',
-              '@tanstack/start-server-functions-client',
-              '@tanstack/start-server-functions-server',
-              '@tanstack/start-router-manifest',
-              '@tanstack/start-config',
-              '@tanstack/server-functions-plugin',
-              'nitropack',
-              '@tanstack/**start**',
+              '@tanstack/start**',
+              `@tanstack/${opts.framework}-start**`,
               ...Object.values(VIRTUAL_MODULES),
             ],
+            dedupe: [`@tanstack/${opts.framework}-start`],
           },
           optimizeDeps: {
-            exclude: [...Object.values(VIRTUAL_MODULES)],
+            exclude: [
+              ...Object.values(VIRTUAL_MODULES),
+              `@tanstack/${opts.framework}-start`,
+            ],
           },
           /* prettier-ignore */
           define: {
