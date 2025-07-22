@@ -77,7 +77,6 @@ export async function transform({
 
   const program: types.namedTypes.Program = ast.program
 
-  // Use the shared matching logic with minimal changes to existing structure
   const exportNames = Array.from(registeredExports.keys())
   for (const n of program.body) {
     if (registeredExports.size > 0) {
