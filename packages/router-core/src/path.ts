@@ -454,6 +454,9 @@ export function interpolatePath({
           const value = encodeParam(segment.value)
           return `${segmentPrefix}${segment.value}${value ?? ''}${segmentSuffix}`
         }
+        if (leaveWildcards) {
+          return `${segmentPrefix}${key}${encodeParam(key) ?? ''}${segmentSuffix}`
+        }
         return `${segmentPrefix}${encodeParam(key) ?? ''}${segmentSuffix}`
       }
 
