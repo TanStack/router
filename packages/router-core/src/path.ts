@@ -1,7 +1,7 @@
 import { last } from './utils'
+import { createLRUCache } from './lru-cache'
 import type { MatchLocation } from './RouterProvider'
 import type { AnyPathParams } from './route'
-import { createLRUCache } from './lru-cache'
 
 export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
