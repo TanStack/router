@@ -1,4 +1,9 @@
-export function createLRUCache<T>(max: number) {
+export type LRUCache<T> = {
+  get: (key: string) => T | undefined
+  set: (key: string, value: T) => void
+}
+
+export function createLRUCache<T>(max: number): LRUCache<T> {
   const cache = new Map<string, T>()
   type Node = { before?: Node; after?: Node; key: string }
   const doublyLinkedList = new Map<string, Node>()
