@@ -10,22 +10,19 @@ export function createLRUCache<T>(max: number): LRUCache<T> {
   let newest: Node | undefined
 
   const touch = (entry: Node) => {
+    if (!entry.next) return
     if (!entry.prev) {
-      if (entry.next) {
-        entry.next.prev = undefined
-        oldest = entry.next
-        entry.next = undefined
-      }
+      entry.next.prev = undefined
+      oldest = entry.next
+      entry.next = undefined
       if (newest) {
         entry.prev = newest
         newest.next = entry
       }
     } else {
       entry.prev.next = entry.next
-      if (entry.next) {
-        entry.next.prev = entry.prev
-        entry.next = undefined
-      }
+      entry.next.prev = entry.prev
+      entry.next = undefined
       if (newest) {
         newest.next = entry
         entry.prev = newest
@@ -38,9 +35,7 @@ export function createLRUCache<T>(max: number): LRUCache<T> {
     get(key: string): T | undefined {
       const entry = cache.get(key)
       if (!entry) return undefined
-      if (entry.next) {
-        touch(entry)
-      }
+      touch(entry)
       return entry.value
     },
     set(key: string, value: T): void {
