@@ -1370,7 +1370,7 @@ export class RouterCore<
   }
 
   private comparePaths(path1: string, path2: string) {
-    return path1.replace(/(.+)\/$/, '$1') === path2.replace(/(.+)\/$/, '$1')
+    return path1.replace(/\/$/, '') === path2.replace(/\/$/, '')
   }
 
   buildLocation: BuildLocationFn = (opts) => {
