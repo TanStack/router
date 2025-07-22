@@ -1,26 +1,24 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 
-let count = 0
-
 const retryMiddleware = createMiddleware({ type: 'function' })
   .client(async ({ next }) => {
-    await next()
-    return await next()
+    const res = await next({ sendContext: { count: 0 } })
+    // @ts-expect-error: private property
+    const count = res.result
+    return await next({ sendContext: { count } })
   })
-  .server(async ({ next }) => {
-    await next()
-    return await next()
+  .server(async ({ next, context: { count } }) => {
+    const res = await next({ context: { count } })
+    // @ts-expect-error: private property
+    const nextCount = res.result
+    return await next({ context: { count: nextCount } })
   })
 
 const serverFn = createServerFn()
   .middleware([retryMiddleware])
-  .handler(() => {
-    // Reset count when called a second time
-    if (count == 4) {
-      count = 0
-    }
-    return `called ${++count} times`
+  .handler(({ context: { count } }) => {
+    return count + 1
   })
 
 export const Route = createFileRoute('/middleware/retry-next')({
@@ -38,7 +36,7 @@ function RouteComponent() {
         multiple times for retry logic.
       </p>
       <div data-testid="retry-success-result">
-        <pre>{serverFnLoaderResult}</pre>
+        <pre>called {serverFnLoaderResult} times</pre>
       </div>
     </div>
   )
