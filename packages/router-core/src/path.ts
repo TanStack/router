@@ -205,7 +205,7 @@ export function resolvePath({
   return joined
 }
 
-export type ParsePathnameCache = LRUCache<ReadonlyArray<Segment>>
+export type ParsePathnameCache = LRUCache<string, ReadonlyArray<Segment>>
 export const parsePathname = (
   pathname?: string,
   cache?: ParsePathnameCache,

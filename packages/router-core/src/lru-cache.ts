@@ -1,11 +1,13 @@
-export type LRUCache<T> = {
-  get: (key: string) => T | undefined
-  set: (key: string, value: T) => void
+export type LRUCache<TKey, TValue> = {
+  get: (key: TKey) => TValue | undefined
+  set: (key: TKey, value: TValue) => void
 }
 
-export function createLRUCache<T>(max: number): LRUCache<T> {
-  type Node = { prev?: Node; next?: Node; key: string, value: T }
-  const cache = new Map<string, Node>()
+export function createLRUCache<TKey, TValue>(
+  max: number,
+): LRUCache<TKey, TValue> {
+  type Node = { prev?: Node; next?: Node; key: TKey; value: TValue }
+  const cache = new Map<TKey, Node>()
   let oldest: Node | undefined
   let newest: Node | undefined
 
@@ -32,13 +34,13 @@ export function createLRUCache<T>(max: number): LRUCache<T> {
   }
 
   return {
-    get(key: string): T | undefined {
+    get(key) {
       const entry = cache.get(key)
       if (!entry) return undefined
       touch(entry)
       return entry.value
     },
-    set(key: string, value: T): void {
+    set(key, value) {
       if (cache.size >= max && oldest) {
         const toDelete = oldest
         cache.delete(toDelete.key)
