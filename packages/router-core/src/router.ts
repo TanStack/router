@@ -415,8 +415,18 @@ export interface RouterState<
 > {
   status: 'pending' | 'idle'
   blocker:
-    | { status: 'idle'; reset: () => void; proceed: () => void }
-    | { status: 'blocked'; reset: () => void; proceed: () => void }
+    | {
+        status: 'idle'
+        reset: () => void
+        proceed: () => void
+        proceedAll: () => void
+      }
+    | {
+        status: 'blocked'
+        reset: () => void
+        proceed: () => void
+        proceedAll: () => void
+      }
   loadedAt: number
   isLoading: boolean
   isTransitioning: boolean
@@ -924,15 +934,21 @@ export class RouterCore<
               status: 'blocked',
               proceed: action.proceed,
               reset: action.reset,
+              proceedAll: action.proceedAll,
             },
           }))
 
           return
         }
-        if (action.type === 'DISMISS-BLOCK') {
+        if (action.type === 'DISMISS_BLOCK') {
           this.__store.setState((prev) => ({
             ...prev,
-            blocker: { status: 'idle', reset: () => {}, proceed: () => {} },
+            blocker: {
+              status: 'idle',
+              reset: () => {},
+              proceed: () => {},
+              proceedAll: () => {},
+            },
           }))
           return
         }
@@ -3134,7 +3150,12 @@ export function getInitialRouterState(
     isLoading: false,
     isTransitioning: false,
     status: 'idle',
-    blocker: { status: 'idle', proceed: () => {}, reset: () => {} },
+    blocker: {
+      status: 'idle',
+      proceed: () => {},
+      proceedAll: () => {},
+      reset: () => {},
+    },
     resolvedLocation: undefined,
     location,
     matches: [],

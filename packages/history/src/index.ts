@@ -14,7 +14,12 @@ type SubscriberHistoryAction =
       type: 'GO'
       index: number
     }
-  | { type: 'BLOCK'; proceed: () => void; reset: () => void }
+  | {
+      type: 'BLOCK'
+      proceedAll: () => void
+      proceed: () => void
+      reset: () => void
+    }
 
 type SubscriberArgs = {
   location: HistoryLocation
@@ -160,6 +165,8 @@ export function createHistory(opts: {
 
         let isBlocked = false
         let blockNotified = false
+        let proceedAllCalled = false
+
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         while (true) {
           const { value, done } = await generator.next()
@@ -170,6 +177,10 @@ export function createHistory(opts: {
               type: 'BLOCK',
               proceed: () => resolver(false),
               reset: () => resolver(true),
+              proceedAll: () => {
+                proceedAllCalled = true
+                resolver(false)
+              },
             })
             blockNotified = true
           }
@@ -180,6 +191,9 @@ export function createHistory(opts: {
             break
           }
         }
+
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (proceedAllCalled) break
 
         if (isBlocked) {
           opts.onBlocked?.()
@@ -472,6 +486,7 @@ export function createBrowserHistory(opts?: {
 
           let isBlocked = false
           let blockNotified = false
+          let proceedAllCalled = false
           // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           while (true) {
             const { value, done } = await generator.next()
@@ -482,9 +497,16 @@ export function createBrowserHistory(opts?: {
                 type: 'BLOCK',
                 proceed: () => resolver(false),
                 reset: () => resolver(true),
+                proceedAll: () => {
+                  proceedAllCalled = true
+                  resolver(false)
+                },
               })
               blockNotified = true
             }
+
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (proceedAllCalled) break
 
             if (done) {
               isBlocked = value
