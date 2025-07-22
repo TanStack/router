@@ -1369,10 +1369,6 @@ export class RouterCore<
     })
   }
 
-  private comparePaths(path1: string, path2: string) {
-    return path1.replace(/\/$/, '') === path2.replace(/\/$/, '')
-  }
-
   buildLocation: BuildLocationFn = (opts) => {
     const build = (
       dest: BuildNextOptions & {
@@ -1397,8 +1393,8 @@ export class RouterCore<
 
       const routeIsChanging =
         !!dest.to &&
-        !this.comparePaths(dest.to.toString(), fromPath) &&
-        !this.comparePaths(toPath, fromPath)
+        !comparePaths(dest.to.toString(), fromPath) &&
+        !comparePaths(toPath, fromPath)
 
       // If the route is changing we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
@@ -1416,11 +1412,11 @@ export class RouterCore<
           const matchedFrom = [...allCurrentLocationMatches]
             .reverse()
             .find((d) => {
-              return this.comparePaths(d.fullPath, fromPath)
+              return comparePaths(d.fullPath, fromPath)
             })
 
           const matchedCurrent = [...allFromMatches].reverse().find((d) => {
-            return this.comparePaths(d.fullPath, currentLocation.pathname)
+            return comparePaths(d.fullPath, currentLocation.pathname)
           })
 
           // for from to be invalid it shouldn't just be unmatched to currentLocation
@@ -3076,6 +3072,12 @@ export class RouterCore<
 export class SearchParamError extends Error {}
 
 export class PathParamError extends Error {}
+
+const normalize = (str: string) =>
+  str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
+function comparePaths(a: string, b: string) {
+  return normalize(a) === normalize(b)
+}
 
 // A function that takes an import() argument which is a function and returns a new function that will
 // proxy arguments from the caller to the imported function, retaining all type
