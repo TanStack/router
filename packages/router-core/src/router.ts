@@ -3073,8 +3073,11 @@ export class SearchParamError extends Error {}
 
 export class PathParamError extends Error {}
 
-const normalize = (str: string) => str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
-function comparePaths(a: string, b: string) { return normalize(a) === normalize(b) }
+const normalize = (str: string) =>
+  str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
+function comparePaths(a: string, b: string) {
+  return normalize(a) === normalize(b)
+}
 
 // A function that takes an import() argument which is a function and returns a new function that will
 // proxy arguments from the caller to the imported function, retaining all type
