@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
-import { matchByPath } from "../src"
+import { describe, expect, it } from 'vitest'
+import { matchByPath } from '../src'
 
 describe('default path matching', () => {
   it.each([
@@ -15,14 +15,16 @@ describe('default path matching', () => {
     ['/', '/a/', '/a', undefined],
     ['/', '/b', '/a', undefined],
   ])('static %s %s => %s', (base, from, to, result) => {
-    expect(matchByPath(base, from, { to, caseSensitive: false })).toEqual(result)
+    expect(matchByPath(base, from, { to, caseSensitive: false })).toEqual(
+      result,
+    )
   })
 
   it.each([
     ['/a/1', '/a/$id', { id: '1' }],
     ['/a/1/b', '/a/$id/b', { id: '1' }],
     ['/a/1/b/2', '/a/$id/b/$other', { id: '1', other: '2' }],
-    ['/a/1/b/2', '/a/$id/b/$id', { id: '2' }]
+    ['/a/1/b/2', '/a/$id/b/$id', { id: '2' }],
   ])('params %s => %s', (from, to, result) => {
     expect(matchByPath('/', from, { to })).toEqual(result)
   })
@@ -34,7 +36,7 @@ describe('default path matching', () => {
     ['/a/b', '/a/{-$id}/b', {}],
     ['/a/1/b/2', '/a/{-$id}/b/{-$other}', { id: '1', other: '2' }],
     ['/a/b/2', '/a/{-$id}/b/{-$other}', { other: '2' }],
-    ['/a/1/b', '/a/{-$id}/b/{-$other}', { id: '1', }],
+    ['/a/1/b', '/a/{-$id}/b/{-$other}', { id: '1' }],
     ['/a/b', '/a/{-$id}/b/{-$other}', {}],
     ['/a/1/b/2', '/a/{-$id}/b/{-$id}', { id: '2' }],
   ])('optional %s => %s', (from, to, result) => {
@@ -65,14 +67,16 @@ describe('case insensitive path matching', () => {
     ['/', '/a/', '/A', undefined],
     ['/', '/b', '/A', undefined],
   ])('static %s %s => %s', (base, from, to, result) => {
-    expect(matchByPath(base, from, { to, caseSensitive: false })).toEqual(result)
+    expect(matchByPath(base, from, { to, caseSensitive: false })).toEqual(
+      result,
+    )
   })
 
   it.each([
     ['/a/1', '/A/$id', { id: '1' }],
     ['/a/1/b', '/A/$id/B', { id: '1' }],
     ['/a/1/b/2', '/A/$id/B/$other', { id: '1', other: '2' }],
-    ['/a/1/b/2', '/A/$id/B/$id', { id: '2' }]
+    ['/a/1/b/2', '/A/$id/B/$id', { id: '2' }],
   ])('params %s => %s', (from, to, result) => {
     expect(matchByPath('/', from, { to, caseSensitive: false })).toEqual(result)
   })
@@ -111,11 +115,11 @@ describe('fuzzy path matching', () => {
     ['/', '/a', '/a', {}],
     ['/', '/a', '/a/', {}],
     ['/', '/a/', '/a/', {}],
-    ['/', '/a/', '/a', { "**": "/" }],
+    ['/', '/a/', '/a', { '**': '/' }],
     ['/', '/a/b', '/a/b', {}],
-    ['/', '/a/b', '/a', { "**": "b" }],
-    ['/', '/a/b/', '/a', { "**": "b/" }],
-    ['/', '/a/b/c', '/a', { "**": "b/c" }],
+    ['/', '/a/b', '/a', { '**': 'b' }],
+    ['/', '/a/b/', '/a', { '**': 'b/' }],
+    ['/', '/a/b/c', '/a', { '**': 'b/c' }],
     ['/', '/a', '/a/b', undefined],
     ['/', '/b', '/a', undefined],
     ['/', '/a', '/b', undefined],
@@ -125,10 +129,10 @@ describe('fuzzy path matching', () => {
 
   it.each([
     ['/a/1', '/a/$id', { id: '1' }],
-    ['/a/1/b', '/a/$id', { id: '1', "**": "b" }],
+    ['/a/1/b', '/a/$id', { id: '1', '**': 'b' }],
     ['/a/1/', '/a/$id/', { id: '1' }],
     ['/a/1/b/2', '/a/$id/b/$other', { id: '1', other: '2' }],
-    ['/a/1/b/2/c', '/a/$id/b/$other', { id: '1', other: '2', "**": "c" }],
+    ['/a/1/b/2/c', '/a/$id/b/$other', { id: '1', other: '2', '**': 'c' }],
   ])('params %s => %s', (from, to, result) => {
     expect(matchByPath('/', from, { to, fuzzy: true })).toEqual(result)
   })
@@ -141,8 +145,8 @@ describe('fuzzy path matching', () => {
     ['/a/b', '/a/{-$id}/b', {}],
     ['/a/b/c', '/a/{-$id}/b', { '**': 'c' }],
     ['/a/b', '/a/{-$id}/b/{-$other}', {}],
-    ['/a/b/2/d', '/a/{-$id}/b/{-$other}', { 'other': '2', '**': 'd' }],
-    ['/a/1/b/2/c', '/a/{-$id}/b/{-$other}', { id: '1', other: '2', "**": "c" }],
+    ['/a/b/2/d', '/a/{-$id}/b/{-$other}', { other: '2', '**': 'd' }],
+    ['/a/1/b/2/c', '/a/{-$id}/b/{-$other}', { id: '1', other: '2', '**': 'c' }],
   ])('optional %s => %s', (from, to, result) => {
     expect(matchByPath('/', from, { to, fuzzy: true })).toEqual(result)
   })
