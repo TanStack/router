@@ -4,32 +4,31 @@ export type LRUCache<T> = {
 }
 
 export function createLRUCache<T>(max: number): LRUCache<T> {
-  const cache = new Map<string, T>()
-  type Node = { before?: Node; after?: Node; key: string }
-  const doublyLinkedList = new Map<string, Node>()
+  type Node = { prev?: Node; next?: Node; key: string, value: T }
+  const cache = new Map<string, Node>()
   let oldest: Node | undefined
   let newest: Node | undefined
 
   const touch = (entry: Node) => {
-    if (!entry.before) {
-      if (entry.after) {
-        entry.after.before = undefined
-        oldest = entry.after
-        entry.after = undefined
+    if (!entry.prev) {
+      if (entry.next) {
+        entry.next.prev = undefined
+        oldest = entry.next
+        entry.next = undefined
       }
       if (newest) {
-        entry.before = newest
-        newest.after = entry
+        entry.prev = newest
+        newest.next = entry
       }
     } else {
-      entry.before.after = entry.after
-      if (entry.after) {
-        entry.after.before = entry.before
-        entry.after = undefined
+      entry.prev.next = entry.next
+      if (entry.next) {
+        entry.next.prev = entry.prev
+        entry.next = undefined
       }
       if (newest) {
-        newest.after = entry
-        entry.before = newest
+        newest.next = entry
+        entry.prev = newest
       }
     }
     newest = entry
@@ -37,39 +36,35 @@ export function createLRUCache<T>(max: number): LRUCache<T> {
 
   return {
     get(key: string): T | undefined {
-      if (!cache.has(key)) {
-        return undefined
-      }
-      const value = cache.get(key)
-      const entry = doublyLinkedList.get(key)
-      if (entry?.after) {
+      const entry = cache.get(key)
+      if (!entry) return undefined
+      if (entry.next) {
         touch(entry)
       }
-      return value
+      return entry.value
     },
     set(key: string, value: T): void {
       if (cache.size >= max && oldest) {
         const toDelete = oldest
         cache.delete(toDelete.key)
-        doublyLinkedList.delete(toDelete.key)
-        if (toDelete.after) {
-          oldest = toDelete.after
-          toDelete.after.before = undefined
+        if (toDelete.next) {
+          oldest = toDelete.next
+          toDelete.next.prev = undefined
         }
         if (toDelete === newest) {
           newest = undefined
         }
       }
-      cache.set(key, value)
-      const existing = doublyLinkedList.get(key)
+      const existing = cache.get(key)
       if (existing) {
+        existing.value = value
         touch(existing)
       } else {
-        const entry: Node = { key, before: newest }
-        if (newest) newest.after = entry
+        const entry: Node = { key, value, prev: newest }
+        if (newest) newest.next = entry
         newest = entry
         if (!oldest) oldest = entry
-        doublyLinkedList.set(key, entry)
+        cache.set(key, entry)
       }
     },
   }
