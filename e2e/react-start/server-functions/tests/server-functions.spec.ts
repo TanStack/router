@@ -376,7 +376,7 @@ test.describe('middleware', () => {
     async function runRetryTest(page: Page) {
       await page.waitForLoadState('networkidle')
       await expect(page.getByTestId('retry-success-result')).toContainText(
-        'success',
+        'called 4 times',
       )
     }
 

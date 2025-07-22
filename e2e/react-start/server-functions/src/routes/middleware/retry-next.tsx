@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 
+let count = 0
+
 const retryMiddleware = createMiddleware({ type: 'function' })
   .client(async ({ next }) => {
     await next()
@@ -14,7 +16,11 @@ const retryMiddleware = createMiddleware({ type: 'function' })
 const serverFn = createServerFn()
   .middleware([retryMiddleware])
   .handler(() => {
-    return 'success'
+    // Reset count when called a second time
+    if (count == 4) {
+      count = 0
+    }
+    return `called ${++count} times`
   })
 
 export const Route = createFileRoute('/middleware/retry-next')({
