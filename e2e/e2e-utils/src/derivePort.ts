@@ -17,3 +17,11 @@ export async function derivePort(input: string): Promise<number> {
   console.info(`Mapped "${input}" to port ${portNumber}`)
   return portNumber
 }
+
+export async function getDummyServerPort(input: string): Promise<number> {
+  return await derivePort(`${input}-external`)
+}
+
+export async function getTestServerPort(input: string): Promise<number> {
+  return await derivePort(input)
+}

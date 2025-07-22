@@ -68,9 +68,6 @@
     "vite": "6.3.5",
     "vitest": "^3.0.6"
   },
-  "resolutions": {
-    "use-sync-external-store": "1.2.2"
-  },
   "pnpm": {
     "overrides": {
       "react": "$react",
@@ -81,7 +78,6 @@
       "vite": "$vite",
       "@playwright/test": "$@playwright/test",
       "@tanstack/react-query": "5.66.0",
-      "use-sync-external-store": "1.2.2",
       "@tanstack/history": "workspace:*",
       "@tanstack/router-core": "workspace:*",
       "@tanstack/react-router": "workspace:*",
@@ -112,6 +108,7 @@
       "@tanstack/start-plugin-core": "workspace:*",
       "@tanstack/start-client-core": "workspace:*",
       "@tanstack/start-server-core": "workspace:*",
+      "@tanstack/start-storage-context": "workspace:*",
       "@tanstack/eslint-plugin-router": "workspace:*",
       "@tanstack/server-functions-plugin": "workspace:*",
       "@tanstack/directive-functions-plugin": "workspace:*",

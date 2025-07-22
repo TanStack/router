@@ -2,7 +2,7 @@ import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { extractHtmlScripts } from './extract-html-scripts'
-import type { Connect, DevEnvironment, Plugin, ViteDevServer } from 'vite'
+import type { Connect, DevEnvironment, Plugin } from 'vite'
 
 /* eslint-disable no-var */
 declare global {
@@ -18,6 +18,9 @@ export function devServerPlugin(): Plugin {
     config(userConfig, { mode }) {
       // config = userConfig
       isTest = isTest ? isTest : mode === 'test'
+      // see https://vite.dev/config/shared-options.html#apptype
+      // this will prevent vite from injecting middlewares that we don't want
+      userConfig.appType = 'custom'
     },
     configureServer(viteDevServer) {
       if (isTest) {
@@ -27,8 +30,6 @@ export function devServerPlugin(): Plugin {
       // upon server restart, reset the injected scripts
       globalThis.TSS_INJECTED_HEAD_SCRIPTS = undefined
       return () => {
-        remove_html_middlewares(viteDevServer.middlewares)
-
         viteDevServer.middlewares.use(async (req, res, next) => {
           // Create an H3Event to have it passed into the server entry
           // i.e: event => defineEventHandler(event)
@@ -139,29 +140,6 @@ export function devServerPlugin(): Plugin {
         })
       }
     },
-  }
-}
-
-/**
- * Removes Vite internal middleware
- *
- * @param server
- */
-function remove_html_middlewares(server: ViteDevServer['middlewares']) {
-  const html_middlewares = [
-    'viteIndexHtmlMiddleware',
-    'vite404Middleware',
-    'viteSpaFallbackMiddleware',
-  ]
-  for (let i = server.stack.length - 1; i > 0; i--) {
-    if (
-      html_middlewares.includes(
-        // @ts-expect-error
-        server.stack[i].handle.name,
-      )
-    ) {
-      server.stack.splice(i, 1)
-    }
   }
 }
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { interpolatePath, matchPathname, parsePathname } from '../src/path'
+import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  interpolatePath,
+  matchPathname,
+  parsePathname,
+} from '../src/path'
 
 describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
   describe('Optional Dynamic Parameters {-$param}', () => {
@@ -7,34 +13,34 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
       it('should parse single optional dynamic param', () => {
         const result = parsePathname('/posts/{-$category}')
         expect(result).toEqual([
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'posts' },
-          { type: 'optional-param', value: '$category' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'posts' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$category' },
         ])
       })
 
       it('should parse multiple optional dynamic params', () => {
         const result = parsePathname('/posts/{-$category}/{-$slug}')
         expect(result).toEqual([
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'posts' },
-          { type: 'optional-param', value: '$category' },
-          { type: 'optional-param', value: '$slug' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'posts' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$category' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$slug' },
         ])
       })
 
       it('should handle prefix/suffix with optional dynamic params', () => {
         const result = parsePathname('/api/v{-$version}/data')
         expect(result).toEqual([
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'api' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'api' },
           {
-            type: 'optional-param',
+            type: SEGMENT_TYPE_OPTIONAL_PARAM,
             value: '$version',
             prefixSegment: 'v',
             suffixSegment: undefined,
           },
-          { type: 'pathname', value: 'data' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'data' },
         ])
       })
     })

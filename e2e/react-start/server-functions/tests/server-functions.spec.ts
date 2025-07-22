@@ -339,3 +339,36 @@ test('raw response', async ({ page }) => {
     expect(page.url().endsWith(`/formdata-redirect/target/${expected}`))
   })
 })
+
+test.describe('middleware', () => {
+  test.describe('client middleware should have access to router context via the router instance', () => {
+    async function runTest(page: Page) {
+      await page.waitForLoadState('networkidle')
+
+      const expected =
+        (await page.getByTestId('expected-server-fn-result').textContent()) ||
+        ''
+      expect(expected).not.toBe('')
+
+      await page.getByTestId('btn-serverFn').click()
+      await page.waitForLoadState('networkidle')
+      await expect(page.getByTestId('serverFn-loader-result')).toContainText(
+        expected,
+      )
+      await expect(page.getByTestId('serverFn-client-result')).toContainText(
+        expected,
+      )
+    }
+
+    test('direct visit', async ({ page }) => {
+      await page.goto('/middleware/client-middleware-router')
+      await runTest(page)
+    })
+
+    test('client navigation', async ({ page }) => {
+      await page.goto('/middleware')
+      await page.getByTestId('client-middleware-router-link').click()
+      await runTest(page)
+    })
+  })
+})

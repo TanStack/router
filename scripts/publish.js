@@ -113,6 +113,10 @@ await publish({
       packageDir: 'packages/start-server-core',
     },
     {
+      name: '@tanstack/start-storage-context',
+      packageDir: 'packages/start-storage-context',
+    },
+    {
       name: '@tanstack/react-start',
       packageDir: 'packages/react-start',
     },

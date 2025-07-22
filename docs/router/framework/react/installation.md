@@ -2,6 +2,8 @@
 title: Installation
 ---
 
+> **Quick Installation**: For step-by-step installation instructions, see our [How to Install TanStack Router](./how-to/install.md) guide.
+
 You can install TanStack Router with any [NPM](https://npmjs.com) package manager.
 
 ```sh

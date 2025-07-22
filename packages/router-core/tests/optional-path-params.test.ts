@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { interpolatePath, matchPathname, parsePathname } from '../src/path'
+import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
+  interpolatePath,
+  matchPathname,
+  parsePathname,
+} from '../src/path'
 import type { Segment as PathSegment } from '../src/path'
 
 describe('Optional Path Parameters', () => {
@@ -15,17 +23,17 @@ describe('Optional Path Parameters', () => {
         name: 'regular optional param',
         to: '/{-$slug}',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'optional-param', value: '$slug' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$slug' },
         ],
       },
       {
         name: 'optional param with prefix',
         to: '/prefix{-$slug}',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
           {
-            type: 'optional-param',
+            type: SEGMENT_TYPE_OPTIONAL_PARAM,
             value: '$slug',
             prefixSegment: 'prefix',
           },
@@ -35,9 +43,9 @@ describe('Optional Path Parameters', () => {
         name: 'optional param with suffix',
         to: '/{-$slug}suffix',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
           {
-            type: 'optional-param',
+            type: SEGMENT_TYPE_OPTIONAL_PARAM,
             value: '$slug',
             suffixSegment: 'suffix',
           },
@@ -47,9 +55,9 @@ describe('Optional Path Parameters', () => {
         name: 'optional param with prefix and suffix',
         to: '/prefix{-$slug}suffix',
         expected: [
-          { type: 'pathname', value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
           {
-            type: 'optional-param',
+            type: SEGMENT_TYPE_OPTIONAL_PARAM,
             value: '$slug',
             prefixSegment: 'prefix',
             suffixSegment: 'suffix',
@@ -60,70 +68,70 @@ describe('Optional Path Parameters', () => {
         name: 'multiple optional params',
         to: '/posts/{-$category}/{-$slug}',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'posts' },
-          { type: 'optional-param', value: '$category' },
-          { type: 'optional-param', value: '$slug' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'posts' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$category' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$slug' },
         ],
       },
       {
         name: 'mixed required and optional params',
         to: '/users/$id/{-$tab}',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'users' },
-          { type: 'param', value: '$id' },
-          { type: 'optional-param', value: '$tab' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'users' },
+          { type: SEGMENT_TYPE_PARAM, value: '$id' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$tab' },
         ],
       },
       {
         name: 'optional param followed by required param',
         to: '/{-$category}/$slug',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'optional-param', value: '$category' },
-          { type: 'param', value: '$slug' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$category' },
+          { type: SEGMENT_TYPE_PARAM, value: '$slug' },
         ],
       },
       {
         name: 'optional param with wildcard',
         to: '/docs/{-$version}/$',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'docs' },
-          { type: 'optional-param', value: '$version' },
-          { type: 'wildcard', value: '$' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'docs' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$version' },
+          { type: SEGMENT_TYPE_WILDCARD, value: '$' },
         ],
       },
       {
         name: 'complex path with all param types',
         to: '/api/{-$version}/users/$id/{-$tab}/$',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'pathname', value: 'api' },
-          { type: 'optional-param', value: '$version' },
-          { type: 'pathname', value: 'users' },
-          { type: 'param', value: '$id' },
-          { type: 'optional-param', value: '$tab' },
-          { type: 'wildcard', value: '$' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'api' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$version' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'users' },
+          { type: SEGMENT_TYPE_PARAM, value: '$id' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$tab' },
+          { type: SEGMENT_TYPE_WILDCARD, value: '$' },
         ],
       },
       {
         name: 'optional param at root',
         to: '/{-$slug}',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'optional-param', value: '$slug' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$slug' },
         ],
       },
       {
         name: 'multiple consecutive optional params',
         to: '/{-$year}/{-$month}/{-$day}',
         expected: [
-          { type: 'pathname', value: '/' },
-          { type: 'optional-param', value: '$year' },
-          { type: 'optional-param', value: '$month' },
-          { type: 'optional-param', value: '$day' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$year' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$month' },
+          { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: '$day' },
         ],
       },
     ] satisfies ParsePathnameTestScheme)('$name', ({ to, expected }) => {

@@ -5,10 +5,12 @@ import type {
   ServerFnTypeOrTypeFn,
 } from './createServerFn'
 import type {
+  AnyRouter,
   Assign,
   Constrain,
   Expand,
   IntersectAssign,
+  RegisteredRouter,
   ResolveValidatorInput,
   ResolveValidatorOutput,
 } from '@tanstack/router-core'
@@ -495,6 +497,7 @@ export interface FunctionMiddlewareClient<
   TMiddlewares,
   TValidator,
   TServerFnResponseType extends ServerFnResponseType,
+  TRouter extends AnyRouter = RegisteredRouter,
 > {
   client: <TSendServerContext = undefined, TNewClientContext = undefined>(
     client: FunctionMiddlewareClientFn<
@@ -502,7 +505,8 @@ export interface FunctionMiddlewareClient<
       TValidator,
       TSendServerContext,
       TNewClientContext,
-      TServerFnResponseType
+      TServerFnResponseType,
+      TRouter
     >,
   ) => FunctionMiddlewareAfterClient<
     TMiddlewares,
@@ -519,11 +523,13 @@ export type FunctionMiddlewareClientFn<
   TSendContext,
   TClientContext,
   TServerFnResponseType extends ServerFnResponseType,
+  TRouter extends AnyRouter = RegisteredRouter,
 > = (
   options: FunctionMiddlewareClientFnOptions<
     TMiddlewares,
     TValidator,
-    TServerFnResponseType
+    TServerFnResponseType,
+    TRouter
   >,
 ) => FunctionMiddlewareClientFnResult<
   TMiddlewares,
@@ -535,6 +541,7 @@ export interface FunctionMiddlewareClientFnOptions<
   in out TMiddlewares,
   in out TValidator,
   in out TServerFnResponseType extends ServerFnResponseType,
+  in out TRouter extends AnyRouter,
 > {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
   context: Expand<AssignAllClientContextBeforeNext<TMiddlewares>>
@@ -551,6 +558,7 @@ export interface FunctionMiddlewareClientFnOptions<
     TMiddlewares,
     TValidator
   >
+  router: TRouter
 }
 
 export type FunctionMiddlewareClientFnResult<
