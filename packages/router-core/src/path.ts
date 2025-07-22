@@ -1,6 +1,7 @@
 import { last } from './utils'
 import type { MatchLocation } from './RouterProvider'
 import type { AnyPathParams } from './route'
+import { createLRUCache } from './lru-cache'
 
 export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
@@ -202,6 +203,16 @@ export function resolvePath({
   return joined
 }
 
+const parsedCache = createLRUCache<ReadonlyArray<Segment>>(1000)
+export const parsePathname: typeof baseParsePathname = (pathname) => {
+  if (!pathname) return []
+  const cached = parsedCache.get(pathname)
+  if (cached) return cached
+  const parsed = baseParsePathname(pathname)
+  parsedCache.set(pathname, parsed)
+  return parsed
+}
+
 const PARAM_RE = /^\$.{1,}$/ // $paramName
 const PARAM_W_CURLY_BRACES_RE = /^(.*?)\{(\$[a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix{$paramName}suffix
 const OPTIONAL_PARAM_W_CURLY_BRACES_RE =
@@ -227,7 +238,7 @@ const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
  * - `/foo/[$]{$foo} - Dynamic route with a static prefix of `$`
  * - `/foo/{$foo}[$]` - Dynamic route with a static suffix of `$`
  */
-export function parsePathname(pathname?: string): ReadonlyArray<Segment> {
+function baseParsePathname(pathname?: string): ReadonlyArray<Segment> {
   if (!pathname) {
     return []
   }
