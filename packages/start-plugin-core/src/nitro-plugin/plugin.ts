@@ -132,12 +132,15 @@ async function buildNitroApp(
 
   // If the user has not set a prerender option, we need to set it to true
   // if the pages array is not empty and has sub options requiring for prerendering
+  // If the user has explicitly set prerender.enabled, this should be respected
   if (options.prerender?.enabled !== false) {
     options.prerender = {
       ...options.prerender,
-      enabled: options.pages.some((d) =>
-        typeof d === 'string' ? false : !!d.prerender?.enabled,
-      ),
+      enabled:
+        options.prerender?.enabled ??
+        options.pages.some((d) =>
+          typeof d === 'string' ? false : !!d.prerender?.enabled,
+        ),
     }
   }
 
@@ -149,8 +152,6 @@ async function buildNitroApp(
     }
 
     const maskUrl = new URL(options.spa.maskPath, 'http://localhost')
-
-    maskUrl.searchParams.set('__TSS_SHELL', 'true')
 
     options.pages.push({
       path: maskUrl.toString().replace('http://localhost', ''),

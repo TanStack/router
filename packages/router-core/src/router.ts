@@ -14,6 +14,10 @@ import {
   replaceEqualDeep,
 } from './utils'
 import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
   cleanPath,
   interpolatePath,
   joinPaths,
@@ -29,6 +33,7 @@ import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
+import type { Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -80,12 +85,6 @@ import type { Manifest } from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
-
-declare global {
-  interface Window {
-    __TSR_ROUTER__?: AnyRouter
-  }
-}
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -340,6 +339,11 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#isserver-property)
    */
   isServer?: boolean
+
+  /**
+   * @default false
+   */
+  isShell?: boolean
 
   /**
    * The default `ssr` a route should use if no `ssr` is provided.
@@ -621,9 +625,12 @@ export type StartTransitionFn = (fn: () => void) => void
 export interface MatchRoutesFn {
   (
     pathname: string,
-    locationSearch: AnySchema,
+    locationSearch?: AnySchema,
     opts?: MatchRoutesOpts,
-  ): Array<AnyRouteMatch>
+  ): Array<MakeRouteMatchUnion>
+  /**
+   * @deprecated use the following signature instead
+   */
   (next: ParsedLocation, opts?: MatchRoutesOpts): Array<AnyRouteMatch>
   (
     pathnameOrNext: string | ParsedLocation,
@@ -813,7 +820,9 @@ export class RouterCore<
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
-  isShell = false
+  isShell() {
+    return this.options.isShell
+  }
 
   update: UpdateFn<
     TRouteTree,
@@ -902,10 +911,6 @@ export class RouterCore<
       this.isViewTransitionTypesSupported = window.CSS.supports(
         'selector(:active-view-transition-type(a)',
       )
-    }
-
-    if ((this.latestLocation.search as any).__TSS_SHELL) {
-      this.isShell = true
     }
   }
 
@@ -1017,15 +1022,6 @@ export class RouterCore<
     return this.routesById as Record<string, AnyRoute>
   }
 
-  /**
-  @deprecated use the following signature instead
-  ```ts
-  matchRoutes (
-    next: ParsedLocation,
-    opts?: { preload?: boolean; throwOnError?: boolean },
-  ): Array<AnyRouteMatch>;
-  ```
-*/
   matchRoutes: MatchRoutesFn = (
     pathnameOrNext: string | ParsedLocation,
     locationSearchOrOpts?: AnySchema | MatchRoutesOpts,
@@ -1373,10 +1369,6 @@ export class RouterCore<
     })
   }
 
-  private comparePaths(path1: string, path2: string) {
-    return path1.replace(/(.+)\/$/, '$1') === path2.replace(/(.+)\/$/, '$1')
-  }
-
   buildLocation: BuildLocationFn = (opts) => {
     const build = (
       dest: BuildNextOptions & {
@@ -1401,8 +1393,8 @@ export class RouterCore<
 
       const routeIsChanging =
         !!dest.to &&
-        !this.comparePaths(dest.to.toString(), fromPath) &&
-        !this.comparePaths(toPath, fromPath)
+        !comparePaths(dest.to.toString(), fromPath) &&
+        !comparePaths(toPath, fromPath)
 
       // If the route is changing we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
@@ -1420,11 +1412,11 @@ export class RouterCore<
           const matchedFrom = [...allCurrentLocationMatches]
             .reverse()
             .find((d) => {
-              return this.comparePaths(d.fullPath, fromPath)
+              return comparePaths(d.fullPath, fromPath)
             })
 
           const matchedCurrent = [...allFromMatches].reverse().find((d) => {
-            return this.comparePaths(d.fullPath, currentLocation.pathname)
+            return comparePaths(d.fullPath, currentLocation.pathname)
           })
 
           // for from to be invalid it shouldn't just be unmatched to currentLocation
@@ -1447,15 +1439,23 @@ export class RouterCore<
 
       // Resolve the next params
       let nextParams =
-        (dest.params ?? true) === true
-          ? fromParams
-          : {
-              ...fromParams,
-              ...functionalUpdate(dest.params as any, fromParams),
-            }
+        dest.params === false || dest.params === null
+          ? {}
+          : (dest.params ?? true) === true
+            ? fromParams
+            : {
+                ...fromParams,
+                ...functionalUpdate(dest.params as any, fromParams),
+              }
+
+      // Interpolate the path first to get the actual resolved path, then match against that
+      const interpolatedNextTo = interpolatePath({
+        path: nextTo,
+        params: nextParams ?? {},
+      }).interpolatedPath
 
       const destRoutes = this.matchRoutes(
-        nextTo,
+        interpolatedNextTo,
         {},
         {
           _buildLocation: true,
@@ -1476,8 +1476,9 @@ export class RouterCore<
           })
       }
 
-      // Interpolate the next to into the next pathname
       const nextPathname = interpolatePath({
+        // Use the original template path for interpolation
+        // This preserves the original parameter syntax including optional parameters
         path: nextTo,
         params: nextParams ?? {},
         leaveWildcards: false,
@@ -1782,21 +1783,32 @@ export class RouterCore<
         state: true,
         _includeValidateSearch: true,
       })
-      if (trimPath(this.latestLocation.href) !== trimPath(nextLocation.href)) {
+
+      // Normalize URLs for comparison to handle encoding differences
+      // Browser history always stores encoded URLs while buildLocation may produce decoded URLs
+      const normalizeUrl = (url: string) => {
+        try {
+          return encodeURI(decodeURI(url))
+        } catch {
+          return url
+        }
+      }
+
+      if (
+        trimPath(normalizeUrl(this.latestLocation.href)) !==
+        trimPath(normalizeUrl(nextLocation.href))
+      ) {
         throw redirect({ href: nextLocation.href })
       }
     }
     // Match the routes
-    let pendingMatches = this.matchRoutes(this.latestLocation)
-    // in SPA mode we only want to load the root route
-    if (this.isShell) {
-      pendingMatches = pendingMatches.slice(0, 1)
-    }
+    const pendingMatches = this.matchRoutes(this.latestLocation)
 
     // Ingest the new matches
     this.__store.setState((s) => ({
       ...s,
       status: 'pending',
+      statusCode: 200,
       isLoading: true,
       location: this.latestLocation,
       pendingMatches,
@@ -2064,40 +2076,6 @@ export class RouterCore<
     const triggerOnReady = async () => {
       if (!rendered) {
         rendered = true
-
-        // create a minPendingPromise for matches that have forcePending set to true
-        // usually the minPendingPromise is created in the Match component if a pending match is rendered
-        // however, this might be too late if the match synchronously resolves
-        if (!allPreload && !this.isServer) {
-          matches.forEach((match) => {
-            const {
-              id: matchId,
-              routeId,
-              _forcePending,
-              minPendingPromise,
-            } = match
-            const route = this.looseRoutesById[routeId]!
-            const pendingMinMs =
-              route.options.pendingMinMs ?? this.options.defaultPendingMinMs
-            if (_forcePending && pendingMinMs && !minPendingPromise) {
-              const minPendingPromise = createControlledPromise<void>()
-              updateMatch(matchId, (prev) => ({
-                ...prev,
-                minPendingPromise,
-              }))
-
-              setTimeout(() => {
-                minPendingPromise.resolve()
-                // We've handled the minPendingPromise, so we can delete it
-                updateMatch(matchId, (prev) => ({
-                  ...prev,
-                  minPendingPromise: undefined,
-                }))
-              }, pendingMinMs)
-            }
-          })
-        }
-
         await onReady?.()
       }
     }
@@ -2234,50 +2212,55 @@ export class RouterCore<
 
               // on the server, determine whether SSR the current match or not
               if (this.isServer) {
-                const defaultSsr = this.options.defaultSsr ?? true
                 let ssr: boolean | 'data-only'
-                if (parentMatch?.ssr === false) {
-                  ssr = false
+                // in SPA mode, only SSR the root route
+                if (this.isShell()) {
+                  ssr = matchId === rootRouteId
                 } else {
-                  let tempSsr: boolean | 'data-only'
-                  if (route.options.ssr === undefined) {
-                    tempSsr = defaultSsr
-                  } else if (typeof route.options.ssr === 'function') {
-                    const { search, params } = this.getMatch(matchId)!
+                  const defaultSsr = this.options.defaultSsr ?? true
+                  if (parentMatch?.ssr === false) {
+                    ssr = false
+                  } else {
+                    let tempSsr: boolean | 'data-only'
+                    if (route.options.ssr === undefined) {
+                      tempSsr = defaultSsr
+                    } else if (typeof route.options.ssr === 'function') {
+                      const { search, params } = this.getMatch(matchId)!
 
-                    function makeMaybe(value: any, error: any) {
-                      if (error) {
-                        return { status: 'error' as const, error }
+                      function makeMaybe(value: any, error: any) {
+                        if (error) {
+                          return { status: 'error' as const, error }
+                        }
+                        return { status: 'success' as const, value }
                       }
-                      return { status: 'success' as const, value }
+
+                      const ssrFnContext: SsrContextOptions<any, any, any> = {
+                        search: makeMaybe(search, existingMatch.searchError),
+                        params: makeMaybe(params, existingMatch.paramsError),
+                        location,
+                        matches: matches.map((match) => ({
+                          index: match.index,
+                          pathname: match.pathname,
+                          fullPath: match.fullPath,
+                          staticData: match.staticData,
+                          id: match.id,
+                          routeId: match.routeId,
+                          search: makeMaybe(match.search, match.searchError),
+                          params: makeMaybe(match.params, match.paramsError),
+                          ssr: match.ssr,
+                        })),
+                      }
+                      tempSsr =
+                        (await route.options.ssr(ssrFnContext)) ?? defaultSsr
+                    } else {
+                      tempSsr = route.options.ssr
                     }
 
-                    const ssrFnContext: SsrContextOptions<any, any, any> = {
-                      search: makeMaybe(search, existingMatch.searchError),
-                      params: makeMaybe(params, existingMatch.paramsError),
-                      location,
-                      matches: matches.map((match) => ({
-                        index: match.index,
-                        pathname: match.pathname,
-                        fullPath: match.fullPath,
-                        staticData: match.staticData,
-                        id: match.id,
-                        routeId: match.routeId,
-                        search: makeMaybe(match.search, match.searchError),
-                        params: makeMaybe(match.params, match.paramsError),
-                        ssr: match.ssr,
-                      })),
+                    if (tempSsr === true && parentMatch?.ssr === 'data-only') {
+                      ssr = 'data-only'
+                    } else {
+                      ssr = tempSsr
                     }
-                    tempSsr =
-                      (await route.options.ssr(ssrFnContext)) ?? defaultSsr
-                  } else {
-                    tempSsr = route.options.ssr
-                  }
-
-                  if (tempSsr === true && parentMatch?.ssr === 'data-only') {
-                    ssr = 'data-only'
-                  } else {
-                    ssr = tempSsr
                   }
                 }
                 updateMatch(matchId, (prev) => ({
@@ -2505,8 +2488,6 @@ export class RouterCore<
                         ...head,
                       }))
                       return this.getMatch(matchId)!
-                    } else {
-                      await potentialPendingMinPromise()
                     }
                   }
                   // there is a loaderPromise, so we are in the middle of a load
@@ -2678,18 +2659,13 @@ export class RouterCore<
                     }
 
                     // If the route is successful and still fresh, just resolve
-                    const { status, invalid, _forcePending } =
-                      this.getMatch(matchId)!
+                    const { status, invalid } = this.getMatch(matchId)!
                     loaderShouldRunAsync =
                       status === 'success' &&
                       (invalid || (shouldReload ?? age > staleAge))
                     if (preload && route.options.preload === false) {
                       // Do nothing
-                    } else if (
-                      loaderShouldRunAsync &&
-                      !sync &&
-                      !_forcePending
-                    ) {
+                    } else if (loaderShouldRunAsync && !sync) {
                       loaderIsRunningAsync = true
                       ;(async () => {
                         try {
@@ -2714,9 +2690,6 @@ export class RouterCore<
                     ) {
                       await runLoader()
                     } else {
-                      if (_forcePending) {
-                        await potentialPendingMinPromise()
-                      }
                       // if the loader did not run, still update head.
                       // reason: parent's beforeLoad may have changed the route context
                       // and only now do we know the route context (and that the loader would not run)
@@ -2747,7 +2720,6 @@ export class RouterCore<
                       invalid: false,
                       pendingTimeout: undefined,
                       _dehydrated: undefined,
-                      _forcePending: undefined,
                     }
                   })
                   return this.getMatch(matchId)!
@@ -3101,6 +3073,12 @@ export class SearchParamError extends Error {}
 
 export class PathParamError extends Error {}
 
+const normalize = (str: string) =>
+  str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
+function comparePaths(a: string, b: string) {
+  return normalize(a) === normalize(b)
+}
+
 // A function that takes an import() argument which is a function and returns a new function that will
 // proxy arguments from the caller to the imported function, retaining all type
 // information along the way
@@ -3195,6 +3173,27 @@ export type ProcessRouteTreeResult<TRouteLike extends RouteLike> = {
   routesByPath: Record<string, TRouteLike>
   flatRoutes: Array<TRouteLike>
 }
+
+const REQUIRED_PARAM_BASE_SCORE = 0.5
+const OPTIONAL_PARAM_BASE_SCORE = 0.4
+const WILDCARD_PARAM_BASE_SCORE = 0.25
+
+function handleParam(segment: Segment, baseScore: number) {
+  if (segment.prefixSegment && segment.suffixSegment) {
+    return baseScore + 0.05
+  }
+
+  if (segment.prefixSegment) {
+    return baseScore + 0.02
+  }
+
+  if (segment.suffixSegment) {
+    return baseScore + 0.01
+  }
+
+  return baseScore
+}
+
 export function processRouteTree<TRouteLike extends RouteLike>({
   routeTree,
   initRoute,
@@ -3241,9 +3240,11 @@ export function processRouteTree<TRouteLike extends RouteLike>({
   const scoredRoutes: Array<{
     child: TRouteLike
     trimmed: string
-    parsed: ReturnType<typeof parsePathname>
+    parsed: ReadonlyArray<Segment>
     index: number
     scores: Array<number>
+    hasStaticAfter: boolean
+    optionalParamCount: number
   }> = []
 
   const routes: Array<TRouteLike> = Object.values(routesById)
@@ -3254,81 +3255,94 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     }
 
     const trimmed = trimPathLeft(d.fullPath)
-    const parsed = parsePathname(trimmed)
+    let parsed = parsePathname(trimmed)
 
     // Removes the leading slash if it is not the only remaining segment
-    while (parsed.length > 1 && parsed[0]?.value === '/') {
-      parsed.shift()
+    let skip = 0
+    while (parsed.length > skip + 1 && parsed[skip]?.value === '/') {
+      skip++
     }
+    if (skip > 0) parsed = parsed.slice(skip)
 
-    const scores = parsed.map((segment) => {
+    let optionalParamCount = 0
+    let hasStaticAfter = false
+    const scores = parsed.map((segment, index) => {
       if (segment.value === '/') {
         return 0.75
       }
 
-      if (
-        segment.type === 'param' &&
-        segment.prefixSegment &&
-        segment.suffixSegment
-      ) {
-        return 0.55
+      let baseScore: number | undefined = undefined
+      if (segment.type === SEGMENT_TYPE_PARAM) {
+        baseScore = REQUIRED_PARAM_BASE_SCORE
+      } else if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
+        baseScore = OPTIONAL_PARAM_BASE_SCORE
+        optionalParamCount++
+      } else if (segment.type === SEGMENT_TYPE_WILDCARD) {
+        baseScore = WILDCARD_PARAM_BASE_SCORE
       }
 
-      if (segment.type === 'param' && segment.prefixSegment) {
-        return 0.52
-      }
+      if (baseScore) {
+        // if there is any static segment (that is not an index) after a required / optional param,
+        // we will boost this param so it ranks higher than a required/optional param without a static segment after it
+        // JUST FOR SORTING, NOT FOR MATCHING
+        for (let i = index + 1; i < parsed.length; i++) {
+          const nextSegment = parsed[i]!
+          if (
+            nextSegment.type === SEGMENT_TYPE_PATHNAME &&
+            nextSegment.value !== '/'
+          ) {
+            hasStaticAfter = true
+            return handleParam(segment, baseScore + 0.2)
+          }
+        }
 
-      if (segment.type === 'param' && segment.suffixSegment) {
-        return 0.51
-      }
-
-      if (segment.type === 'param') {
-        return 0.5
-      }
-
-      if (
-        segment.type === 'wildcard' &&
-        segment.prefixSegment &&
-        segment.suffixSegment
-      ) {
-        return 0.3
-      }
-
-      if (segment.type === 'wildcard' && segment.prefixSegment) {
-        return 0.27
-      }
-
-      if (segment.type === 'wildcard' && segment.suffixSegment) {
-        return 0.26
-      }
-
-      if (segment.type === 'wildcard') {
-        return 0.25
+        return handleParam(segment, baseScore)
       }
 
       return 1
     })
 
-    scoredRoutes.push({ child: d, trimmed, parsed, index: i, scores })
+    scoredRoutes.push({
+      child: d,
+      trimmed,
+      parsed,
+      index: i,
+      scores,
+      optionalParamCount,
+      hasStaticAfter,
+    })
   })
 
   const flatRoutes = scoredRoutes
     .sort((a, b) => {
       const minLength = Math.min(a.scores.length, b.scores.length)
 
-      // Sort by min available score
+      // Sort by segment-by-segment score comparison ONLY for the common prefix
       for (let i = 0; i < minLength; i++) {
         if (a.scores[i] !== b.scores[i]) {
           return b.scores[i]! - a.scores[i]!
         }
       }
 
-      // Sort by length of score
+      // If all common segments have equal scores, then consider length and specificity
       if (a.scores.length !== b.scores.length) {
+        // If different number of optional parameters, fewer optional parameters wins (more specific)
+        // only if both or none of the routes has static segments after the params
+        if (a.optionalParamCount !== b.optionalParamCount) {
+          if (a.hasStaticAfter === b.hasStaticAfter) {
+            return a.optionalParamCount - b.optionalParamCount
+          } else if (a.hasStaticAfter && !b.hasStaticAfter) {
+            return -1
+          } else if (!a.hasStaticAfter && b.hasStaticAfter) {
+            return 1
+          }
+        }
+
+        // If same number of optional parameters, longer path wins (for static segments)
         return b.scores.length - a.scores.length
       }
 
-      // Sort by min available parsed value
+      // Sort by min available parsed value for alphabetical ordering
       for (let i = 0; i < minLength; i++) {
         if (a.parsed[i]!.value !== b.parsed[i]!.value) {
           return a.parsed[i]!.value > b.parsed[i]!.value ? 1 : -1
@@ -3369,6 +3383,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
     const result = matchPathname(basepath, trimmedPath, {
       to: route.fullPath,
       caseSensitive: route.options?.caseSensitive ?? caseSensitive,
+      // we need fuzzy matching for `notFoundMode: 'fuzzy'`
       fuzzy: true,
     })
     return result
@@ -3379,16 +3394,34 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   if (foundRoute) {
     routeParams = getMatchedParams(foundRoute)!
   } else {
-    foundRoute = flatRoutes.find((route) => {
+    // iterate over flatRoutes to find the best match
+    // if we find a fuzzy matching route, keep looking for a perfect fit
+    let fuzzyMatch:
+      | { foundRoute: TRouteLike; routeParams: Record<string, string> }
+      | undefined = undefined
+    for (const route of flatRoutes) {
       const matchedParams = getMatchedParams(route)
 
       if (matchedParams) {
-        routeParams = matchedParams
-        return true
+        if (
+          route.path !== '/' &&
+          (matchedParams as Record<string, string>)['**']
+        ) {
+          if (!fuzzyMatch) {
+            fuzzyMatch = { foundRoute: route, routeParams: matchedParams }
+          }
+        } else {
+          foundRoute = route
+          routeParams = matchedParams
+          break
+        }
       }
-
-      return false
-    })
+    }
+    // did not find a perfect fit, so take the fuzzy matching route if it exists
+    if (!foundRoute && fuzzyMatch) {
+      foundRoute = fuzzyMatch.foundRoute
+      routeParams = fuzzyMatch.routeParams
+    }
   }
 
   let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!
@@ -3397,8 +3430,9 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 
   while (routeCursor.parentRoute) {
     routeCursor = routeCursor.parentRoute as TRouteLike
-    matchedRoutes.unshift(routeCursor)
+    matchedRoutes.push(routeCursor)
   }
+  matchedRoutes.reverse()
 
   return { matchedRoutes, routeParams, foundRoute }
 }

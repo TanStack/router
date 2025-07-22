@@ -15,7 +15,10 @@ export const createServerRpc: CreateRpcFn = (
     '🚨splitImportFn required for the server functions server runtime, but was not provided.',
   )
 
-  const url = `/${sanitizeBase(serverBase)}/${functionId}`
+  const sanitizedAppBase = sanitizeBase(process.env.TSS_APP_BASE || '/')
+  const sanitizedServerBase = sanitizeBase(serverBase)
+
+  const url = `${sanitizedAppBase ? `/${sanitizedAppBase}` : ``}/${sanitizedServerBase}/${functionId}`
 
   return Object.assign(splitImportFn, {
     url,

@@ -87,14 +87,18 @@ export function attachRouterServerSsrUtils(
     },
     dehydrate: async () => {
       invariant(!_dehydrated, 'router is already dehydrated!')
-      const matches = router.state.matches.map(dehydrateMatch)
+      let matchesToDehydrate = router.state.matches
+      if (router.isShell()) {
+        // In SPA mode we only want to dehydrate the root match
+        matchesToDehydrate = matchesToDehydrate.slice(0, 1)
+      }
+      const matches = matchesToDehydrate.map(dehydrateMatch)
 
       const dehydratedRouter: DehydratedRouter = {
         manifest: router.ssr!.manifest,
         matches,
       }
-      const lastMatchId =
-        router.state.matches[router.state.matches.length - 1]?.id
+      const lastMatchId = matchesToDehydrate[matchesToDehydrate.length - 1]?.id
       if (lastMatchId) {
         dehydratedRouter.lastMatchId = lastMatchId
       }

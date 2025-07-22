@@ -126,23 +126,17 @@ export function TanStackStartVitePluginCore(
           },
           resolve: {
             noExternal: [
-              '@tanstack/start-client',
-              '@tanstack/start-client-core',
-              '@tanstack/start-server',
-              '@tanstack/start-server-core',
-              '@tanstack/start-server-functions-fetcher',
-              '@tanstack/start-server-functions-client',
-              '@tanstack/start-server-functions-server',
-              '@tanstack/start-router-manifest',
-              '@tanstack/start-config',
-              '@tanstack/server-functions-plugin',
-              'nitropack',
-              '@tanstack/**start**',
+              '@tanstack/start**',
+              `@tanstack/${opts.framework}-start**`,
               ...Object.values(VIRTUAL_MODULES),
             ],
+            dedupe: [`@tanstack/${opts.framework}-start`],
           },
           optimizeDeps: {
-            exclude: [...Object.values(VIRTUAL_MODULES)],
+            exclude: [
+              ...Object.values(VIRTUAL_MODULES),
+              `@tanstack/${opts.framework}-start`,
+            ],
           },
           /* prettier-ignore */
           define: {
@@ -152,7 +146,8 @@ export function TanStackStartVitePluginCore(
 
             ...defineReplaceEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
             ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
-            ...defineReplaceEnv('TSS_APP_BASE', viteAppBase)
+            ...defineReplaceEnv('TSS_APP_BASE', viteAppBase),
+            ...defineReplaceEnv('TSS_SPA_MODE', startConfig.spa?.enabled ? 'true' : 'false'),
           },
         }
       },
@@ -188,7 +183,7 @@ export function TanStackStartVitePluginCore(
     {
       name: 'tanstack-start:core:capture-client-bundle',
       applyToEnvironment(e) {
-        return e.config.consumer === 'client'
+        return e.name === VITE_ENVIRONMENT_NAMES.client
       },
       enforce: 'post',
       generateBundle(_options, bundle) {

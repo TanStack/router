@@ -3,8 +3,6 @@ id: server-routes
 title: Server Routes
 ---
 
-// TODO: Add redirect from api-routes to server-routes
-
 Server routes are a powerful feature of TanStack Start that allow you to create server-side endpoints in your application and are useful for handling raw HTTP requests, form submissions, user authentication, and much more.
 
 Server routes can be defined in your `./src/routes` directory of your project **right alongside your TanStack Router routes** and are automatically handled by the TanStack Start server.
@@ -86,7 +84,7 @@ Each route can only have a single handler file associated with it. So, if you ha
 
 ## Escaped Matching
 
-Just as with normal routes, server routes can match on escaped characters. For example, a file named `routes/users[.]json.ts` will create an API route at `/users[.]json`.
+Just as with normal routes, server routes can match on escaped characters. For example, a file named `routes/users[.]json.ts` will create an API route at `/users.json`.
 
 ## Pathless Layout Routes and Break-out Routes
 

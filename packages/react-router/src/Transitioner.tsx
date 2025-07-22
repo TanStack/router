@@ -11,14 +11,14 @@ import { useRouterState } from './useRouterState'
 export function Transitioner() {
   const router = useRouter()
   const mountLoadForRouter = React.useRef({ router, mounted: false })
-  const isLoading = useRouterState({
-    select: ({ isLoading }) => isLoading,
-  })
 
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
-  const hasPendingMatches = useRouterState({
-    select: (s) => s.matches.some((d) => d.status === 'pending'),
+  const { hasPendingMatches, isLoading } = useRouterState({
+    select: (s) => ({
+      isLoading: s.isLoading,
+      hasPendingMatches: s.matches.some((d) => d.status === 'pending'),
+    }),
     structuralSharing: true,
   })
 
@@ -30,14 +30,12 @@ export function Transitioner() {
   const isPagePending = isLoading || hasPendingMatches
   const previousIsPagePending = usePrevious(isPagePending)
 
-  if (!router.isServer) {
-    router.startTransition = (fn: () => void) => {
-      setIsTransitioning(true)
-      React.startTransition(() => {
-        fn()
-        setIsTransitioning(false)
-      })
-    }
+  router.startTransition = (fn: () => void) => {
+    setIsTransitioning(true)
+    React.startTransition(() => {
+      fn()
+      setIsTransitioning(false)
+    })
   }
 
   // Subscribe to location changes
