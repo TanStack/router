@@ -1,7 +1,7 @@
 import { parseAst } from '@tanstack/router-utils'
 import { parse, print, types, visit } from 'recast'
 import { SourceMapConsumer } from 'source-map'
-import { mergeImportDeclarations } from '../utils'
+import { matchExportInNode, mergeImportDeclarations } from '../utils'
 import type { ImportDeclaration } from '../types'
 import type { RawSourceMap } from 'source-map'
 import type {
@@ -76,49 +76,16 @@ export async function transform({
   }
 
   const program: types.namedTypes.Program = ast.program
-  // first pass: find registered exports
+
+  // Use the shared matching logic with minimal changes to existing structure
+  const exportNames = Array.from(registeredExports.keys())
   for (const n of program.body) {
-    if (registeredExports.size > 0 && n.type === 'ExportNamedDeclaration') {
-      // direct export of a variable declaration, e.g. `export const Route = createFileRoute('/path')`
-      if (n.declaration?.type === 'VariableDeclaration') {
-        const decl = n.declaration.declarations[0]
-        if (
-          decl &&
-          decl.type === 'VariableDeclarator' &&
-          decl.id.type === 'Identifier'
-        ) {
-          const plugin = registeredExports.get(decl.id.name)
-          if (plugin) {
-            onExportFound(decl, decl.id.name, plugin)
-          }
-        }
-      }
-      // this is an export without a declaration, e.g. `export { Route }`
-      else if (n.declaration === null && n.specifiers) {
-        for (const spec of n.specifiers) {
-          if (typeof spec.exported.name === 'string') {
-            const plugin = registeredExports.get(spec.exported.name)
-            if (plugin) {
-              const variableName = spec.local?.name || spec.exported.name
-              // find the matching variable declaration by iterating over the top-level declarations
-              for (const decl of program.body) {
-                if (
-                  decl.type === 'VariableDeclaration' &&
-                  decl.declarations[0]
-                ) {
-                  const variable = decl.declarations[0]
-                  if (
-                    variable.type === 'VariableDeclarator' &&
-                    variable.id.type === 'Identifier' &&
-                    variable.id.name === variableName
-                  ) {
-                    onExportFound(variable, spec.exported.name, plugin)
-                    break
-                  }
-                }
-              }
-            }
-          }
+    if (registeredExports.size > 0) {
+      const match = matchExportInNode(n, exportNames, program)
+      if (match) {
+        const plugin = registeredExports.get(match.exportName)
+        if (plugin) {
+          onExportFound(match.decl, match.exportName, plugin)
         }
       }
     }

@@ -1,7 +1,10 @@
 import * as fsp from 'node:fs/promises'
 import path from 'node:path'
 import * as prettier from 'prettier'
+import { parseAst } from '@tanstack/router-utils'
+import { parse } from 'recast'
 import { rootPathId } from './filesystem/physical/rootPathId'
+import type { types } from 'recast'
 import type { Config } from './config'
 import type { ImportDeclaration, RouteNode } from './types'
 
@@ -630,4 +633,103 @@ export function buildFileRoutesByPathInterface(opts: {
       .join('\n')}
   }
 }`
+}
+
+/**
+ * Helper function to find a variable declaration by name in the program body
+ */
+function findVariableDeclaration(
+  program: types.namedTypes.Program,
+  variableName: string,
+): types.namedTypes.VariableDeclarator | null {
+  for (const decl of program.body) {
+    if (decl.type === 'VariableDeclaration' && decl.declarations[0]) {
+      const variable = decl.declarations[0]
+      if (
+        variable.type === 'VariableDeclarator' &&
+        variable.id.type === 'Identifier' &&
+        variable.id.name === variableName
+      ) {
+        return variable
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Core matching logic: checks if a single AST node contains an export we're looking for.
+ * This is the shared logic used by both transform.ts and generator.ts.
+ */
+export function matchExportInNode(
+  node: any,
+  exportNames: Array<string>,
+  program: types.namedTypes.Program,
+): { exportName: string; decl: types.namedTypes.VariableDeclarator } | null {
+  if (node.type === 'ExportNamedDeclaration') {
+    // direct export of a variable declaration, e.g. `export const Route = createFileRoute('/path')`
+    if (node.declaration?.type === 'VariableDeclaration') {
+      const decl = node.declaration.declarations[0]
+      if (
+        decl &&
+        decl.type === 'VariableDeclarator' &&
+        decl.id.type === 'Identifier' &&
+        exportNames.includes(decl.id.name)
+      ) {
+        return { exportName: decl.id.name, decl }
+      }
+    }
+    // this is an export without a declaration, e.g. `export { Route }`
+    else if (node.declaration === null && node.specifiers) {
+      for (const spec of node.specifiers) {
+        if (
+          typeof spec.exported.name === 'string' &&
+          exportNames.includes(spec.exported.name)
+        ) {
+          const variableName = spec.local?.name || spec.exported.name
+          const decl = findVariableDeclaration(program, variableName)
+          if (decl) {
+            return { exportName: spec.exported.name, decl }
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Simple function for generator.ts: parses source and returns export names.
+ */
+export function detectExportsFromSource(
+  source: string,
+  exportNames: Array<string>,
+): Array<string> {
+  try {
+    const ast = parse(source, {
+      sourceFileName: 'detect-exports.ts',
+      parser: {
+        parse(code: string) {
+          return parseAst({
+            code,
+            tokens: true,
+          })
+        },
+      },
+    })
+
+    const foundExports: Array<string> = []
+    for (const node of ast.program.body) {
+      const match = matchExportInNode(node, exportNames, ast.program)
+      if (match) {
+        foundExports.push(match.exportName)
+      }
+    }
+    return foundExports
+  } catch (error) {
+    // Fallback to string matching if AST parsing fails
+    return exportNames.filter((exportName) =>
+      source.includes(`export const ${exportName}`),
+    )
+  }
 }
