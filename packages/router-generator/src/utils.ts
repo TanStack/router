@@ -635,9 +635,6 @@ export function buildFileRoutesByPathInterface(opts: {
 }`
 }
 
-/**
- * Helper function to find a variable declaration by name in the program body
- */
 function findVariableDeclaration(
   program: types.namedTypes.Program,
   variableName: string,
@@ -657,10 +654,6 @@ function findVariableDeclaration(
   return null
 }
 
-/**
- * Core matching logic: checks if a single AST node contains an export we're looking for.
- * This is the shared logic used by both transform.ts and generator.ts.
- */
 export function matchExportInNode(
   node: any,
   exportNames: Array<string>,
@@ -698,9 +691,6 @@ export function matchExportInNode(
   return null
 }
 
-/**
- * Simple function for generator.ts: parses source and returns export names.
- */
 export function detectExportsFromSource(
   source: string,
   exportNames: Array<string>,
@@ -727,7 +717,6 @@ export function detectExportsFromSource(
     }
     return foundExports
   } catch (error) {
-    // Fallback to string matching if AST parsing fails
     return exportNames.filter((exportName) =>
       source.includes(`export const ${exportName}`),
     )
