@@ -763,7 +763,6 @@ export class RouterCore<
   viewTransitionPromise?: ControlledPromise<true>
   isScrollRestoring = false
   isScrollRestorationSetup = false
-  subscribedToHistory = false
   // Must build in constructor
   __store!: Store<RouterState<TRouteTree>>
   options!: PickAsRequired<
