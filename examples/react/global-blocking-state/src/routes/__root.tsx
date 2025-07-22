@@ -3,21 +3,16 @@ import {
   Link,
   Outlet,
   createRootRoute,
-  useRouterState,
+  useNavigationBlockingState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-
-export const useBlocking = () =>
-  useRouterState({
-    select: (state) => state.blocker,
-  })
 
 export const Route = createRootRoute({
   component: RootComponent,
 })
 
 function RootComponent() {
-  const { proceed, reset, status, proceedAll } = useBlocking()
+  const { proceed, reset, status, proceedAll } = useNavigationBlockingState()
 
   return (
     <>

@@ -413,19 +413,6 @@ export interface RouterState<
   in out TRouteMatch = MakeRouteMatchUnion,
 > {
   status: 'pending' | 'idle'
-  blocker:
-    | {
-        status: 'idle'
-        reset: () => void
-        proceed: () => void
-        proceedAll: () => void
-      }
-    | {
-        status: 'blocked'
-        reset: () => void
-        proceed: () => void
-        proceedAll: () => void
-      }
   loadedAt: number
   isLoading: boolean
   isTransitioning: boolean
@@ -924,37 +911,6 @@ export class RouterCore<
       this.isViewTransitionTypesSupported = window.CSS.supports(
         'selector(:active-view-transition-type(a)',
       )
-    }
-
-    if (!this.subscribedToHistory) {
-      this.subscribedToHistory = true
-      this.history.subscribe(({ action }) => {
-        if (action.type === 'BLOCK') {
-          this.__store.setState((prev) => ({
-            ...prev,
-            blocker: {
-              status: 'blocked',
-              proceed: action.proceed,
-              reset: action.reset,
-              proceedAll: action.proceedAll,
-            },
-          }))
-
-          return
-        }
-        if (action.type === 'DISMISS_BLOCK') {
-          this.__store.setState((prev) => ({
-            ...prev,
-            blocker: {
-              status: 'idle',
-              reset: () => {},
-              proceed: () => {},
-              proceedAll: () => {},
-            },
-          }))
-          return
-        }
-      })
     }
   }
 
@@ -3146,12 +3102,6 @@ export function getInitialRouterState(
     isLoading: false,
     isTransitioning: false,
     status: 'idle',
-    blocker: {
-      status: 'idle',
-      proceed: () => {},
-      proceedAll: () => {},
-      reset: () => {},
-    },
     resolvedLocation: undefined,
     location,
     matches: [],
