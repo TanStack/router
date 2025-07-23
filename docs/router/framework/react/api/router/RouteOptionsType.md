@@ -350,7 +350,7 @@ type head = (ctx: {
 - Type:
 
 ```tsx
-types scripts = (ctx: {
+type scripts = (ctx: {
   matches: Array<RouteMatch>
   match: RouteMatch
   params: TAllParams
