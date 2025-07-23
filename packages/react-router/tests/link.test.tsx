@@ -4157,15 +4157,21 @@ describe('Link', () => {
 
   test('Router.preload="viewport", should trigger the IntersectionObserver\'s observe and disconnect methods', async () => {
     const rootRoute = createRootRoute()
+    const RouteComponent = () => {
+      const [count, setCount] = React.useState(0)
+      return (
+        <>
+          <h1>Index Heading</h1>
+          <output>{count}</output>
+          <button onClick={() => setCount((c) => c + 1)}>Render</button>
+          <Link to="/">Index Link</Link>
+        </>
+      )
+    }
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => (
-        <>
-          <h1>Index Heading</h1>
-          <Link to="/">Index Link</Link>
-        </>
-      ),
+      component: RouteComponent,
     })
 
     const router = createRouter({
@@ -4184,6 +4190,17 @@ describe('Link', () => {
 
     expect(ioDisconnectMock).toBeCalled()
     expect(ioDisconnectMock).toBeCalledTimes(1) // since React.StrictMode is enabled it should have disconnected
+
+    const output = screen.getByRole('status')
+    expect(output).toHaveTextContent('0')
+
+    const button = screen.getByRole('button', { name: 'Render' })
+    fireEvent.click(button)
+    await waitFor(() => {
+      expect(output).toHaveTextContent('1')
+    })
+    expect(ioObserveMock).toBeCalledTimes(2) // it should not observe again
+    expect(ioDisconnectMock).toBeCalledTimes(1) // it should not disconnect again
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {
