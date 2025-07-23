@@ -11,8 +11,8 @@ interface RouteMatch {
   routeId: string
   pathname: string
   params: Route['allParams']
-  status: 'pending' | 'success' | 'error'
-  isFetching: boolean
+  status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
+  isFetching: false | 'beforeLoad' | 'loader'
   showPending: boolean
   error: unknown
   paramsError: unknown
@@ -25,5 +25,6 @@ interface RouteMatch {
   fetchedAt: number
   abortController: AbortController
   cause: 'enter' | 'stay'
+  ssr?: boolean | 'data-only'
 }
 ```
