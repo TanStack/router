@@ -49,7 +49,7 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [React Quer
   <img alt="Sentry" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40"
 </a></div><br />
 <div><a href="https://speakeasy.com/?utm_source=tanstack&utm_campaign=tanstack">
-  <img alt="Speakeasy" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/speakeasy.svg" height="40"
+  <img alt="Speakeasy" src="https://tanstack.com/assets/speakeasy-light-UpY7QmwQ.svg" height="40"
 </a></div><br />
 <div><a href="https://nozzle.io/?utm_source=tanstack&utm_campaign=tanstack">
   <img alt="Nozzle.io" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/nozzle.svg" height="40"
