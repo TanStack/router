@@ -3,7 +3,7 @@ import { createLRUCache } from '../src/lru-cache'
 
 describe('LRU Cache', () => {
   it('evicts oldest set', () => {
-    const cache = createLRUCache<number>(3)
+    const cache = createLRUCache<string, number>(3)
     cache.set('a', 1)
     cache.set('b', 2)
     cache.set('c', 3)
@@ -12,7 +12,7 @@ describe('LRU Cache', () => {
     expect(cache.get('b')).toBe(2)
   })
   it('evicts oldest used', () => {
-    const cache = createLRUCache<number>(3)
+    const cache = createLRUCache<string, number>(3)
     cache.set('a', 1)
     cache.set('b', 2)
     cache.set('c', 3)
