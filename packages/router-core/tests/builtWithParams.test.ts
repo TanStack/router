@@ -115,10 +115,10 @@ const routeTree = createRouteTree([
 
 const result = processRouteTree({ routeTree })
 
-function originalMatcher(from: string): readonly [string, Record<string, string>] | undefined {
+function originalMatcher(from: string, fuzzy?: boolean): readonly [string, Record<string, string>] | undefined {
   let match
   for (const route of result.flatRoutes) {
-    const result = matchPathname('/', from, { to: route.fullPath })
+    const result = matchPathname('/', from, { to: route.fullPath, fuzzy })
     if (result) {
       match = [route.fullPath, result] as const
       break
@@ -262,14 +262,15 @@ describe('work in progress', () => {
     return [deeperBefore, leaf, deeperAfter] as const
   }
 
-  function outputRoute(route: ParsedRoute) {
+  function outputRoute(route: ParsedRoute, length: number) {
     /**
      * return [
      *   route.path,
      *   { foo: s2, bar: s4 }
      * ]
      */
-    let result = `return ['${route.path}', {`
+    let result = `{`
+    let hasWildcard = false
     for (let i = 0; i < route.segments.length; i++) {
       const segment = route.segments[i]!
       if (segment.type === SEGMENT_TYPE_PARAM) {
@@ -285,6 +286,7 @@ describe('work in progress', () => {
           result += `${name}: ${value}, `
         }
       } else if (segment.type === SEGMENT_TYPE_WILDCARD) {
+        hasWildcard = true
         const value = `s.slice(${i}).join('/')`
         if (segment.prefixSegment && segment.suffixSegment) {
           result += `_splat: ${value}.slice(${segment.prefixSegment.length}, -${segment.suffixSegment.length}), `
@@ -302,8 +304,10 @@ describe('work in progress', () => {
         break
       }
     }
-    result += '}];'
-    return result
+    result += `}`
+    return hasWildcard
+      ? `return ['${route.path}', ${result}];`
+      : `return ['${route.path}', params(${result}, ${length})];`
   }
 
   function recursiveStaticMatch(
@@ -369,9 +373,9 @@ describe('work in progress', () => {
         }
         if (leaf) {
           if (fixedLength) {
-            fn += outputRoute(leaf)
+            fn += outputRoute(leaf, leaf.segments.length)
           } else {
-            fn += `if (l === ${leaf.segments.length}) ${outputRoute(leaf)}`
+            fn += `if (length(${leaf.segments.length})) ${outputRoute(leaf, leaf.segments.length)}`
           }
         }
         if (deeperAfter.length > 0 && !(leaf && fixedLength)) {
@@ -414,7 +418,7 @@ describe('work in progress', () => {
           if (leaf && deeperBefore.length || leaf && deeperAfter.length) {
             throw new Error(`Implementation error: length-based leaf route ${leaf.path} should not have deeper routes, but has ${deeperBefore.length} before and ${deeperAfter.length} after`)
           }
-          fn += `if (l === ${route.segments.length}) {`
+          fn += `if (length(${route.segments.length})) {`
           recursiveStaticMatch(
             candidates,
             depth,
@@ -457,12 +461,12 @@ describe('work in progress', () => {
       // couldn't group at all, just output a single-route match, and let the next iteration handle the rest
       if (wildcardIndex === -1) {
         const conditions = routeSegmentsToConditions(route.segments, depth, route.segments.length - depth - 1)
-        const lCondition = fixedLength ? '' : `l === ${route.segments.length}`
-        fn += `if (${lCondition}${lCondition && conditions ? ' && ' : ''}${conditions}) ${outputRoute(route)}`
+        const lCondition = fixedLength ? '' : `length(${route.segments.length})`
+        fn += `if (${lCondition}${lCondition && conditions ? ' && ' : ''}${conditions}) ${outputRoute(route, route.segments.length)}`
       } else {
         const conditions = routeSegmentsToConditions(route.segments, depth, wildcardIndex - depth)
         const lCondition = fixedLength ? '' : `l >= ${wildcardIndex}`
-        fn += `if (${lCondition}${lCondition && conditions ? ' && ' : ''}${conditions}) ${outputRoute(route)}`
+        fn += `if (${lCondition}${lCondition && conditions ? ' && ' : ''}${conditions}) ${outputRoute(route, route.segments.length)}`
       }
       resolved.add(route)
     }
@@ -470,6 +474,8 @@ describe('work in progress', () => {
 
   let fn = 'const s = parsePathname(from[0] === "/" ? from : "/" + from).map((s) => s.value);'
   fn += '\nconst l = s.length;'
+  fn += '\nconst length = fuzzy ? (n) => l >= n : (n) => l === n;'
+  fn += '\nconst params = fuzzy ? (p, n) => { if (n && l > n) p[\'**\'] = s.slice(n).join(\'/\'); return p } : (p) => p'
 
   const max = parsedRoutes.reduce(
     (max, r) => Math.max(max, r.segments.length),
@@ -546,9 +552,16 @@ describe('work in progress', () => {
         (s) => s.value,
       );
       const l = s.length;
+      const length = fuzzy ? (n) => l >= n : (n) => l === n;
+      const params = fuzzy
+        ? (p, n) => {
+            if (n && l > n) p["**"] = s.slice(n).join("/");
+            return p;
+          }
+        : (p) => p;
       const [, s1, s2, s3, s4, s5, s6, s7] = s;
       if (
-        l === 7 &&
+        length(7) &&
         s1 === "a" &&
         s2 === "b" &&
         s3 === "c" &&
@@ -556,60 +569,64 @@ describe('work in progress', () => {
         s5 === "e" &&
         s6 === "f"
       )
-        return ["/a/b/c/d/e/f", {}];
-      if (l === 5) {
+        return ["/a/b/c/d/e/f", params({}, 7)];
+      if (length(5)) {
         if (s1 === "z" && s2 === "y" && s3 === "x") {
-          if (s4 === "u") return ["/z/y/x/u", {}];
-          if (s4 === "v") return ["/z/y/x/v", {}];
-          if (s4 === "w") return ["/z/y/x/w", {}];
+          if (s4 === "u") return ["/z/y/x/u", params({}, 5)];
+          if (s4 === "v") return ["/z/y/x/v", params({}, 5)];
+          if (s4 === "w") return ["/z/y/x/w", params({}, 5)];
         }
       }
-      if (l === 4) {
+      if (length(4)) {
         if (s1 === "a" && s2 === "profile" && s3 === "settings")
-          return ["/a/profile/settings", {}];
+          return ["/a/profile/settings", params({}, 4)];
         if (s1 === "b" && s2 === "profile" && s3 === "settings")
-          return ["/b/profile/settings", {}];
+          return ["/b/profile/settings", params({}, 4)];
         if (s1 === "users" && s2 === "profile" && s3 === "settings")
-          return ["/users/profile/settings", {}];
-        if (s1 === "z" && s2 === "y" && s3 === "x") return ["/z/y/x", {}];
-        if (s1 === "foo" && s2 === "bar") return ["/foo/bar/$id", { id: s3 }];
+          return ["/users/profile/settings", params({}, 4)];
+        if (s1 === "z" && s2 === "y" && s3 === "x") return ["/z/y/x", params({}, 4)];
+        if (s1 === "foo" && s2 === "bar")
+          return ["/foo/bar/$id", params({ id: s3 }, 4)];
       }
-      if (l === 3) {
-        if (s1 === "a" && s2 === "profile") return ["/a/profile", {}];
-        if (s1 === "b" && s2 === "profile") return ["/b/profile", {}];
-        if (s1 === "beep" && s2 === "boop") return ["/beep/boop", {}];
-        if (s1 === "one" && s2 === "two") return ["/one/two", {}];
-        if (s1 === "users" && s2 === "profile") return ["/users/profile", {}];
+      if (length(3)) {
+        if (s1 === "a" && s2 === "profile") return ["/a/profile", params({}, 3)];
+        if (s1 === "b" && s2 === "profile") return ["/b/profile", params({}, 3)];
+        if (s1 === "beep" && s2 === "boop") return ["/beep/boop", params({}, 3)];
+        if (s1 === "one" && s2 === "two") return ["/one/two", params({}, 3)];
+        if (s1 === "users" && s2 === "profile")
+          return ["/users/profile", params({}, 3)];
       }
-      if (l === 4) {
+      if (length(4)) {
         if (s1 === "foo") {
-          if (s3 === "bar") return ["/foo/$id/bar", { id: s2 }];
-          if (s3 === "qux") return ["/foo/{-$bar}/qux", { bar: s2 }];
+          if (s3 === "bar") return ["/foo/$id/bar", params({ id: s2 }, 4)];
+          if (s3 === "qux") return ["/foo/{-$bar}/qux", params({ bar: s2 }, 4)];
         }
       }
-      if (l === 3) {
-        if (s1 === "foo" && s2 === "qux") return ["/foo/{-$bar}/qux", {}];
+      if (length(3)) {
+        if (s1 === "foo" && s2 === "qux") return ["/foo/{-$bar}/qux", params({}, 3)];
         if (s1 === "a" && s2.startsWith("user-"))
-          return ["/a/user-{$id}", { id: s2.slice(5) }];
+          return ["/a/user-{$id}", params({ id: s2.slice(5) }, 3)];
         if (s1 === "api" && s2.startsWith("user-"))
-          return ["/api/user-{$id}", { id: s2.slice(5) }];
+          return ["/api/user-{$id}", params({ id: s2.slice(5) }, 3)];
         if (s1 === "b" && s2.startsWith("user-"))
-          return ["/b/user-{$id}", { id: s2.slice(5) }];
+          return ["/b/user-{$id}", params({ id: s2.slice(5) }, 3)];
       }
-      if (l === 4 && s1 === "foo" && s3 === "/") return ["/foo/$bar/", { bar: s2 }];
-      if (l === 3) {
-        if (s1 === "foo") return ["/foo/$bar/", { bar: s2 }];
-        if (s1 === "a") return ["/a/$id", { id: s2 }];
-        if (s1 === "b") return ["/b/$id", { id: s2 }];
-        if (s1 === "foo") return ["/foo/$bar", { bar: s2 }];
-        if (s1 === "users") return ["/users/$id", { id: s2 }];
-        if (s1 === "a") return ["/a/{-$slug}", { slug: s2 }];
+      if (length(4) && s1 === "foo" && s3 === "/")
+        return ["/foo/$bar/", params({ bar: s2 }, 4)];
+      if (length(3)) {
+        if (s1 === "foo") return ["/foo/$bar/", params({ bar: s2 }, 3)];
+        if (s1 === "a") return ["/a/$id", params({ id: s2 }, 3)];
+        if (s1 === "b") return ["/b/$id", params({ id: s2 }, 3)];
+        if (s1 === "foo") return ["/foo/$bar", params({ bar: s2 }, 3)];
+        if (s1 === "users") return ["/users/$id", params({ id: s2 }, 3)];
+        if (s1 === "a") return ["/a/{-$slug}", params({ slug: s2 }, 3)];
       }
-      if (l === 2 && s1 === "a") return ["/a/{-$slug}", {}];
-      if (l === 3 && s1 === "b") return ["/b/{-$slug}", { slug: s2 }];
-      if (l === 2 && s1 === "b") return ["/b/{-$slug}", {}];
-      if (l === 3 && s1 === "posts") return ["/posts/{-$slug}", { slug: s2 }];
-      if (l === 2 && s1 === "posts") return ["/posts/{-$slug}", {}];
+      if (length(2) && s1 === "a") return ["/a/{-$slug}", params({}, 2)];
+      if (length(3) && s1 === "b") return ["/b/{-$slug}", params({ slug: s2 }, 3)];
+      if (length(2) && s1 === "b") return ["/b/{-$slug}", params({}, 2)];
+      if (length(3) && s1 === "posts")
+        return ["/posts/{-$slug}", params({ slug: s2 }, 3)];
+      if (length(2) && s1 === "posts") return ["/posts/{-$slug}", params({}, 2)];
       if (l >= 2) {
         if (s1 === "cache" && s2.startsWith("temp_") && s[l - 1].endsWith(".log"))
           return [
@@ -651,27 +668,29 @@ describe('work in progress', () => {
             { _splat: s.slice(2).join("/"), "*": s.slice(2).join("/") },
           ];
       }
-      if (l === 2) {
-        if (s1 === "a") return ["/a", {}];
-        if (s1 === "about") return ["/about", {}];
-        if (s1 === "b") return ["/b", {}];
-        if (s1 === "one") return ["/one", {}];
+      if (length(2)) {
+        if (s1 === "a") return ["/a", params({}, 2)];
+        if (s1 === "about") return ["/about", params({}, 2)];
+        if (s1 === "b") return ["/b", params({}, 2)];
+        if (s1 === "one") return ["/one", params({}, 2)];
       }
-      if (l === 1) return ["/", {}];
-      if (l === 4) {
-        if (s2 === "bar" && s3 === "foo") return ["/$id/bar/foo", { id: s1 }];
-        if (s2 === "foo" && s3 === "bar") return ["/$id/foo/bar", { id: s1 }];
+      if (length(1)) return ["/", params({}, 1)];
+      if (length(4)) {
+        if (s2 === "bar" && s3 === "foo")
+          return ["/$id/bar/foo", params({ id: s1 }, 4)];
+        if (s2 === "foo" && s3 === "bar")
+          return ["/$id/foo/bar", params({ id: s1 }, 4)];
       }
       "
     `)
   })
 
-  const buildMatcher = new Function('parsePathname', 'from', fn) as (
+  const buildMatcher = new Function('parsePathname', 'from', 'fuzzy', fn) as (
     parser: typeof parsePathname,
     from: string,
+    fuzzy?: boolean
   ) => readonly [path: string, params: Record<string, string>] | undefined
 
-  // WARN: some of these don't work yet, they're just here to show the differences
   test.each([
     '',
     '/',
@@ -698,6 +717,21 @@ describe('work in progress', () => {
     const buildMatch = buildMatcher(parsePathname, s)
     console.log(
       `matching: ${s}, originalMatch: ${originalMatch?.[0]}, buildMatch: ${buildMatch?.[0]}`,
+    )
+    expect(buildMatch).toEqual(originalMatch)
+  })
+
+  // WARN: some of these don't work yet, they're just here to show the differences
+  test.each([
+    '/users/profile/settings/hello',
+    '/a/b/c/d/e/f/g',
+    '/foo/bar/baz',
+    '/foo/bar/baz/qux',
+  ])('fuzzy matching %s', (s) => {
+    const originalMatch = originalMatcher(s, true)
+    const buildMatch = buildMatcher(parsePathname, s, true)
+    console.log(
+      `fuzzy matching: ${s}, originalMatch: ${originalMatch?.[0]}, buildMatch: ${buildMatch?.[0]} ${JSON.stringify(buildMatch?.[1])}`,
     )
     expect(buildMatch).toEqual(originalMatch)
   })
