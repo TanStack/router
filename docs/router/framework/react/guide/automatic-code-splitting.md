@@ -197,4 +197,4 @@ export default defineConfig({
 })
 ```
 
-We highly discourage splitting the `loader` unless you have a specific use case that requires it. In most cases, keeping the `loader` bundled with the component is the best choice for performance.
+We highly discourage splitting the `loader` unless you have a specific use case that requires it. In most cases, not splitting off the `loader` and keep it in the main bundle is the best choice for performance.
