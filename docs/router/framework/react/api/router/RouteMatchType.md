@@ -8,40 +8,23 @@ The `RouteMatch` type represents a route match in TanStack Router.
 ```tsx
 interface RouteMatch {
   id: string
-  routeId: TRouteId
-  fullPath: TFullPath
-  index: number
+  routeId: string
   pathname: string
-  params: TAllParams
+  params: Route['allParams']
   status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
   isFetching: false | 'beforeLoad' | 'loader'
+  showPending: boolean
   error: unknown
   paramsError: unknown
   searchError: unknown
   updatedAt: number
   loadPromise?: Promise<void>
-  beforeLoadPromise?: Promise<void>
-  loaderPromise?: Promise<void>
-  loaderData?: TLoaderData
-  context: TAllContext
-  search: TFullSearchSchema
-  fetchCount: number
+  loaderData?: Route['loaderData']
+  context: Route['allContext']
+  search: Route['fullSearchSchema']
+  fetchedAt: number
   abortController: AbortController
-  cause: 'preload' | 'enter' | 'stay'
-  loaderDeps: TLoaderDeps
-  preload: boolean
-  invalid: boolean
-  headers?: Record<string, string>
-  globalNotFound?: boolean
-  staticData: StaticDataRouteOption
-  minPendingPromise?: Promise<void>
-  pendingTimeout?: ReturnType<typeof setTimeout>
+  cause: 'enter' | 'stay'
   ssr?: boolean | 'data-only'
-  displayPendingPromise?: Promise<void>
-  scripts?: unknown
-  links?: unknown
-  headScripts?: unknown
-  meta?: unknown
-  styles?: unknown
 }
 ```
