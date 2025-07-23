@@ -319,8 +319,7 @@ describe('work in progress', () => {
     for (let i = 0; i < parsedRoutes.length; i++) {
       const route = parsedRoutes[i]!
       if (resolved.has(route)) continue // already resolved
-      const currentSegment = route.segments[depth]
-      if (!currentSegment) {
+      if (route.segments.length <= depth) {
         throw new Error(
           'Implementation error: this should not happen, depth=' +
           depth +
@@ -330,11 +329,13 @@ describe('work in progress', () => {
 
       // group together all subsequent routes that require the same "next-segment conditions"
       const candidates = [route]
+      const compareIndex = route.segments.length > 1 ? depth || 1 : depth
+      const compare = route.segments[compareIndex]!
       for (let j = i + 1; j < parsedRoutes.length; j++) {
         const nextRoute = parsedRoutes[j]!
         if (resolved.has(nextRoute)) continue // already resolved
-        const routeSegment = nextRoute.segments[depth]
-        if (needsSameSegment(currentSegment, routeSegment)) {
+        const routeSegment = nextRoute.segments[compareIndex]
+        if (needsSameSegment(compare, routeSegment)) {
           candidates.push(nextRoute)
         } else {
           break // no more candidates in this group
@@ -570,8 +571,8 @@ describe('work in progress', () => {
         s6 === "f"
       )
         return ["/a/b/c/d/e/f", params({}, 7)];
-      if (length(5)) {
-        if (s1 === "z" && s2 === "y" && s3 === "x") {
+      if (l > 3 && s1 === "z" && s2 === "y" && s3 === "x") {
+        if (length(5)) {
           if (s4 === "u") return ["/z/y/x/u", params({}, 5)];
           if (s4 === "v") return ["/z/y/x/v", params({}, 5)];
           if (s4 === "w") return ["/z/y/x/w", params({}, 5)];
@@ -596,14 +597,14 @@ describe('work in progress', () => {
         if (s1 === "users" && s2 === "profile")
           return ["/users/profile", params({}, 3)];
       }
-      if (length(4)) {
-        if (s1 === "foo") {
+      if (l > 1 && s1 === "foo") {
+        if (length(4)) {
           if (s3 === "bar") return ["/foo/$id/bar", params({ id: s2 }, 4)];
           if (s3 === "qux") return ["/foo/{-$bar}/qux", params({ bar: s2 }, 4)];
         }
+        if (length(3) && s2 === "qux") return ["/foo/{-$bar}/qux", params({}, 3)];
       }
       if (length(3)) {
-        if (s1 === "foo" && s2 === "qux") return ["/foo/{-$bar}/qux", params({}, 3)];
         if (s1 === "a" && s2.startsWith("user-"))
           return ["/a/user-{$id}", params({ id: s2.slice(5) }, 3)];
         if (s1 === "api" && s2.startsWith("user-"))
@@ -611,10 +612,11 @@ describe('work in progress', () => {
         if (s1 === "b" && s2.startsWith("user-"))
           return ["/b/user-{$id}", params({ id: s2.slice(5) }, 3)];
       }
-      if (length(4) && s1 === "foo" && s3 === "/")
-        return ["/foo/$bar/", params({ bar: s2 }, 4)];
+      if (l > 2 && s1 === "foo") {
+        if (length(4) && s3 === "/") return ["/foo/$bar/", params({ bar: s2 }, 4)];
+        if (length(3)) return ["/foo/$bar/", params({ bar: s2 }, 3)];
+      }
       if (length(3)) {
-        if (s1 === "foo") return ["/foo/$bar/", params({ bar: s2 }, 3)];
         if (s1 === "a") return ["/a/$id", params({ id: s2 }, 3)];
         if (s1 === "b") return ["/b/$id", params({ id: s2 }, 3)];
         if (s1 === "foo") return ["/foo/$bar", params({ bar: s2 }, 3)];
@@ -622,11 +624,14 @@ describe('work in progress', () => {
         if (s1 === "a") return ["/a/{-$slug}", params({ slug: s2 }, 3)];
       }
       if (length(2) && s1 === "a") return ["/a/{-$slug}", params({}, 2)];
-      if (length(3) && s1 === "b") return ["/b/{-$slug}", params({ slug: s2 }, 3)];
-      if (length(2) && s1 === "b") return ["/b/{-$slug}", params({}, 2)];
-      if (length(3) && s1 === "posts")
-        return ["/posts/{-$slug}", params({ slug: s2 }, 3)];
-      if (length(2) && s1 === "posts") return ["/posts/{-$slug}", params({}, 2)];
+      if (l > 1 && s1 === "b") {
+        if (length(3)) return ["/b/{-$slug}", params({ slug: s2 }, 3)];
+        if (length(2)) return ["/b/{-$slug}", params({}, 2)];
+      }
+      if (l > 1 && s1 === "posts") {
+        if (length(3)) return ["/posts/{-$slug}", params({ slug: s2 }, 3)];
+        if (length(2)) return ["/posts/{-$slug}", params({}, 2)];
+      }
       if (l >= 2) {
         if (s1 === "cache" && s2.startsWith("temp_") && s[l - 1].endsWith(".log"))
           return [
