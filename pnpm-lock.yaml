@@ -5,7 +5,6 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  use-sync-external-store: 1.2.2
   react: ^19.0.0
   react-dom: ^19.0.0
   '@types/react': ^19.0.8
@@ -5714,7 +5713,7 @@ importers:
   examples/solid/basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5754,7 +5753,7 @@ importers:
   examples/solid/basic-devtools-panel:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5788,7 +5787,7 @@ importers:
   examples/solid/basic-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5828,7 +5827,7 @@ importers:
   examples/solid/basic-non-nested-devtools:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5874,7 +5873,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5917,7 +5916,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -5957,7 +5956,7 @@ importers:
   examples/solid/basic-ssr-streaming-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6015,7 +6014,7 @@ importers:
   examples/solid/kitchen-sink-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6058,7 +6057,7 @@ importers:
   examples/solid/quickstart-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6098,7 +6097,7 @@ importers:
   examples/solid/start-bare:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6147,7 +6146,7 @@ importers:
   examples/solid/start-basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6193,7 +6192,7 @@ importers:
   examples/solid/start-basic-static:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.129.0
+        specifier: ^1.129.8
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6468,6 +6467,9 @@ importers:
       '@tanstack/start-plugin-core':
         specifier: workspace:*
         version: link:../start-plugin-core
+      pathe:
+        specifier: ^2.0.3
+        version: 2.0.3
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -15358,8 +15360,8 @@ packages:
       '@types/react':
         optional: true
 
-  use-sync-external-store@1.2.2:
-    resolution: {integrity: sha512-PElTlVMwpblvbNqQ82d2n6RjStvdSoNe9FG28kNfz3WiXilJm4DdNkEzRhCZuIDwY8U08WVihhGR5iRqAwfDiw==}
+  use-sync-external-store@1.5.0:
+    resolution: {integrity: sha512-Rb46I4cGGVBmjamjphe8L/UnvJD+uPPtTkNvX5mZgqdbavhI4EbgIWJiIHXJ8bc/i9EQGPRh4DwEURJ552Do0A==}
     peerDependencies:
       react: ^19.0.0
 
@@ -19203,7 +19205,7 @@ snapshots:
       '@tanstack/store': 0.7.0
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
-      use-sync-external-store: 1.2.2(react@19.0.0)
+      use-sync-external-store: 1.5.0(react@19.0.0)
 
   '@tanstack/react-virtual@3.13.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
@@ -24312,7 +24314,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
       react: 19.0.0
-      use-sync-external-store: 1.2.2(react@19.0.0)
+      use-sync-external-store: 1.5.0(react@19.0.0)
 
   symbol-tree@3.2.4: {}
 
@@ -24773,7 +24775,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.0.8
 
-  use-sync-external-store@1.2.2(react@19.0.0):
+  use-sync-external-store@1.5.0(react@19.0.0):
     dependencies:
       react: 19.0.0
 

@@ -33,7 +33,8 @@ import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
-import type { Segment } from './path'
+import { createLRUCache } from './lru-cache'
+import type { ParsePathnameCache, Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -625,9 +626,12 @@ export type StartTransitionFn = (fn: () => void) => void
 export interface MatchRoutesFn {
   (
     pathname: string,
-    locationSearch: AnySchema,
+    locationSearch?: AnySchema,
     opts?: MatchRoutesOpts,
-  ): Array<AnyRouteMatch>
+  ): Array<MakeRouteMatchUnion>
+  /**
+   * @deprecated use the following signature instead
+   */
   (next: ParsedLocation, opts?: MatchRoutesOpts): Array<AnyRouteMatch>
   (
     pathnameOrNext: string | ParsedLocation,
@@ -1011,6 +1015,7 @@ export class RouterCore<
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
       caseSensitive: this.options.caseSensitive,
+      parseCache: this.parsePathnameCache,
     })
     return resolvedPath
   }
@@ -1019,15 +1024,6 @@ export class RouterCore<
     return this.routesById as Record<string, AnyRoute>
   }
 
-  /**
-  @deprecated use the following signature instead
-  ```ts
-  matchRoutes (
-    next: ParsedLocation,
-    opts?: { preload?: boolean; throwOnError?: boolean },
-  ): Array<AnyRouteMatch>;
-  ```
-*/
   matchRoutes: MatchRoutesFn = (
     pathnameOrNext: string | ParsedLocation,
     locationSearchOrOpts?: AnySchema | MatchRoutesOpts,
@@ -1201,6 +1197,7 @@ export class RouterCore<
           params: routeParams,
           leaveWildcards: true,
           decodeCharMap: this.pathParamsDecodeCharMap,
+          parseCache: this.parsePathnameCache,
         }).interpolatedPath + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
@@ -1339,6 +1336,9 @@ export class RouterCore<
     return matches
   }
 
+  /** a cache for `parsePathname` */
+  private parsePathnameCache: ParsePathnameCache = createLRUCache(1000)
+
   getMatchedRoutes: GetMatchRoutesFn = (
     pathname: string,
     routePathname: string | undefined,
@@ -1351,6 +1351,7 @@ export class RouterCore<
       routesByPath: this.routesByPath,
       routesById: this.routesById,
       flatRoutes: this.flatRoutes,
+      parseCache: this.parsePathnameCache,
     })
   }
 
@@ -1373,10 +1374,6 @@ export class RouterCore<
     this.state.pendingMatches?.forEach((match) => {
       this.cancelMatch(match.id)
     })
-  }
-
-  private comparePaths(path1: string, path2: string) {
-    return path1.replace(/(.+)\/$/, '$1') === path2.replace(/(.+)\/$/, '$1')
   }
 
   buildLocation: BuildLocationFn = (opts) => {
@@ -1403,8 +1400,8 @@ export class RouterCore<
 
       const routeIsChanging =
         !!dest.to &&
-        !this.comparePaths(dest.to.toString(), fromPath) &&
-        !this.comparePaths(toPath, fromPath)
+        !comparePaths(dest.to.toString(), fromPath) &&
+        !comparePaths(toPath, fromPath)
 
       // If the route is changing we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
@@ -1422,11 +1419,11 @@ export class RouterCore<
           const matchedFrom = [...allCurrentLocationMatches]
             .reverse()
             .find((d) => {
-              return this.comparePaths(d.fullPath, fromPath)
+              return comparePaths(d.fullPath, fromPath)
             })
 
           const matchedCurrent = [...allFromMatches].reverse().find((d) => {
-            return this.comparePaths(d.fullPath, currentLocation.pathname)
+            return comparePaths(d.fullPath, currentLocation.pathname)
           })
 
           // for from to be invalid it shouldn't just be unmatched to currentLocation
@@ -1462,6 +1459,7 @@ export class RouterCore<
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
         params: nextParams ?? {},
+        parseCache: this.parsePathnameCache,
       }).interpolatedPath
 
       const destRoutes = this.matchRoutes(
@@ -1494,6 +1492,7 @@ export class RouterCore<
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
+        parseCache: this.parsePathnameCache,
       }).interpolatedPath
 
       // Resolve the next search
@@ -1577,11 +1576,16 @@ export class RouterCore<
         let params = {}
 
         const foundMask = this.options.routeMasks?.find((d) => {
-          const match = matchPathname(this.basepath, next.pathname, {
-            to: d.from,
-            caseSensitive: false,
-            fuzzy: false,
-          })
+          const match = matchPathname(
+            this.basepath,
+            next.pathname,
+            {
+              to: d.from,
+              caseSensitive: false,
+              fuzzy: false,
+            },
+            this.parsePathnameCache,
+          )
 
           if (match) {
             params = match
@@ -1765,7 +1769,7 @@ export class RouterCore<
       } else {
         window.location.href = href
       }
-      return
+      return Promise.resolve()
     }
 
     return this.buildAndCommitLocation({
@@ -2981,10 +2985,15 @@ export class RouterCore<
       ? this.latestLocation
       : this.state.resolvedLocation || this.state.location
 
-    const match = matchPathname(this.basepath, baseLocation.pathname, {
-      ...opts,
-      to: next.pathname,
-    }) as any
+    const match = matchPathname(
+      this.basepath,
+      baseLocation.pathname,
+      {
+        ...opts,
+        to: next.pathname,
+      },
+      this.parsePathnameCache,
+    ) as any
 
     if (!match) {
       return false
@@ -3082,6 +3091,12 @@ export class RouterCore<
 export class SearchParamError extends Error {}
 
 export class PathParamError extends Error {}
+
+const normalize = (str: string) =>
+  str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
+function comparePaths(a: string, b: string) {
+  return normalize(a) === normalize(b)
+}
 
 // A function that takes an import() argument which is a function and returns a new function that will
 // proxy arguments from the caller to the imported function, retaining all type
@@ -3372,6 +3387,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesByPath,
   routesById,
   flatRoutes,
+  parseCache,
 }: {
   pathname: string
   routePathname?: string
@@ -3380,16 +3396,22 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesByPath: Record<string, TRouteLike>
   routesById: Record<string, TRouteLike>
   flatRoutes: Array<TRouteLike>
+  parseCache?: ParsePathnameCache
 }) {
   let routeParams: Record<string, string> = {}
   const trimmedPath = trimPathRight(pathname)
   const getMatchedParams = (route: TRouteLike) => {
-    const result = matchPathname(basepath, trimmedPath, {
-      to: route.fullPath,
-      caseSensitive: route.options?.caseSensitive ?? caseSensitive,
-      // we need fuzzy matching for `notFoundMode: 'fuzzy'`
-      fuzzy: true,
-    })
+    const result = matchPathname(
+      basepath,
+      trimmedPath,
+      {
+        to: route.fullPath,
+        caseSensitive: route.options?.caseSensitive ?? caseSensitive,
+        // we need fuzzy matching for `notFoundMode: 'fuzzy'`
+        fuzzy: true,
+      },
+      parseCache,
+    )
     return result
   }
 
