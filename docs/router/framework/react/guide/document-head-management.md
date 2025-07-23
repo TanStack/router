@@ -43,9 +43,9 @@ export const Route = createRootRoute({
         children: `p {
                   color: blue;
                   background-color: yellow;
-                }`
-      }
-    ]
+                }`,
+      },
+    ],
     scripts: [
       {
         src: 'https://www.google-analytics.com/analytics.js',
