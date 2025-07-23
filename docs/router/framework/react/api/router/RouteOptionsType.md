@@ -300,3 +300,69 @@ If you want to configure to remount a route component upon `params` change, use:
 ```tsx
 remountDeps: ({ params }) => params
 ```
+
+### `headers` method
+
+- Type:
+
+```tsx
+type headers = (opts: {
+  matches: Array<RouteMatch>
+  match: RouteMatch
+  params: TAllParams
+  loaderData?: TLoaderData
+}) => Promise<Record<string, string>> | Record<string, string>
+```
+
+- Optional
+- Allows you to specify custom HTTP headers to be sent when this route is rendered during SSR. The function receives the current match context and should return a plain object of header name/value pairs.
+
+### `head` method
+
+- Type:
+
+```tsx
+type head = (ctx: {
+  matches: Array<RouteMatch>
+  match: RouteMatch
+  params: TAllParams
+  loaderData?: TLoaderData
+}) =>
+  | Promise<{
+      links?: RouteMatch['links']
+      scripts?: RouteMatch['headScripts']
+      meta?: RouteMatch['meta']
+      styles?: RouteMatch['styles']
+    }>
+  | {
+      links?: RouteMatch['links']
+      scripts?: RouteMatch['headScripts']
+      meta?: RouteMatch['meta']
+      styles?: RouteMatch['styles']
+    }
+```
+
+- Optional
+- Returns additional elements to inject into the document `<head>` for this route. Use it to add route-level SEO metadata, preload links, inline styles, or custom scripts.
+
+### `scripts` method
+
+- Type:
+
+```tsx
+types scripts = (ctx: {
+  matches: Array<RouteMatch>
+  match: RouteMatch
+  params: TAllParams
+  loaderData?: TLoaderData
+}) => Promise<RouteMatch['scripts']> | RouteMatch['scripts']
+```
+
+- Optional
+- A shorthand helper to return only `<script>` elements. Equivalent to returning the `scripts` field from the `head` method.
+
+### `codeSplitGroupings` property
+
+- Type: `Array<Array<'loader' | 'component' | 'pendingComponent' | 'notFoundComponent' | 'errorComponent'>>`
+- Optional
+- Fine-grained control over how the router groups lazy-loaded pieces of a route into chunks. Each inner array represents a group of assets that will be placed into the same bundle during code-splitting.
