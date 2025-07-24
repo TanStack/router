@@ -129,12 +129,11 @@ function prepareOptionalParams(
 }
 
 type Condition =
-  | { key: string; type: 'static-insensitive'; index: number; value: string }
-  | { key: string; type: 'static-sensitive'; index: number; value: string }
+  | { key: string; type: 'static'; index: number; value: string; caseSensitive: boolean }
   | { key: string; type: 'length'; direction: 'eq' | 'gte'; value: number }
-  | { key: string; type: 'startsWith'; index: number; value: string }
-  | { key: string; type: 'endsWith'; index: number; value: string }
-  | { key: string; type: 'globalEndsWith'; value: string }
+  | { key: string; type: 'startsWith'; index: number; value: string; caseSensitive: boolean }
+  | { key: string; type: 'endsWith'; index: number; value: string; caseSensitive: boolean }
+  | { key: string; type: 'globalEndsWith'; value: string; caseSensitive: boolean }
 
 // each segment of a route can have zero or more conditions that need to be met for the route to match
 function toConditions(routes: Array<ParsedRoute>) {
@@ -148,60 +147,65 @@ function toConditions(routes: Array<ParsedRoute>) {
       if (segment.type === SEGMENT_TYPE_PATHNAME) {
         minLength += 1
         if (i === 0 && segment.value === '/') continue // skip leading slash
-        const value = segment.value
         // @ts-expect-error -- not typed yet, i don't know how I'm gonna get this value here
-        if (route.caseSensitive) {
-          conditions.push({
-            type: 'static-sensitive',
-            index: i,
-            value,
-            key: `static_sensitive_${i}_${value}`,
-          })
-        } else {
-          conditions.push({
-            type: 'static-insensitive',
-            index: i,
-            value: value.toLowerCase(),
-            key: `static_insensitive_${i}_${value.toLowerCase()}`,
-          })
-        }
+        const caseSensitive = route.caseSensitive ?? false
+        const value = caseSensitive ? segment.value : segment.value.toLowerCase()
+        conditions.push({
+          type: 'static',
+          index: i,
+          value,
+          caseSensitive,
+          key: `static_${caseSensitive}_${i}_${value}`,
+        })
         continue
       }
       if (segment.type === SEGMENT_TYPE_PARAM) {
         minLength += 1
+        // @ts-expect-error -- not typed yet, i don't know how I'm gonna get this value here
+        const caseSensitive = route.caseSensitive ?? false
         if (segment.prefixSegment) {
+          const value = caseSensitive ? segment.prefixSegment : segment.prefixSegment.toLowerCase()
           conditions.push({
             type: 'startsWith',
             index: i,
-            value: segment.prefixSegment,
-            key: `startsWith_${i}_${segment.prefixSegment}`,
+            value,
+            caseSensitive,
+            key: `startsWith_${caseSensitive}_${i}_${value}`,
           })
         }
         if (segment.suffixSegment) {
+          const value = caseSensitive ? segment.suffixSegment : segment.suffixSegment.toLowerCase()
           conditions.push({
             type: 'endsWith',
             index: i,
-            value: segment.suffixSegment,
-            key: `endsWith_${i}_${segment.suffixSegment}`,
+            value,
+            caseSensitive,
+            key: `endsWith_${caseSensitive}_${i}_${value}`,
           })
         }
         continue
       }
       if (segment.type === SEGMENT_TYPE_WILDCARD) {
         hasWildcard = true
+        // @ts-expect-error -- not typed yet, i don't know how I'm gonna get this value here
+        const caseSensitive = route.caseSensitive ?? false
         if (segment.prefixSegment) {
+          const value = caseSensitive ? segment.prefixSegment : segment.prefixSegment.toLowerCase()
           conditions.push({
             type: 'startsWith',
             index: i,
-            value: segment.prefixSegment,
-            key: `startsWith_${i}_${segment.prefixSegment}`,
+            value,
+            caseSensitive,
+            key: `startsWith_${caseSensitive}_${i}_${value}`,
           })
         }
         if (segment.suffixSegment) {
+          const value = caseSensitive ? segment.suffixSegment : segment.suffixSegment.toLowerCase()
           conditions.push({
             type: 'globalEndsWith',
-            value: segment.suffixSegment,
-            key: `globalEndsWith_${i}_${segment.suffixSegment}`,
+            value,
+            caseSensitive,
+            key: `globalEndsWith_${caseSensitive}_${i}_${value}`,
           })
         }
         if (segment.suffixSegment || segment.prefixSegment) {
@@ -430,10 +434,12 @@ function printConditions(conditions: Array<Condition>) {
 
 function printCondition(condition: Condition) {
   switch (condition.type) {
-    case 'static-sensitive':
-      return `s${condition.index} === '${condition.value}'`
-    case 'static-insensitive':
-      return `sc${condition.index} === '${condition.value}'`
+    case 'static':
+      if (condition.caseSensitive) {
+        return `s${condition.index} === '${condition.value}'`
+      } else {
+        return `sc${condition.index} === '${condition.value}'`
+      }
     case 'length':
       if (condition.direction === 'eq') {
         return `length(${condition.value})`
@@ -442,11 +448,23 @@ function printCondition(condition: Condition) {
       }
       break
     case 'startsWith':
-      return `s${condition.index}.startsWith('${condition.value}')`
+      if (condition.caseSensitive) {
+        return `s${condition.index}.startsWith('${condition.value}')`
+      } else {
+        return `sc${condition.index}?.startsWith('${condition.value}')`
+      }
     case 'endsWith':
-      return `s${condition.index}.endsWith('${condition.value}')`
+      if (condition.caseSensitive) {
+        return `s${condition.index}.endsWith('${condition.value}')`
+      } else {
+        return `sc${condition.index}?.endsWith('${condition.value}')`
+      }
     case 'globalEndsWith':
-      return `s[l - 1].endsWith('${condition.value}')`
+      if (condition.caseSensitive) {
+        return `s[l - 1].endsWith('${condition.value}')`
+      } else {
+        return `s[l - 1].toLowerCase().endsWith('${condition.value}')`
+      }
   }
   throw new Error(`Unhandled condition type: ${condition.type}`)
 }
@@ -525,7 +543,7 @@ function printHead(
   const caseInsensitiveSegments = new Set<number>()
   for (const route of routes) {
     for (const condition of route.conditions) {
-      if (condition.type === 'static-insensitive') {
+      if ((condition.type === 'static' || condition.type === 'endsWith' || condition.type === 'startsWith') && !condition.caseSensitive) {
         caseInsensitiveSegments.add(condition.index)
       }
     }

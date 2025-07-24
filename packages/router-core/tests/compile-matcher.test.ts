@@ -246,11 +246,11 @@ describe('work in progress', () => {
         if (length(3)) {
           if (sc1 === "foo" && sc2 === "qux")
             return ["/foo/{-$bar}/qux", params({}, 3)];
-          if (sc1 === "a" && s2.startsWith("user-"))
+          if (sc1 === "a" && sc2?.startsWith("user-"))
             return ["/a/user-{$id}", params({ id: s2.slice(5) }, 3)];
-          if (sc1 === "api" && s2.startsWith("user-"))
+          if (sc1 === "api" && sc2?.startsWith("user-"))
             return ["/api/user-{$id}", params({ id: s2.slice(5) }, 3)];
-          if (sc1 === "b" && s2.startsWith("user-"))
+          if (sc1 === "b" && sc2?.startsWith("user-"))
             return ["/b/user-{$id}", params({ id: s2.slice(5) }, 3)];
         }
         if (length(4) && sc1 === "foo" && sc3 === "/")
@@ -272,7 +272,11 @@ describe('work in progress', () => {
           return ["/posts/{-$slug}", params({ slug: s2 }, 3)];
         if (length(2) && sc1 === "posts") return ["/posts/{-$slug}", params({}, 2)];
         if (l >= 3) {
-          if (sc1 === "cache" && s2.startsWith("temp_") && s[l - 1].endsWith(".log"))
+          if (
+            sc1 === "cache" &&
+            sc2?.startsWith("temp_") &&
+            s[l - 1].toLowerCase().endsWith(".log")
+          )
             return [
               "/cache/temp_{$}.log",
               {
@@ -280,7 +284,7 @@ describe('work in progress', () => {
                 "*": s.slice(2).join("/").slice(5, -4),
               },
             ];
-          if (sc1 === "images" && s2.startsWith("thumb_"))
+          if (sc1 === "images" && sc2?.startsWith("thumb_"))
             return [
               "/images/thumb_{$}",
               {
@@ -288,7 +292,7 @@ describe('work in progress', () => {
                 "*": s.slice(2).join("/").slice(6),
               },
             ];
-          if (sc1 === "logs" && s[l - 1].endsWith(".txt"))
+          if (sc1 === "logs" && s[l - 1].toLowerCase().endsWith(".txt"))
             return [
               "/logs/{$}.txt",
               {
