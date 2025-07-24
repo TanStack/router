@@ -112,6 +112,13 @@ const routeTree = createRouteTree([
   '/cache/temp_{$}.log', // wildcard with prefix and suffix
 ])
 
+// required keys on a `route` object for `processRouteTree` to correctly generate `flatRoutes`
+// - id
+// - children
+// - isRoot
+// - path
+// - fullPath
+
 const result = processRouteTree({ routeTree })
 
 function originalMatcher(from: string, fuzzy?: boolean): readonly [string, Record<string, string>] | undefined {
@@ -247,6 +254,7 @@ describe('work in progress', () => {
     | { key: string, type: 'endsWith', index: number, value: string }
     | { key: string, type: 'globalEndsWith', value: string }
 
+  // each segment of a route can have zero or more conditions that needs to be met for the route to match
   function toConditions(routes: Array<ParsedRoute>) {
     return routes.map((route) => {
       const conditions: Array<Condition> = []
@@ -305,17 +313,14 @@ describe('work in progress', () => {
     })
   }
 
-
-  // //////////////////////////////////
-  // build a flat tree of all routes //
-  // //////////////////////////////////
-
   type LeafNode = { type: 'leaf', conditions: Array<Condition>, route: ParsedRoute, parent: BranchNode | RootNode }
   type RootNode = { type: 'root', children: Array<LeafNode | BranchNode> }
   type BranchNode = { type: 'branch', conditions: Array<Condition>, children: Array<LeafNode | BranchNode>, parent: BranchNode | RootNode }
 
-  const tree: RootNode = { type: 'root', children: [] }
   const all = toConditions(prepareOptionalParams(prepareIndexRoutes(parsedRoutes)))
+
+  // We start by building a flat tree with all routes as leaf nodes, all children of the root node.
+  const tree: RootNode = { type: 'root', children: [] }
   for (const { conditions, path, segments } of all) {
     tree.children.push({ type: 'leaf', route: { path, segments }, parent: tree, conditions })
   }
@@ -330,7 +335,26 @@ describe('work in progress', () => {
   console.log('Tree built with', all.length, 'routes and', tree.children.length, 'top-level nodes')
 
   /**
-   * recursively expand each node of the tree until there is only one child left
+   * Recursively expand each node of the tree until there is only one child left
+   * 
+   * For each child node in a parent node, we try to find subsequent siblings that would share the same condition to be matched.
+   * If we find any, we group them together into a new branch node that replaces the original child node and the grouped siblings in the parent node.
+   * 
+   * We repeat the process in each newly created branch node until there is only one child left in each branch node.
+   * 
+   * This turns
+   * ```
+   * if (a && b && c && d) return route1;
+   * if (a && b && e && f) return route2;
+   * ```
+   * into
+   * ```
+   * if (a && b) {
+   *   if (c) { if (d) return route1; }
+   *   if (e) { if (f) return route2; }
+   * }
+   * ```
+   * 
    */
   function expandTree(tree: RootNode) {
     const stack: Array<RootNode | BranchNode> = [tree]
@@ -386,7 +410,15 @@ describe('work in progress', () => {
   }
 
   /**
-   * recursively shorten branches that have a single child into a leaf node
+   * Recursively shorten branches that have a single child into a leaf node.
+   *
+   * For each branch node in the tree, if it has only one child, we can replace the branch node with that child node,
+   * and merge the conditions of the branch node into the child node.
+   * 
+   * This turns
+   * `if (condition1) { if (condition2) { return route } }`
+   * into
+   * `if (condition1 && condition2) { return route }`
    */
   function contractTree(tree: RootNode) {
     const stack = tree.children.filter((c) => c.type === 'branch')
