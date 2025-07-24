@@ -74,6 +74,17 @@ declare module '@tanstack/router-core' {
      * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionsoncatch)
      */
     defaultOnCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
+
+    /**
+     * When `true`, disables the global catch boundary that normally wraps all route matches.
+     * This allows unhandled errors to bubble up to top-level error handlers in the browser.
+     *
+     * Useful for testing tools (like Storybook Test Runner), error reporting services,
+     * and debugging scenarios where you want errors to reach the browser's global error handlers.
+     *
+     * @default false
+     */
+    disableGlobalCatchBoundary?: boolean
   }
 }
 
