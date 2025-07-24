@@ -1,20 +1,58 @@
-import { parsePathname, SEGMENT_TYPE_OPTIONAL_PARAM, SEGMENT_TYPE_PARAM, SEGMENT_TYPE_PATHNAME, SEGMENT_TYPE_WILDCARD } from "./path"
-import type { processRouteTree } from "./router"
+import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
+  parsePathname,
+} from './path'
+import type { LRUCache } from './lru-cache'
+import type { Segment } from './path'
+import type { processRouteTree } from './router'
 
+export type CompiledMatcher = (
+  parser: typeof parsePathname,
+  from: string,
+  fuzzy?: boolean,
+  cache?: LRUCache<string, ReadonlyArray<Segment>>,
+) => readonly [path: string, params: Record<string, string>] | undefined
 
-
-export function compileMatcher(flatRoutes: ReturnType<typeof processRouteTree>['flatRoutes']) {
+/**
+ * Compiles a sorted list of routes (as returned by `processRouteTree().flatRoutes`)
+ * into a matcher function.
+ *
+ * Run-time use (requires eval permissions):
+ * ```ts
+ * const fn = compileMatcher(processRouteTree({ routeTree }).flatRoutes)
+ * const matcher = new Function('parsePathname', 'from', 'fuzzy', 'cache', fn) as CompiledMatcher
+ * ```
+ *
+ * Build-time use:
+ * ```ts
+ * const fn = compileMatcher(processRouteTree({ routeTree }).flatRoutes)
+ * sourceCode += `const matcher = (parsePathname, from, fuzzy, cache) => { ${fn} }`
+ * ```
+ */
+export function compileMatcher(
+  flatRoutes: ReturnType<typeof processRouteTree>['flatRoutes'],
+) {
   const parsedRoutes = flatRoutes.map((route) => ({
     path: route.fullPath,
     segments: parsePathname(route.fullPath),
   }))
 
-  const all = toConditions(prepareOptionalParams(prepareIndexRoutes(parsedRoutes)))
+  const all = toConditions(
+    prepareOptionalParams(prepareIndexRoutes(parsedRoutes)),
+  )
 
   // We start by building a flat tree with all routes as leaf nodes, all children of the root node.
   const tree: RootNode = { type: 'root', children: [] }
   for (const { conditions, path, segments } of all) {
-    tree.children.push({ type: 'leaf', route: { path, segments }, parent: tree, conditions })
+    tree.children.push({
+      type: 'leaf',
+      route: { path, segments },
+      parent: tree,
+      conditions,
+    })
   }
 
   expandTree(tree)
@@ -24,14 +62,13 @@ export function compileMatcher(flatRoutes: ReturnType<typeof processRouteTree>['
   fn += printHead(all)
   fn += printTree(tree)
 
-  return `(parsePathname, from, fuzzy) => {${fn}}`
+  return fn
 }
 
 type ParsedRoute = {
   path: string
   segments: ReturnType<typeof parsePathname>
 }
-
 
 // we duplicate routes that end in a static `/`, so they're also matched if that final `/` is not present
 function prepareIndexRoutes(
@@ -41,7 +78,11 @@ function prepareIndexRoutes(
   for (const route of parsedRoutes) {
     result.push(route)
     const last = route.segments.at(-1)!
-    if (route.segments.length > 1 && last.type === SEGMENT_TYPE_PATHNAME && last.value === '/') {
+    if (
+      route.segments.length > 1 &&
+      last.type === SEGMENT_TYPE_PATHNAME &&
+      last.value === '/'
+    ) {
       const clone: ParsedRoute = {
         ...route,
         segments: route.segments.slice(0, -1),
@@ -88,12 +129,17 @@ function prepareOptionalParams(
 }
 
 type Condition =
-  | { key: string, type: 'static-insensitive', index: number, value: string }
-  | { key: string, type: 'static-sensitive', index: number, value: string }
-  | { key: string, type: 'length', direction: 'eq' | 'gte' | 'lte', value: number }
-  | { key: string, type: 'startsWith', index: number, value: string }
-  | { key: string, type: 'endsWith', index: number, value: string }
-  | { key: string, type: 'globalEndsWith', value: string }
+  | { key: string; type: 'static-insensitive'; index: number; value: string }
+  | { key: string; type: 'static-sensitive'; index: number; value: string }
+  | {
+      key: string
+      type: 'length'
+      direction: 'eq' | 'gte' | 'lte'
+      value: number
+    }
+  | { key: string; type: 'startsWith'; index: number; value: string }
+  | { key: string; type: 'endsWith'; index: number; value: string }
+  | { key: string; type: 'globalEndsWith'; value: string }
 
 // each segment of a route can have zero or more conditions that needs to be met for the route to match
 function toConditions(routes: Array<ParsedRoute>) {
@@ -110,29 +156,58 @@ function toConditions(routes: Array<ParsedRoute>) {
         const value = segment.value
         // @ts-expect-error -- not typed yet, i don't know how I'm gonna get this value here
         if (route.caseSensitive) {
-          conditions.push({ type: 'static-sensitive', index: i, value, key: `static_sensitive_${i}_${value}` })
+          conditions.push({
+            type: 'static-sensitive',
+            index: i,
+            value,
+            key: `static_sensitive_${i}_${value}`,
+          })
         } else {
-          conditions.push({ type: 'static-insensitive', index: i, value: value.toLowerCase(), key: `static_insensitive_${i}_${value.toLowerCase()}` })
+          conditions.push({
+            type: 'static-insensitive',
+            index: i,
+            value: value.toLowerCase(),
+            key: `static_insensitive_${i}_${value.toLowerCase()}`,
+          })
         }
         continue
       }
       if (segment.type === SEGMENT_TYPE_PARAM) {
         minLength += 1
         if (segment.prefixSegment) {
-          conditions.push({ type: 'startsWith', index: i, value: segment.prefixSegment, key: `startsWith_${i}_${segment.prefixSegment}` })
+          conditions.push({
+            type: 'startsWith',
+            index: i,
+            value: segment.prefixSegment,
+            key: `startsWith_${i}_${segment.prefixSegment}`,
+          })
         }
         if (segment.suffixSegment) {
-          conditions.push({ type: 'endsWith', index: i, value: segment.suffixSegment, key: `endsWith_${i}_${segment.suffixSegment}` })
+          conditions.push({
+            type: 'endsWith',
+            index: i,
+            value: segment.suffixSegment,
+            key: `endsWith_${i}_${segment.suffixSegment}`,
+          })
         }
         continue
       }
       if (segment.type === SEGMENT_TYPE_WILDCARD) {
         hasWildcard = true
         if (segment.prefixSegment) {
-          conditions.push({ type: 'startsWith', index: i, value: segment.prefixSegment, key: `startsWith_${i}_${segment.prefixSegment}` })
+          conditions.push({
+            type: 'startsWith',
+            index: i,
+            value: segment.prefixSegment,
+            key: `startsWith_${i}_${segment.prefixSegment}`,
+          })
         }
         if (segment.suffixSegment) {
-          conditions.push({ type: 'globalEndsWith', value: segment.suffixSegment, key: `globalEndsWith_${i}_${segment.suffixSegment}` })
+          conditions.push({
+            type: 'globalEndsWith',
+            value: segment.suffixSegment,
+            key: `globalEndsWith_${i}_${segment.suffixSegment}`,
+          })
         }
         if (segment.suffixSegment || segment.prefixSegment) {
           minLength += 1
@@ -143,9 +218,19 @@ function toConditions(routes: Array<ParsedRoute>) {
     }
 
     if (hasWildcard) {
-      conditions.push({ type: 'length', direction: 'gte', value: minLength, key: `length_gte_${minLength}` })
+      conditions.push({
+        type: 'length',
+        direction: 'gte',
+        value: minLength,
+        key: `length_gte_${minLength}`,
+      })
     } else {
-      conditions.push({ type: 'length', direction: 'eq', value: minLength, key: `length_eq_${minLength}` })
+      conditions.push({
+        type: 'length',
+        direction: 'eq',
+        value: minLength,
+        key: `length_eq_${minLength}`,
+      })
     }
 
     return {
@@ -155,19 +240,28 @@ function toConditions(routes: Array<ParsedRoute>) {
   })
 }
 
-type LeafNode = { type: 'leaf', conditions: Array<Condition>, route: ParsedRoute, parent: BranchNode | RootNode }
-type RootNode = { type: 'root', children: Array<LeafNode | BranchNode> }
-type BranchNode = { type: 'branch', conditions: Array<Condition>, children: Array<LeafNode | BranchNode>, parent: BranchNode | RootNode }
-
+type LeafNode = {
+  type: 'leaf'
+  conditions: Array<Condition>
+  route: ParsedRoute
+  parent: BranchNode | RootNode
+}
+type RootNode = { type: 'root'; children: Array<LeafNode | BranchNode> }
+type BranchNode = {
+  type: 'branch'
+  conditions: Array<Condition>
+  children: Array<LeafNode | BranchNode>
+  parent: BranchNode | RootNode
+}
 
 /**
  * Recursively expand each node of the tree until there is only one child left
- * 
+ *
  * For each child node in a parent node, we try to find subsequent siblings that would share the same condition to be matched.
  * If we find any, we group them together into a new branch node that replaces the original child node and the grouped siblings in the parent node.
- * 
+ *
  * We repeat the process in each newly created branch node until there is only one child left in each branch node.
- * 
+ *
  * This turns
  * ```
  * if (a && b && c && d) return route1;
@@ -180,7 +274,7 @@ type BranchNode = { type: 'branch', conditions: Array<Condition>, children: Arra
  *   if (e) { if (f) return route2; }
  * }
  * ```
- * 
+ *
  */
 function expandTree(tree: RootNode) {
   const stack: Array<RootNode | BranchNode> = [tree]
@@ -194,7 +288,11 @@ function expandTree(tree: RootNode) {
       if (resolved.has(child)) continue
 
       // segment-based conditions should try to group as many children as possible
-      const bestCondition = findBestCondition(node, i, node.children.length - i - 1)
+      const bestCondition = findBestCondition(
+        node,
+        i,
+        node.children.length - i - 1,
+      )
       // length-based conditions should try to group as few children as possible
       const bestLength = findBestLength(node, i, 0)
 
@@ -204,7 +302,8 @@ function expandTree(tree: RootNode) {
         continue
       }
 
-      const selected = bestCondition.score < bestLength.score ? bestCondition : bestLength
+      const selected =
+        bestCondition.score < bestLength.score ? bestCondition : bestLength
       const condition = selected.condition!
       const newNode: BranchNode = {
         type: 'branch',
@@ -221,7 +320,11 @@ function expandTree(tree: RootNode) {
 
       // find all conditions that are shared by all candidates, and lift them to the new node
       for (const condition of newNode.children[0]!.conditions) {
-        if (newNode.children.every((c) => c.conditions.some((sc) => sc.key === condition.key))) {
+        if (
+          newNode.children.every((c) =>
+            c.conditions.some((sc) => sc.key === condition.key),
+          )
+        ) {
           newNode.conditions.push(condition)
         }
       }
@@ -240,7 +343,7 @@ function expandTree(tree: RootNode) {
  *
  * For each branch node in the tree, if it has only one child, we can replace the branch node with that child node,
  * and merge the conditions of the branch node into the child node.
- * 
+ *
  * This turns
  * `if (condition1) { if (condition2) { return route } }`
  * into
@@ -257,17 +360,24 @@ function contractTree(tree: RootNode) {
       child.conditions = [...node.conditions, ...child.conditions]
 
       // reduce length-based conditions into a single condition
-      const lengthConditions = child.conditions.filter(c => c.type === 'length')
-      if (lengthConditions.some(c => c.direction === 'eq')) {
+      const lengthConditions = child.conditions.filter(
+        (c) => c.type === 'length',
+      )
+      if (lengthConditions.some((c) => c.direction === 'eq')) {
         for (const c of lengthConditions) {
           if (c.direction === 'gte') {
-            child.conditions = child.conditions.filter(sc => sc.key !== c.key)
+            child.conditions = child.conditions.filter((sc) => sc.key !== c.key)
           }
         }
       } else if (lengthConditions.length > 0) {
-        const minLength = Math.min(...lengthConditions.map(c => c.value))
-        child.conditions = child.conditions.filter(c => c.type !== 'length')
-        child.conditions.push({ type: 'length', direction: 'eq', value: minLength, key: `length_eq_${minLength}` })
+        const minLength = Math.min(...lengthConditions.map((c) => c.value))
+        child.conditions = child.conditions.filter((c) => c.type !== 'length')
+        child.conditions.push({
+          type: 'length',
+          direction: 'eq',
+          value: minLength,
+          key: `length_eq_${minLength}`,
+        })
       }
     }
     for (const child of node.children) {
@@ -395,23 +505,25 @@ function printRoute(route: ParsedRoute) {
     : `return ['${route.path}', params(${result}, ${length})];`
 }
 
-function printHead(routes: Array<ParsedRoute & { conditions: Array<Condition> }>) {
-  let head = 'const s = parsePathname(from[0] === "/" ? from : "/" + from).map((s) => s.value);'
+function printHead(
+  routes: Array<ParsedRoute & { conditions: Array<Condition> }>,
+) {
+  let head =
+    'const s = parsePathname(from[0] === "/" ? from : "/" + from, cache).map((s) => s.value);'
   head += 'const l = s.length;'
 
   // the `length()` function does exact match by default, but greater-than-or-equal match if `fuzzy` is true
   head += 'const length = fuzzy ? (n) => l >= n : (n) => l === n;'
 
   // the `params()` function returns the params object, and if `fuzzy` is true, it also adds a `**` property with the remaining segments
-  head += 'const params = fuzzy ? (p, n) => { if (n && l > n) p[\'**\'] = s.slice(n).join(\'/\'); return p } : (p) => p;'
+  head +=
+    "const params = fuzzy ? (p, n) => { if (n && l > n) p['**'] = s.slice(n).join('/'); return p } : (p) => p;"
 
   // extract all segments from the input
   // const [, s1, s2, s3] = s;
-  const max = routes.reduce(
-    (max, r) => Math.max(max, r.segments.length),
-    0,
-  )
-  if (max > 0) head += `const [,${Array.from({ length: max - 1 }, (_, i) => `s${i + 1}`).join(', ')}] = s;`
+  const max = routes.reduce((max, r) => Math.max(max, r.segments.length), 0)
+  if (max > 0)
+    head += `const [,${Array.from({ length: max - 1 }, (_, i) => `s${i + 1}`).join(', ')}] = s;`
 
   // add toLowerCase version of each segment that is needed in a case-insensitive match
   // const sc1 = s1?.toLowerCase();
@@ -430,7 +542,11 @@ function printHead(routes: Array<ParsedRoute & { conditions: Array<Condition> }>
   return head
 }
 
-function findBestCondition(node: RootNode | BranchNode, i: number, target: number) {
+function findBestCondition(
+  node: RootNode | BranchNode,
+  i: number,
+  target: number,
+) {
   const child = node.children[i]!
   let bestCondition: Condition | undefined
   let bestMatchScore = Infinity
@@ -453,12 +569,20 @@ function findBestCondition(node: RootNode | BranchNode, i: number, target: numbe
     }
   }
 
-  return { score: bestMatchScore, condition: bestCondition, candidates: bestCandidates }
+  return {
+    score: bestMatchScore,
+    condition: bestCondition,
+    candidates: bestCandidates,
+  }
 }
 
-function findBestLength(node: RootNode | BranchNode, i: number, target: number) {
+function findBestLength(
+  node: RootNode | BranchNode,
+  i: number,
+  target: number,
+) {
   const child = node.children[i]!
-  const childLengthCondition = child.conditions.find(c => c.type === 'length')
+  const childLengthCondition = child.conditions.find((c) => c.type === 'length')
   if (!childLengthCondition) {
     return { score: Infinity, condition: undefined, candidates: [child] }
   }
@@ -467,7 +591,7 @@ function findBestLength(node: RootNode | BranchNode, i: number, target: number) 
   if (node.type !== 'root') {
     let n: BranchNode | null = node
     do {
-      const lengthCondition = n.conditions.find(c => c.type === 'length')
+      const lengthCondition = n.conditions.find((c) => c.type === 'length')
       if (!lengthCondition) continue
       if (lengthCondition.direction === 'eq') {
         exactLength = true
@@ -477,8 +601,7 @@ function findBestLength(node: RootNode | BranchNode, i: number, target: number) 
         currentMinLength = lengthCondition.value
         break
       }
-      if (n.parent.type === 'branch')
-        n = n.parent
+      if (n.parent.type === 'branch') n = n.parent
       else n = null
     } while (n)
   }
@@ -491,14 +614,19 @@ function findBestLength(node: RootNode | BranchNode, i: number, target: number) 
   let bestExact = false
   for (let l = currentMinLength + 1; l <= childLengthCondition.value; l++) {
     const candidates = [child]
-    let exact = childLengthCondition.direction === 'eq' && l === childLengthCondition.value
+    let exact =
+      childLengthCondition.direction === 'eq' &&
+      l === childLengthCondition.value
     for (let j = i + 1; j < node.children.length; j++) {
       const sibling = node.children[j]!
-      const lengthCondition = sibling.conditions.find(c => c.type === 'length')
+      const lengthCondition = sibling.conditions.find(
+        (c) => c.type === 'length',
+      )
       if (!lengthCondition) break
       if (lengthCondition.value < l) break
       candidates.push(sibling)
-      exact &&= lengthCondition.direction === 'eq' && lengthCondition.value === l
+      exact &&=
+        lengthCondition.direction === 'eq' && lengthCondition.value === l
     }
     const score = Math.abs(candidates.length - target)
     if (score < bestMatchScore) {
@@ -508,6 +636,11 @@ function findBestLength(node: RootNode | BranchNode, i: number, target: number) 
       bestExact = exact
     }
   }
-  const condition: Condition = { type: 'length', direction: bestExact ? 'eq' : 'gte', value: bestLength!, key: `length_${bestExact ? 'eq' : 'gte'}_${bestLength}` }
+  const condition: Condition = {
+    type: 'length',
+    direction: bestExact ? 'eq' : 'gte',
+    value: bestLength!,
+    key: `length_${bestExact ? 'eq' : 'gte'}_${bestLength}`,
+  }
   return { score: bestMatchScore, condition, candidates: bestCandidates }
 }
