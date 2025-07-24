@@ -53,57 +53,15 @@ Here are some examples of how you can use `createLink` with third-party librarie
 
 ### React Aria Components example
 
-React Aria Components'
-[Link](https://react-spectrum.adobe.com/react-aria/Link.html) component does not support the standard `onMouseEnter` and `onMouseLeave` events.
-Therefore, you cannot use it directly with TanStack Router's `preload (intent)` prop.
-
-Explanation for this can be found here:
-
-- [https://react-spectrum.adobe.com/react-aria/interactions.html](https://react-spectrum.adobe.com/react-aria/interactions.html)
-- [https://react-spectrum.adobe.com/blog/building-a-button-part-2.html](https://react-spectrum.adobe.com/blog/building-a-button-part-2.html)
-
-It is possible to work around this by using the [useLink](https://react-spectrum.adobe.com/react-aria/useLink.html) hook from [React Aria Hooks](https://react-spectrum.adobe.com/react-aria/hooks.html) with a standard anchor element.
+React Aria Components v1.11.0 and later works with TanStack Router's `preload (intent)` prop.
 
 ```tsx
-import * as React from 'react'
 import { createLink, LinkComponent } from '@tanstack/react-router'
-import {
-  mergeProps,
-  useFocusRing,
-  useHover,
-  useLink,
-  useObjectRef,
-} from 'react-aria'
-import type { AriaLinkOptions } from 'react-aria'
+import { Link as RACLink } from 'react-aria-components';
 
-interface RACLinkProps extends Omit<AriaLinkOptions, 'href'> {
-  children?: React.ReactNode
-}
+const CreatedLinkComponent = createLink(RACLink)
 
-const RACLinkComponent = React.forwardRef<HTMLAnchorElement, RACLinkProps>(
-  (props, forwardedRef) => {
-    const ref = useObjectRef(forwardedRef)
-
-    const { isPressed, linkProps } = useLink(props, ref)
-    const { isHovered, hoverProps } = useHover(props)
-    const { isFocusVisible, isFocused, focusProps } = useFocusRing(props)
-
-    return (
-      <a
-        {...mergeProps(linkProps, hoverProps, focusProps, props)}
-        ref={ref}
-        data-hovered={isHovered || undefined}
-        data-pressed={isPressed || undefined}
-        data-focus-visible={isFocusVisible || undefined}
-        data-focused={isFocused || undefined}
-      />
-    )
-  },
-)
-
-const CreatedLinkComponent = createLink(RACLinkComponent)
-
-export const CustomLink: LinkComponent<typeof RACLinkComponent> = (props) => {
+export const CustomLink: LinkComponent<typeof RACLink> = (props) => {
   return <CreatedLinkComponent preload={'intent'} {...props} />
 }
 ```
