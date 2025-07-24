@@ -260,9 +260,7 @@ describe('work in progress', () => {
           if (sc1 === "foo") return ["/foo/$bar/", params({ bar: s2 }, 3)];
           if (sc1 === "a") return ["/a/$id", params({ id: s2 }, 3)];
           if (sc1 === "b") return ["/b/$id", params({ id: s2 }, 3)];
-          if (sc1 === "foo") return ["/foo/$bar", params({ bar: s2 }, 3)];
           if (sc1 === "users") return ["/users/$id", params({ id: s2 }, 3)];
-          if (sc1 === "a") return ["/a/{-$slug}", params({ slug: s2 }, 3)];
         }
       }
       if (l >= 2) {

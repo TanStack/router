@@ -57,6 +57,7 @@ export function compileMatcher(
 
   expandTree(tree)
   contractTree(tree)
+  pruneTree(tree)
 
   let fn = ''
   fn += printHead(all)
@@ -383,6 +384,43 @@ function contractTree(tree: RootNode) {
       if (child.type === 'branch') {
         stack.push(child)
       }
+    }
+  }
+}
+
+/**
+ * Remove branches and leaves that are not reachable due to the conditions of their previous siblings.
+ * 
+ * This turns
+ * ```
+ * if (a) return route1;
+ * if (a && b) return route2;
+ * ```
+ * into
+ * ```
+ * if (a) return route1;
+ * ```
+ */
+function pruneTree(tree: RootNode) {
+  const stack: Array<RootNode | BranchNode> = [tree]
+  while (stack.length > 0) {
+    const node = stack.shift()!
+    loop: for (let i = 0; i < node.children.length; i++) {
+      const child = node.children[i]!
+
+      for (let j = 0; j < i; j++) {
+        const sibling = node.children[j]!
+        if (sibling.type !== 'leaf') continue // only a leaf node is guaranteed to return if its conditions are met
+        const currentIsUnreachable = sibling.conditions.every((c) => child.conditions.some((sc) => sc.key === c.key))
+        if (currentIsUnreachable) {
+          node.children.splice(i, 1)
+          i -= 1
+          continue loop
+        }
+      }
+
+      if (child.type === 'leaf') continue
+      stack.push(child)
     }
   }
 }
