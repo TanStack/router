@@ -44,7 +44,7 @@ export function compileMatcher(
     prepareOptionalParams(prepareIndexRoutes(parsedRoutes)),
   )
 
-  // We start by building a flat tree with all routes as leaf nodes, all children of the root node.
+  // We start by building a flat tree with all routes as leaf nodes, children of the same root node.
   const tree: RootNode = { type: 'root', children: [] }
   for (const { conditions, path, segments } of all) {
     tree.children.push({
@@ -131,17 +131,12 @@ function prepareOptionalParams(
 type Condition =
   | { key: string; type: 'static-insensitive'; index: number; value: string }
   | { key: string; type: 'static-sensitive'; index: number; value: string }
-  | {
-      key: string
-      type: 'length'
-      direction: 'eq' | 'gte' | 'lte'
-      value: number
-    }
+  | { key: string; type: 'length'; direction: 'eq' | 'gte'; value: number }
   | { key: string; type: 'startsWith'; index: number; value: string }
   | { key: string; type: 'endsWith'; index: number; value: string }
   | { key: string; type: 'globalEndsWith'; value: string }
 
-// each segment of a route can have zero or more conditions that needs to be met for the route to match
+// each segment of a route can have zero or more conditions that need to be met for the route to match
 function toConditions(routes: Array<ParsedRoute>) {
   return routes.map((route) => {
     const conditions: Array<Condition> = []
@@ -288,22 +283,22 @@ function expandTree(tree: RootNode) {
       if (resolved.has(child)) continue
 
       // segment-based conditions should try to group as many children as possible
-      const bestCondition = findBestCondition(
+      const bestSegment = findBestSegmentCondition(
         node,
         i,
         node.children.length - i - 1,
       )
       // length-based conditions should try to group as few children as possible
-      const bestLength = findBestLength(node, i, 0)
+      const bestLength = findBestLengthCondition(node, i, 0)
 
-      if (bestCondition.score === Infinity && bestLength.score === Infinity) {
+      if (bestSegment.score === Infinity && bestLength.score === Infinity) {
         // no grouping possible, just add the child as is
         resolved.add(child)
         continue
       }
 
       const selected =
-        bestCondition.score < bestLength.score ? bestCondition : bestLength
+        bestSegment.score < bestLength.score ? bestSegment : bestLength
       const condition = selected.condition!
       const newNode: BranchNode = {
         type: 'branch',
@@ -345,9 +340,9 @@ function expandTree(tree: RootNode) {
  * and merge the conditions of the branch node into the child node.
  *
  * This turns
- * `if (condition1) { if (condition2) { return route } }`
+ * `if (a) { if (b) { return route } }`
  * into
- * `if (condition1 && condition2) { return route }`
+ * `if (a && b) { return route }`
  */
 function contractTree(tree: RootNode) {
   const stack = tree.children.filter((c) => c.type === 'branch')
@@ -542,7 +537,7 @@ function printHead(
   return head
 }
 
-function findBestCondition(
+function findBestSegmentCondition(
   node: RootNode | BranchNode,
   i: number,
   target: number,
@@ -576,7 +571,7 @@ function findBestCondition(
   }
 }
 
-function findBestLength(
+function findBestLengthCondition(
   node: RootNode | BranchNode,
   i: number,
   target: number,
@@ -589,7 +584,7 @@ function findBestLength(
   let currentMinLength = 1
   let exactLength = false
   if (node.type !== 'root') {
-    let n: BranchNode | null = node
+    let n = node
     do {
       const lengthCondition = n.conditions.find((c) => c.type === 'length')
       if (!lengthCondition) continue
@@ -601,9 +596,7 @@ function findBestLength(
         currentMinLength = lengthCondition.value
         break
       }
-      if (n.parent.type === 'branch') n = n.parent
-      else n = null
-    } while (n)
+    } while (n.parent.type === 'branch' && (n = n.parent))
   }
   if (exactLength || currentMinLength >= childLengthCondition.value) {
     return { score: Infinity, condition: undefined, candidates: [child] }
