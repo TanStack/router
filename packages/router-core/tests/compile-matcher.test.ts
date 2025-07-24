@@ -202,6 +202,7 @@ describe('work in progress', () => {
       const sc4 = s4?.toLowerCase();
       const sc5 = s5?.toLowerCase();
       const sc6 = s6?.toLowerCase();
+      const last = s[l - 1];
       if (
         length(7) &&
         sc1 === "a" &&
@@ -274,8 +275,8 @@ describe('work in progress', () => {
         if (l >= 3) {
           if (
             sc1 === "cache" &&
-            sc2?.startsWith("temp_") &&
-            s[l - 1].toLowerCase().endsWith(".log")
+            sc2.startsWith("temp_") &&
+            last.toLowerCase().endsWith(".log")
           )
             return [
               "/cache/temp_{$}.log",
@@ -284,7 +285,7 @@ describe('work in progress', () => {
                 "*": s.slice(2).join("/").slice(5, -4),
               },
             ];
-          if (sc1 === "images" && sc2?.startsWith("thumb_"))
+          if (sc1 === "images" && sc2.startsWith("thumb_"))
             return [
               "/images/thumb_{$}",
               {
@@ -292,7 +293,7 @@ describe('work in progress', () => {
                 "*": s.slice(2).join("/").slice(6),
               },
             ];
-          if (sc1 === "logs" && s[l - 1].toLowerCase().endsWith(".txt"))
+          if (sc1 === "logs" && last.toLowerCase().endsWith(".txt"))
             return [
               "/logs/{$}.txt",
               {

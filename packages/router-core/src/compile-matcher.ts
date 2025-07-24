@@ -397,7 +397,7 @@ function printTree(node: RootNode | BranchNode | LeafNode) {
   }
   if (node.conditions.length) {
     str += 'if ('
-    str += printConditions(node.conditions)
+    str += printConditions(node)
     str += ')'
   }
   if (node.type === 'branch') {
@@ -412,7 +412,8 @@ function printTree(node: RootNode | BranchNode | LeafNode) {
   return str
 }
 
-function printConditions(conditions: Array<Condition>) {
+function printConditions(node: BranchNode | LeafNode) {
+  const conditions = node.conditions
   const lengths = conditions.filter((c) => c.type === 'length')
   const segment = conditions.filter((c) => c.type !== 'length')
   const results: Array<string> = []
@@ -426,13 +427,14 @@ function printConditions(conditions: Array<Condition>) {
   } else if (lengths.length === 1) {
     results.push(printCondition(lengths[0]!))
   }
+  const [minLength] = findLengthAtNode(node)
   for (const c of segment) {
-    results.push(printCondition(c))
+    results.push(printCondition(c, minLength))
   }
   return results.join(' && ')
 }
 
-function printCondition(condition: Condition) {
+function printCondition(condition: Condition, minLength: number = 0) {
   switch (condition.type) {
     case 'static':
       if (condition.caseSensitive) {
@@ -450,20 +452,24 @@ function printCondition(condition: Condition) {
     case 'startsWith':
       if (condition.caseSensitive) {
         return `s${condition.index}.startsWith('${condition.value}')`
+      } else if (minLength > condition.index) {
+        return `sc${condition.index}.startsWith('${condition.value}')`
       } else {
         return `sc${condition.index}?.startsWith('${condition.value}')`
       }
     case 'endsWith':
       if (condition.caseSensitive) {
         return `s${condition.index}.endsWith('${condition.value}')`
+      } else if (minLength > condition.index) {
+        return `sc${condition.index}.endsWith('${condition.value}')`
       } else {
         return `sc${condition.index}?.endsWith('${condition.value}')`
       }
     case 'globalEndsWith':
       if (condition.caseSensitive) {
-        return `s[l - 1].endsWith('${condition.value}')`
+        return `last.endsWith('${condition.value}')`
       } else {
-        return `s[l - 1].toLowerCase().endsWith('${condition.value}')`
+        return `last.toLowerCase().endsWith('${condition.value}')`
       }
   }
   throw new Error(`Unhandled condition type: ${condition.type}`)
@@ -552,6 +558,12 @@ function printHead(
     head += `const sc${index} = s${index}?.toLowerCase();`
   }
 
+  // wildcard with a suffix requires accessing the last segment, whithout knowing its index
+  const hasWildcardWithSuffix = routes.some((route) => route.conditions.some((c) => c.type === 'globalEndsWith'))
+  if (hasWildcardWithSuffix) {
+    head += 'const last = s[l - 1];'
+  }
+
   return head
 }
 
@@ -599,24 +611,8 @@ function findBestLengthCondition(
   if (!childLengthCondition) {
     return { score: Infinity, condition: undefined, candidates: [child] }
   }
-  let currentMinLength = 1
-  let exactLength = false
-  if (node.type !== 'root') {
-    let n = node
-    do {
-      const lengthCondition = n.conditions.find((c) => c.type === 'length')
-      if (!lengthCondition) continue
-      if (lengthCondition.direction === 'eq') {
-        exactLength = true
-        break
-      }
-      if (lengthCondition.direction === 'gte') {
-        currentMinLength = lengthCondition.value
-        break
-      }
-    } while (n.parent.type === 'branch' && (n = n.parent))
-  }
-  if (exactLength || currentMinLength >= childLengthCondition.value) {
+  const [currentMinLength, lengthKind] = findLengthAtNode(node)
+  if (lengthKind === 'exact' || currentMinLength >= childLengthCondition.value) {
     return { score: Infinity, condition: undefined, candidates: [child] }
   }
   let bestMatchScore = Infinity
@@ -654,4 +650,29 @@ function findBestLengthCondition(
     key: `length_${bestExact ? 'eq' : 'gte'}_${bestLength}`,
   }
   return { score: bestMatchScore, condition, candidates: bestCandidates }
+}
+
+function findLengthAtNode(
+  node: RootNode | BranchNode | LeafNode,
+) {
+  if (node.type === 'root') return [1, 'min'] as const
+  let currentMinLength = 1
+  let exactLength = false
+  let n = node
+  do {
+    const lengthCondition = n.conditions.find((c) => c.type === 'length')
+    if (!lengthCondition) continue
+    if (lengthCondition.direction === 'eq') {
+      exactLength = true
+      break
+    }
+    if (lengthCondition.direction === 'gte') {
+      currentMinLength = lengthCondition.value
+      break
+    }
+  } while (n.parent.type === 'branch' && (n = n.parent))
+  return [
+    currentMinLength,
+    exactLength ? 'exact' : 'min',
+  ] as const
 }
