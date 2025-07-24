@@ -57,7 +57,7 @@ React Aria Components v1.11.0 and later works with TanStack Router's `preload (i
 
 ```tsx
 import { createLink, LinkComponent } from '@tanstack/react-router'
-import { Link as RACLink } from 'react-aria-components';
+import { Link as RACLink } from 'react-aria-components'
 
 const CreatedLinkComponent = createLink(RACLink)
 
