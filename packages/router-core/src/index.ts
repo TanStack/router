@@ -104,9 +104,13 @@ export {
   removeBasepath,
   matchByPath,
 } from './path'
-export { compileMatcher } from './compile-matcher'
 export type { Segment } from './path'
+
+export { compileMatcher } from './compile-matcher'
+export type { CompiledMatcher } from './compile-matcher'
+
 export { encode, decode } from './qss'
+
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
 
