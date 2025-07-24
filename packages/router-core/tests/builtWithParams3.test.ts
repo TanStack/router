@@ -240,7 +240,8 @@ describe('work in progress', () => {
   }
 
   type Condition =
-    | { key: string, type: 'static', index: number, value: string }
+    | { key: string, type: 'static-insensitive', index: number, value: string }
+    | { key: string, type: 'static-sensitive', index: number, value: string }
     | { key: string, type: 'length', direction: 'eq' | 'gte' | 'lte', value: number }
     | { key: string, type: 'startsWith', index: number, value: string }
     | { key: string, type: 'endsWith', index: number, value: string }
@@ -257,7 +258,12 @@ describe('work in progress', () => {
         if (segment.type === SEGMENT_TYPE_PATHNAME) {
           minLength += 1
           if (i === 0 && segment.value === '/') continue // skip leading slash
-          conditions.push({ type: 'static', index: i, value: segment.value, key: `static_${i}_${segment.value}` })
+          const value = segment.value
+          if (route.caseSensitive) {
+            conditions.push({ type: 'static-sensitive', index: i, value, key: `static_sensitive_${i}_${value}` })
+          } else {
+            conditions.push({ type: 'static-insensitive', index: i, value: value.toLowerCase(), key: `static_insensitive_${i}_${value.toLowerCase()}` })
+          }
           continue
         }
         if (segment.type === SEGMENT_TYPE_PARAM) {
@@ -317,8 +323,9 @@ describe('work in progress', () => {
   expandTree(tree)
   contractTree(tree)
 
-
-
+  let fn = ''
+  fn += printHead(all)
+  fn += printTree(tree)
 
   console.log('Tree built with', all.length, 'routes and', tree.children.length, 'top-level nodes')
 
@@ -460,8 +467,10 @@ describe('work in progress', () => {
 
   function printCondition(condition: Condition) {
     switch (condition.type) {
-      case 'static':
+      case 'static-sensitive':
         return `s${condition.index} === '${condition.value}'`
+      case 'static-insensitive':
+        return `sc${condition.index} === '${condition.value}'`
       case 'length':
         if (condition.direction === 'eq') {
           return `length(${condition.value})`
@@ -526,6 +535,41 @@ describe('work in progress', () => {
     return hasWildcard
       ? `return ['${route.path}', ${result}];`
       : `return ['${route.path}', params(${result}, ${length})];`
+  }
+
+  function printHead(routes: Array<ParsedRoute & { conditions: Array<Condition> }>) {
+    let head = 'const s = parsePathname(from[0] === "/" ? from : "/" + from).map((s) => s.value);'
+    head += 'const l = s.length;'
+
+    // the `length()` function does exact match by default, but greater-than-or-equal match if `fuzzy` is true
+    head += 'const length = fuzzy ? (n) => l >= n : (n) => l === n;'
+
+    // the `params()` function returns the params object, and if `fuzzy` is true, it also adds a `**` property with the remaining segments
+    head += 'const params = fuzzy ? (p, n) => { if (n && l > n) p[\'**\'] = s.slice(n).join(\'/\'); return p } : (p) => p;'
+
+    // extract all segments from the input
+    // const [, s1, s2, s3] = s;
+    const max = routes.reduce(
+      (max, r) => Math.max(max, r.segments.length),
+      0,
+    )
+    if (max > 0) head += `const [,${Array.from({ length: max - 1 }, (_, i) => `s${i + 1}`).join(', ')}] = s;`
+
+    // add toLowerCase version of each segment that is needed in a case-insensitive match
+    // const sc1 = s1?.toLowerCase();
+    const caseInsensitiveSegments = new Set<number>()
+    for (const route of routes) {
+      for (const condition of route.conditions) {
+        if (condition.type === 'static-insensitive') {
+          caseInsensitiveSegments.add(condition.index)
+        }
+      }
+    }
+    for (const index of caseInsensitiveSegments) {
+      head += `const sc${index} = s${index}?.toLowerCase();`
+    }
+
+    return head
   }
 
   function findBestCondition(node: RootNode | BranchNode, i: number, target: number) {
@@ -607,17 +651,6 @@ describe('work in progress', () => {
     return { score: bestMatchScore, condition, candidates: bestCandidates }
   }
 
-  let fn = 'const s = parsePathname(from[0] === "/" ? from : "/" + from).map((s) => s.value);'
-  fn += 'const l = s.length;'
-  fn += 'const length = fuzzy ? (n) => l >= n : (n) => l === n;'
-  fn += 'const params = fuzzy ? (p, n) => { if (n && l > n) p[\'**\'] = s.slice(n).join(\'/\'); return p } : (p) => p;'
-  const max = parsedRoutes.reduce(
-    (max, r) => Math.max(max, r.segments.length),
-    0,
-  )
-  if (max > 0) fn += `const [,${Array.from({ length: max }, (_, i) => `s${i + 1}`).join(', ')}] = s;`
-  fn += printTree(tree)
-
 
 
   it('generates a matching function', async () => {
@@ -633,77 +666,84 @@ describe('work in progress', () => {
             return p;
           }
         : (p) => p;
-      const [, s1, s2, s3, s4, s5, s6, s7] = s;
+      const [, s1, s2, s3, s4, s5, s6] = s;
+      const sc1 = s1?.toLowerCase();
+      const sc2 = s2?.toLowerCase();
+      const sc3 = s3?.toLowerCase();
+      const sc4 = s4?.toLowerCase();
+      const sc5 = s5?.toLowerCase();
+      const sc6 = s6?.toLowerCase();
       if (
         length(7) &&
-        s1 === "a" &&
-        s2 === "b" &&
-        s3 === "c" &&
-        s4 === "d" &&
-        s5 === "e" &&
-        s6 === "f"
+        sc1 === "a" &&
+        sc2 === "b" &&
+        sc3 === "c" &&
+        sc4 === "d" &&
+        sc5 === "e" &&
+        sc6 === "f"
       )
         return ["/a/b/c/d/e/f", params({}, 7)];
-      if (length(5) && s1 === "z" && s2 === "y" && s3 === "x") {
-        if (s4 === "u") return ["/z/y/x/u", params({}, 5)];
-        if (s4 === "v") return ["/z/y/x/v", params({}, 5)];
-        if (s4 === "w") return ["/z/y/x/w", params({}, 5)];
+      if (length(5) && sc1 === "z" && sc2 === "y" && sc3 === "x") {
+        if (sc4 === "u") return ["/z/y/x/u", params({}, 5)];
+        if (sc4 === "v") return ["/z/y/x/v", params({}, 5)];
+        if (sc4 === "w") return ["/z/y/x/w", params({}, 5)];
       }
       if (length(4)) {
-        if (s2 === "profile" && s3 === "settings") {
-          if (s1 === "a") return ["/a/profile/settings", params({}, 4)];
-          if (s1 === "b") return ["/b/profile/settings", params({}, 4)];
-          if (s1 === "users") return ["/users/profile/settings", params({}, 4)];
+        if (sc2 === "profile" && sc3 === "settings") {
+          if (sc1 === "a") return ["/a/profile/settings", params({}, 4)];
+          if (sc1 === "b") return ["/b/profile/settings", params({}, 4)];
+          if (sc1 === "users") return ["/users/profile/settings", params({}, 4)];
         }
-        if (s1 === "z" && s2 === "y" && s3 === "x") return ["/z/y/x", params({}, 4)];
-        if (s1 === "foo" && s2 === "bar")
+        if (sc1 === "z" && sc2 === "y" && sc3 === "x")
+          return ["/z/y/x", params({}, 4)];
+        if (sc1 === "foo" && sc2 === "bar")
           return ["/foo/bar/$id", params({ id: s3 }, 4)];
       }
       if (l >= 3) {
         if (length(3)) {
-          if (s2 === "profile") {
-            if (s1 === "a") return ["/a/profile", params({}, 3)];
-            if (s1 === "b") return ["/b/profile", params({}, 3)];
+          if (sc2 === "profile") {
+            if (sc1 === "a") return ["/a/profile", params({}, 3)];
+            if (sc1 === "b") return ["/b/profile", params({}, 3)];
           }
-          if (s1 === "beep" && s2 === "boop") return ["/beep/boop", params({}, 3)];
-          if (s1 === "one" && s2 === "two") return ["/one/two", params({}, 3)];
-          if (s1 === "users" && s2 === "profile")
+          if (sc1 === "beep" && sc2 === "boop") return ["/beep/boop", params({}, 3)];
+          if (sc1 === "one" && sc2 === "two") return ["/one/two", params({}, 3)];
+          if (sc1 === "users" && sc2 === "profile")
             return ["/users/profile", params({}, 3)];
         }
-        if (length(4) && s1 === "foo") {
-          if (s3 === "bar") return ["/foo/$id/bar", params({ id: s2 }, 4)];
-          if (s3 === "qux") return ["/foo/{-$bar}/qux", params({ bar: s2 }, 4)];
+        if (length(4) && sc1 === "foo") {
+          if (sc3 === "bar") return ["/foo/$id/bar", params({ id: s2 }, 4)];
+          if (sc3 === "qux") return ["/foo/{-$bar}/qux", params({ bar: s2 }, 4)];
         }
         if (length(3)) {
-          if (s1 === "foo" && s2 === "qux")
+          if (sc1 === "foo" && sc2 === "qux")
             return ["/foo/{-$bar}/qux", params({}, 3)];
-          if (s1 === "a" && s2.startsWith("user-"))
+          if (sc1 === "a" && s2.startsWith("user-"))
             return ["/a/user-{$id}", params({ id: s2.slice(5) }, 3)];
-          if (s1 === "api" && s2.startsWith("user-"))
+          if (sc1 === "api" && s2.startsWith("user-"))
             return ["/api/user-{$id}", params({ id: s2.slice(5) }, 3)];
-          if (s1 === "b" && s2.startsWith("user-"))
+          if (sc1 === "b" && s2.startsWith("user-"))
             return ["/b/user-{$id}", params({ id: s2.slice(5) }, 3)];
         }
-        if (length(4) && s1 === "foo" && s3 === "/")
+        if (length(4) && sc1 === "foo" && sc3 === "/")
           return ["/foo/$bar/", params({ bar: s2 }, 4)];
         if (length(3)) {
-          if (s1 === "foo") return ["/foo/$bar/", params({ bar: s2 }, 3)];
-          if (s1 === "a") return ["/a/$id", params({ id: s2 }, 3)];
-          if (s1 === "b") return ["/b/$id", params({ id: s2 }, 3)];
-          if (s1 === "foo") return ["/foo/$bar", params({ bar: s2 }, 3)];
-          if (s1 === "users") return ["/users/$id", params({ id: s2 }, 3)];
-          if (s1 === "a") return ["/a/{-$slug}", params({ slug: s2 }, 3)];
+          if (sc1 === "foo") return ["/foo/$bar/", params({ bar: s2 }, 3)];
+          if (sc1 === "a") return ["/a/$id", params({ id: s2 }, 3)];
+          if (sc1 === "b") return ["/b/$id", params({ id: s2 }, 3)];
+          if (sc1 === "foo") return ["/foo/$bar", params({ bar: s2 }, 3)];
+          if (sc1 === "users") return ["/users/$id", params({ id: s2 }, 3)];
+          if (sc1 === "a") return ["/a/{-$slug}", params({ slug: s2 }, 3)];
         }
       }
       if (l >= 2) {
-        if (length(2) && s1 === "a") return ["/a/{-$slug}", params({}, 2)];
-        if (length(3) && s1 === "b") return ["/b/{-$slug}", params({ slug: s2 }, 3)];
-        if (length(2) && s1 === "b") return ["/b/{-$slug}", params({}, 2)];
-        if (length(3) && s1 === "posts")
+        if (length(2) && sc1 === "a") return ["/a/{-$slug}", params({}, 2)];
+        if (length(3) && sc1 === "b") return ["/b/{-$slug}", params({ slug: s2 }, 3)];
+        if (length(2) && sc1 === "b") return ["/b/{-$slug}", params({}, 2)];
+        if (length(3) && sc1 === "posts")
           return ["/posts/{-$slug}", params({ slug: s2 }, 3)];
-        if (length(2) && s1 === "posts") return ["/posts/{-$slug}", params({}, 2)];
+        if (length(2) && sc1 === "posts") return ["/posts/{-$slug}", params({}, 2)];
         if (l >= 3) {
-          if (s1 === "cache" && s2.startsWith("temp_") && s[l - 1].endsWith(".log"))
+          if (sc1 === "cache" && s2.startsWith("temp_") && s[l - 1].endsWith(".log"))
             return [
               "/cache/temp_{$}.log",
               {
@@ -711,7 +751,7 @@ describe('work in progress', () => {
                 "*": s.slice(2).join("/").slice(5, -4),
               },
             ];
-          if (s1 === "images" && s2.startsWith("thumb_"))
+          if (sc1 === "images" && s2.startsWith("thumb_"))
             return [
               "/images/thumb_{$}",
               {
@@ -719,7 +759,7 @@ describe('work in progress', () => {
                 "*": s.slice(2).join("/").slice(6),
               },
             ];
-          if (s1 === "logs" && s[l - 1].endsWith(".txt"))
+          if (sc1 === "logs" && s[l - 1].endsWith(".txt"))
             return [
               "/logs/{$}.txt",
               {
@@ -728,32 +768,32 @@ describe('work in progress', () => {
               },
             ];
         }
-        if (s1 === "a")
+        if (sc1 === "a")
           return [
             "/a/$",
             { _splat: s.slice(2).join("/"), "*": s.slice(2).join("/") },
           ];
-        if (s1 === "b")
+        if (sc1 === "b")
           return [
             "/b/$",
             { _splat: s.slice(2).join("/"), "*": s.slice(2).join("/") },
           ];
-        if (s1 === "files")
+        if (sc1 === "files")
           return [
             "/files/$",
             { _splat: s.slice(2).join("/"), "*": s.slice(2).join("/") },
           ];
         if (length(2)) {
-          if (s1 === "a") return ["/a", params({}, 2)];
-          if (s1 === "about") return ["/about", params({}, 2)];
-          if (s1 === "b") return ["/b", params({}, 2)];
-          if (s1 === "one") return ["/one", params({}, 2)];
+          if (sc1 === "a") return ["/a", params({}, 2)];
+          if (sc1 === "about") return ["/about", params({}, 2)];
+          if (sc1 === "b") return ["/b", params({}, 2)];
+          if (sc1 === "one") return ["/one", params({}, 2)];
         }
       }
       if (length(1)) return ["/", params({}, 1)];
-      if (length(4) && s2 === "bar" && s3 === "foo")
+      if (length(4) && sc2 === "bar" && sc3 === "foo")
         return ["/$id/bar/foo", params({ id: s1 }, 4)];
-      if (length(4) && s2 === "foo" && s3 === "bar")
+      if (length(4) && sc2 === "foo" && sc3 === "bar")
         return ["/$id/foo/bar", params({ id: s1 }, 4)];
       "
     `)
@@ -770,6 +810,7 @@ describe('work in progress', () => {
     '/',
     '/users/profile/settings',
     '/foo/123',
+    '/FOO/123',
     '/foo/123/',
     '/b/123',
     '/foo/qux',
