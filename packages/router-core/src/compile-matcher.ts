@@ -389,7 +389,7 @@ function contractTree(tree: RootNode) {
 }
 
 /**
- * Remove branches and leaves that are not reachable due to the conditions of their previous siblings.
+ * Remove branches and leaves that are not reachable due to the conditions a previous leaf sibling.
  * 
  * This turns
  * ```
