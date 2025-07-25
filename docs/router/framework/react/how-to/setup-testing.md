@@ -882,7 +882,7 @@ export function createAuthenticatedRouter(user = mockUser) {
       component: DashboardComponent,
     }),
   ]
-  
+
   return createTestRouter(protectedRoutes, {
     context: {
       auth: { user, isAuthenticated: true },

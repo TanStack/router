@@ -123,7 +123,10 @@ export function renderWithFileRoutes(
 }
 
 // Helper to test specific file routes
-export function createMockFileRoute(path: string, component: React.ComponentType) {
+export function createMockFileRoute(
+  path: string,
+  component: React.ComponentType,
+) {
   // This is useful for isolated testing when you don't want to use the full route tree
   return {
     path,
@@ -165,7 +168,7 @@ describe('Generated Route Tree', () => {
     }
 
     const routePaths = getAllRoutePaths(routeTree)
-    
+
     // Test that expected routes are present
     expect(routePaths).toContain('/')
     expect(routePaths).toContain('/about')
@@ -174,9 +177,11 @@ describe('Generated Route Tree', () => {
 
   it('should have correct route hierarchy', () => {
     // Test parent-child relationships
-    const homeRoute = routeTree.children?.find((child: any) => child.path === '/')
+    const homeRoute = routeTree.children?.find(
+      (child: any) => child.path === '/',
+    )
     expect(homeRoute).toBeDefined()
-    
+
     // Test for specific route structure based on your file organization
     // For example, if you have /posts/$postId routes:
     // const postsRoute = routeTree.children?.find((child: any) => child.path === '/posts')
@@ -415,7 +420,7 @@ describe('Programmatic Navigation', () => {
     await user.click(screen.getByRole('button', { name: /search/i }))
 
     expect(router.state.location.search).toMatchObject({
-      q: 'test query'
+      q: 'test query',
     })
   })
 })
@@ -447,9 +452,9 @@ describe('File-Based Route Guards', () => {
   })
 
   it('should allow authenticated users to access protected routes', () => {
-    const mockAuth = { 
-      isAuthenticated: true, 
-      user: { id: '1', name: 'John' } 
+    const mockAuth = {
+      isAuthenticated: true,
+      user: { id: '1', name: 'John' },
     }
 
     renderWithFileRoutes(<div />, {
@@ -475,12 +480,12 @@ describe('File-Based Route Loaders', () => {
     const mockFetchPost = vi.fn().mockResolvedValue({
       id: '123',
       title: 'Test Post',
-      content: 'Test content'
+      content: 'Test content',
     })
 
     // If your route loader uses a global API function, mock it
     vi.mock('../api/posts', () => ({
-      fetchPost: mockFetchPost
+      fetchPost: mockFetchPost,
     }))
 
     renderWithFileRoutes(<div />, {
@@ -498,7 +503,7 @@ describe('File-Based Route Loaders', () => {
     const mockFetchPost = vi.fn().mockRejectedValue(new Error('Post not found'))
 
     vi.mock('../api/posts', () => ({
-      fetchPost: mockFetchPost
+      fetchPost: mockFetchPost,
     }))
 
     renderWithFileRoutes(<div />, {
@@ -576,8 +581,8 @@ describe('File Route Error Handling', () => {
       Route: {
         component: () => {
           throw new Error('Test error')
-        }
-      }
+        },
+      },
     }))
 
     renderWithFileRoutes(<div />, {
@@ -585,15 +590,17 @@ describe('File Route Error Handling', () => {
     })
 
     expect(screen.getByText(/Something went wrong/)).toBeInTheDocument()
-    
+
     consoleSpy.mockRestore()
   })
 
   it('should handle loader errors with error component', async () => {
-    const mockFailingLoader = vi.fn().mockRejectedValue(new Error('Load failed'))
+    const mockFailingLoader = vi
+      .fn()
+      .mockRejectedValue(new Error('Load failed'))
 
     vi.mock('../api/data', () => ({
-      loadData: mockFailingLoader
+      loadData: mockFailingLoader,
     }))
 
     renderWithFileRoutes(<div />, {
@@ -620,13 +627,13 @@ describe('Generated Route Types', () => {
   it('should provide type-safe navigation', () => {
     function TestComponent() {
       const navigate = useNavigate()
-      
+
       const handleNavigate = () => {
         // This should be type-safe based on your generated routes
         navigate({
           to: '/posts/$postId',
           params: { postId: '123' },
-          search: { tab: 'comments' }
+          search: { tab: 'comments' },
         })
       }
 
@@ -665,10 +672,10 @@ describe('Route Tree Development', () => {
   it('should regenerate routes when files change', () => {
     // This test ensures your route tree is properly generated
     // You can add specific assertions based on your file structure
-    
+
     expect(routeTree).toBeDefined()
     expect(typeof routeTree.children).toBe('object')
-    
+
     // Test specific routes exist
     const routes = getAllRouteIds(routeTree)
     expect(routes).toContain('/')
@@ -703,7 +710,9 @@ Create `e2e/file-routing.spec.ts`:
 import { test, expect } from '@playwright/test'
 
 test.describe('File-Based Route E2E', () => {
-  test('should navigate through file-based route structure', async ({ page }) => {
+  test('should navigate through file-based route structure', async ({
+    page,
+  }) => {
     await page.goto('/')
 
     // Test home route (from src/routes/index.tsx)
@@ -753,7 +762,7 @@ import { createFileRoute } from '@tanstack/react-router'
 export const createMockFileRoute = (
   path: string,
   component: React.ComponentType,
-  options: any = {}
+  options: any = {},
 ) => {
   return createFileRoute(path)({
     component,
@@ -785,7 +794,7 @@ describe('Route Discovery', () => {
   it('should discover all routes from file structure', () => {
     // Test that your route tree includes all expected routes
     // This helps catch when routes are accidentally not being generated
-    
+
     const expectedRoutes = [
       '/',
       '/about',
@@ -795,7 +804,7 @@ describe('Route Discovery', () => {
       '/dashboard/settings',
     ]
 
-    expectedRoutes.forEach(routePath => {
+    expectedRoutes.forEach((routePath) => {
       const routeExists = checkRouteExists(routeTree, routePath)
       expect(routeExists).toBe(true)
     })
@@ -844,7 +853,7 @@ describe('Posts Route (/posts)', () => {
     renderWithFileRoutes(<div />, {
       initialLocation: '/posts',
     })
-    
+
     expect(screen.getByText(/Posts/)).toBeInTheDocument()
   })
 
@@ -876,11 +885,13 @@ describe('Dashboard Routes', () => {
 ### Common Issues
 
 **Problem**: Route tree not found in tests
+
 ```bash
 Error: Cannot find module '../routeTree.gen'
 ```
 
 **Solution**: Ensure route tree generation in test setup:
+
 ```ts
 // vitest.config.ts
 export default defineConfig({
@@ -897,6 +908,7 @@ export default defineConfig({
 **Problem**: Routes not updating in tests after file changes
 
 **Solution**: Clear module cache in test setup:
+
 ```ts
 // src/test/setup.ts
 beforeEach(() => {
@@ -909,6 +921,7 @@ beforeEach(() => {
 **Problem**: Type errors in tests with generated routes
 
 **Solution**: Ensure proper TypeScript configuration:
+
 ```json
 {
   "compilerOptions": {
