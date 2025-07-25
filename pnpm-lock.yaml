@@ -6966,7 +6966,7 @@ importers:
         specifier: workspace:*
         version: link:../router-core
       '@tanstack/solid-router':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../solid-router
       '@tanstack/start-client-core':
         specifier: workspace:*

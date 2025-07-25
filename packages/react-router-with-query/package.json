@@ -67,8 +67,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "react": ">=19",
     "react-dom": ">=19",
-    "@tanstack/router-core": "workspace:^",
-    "@tanstack/react-router": "workspace:^",
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/react-router": "workspace:*",
     "@tanstack/react-query": ">=5.66.0"
   },
   "peerDependencies": {
