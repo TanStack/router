@@ -930,6 +930,7 @@ await waitFor(() => {
 
 After setting up testing, you might want to:
 
+- [How to Test File-Based Routing](./test-file-based-routing.md) - Specific patterns for file-based routing apps
 - [How to Set Up Basic Authentication](./setup-authentication.md) - Test authentication flows
 - [How to Debug Common Router Issues](./debug-router-issues.md) - Debug test failures
 
