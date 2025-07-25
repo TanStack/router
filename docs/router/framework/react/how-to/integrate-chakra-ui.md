@@ -166,7 +166,11 @@ interface ChakraNavProps {
   brandTo?: string
 }
 
-export function ChakraNav({ items, brand = 'Logo', brandTo = '/' }: ChakraNavProps) {
+export function ChakraNav({
+  items,
+  brand = 'Logo',
+  brandTo = '/',
+}: ChakraNavProps) {
   const { isOpen, onToggle } = useDisclosure()
   const matchRoute = useMatchRoute()
 
@@ -190,7 +194,9 @@ export function ChakraNav({ items, brand = 'Logo', brandTo = '/' }: ChakraNavPro
         >
           <IconButton
             onClick={onToggle}
-            icon={isOpen ? <CloseIcon w={3} h={3} /> : <HamburgerIcon w={5} h={5} />}
+            icon={
+              isOpen ? <CloseIcon w={3} h={3} /> : <HamburgerIcon w={5} h={5} />
+            }
             variant="ghost"
             aria-label="Toggle Navigation"
           />
@@ -255,7 +261,11 @@ function MobileNav({ items }: { items: NavItem[] }) {
   const matchRoute = useMatchRoute()
 
   return (
-    <Stack bg={useColorModeValue('white', 'gray.800')} p={4} display={{ md: 'none' }}>
+    <Stack
+      bg={useColorModeValue('white', 'gray.800')}
+      p={4}
+      display={{ md: 'none' }}
+    >
       {items.map((item) => {
         const isActive = matchRoute({ to: item.to, fuzzy: !item.exact })
 
@@ -265,7 +275,9 @@ function MobileNav({ items }: { items: NavItem[] }) {
             to={item.to}
             py={2}
             fontWeight={isActive ? 'bold' : 'medium'}
-            color={isActive ? 'brand.500' : useColorModeValue('gray.600', 'gray.200')}
+            color={
+              isActive ? 'brand.500' : useColorModeValue('gray.600', 'gray.200')
+            }
             _hover={{
               textDecoration: 'none',
             }}
@@ -313,7 +325,8 @@ export function ChakraBreadcrumb({
 
   const breadcrumbItems = pathSegments.map((segment, index) => {
     const path = '/' + pathSegments.slice(0, index + 1).join('/')
-    const label = config[segment] || segment.charAt(0).toUpperCase() + segment.slice(1)
+    const label =
+      config[segment] || segment.charAt(0).toUpperCase() + segment.slice(1)
     const isLast = index === pathSegments.length - 1
 
     return {
@@ -431,7 +444,11 @@ export function ChakraCardGrid({
   })
 
   return (
-    <SimpleGrid columns={columns} spacing={spacing} minChildWidth={minChildWidth}>
+    <SimpleGrid
+      columns={columns}
+      spacing={spacing}
+      minChildWidth={minChildWidth}
+    >
       {children}
     </SimpleGrid>
   )
@@ -602,7 +619,11 @@ function PostPage() {
       <VStack spacing={8} align="stretch">
         {/* Back Navigation */}
         <Box>
-          <RouterLink to="/posts" color="brand.500" _hover={{ textDecoration: 'none' }}>
+          <RouterLink
+            to="/posts"
+            color="brand.500"
+            _hover={{ textDecoration: 'none' }}
+          >
             <HStack spacing={2}>
               <ArrowBackIcon />
               <Text>Back to Posts</Text>
@@ -613,7 +634,7 @@ function PostPage() {
         {/* Post Header */}
         <VStack spacing={4} align="start">
           <Heading size="2xl">Understanding TanStack Router</Heading>
-          
+
           <HStack spacing={3}>
             <Tag colorScheme="brand">
               <TagLabel>Tutorial</TagLabel>
@@ -630,15 +651,16 @@ function PostPage() {
         <Box>
           <VStack spacing={4} align="start">
             <Text color={textColor} lineHeight="tall">
-              This is the detailed content of post {postId}. In this comprehensive guide,
-              we'll explore how to integrate TanStack Router with Chakra UI to create
-              beautiful, accessible, and responsive web applications.
+              This is the detailed content of post {postId}. In this
+              comprehensive guide, we'll explore how to integrate TanStack
+              Router with Chakra UI to create beautiful, accessible, and
+              responsive web applications.
             </Text>
 
             <Text color={textColor} lineHeight="tall">
-              Chakra UI provides a simple, modular, and accessible component library
-              that gives you the building blocks you need to build React applications
-              with speed.
+              Chakra UI provides a simple, modular, and accessible component
+              library that gives you the building blocks you need to build React
+              applications with speed.
             </Text>
           </VStack>
         </Box>
@@ -724,12 +746,12 @@ export const RouterButton = createLink(
 import { ColorModeScript } from '@chakra-ui/react'
 
 // Add to your index.html head
-<ColorModeScript initialColorMode={theme.config.initialColorMode} />
+;<ColorModeScript initialColorMode={theme.config.initialColorMode} />
 
 // Or use localStorage manager
 import { localStorageManager } from '@chakra-ui/react'
 
-<ChakraProvider theme={theme} colorModeManager={localStorageManager}>
+;<ChakraProvider theme={theme} colorModeManager={localStorageManager}>
   {children}
 </ChakraProvider>
 ```
@@ -763,24 +785,28 @@ const columns = useBreakpointValue({
 Before deploying your Chakra UI + TanStack Router app:
 
 ### Functionality
+
 - [ ] All router-compatible components work correctly
 - [ ] Navigation states properly reflected
 - [ ] Theme persists across route changes
 - [ ] TypeScript compilation successful
 
 ### Accessibility
+
 - [ ] Keyboard navigation working
 - [ ] Screen reader compatibility tested
 - [ ] Color contrast meets WCAG standards
 - [ ] Focus management working properly
 
 ### Performance
+
 - [ ] Bundle size optimized
 - [ ] Color mode switching performant
 - [ ] No unnecessary re-renders
 - [ ] Images and icons optimized
 
 ### Responsiveness
+
 - [ ] Works on mobile devices
 - [ ] Tablet layouts functional
 - [ ] Desktop experience optimal

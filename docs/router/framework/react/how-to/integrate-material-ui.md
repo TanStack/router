@@ -27,6 +27,7 @@ npm install @mui/material @emotion/react @emotion/styled @mui/icons-material
 ```
 
 **Optional: Add date picker support**
+
 ```bash
 npm install @mui/x-date-pickers dayjs
 ```
@@ -245,22 +246,29 @@ interface MuiNavDrawerProps extends Omit<DrawerProps, 'children'> {
   title?: string
 }
 
-export function MuiNavDrawer({ items, title, ...drawerProps }: MuiNavDrawerProps) {
+export function MuiNavDrawer({
+  items,
+  title,
+  ...drawerProps
+}: MuiNavDrawerProps) {
   const matchRoute = useMatchRoute()
 
   return (
     <Drawer {...drawerProps}>
       <Box sx={{ width: 250 }} role="presentation">
         {title && (
-          <Typography variant="h6" sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Typography
+            variant="h6"
+            sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}
+          >
             {title}
           </Typography>
         )}
-        
+
         <List>
           {items.map((item) => {
             const isActive = matchRoute({ to: item.to, fuzzy: true })
-            
+
             return (
               <ListItem key={item.to} disablePadding>
                 <ListItemButton
@@ -320,7 +328,11 @@ interface MuiAppBarProps {
   userMenuItems?: AppBarItem[]
 }
 
-export function MuiAppBar({ title, navigationItems, userMenuItems }: MuiAppBarProps) {
+export function MuiAppBar({
+  title,
+  navigationItems,
+  userMenuItems,
+}: MuiAppBarProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null)
 
@@ -438,7 +450,11 @@ function PostPage() {
     <Container maxWidth="md" sx={{ py: 4 }}>
       {/* Breadcrumb Navigation */}
       <Box sx={{ mb: 3 }}>
-        <RouterLink to="/posts" color="primary" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <RouterLink
+          to="/posts"
+          color="primary"
+          sx={{ display: 'flex', alignItems: 'center', mb: 2 }}
+        >
           <ArrowBack sx={{ mr: 1 }} />
           Back to Posts
         </RouterLink>
@@ -450,15 +466,15 @@ function PostPage() {
           <Typography variant="h4" component="h1" gutterBottom>
             Post {postId}
           </Typography>
-          
+
           <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
             <Chip label="React" color="primary" size="small" />
             <Chip label="TypeScript" color="secondary" size="small" />
           </Stack>
 
           <Typography variant="body1" paragraph>
-            This is the content of post {postId}. It demonstrates how Material-UI
-            components work seamlessly with TanStack Router.
+            This is the content of post {postId}. It demonstrates how
+            Material-UI components work seamlessly with TanStack Router.
           </Typography>
         </CardContent>
 
@@ -472,7 +488,7 @@ function PostPage() {
           >
             Edit Post
           </RouterButton>
-          
+
           <RouterButton
             to="/posts/$postId/delete"
             params={{ postId }}
@@ -524,7 +540,7 @@ function LayoutComponent() {
         navigationItems={navigationItems}
         userMenuItems={userMenuItems}
       />
-      
+
       <Box component="main" sx={{ mt: 2 }}>
         <Outlet />
       </Box>
@@ -562,6 +578,7 @@ export const RouterButton = createLink(
 **Solutions:**
 
 1. **Use MUI's emotion cache:**
+
    ```tsx
    import { CacheProvider } from '@emotion/react'
    import createCache from '@emotion/cache'
@@ -574,9 +591,7 @@ export const RouterButton = createLink(
    export function App() {
      return (
        <CacheProvider value={cache}>
-         <MuiThemeProvider>
-           {/* Your app */}
-         </MuiThemeProvider>
+         <MuiThemeProvider>{/* Your app */}</MuiThemeProvider>
        </CacheProvider>
      )
    }
@@ -625,6 +640,7 @@ export const Route = createRootRoute({
 **Solutions:**
 
 1. **Use tree shaking:**
+
    ```tsx
    // ✅ Import only what you need
    import Button from '@mui/material/Button'
@@ -635,11 +651,16 @@ export const Route = createRootRoute({
    ```
 
 2. **Use dynamic imports for heavy components:**
+
    ```tsx
    import { lazy, Suspense } from 'react'
    import { CircularProgress } from '@mui/material'
 
-   const DataGrid = lazy(() => import('@mui/x-data-grid').then(module => ({ default: module.DataGrid })))
+   const DataGrid = lazy(() =>
+     import('@mui/x-data-grid').then((module) => ({
+       default: module.DataGrid,
+     })),
+   )
 
    function MyComponent() {
      return (
@@ -657,24 +678,28 @@ export const Route = createRootRoute({
 Before deploying your MUI + TanStack Router app:
 
 ### Functionality
+
 - [ ] All navigation components work with router state
 - [ ] Active states properly reflected in tabs and navigation
 - [ ] TypeScript compilation successful
 - [ ] All MUI components render correctly
 
 ### Performance
+
 - [ ] Bundle size optimized with tree shaking
 - [ ] Emotion CSS-in-JS performance acceptable
 - [ ] No unnecessary re-renders on route changes
 - [ ] Large components code-split appropriately
 
 ### Styling
+
 - [ ] Theme consistency across all routes
 - [ ] CSS conflicts resolved
 - [ ] Responsive design working properly
 - [ ] Dark mode integration (if applicable)
 
 ### Accessibility
+
 - [ ] Keyboard navigation working
 - [ ] Screen reader compatibility maintained
 - [ ] Focus management across route transitions

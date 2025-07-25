@@ -117,14 +117,14 @@ interface RouteAnimationContainerProps {
   children: ReactNode
 }
 
-export function RouteAnimationContainer({ children }: RouteAnimationContainerProps) {
+export function RouteAnimationContainer({
+  children,
+}: RouteAnimationContainerProps) {
   const router = useRouter()
-  
+
   return (
     <AnimatePresence mode="wait" initial={false}>
-      <div key={router.state.location.pathname}>
-        {children}
-      </div>
+      <div key={router.state.location.pathname}>{children}</div>
     </AnimatePresence>
   )
 }
@@ -236,9 +236,7 @@ export function AnimatedTabs({ items, className }: AnimatedTabsProps) {
             key={item.to}
             to={item.to}
             className={`relative px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-              isActive
-                ? 'text-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
+              isActive ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             {isActive && (
@@ -281,7 +279,10 @@ interface AnimatedMobileMenuProps {
   trigger: React.ReactNode
 }
 
-export function AnimatedMobileMenu({ items, trigger }: AnimatedMobileMenuProps) {
+export function AnimatedMobileMenu({
+  items,
+  trigger,
+}: AnimatedMobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   const menuVariants = {
@@ -313,9 +314,7 @@ export function AnimatedMobileMenu({ items, trigger }: AnimatedMobileMenuProps) 
   return (
     <>
       {/* Trigger */}
-      <button onClick={() => setIsOpen(!isOpen)}>
-        {trigger}
-      </button>
+      <button onClick={() => setIsOpen(!isOpen)}>{trigger}</button>
 
       {/* Overlay */}
       <AnimatePresence>
@@ -379,11 +378,11 @@ interface AnimatedFabProps {
   className?: string
 }
 
-export function AnimatedFab({ 
-  to, 
-  label = 'Add', 
+export function AnimatedFab({
+  to,
+  label = 'Add',
   icon = <Plus className="w-6 h-6" />,
-  className = ''
+  className = '',
 }: AnimatedFabProps) {
   return (
     <motion.div
@@ -426,7 +425,11 @@ interface SharedElementProps {
   className?: string
 }
 
-export function SharedElement({ layoutId, children, className }: SharedElementProps) {
+export function SharedElement({
+  layoutId,
+  children,
+  className,
+}: SharedElementProps) {
   return (
     <motion.div
       layoutId={layoutId}
@@ -488,7 +491,7 @@ export function RouteVariants({ children }: RouteVariantsProps) {
   // Different animations based on route depth
   const getVariants = (path: string) => {
     const depth = path.split('/').length - 1
-    
+
     if (depth === 1) {
       // Top-level routes slide from right
       return {
@@ -664,6 +667,7 @@ function PostsPage() {
 **Solutions:**
 
 1. **Ensure proper key for AnimatePresence:**
+
    ```tsx
    <AnimatePresence mode="wait">
      <motion.div key={router.state.location.pathname}>
@@ -673,10 +677,11 @@ function PostsPage() {
    ```
 
 2. **Use layout animations correctly:**
+
    ```tsx
    // ❌ This might cause layout shifts
    <motion.div animate={{ x: 100 }}>
-   
+
    // ✅ Use layout for changing layouts
    <motion.div layout>
    ```
@@ -688,13 +693,14 @@ function PostsPage() {
 **Solutions:**
 
 1. **Prefer transform and opacity animations:**
+
    ```tsx
    // ✅ GPU-accelerated properties
    const variants = {
      initial: { opacity: 0, scale: 0.95 },
      in: { opacity: 1, scale: 1 },
    }
-   
+
    // ❌ Avoid animating layout properties
    const badVariants = {
      initial: { width: 0, height: 0 },
@@ -704,10 +710,7 @@ function PostsPage() {
 
 2. **Use will-change CSS property sparingly:**
    ```tsx
-   <motion.div
-     style={{ willChange: 'transform' }}
-     animate={{ x: 100 }}
-   />
+   <motion.div style={{ willChange: 'transform' }} animate={{ x: 100 }} />
    ```
 
 ### Layout Shift Issues
@@ -722,7 +725,7 @@ function PostsPage() {
   layoutId="shared-element"
   style={{ position: 'relative' }}
   transition={{
-    layout: { duration: 0.3 }
+    layout: { duration: 0.3 },
   }}
 >
   {children}
@@ -736,24 +739,28 @@ function PostsPage() {
 Before deploying your animated TanStack Router app:
 
 ### Performance
+
 - [ ] Animations use GPU-accelerated properties (transform, opacity)
 - [ ] No unnecessary will-change CSS properties
 - [ ] Complex animations are conditional on user preferences
 - [ ] Frame rate stays above 60fps on target devices
 
 ### User Experience
+
 - [ ] Animations respect user's motion preferences
 - [ ] Loading states have appropriate animations
 - [ ] Navigation feels responsive and smooth
 - [ ] Animations enhance rather than distract from content
 
 ### Accessibility
+
 - [ ] Respect prefers-reduced-motion media query
 - [ ] Animations don't interfere with screen readers
 - [ ] Focus management works during transitions
 - [ ] Essential content isn't hidden behind animations
 
 ### Technical
+
 - [ ] Bundle size impact acceptable
 - [ ] No animation-related console errors
 - [ ] Smooth transitions on slower devices
