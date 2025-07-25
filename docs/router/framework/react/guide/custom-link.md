@@ -53,17 +53,38 @@ Here are some examples of how you can use `createLink` with third-party librarie
 
 ### React Aria Components example
 
-React Aria Components v1.11.0 and later works with TanStack Router's `preload (intent)` prop.
+React Aria Components v1.11.0 and later works with TanStack Router's `preload (intent)` prop. Use `createLink` to wrap each React Aria component that you use as a link.
 
 ```tsx
-import { createLink, LinkComponent } from '@tanstack/react-router'
-import { Link as RACLink } from 'react-aria-components'
+import { createLink } from '@tanstack/react-router'
+import { Link as RACLink, MenuItem } from 'react-aria-components'
 
-const CreatedLinkComponent = createLink(RACLink)
+export const Link = createLink(RACLink)
+export const MenuItemLink = createLink(MenuItem);
+```
 
-export const CustomLink: LinkComponent<typeof RACLink> = (props) => {
-  return <CreatedLinkComponent preload={'intent'} {...props} />
+To use React Aria's render props, including the `className`, `style`, and `children` functions, create a wrapper component and pass that to `createLink`.
+
+```tsx
+import { createLink } from '@tanstack/react-router';
+import { Link as RACLink, type LinkProps } from 'react-aria-components';
+
+interface MyLinkProps extends LinkProps {
+  // your props
 }
+
+function MyLink(props: MyLinkProps) {
+  return (
+    <RACLink
+      {...props}
+      style={({ isHovered }) => ({
+        color: isHovered ? 'red' : 'blue',
+      })}
+    />
+  );
+}
+
+export const Link = createLink(MyLink);
 ```
 
 ### Chakra UI example
@@ -101,7 +122,9 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
   )
 }
 ```
-
+export const CustomLink: LinkComponent<typeof RACLink> = (props) => {
+  return <CreatedLinkComponent preload={'intent'} {...props} />
+}
 ### MUI example
 
 There is an [example](https://github.com/TanStack/router/tree/main/examples/react/start-material-ui) available which uses these patterns.
