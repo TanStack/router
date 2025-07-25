@@ -6,7 +6,8 @@ This document outlines the multi-PR process for implementing the remaining how-t
 
 - ✅ **Guide #1: Deploy to Production** - COMPLETED in docs/router/framework/react/how-to/deploy-to-production.md
 - ✅ **Guide #2: Setup SSR** - COMPLETED in docs/router/framework/react/how-to/setup-ssr.md
-- ⏳ **Guides #3-11** - Pending implementation
+- ✅ **Guide #3: Migrate from React Router v7** - COMPLETED in docs/router/framework/react/how-to/migrate-from-react-router.md
+- ⏳ **Guides #4-11** - Pending implementation
 
 ## Implementation Process
 
@@ -27,7 +28,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 ### Multi-PR Guidelines:
 
 - **One guide per PR** for focused reviews and easier iteration
-- **Start with highest priority** guides (#2, #3, #4...)
+- **Start with highest priority** guides (#4, #5, #6...)
 - **Cross-reference between guides** as they become available
 - **Update tracking status** in each PR
 
@@ -35,54 +36,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 
 ## Next Agent Tasks
 
-### Priority 1: Guide #2 - How to Set Up Server-Side Rendering (SSR)
-
-**File:** `docs/router/framework/react/how-to/setup-ssr.md`
-
-**Context for Agent:**
-
-- Multiple GitHub issues show React import errors in SSR
-- Bun runtime SSR issues need addressing
-- Focus on TanStack Router SSR (not Start framework)
-- Reference existing guide: `docs/router/framework/react/guide/ssr.md` but create focused how-to
-
-**Content Requirements:**
-
-- Setting up SSR with Vite
-- Configuring entry-client.tsx and entry-server.tsx
-- Handling hydration mismatches
-- SSR with different deployment targets (Node.js, Bun, Edge)
-- Server context setup and data loading
-- Common Problems: React import errors, hydration issues, Bun compatibility
-
-**Cross-References to Add:**
-
-- Uncomment SSR link in deploy-to-production.md "Common Next Steps"
-
----
-
-### Priority 2: Guide #3 - How to Migrate from React Router v6
-
-**File:** `docs/router/framework/react/how-to/migrate-from-react-router.md`
-
-**Context for Agent:**
-
-- Large user base needs migration path
-- Existing migration guide exists at `docs/router/framework/react/migrate-from-react-router.md`
-- Transform existing guide into focused how-to format or create complementary step-by-step version
-
-**Content Requirements:**
-
-- Step-by-step migration checklist
-- Converting Route components to file-based routing
-- Updating Link and Navigate usage
-- Search params migration
-- Loader/action pattern conversions
-- Common Problems: API differences, breaking changes, component refactoring
-
----
-
-### Priority 3: Guide #4 - How to Fix Common Build and Bundler Issues
+### Priority 1: Guide #4 - How to Fix Common Build and Bundler Issues
 
 **File:** `docs/router/framework/react/how-to/fix-build-issues.md`
 
@@ -102,7 +56,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 
 ---
 
-### Priority 4: Guide #5 - How to Integrate with Popular UI Libraries
+### Priority 2: Guide #5 - How to Integrate with Popular UI Libraries
 
 **File:** `docs/router/framework/react/how-to/integrate-ui-libraries.md`
 
@@ -121,7 +75,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 
 ---
 
-### Priority 5: Guide #6 - How to Set Up Authentication and Protected Routes
+### Priority 3: Guide #6 - How to Set Up Authentication and Protected Routes
 
 **File:** `docs/router/framework/react/how-to/setup-authentication.md`
 
@@ -199,7 +153,7 @@ Update this section as guides are completed:
 ```
 ✅ Guide #1: Deploy to Production - COMPLETED
 ✅ Guide #2: Setup SSR - COMPLETED
-⏳ Guide #3: Migrate from React Router - PENDING
+✅ Guide #3: Migrate from React Router - COMPLETED
 ⏳ Guide #4: Fix Build Issues - PENDING
 ⏳ Guide #5: Integrate UI Libraries - PENDING
 ⏳ Guide #6: Setup Authentication - PENDING
