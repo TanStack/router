@@ -1567,15 +1567,11 @@ export class RouterCore<
         let params = {}
 
         const foundMask = this.options.routeMasks?.find((d) => {
-          const match = matchPathname(
-            this.basepath,
-            next.pathname,
-            {
-              to: d.from,
-              caseSensitive: false,
-              fuzzy: false,
-            },
-          )
+          const match = matchPathname(this.basepath, next.pathname, {
+            to: d.from,
+            caseSensitive: false,
+            fuzzy: false,
+          })
 
           if (match) {
             params = match
@@ -2975,14 +2971,10 @@ export class RouterCore<
       ? this.latestLocation
       : this.state.resolvedLocation || this.state.location
 
-    const match = matchPathname(
-      this.basepath,
-      baseLocation.pathname,
-      {
-        ...opts,
-        to: next.pathname,
-      },
-    ) as any
+    const match = matchPathname(this.basepath, baseLocation.pathname, {
+      ...opts,
+      to: next.pathname,
+    }) as any
 
     if (!match) {
       return false
@@ -3388,16 +3380,12 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   let routeParams: Record<string, string> = {}
   const trimmedPath = trimPathRight(pathname)
   const getMatchedParams = (route: TRouteLike) => {
-    const result = matchPathname(
-      basepath,
-      trimmedPath,
-      {
-        to: route.fullPath,
-        caseSensitive: route.options?.caseSensitive ?? caseSensitive,
-        // we need fuzzy matching for `notFoundMode: 'fuzzy'`
-        fuzzy: true,
-      },
-    )
+    const result = matchPathname(basepath, trimmedPath, {
+      to: route.fullPath,
+      caseSensitive: route.options?.caseSensitive ?? caseSensitive,
+      // we need fuzzy matching for `notFoundMode: 'fuzzy'`
+      fuzzy: true,
+    })
     return result
   }
 

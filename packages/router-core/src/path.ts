@@ -203,10 +203,11 @@ export function resolvePath({
   return joined
 }
 
-const parsePathnameCache: LRUCache<string, ReadonlyArray<Segment>> = createLRUCache(1000)
-export const parsePathname = (
-  pathname?: string,
-): ReadonlyArray<Segment> => {
+const parsePathnameCache: LRUCache<
+  string,
+  ReadonlyArray<Segment>
+> = createLRUCache(1000)
+export const parsePathname = (pathname?: string): ReadonlyArray<Segment> => {
   if (!pathname) return []
   const cached = parsePathnameCache.get(pathname)
   if (cached) return cached
@@ -490,11 +491,7 @@ export function matchPathname(
   currentPathname: string,
   matchLocation: Pick<MatchLocation, 'to' | 'fuzzy' | 'caseSensitive'>,
 ): AnyPathParams | undefined {
-  const pathParams = matchByPath(
-    basepath,
-    currentPathname,
-    matchLocation,
-  )
+  const pathParams = matchByPath(basepath, currentPathname, matchLocation)
   // const searchMatched = matchBySearch(location.search, matchLocation)
 
   if (matchLocation.to && !pathParams) {
@@ -564,12 +561,8 @@ export function matchByPath(
   to = removeBasepath(basepath, `${to ?? '$'}`, caseSensitive)
 
   // Parse the from and to
-  const baseSegments = parsePathname(
-    from.startsWith('/') ? from : `/${from}`,
-  )
-  const routeSegments = parsePathname(
-    to.startsWith('/') ? to : `/${to}`,
-  )
+  const baseSegments = parsePathname(from.startsWith('/') ? from : `/${from}`)
+  const routeSegments = parsePathname(to.startsWith('/') ? to : `/${to}`)
 
   const params: Record<string, string> = {}
 
