@@ -20,9 +20,10 @@ This directory contains focused, step-by-step instructions for common TanStack R
 - [Integrate Authentication Providers](./setup-auth-providers.md) - Use Auth0, Clerk, or Supabase
 - [Set Up Role-Based Access Control](./setup-rbac.md) - Add permission-based routing
 
-### Testing
+### Testing & Debugging
 
 - [Set Up Testing](./setup-testing.md) - Comprehensive testing setup with Vitest, React Testing Library, and Playwright
+- [Debug Router Issues](./debug-router-issues.md) - Troubleshoot common routing problems and performance issues
 
 ### UI Library Integration
 
