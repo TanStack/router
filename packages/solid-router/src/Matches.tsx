@@ -74,7 +74,8 @@ function MatchesInner() {
     select: (s) => s.loadedAt,
   })
 
-  const matchComponent = () => matchId() ? <Match matchId={matchId()!} /> : null
+  const matchComponent = () =>
+    matchId() ? <Match matchId={matchId()!} /> : null
 
   return (
     <matchContext.Provider value={matchId}>
