@@ -74,12 +74,12 @@ function MatchesInner() {
     select: (s) => s.loadedAt,
   })
 
-  const matchComponent = matchId() ? <Match matchId={matchId()!} /> : null
+  const matchComponent = () => matchId() ? <Match matchId={matchId()!} /> : null
 
   return (
     <matchContext.Provider value={matchId}>
       {router.options.disableGlobalCatchBoundary ? (
-        matchComponent
+        matchComponent()
       ) : (
         <CatchBoundary
           getResetKey={() => resetKey()}
@@ -92,7 +92,7 @@ function MatchesInner() {
             warning(false, error.message || error.toString())
           }}
         >
-          {matchComponent}
+          {matchComponent()}
         </CatchBoundary>
       )}
     </matchContext.Provider>
