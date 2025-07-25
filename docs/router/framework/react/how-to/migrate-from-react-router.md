@@ -275,7 +275,7 @@ export default {
 
 **TanStack Router approach:**
 
-TanStack Router handles SSR differently. Update your main router instance:
+TanStack Router has built-in SSR capabilities. Set up your router for SSR:
 
 ```typescript
 // src/router.tsx
@@ -296,6 +296,27 @@ declare module '@tanstack/react-router' {
 }
 
 export { router }
+```
+
+For server-side rendering, use TanStack Router's built-in SSR APIs:
+
+```typescript
+// server.tsx
+import { createMemoryHistory } from '@tanstack/react-router'
+import { StartServer } from '@tanstack/start/server'
+
+export async function render(url: string) {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: [url] }),
+  })
+
+  await router.load()
+
+  return (
+    <StartServer router={router} />
+  )
+}
 ```
 
 **4.2 Code Splitting Migration**
@@ -656,10 +677,10 @@ Before deploying your migrated application:
 
 **Solution:**
 
-1. TanStack Router handles these features differently
-2. Implement SSR through your chosen React framework (Next.js, Vite, etc.)
-3. Use TanStack Router's lazy routes for code splitting
-4. Consider the TanStack Start framework for full-stack capabilities
+1. TanStack Router has built-in SSR capabilities - use TanStack Start for full-stack applications
+2. Use TanStack Router's lazy routes for code splitting
+3. Configure SSR using TanStack Router's native APIs
+4. Follow the [SSR setup guide](./setup-ssr.md) for detailed instructions
 
 ### Routes Not Matching
 
@@ -694,7 +715,7 @@ Before deploying your migrated application:
 | File-based Routing | Framework mode only | Built-in |
 | Search Params | Basic | Validated with schemas |
 | Code Splitting | Good | Excellent with lazy routes |
-| SSR | Framework mode | Through meta-frameworks |
+| SSR | Framework mode | Built-in with TanStack Start |
 | Bundle Size | Larger | Smaller |
 | Learning Curve | Moderate | Moderate |
 | Community | Large | Growing |
