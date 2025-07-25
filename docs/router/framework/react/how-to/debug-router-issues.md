@@ -34,6 +34,7 @@ function App() {
 ```
 
 **DevTools Features:**
+
 - **Route Tree Visualization** - See your entire route structure
 - **Current Route State** - Inspect active route data, params, and search
 - **Navigation History** - Track navigation events and timing
@@ -79,12 +80,14 @@ if (import.meta.env.DEV) {
 ### Problem: Route Not Found (404)
 
 **Symptoms:**
+
 - Route exists but shows 404 or "Not Found"
 - Console shows route matching failures
 
 **Debugging Steps:**
 
 1. **Check Route Path Definition**
+
 ```tsx
 // ❌ Common mistake - missing leading slash
 const route = createRoute({
@@ -100,6 +103,7 @@ const route = createRoute({
 ```
 
 2. **Verify Route Tree Structure**
+
 ```tsx
 // Debug route tree in console
 console.log('Route tree:', router.routeTree)
@@ -107,6 +111,7 @@ console.log('All routes:', router.flatRoutes)
 ```
 
 3. **Check Parent Route Configuration**
+
 ```tsx
 // Ensure parent route is properly defined
 const childRoute = createRoute({
@@ -119,12 +124,14 @@ const childRoute = createRoute({
 ### Problem: Route Parameters Not Working
 
 **Symptoms:**
+
 - `useParams()` returns undefined or wrong values
 - Route params not being parsed correctly
 
 **Debugging Steps:**
 
 1. **Verify Parameter Syntax**
+
 ```tsx
 // ❌ Wrong parameter syntax
 path: '/users/{id}' // Should use $
@@ -134,6 +141,7 @@ path: '/users/$userId'
 ```
 
 2. **Check Parameter Parsing**
+
 ```tsx
 const route = createRoute({
   path: '/users/$userId',
@@ -155,14 +163,15 @@ const route = createRoute({
 ```
 
 3. **Debug Current URL and Params**
+
 ```tsx
 function DebugParams() {
   const location = useLocation()
   const params = Route.useParams()
-  
+
   console.log('Current pathname:', location.pathname)
   console.log('Parsed params:', params)
-  
+
   return null // Just for debugging
 }
 ```
@@ -174,6 +183,7 @@ function DebugParams() {
 ### Problem: Navigation Not Working
 
 **Symptoms:**
+
 - Links don't navigate
 - Programmatic navigation fails silently
 - Browser URL doesn't update
@@ -181,6 +191,7 @@ function DebugParams() {
 **Debugging Steps:**
 
 1. **Check Link Configuration**
+
 ```tsx
 // ❌ Common mistakes
 <Link to="about">About</Link> // Missing leading slash
@@ -191,31 +202,33 @@ function DebugParams() {
 ```
 
 2. **Debug Navigation Calls**
+
 ```tsx
 function NavigationDebug() {
   const navigate = useNavigate()
-  
+
   const handleNavigate = () => {
     console.log('Attempting navigation...')
-    navigate({ 
+    navigate({
       to: '/dashboard',
-      search: { tab: 'settings' }
+      search: { tab: 'settings' },
     })
-    .then(() => console.log('Navigation successful'))
-    .catch(err => console.error('Navigation failed:', err))
+      .then(() => console.log('Navigation successful'))
+      .catch((err) => console.error('Navigation failed:', err))
   }
-  
+
   return <button onClick={handleNavigate}>Navigate</button>
 }
 ```
 
 3. **Check Router Context**
+
 ```tsx
 // Ensure component is inside RouterProvider
 function ComponentWithNavigation() {
   const router = useRouter() // Will throw error if outside provider
   console.log('Router state:', router.state)
-  
+
   return <div>...</div>
 }
 ```
@@ -223,19 +236,21 @@ function ComponentWithNavigation() {
 ### Problem: Navigation Redirects Unexpectedly
 
 **Symptoms:**
+
 - Navigating to one route but ending up somewhere else
 - Infinite redirect loops
 
 **Debugging Steps:**
 
 1. **Check Route Guards**
+
 ```tsx
 const route = createRoute({
   path: '/dashboard',
   beforeLoad: ({ context, location }) => {
     console.log('Before load - location:', location.pathname)
     console.log('Auth state:', context.auth)
-    
+
     if (!context.auth.isAuthenticated) {
       console.log('Redirecting to login...')
       throw redirect({ to: '/login' })
@@ -246,11 +261,14 @@ const route = createRoute({
 ```
 
 2. **Debug Redirect Chains**
+
 ```tsx
 // Add to router configuration
 const router = createRouter({
   routeTree,
-  context: { /* ... */ },
+  context: {
+    /* ... */
+  },
   // Log all navigation events
   onNavigate: ({ location, type }) => {
     console.log(`Navigation (${type}):`, location.pathname)
@@ -265,6 +283,7 @@ const router = createRouter({
 ### Problem: Route Data Not Loading
 
 **Symptoms:**
+
 - `useLoaderData()` returns undefined
 - Loading states not working correctly
 - Data not refreshing
@@ -272,12 +291,13 @@ const router = createRouter({
 **Debugging Steps:**
 
 1. **Check Loader Implementation**
+
 ```tsx
 const route = createRoute({
   path: '/posts',
   loader: async ({ params, context }) => {
     console.log('Loader called with params:', params)
-    
+
     try {
       const data = await fetchPosts()
       console.log('Loader data:', data)
@@ -290,27 +310,29 @@ const route = createRoute({
   component: () => {
     const data = Route.useLoaderData()
     console.log('Component data:', data)
-    
+
     return <div>{/* render data */}</div>
   },
 })
 ```
 
 2. **Debug Loading States**
+
 ```tsx
 function DataLoadingDebug() {
   const location = useLocation()
-  
+
   console.log('Route status:', {
     isLoading: location.isLoading,
     isTransitioning: location.isTransitioning,
   })
-  
+
   return null
 }
 ```
 
 3. **Check Loader Dependencies**
+
 ```tsx
 const route = createRoute({
   path: '/posts/$postId',
@@ -320,8 +342,8 @@ const route = createRoute({
     return fetchPost(params.postId)
   },
   // Add dependencies for explicit re-loading
-  loaderDeps: ({ search }) => ({ 
-    refresh: search.refresh 
+  loaderDeps: ({ search }) => ({
+    refresh: search.refresh,
   }),
 })
 ```
@@ -333,6 +355,7 @@ const route = createRoute({
 ### Problem: Search Params Not Updating
 
 **Symptoms:**
+
 - URL search params don't update
 - `useSearch()` returns stale data
 - Search validation errors
@@ -340,39 +363,41 @@ const route = createRoute({
 **Debugging Steps:**
 
 1. **Check Search Validation Schema**
+
 ```tsx
 const route = createRoute({
   path: '/search',
   validateSearch: (search) => {
     console.log('Raw search params:', search)
-    
+
     const validated = {
       q: (search.q as string) || '',
       page: Number(search.page) || 1,
     }
-    
+
     console.log('Validated search params:', validated)
     return validated
   },
   component: () => {
     const search = Route.useSearch()
     console.log('Component search:', search)
-    
+
     return <div>Query: {search.q}</div>
   },
 })
 ```
 
 2. **Debug Search Navigation**
+
 ```tsx
 function SearchDebug() {
   const navigate = useNavigate()
   const currentSearch = Route.useSearch()
-  
+
   const updateSearch = (newSearch: any) => {
     console.log('Current search:', currentSearch)
     console.log('New search:', newSearch)
-    
+
     navigate({
       to: '.',
       search: (prev) => {
@@ -382,11 +407,9 @@ function SearchDebug() {
       },
     })
   }
-  
+
   return (
-    <button onClick={() => updateSearch({ q: 'test' })}>
-      Update Search
-    </button>
+    <button onClick={() => updateSearch({ q: 'test' })}>Update Search</button>
   )
 }
 ```
@@ -398,6 +421,7 @@ function SearchDebug() {
 ### Problem: Excessive Re-renders
 
 **Symptoms:**
+
 - Components re-rendering too often
 - Performance lag during navigation
 - Memory usage increasing
@@ -405,6 +429,7 @@ function SearchDebug() {
 **Debugging Steps:**
 
 1. **Use React DevTools Profiler**
+
 ```tsx
 // Wrap your app for profiling
 import { Profiler } from 'react'
@@ -424,6 +449,7 @@ function App() {
 ```
 
 2. **Optimize Route Subscriptions**
+
 ```tsx
 // ❌ Subscribes to all search params
 function MyComponent() {
@@ -441,11 +467,14 @@ function MyComponent() {
 ```
 
 3. **Monitor Route State Changes**
+
 ```tsx
 // Add to router configuration
 const router = createRouter({
   routeTree,
-  context: { /* ... */ },
+  context: {
+    /* ... */
+  },
   onUpdate: (router) => {
     console.log('Router state updated:', {
       pathname: router.state.location.pathname,
@@ -459,6 +488,7 @@ const router = createRouter({
 ### Problem: Memory Leaks
 
 **Symptoms:**
+
 - Memory usage constantly increasing
 - Browser becomes slow over time
 - Route components not cleaning up
@@ -466,34 +496,36 @@ const router = createRouter({
 **Debugging Steps:**
 
 1. **Check Component Cleanup**
+
 ```tsx
 function MyComponent() {
   const [data, setData] = useState(null)
-  
+
   useEffect(() => {
     const subscription = someService.subscribe(setData)
-    
+
     // ✅ Always clean up subscriptions
     return () => {
       subscription.unsubscribe()
     }
   }, [])
-  
+
   return <div>{data}</div>
 }
 ```
 
 2. **Monitor Route Unmounting**
+
 ```tsx
 function DebuggableComponent() {
   useEffect(() => {
     console.log('Component mounted')
-    
+
     return () => {
       console.log('Component unmounted')
     }
   }, [])
-  
+
   return <div>Content</div>
 }
 ```
@@ -505,6 +537,7 @@ function DebuggableComponent() {
 ### Problem: Type Errors with Router
 
 **Symptoms:**
+
 - TypeScript errors in route definitions
 - Type inference not working
 - Parameter types incorrect
@@ -512,6 +545,7 @@ function DebuggableComponent() {
 **Debugging Steps:**
 
 1. **Check Route Tree Type Registration**
+
 ```tsx
 // Ensure this declaration exists
 declare module '@tanstack/react-router' {
@@ -522,6 +556,7 @@ declare module '@tanstack/react-router' {
 ```
 
 2. **Debug Route Type Generation**
+
 ```bash
 # Check if route types are being generated
 ls src/routeTree.gen.ts
@@ -531,15 +566,16 @@ npx @tanstack/router-cli generate
 ```
 
 3. **Use Type Assertions for Debugging**
+
 ```tsx
 function TypeDebugComponent() {
   const params = Route.useParams()
   const search = Route.useSearch()
-  
+
   // Add type assertions to check what TypeScript infers
   console.log('Params type:', params as any)
   console.log('Search type:', search as any)
-  
+
   return null
 }
 ```
@@ -556,7 +592,7 @@ When debugging any router issue, start by collecting this information:
 function RouterDebugInfo() {
   const router = useRouter()
   const location = useLocation()
-  
+
   useEffect(() => {
     console.group('🐛 Router Debug Info')
     console.log('Current pathname:', location.pathname)
@@ -566,12 +602,12 @@ function RouterDebugInfo() {
     console.log('Route tree:', router.routeTree)
     console.groupEnd()
   }, [location.pathname])
-  
+
   return null
 }
 
 // Add to your app during debugging
-<RouterDebugInfo />
+;<RouterDebugInfo />
 ```
 
 ### 2. Isolation Testing
@@ -632,6 +668,7 @@ Object.keys(router.routesById)
 ### Network Tab
 
 Monitor these requests when debugging:
+
 - **Route code chunks** - Check if lazy routes are loading
 - **Loader data requests** - Verify API calls from loaders
 - **Failed requests** - Look for 404s or failed API calls
@@ -647,21 +684,25 @@ Monitor these requests when debugging:
 ## Common Error Messages
 
 ### "Route not found"
+
 - Check route path spelling and case sensitivity
 - Verify route is added to route tree
 - Ensure parent routes are properly configured
 
 ### "Cannot read property 'useParams' of undefined"
+
 - Component is likely outside RouterProvider
 - Route might not be properly registered
 - Check if using correct Route object
 
 ### "Invalid search params"
+
 - Check validateSearch schema
 - Verify search param types match schema
 - Look for required vs optional parameters
 
 ### "Navigation was interrupted"
+
 - Usually caused by redirect in beforeLoad
 - Check for redirect loops
 - Verify authentication logic
@@ -675,7 +716,9 @@ Monitor these requests when debugging:
 ```tsx
 const router = createRouter({
   routeTree,
-  context: { /* ... */ },
+  context: {
+    /* ... */
+  },
   onUpdate: (router) => {
     performance.mark('router-update')
   },
@@ -695,7 +738,7 @@ const route = createRoute({
     const start = performance.now()
     const data = await fetchData()
     const end = performance.now()
-    
+
     console.log(`Loader took ${end - start}ms`)
     return data
   },

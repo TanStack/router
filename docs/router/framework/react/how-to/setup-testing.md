@@ -101,12 +101,12 @@ describe('Router Component Testing', () => {
       path: '/',
       component: () => <h1>IndexTitle</h1>,
     })
-    
+
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, history })
 
     render(<RouterProvider router={router} />)
-    
+
     expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
   })
 })
@@ -136,7 +136,7 @@ const rootRoute = createRootRoute({
 // Test router factory
 export function createTestRouter(routes: any[], initialLocation = '/') {
   const routeTree = rootRoute.addChildren(routes)
-  
+
   const router = createRouter({
     routeTree,
     history: createMemoryHistory({
@@ -239,7 +239,11 @@ export function ErrorComponent({ error }: { error: Error }) {
 import { describe, it, expect } from 'vitest'
 import { screen } from '@testing-library/react'
 import { createRoute } from '@tanstack/react-router'
-import { renderWithRouter, rootRoute, TestComponent } from '../test/router-utils'
+import {
+  renderWithRouter,
+  rootRoute,
+  TestComponent,
+} from '../test/router-utils'
 
 describe('Code-Based Route Component Testing', () => {
   it('should render route component', () => {
@@ -350,7 +354,11 @@ import { describe, it, expect } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Link, createRoute } from '@tanstack/react-router'
-import { renderWithRouter, rootRoute, TestComponent } from '../test/router-utils'
+import {
+  renderWithRouter,
+  rootRoute,
+  TestComponent,
+} from '../test/router-utils'
 
 describe('Code-Based Route Navigation', () => {
   it('should navigate when link is clicked', async () => {
@@ -680,7 +688,11 @@ describe('React Query Integration', () => {
 ```tsx
 import { describe, it, expect } from 'vitest'
 import { screen } from '@testing-library/react'
-import { createRootRouteWithContext, createRoute, Outlet } from '@tanstack/react-router'
+import {
+  createRootRouteWithContext,
+  createRoute,
+  Outlet,
+} from '@tanstack/react-router'
 
 interface RouterContext {
   auth: {
@@ -796,7 +808,9 @@ test.describe('Code-Based Router Navigation', () => {
   test('should handle search parameters', async ({ page }) => {
     await page.goto('/search?q=react')
 
-    await expect(page.locator('[data-testid="search-input"]')).toHaveValue('react')
+    await expect(page.locator('[data-testid="search-input"]')).toHaveValue(
+      'react',
+    )
     await expect(page).toHaveURL('/search?q=react')
 
     // Update search
