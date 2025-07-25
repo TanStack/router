@@ -122,9 +122,7 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
   )
 }
 ```
-export const CustomLink: LinkComponent<typeof RACLink> = (props) => {
-  return <CreatedLinkComponent preload={'intent'} {...props} />
-}
+
 ### MUI example
 
 There is an [example](https://github.com/TanStack/router/tree/main/examples/react/start-material-ui) available which uses these patterns.
