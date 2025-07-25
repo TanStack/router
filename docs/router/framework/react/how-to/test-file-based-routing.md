@@ -925,7 +925,7 @@ beforeEach(() => {
 
 After setting up file-based route testing, you might want to:
 
-- [How to Set Up Testing](./setup-testing.md) - General router testing patterns
+- [How to Set Up Testing with Code-Based Routing](./setup-testing.md) - Testing patterns for manually defined routes
 - [How to Debug Router Issues](./debug-router-issues.md) - Debug file-based routing issues
 - [File-Based Routing Guide](../routing/file-based-routing.md) - Learn more about file-based routing
 

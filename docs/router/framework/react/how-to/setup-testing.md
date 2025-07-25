@@ -1,10 +1,12 @@
-# How to Set Up Testing with TanStack Router
+# How to Set Up Testing with Code-Based Routing
 
-This guide covers setting up comprehensive testing for TanStack Router applications, including unit tests, integration tests, and end-to-end testing strategies.
+This guide covers setting up comprehensive testing for TanStack Router applications that use code-based routing, including unit tests, integration tests, and end-to-end testing strategies.
 
 ## Quick Start
 
-Set up testing by configuring your test framework (Vitest/Jest), creating router test utilities, and implementing patterns for testing navigation, route components, and data loading.
+Set up testing by configuring your test framework (Vitest/Jest), creating router test utilities, and implementing patterns for testing navigation, route components, and data loading with manually defined routes.
+
+> **Using File-Based Routing?** See [How to Test File-Based Routing](./test-file-based-routing.md) for patterns specific to file-based routing applications.
 
 ---
 
@@ -56,7 +58,9 @@ global.IS_REACT_ACT_ENVIRONMENT = true
 
 ---
 
-## Router Testing Patterns
+## Code-Based Router Testing Patterns
+
+The following patterns are specifically designed for applications using code-based routing where you manually create routes with `createRoute()` and build route trees programmatically.
 
 ### 1. TanStack Router Internal Pattern (Recommended)
 
@@ -227,7 +231,7 @@ export function ErrorComponent({ error }: { error: Error }) {
 
 ---
 
-## Test Router Components
+## Test Code-Based Route Components
 
 ### 1. Basic Component Testing
 
@@ -237,7 +241,7 @@ import { screen } from '@testing-library/react'
 import { createRoute } from '@tanstack/react-router'
 import { renderWithRouter, rootRoute, TestComponent } from '../test/router-utils'
 
-describe('Router Component Testing', () => {
+describe('Code-Based Route Component Testing', () => {
   it('should render route component', () => {
     const testRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -348,7 +352,7 @@ import userEvent from '@testing-library/user-event'
 import { Link, createRoute } from '@tanstack/react-router'
 import { renderWithRouter, rootRoute, TestComponent } from '../test/router-utils'
 
-describe('Navigation Testing', () => {
+describe('Code-Based Route Navigation', () => {
   it('should navigate when link is clicked', async () => {
     const user = userEvent.setup()
 
@@ -450,7 +454,7 @@ import { screen } from '@testing-library/react'
 import { createRoute, redirect } from '@tanstack/react-router'
 import { renderWithRouter, rootRoute } from '../test/router-utils'
 
-describe('Route Guards', () => {
+describe('Code-Based Route Guards', () => {
   it('should redirect unauthenticated users', () => {
     const mockAuth = { isAuthenticated: false }
 
@@ -528,7 +532,7 @@ import { screen, waitFor } from '@testing-library/react'
 import { createRoute } from '@tanstack/react-router'
 import { renderWithRouter, rootRoute } from '../test/router-utils'
 
-describe('Data Loading', () => {
+describe('Code-Based Route Data Loading', () => {
   it('should load and display data from loader', async () => {
     const mockFetchUser = vi.fn().mockResolvedValue({
       id: 1,
@@ -685,7 +689,7 @@ interface RouterContext {
   }
 }
 
-describe('Router Context', () => {
+describe('Code-Based Router Context', () => {
   it('should provide context to routes', () => {
     const rootRouteWithContext = createRootRouteWithContext<RouterContext>()({
       component: () => <Outlet />,
@@ -771,7 +775,7 @@ Create `e2e/navigation.spec.ts`:
 ```ts
 import { test, expect } from '@playwright/test'
 
-test.describe('Router Navigation', () => {
+test.describe('Code-Based Router Navigation', () => {
   test('should navigate between pages', async ({ page }) => {
     await page.goto('/')
 
@@ -823,7 +827,7 @@ test.describe('Router Navigation', () => {
 
 ---
 
-## Testing Best Practices
+## Code-Based Routing Testing Best Practices
 
 ### 1. Test Organization
 
@@ -833,13 +837,13 @@ src/
 │   ├── Header.tsx
 │   └── Header.test.tsx
 ├── routes/
-│   ├── posts/
-│   │   ├── index.tsx
-│   │   └── index.test.tsx
+│   ├── posts.tsx     # Code-based route definitions
+│   ├── posts.test.tsx
+│   └── index.tsx
 ├── test/
 │   ├── setup.ts
-│   ├── router-utils.tsx
-│   └── mock-routes.tsx
+│   ├── router-utils.tsx  # Code-based router utilities
+│   └── mock-routes.tsx   # Manual route factories
 └── __tests__/
     ├── integration/
     └── e2e/
@@ -848,15 +852,24 @@ src/
 ### 2. Common Patterns
 
 ```tsx
-// Mock external dependencies
+// Mock external dependencies for code-based routes
 vi.mock('../api/users', () => ({
   fetchUser: vi.fn(),
   updateUser: vi.fn(),
 }))
 
-// Test utility for common setups
+// Test utility for common code-based route setups
 export function createAuthenticatedRouter(user = mockUser) {
-  return createTestRouter(routes, {
+  // Manually create routes for testing
+  const protectedRoutes = [
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/dashboard',
+      component: DashboardComponent,
+    }),
+  ]
+  
+  return createTestRouter(protectedRoutes, {
     context: {
       auth: { user, isAuthenticated: true },
     },
@@ -928,7 +941,7 @@ await waitFor(() => {
 
 ## Common Next Steps
 
-After setting up testing, you might want to:
+After setting up code-based routing testing, you might want to:
 
 - [How to Test File-Based Routing](./test-file-based-routing.md) - Specific patterns for file-based routing apps
 - [How to Set Up Basic Authentication](./setup-authentication.md) - Test authentication flows
@@ -941,6 +954,7 @@ After setting up testing, you might want to:
 
 ## Related Resources
 
+- [Code-Based Routing Guide](../routing/code-based-routing.md) - Understanding code-based routing
 - [Vitest Documentation](https://vitest.dev/) - Testing framework
 - [Testing Library React](https://testing-library.com/docs/react-testing-library/intro/) - Component testing utilities
 - [Playwright Documentation](https://playwright.dev/) - E2E testing framework
