@@ -247,12 +247,12 @@ export const Route = createFileRoute('/posts/$postId/edit')({
 
 function EditPost() {
   const navigate = useNavigate()
-  
+
   const handleSubmit = async (formData) => {
     const result = await updatePost(params.postId, formData)
     navigate({ to: '/posts/$postId', params: { postId } })
   }
-  
+
   return <form onSubmit={handleSubmit}>{/* form */}</form>
 }
 ```
@@ -282,11 +282,11 @@ TanStack Router has built-in SSR capabilities. Set up your router for SSR:
 import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-const router = createRouter({ 
+const router = createRouter({
   routeTree,
   context: {
     // Add any SSR context here
-  }
+  },
 })
 
 declare module '@tanstack/react-router' {
@@ -709,16 +709,16 @@ Before deploying your migrated application:
 
 ## React Router v7 vs TanStack Router Feature Comparison
 
-| Feature | React Router v7 | TanStack Router |
-|---------|----------------|-----------------|
-| Type Safety | Good | Excellent |
-| File-based Routing | Framework mode only | Built-in |
-| Search Params | Basic | Validated with schemas |
-| Code Splitting | Good | Excellent with lazy routes |
-| SSR | Framework mode | Built-in with TanStack Start |
-| Bundle Size | Larger | Smaller |
-| Learning Curve | Moderate | Moderate |
-| Community | Large | Growing |
+| Feature            | React Router v7     | TanStack Router              |
+| ------------------ | ------------------- | ---------------------------- |
+| Type Safety        | Good                | Excellent                    |
+| File-based Routing | Framework mode only | Built-in                     |
+| Search Params      | Basic               | Validated with schemas       |
+| Code Splitting     | Good                | Excellent with lazy routes   |
+| SSR                | Framework mode      | Built-in with TanStack Start |
+| Bundle Size        | Larger              | Smaller                      |
+| Learning Curve     | Moderate            | Moderate                     |
+| Community          | Large               | Growing                      |
 
 ---
 
@@ -729,7 +729,7 @@ After successfully migrating to TanStack Router, consider these enhancements:
 ### Advanced Features to Explore
 
 - **Route-based code splitting** - Improve performance with lazy loading
-- **Search parameter validation** - Type-safe URL state management  
+- **Search parameter validation** - Type-safe URL state management
 - **Route preloading** - Enhance perceived performance
 - **Route masking** - Advanced URL management
 - **Integration with TanStack Query** - Powerful data fetching
