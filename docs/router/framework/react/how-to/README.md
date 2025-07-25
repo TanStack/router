@@ -22,7 +22,8 @@ This directory contains focused, step-by-step instructions for common TanStack R
 
 ### Testing & Debugging
 
-- [Set Up Testing](./setup-testing.md) - Comprehensive testing setup with Vitest, React Testing Library, and Playwright
+- [Set Up Testing with Code-Based Routing](./setup-testing.md) - Comprehensive testing setup for manually defined routes
+- [Test File-Based Routing](./test-file-based-routing.md) - Specific patterns for testing file-based routing applications
 - [Debug Router Issues](./debug-router-issues.md) - Troubleshoot common routing problems and performance issues
 
 ### UI Library Integration
