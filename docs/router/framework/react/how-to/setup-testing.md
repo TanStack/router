@@ -37,7 +37,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    globals: true,
+    typecheck: { enabled: true },
+    watch: false,
   },
 })
 ```
@@ -47,33 +48,67 @@ export default defineConfig({
 Create `src/test/setup.ts`:
 
 ```ts
-import '@testing-library/jest-dom'
-import { beforeEach, vi } from 'vitest'
+import '@testing-library/jest-dom/vitest'
 
-// Mock window.location for navigation tests
-beforeEach(() => {
-  // Reset location for each test
-  Object.defineProperty(window, 'location', {
-    value: {
-      href: 'http://localhost:3000/',
-      origin: 'http://localhost:3000',
-      pathname: '/',
-      search: '',
-      hash: '',
-      assign: vi.fn(),
-      replace: vi.fn(),
-      reload: vi.fn(),
-    },
-    writable: true,
-  })
-})
+// @ts-expect-error
+global.IS_REACT_ACT_ENVIRONMENT = true
 ```
 
 ---
 
-## Create Router Test Utilities
+## Router Testing Patterns
 
-### 1. Router Test Wrapper
+### 1. TanStack Router Internal Pattern (Recommended)
+
+The TanStack Router team uses this pattern internally for testing router components:
+
+```tsx
+import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import {
+  RouterProvider,
+  createBrowserHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from '@tanstack/react-router'
+import type { RouterHistory } from '@tanstack/react-router'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
+
+afterEach(() => {
+  history.destroy()
+  window.history.replaceState(null, 'root', '/')
+  vi.clearAllMocks()
+  vi.resetAllMocks()
+  cleanup()
+})
+
+describe('Router Component Testing', () => {
+  test('should render route component', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <h1>IndexTitle</h1>,
+    })
+    
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+    
+    expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
+  })
+})
+```
+
+### 2. Alternative: Router Test Utilities (For Simpler Cases)
 
 Create `src/test/router-utils.tsx`:
 
