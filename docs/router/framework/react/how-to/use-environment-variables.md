@@ -38,10 +38,10 @@ export const Route = createFileRoute('/dashboard')({
   loader: async () => {
     const apiUrl = import.meta.env.VITE_API_URL        // ✅ Works
     const apiKey = import.meta.env.VITE_PUBLIC_API_KEY // ✅ Works
-    
+
     // This would be undefined (security feature):
     // const secret = import.meta.env.SECRET_KEY        // ❌ Undefined
-    
+
     return fetchDashboardData(apiUrl, apiKey)
   },
 })
@@ -51,7 +51,7 @@ export function ApiStatus() {
   const isDev = import.meta.env.DEV           // ✅ Built-in Vite variable
   const isProd = import.meta.env.PROD         // ✅ Built-in Vite variable
   const mode = import.meta.env.MODE           // ✅ development/production
-  
+
   return (
     <div>
       Environment: {mode}
@@ -144,18 +144,18 @@ import { createFileRoute } from '@tanstack/react-router'
 const fetchPosts = async () => {
   const baseUrl = import.meta.env.VITE_API_URL
   const apiKey = import.meta.env.VITE_API_KEY
-  
+
   const response = await fetch(`${baseUrl}/posts`, {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
   })
-  
+
   if (!response.ok) {
     throw new Error('Failed to fetch posts')
   }
-  
+
   return response.json()
 }
 
@@ -227,7 +227,7 @@ import { authConfig } from '../lib/auth'
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }) => {
     const isAuthenticated = await checkAuthStatus()
-    
+
     if (!isAuthenticated) {
       // Redirect to auth provider
       const authUrl = `https://${authConfig.domain}/authorize?client_id=${authConfig.clientId}&redirect_uri=${authConfig.redirectUri}`
@@ -259,7 +259,7 @@ export const Route = createFileRoute('/search')({
       category: search.category || 'all',
       api_key: import.meta.env.VITE_SEARCH_API_KEY,
     })
-    
+
     const response = await fetch(`${apiUrl}/search?${params}`)
     return response.json()
   },
@@ -282,6 +282,7 @@ Vite loads environment files in this order:
 ### Example Configuration
 
 **.env** (committed to repository):
+
 ```bash
 # API Configuration
 VITE_API_URL=https://api.example.com
@@ -301,6 +302,7 @@ VITE_APP_VERSION=1.0.0
 ```
 
 **.env.local** (add to .gitignore):
+
 ```bash
 # Development overrides
 VITE_API_URL=http://localhost:3001
@@ -309,6 +311,7 @@ VITE_DEBUG_MODE=true
 ```
 
 **.env.production**:
+
 ```bash
 # Production-specific
 VITE_API_URL=https://api.prod.example.com
@@ -330,16 +333,16 @@ interface ImportMetaEnv {
   readonly VITE_API_URL: string
   readonly VITE_API_VERSION: string
   readonly VITE_API_KEY?: string
-  
+
   // Feature Flags
   readonly VITE_ENABLE_NEW_UI: string
   readonly VITE_ENABLE_ANALYTICS: string
   readonly VITE_DEBUG_MODE?: string
-  
+
   // Authentication
   readonly VITE_AUTH0_DOMAIN: string
   readonly VITE_AUTH0_CLIENT_ID: string
-  
+
   // App Configuration
   readonly VITE_APP_NAME: string
   readonly VITE_APP_VERSION: string
@@ -364,12 +367,12 @@ const envSchema = z.object({
   VITE_AUTH0_DOMAIN: z.string(),
   VITE_AUTH0_CLIENT_ID: z.string(),
   VITE_APP_NAME: z.string(),
-  
+
   // Optional with defaults
   VITE_API_VERSION: z.string().default('v1'),
   VITE_ENABLE_NEW_UI: z.string().default('false'),
   VITE_ENABLE_ANALYTICS: z.string().default('true'),
-  
+
   // Optional variables
   VITE_DEBUG_MODE: z.string().optional(),
   VITE_SENTRY_DSN: z.string().optional(),
@@ -390,7 +393,10 @@ export const isFeatureEnabled = (flag: keyof typeof env) => {
 }
 
 // Type-safe boolean conversion
-export const getBooleanEnv = (value: string | undefined, defaultValue = false): boolean => {
+export const getBooleanEnv = (
+  value: string | undefined,
+  defaultValue = false,
+): boolean => {
   if (value === undefined) return defaultValue
   return value === 'true'
 }
@@ -483,7 +489,7 @@ module.exports = {
     define: {
       // Define additional variables (these become global replacements)
       'process.env.API_URL': JSON.stringify(process.env.PUBLIC_API_URL),
-      '__BUILD_TIME__': JSON.stringify(new Date().toISOString()),
+      __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     },
   },
 }
@@ -507,12 +513,14 @@ module.exports = {
 **Problem**: `import.meta.env.MY_VARIABLE` returns `undefined`
 
 **Solutions**:
+
 1. **Add correct prefix**: Use `VITE_MY_VARIABLE` for Vite, `PUBLIC_MY_VARIABLE` for Rspack
 2. **Restart dev server**: Environment changes require restart
 3. **Check file location**: `.env` must be in project root
 4. **Verify bundler configuration**: Ensure variables are properly injected
 
 **Example**:
+
 ```bash
 # ❌ Won't work (no prefix)
 API_URL=https://api.example.com
@@ -520,7 +528,7 @@ API_URL=https://api.example.com
 # ✅ Works with Vite
 VITE_API_URL=https://api.example.com
 
-# ✅ Works with Rspack  
+# ✅ Works with Rspack
 PUBLIC_API_URL=https://api.example.com
 ```
 
@@ -529,6 +537,7 @@ PUBLIC_API_URL=https://api.example.com
 **Problem**: Environment variable changes aren't reflected in app
 
 **Solutions**:
+
 1. **Restart development server** - Required for new variables
 2. **Check file hierarchy** - `.env.local` overrides `.env`
 3. **Clear browser cache** - Hard refresh (Ctrl+Shift+R)
@@ -539,6 +548,7 @@ PUBLIC_API_URL=https://api.example.com
 **Problem**: `Property 'VITE_MY_VAR' does not exist on type 'ImportMetaEnv'`
 
 **Solution**: Add declaration to `src/vite-env.d.ts`:
+
 ```typescript
 interface ImportMetaEnv {
   readonly VITE_MY_VAR: string
@@ -550,6 +560,7 @@ interface ImportMetaEnv {
 **Problem**: Missing environment variables during build
 
 **Solutions**:
+
 1. **Configure CI/CD**: Set variables in build environment
 2. **Add validation**: Check required variables at build time
 3. **Use .env files**: Ensure production `.env` files exist
@@ -560,6 +571,7 @@ interface ImportMetaEnv {
 **Problem**: Accidentally exposing sensitive data
 
 **Solutions**:
+
 1. **Never use secrets in client variables** - They're visible in browser
 2. **Use server-side proxies** for sensitive API calls
 3. **Audit bundle** - Check built files for leaked secrets
@@ -570,6 +582,7 @@ interface ImportMetaEnv {
 **Problem**: Variables not available at runtime
 
 **Solutions**:
+
 1. **Understand static replacement** - Variables are replaced at build time
 2. **Use server-side for dynamic values** - Use APIs for runtime configuration
 3. **Validate at startup** - Check all required variables exist
@@ -579,15 +592,19 @@ interface ImportMetaEnv {
 **Problem**: Unexpected behavior when comparing boolean or numeric values
 
 **Solutions**:
+
 1. **Always compare as strings**: Use `=== 'true'` not `=== true`
 2. **Convert explicitly**: Use `parseInt()`, `parseFloat()`, or `Boolean()`
 3. **Use helper functions**: Create typed conversion utilities
 
 **Example**:
+
 ```typescript
 // ❌ Won't work as expected
 const isEnabled = import.meta.env.VITE_FEATURE_ENABLED // This is a string!
-if (isEnabled) { /* Always true if variable exists */ }
+if (isEnabled) {
+  /* Always true if variable exists */
+}
 
 // ✅ Correct string comparison
 const isEnabled = import.meta.env.VITE_FEATURE_ENABLED === 'true'

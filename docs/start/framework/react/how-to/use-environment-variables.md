@@ -37,8 +37,8 @@ import { createServerFn } from '@tanstack/react-start'
 // Database connection (server-only)
 const connectToDatabase = createServerFn().handler(async () => {
   const connectionString = process.env.DATABASE_URL // No prefix needed
-  const apiKey = process.env.EXTERNAL_API_SECRET    // Stays on server
-  
+  const apiKey = process.env.EXTERNAL_API_SECRET // Stays on server
+
   // These variables are never exposed to the client
   return await database.connect(connectionString)
 })
@@ -61,10 +61,10 @@ Client code can only access variables with the `VITE_` prefix:
 export function ApiProvider({ children }: { children: React.ReactNode }) {
   const apiUrl = import.meta.env.VITE_API_URL     // ✅ Public
   const apiKey = import.meta.env.VITE_PUBLIC_KEY  // ✅ Public
-  
+
   // This would be undefined (security feature):
   // const secret = import.meta.env.DATABASE_URL   // ❌ Undefined
-  
+
   return (
     <ApiContext.Provider value={{ apiUrl, apiKey }}>
       {children}
@@ -75,9 +75,9 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
 // Feature flags
 export function FeatureGatedComponent() {
   const enableNewFeature = import.meta.env.VITE_ENABLE_NEW_FEATURE === 'true'
-  
+
   if (!enableNewFeature) return null
-  
+
   return <NewFeature />
 }
 ```
@@ -91,13 +91,14 @@ TanStack Start automatically loads environment files in this order:
 ```
 .env.local          # Local overrides (add to .gitignore)
 .env.production     # Production-specific variables
-.env.development    # Development-specific variables  
+.env.development    # Development-specific variables
 .env                # Default variables (commit to git)
 ```
 
 ### Example Setup
 
 **.env** (committed to repository):
+
 ```bash
 # Public configuration
 VITE_APP_NAME=My TanStack Start App
@@ -110,6 +111,7 @@ REDIS_URL=redis://localhost:6379
 ```
 
 **.env.local** (add to .gitignore):
+
 ```bash
 # Override for local development
 DATABASE_URL=postgresql://user:password@localhost:5432/myapp_local
@@ -118,6 +120,7 @@ JWT_SECRET=your-local-secret
 ```
 
 **.env.production**:
+
 ```bash
 # Production overrides
 VITE_API_URL=https://api.myapp.com
@@ -138,7 +141,7 @@ const getDatabaseConnection = createServerFn().handler(async () => {
     maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '10'),
     ssl: process.env.NODE_ENV === 'production',
   }
-  
+
   return createConnection(config)
 })
 ```
@@ -182,23 +185,26 @@ import { createServerFn } from '@tanstack/react-start'
 const fetchUserData = createServerFn()
   .validator(z.object({ userId: z.string() }))
   .handler(async ({ data }) => {
-    const response = await fetch(`${process.env.EXTERNAL_API_URL}/users/${data.userId}`, {
-      headers: {
-        'Authorization': `Bearer ${process.env.EXTERNAL_API_SECRET}`,
-        'Content-Type': 'application/json',
-      }
-    })
-    
+    const response = await fetch(
+      `${process.env.EXTERNAL_API_URL}/users/${data.userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.EXTERNAL_API_SECRET}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    )
+
     return response.json()
   })
 
 // Client-side API calls (public endpoints only)
 export function usePublicData() {
   const apiUrl = import.meta.env.VITE_PUBLIC_API_URL
-  
+
   return useQuery({
     queryKey: ['public-data'],
-    queryFn: () => fetch(`${apiUrl}/public/stats`).then(r => r.json())
+    queryFn: () => fetch(`${apiUrl}/public/stats`).then((r) => r.json()),
   })
 }
 ```
@@ -218,7 +224,7 @@ export function Dashboard() {
   if (featureFlags.enableNewDashboard) {
     return <NewDashboard />
   }
-  
+
   return <LegacyDashboard />
 }
 ```
@@ -304,7 +310,7 @@ const config = {
 // ✅ CORRECT - Keep secrets on server
 const getApiData = createServerFn().handler(async () => {
   const response = await fetch(apiUrl, {
-    headers: { 'Authorization': `Bearer ${process.env.SECRET_API_KEY}` }
+    headers: { Authorization: `Bearer ${process.env.SECRET_API_KEY}` },
   })
   return response.json()
 })
@@ -328,15 +334,9 @@ VITE_SENTRY_DSN=https://...
 
 ```typescript
 // src/config/validation.ts
-const requiredServerEnv = [
-  'DATABASE_URL',
-  'JWT_SECRET',
-] as const
+const requiredServerEnv = ['DATABASE_URL', 'JWT_SECRET'] as const
 
-const requiredClientEnv = [
-  'VITE_APP_NAME',
-  'VITE_API_URL',
-] as const
+const requiredClientEnv = ['VITE_APP_NAME', 'VITE_API_URL'] as const
 
 // Validate on server startup
 for (const key of requiredServerEnv) {
@@ -371,17 +371,19 @@ for (const key of requiredClientEnv) {
 **Problem**: `import.meta.env.MY_VARIABLE` returns `undefined`
 
 **Solutions**:
+
 1. Add `VITE_` prefix: `VITE_MY_VARIABLE`
 2. Restart development server after adding new variables
 3. Check file location (must be in project root)
 4. Verify variable is in correct `.env` file
 
 **Example**:
+
 ```bash
 # ❌ Won't work in client code
 API_KEY=abc123
 
-# ✅ Works in client code  
+# ✅ Works in client code
 VITE_API_KEY=abc123
 ```
 
@@ -390,6 +392,7 @@ VITE_API_KEY=abc123
 **Problem**: Environment variable changes aren't reflected
 
 **Solutions**:
+
 1. Restart development server
 2. Check if you're modifying the correct `.env` file
 3. Verify file hierarchy (`.env.local` overrides `.env`)
@@ -399,6 +402,7 @@ VITE_API_KEY=abc123
 **Problem**: `Property 'VITE_MY_VAR' does not exist on type 'ImportMetaEnv'`
 
 **Solution**: Add to `src/env.d.ts`:
+
 ```typescript
 interface ImportMetaEnv {
   readonly VITE_MY_VAR: string
@@ -410,6 +414,7 @@ interface ImportMetaEnv {
 **Problem**: Sensitive data appearing in client bundle
 
 **Solutions**:
+
 1. Remove `VITE_` prefix from sensitive variables
 2. Move sensitive operations to server functions
 3. Use build tools to verify no secrets in client bundle
@@ -419,6 +424,7 @@ interface ImportMetaEnv {
 **Problem**: Missing environment variables in production build
 
 **Solutions**:
+
 1. Configure variables on hosting platform
 2. Validate required variables at build time
 3. Use deployment-specific `.env` files
