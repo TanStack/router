@@ -60,14 +60,14 @@ import { createLink } from '@tanstack/react-router'
 import { Link as RACLink, MenuItem } from 'react-aria-components'
 
 export const Link = createLink(RACLink)
-export const MenuItemLink = createLink(MenuItem);
+export const MenuItemLink = createLink(MenuItem)
 ```
 
 To use React Aria's render props, including the `className`, `style`, and `children` functions, create a wrapper component and pass that to `createLink`.
 
 ```tsx
-import { createLink } from '@tanstack/react-router';
-import { Link as RACLink, type LinkProps } from 'react-aria-components';
+import { createLink } from '@tanstack/react-router'
+import { Link as RACLink, type LinkProps } from 'react-aria-components'
 
 interface MyLinkProps extends LinkProps {
   // your props
@@ -81,10 +81,10 @@ function MyLink(props: MyLinkProps) {
         color: isHovered ? 'red' : 'blue',
       })}
     />
-  );
+  )
 }
 
-export const Link = createLink(MyLink);
+export const Link = createLink(MyLink)
 ```
 
 ### Chakra UI example
