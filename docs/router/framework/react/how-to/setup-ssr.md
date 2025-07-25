@@ -539,10 +539,11 @@ const ssrConfig = {
 - [SSR Guide (Detailed)](../guide/ssr.md) - Comprehensive SSR concepts, utilities, and theory
 - [Data Loading](../guide/data-loading.md) - SSR-compatible data loading patterns
 
-<!-- Common Next Steps (commented out until guides exist)
 ## Common Next Steps
 
 - [Deploy to Production](./deploy-to-production.md) - Deploy your SSR app
 - [Setup Authentication](./setup-authentication.md) - Add auth to SSR routes
+
+<!-- TODO: Uncomment as guides are created
 - [Fix Build Issues](./fix-build-issues.md) - Troubleshoot bundler problems
 -->
