@@ -20,6 +20,10 @@ This directory contains focused, step-by-step instructions for common TanStack R
 - [Integrate Authentication Providers](./setup-auth-providers.md) - Use Auth0, Clerk, or Supabase
 - [Set Up Role-Based Access Control](./setup-rbac.md) - Add permission-based routing
 
+### Testing
+
+- [Set Up Testing](./setup-testing.md) - Comprehensive testing setup with Vitest, React Testing Library, and Playwright
+
 ### UI Library Integration
 
 - [Integrate with Shadcn/ui](./integrate-shadcn-ui.md) - Set up Shadcn/ui components with animations and styling
