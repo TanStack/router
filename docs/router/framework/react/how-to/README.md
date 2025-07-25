@@ -14,6 +14,13 @@ This directory contains focused, step-by-step instructions for common TanStack R
 - [Set Up Server-Side Rendering (SSR)](./setup-ssr.md) - Implement SSR with TanStack Router
 - [Migrate from React Router v7](./migrate-from-react-router.md) - Complete migration guide from React Router v7
 
+### UI Library Integration
+
+- [Integrate with Shadcn/ui](./integrate-shadcn-ui.md) - Set up Shadcn/ui components with animations and styling
+- [Integrate with Material-UI (MUI)](./integrate-material-ui.md) - Configure MUI components with proper theming and TypeScript
+- [Integrate with Framer Motion](./integrate-framer-motion.md) - Add smooth animations and transitions to your routes
+- [Integrate with Chakra UI](./integrate-chakra-ui.md) - Build responsive, accessible UIs with Chakra UI components
+
 ## Using These Guides
 
 Each guide follows a consistent structure:
