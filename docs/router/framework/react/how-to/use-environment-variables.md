@@ -63,7 +63,7 @@ export function ApiStatus() {
 
 ### Webpack-Based Projects
 
-Configure webpack's DefinePlugin to inject environment variables:
+Configure webpack's DefinePlugin to inject environment variables. **Note:** Webpack doesn't support `import.meta.env` by default, so use `process.env` patterns:
 
 ```typescript
 // webpack.config.js
@@ -74,6 +74,7 @@ module.exports = {
     new webpack.DefinePlugin({
       'process.env.API_URL': JSON.stringify(process.env.API_URL),
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+      'process.env.ENABLE_FEATURE': JSON.stringify(process.env.ENABLE_FEATURE),
     }),
   ],
 }
@@ -84,12 +85,16 @@ export const Route = createFileRoute('/api-data')({
     const response = await fetch(`${process.env.API_URL}/data`)
     return response.json()
   },
+  component: () => {
+    const enableFeature = process.env.ENABLE_FEATURE === 'true'
+    return enableFeature ? <NewFeature /> : <OldFeature />
+  },
 })
 ```
 
 ### Rspack-Based Projects
 
-Rspack uses the `PUBLIC_` prefix convention:
+Rspack uses the `PUBLIC_` prefix convention. **Note:** `import.meta.env` support depends on your Rspack configuration and runtime - you may need to configure `builtins.define` properly:
 
 ```bash
 # .env
@@ -347,28 +352,47 @@ interface ImportMeta {
 
 ### Runtime Validation
 
-Use Zod to validate environment variables at startup:
+Use Zod to validate environment variables at startup with fallbacks and optional values:
 
 ```typescript
 // src/config/env.ts
 import { z } from 'zod'
 
 const envSchema = z.object({
+  // Required variables
   VITE_API_URL: z.string().url(),
-  VITE_API_VERSION: z.string(),
   VITE_AUTH0_DOMAIN: z.string(),
   VITE_AUTH0_CLIENT_ID: z.string(),
   VITE_APP_NAME: z.string(),
-  VITE_ENABLE_NEW_UI: z.string(),
-  VITE_ENABLE_ANALYTICS: z.string(),
+  
+  // Optional with defaults
+  VITE_API_VERSION: z.string().default('v1'),
+  VITE_ENABLE_NEW_UI: z.string().default('false'),
+  VITE_ENABLE_ANALYTICS: z.string().default('true'),
+  
+  // Optional variables
+  VITE_DEBUG_MODE: z.string().optional(),
+  VITE_SENTRY_DSN: z.string().optional(),
 })
 
-// Validate at app startup
-export const env = envSchema.parse(import.meta.env)
+// Validate at app startup with fallbacks
+export const env = envSchema.parse({
+  ...import.meta.env,
+  // Provide fallbacks for missing optional values
+  VITE_API_VERSION: import.meta.env.VITE_API_VERSION || 'v1',
+  VITE_ENABLE_NEW_UI: import.meta.env.VITE_ENABLE_NEW_UI || 'false',
+  VITE_ENABLE_ANALYTICS: import.meta.env.VITE_ENABLE_ANALYTICS || 'true',
+})
 
 // Typed helper functions
 export const isFeatureEnabled = (flag: keyof typeof env) => {
   return env[flag] === 'true'
+}
+
+// Type-safe boolean conversion
+export const getBooleanEnv = (value: string | undefined, defaultValue = false): boolean => {
+  if (value === undefined) return defaultValue
+  return value === 'true'
 }
 ```
 
@@ -409,12 +433,13 @@ import { TanStackRouterVite } from '@tanstack/router-vite-plugin'
 export default defineConfig({
   plugins: [
     react(),
+    // TanStackRouterVite generates route tree and enables file-based routing
     TanStackRouterVite(),
   ],
   // Environment variables are handled automatically
   // Custom environment variable handling:
   define: {
-    // Global constants
+    // Global constants (these become available as global variables)
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
   },
 })
@@ -429,12 +454,13 @@ const webpack = require('webpack')
 
 module.exports = {
   plugins: [
+    // TanStackRouterWebpack generates route tree and enables file-based routing
     new TanStackRouterWebpack(),
     new webpack.DefinePlugin({
-      // Inject environment variables
+      // Inject environment variables (use process.env for Webpack)
       'process.env.API_URL': JSON.stringify(process.env.API_URL),
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
-      'import.meta.env.VITE_API_URL': JSON.stringify(process.env.API_URL),
+      'process.env.ENABLE_FEATURE': JSON.stringify(process.env.ENABLE_FEATURE),
     }),
   ],
 }
@@ -448,13 +474,16 @@ const { TanStackRouterRspack } = require('@tanstack/router-rspack-plugin')
 
 module.exports = {
   plugins: [
+    // TanStackRouterRspack generates route tree and enables file-based routing
     new TanStackRouterRspack(),
   ],
-  // Rspack automatically handles PUBLIC_ prefixed variables
-  // Custom handling:
+  // Rspack automatically handles PUBLIC_ prefixed variables for import.meta.env
+  // Custom handling for additional variables:
   builtins: {
     define: {
+      // Define additional variables (these become global replacements)
       'process.env.API_URL': JSON.stringify(process.env.PUBLIC_API_URL),
+      '__BUILD_TIME__': JSON.stringify(new Date().toISOString()),
     },
   },
 }
@@ -544,6 +573,34 @@ interface ImportMetaEnv {
 1. **Understand static replacement** - Variables are replaced at build time
 2. **Use server-side for dynamic values** - Use APIs for runtime configuration
 3. **Validate at startup** - Check all required variables exist
+
+### Environment Variables are Always Strings
+
+**Problem**: Unexpected behavior when comparing boolean or numeric values
+
+**Solutions**:
+1. **Always compare as strings**: Use `=== 'true'` not `=== true`
+2. **Convert explicitly**: Use `parseInt()`, `parseFloat()`, or `Boolean()`
+3. **Use helper functions**: Create typed conversion utilities
+
+**Example**:
+```typescript
+// ❌ Won't work as expected
+const isEnabled = import.meta.env.VITE_FEATURE_ENABLED // This is a string!
+if (isEnabled) { /* Always true if variable exists */ }
+
+// ✅ Correct string comparison
+const isEnabled = import.meta.env.VITE_FEATURE_ENABLED === 'true'
+
+// ✅ Safe numeric conversion
+const port = parseInt(import.meta.env.VITE_PORT || '3000', 10)
+
+// ✅ Helper function approach
+const getBooleanEnv = (value: string | undefined, defaultValue = false) => {
+  if (value === undefined) return defaultValue
+  return value.toLowerCase() === 'true'
+}
+```
 
 ## Common Next Steps
 
