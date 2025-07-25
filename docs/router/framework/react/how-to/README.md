@@ -10,6 +10,7 @@ This directory contains focused, step-by-step instructions for common TanStack R
 ## Available Guides
 
 - [Install TanStack Router](./install.md) - Basic installation steps
+- [Use Environment Variables](./use-environment-variables.md) - Configure and use environment variables across different bundlers
 - [Deploy to Production](./deploy-to-production.md) - Deploy your app to hosting platforms
 - [Set Up Server-Side Rendering (SSR)](./setup-ssr.md) - Implement SSR with TanStack Router
 - [Migrate from React Router v7](./migrate-from-react-router.md) - Complete migration guide from React Router v7

@@ -12,6 +12,8 @@ This document outlines the multi-PR process for implementing the remaining how-t
 - ✅ **Guide #6: Setup Authentication** - COMPLETED (split into three focused guides)
 - ✅ **Guide #7: Debug Router Issues** - COMPLETED
 - ✅ **Guide #8: Setup Testing** - COMPLETED
+- ✅ **Environment Variables: TanStack Router** - COMPLETED in docs/router/framework/react/how-to/use-environment-variables.md
+- ✅ **Environment Variables: TanStack Start** - COMPLETED in docs/start/framework/react/how-to/use-environment-variables.md
 - ⏳ **Guides #9-11** - Pending implementation
 
 ## Implementation Process
