@@ -33,8 +33,7 @@ import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
-import { createLRUCache } from './lru-cache'
-import type { ParsePathnameCache, Segment } from './path'
+import type { Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -1015,7 +1014,6 @@ export class RouterCore<
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
       caseSensitive: this.options.caseSensitive,
-      parseCache: this.parsePathnameCache,
     })
     return resolvedPath
   }
@@ -1197,7 +1195,6 @@ export class RouterCore<
           params: routeParams,
           leaveWildcards: true,
           decodeCharMap: this.pathParamsDecodeCharMap,
-          parseCache: this.parsePathnameCache,
         }).interpolatedPath + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
@@ -1336,9 +1333,6 @@ export class RouterCore<
     return matches
   }
 
-  /** a cache for `parsePathname` */
-  private parsePathnameCache: ParsePathnameCache = createLRUCache(1000)
-
   getMatchedRoutes: GetMatchRoutesFn = (
     pathname: string,
     routePathname: string | undefined,
@@ -1351,7 +1345,6 @@ export class RouterCore<
       routesByPath: this.routesByPath,
       routesById: this.routesById,
       flatRoutes: this.flatRoutes,
-      parseCache: this.parsePathnameCache,
     })
   }
 
@@ -1459,7 +1452,6 @@ export class RouterCore<
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
         params: nextParams ?? {},
-        parseCache: this.parsePathnameCache,
       }).interpolatedPath
 
       const destRoutes = this.matchRoutes(
@@ -1492,7 +1484,6 @@ export class RouterCore<
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
-        parseCache: this.parsePathnameCache,
       }).interpolatedPath
 
       // Resolve the next search
@@ -1584,7 +1575,6 @@ export class RouterCore<
               caseSensitive: false,
               fuzzy: false,
             },
-            this.parsePathnameCache,
           )
 
           if (match) {
@@ -2992,7 +2982,6 @@ export class RouterCore<
         ...opts,
         to: next.pathname,
       },
-      this.parsePathnameCache,
     ) as any
 
     if (!match) {
@@ -3387,7 +3376,6 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesByPath,
   routesById,
   flatRoutes,
-  parseCache,
 }: {
   pathname: string
   routePathname?: string
@@ -3396,7 +3384,6 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesByPath: Record<string, TRouteLike>
   routesById: Record<string, TRouteLike>
   flatRoutes: Array<TRouteLike>
-  parseCache?: ParsePathnameCache
 }) {
   let routeParams: Record<string, string> = {}
   const trimmedPath = trimPathRight(pathname)
@@ -3410,7 +3397,6 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
         // we need fuzzy matching for `notFoundMode: 'fuzzy'`
         fuzzy: true,
       },
-      parseCache,
     )
     return result
   }

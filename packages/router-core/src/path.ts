@@ -1,5 +1,5 @@
 import { last } from './utils'
-import type { LRUCache } from './lru-cache'
+import { createLRUCache, type LRUCache } from './lru-cache'
 import type { MatchLocation } from './RouterProvider'
 import type { AnyPathParams } from './route'
 
@@ -102,7 +102,6 @@ interface ResolvePathOptions {
   to: string
   trailingSlash?: 'always' | 'never' | 'preserve'
   caseSensitive?: boolean
-  parseCache?: ParsePathnameCache
 }
 
 function segmentToString(segment: Segment): string {
@@ -156,13 +155,12 @@ export function resolvePath({
   to,
   trailingSlash = 'never',
   caseSensitive,
-  parseCache,
 }: ResolvePathOptions) {
   base = removeBasepath(basepath, base, caseSensitive)
   to = removeBasepath(basepath, to, caseSensitive)
 
-  let baseSegments = parsePathname(base, parseCache).slice()
-  const toSegments = parsePathname(to, parseCache)
+  let baseSegments = parsePathname(base).slice()
+  const toSegments = parsePathname(to)
 
   if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
     baseSegments.pop()
@@ -205,16 +203,15 @@ export function resolvePath({
   return joined
 }
 
-export type ParsePathnameCache = LRUCache<string, ReadonlyArray<Segment>>
+const parsePathnameCache: LRUCache<string, ReadonlyArray<Segment>> = createLRUCache(1000)
 export const parsePathname = (
   pathname?: string,
-  cache?: ParsePathnameCache,
 ): ReadonlyArray<Segment> => {
   if (!pathname) return []
-  const cached = cache?.get(pathname)
+  const cached = parsePathnameCache.get(pathname)
   if (cached) return cached
   const parsed = baseParsePathname(pathname)
-  cache?.set(pathname, parsed)
+  parsePathnameCache.set(pathname, parsed)
   return parsed
 }
 
@@ -360,7 +357,6 @@ interface InterpolatePathOptions {
   leaveParams?: boolean
   // Map of encoded chars to decoded chars (e.g. '%40' -> '@') that should remain decoded in path params
   decodeCharMap?: Map<string, string>
-  parseCache?: ParsePathnameCache
 }
 
 type InterPolatePathResult = {
@@ -374,9 +370,8 @@ export function interpolatePath({
   leaveWildcards,
   leaveParams,
   decodeCharMap,
-  parseCache,
 }: InterpolatePathOptions): InterPolatePathResult {
-  const interpolatedPathSegments = parsePathname(path, parseCache)
+  const interpolatedPathSegments = parsePathname(path)
 
   function encodeParam(key: string): any {
     const value = params[key]
@@ -494,13 +489,11 @@ export function matchPathname(
   basepath: string,
   currentPathname: string,
   matchLocation: Pick<MatchLocation, 'to' | 'fuzzy' | 'caseSensitive'>,
-  parseCache?: ParsePathnameCache,
 ): AnyPathParams | undefined {
   const pathParams = matchByPath(
     basepath,
     currentPathname,
     matchLocation,
-    parseCache,
   )
   // const searchMatched = matchBySearch(location.search, matchLocation)
 
@@ -560,7 +553,6 @@ export function matchByPath(
     fuzzy,
     caseSensitive,
   }: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
-  parseCache?: ParsePathnameCache,
 ): Record<string, string> | undefined {
   // check basepath first
   if (basepath !== '/' && !from.startsWith(basepath)) {
@@ -574,11 +566,9 @@ export function matchByPath(
   // Parse the from and to
   const baseSegments = parsePathname(
     from.startsWith('/') ? from : `/${from}`,
-    parseCache,
   )
   const routeSegments = parsePathname(
     to.startsWith('/') ? to : `/${to}`,
-    parseCache,
   )
 
   const params: Record<string, string> = {}
