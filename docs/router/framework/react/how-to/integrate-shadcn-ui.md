@@ -88,10 +88,10 @@ export const Route = createRootRoute({
       <div id="root-content">
         <Outlet />
       </div>
-      
+
       {/* Portal root for overlays */}
       <div id="portal-root"></div>
-      
+
       <TanStackRouterDevtools />
     </>
   ),
@@ -183,7 +183,7 @@ export function RouterDialog({
   onOpenChange,
 }: RouterDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false)
-  
+
   const open = controlledOpen ?? internalOpen
   const setOpen = onOpenChange ?? setInternalOpen
 
@@ -304,7 +304,7 @@ function PostsPage() {
 
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Posts</h1>
-        
+
         {/* Router-compatible button */}
         <RouterButton to="/posts/new" variant="default">
           Create Post
@@ -340,23 +340,26 @@ function PostsPage() {
 **Solutions:**
 
 1. **Ensure proper portal setup:**
+
    ```tsx
    // Add to your index.html or root component
    <div id="portal-root"></div>
    ```
 
 2. **Check CSS imports order:**
+
    ```css
    /* Make sure this comes before your custom styles */
-   @import "tailwindcss/base";
-   @import "tailwindcss/components";
-   @import "tailwindcss/utilities";
+   @import 'tailwindcss/base';
+   @import 'tailwindcss/components';
+   @import 'tailwindcss/utilities';
    ```
 
 3. **Use controlled components for complex animations:**
+
    ```tsx
    const [open, setOpen] = useState(false)
-   
+
    // Controlled instead of uncontrolled
    <Sheet open={open} onOpenChange={setOpen}>
    ```
@@ -382,13 +385,14 @@ export const RouterButton = createLink(Button)
 **Solutions:**
 
 1. **Use CSS layers:**
+
    ```css
    @layer base, components, utilities;
-   
+
    @layer base {
      /* Shadcn/ui base styles */
    }
-   
+
    @layer components {
      /* Your component styles */
    }
@@ -433,7 +437,7 @@ export function ThemeProvider({
   storageKey = 'ui-theme',
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
+    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme,
   )
 
   useEffect(() => {
@@ -482,6 +486,7 @@ export const useTheme = () => {
 Before deploying your Shadcn/ui + TanStack Router app:
 
 ### Styling
+
 - [ ] All Shadcn/ui components render correctly
 - [ ] Animations work properly on route changes
 - [ ] Dark mode integration working (if applicable)
@@ -489,12 +494,14 @@ Before deploying your Shadcn/ui + TanStack Router app:
 - [ ] Responsive design tested
 
 ### Functionality
+
 - [ ] Navigation components work with router state
 - [ ] Active states properly reflected
 - [ ] TypeScript compilation successful
 - [ ] All sheets, dialogs, and modals animate correctly
 
 ### Performance
+
 - [ ] Bundle size optimized (tree shaking working)
 - [ ] CSS-in-JS not causing performance issues
 - [ ] Animation performance acceptable on slower devices
