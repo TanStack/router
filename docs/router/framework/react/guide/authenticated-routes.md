@@ -166,3 +166,19 @@ export const Route = createFileRoute('/dashboard')({
 You can _optionally_, also use the [Non-Redirected Authentication](#non-redirected-authentication) approach to show a login form instead of calling a **redirect**.
 
 This approach can also be used in conjunction with Pathless or Layout Route to protect all routes under their parent route.
+
+## Related How-To Guides
+
+For detailed, step-by-step implementation guides, see:
+
+- [How to Set Up Basic Authentication](../how-to/setup-authentication.md) - Complete setup with React Context and protected routes
+- [How to Integrate Authentication Providers](../how-to/setup-auth-providers.md) - Use Auth0, Clerk, or Supabase
+- [How to Set Up Role-Based Access Control](../how-to/setup-rbac.md) - Implement permissions and role-based routing
+
+## Examples
+
+Working authentication examples are available in the repository:
+
+- [Basic Authentication Example](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes) - Simple authentication with context
+- [Firebase Authentication](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes-firebase) - Firebase Auth integration
+- [TanStack Start Auth Examples](https://github.com/TanStack/router/tree/main/examples/react) - Various auth implementations with TanStack Start

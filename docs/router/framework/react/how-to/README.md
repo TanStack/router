@@ -14,6 +14,17 @@ This directory contains focused, step-by-step instructions for common TanStack R
 - [Set Up Server-Side Rendering (SSR)](./setup-ssr.md) - Implement SSR with TanStack Router
 - [Migrate from React Router v7](./migrate-from-react-router.md) - Complete migration guide from React Router v7
 
+### Authentication
+
+- [Set Up Basic Authentication](./setup-authentication.md) - Implement basic auth with React Context
+- [Integrate Authentication Providers](./setup-auth-providers.md) - Use Auth0, Clerk, or Supabase
+- [Set Up Role-Based Access Control](./setup-rbac.md) - Add permission-based routing
+
+### Testing & Debugging
+
+- [Set Up Testing](./setup-testing.md) - Comprehensive testing setup with Vitest, React Testing Library, and Playwright
+- [Debug Router Issues](./debug-router-issues.md) - Troubleshoot common routing problems and performance issues
+
 ### UI Library Integration
 
 - [Integrate with Shadcn/ui](./integrate-shadcn-ui.md) - Set up Shadcn/ui components with animations and styling

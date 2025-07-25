@@ -7,7 +7,12 @@ This document outlines the multi-PR process for implementing the remaining how-t
 - ✅ **Guide #1: Deploy to Production** - COMPLETED in docs/router/framework/react/how-to/deploy-to-production.md
 - ✅ **Guide #2: Setup SSR** - COMPLETED in docs/router/framework/react/how-to/setup-ssr.md
 - ✅ **Guide #3: Migrate from React Router v7** - COMPLETED in docs/router/framework/react/how-to/migrate-from-react-router.md
-- ⏳ **Guides #4-11** - Pending implementation
+- ⏳ **Guide #4: Fix Build Issues** - MOVED TO DEBUGGING DIRECTORY
+- ✅ **Guide #5: Integrate UI Libraries** - COMPLETED (split into individual guides)
+- ✅ **Guide #6: Setup Authentication** - COMPLETED (split into three focused guides)
+- ✅ **Guide #7: Debug Router Issues** - COMPLETED
+- ✅ **Guide #8: Setup Testing** - COMPLETED
+- ⏳ **Guides #9-11** - Pending implementation
 
 ## Implementation Process
 
@@ -160,9 +165,12 @@ Update this section as guides are completed:
   ✅ Material-UI Integration - COMPLETED
   ✅ Framer Motion Integration - COMPLETED
   ✅ Chakra UI Integration - COMPLETED
-⏳ Guide #6: Setup Authentication - PENDING
-⏳ Guide #7: Debug Router Issues - MOVED TO DEBUGGING DIRECTORY
-⏳ Guide #8: Setup Testing - PENDING
+✅ Guide #6: Setup Authentication - COMPLETED (split into three focused guides)
+  ✅ Basic Authentication Setup - COMPLETED
+  ✅ Authentication Providers Integration - COMPLETED
+  ✅ Role-Based Access Control - COMPLETED
+✅ Guide #7: Debug Router Issues - COMPLETED
+✅ Guide #8: Setup Testing - COMPLETED
 ⏳ Guide #9: Setup Dev Environment - PENDING
 ⏳ Guide #10: Handle Search Parameters - PENDING
 ⏳ Guide #11: Advanced Routing Patterns - PENDING
