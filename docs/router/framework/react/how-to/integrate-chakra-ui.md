@@ -750,7 +750,6 @@ import { ColorModeScript } from '@chakra-ui/react'
 
 // Or use localStorage manager
 import { localStorageManager } from '@chakra-ui/react'
-
 ;<ChakraProvider theme={theme} colorModeManager={localStorageManager}>
   {children}
 </ChakraProvider>
