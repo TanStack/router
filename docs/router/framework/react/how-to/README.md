@@ -34,6 +34,28 @@ This directory contains focused, step-by-step instructions for common TanStack R
 - [Integrate with Framer Motion](./integrate-framer-motion.md) - Add smooth animations and transitions to your routes
 - [Integrate with Chakra UI](./integrate-chakra-ui.md) - Build responsive, accessible UIs with Chakra UI components
 
+### Search Parameters & URL State (Progressive Series)
+
+**Foundation Level (Start Here):**
+- [ ] Set Up Basic Search Parameters - Create type-safe search validation and reading
+- [ ] Navigate with Search Parameters - Update and manage search params with Links and navigation
+
+**Intermediate Level (Common Patterns):**
+- [ ] Validate Search Parameters with Schemas - Use Zod/Valibot for robust validation and type safety
+- [ ] Handle Complex Search Parameter Types - Work with arrays, objects, dates, and nested data
+- [ ] Share Search Parameters Across Routes - Inherit and manage search params across route hierarchies
+
+**Advanced Level (Power User Patterns):**
+- [ ] Build Advanced Search Parameter Middleware - Create custom middleware for search param processing
+- [ ] Optimize Search Parameter Performance - Minimize re-renders and improve performance with selectors
+- [ ] Customize Search Parameter Serialization - Implement custom serialization for compression and compatibility
+
+**Specialized Use Cases:**
+- [ ] Build Search-Based Filtering Systems - Create complex filtering UIs with URL state
+- [ ] Handle Search Parameters in Forms - Synchronize form state with URL search parameters
+- [ ] Debug Search Parameter Issues - Troubleshoot common search param problems and performance issues
+- [ ] Use Search Parameters with Data Loading - Integrate search params with loaders and data fetching
+
 ## Using These Guides
 
 Each guide follows a consistent structure:

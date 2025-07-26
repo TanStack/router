@@ -14,7 +14,34 @@ This document outlines the multi-PR process for implementing the remaining how-t
 - ✅ **Guide #8: Setup Testing** - COMPLETED
 - ✅ **Environment Variables: TanStack Router** - COMPLETED in docs/router/framework/react/how-to/use-environment-variables.md
 - ✅ **Environment Variables: TanStack Start** - COMPLETED in docs/start/framework/react/how-to/use-environment-variables.md
-- ⏳ **Guides #9-11** - Pending implementation
+- 🔄 **Progressive Search Params Series** - IN PLANNING
+
+### 🔄 Progressive Search Params How-To Series (Replaces Guide #10)
+
+**Status:** Ready for implementation with test verification
+
+**Foundation Level (Start Here):**
+- ⏳ **Search #1: Setup Basic Search Parameters** (`setup-basic-search-params.md`) - Test Gap: Basic validation patterns
+- ⏳ **Search #2: Navigate with Search Parameters** (`navigate-with-search-params.md`) - Test Gap: Functional updates, Link patterns
+
+**Intermediate Level (Common Patterns):**
+- ⏳ **Search #3: Validate Search Parameters with Schemas** (`validate-search-params.md`) - Test Coverage: Good (existing Zod tests)
+- ⏳ **Search #4: Handle Complex Search Parameter Types** (`complex-search-param-types.md`) - Test Gap: Arrays, objects, dates
+- ⏳ **Search #5: Share Search Parameters Across Routes** (`share-search-params-across-routes.md`) - Test Coverage: Partial (middleware tests exist)
+
+**Advanced Level (Power User Patterns):**
+- ⏳ **Search #6: Build Advanced Search Parameter Middleware** (`advanced-search-param-middleware.md`) - Test Coverage: Good (existing middleware tests)
+- ⏳ **Search #7: Optimize Search Parameter Performance** (`optimize-search-param-performance.md`) - Test Gap: Performance patterns, selectors
+- ⏳ **Search #8: Customize Search Parameter Serialization** (`customize-search-param-serialization.md`) - Test Gap: Custom serializers
+
+**Specialized Use Cases:**
+- ⏳ **Search #9: Build Search-Based Filtering Systems** (`build-search-filtering-systems.md`) - Test Gap: Complex filtering patterns
+- ⏳ **Search #10: Handle Search Parameters in Forms** (`search-params-in-forms.md`) - Test Gap: Form integration patterns
+- ⏳ **Search #11: Debug Search Parameter Issues** (`debug-search-param-issues.md`) - Test Coverage: Partial (debug tests exist)
+- ⏳ **Search #12: Use Search Parameters with Data Loading** (`search-params-with-data-loading.md`) - Test Gap: Loader integration patterns
+
+- ⏳ **Guide #9: Setup Dev Environment** - PENDING
+- ⏳ **Guide #11: Advanced Routing Patterns** - PENDING
 
 ## Implementation Process
 
@@ -28,9 +55,10 @@ This document outlines the multi-PR process for implementing the remaining how-t
    - Common Problems section
    - Common Next Steps (commented out until guides exist)
    - Related Resources (specific links only)
-3. **Update the directory README** to list the new guide
-4. **Update this tracking document** to mark as completed
-5. **Uncomment relevant "Common Next Steps"** in other guides that reference this one
+3. **Create or verify test coverage** for documented patterns (see Test Verification section below)
+4. **Update the directory README** to list the new guide
+5. **Update this tracking document** to mark as completed
+6. **Uncomment relevant "Common Next Steps"** in other guides that reference this one
 
 ### Multi-PR Guidelines:
 
@@ -38,6 +66,43 @@ This document outlines the multi-PR process for implementing the remaining how-t
 - **Start with highest priority** guides (#4, #5, #6...)
 - **Cross-reference between guides** as they become available
 - **Update tracking status** in each PR
+
+### Test Verification Requirements:
+
+**CRITICAL:** Each how-to guide MUST be backed by working tests that verify the documented patterns actually work.
+
+**Test Strategy:**
+1. **Check existing test coverage first** - If patterns are already tested in `packages/*/tests/`, reference those tests
+2. **Create focused unit tests** for undocumented patterns using the existing test structure
+3. **Place tests in** `packages/react-router/tests/how-to-[guide-name].test.tsx`
+4. **Follow existing test patterns** from `searchMiddleware.test.tsx`, `link.test.tsx`, etc.
+5. **Test the exact code examples** shown in the guide to ensure they work
+
+**Test Coverage Analysis:**
+- ✅ **Good Coverage:** Schema validation (Zod tests), middleware (`searchMiddleware.test.tsx`), basic navigation
+- ⚠️ **Partial Coverage:** Route inheritance patterns, debug scenarios
+- ❌ **Missing Coverage:** Complex types (arrays/objects/dates), performance patterns, custom serialization, filtering systems, form integration, loader integration
+
+**Test Requirements by Guide:**
+- **Search #1 (Basic):** Create `how-to-basic-search-params.test.tsx` - Test basic `validateSearch` patterns, `useSearch()` hook
+- **Search #2 (Navigation):** Create `how-to-navigate-search-params.test.tsx` - Test `<Link search />`, functional updates, `navigate()`
+- **Search #3 (Validation):** Reference existing Zod adapter tests, add guide-specific examples if needed
+- **Search #4 (Complex Types):** Create `how-to-complex-search-types.test.tsx` - Test arrays, objects, dates, enums
+- **Search #5 (Cross-route):** Extend existing middleware tests with route inheritance patterns
+- **Search #6 (Middleware):** Reference existing `searchMiddleware.test.tsx`, add advanced patterns
+- **Search #7 (Performance):** Create `how-to-search-performance.test.tsx` - Test selectors, re-render optimization
+- **Search #8 (Serialization):** Create `how-to-search-serialization.test.tsx` - Test custom parsers/serializers
+- **Search #9 (Filtering):** Create `how-to-search-filtering.test.tsx` - Test complex filter combinations
+- **Search #10 (Forms):** Create `how-to-search-forms.test.tsx` - Test form state synchronization
+- **Search #11 (Debug):** Extend existing debug tests with guide-specific scenarios
+- **Search #12 (Data Loading):** Create `how-to-search-loaders.test.tsx` - Test search params in loaders
+
+**Test Development Process:**
+1. **Write the guide first** with complete code examples
+2. **Create corresponding tests** that verify every code example works
+3. **Run tests** to ensure all examples are correct
+4. **Fix any issues** in both guide and tests
+5. **Document test file location** in the guide's "Testing" section
 
 ---
 
