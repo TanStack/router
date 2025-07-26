@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import React from 'react'
+import { z } from 'zod'
 
 import {
   RouterProvider,
@@ -11,6 +12,7 @@ import {
   getRouteApi,
   useSearch,
 } from '../src'
+import { zodValidator, fallback } from '@tanstack/zod-adapter'
 import type { RouterHistory } from '../src'
 
 let history: RouterHistory
@@ -29,8 +31,14 @@ afterEach(() => {
 })
 
 describe('Basic Search Parameters How-To Guide', () => {
-  describe('Quick Start Example', () => {
-    it('should validate and read basic search parameters', async () => {
+  describe('Zod Validation (Production Approach)', () => {
+    it('should validate and read basic search parameters with Zod', async () => {
+      const productSearchSchema = z.object({
+        page: fallback(z.number(), 1).default(1),
+        category: fallback(z.string(), 'all').default('all'),
+        showSale: fallback(z.boolean(), false).default(false),
+      })
+
       const ProductsPage = () => {
         const { page, category, showSale } = productsRoute.useSearch()
         
@@ -48,11 +56,7 @@ describe('Basic Search Parameters How-To Guide', () => {
       const productsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/products',
-        validateSearch: (search: Record<string, unknown>) => ({
-          page: Number(search.page) || 1,
-          category: (search.category as string) || 'all',
-          showSale: Boolean(search.showSale),
-        }),
+        validateSearch: zodValidator(productSearchSchema),
         component: ProductsPage,
       })
 
@@ -72,7 +76,13 @@ describe('Basic Search Parameters How-To Guide', () => {
       expect(await screen.findByTestId('show-sale')).toHaveTextContent('Show Sale Items: Yes')
     })
 
-    it('should use default values when search parameters are missing', async () => {
+    it('should use fallback values for invalid parameters', async () => {
+      const productSearchSchema = z.object({
+        page: fallback(z.number(), 1).default(1),
+        category: fallback(z.string(), 'all').default('all'),
+        showSale: fallback(z.boolean(), false).default(false),
+      })
+
       const ProductsPage = () => {
         const { page, category, showSale } = productsRoute.useSearch()
         
@@ -89,11 +99,7 @@ describe('Basic Search Parameters How-To Guide', () => {
       const productsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/products',
-        validateSearch: (search: Record<string, unknown>) => ({
-          page: Number(search.page) || 1,
-          category: (search.category as string) || 'all',
-          showSale: Boolean(search.showSale),
-        }),
+        validateSearch: zodValidator(productSearchSchema),
         component: ProductsPage,
       })
 
@@ -102,102 +108,25 @@ describe('Basic Search Parameters How-To Guide', () => {
         history,
       })
 
-      // Test without search parameters
-      window.history.replaceState(null, '', '/products')
+      // Test with invalid parameters (should fallback to defaults)
+      window.history.replaceState(null, '', '/products?page=invalid&category=unknown&showSale=invalid')
       await router.load()
 
       render(<RouterProvider router={router} />)
 
-      expect(await screen.findByTestId('page')).toHaveTextContent('1')
-      expect(await screen.findByTestId('category')).toHaveTextContent('all')
-      expect(await screen.findByTestId('show-sale')).toHaveTextContent('No')
+      expect(await screen.findByTestId('page')).toHaveTextContent('1') // Fallback
+      expect(await screen.findByTestId('category')).toHaveTextContent('all') // Fallback  
+      expect(await screen.findByTestId('show-sale')).toHaveTextContent('No') // Fallback
     })
   })
 
-  describe('Data Type Handling', () => {
-    it('should handle different data types correctly', async () => {
-      const DashboardPage = () => {
-        const search = dashboardRoute.useSearch()
-        
-        return (
-          <div>
-            <div data-testid="user-id">User ID: {search.userId}</div>
-            <div data-testid="refresh-interval">Refresh: {search.refreshInterval}</div>
-            <div data-testid="theme">Theme: {search.theme}</div>
-            <div data-testid="timezone">Timezone: {search.timezone || 'none'}</div>
-            <div data-testid="auto-refresh">Auto Refresh: {search.autoRefresh ? 'Yes' : 'No'}</div>
-            <div data-testid="debug-mode">Debug: {search.debugMode ? 'Yes' : 'No'}</div>
-            <div data-testid="selected-ids">Selected IDs: {search.selectedIds.join(',')}</div>
-            <div data-testid="filters">Filters: {JSON.stringify(search.filters)}</div>
-          </div>
-        )
-      }
-
-      const rootRoute = createRootRoute()
-      const dashboardRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/dashboard',
-        validateSearch: (search: Record<string, unknown>) => ({
-          // Numbers
-          userId: Number(search.userId) || 0,
-          refreshInterval: Number(search.refreshInterval) || 5000,
-          
-          // Strings
-          theme: (search.theme as string) || 'light',
-          timezone: search.timezone as string | undefined,
-          
-          // Booleans
-          autoRefresh: Boolean(search.autoRefresh),
-          debugMode: Boolean(search.debugMode),
-          
-          // Arrays (parsed from JSON)
-          selectedIds: Array.isArray(search.selectedIds) 
-            ? search.selectedIds.map(Number) 
-            : [],
-            
-          // Objects (parsed from JSON)
-          filters: typeof search.filters === 'object' && search.filters !== null
-            ? search.filters as Record<string, string>
-            : {},
-        }),
-        component: DashboardPage,
+  describe('Pagination with Constraints', () => {
+    it('should handle pagination parameters with validation', async () => {
+      const paginationSchema = z.object({
+        page: fallback(z.number().min(1), 1).default(1),
+        limit: fallback(z.number().min(10).max(100), 20).default(20),
       })
 
-      const router = createRouter({
-        routeTree: rootRoute.addChildren([dashboardRoute]),
-        history,
-      })
-
-      // Test with complex search parameters
-      const searchParams = new URLSearchParams({
-        userId: '123',
-        refreshInterval: '10000',
-        theme: 'dark',
-        timezone: 'America/New_York',
-        autoRefresh: 'true',
-        debugMode: 'true',
-        selectedIds: JSON.stringify([1, 2, 3]),
-        filters: JSON.stringify({ status: 'active', type: 'premium' }),
-      })
-      
-      window.history.replaceState(null, '', `/dashboard?${searchParams.toString()}`)
-      await router.load()
-
-      render(<RouterProvider router={router} />)
-
-      expect(await screen.findByTestId('user-id')).toHaveTextContent('User ID: 123')
-      expect(await screen.findByTestId('refresh-interval')).toHaveTextContent('Refresh: 10000')
-      expect(await screen.findByTestId('theme')).toHaveTextContent('Theme: dark')
-      expect(await screen.findByTestId('timezone')).toHaveTextContent('Timezone: America/New_York')
-      expect(await screen.findByTestId('auto-refresh')).toHaveTextContent('Auto Refresh: Yes')
-      expect(await screen.findByTestId('debug-mode')).toHaveTextContent('Debug: Yes')
-      expect(await screen.findByTestId('selected-ids')).toHaveTextContent('Selected IDs: 1,2,3')
-      expect(await screen.findByTestId('filters')).toHaveTextContent('Filters: {"status":"active","type":"premium"}')
-    })
-  })
-
-  describe('Pagination Pattern', () => {
-    it('should handle pagination parameters with constraints', async () => {
       const PostsPage = () => {
         const { page, limit } = postsRoute.useSearch()
         const offset = (page - 1) * limit
@@ -215,10 +144,7 @@ describe('Basic Search Parameters How-To Guide', () => {
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts',
-        validateSearch: (search: Record<string, unknown>) => ({
-          page: Math.max(1, Number(search.page) || 1),
-          limit: Math.min(100, Math.max(10, Number(search.limit) || 20)),
-        }),
+        validateSearch: zodValidator(paginationSchema),
         component: PostsPage,
       })
 
@@ -238,7 +164,12 @@ describe('Basic Search Parameters How-To Guide', () => {
       expect(await screen.findByTestId('offset')).toHaveTextContent('Offset: 100')
     })
 
-    it('should enforce pagination constraints', async () => {
+    it('should enforce pagination constraints with fallbacks', async () => {
+      const paginationSchema = z.object({
+        page: fallback(z.number().min(1), 1).default(1),
+        limit: fallback(z.number().min(10).max(100), 20).default(20),
+      })
+
       const PostsPage = () => {
         const { page, limit } = postsRoute.useSearch()
         
@@ -254,10 +185,7 @@ describe('Basic Search Parameters How-To Guide', () => {
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts',
-        validateSearch: (search: Record<string, unknown>) => ({
-          page: Math.max(1, Number(search.page) || 1),
-          limit: Math.min(100, Math.max(10, Number(search.limit) || 20)),
-        }),
+        validateSearch: zodValidator(paginationSchema),
         component: PostsPage,
       })
 
@@ -266,21 +194,24 @@ describe('Basic Search Parameters How-To Guide', () => {
         history,
       })
 
-      // Test with invalid pagination (page 0, limit too high)
+      // Test with constraint violations (page 0, limit too high)
       window.history.replaceState(null, '', '/posts?page=0&limit=500')
       await router.load()
 
       render(<RouterProvider router={router} />)
 
-      expect(await screen.findByTestId('page')).toHaveTextContent('1') // Constrained to minimum 1
-      expect(await screen.findByTestId('limit')).toHaveTextContent('100') // Constrained to maximum 100
+      expect(await screen.findByTestId('page')).toHaveTextContent('1') // Fallback to default
+      expect(await screen.findByTestId('limit')).toHaveTextContent('20') // Fallback to default
     })
   })
 
-  describe('Enum Validation Pattern', () => {
-    it('should validate enum values and provide defaults', async () => {
-      type SortOption = 'name' | 'date' | 'price'
-      type CategoryOption = 'electronics' | 'clothing' | 'books' | 'all'
+  describe('Enum Validation', () => {
+    it('should validate enum values with Zod', async () => {
+      const catalogSchema = z.object({
+        sort: fallback(z.enum(['name', 'date', 'price']), 'name').default('name'),
+        category: fallback(z.enum(['electronics', 'clothing', 'books', 'all']), 'all').default('all'),
+        ascending: fallback(z.boolean(), true).default(true),
+      })
 
       const CatalogPage = () => {
         const { sort, category, ascending } = catalogRoute.useSearch()
@@ -298,20 +229,7 @@ describe('Basic Search Parameters How-To Guide', () => {
       const catalogRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/catalog',
-        validateSearch: (search: Record<string, unknown>) => {
-          const validSorts: SortOption[] = ['name', 'date', 'price']
-          const validCategories: CategoryOption[] = ['electronics', 'clothing', 'books', 'all']
-          
-          return {
-            sort: validSorts.includes(search.sort as SortOption) 
-              ? (search.sort as SortOption) 
-              : 'name',
-            category: validCategories.includes(search.category as CategoryOption)
-              ? (search.category as CategoryOption)
-              : 'all',
-            ascending: search.ascending === false ? false : true, // Default to true
-          }
-        },
+        validateSearch: zodValidator(catalogSchema),
         component: CatalogPage,
       })
 
@@ -332,8 +250,11 @@ describe('Basic Search Parameters How-To Guide', () => {
     })
 
     it('should fallback to defaults for invalid enum values', async () => {
-      type SortOption = 'name' | 'date' | 'price'
-      type CategoryOption = 'electronics' | 'clothing' | 'books' | 'all'
+      const catalogSchema = z.object({
+        sort: fallback(z.enum(['name', 'date', 'price']), 'name').default('name'),
+        category: fallback(z.enum(['electronics', 'clothing', 'books', 'all']), 'all').default('all'),
+        ascending: fallback(z.boolean(), true).default(true),
+      })
 
       const CatalogPage = () => {
         const { sort, category, ascending } = catalogRoute.useSearch()
@@ -351,20 +272,7 @@ describe('Basic Search Parameters How-To Guide', () => {
       const catalogRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/catalog',
-        validateSearch: (search: Record<string, unknown>) => {
-          const validSorts: SortOption[] = ['name', 'date', 'price']
-          const validCategories: CategoryOption[] = ['electronics', 'clothing', 'books', 'all']
-          
-          return {
-            sort: validSorts.includes(search.sort as SortOption) 
-              ? (search.sort as SortOption) 
-              : 'name',
-            category: validCategories.includes(search.category as CategoryOption)
-              ? (search.category as CategoryOption)
-              : 'all',
-            ascending: search.ascending === false ? false : true, // Default to true
-          }
-        },
+        validateSearch: zodValidator(catalogSchema),
         component: CatalogPage,
       })
 
@@ -385,8 +293,115 @@ describe('Basic Search Parameters How-To Guide', () => {
     })
   })
 
+  describe('Complex Data Types with Zod', () => {
+    it('should handle arrays and objects with validation', async () => {
+      const complexSchema = z.object({
+        selectedIds: fallback(z.number().array(), []).default([]),
+        tags: fallback(z.string().array(), []).default([]),
+        filters: fallback(
+          z.object({
+            status: z.enum(['active', 'inactive']).optional(),
+            type: z.string().optional(),
+          }),
+          {}
+        ).default({}),
+      })
+
+      const ComplexPage = () => {
+        const search = complexRoute.useSearch()
+        
+        return (
+          <div>
+            <div data-testid="selected-ids">Selected IDs: {search.selectedIds.join(',')}</div>
+            <div data-testid="tags">Tags: {search.tags.join(',')}</div>
+            <div data-testid="filters">Filters: {JSON.stringify(search.filters)}</div>
+          </div>
+        )
+      }
+
+      const rootRoute = createRootRoute()
+      const complexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/complex',
+        validateSearch: zodValidator(complexSchema),
+        component: ComplexPage,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([complexRoute]),
+        history,
+      })
+
+      // Test with complex search parameters
+      const searchParams = new URLSearchParams({
+        selectedIds: JSON.stringify([1, 2, 3]),
+        tags: JSON.stringify(['urgent', 'review']),
+        filters: JSON.stringify({ status: 'active', type: 'premium' }),
+      })
+      
+      window.history.replaceState(null, '', `/complex?${searchParams.toString()}`)
+      await router.load()
+
+      render(<RouterProvider router={router} />)
+
+      expect(await screen.findByTestId('selected-ids')).toHaveTextContent('Selected IDs: 1,2,3')
+      expect(await screen.findByTestId('tags')).toHaveTextContent('Tags: urgent,review')
+      expect(await screen.findByTestId('filters')).toHaveTextContent('Filters: {"status":"active","type":"premium"}')
+    })
+  })
+
+  describe('Optional Parameters', () => {
+    it('should handle optional parameters correctly', async () => {
+      const optionalSchema = z.object({
+        page: fallback(z.number(), 1).default(1),
+        searchTerm: z.string().optional(),
+        category: fallback(z.string(), 'all').default('all'),
+      })
+
+      const OptionalPage = () => {
+        const { page, searchTerm, category } = optionalRoute.useSearch()
+        
+        return (
+          <div>
+            <div data-testid="page">{page}</div>
+            <div data-testid="search-term">{searchTerm || 'No search term'}</div>
+            <div data-testid="category">{category}</div>
+          </div>
+        )
+      }
+
+      const rootRoute = createRootRoute()
+      const optionalRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/optional',
+        validateSearch: zodValidator(optionalSchema),
+        component: OptionalPage,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([optionalRoute]),
+        history,
+      })
+
+      // Test with only some parameters
+      window.history.replaceState(null, '', '/optional?page=2&searchTerm=test')
+      await router.load()
+
+      render(<RouterProvider router={router} />)
+
+      expect(await screen.findByTestId('page')).toHaveTextContent('2')
+      expect(await screen.findByTestId('search-term')).toHaveTextContent('test')
+      expect(await screen.findByTestId('category')).toHaveTextContent('all') // Default
+    })
+  })
+
   describe('getRouteApi Usage', () => {
     it('should access search parameters using getRouteApi', async () => {
+      const searchSchema = z.object({
+        category: fallback(z.string(), 'all').default('all'),
+        sort: fallback(z.string(), 'name').default('name'),
+      })
+
       const ProductFilters = () => {
         const routeApi = getRouteApi('/products')
         const { category, sort } = routeApi.useSearch()
@@ -412,10 +427,7 @@ describe('Basic Search Parameters How-To Guide', () => {
       const productsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/products',
-        validateSearch: (search: Record<string, unknown>) => ({
-          category: (search.category as string) || 'all',
-          sort: (search.sort as string) || 'name',
-        }),
+        validateSearch: zodValidator(searchSchema),
         component: ProductsPage,
       })
 
@@ -434,186 +446,43 @@ describe('Basic Search Parameters How-To Guide', () => {
     })
   })
 
-  describe('useSearch with from parameter', () => {
-    it('should access search parameters using useSearch with from', async () => {
-      const GenericSearchDisplay = () => {
-        const search = useSearch({ from: '/products' })
+  describe('Manual Validation (Educational)', () => {
+    it('should demonstrate manual validation for learning purposes', async () => {
+      const ManualPage = () => {
+        const { page, category, showSale } = manualRoute.useSearch()
         
         return (
           <div>
-            <div data-testid="search-display">{JSON.stringify(search)}</div>
-          </div>
-        )
-      }
-
-      const ProductsPage = () => {
-        return (
-          <div>
-            <h1>Products</h1>
-            <GenericSearchDisplay />
+            <div data-testid="page">{page}</div>
+            <div data-testid="category">{category}</div>
+            <div data-testid="show-sale">{showSale ? 'Yes' : 'No'}</div>
           </div>
         )
       }
 
       const rootRoute = createRootRoute()
-      const productsRoute = createRoute({
+      const manualRoute = createRoute({
         getParentRoute: () => rootRoute,
-        path: '/products',
+        path: '/manual',
         validateSearch: (search: Record<string, unknown>) => ({
-          category: (search.category as string) || 'all',
+          // Numbers need coercion from URL strings
           page: Number(search.page) || 1,
-        }),
-        component: ProductsPage,
-      })
-
-      const router = createRouter({
-        routeTree: rootRoute.addChildren([productsRoute]),
-        history,
-      })
-
-      window.history.replaceState(null, '', '/products?category=electronics&page=2')
-      await router.load()
-
-      render(<RouterProvider router={router} />)
-
-      const searchDisplay = await screen.findByTestId('search-display')
-      const searchValue = JSON.parse(searchDisplay.textContent!)
-      expect(searchValue).toEqual({ category: 'electronics', page: 2 })
-    })
-  })
-
-  describe('Boolean Handling Edge Cases', () => {
-    it('should handle different boolean patterns correctly', async () => {
-      const TestPage = () => {
-        const search = testRoute.useSearch()
-        
-        return (
-          <div>
-            <div data-testid="explicit-flag">{search.explicitFlag ? 'true' : 'false'}</div>
-            <div data-testid="presence-flag">{search.presenceFlag ? 'true' : 'false'}</div>
-            <div data-testid="safe-boolean-flag">{search.safeBooleanFlag ? 'true' : 'false'}</div>
-          </div>
-        )
-      }
-
-      const rootRoute = createRootRoute()
-      const testRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/test',
-        validateSearch: (search: Record<string, unknown>) => ({
-          // For ?flag=true or ?flag=false (TanStack Router auto-converts to boolean)
-          explicitFlag: Boolean(search.explicitFlag),
           
-          // For ?flag (presence = true, absence = false) - presence gives empty string
-          presenceFlag: search.presenceFlag === '' || search.presenceFlag === true,
-          
-          // TanStack Router already converts string "true"/"false" to booleans
-          safeBooleanFlag: Boolean(search.safeBooleanFlag),
-        }),
-        component: TestPage,
-      })
-
-      const router = createRouter({
-        routeTree: rootRoute.addChildren([testRoute]),
-        history,
-      })
-
-      // Test with presence-based flag and explicit values
-      window.history.replaceState(null, '', '/test?explicitFlag=true&presenceFlag&safeBooleanFlag=true')
-      await router.load()
-
-      render(<RouterProvider router={router} />)
-
-      expect(await screen.findByTestId('explicit-flag')).toHaveTextContent('true')
-      expect(await screen.findByTestId('presence-flag')).toHaveTextContent('true')
-      expect(await screen.findByTestId('safe-boolean-flag')).toHaveTextContent('true')
-    })
-
-    it('should handle false boolean values correctly', async () => {
-      const TestPage = () => {
-        const search = testRoute.useSearch()
-        
-        return (
-          <div>
-            <div data-testid="explicit-flag">{search.explicitFlag ? 'true' : 'false'}</div>
-            <div data-testid="presence-flag">{search.presenceFlag ? 'true' : 'false'}</div>
-            <div data-testid="safe-boolean-flag">{search.safeBooleanFlag ? 'true' : 'false'}</div>
-          </div>
-        )
-      }
-
-      const rootRoute = createRootRoute()
-      const testRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/test',
-        validateSearch: (search: Record<string, unknown>) => ({
-          // For ?flag=true or ?flag=false (TanStack Router auto-converts to boolean)
-          explicitFlag: Boolean(search.explicitFlag),
-          
-          // For ?flag (presence = true, absence = false) - presence gives empty string
-          presenceFlag: search.presenceFlag === '' || search.presenceFlag === true,
-          
-          // TanStack Router already converts string "true"/"false" to booleans
-          safeBooleanFlag: Boolean(search.safeBooleanFlag),
-        }),
-        component: TestPage,
-      })
-
-      const router = createRouter({
-        routeTree: rootRoute.addChildren([testRoute]),
-        history,
-      })
-
-      // Test with explicit false and no presence flag
-      window.history.replaceState(null, '', '/test?explicitFlag=false&safeBooleanFlag=false')
-      await router.load()
-
-      render(<RouterProvider router={router} />)
-
-      expect(await screen.findByTestId('explicit-flag')).toHaveTextContent('false')
-      expect(await screen.findByTestId('presence-flag')).toHaveTextContent('false') // Not present
-      expect(await screen.findByTestId('safe-boolean-flag')).toHaveTextContent('false')
-    })
-  })
-
-  describe('TypeScript Support', () => {
-    it('should support explicit typing of validateSearch return type', async () => {
-      type ProductSearch = {
-        page: number
-        category: string
-        showSale: boolean
-      }
-
-      const ProductsPage = () => {
-        const search = productsRoute.useSearch()
-        
-        return (
-          <div>
-            <div data-testid="page">{search.page}</div>
-            <div data-testid="category">{search.category}</div>
-            <div data-testid="show-sale">{search.showSale ? 'Yes' : 'No'}</div>
-          </div>
-        )
-      }
-
-      const rootRoute = createRootRoute()
-      const productsRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/products',
-        validateSearch: (search: Record<string, unknown>): ProductSearch => ({
-          page: Number(search.page) || 1,
+          // Strings can be cast with defaults
           category: (search.category as string) || 'all',
+          
+          // Booleans: TanStack Router auto-converts "true"/"false" to booleans
           showSale: Boolean(search.showSale),
         }),
-        component: ProductsPage,
+        component: ManualPage,
       })
 
       const router = createRouter({
-        routeTree: rootRoute.addChildren([productsRoute]),
+        routeTree: rootRoute.addChildren([manualRoute]),
         history,
       })
 
-      window.history.replaceState(null, '', '/products?page=2&category=electronics&showSale=true')
+      window.history.replaceState(null, '', '/manual?page=2&category=electronics&showSale=true')
       await router.load()
 
       render(<RouterProvider router={router} />)

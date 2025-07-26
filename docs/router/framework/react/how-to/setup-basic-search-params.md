@@ -4,21 +4,25 @@ title: Set Up Basic Search Parameters
 
 # How to Set Up Basic Search Parameters
 
-Learn how to add type-safe search parameters to your TanStack Router routes. This guide covers the fundamentals of search parameter validation, reading values, and basic type safety.
+Learn how to add type-safe, production-ready search parameters to your TanStack Router routes using Zod validation. This guide covers the fundamentals of search parameter validation, reading values, and handling different data types.
 
 ## Quick Start
 
-Add search parameter validation to a route and read the values in your component:
+Set up search parameters with Zod validation (recommended for production):
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
+import { zodValidator, fallback } from '@tanstack/zod-adapter'
+import { z } from 'zod'
+
+const productSearchSchema = z.object({
+  page: fallback(z.number(), 1).default(1),
+  category: fallback(z.string(), 'all').default('all'),
+  showSale: fallback(z.boolean(), false).default(false),
+})
 
 export const Route = createFileRoute('/products')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    page: Number(search.page) || 1,
-    category: (search.category as string) || 'all',
-    showSale: Boolean(search.showSale),
-  }),
+  validateSearch: zodValidator(productSearchSchema),
   component: ProductsPage,
 })
 
@@ -36,106 +40,102 @@ function ProductsPage() {
 }
 ```
 
+## Why Use Zod for Search Parameter Validation?
+
+**Production Benefits:**
+- **Type Safety**: Automatic TypeScript inference
+- **Runtime Validation**: Catches invalid URL parameters gracefully
+- **Default Values**: Fallback handling for missing parameters
+- **Error Handling**: Built-in validation error management
+- **Maintainability**: Clear, declarative schema definitions
+
 ## Step-by-Step Setup
 
-### Step 1: Define Your Search Parameters
+### Step 1: Install Dependencies
 
-Start by identifying what search parameters your route needs. Common examples include:
+```bash
+npm install zod @tanstack/zod-adapter
+```
 
-- **Pagination:** `page`, `limit`, `offset`
-- **Filtering:** `category`, `status`, `type`
-- **Settings:** `sort`, `view`, `theme`
-- **Flags:** `debug`, `preview`, `expanded`
+### Step 2: Define Your Search Schema
 
-### Step 2: Add Search Validation
-
-Use the `validateSearch` option to define and validate your search parameters:
+Start by identifying what search parameters your route needs and create a Zod schema:
 
 ```tsx
-// Basic validation with type coercion
+import { z } from 'zod'
+import { fallback } from '@tanstack/zod-adapter'
+
+const shopSearchSchema = z.object({
+  // Pagination
+  page: fallback(z.number(), 1).default(1),
+  limit: fallback(z.number(), 20).default(20),
+  
+  // Filtering
+  category: fallback(z.string(), 'all').default('all'),
+  minPrice: fallback(z.number(), 0).default(0),
+  maxPrice: fallback(z.number(), 1000).default(1000),
+  
+  // Settings
+  sort: fallback(z.enum(['name', 'price', 'date']), 'name').default('name'),
+  ascending: fallback(z.boolean(), true).default(true),
+  
+  // Optional parameters
+  searchTerm: z.string().optional(),
+  showOnlyInStock: fallback(z.boolean(), false).default(false),
+})
+
+type ShopSearch = z.infer<typeof shopSearchSchema>
+```
+
+### Step 3: Add Schema Validation to Route
+
+Use the `zodValidator` to connect your schema to the route:
+
+```tsx
+import { zodValidator } from '@tanstack/zod-adapter'
+
 export const Route = createFileRoute('/shop')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    // Number with default value
-    page: Number(search.page) || 1,
-    
-    // String with default value
-    sort: (search.sort as string) || 'name',
-    
-    // Boolean flag
-    showOnlyInStock: Boolean(search.showOnlyInStock),
-    
-    // Optional string
-    searchTerm: search.searchTerm as string | undefined,
-  }),
+  validateSearch: zodValidator(shopSearchSchema),
   component: ShopPage,
 })
 ```
 
-### Step 3: Read Search Parameters in Components
+### Step 4: Read Search Parameters in Components
 
-Use the route's `useSearch()` hook to access validated search parameters:
+Use the route's `useSearch()` hook to access validated and typed search parameters:
 
 ```tsx
 function ShopPage() {
   const searchParams = Route.useSearch()
   
-  // All properties are type-safe and validated
-  const { page, sort, showOnlyInStock, searchTerm } = searchParams
+  // All properties are fully type-safe and validated
+  const { page, limit, category, sort, ascending, searchTerm, showOnlyInStock } = searchParams
   
   return (
     <div>
       <h1>Shop - Page {page}</h1>
-      <div>Sort by: {sort}</div>
+      <div>Category: {category}</div>
+      <div>Sort: {sort} ({ascending ? 'ascending' : 'descending'})</div>
+      <div>Items per page: {limit}</div>
       <div>In stock only: {showOnlyInStock ? 'Yes' : 'No'}</div>
-      {searchTerm && <div>Searching for: "{searchTerm}"</div>}
+      {searchTerm && <div>Search: "{searchTerm}"</div>}
     </div>
   )
 }
 ```
 
-### Step 4: Handle Different Data Types
-
-TanStack Router supports all JSON-serializable types:
-
-```tsx
-export const Route = createFileRoute('/dashboard')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    // Numbers
-    userId: Number(search.userId) || 0,
-    refreshInterval: Number(search.refreshInterval) || 5000,
-    
-    // Strings
-    theme: (search.theme as string) || 'light',
-    timezone: search.timezone as string | undefined,
-    
-    // Booleans (TanStack Router auto-converts "true"/"false" to booleans)
-    autoRefresh: Boolean(search.autoRefresh),
-    debugMode: Boolean(search.debugMode),
-    
-    // Arrays (parsed from JSON)
-    selectedIds: Array.isArray(search.selectedIds) 
-      ? search.selectedIds.map(Number) 
-      : [],
-      
-    // Objects (parsed from JSON)
-    filters: typeof search.filters === 'object' && search.filters !== null
-      ? search.filters as Record<string, string>
-      : {},
-  }),
-  component: DashboardPage,
-})
-```
-
 ## Common Search Parameter Patterns
 
-### Pagination
+### Pagination with Constraints
 
 ```tsx
+const paginationSchema = z.object({
+  page: fallback(z.number().min(1), 1).default(1),
+  limit: fallback(z.number().min(10).max(100), 20).default(20),
+})
+
 export const Route = createFileRoute('/posts')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    page: Math.max(1, Number(search.page) || 1),
-    limit: Math.min(100, Math.max(10, Number(search.limit) || 20)),
-  }),
+  validateSearch: zodValidator(paginationSchema),
   component: PostsPage,
 })
 
@@ -149,59 +149,69 @@ function PostsPage() {
     <div>
       <h1>Posts (Page {page})</h1>
       <p>Showing {limit} posts per page</p>
+      <p>Offset: {offset}</p>
       {/* Render posts... */}
     </div>
   )
 }
 ```
 
-### Filtering with Enums
+### Enum Validation with Defaults
 
 ```tsx
-type SortOption = 'name' | 'date' | 'price'
-type CategoryOption = 'electronics' | 'clothing' | 'books' | 'all'
+const catalogSchema = z.object({
+  sort: fallback(
+    z.enum(['name', 'date', 'price']), 
+    'name'
+  ).default('name'),
+  category: fallback(
+    z.enum(['electronics', 'clothing', 'books', 'all']), 
+    'all'
+  ).default('all'),
+  ascending: fallback(z.boolean(), true).default(true),
+})
 
 export const Route = createFileRoute('/catalog')({
-  validateSearch: (search: Record<string, unknown>) => {
-    const validSorts: SortOption[] = ['name', 'date', 'price']
-    const validCategories: CategoryOption[] = ['electronics', 'clothing', 'books', 'all']
-    
-    return {
-      sort: validSorts.includes(search.sort as SortOption) 
-        ? (search.sort as SortOption) 
-        : 'name',
-      category: validCategories.includes(search.category as CategoryOption)
-        ? (search.category as CategoryOption)
-        : 'all',
-      ascending: search.ascending === false ? false : true, // Default to true
-    }
-  },
+  validateSearch: zodValidator(catalogSchema),
   component: CatalogPage,
 })
 ```
 
-### Search with Defaults
+### Complex Data Types
 
 ```tsx
-const DEFAULT_SEARCH = {
-  query: '',
-  category: 'all',
-  minPrice: 0,
-  maxPrice: 1000,
-  inStock: false,
-} as const
+const dashboardSchema = z.object({
+  // Numbers with validation
+  userId: fallback(z.number().positive(), 1).default(1),
+  refreshInterval: fallback(z.number().min(1000).max(60000), 5000).default(5000),
+  
+  // Strings with validation
+  theme: fallback(z.enum(['light', 'dark']), 'light').default('light'),
+  timezone: z.string().optional(),
+  
+  // Arrays with validation
+  selectedIds: fallback(z.number().array(), []).default([]),
+  tags: fallback(z.string().array(), []).default([]),
+  
+  // Objects with validation
+  filters: fallback(
+    z.object({
+      status: z.enum(['active', 'inactive']).optional(),
+      type: z.string().optional(),
+    }), 
+    {}
+  ).default({}),
+})
+```
 
-export const Route = createFileRoute('/search')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    query: (search.query as string) || DEFAULT_SEARCH.query,
-    category: (search.category as string) || DEFAULT_SEARCH.category,
-    minPrice: Number(search.minPrice) || DEFAULT_SEARCH.minPrice,
-    maxPrice: Number(search.maxPrice) || DEFAULT_SEARCH.maxPrice,
-    inStock: search.inStock !== undefined 
-      ? Boolean(search.inStock) 
-      : DEFAULT_SEARCH.inStock,
-  }),
-  component: SearchPage,
+### Date and Advanced Types
+
+```tsx
+const reportSchema = z.object({
+  startDate: z.string().pipe(z.coerce.date()).optional(),
+  endDate: z.string().pipe(z.coerce.date()).optional(),
+  format: fallback(z.enum(['pdf', 'csv', 'excel']), 'pdf').default('pdf'),
+  includeCharts: fallback(z.boolean(), true).default(true),
 })
 ```
 
@@ -209,7 +219,7 @@ export const Route = createFileRoute('/search')({
 
 ### Using getRouteApi
 
-If your component is code-split or in a separate file:
+For code-split components or separate files:
 
 ```tsx
 // components/ProductFilters.tsx
@@ -243,101 +253,127 @@ function GenericSearchDisplay() {
   
   return (
     <div>
-      Current search: {JSON.stringify(search)}
+      Current filters: {JSON.stringify(search, null, 2)}
     </div>
   )
 }
 ```
 
+## Manual Validation (Understanding the Primitives)
+
+While Zod is recommended for production, understanding manual validation helps you understand how search parameters work under the hood:
+
+```tsx
+// Educational example - use Zod for production
+export const Route = createFileRoute('/example')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    // Numbers need coercion from URL strings
+    page: Number(search.page) || 1,
+    
+    // Strings can be cast with defaults
+    category: (search.category as string) || 'all',
+    
+    // Booleans: TanStack Router auto-converts "true"/"false" to booleans
+    showSale: Boolean(search.showSale),
+    
+    // Arrays need JSON parsing validation
+    selectedIds: Array.isArray(search.selectedIds) 
+      ? search.selectedIds.map(Number).filter(Boolean)
+      : [],
+  }),
+  component: ExamplePage,
+})
+```
+
 ## Production Checklist
 
-- [ ] **Search validation** handles all expected input types
-- [ ] **Default values** are provided for all optional parameters
-- [ ] **Type safety** is maintained throughout the component
-- [ ] **Edge cases** are handled (invalid numbers, empty strings, etc.)
-- [ ] **URL limits** are considered (very long search params may be truncated)
-- [ ] **Security** - search parameters are validated and not directly used in database queries
+- [x] **Use Zod validation** with `zodValidator()` for type safety and runtime validation
+- [x] **Add fallback values** using `fallback()` for graceful error handling
+- [x] **Set default values** with `.default()` for optional parameters
+- [x] **Validate constraints** using Zod's built-in validators (`.min()`, `.max()`, `.positive()`, etc.)
+- [x] **Handle optional parameters** appropriately with `.optional()`
+- [x] **Type inference** works automatically with `z.infer<typeof schema>`
+- [x] **Error boundaries** are configured to handle validation failures
 
 ## Common Problems
 
-### Problem: Search Parameters Are Always Undefined
+### Problem: Search Parameters Cause TypeScript Errors
 
-**Cause:** Missing or incorrect `validateSearch` function.
+**Cause:** Missing or incorrect Zod schema definition.
 
-**Solution:** Ensure `validateSearch` is defined and returns an object:
+**Solution:** Ensure your schema covers all search parameters and use proper types:
 
 ```tsx
-// ❌ Missing validateSearch
+// ❌ Missing schema or incorrect types
 export const Route = createFileRoute('/page')({
   component: MyPage,
 })
 
-// ✅ Correct validateSearch
+// ✅ Complete Zod schema with proper validation
+const searchSchema = z.object({
+  page: fallback(z.number(), 1).default(1),
+  category: fallback(z.string(), 'all').default('all'),
+})
+
 export const Route = createFileRoute('/page')({
-  validateSearch: (search) => ({
-    param: search.param as string,
-  }),
+  validateSearch: zodValidator(searchSchema),
   component: MyPage,
 })
 ```
 
-### Problem: Numbers Are Coming Through as Strings
+### Problem: Invalid URL Parameters Break the App
 
-**Cause:** Search parameters are always strings from the URL.
+**Cause:** Not using `fallback()` for error handling.
 
-**Solution:** Use type coercion in `validateSearch`:
-
-```tsx
-// ❌ No type coercion
-validateSearch: (search) => ({
-  page: search.page, // This will be a string "1", not number 1
-})
-
-// ✅ Proper type coercion
-validateSearch: (search) => ({
-  page: Number(search.page) || 1,
-})
-```
-
-### Problem: Boolean Flags Not Working
-
-**Cause:** Understanding how TanStack Router parses boolean values.
-
-**Solution:** TanStack Router automatically converts JSON values. Handle booleans properly:
+**Solution:** Use `fallback()` to provide safe defaults:
 
 ```tsx
-validateSearch: (search) => ({
-  // TanStack Router converts "true"/"false" strings to actual booleans
-  explicitFlag: Boolean(search.explicitFlag),
-  
-  // For ?flag (presence = true, absence = false) - presence gives empty string
-  presenceFlag: search.presenceFlag === '' || search.presenceFlag === true,
-  
-  // Simple boolean conversion works for most cases
-  safeBooleanFlag: Boolean(search.safeBooleanFlag),
+// ❌ No fallback handling
+const schema = z.object({
+  page: z.number().default(1), // Will throw on invalid input
+})
+
+// ✅ Graceful fallback handling
+const schema = z.object({
+  page: fallback(z.number(), 1).default(1), // Safe fallback to 1
 })
 ```
 
-### Problem: TypeScript Errors with Search Parameters
+### Problem: Optional Parameters Are Required by TypeScript
 
-**Cause:** TypeScript can't infer the return type of `validateSearch`.
+**Cause:** Using `.default()` makes parameters required in navigation.
 
-**Solution:** Define a type for your search parameters:
+**Solution:** Use `.optional()` for truly optional parameters:
 
 ```tsx
-type ProductSearch = {
-  page: number
-  category: string
-  showSale: boolean
-}
+const schema = z.object({
+  // Required with default (navigation can omit, but always present in component)
+  page: fallback(z.number(), 1).default(1),
+  
+  // Truly optional (can be undefined in component)
+  searchTerm: z.string().optional(),
+})
+```
 
-export const Route = createFileRoute('/products')({
-  validateSearch: (search: Record<string, unknown>): ProductSearch => ({
-    page: Number(search.page) || 1,
-    category: (search.category as string) || 'all',
-    showSale: Boolean(search.showSale),
-  }),
-  component: ProductsPage,
+### Problem: Complex Objects Not Validating
+
+**Cause:** Nested objects need explicit schema definition.
+
+**Solution:** Define complete nested schemas:
+
+```tsx
+const schema = z.object({
+  filters: fallback(
+    z.object({
+      status: z.enum(['active', 'inactive']).optional(),
+      tags: z.string().array().optional(),
+      dateRange: z.object({
+        start: z.string().pipe(z.coerce.date()),
+        end: z.string().pipe(z.coerce.date()),
+      }).optional(),
+    }),
+    {}
+  ).default({}),
 })
 ```
 
@@ -345,14 +381,15 @@ export const Route = createFileRoute('/products')({
 
 <!-- Uncomment when guides are available
 - [Navigate with Search Parameters](./navigate-with-search-params.md) - Learn to update search params with Links and navigation
-- [Validate Search Parameters with Schemas](./validate-search-params.md) - Use Zod or Valibot for robust validation
+- [Handle Complex Search Parameter Types](./complex-search-param-types.md) - Work with arrays, objects, dates, and nested data
 -->
 
 ## Related Resources
 
+- [Zod Documentation](https://zod.dev/) - Complete validation library reference
+- [TanStack Zod Adapter](https://tanstack.com/router/latest/docs/framework/react/api/router/zodValidator) - Official adapter documentation
 - [Search Parameters Guide](../guide/search-params.md) - Comprehensive search parameters documentation
 - [Type Safety Guide](../guide/type-safety.md) - Understanding TanStack Router's type safety
-- [Route API Reference](../api/router/RouteOptionsType.md) - Complete route configuration options
 
 ## Testing
 
