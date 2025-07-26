@@ -15,7 +15,7 @@ import type {
 } from './Matches'
 import type { RootRouteId } from './root'
 import type { ParseRoute, RouteById, RoutePaths } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { AnyRouter, RegisteredRouter, RouterCode } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
   Assign,
@@ -1072,7 +1072,7 @@ export interface UpdatableRouteOptions<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
   onCatch?: (error: Error) => void
-  onError?: (err: any) => void
+  onError?: (err: any, routerCode?: RouterCode) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
   onEnter?: (
