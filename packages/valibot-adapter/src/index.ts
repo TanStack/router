@@ -1,5 +1,5 @@
 import { parse } from 'valibot'
-import type { ValidatorAdapter } from '@tanstack/react-router'
+import type { ValidatorAdapter } from '@tanstack/router-core'
 import type { GenericSchema, InferInput, InferOutput } from 'valibot'
 
 export type ValibotValidatorAdapter<TOptions extends GenericSchema> =
