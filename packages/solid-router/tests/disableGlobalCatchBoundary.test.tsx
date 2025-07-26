@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@solidjs/testing-library'
-import { ErrorBoundary, type JSX } from 'solid-js'
-
+import { ErrorBoundary  } from 'solid-js'
 import {
   RouterProvider,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
+import type {JSX} from 'solid-js';
+
 
 function ThrowingComponent() {
   throw new Error('Test error')

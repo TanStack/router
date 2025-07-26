@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import { Component, type ReactNode } from 'react'
-
+import { Component  } from 'react'
 import {
   RouterProvider,
   createBrowserHistory,
@@ -9,6 +8,8 @@ import {
   createRoute,
   createRouter,
 } from '../src'
+import type {ReactNode} from 'react';
+
 import type { RouterHistory } from '../src'
 
 function ThrowingComponent() {
