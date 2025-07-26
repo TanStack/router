@@ -128,7 +128,11 @@ export function restoreScroll(
   ;(() => {
     // If we have a cached entry for this location state,
     // we always need to prefer that over the hash scroll.
-    if (shouldScrollRestoration && elementEntries) {
+    if (
+      shouldScrollRestoration &&
+      elementEntries &&
+      Object.keys(elementEntries).length > 0
+    ) {
       for (const elementSelector in elementEntries) {
         const entry = elementEntries[elementSelector]!
         if (elementSelector === 'window') {
