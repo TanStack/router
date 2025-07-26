@@ -1322,10 +1322,7 @@ export type ErrorComponentProps<TError = Error> = {
   info?: { componentStack: string }
   reset: () => void
 }
-export type NotFoundRouteProps = {
-  // TODO: Make sure this is `| null | undefined` (this is for global not-founds)
-  data: unknown
-}
+export type NotFoundRouteProps = Partial<NotFoundError>
 
 export class BaseRoute<
   in out TParentRoute extends AnyRoute = AnyRoute,
