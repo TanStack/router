@@ -64,6 +64,6 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-plugin": "workspace:^"
+    "@tanstack/router-plugin": "workspace:*"
   }
 }

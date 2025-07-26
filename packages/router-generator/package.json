@@ -65,9 +65,9 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-core": "workspace:^",
+    "@tanstack/router-core": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
-    "@tanstack/virtual-file-routes": "workspace:^",
+    "@tanstack/virtual-file-routes": "workspace:*",
     "prettier": "^3.5.0",
     "recast": "^0.23.11",
     "source-map": "^0.7.4",
@@ -75,6 +75,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tanstack/react-router": "workspace:^"
+    "@tanstack/react-router": "workspace:*"
   }
 }
