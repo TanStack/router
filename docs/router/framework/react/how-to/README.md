@@ -37,7 +37,7 @@ This directory contains focused, step-by-step instructions for common TanStack R
 ### Search Parameters & URL State (Progressive Series)
 
 **Foundation Level (Start Here):**
-- [ ] Set Up Basic Search Parameters - Create type-safe search validation and reading
+- [x] [Set Up Basic Search Parameters](./setup-basic-search-params.md) - Create type-safe search validation and reading
 - [ ] Navigate with Search Parameters - Update and manage search params with Links and navigation
 
 **Intermediate Level (Common Patterns):**
