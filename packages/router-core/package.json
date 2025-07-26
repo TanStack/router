@@ -30,6 +30,7 @@
     "test:types:ts58": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "test:unit": "vitest",
+    "test:perf": "vitest bench",
     "test:unit:dev": "pnpm run test:unit --watch",
     "build": "vite build"
   },
