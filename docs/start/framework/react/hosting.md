@@ -80,7 +80,7 @@ When deploying to Cloudflare Workers, you'll need to complete a few extra steps 
 
 1. Update `vite.config.ts`
 
-Set the `target` value to `cloudflare-pages` in your `vite.config.ts` file.
+Set the `target` value to `cloudflare-module` in your `vite.config.ts` file.
 
 ```ts
 // vite.config.ts
@@ -97,12 +97,16 @@ export default defineConfig({
 ```toml
 # wrangler.toml
 name = "your-cloudflare-project-name"
-pages_build_output_dir = "./dist"
+main = "./.output/server/index.mjs"
+compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
-compatibility_date = "2024-11-13"
+
+[assets]
+binding = "ASSETS"
+directory = "./.output/public"
 ```
 
-Deploy your application to Cloudflare Pages using their one-click deployment process, and you're ready to go!
+Deploy your application to Cloudflare Workers using their one-click deployment process, and you're ready to go!
 
 ### Node.js
 
