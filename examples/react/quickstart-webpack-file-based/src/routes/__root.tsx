@@ -26,6 +26,22 @@ function RootComponent() {
         >
           About
         </Link>
+        <Link
+          to="/nest"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Nest
+        </Link>
+        <Link
+          to="/nest/foo"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Nest/Foo
+        </Link>
       </div>
       <hr />
       <Outlet />
