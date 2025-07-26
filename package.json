@@ -5,7 +5,7 @@
     "type": "git",
     "url": "https://github.com/TanStack/router.git"
   },
-  "packageManager": "pnpm@9.15.5",
+  "packageManager": "pnpm@10.13.1",
   "type": "module",
   "scripts": {
     "cleanNodeModules": "pnpm -r exec rm -rf node_modules",
