@@ -2,7 +2,7 @@
   "name": "@tanstack/router-e2e-utils",
   "private": true,
   "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
+    "clean": "rimraf ./dist ./coverage",
     "test:eslint": "eslint ./src",
     "test:unit": "exit 0; vitest --typecheck"
   },

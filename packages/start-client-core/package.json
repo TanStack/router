@@ -24,7 +24,7 @@
     "typescript"
   ],
   "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
+    "clean": "rimraf ./dist ./coverage",
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
     "test:unit": "vitest",
     "test:unit:dev": "vitest --watch",

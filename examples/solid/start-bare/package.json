@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.8",
-    "@types/node": "^22.10.2",
+    "@types/node": "^24.1.0",
     "vite-plugin-solid": "^2.11.2",
     "combinate": "^1.1.11",
     "tailwindcss": "^4.0.0",

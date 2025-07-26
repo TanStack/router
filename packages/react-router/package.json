@@ -24,7 +24,7 @@
     "typescript"
   ],
   "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
+    "clean": "rimraf ./dist ./coverage",
     "test:eslint": "eslint",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
     "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js -p tsconfig.legacy.json",
@@ -40,7 +40,7 @@
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "pnpm run build:lib && pnpm run build:llm",
     "build:lib": "vite build",
-    "build:llm": "node ../../scripts/llms-generate.mjs react-router && tsc -p ./llms/tsconfig.json"
+    "build:llm": "node ../../scripts/llms-generate.js react-router && tsc -p ./llms/tsconfig.json"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",

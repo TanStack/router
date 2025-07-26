@@ -24,7 +24,7 @@
     "typescript"
   ],
   "scripts": {
-    "clean": "rimraf ./dist && rimraf ./coverage",
+    "clean": "rimraf ./dist ./coverage",
     "clean:snapshots": "rimraf **/*snapshot* --glob",
     "test:eslint": "eslint ./src",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",

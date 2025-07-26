@@ -452,18 +452,15 @@ With this, our UI should look like this:
 Let's break down how the different parts of our application work together:
 
 1. **Server Functions**: These run on the server and handle data operations
-
    - `getJokes`: Reads the jokes from our JSON file
    - `addJoke`: Adds a new joke to our JSON file
 
 2. **TanStack Router**: Handles routing and data loading
-
    - The loader function fetches jokes data when the route is accessed
    - `useLoaderData` makes this data available in our component
    - `router.invalidate()` refreshes the data when we add a new joke
 
 3. **React Components**: Build the UI of our application
-
    - `JokesList`: Displays the list of jokes
    - `JokeForm`: Provides a form for adding new jokes
 

@@ -25,7 +25,7 @@
     "@playwright/test": "^1.50.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/js-cookie": "^3.0.6",
-    "@types/node": "^22.10.2",
+    "@types/node": "^24.1.0",
     "autoprefixer": "^10.4.20",
     "combinate": "^1.1.11",
     "postcss": "^8.5.1",

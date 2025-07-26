@@ -61,7 +61,7 @@ const packages = {
 
 const pkg = process.argv[2]
 if (!pkg) {
-  console.error('Usage: node scripts/llms-generate.mjs <package-name>')
+  console.error('Usage: node scripts/llms-generate.js <package-name>')
   process.exit(1)
 }
 if (!packages[pkg]) {

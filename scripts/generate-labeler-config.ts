@@ -2,19 +2,13 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as prettier from 'prettier'
 
-/**
- * Pairs of package labels and their corresponding paths
- * @typedef {[string, string]} LabelerPair
- */
+/** Pairs of package labels and their corresponding paths */
+type LabelerPair = [string, string]
 
-/**
- * @returns {Array<LabelerPair>} Pairs of package labels and their corresponding paths
- */
-function readPairsFromFs() {
+function readPairsFromFs(): Array<LabelerPair> {
   const ignored = new Set(['.DS_Store'])
 
-  /** @type {Array<LabelerPair>} */
-  const pairs = []
+  const pairs: Array<LabelerPair> = []
 
   // Add subfolders in the packages folder, i.e. packages/**
   fs.readdirSync(path.resolve('packages'))
@@ -40,11 +34,7 @@ function readPairsFromFs() {
   return pairs
 }
 
-/**
- * @param {Array<LabelerPair>} pairs
- * @returns {Promise<string>} YAML string for the labeler config
- */
-async function generateLabelerYaml(pairs) {
+async function generateLabelerYaml(pairs: Array<LabelerPair>): Promise<string> {
   function s(n = 1) {
     return ' '.repeat(n)
   }
@@ -96,7 +86,7 @@ async function run() {
   // Convert the pairs into valid yaml
   const yamlStr = await generateLabelerYaml(pairs)
 
-  // Write to '.github/labeler.yml'
+  // Write to 'labeler-config.yml'
   const configPath = path.resolve('labeler-config.yml')
   fs.writeFileSync(configPath, yamlStr, {
     encoding: 'utf-8',

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import path, { resolve } from 'node:path'
-import fg from 'fast-glob'
-// @ts-ignore
+import { glob } from 'tinyglobby'
+// @ts-ignore Could not find a declaration file for module 'markdown-link-extractor'.
 import markdownLinkExtractor from 'markdown-link-extractor'
 
 function isRelativeLink(link: string) {
@@ -87,7 +87,7 @@ function fileExistsForLink(
 
 async function findMarkdownLinks() {
   // Find all markdown files in docs directory
-  const markdownFiles = await fg('docs/**/*.md', {
+  const markdownFiles = await glob('docs/**/*.md', {
     ignore: ['**/node_modules/**'],
   })
 
