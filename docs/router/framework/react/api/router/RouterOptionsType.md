@@ -177,7 +177,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Type: `string`
 - Optional
 - Defaults to `/`
-- The basepath for then entire router. This is useful for mounting a router instance at a subpath.
+- The basepath for the entire router. This is useful for mounting a router instance at a subpath.
 
 ### `context` property
 
