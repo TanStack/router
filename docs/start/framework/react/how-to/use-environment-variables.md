@@ -372,10 +372,21 @@ for (const key of requiredClientEnv) {
 
 **Solutions**:
 
-1. Add `VITE_` prefix: `VITE_MY_VARIABLE`
-2. Restart development server after adding new variables
-3. Check file location (must be in project root)
-4. Verify variable is in correct `.env` file
+1. **Add correct prefix**: Use `VITE_` prefix (e.g. `VITE_MY_VARIABLE`)
+   Vite's default prefix may be changed in the config:
+   ```ts
+   // vite.config.ts
+   export const config = {
+     // ...rest of your config
+     envPrefix: 'MYPREFIX_' // this means `MYPREFIX_MY_VARIABLE` is the new correct way
+   }
+   ```
+2. **Restart development server** after adding new variables
+3. **Check file location**: `.env` file must be in project root
+4. **Verify bundler configuration**: Ensure variables are properly injected
+5. **Verify variable**:
+  - **In dev**: is in correct `.env` file or environment
+  - **For prod**: is in correct `.env` file or current environment ***at bundle time***. That's right, `VITE_`-prefixed variables are replaced in a macro-like fashion at bundle time, and will *never* be read at runtime on your server. This is a common mistake, so make sure this is not your case.
 
 **Example**:
 
@@ -385,6 +396,45 @@ API_KEY=abc123
 
 # ✅ Works in client code
 VITE_API_KEY=abc123
+
+# ❌ Won't bundle the variable (assuming it is not set in the environment of the build)
+npm run build
+
+# ✅ Works in client code and will bundle the variable for production
+VITE_API_KEY=abc123 npm run build
+```
+
+### Runtime Client Environment Variables at Runtime in Production
+
+**Problem**: If `VITE_` variables are replaced at bundle time only, how to make runtime variables available on the client ?
+
+**Solutions**:
+
+Pass variables from the server down to the client:
+1. Add your variable to the correct `env.` file
+2. Create an endpoint on your server to read the value from the client
+
+**Example**:
+
+Using Tanstack Start server functions:
+
+```tsx
+const getRuntimeVar = createServerFn({ method: 'GET' }).handler(() => {
+  return process.env.MY_RUNTIME_VAR // notice `process.env` on the server, and no `VITE_` prefix
+})
+
+export const Route = createFileRoute('/')({
+  loader: async () => {
+    const foo = await getRuntimeVar()
+    return { foo }
+  },
+  component: RouteComponent,
+})
+
+function RouteComponent() {
+  const { foo } = Route.useLoaderData()
+  // ... use your variable however you want
+}
 ```
 
 ### Variable Not Updating
