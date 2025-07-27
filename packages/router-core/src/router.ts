@@ -2607,6 +2607,7 @@ export class RouterCore<
                     await route._componentsPromise
                     updateMatch(matchId, (prev) => ({
                       ...prev,
+                      loaderData: prev.loaderData ?? undefined, // TODO: this is a test, we probably don't need this
                       error: undefined,
                       status: 'success',
                       isFetching: false,
