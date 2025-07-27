@@ -514,32 +514,39 @@ module.exports = {
 
 **Solutions**:
 
-1. Add `VITE_` prefix: `VITE_MY_VARIABLE`
-2. Restart development server after adding new variables
-3. Check file location (must be in project root)
-4. Verify variable:
-  - In dev: is in correct `.env` file or environment
-  - For prod: is in correct `.env` file or current environment ***at bundle time***. That's right, `VITE_`-prefixed variables are replaced in a macro-like fashion at bundle time, and will *never* be read at runtime on your server. This is a common mistake, so make sure this is not your case.
+1. **Add correct prefix**: Use `VITE_` for Vite, `PUBLIC_` for Rspack
+2. **Restart development server** after adding new variables
+3. **Check file location**: `.env` file must be in project root
+4. **Verify bundler configuration**: Ensure variables are properly injected
+5. **Verify variable**:
+  - **In dev**: is in correct `.env` file or environment
+  - **For prod**: is in correct `.env` file or current environment ***at bundle time***. That's right, `VITE_`/`PUBLIC_`-prefixed variables are replaced in a macro-like fashion at bundle time, and will *never* be read at runtime on your server. This is a common mistake, so make sure this is not your case.
 
 **Example**:
 
 ```bash
-# ❌ Won't work in client code
+# ❌ Won't work (no prefix)
 API_KEY=abc123
 
-# ✅ Works in client code
+# ✅ Works with Vite
 VITE_API_KEY=abc123
+
+# ✅ Works with Rspack
+PUBLIC_API_KEY=abc123
 
 # ❌ Won't bundle the variable (assuming it is not set in the environment of the build)
 npm run build
 
-# ✅ Works in client code and will bundle the variable for production
+# ✅ Works with Vite and will bundle the variable for production
 VITE_API_KEY=abc123 npm run build
+
+# ✅ Works with Rspack and will bundle the variable for production
+PUBLIC_API_KEY=abc123 npm run build
 ```
 
 ### Runtime Client Environment Variables at Runtime in Production
 
-**Problem**: If `VITE_` variables are replaced at bundle time only, how to make runtime variables available on the client ?
+**Problem**: If `VITE_`/`PUBLIC_` variables are replaced at bundle time only, how to make runtime variables available on the client ?
 
 **Solutions**:
 
@@ -553,7 +560,7 @@ You may use your prefered backend framework/libray, but here it is using Tanstac
 
 ```tsx
 const getRuntimeVar = createServerFn({ method: 'GET' }).handler(() => {
-  return process.env.MY_RUNTIME_VAR // notice `process.env` on the server, and no `VITE_` prefix
+  return process.env.MY_RUNTIME_VAR // notice `process.env` on the server, and no `VITE_`/`PUBLIC_` prefix
 })
 
 export const Route = createFileRoute('/')({
