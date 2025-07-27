@@ -373,6 +373,14 @@ for (const key of requiredClientEnv) {
 **Solutions**:
 
 1. **Add correct prefix**: Use `VITE_` prefix (e.g. `VITE_MY_VARIABLE`)
+   Vite's default prefix may be changed in the config:
+   ```ts
+   // vite.config.ts
+   export const config = {
+     // ...rest of your config
+     envPrefix: 'MYPREFIX_' // this means `MYPREFIX_MY_VARIABLE` is the new correct way
+   }
+   ```
 2. **Restart development server** after adding new variables
 3. **Check file location**: `.env` file must be in project root
 4. **Verify bundler configuration**: Ensure variables are properly injected
