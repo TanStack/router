@@ -347,6 +347,11 @@ export interface RouterOptions<
   isShell?: boolean
 
   /**
+   * @default false
+   */
+  isPrerendering?: boolean
+
+  /**
    * The default `ssr` a route should use if no `ssr` is provided.
    *
    * @default true
@@ -833,7 +838,11 @@ export class RouterCore<
   startTransition: StartTransitionFn = (fn) => fn()
 
   isShell() {
-    return this.options.isShell
+    return !!this.options.isShell
+  }
+
+  isPrerendering() {
+    return !!this.options.isPrerendering
   }
 
   update: UpdateFn<

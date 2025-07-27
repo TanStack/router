@@ -171,13 +171,23 @@ export async function prerender({
           // Fetch the route
           const encodedRoute = encodeURI(page.path)
 
+          const originalEnv = { ...process.env }
+
+          process.env = {
+            ...originalEnv,
+            TSS_PRERENDERING: 'true',
+            ...(prerenderOptions.env || {}),
+          }
           const res = await localFetch<Response>(
             withBase(encodedRoute, nodeNitro.options.baseURL),
             {
-              headers: { 'x-nitro-prerender': encodedRoute },
+              headers: {
+                ...prerenderOptions.headers,
+                'x-nitro-prerender': encodedRoute,
+              },
             },
           )
-
+          process.env = originalEnv
           if (!res.ok) {
             throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`, {
               cause: res,

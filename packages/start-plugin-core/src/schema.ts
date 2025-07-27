@@ -196,6 +196,8 @@ const pagePrerenderOptionsSchema = z.object({
     )
     .returns(z.any())
     .optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
 })
 
 const spaSchema = z.object({

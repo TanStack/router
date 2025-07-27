@@ -126,6 +126,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       router.update({
         history,
         isShell: process.env.TSS_SPA_MODE === 'true',
+        isPrerendering: process.env.TSS_PRERENDERING === 'true',
       })
 
       const response = await (async () => {
