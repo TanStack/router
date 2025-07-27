@@ -372,12 +372,13 @@ for (const key of requiredClientEnv) {
 
 **Solutions**:
 
-1. Add `VITE_` prefix: `VITE_MY_VARIABLE`
-2. Restart development server after adding new variables
-3. Check file location (must be in project root)
-4. Verify variable:
-  - In dev: is in correct `.env` file or environment
-  - For prod: is in correct `.env` file or current environment ***at bundle time***. That's right, `VITE_`-prefixed variables are replaced in a macro-like fashion at bundle time, and will *never* be read at runtime on your server. This is a common mistake, so make sure this is not your case.
+1. **Add correct prefix**: Use `VITE_` prefix (e.g. `VITE_MY_VARIABLE`)
+2. **Restart development server** after adding new variables
+3. **Check file location**: `.env` file must be in project root
+4. **Verify bundler configuration**: Ensure variables are properly injected
+5. **Verify variable**:
+  - **In dev**: is in correct `.env` file or environment
+  - **For prod**: is in correct `.env` file or current environment ***at bundle time***. That's right, `VITE_`-prefixed variables are replaced in a macro-like fashion at bundle time, and will *never* be read at runtime on your server. This is a common mistake, so make sure this is not your case.
 
 **Example**:
 
