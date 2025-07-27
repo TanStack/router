@@ -2043,11 +2043,11 @@ export class RouterCore<
   }
 
   updateMatch: UpdateMatchFn = (id, updater) => {
-    const matchesKey = this.state.pendingMatches?.find((d) => d.id === id)
+    const matchesKey = this.state.pendingMatches?.some((d) => d.id === id)
       ? 'pendingMatches'
-      : this.state.matches.find((d) => d.id === id)
+      : this.state.matches.some((d) => d.id === id)
         ? 'matches'
-        : this.state.cachedMatches.find((d) => d.id === id)
+        : this.state.cachedMatches.some((d) => d.id === id)
           ? 'cachedMatches'
           : ''
 
