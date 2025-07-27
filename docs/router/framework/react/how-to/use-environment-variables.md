@@ -514,11 +514,19 @@ module.exports = {
 
 **Solutions**:
 
-1. **Add correct prefix**: Use `VITE_` for Vite, `PUBLIC_` for Rspack
-2. **Restart development server** after adding new variables
-3. **Check file location**: `.env` file must be in project root
-4. **Verify bundler configuration**: Ensure variables are properly injected
-5. **Verify variable**:
+1. **Add correct prefix**: Use `VITE_` for Vite, `PUBLIC_` for Rspack. 
+   Vite's default prefix may be changed in the config:
+   ```ts
+   // vite.config.ts
+   export const config = {
+     // ...rest of your config
+     envPrefix: 'MYPREFIX_' // this means `MYPREFIX_MY_VARIABLE` is the new correct way
+   }
+   ```
+3. **Restart development server** after adding new variables
+4. **Check file location**: `.env` file must be in project root
+5. **Verify bundler configuration**: Ensure variables are properly injected
+6. **Verify variable**:
   - **In dev**: is in correct `.env` file or environment
   - **For prod**: is in correct `.env` file or current environment ***at bundle time***. That's right, `VITE_`/`PUBLIC_`-prefixed variables are replaced in a macro-like fashion at bundle time, and will *never* be read at runtime on your server. This is a common mistake, so make sure this is not your case.
 
