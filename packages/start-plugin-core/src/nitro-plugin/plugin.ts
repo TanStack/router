@@ -155,7 +155,13 @@ async function buildNitroApp(
 
     options.pages.push({
       path: maskUrl.toString().replace('http://localhost', ''),
-      prerender: options.spa.prerender,
+      prerender: {
+        ...options.spa.prerender,
+        env: {
+          ...options.spa.prerender.env,
+          TSS_SPA_MODE: 'true',
+        },
+      },
       sitemap: {
         exclude: true,
       },
