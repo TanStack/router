@@ -8,7 +8,7 @@ import {
 import { createLRUCache } from '../src/lru-cache'
 import { compileMatcher } from '../src/compile-matcher'
 import type { CompiledMatcher } from '../src/compile-matcher'
-import type { ParsePathnameCache } from "../src/path"
+import type { ParsePathnameCache } from '../src/path'
 
 interface TestRoute {
   id: string
