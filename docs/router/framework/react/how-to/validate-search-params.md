@@ -373,68 +373,20 @@ function SearchPage() {
 
 ## Testing Search Parameter Validation
 
-### Unit Testing Schemas
-
-Test your validation schemas independently:
-
-```tsx
-import { describe, it, expect } from 'vitest'
-
-describe('Search Schema Validation', () => {
-  it('should validate correct search parameters', () => {
-    const result = searchSchema.safeParse({
-      query: 'test',
-      page: 1,
-      category: 'electronics',
-    })
-    
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.query).toBe('test')
-      expect(result.data.page).toBe(1)
-    }
-  })
-  
-  it('should handle invalid parameters gracefully', () => {
-    const result = searchSchema.safeParse({
-      query: '', // Invalid - too short
-      page: -1,  // Invalid - not positive
-    })
-    
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues).toHaveLength(2)
-    }
-  })
-  
-  it('should apply fallback values', () => {
-    const result = searchSchema.safeParse({
-      query: 'test',
-      // page missing - should fallback to 1
-    })
-    
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.page).toBe(1)
-    }
-  })
-})
-```
-
 ### Integration Testing with Routes
 
-Test validation in the context of route navigation:
+Test how your routes handle search parameter validation:
 
 ```tsx
-import { render, screen } from '@testing-library/react'
-import { createMemoryHistory } from '@tanstack/react-router'
+import { render, screen, waitFor } from '@testing-library/react'
+import { createRouter, createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 
-describe('Route Search Validation', () => {
-  it('should handle valid search parameters', async () => {
+describe('Search Route Validation', () => {
+  it('should render component when search parameters are valid', async () => {
     const router = createRouter({
       routeTree,
       history: createMemoryHistory({
-        initialEntries: ['/search?query=test&page=1'],
+        initialEntries: ['/search?query=laptops&page=1'],
       }),
     })
     
@@ -445,19 +397,33 @@ describe('Route Search Validation', () => {
     })
   })
   
-  it('should redirect on invalid parameters', async () => {
+  it('should show error component when validation fails', async () => {
     const router = createRouter({
       routeTree,
       history: createMemoryHistory({
-        initialEntries: ['/search?page=invalid'],
+        initialEntries: ['/search?page=invalid&query='],
       }),
     })
     
     render(<RouterProvider router={router} />)
     
-    // Should show error state or redirect
     await waitFor(() => {
-      expect(router.state.location.search).toEqual({ page: 1 }) // Fallback applied
+      expect(screen.getByText('Invalid Search Parameters')).toBeInTheDocument()
+    })
+  })
+  
+  it('should apply fallback values for missing parameters', async () => {
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/search?query=laptops'], // page missing
+      }),
+    })
+    
+    render(<RouterProvider router={router} />)
+    
+    await waitFor(() => {
+      expect(screen.getByText('Page: 1')).toBeInTheDocument() // Fallback applied
     })
   })
 })
