@@ -345,7 +345,16 @@ function ConditionalNavigation() {
 </Link>
 ```
 
+## Common Next Steps
 
+After mastering navigation with search parameters, you might want to:
+
+- [Validate Search Parameters with Schemas](./validate-search-params.md) - Add robust validation with Zod, Valibot, or ArkType
+
+<!-- Uncomment when guides are available
+- [Handle Complex Search Parameter Types](./complex-search-param-types.md) - Work with arrays, objects, dates, and nested data
+- [Share Search Parameters Across Routes](./share-search-params-across-routes.md) - Inherit and manage search params across route hierarchies
+-->
 
 ## Related Resources
 

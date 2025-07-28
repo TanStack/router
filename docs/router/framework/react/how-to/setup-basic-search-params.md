@@ -470,8 +470,12 @@ const schema = z.object({
 
 ## Common Next Steps
 
-<!-- Uncomment when guides are available
+After setting up basic search parameters, you might want to:
+
 - [Navigate with Search Parameters](./navigate-with-search-params.md) - Learn to update search params with Links and navigation
+- [Validate Search Parameters with Schemas](./validate-search-params.md) - Add robust validation with Zod, Valibot, or ArkType
+
+<!-- Uncomment when guides are available
 - [Handle Complex Search Parameter Types](./complex-search-param-types.md) - Work with arrays, objects, dates, and nested data
 -->
 
