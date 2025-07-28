@@ -24,10 +24,12 @@ const productSearchSchema = z.object({
   maxPrice: fallback(z.number().min(0, 'Price cannot be negative'), 1000),
   inStock: fallback(z.boolean(), true),
   tags: z.array(z.string()).optional(),
-  dateRange: z.object({
-    start: z.string().datetime().optional(),
-    end: z.string().datetime().optional(),
-  }).optional(),
+  dateRange: z
+    .object({
+      start: z.string().datetime().optional(),
+      end: z.string().datetime().optional(),
+    })
+    .optional(),
 })
 
 export const Route = createFileRoute('/products')({
@@ -38,7 +40,9 @@ export const Route = createFileRoute('/products')({
       <div className="error">
         <h2>Invalid Search Parameters</h2>
         <p>{error.message}</p>
-        <button onClick={() => router.navigate({ to: '/products', search: {} })}>
+        <button
+          onClick={() => router.navigate({ to: '/products', search: {} })}
+        >
           Reset Search
         </button>
       </div>
@@ -49,17 +53,24 @@ export const Route = createFileRoute('/products')({
 
 function ProductsPage() {
   // All search params are validated, type-safe, and have fallback values applied
-  const { query, category, minPrice, maxPrice, inStock, tags, dateRange } = Route.useSearch()
+  const { query, category, minPrice, maxPrice, inStock, tags, dateRange } =
+    Route.useSearch()
 
   return (
     <div>
       <h1>Products</h1>
       <p>Search: {query}</p>
       <p>Category: {category || 'All'}</p>
-      <p>Price Range: ${minPrice} - ${maxPrice}</p>
+      <p>
+        Price Range: ${minPrice} - ${maxPrice}
+      </p>
       <p>In Stock Only: {inStock ? 'Yes' : 'No'}</p>
       {tags && <p>Tags: {tags.join(', ')}</p>}
-      {dateRange && <p>Date Range: {dateRange.start} to {dateRange.end}</p>}
+      {dateRange && (
+        <p>
+          Date Range: {dateRange.start} to {dateRange.end}
+        </p>
+      )}
     </div>
   )
 }
@@ -144,14 +155,14 @@ export const Route = createFileRoute('/search')({
       query: '',
       category: 'all',
     }
-    
+
     // Validate page number
     const pageNum = Number(search.page)
     if (isNaN(pageNum) || pageNum < 1) {
       throw new Error('Page must be a positive number')
     }
     result.page = pageNum
-    
+
     // Validate query string
     if (typeof search.query === 'string' && search.query.length > 0) {
       if (search.query.length > 100) {
@@ -159,13 +170,16 @@ export const Route = createFileRoute('/search')({
       }
       result.query = search.query
     }
-    
+
     // Validate category
     const validCategories = ['electronics', 'clothing', 'books', 'all']
-    if (typeof search.category === 'string' && validCategories.includes(search.category)) {
+    if (
+      typeof search.category === 'string' &&
+      validCategories.includes(search.category)
+    ) {
       result.category = search.category
     }
-    
+
     return result
   },
   component: SearchPage,
@@ -183,10 +197,10 @@ const validationSchema = z.object({
   // Required - will throw validation error if missing or invalid
   userId: z.number().int().positive(),
   action: z.enum(['view', 'edit', 'delete']),
-  
+
   // Optional - can be undefined
   sortBy: z.string().optional(),
-  
+
   // Optional with fallback - provides default if missing/invalid
   page: fallback(z.number().int().positive(), 1),
   limit: fallback(z.number().int().min(1).max(100), 20),
@@ -201,24 +215,27 @@ Handle arrays, objects, and custom types:
 const advancedSchema = z.object({
   // Array of strings
   tags: z.array(z.string()).optional(),
-  
+
   // Array of numbers
   categoryIds: z.array(z.number().int()).optional(),
-  
+
   // Date validation
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
-  
+
   // Custom validation
   email: z.string().email().optional(),
-  
+
   // Refined validation with custom logic
-  priceRange: z.object({
-    min: z.number().min(0),
-    max: z.number().min(0),
-  }).refine(data => data.max >= data.min, {
-    message: "Max price must be greater than or equal to min price",
-  }).optional(),
+  priceRange: z
+    .object({
+      min: z.number().min(0),
+      max: z.number().min(0),
+    })
+    .refine((data) => data.max >= data.min, {
+      message: 'Max price must be greater than or equal to min price',
+    })
+    .optional(),
 })
 ```
 
@@ -229,21 +246,20 @@ Transform and sanitize input values during validation:
 ```tsx
 const transformSchema = z.object({
   // Transform string to number
-  page: z.string().transform(val => parseInt(val, 10)).pipe(
-    z.number().int().positive()
-  ),
-  
+  page: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().int().positive()),
+
   // Transform and validate email
-  email: z.string().toLowerCase().trim().pipe(
-    z.string().email()
-  ).optional(),
-  
+  email: z.string().toLowerCase().trim().pipe(z.string().email()).optional(),
+
   // Transform comma-separated string to array
-  tags: z.string().transform(val => 
-    val ? val.split(',').map(tag => tag.trim()) : []
-  ).pipe(
-    z.array(z.string().min(1))
-  ).optional(),
+  tags: z
+    .string()
+    .transform((val) => (val ? val.split(',').map((tag) => tag.trim()) : []))
+    .pipe(z.array(z.string().min(1)))
+    .optional(),
 })
 ```
 
@@ -267,18 +283,18 @@ export const Route = createFileRoute('/search')({
   validateSearch: zodValidator(searchSchema),
   errorComponent: ({ error }) => {
     const router = useRouter()
-    
+
     return (
       <div className="error">
         <h2>Invalid Search Parameters</h2>
         <p>{error.message}</p>
-        <button 
-          onClick={() => router.navigate({ to: '/search', search: {} })}
-        >
+        <button onClick={() => router.navigate({ to: '/search', search: {} })}>
           Reset Search
         </button>
-        <button 
-          onClick={() => router.navigate({ to: '/search', search: { query: '', page: 1 } })}
+        <button
+          onClick={() =>
+            router.navigate({ to: '/search', search: { query: '', page: 1 } })
+          }
         >
           Start Over
         </button>
@@ -301,20 +317,24 @@ Provide user-friendly validation messages:
 
 ```tsx
 const userFriendlySchema = z.object({
-  query: z.string()
+  query: z
+    .string()
     .min(2, 'Search query must be at least 2 characters')
     .max(100, 'Search query cannot exceed 100 characters'),
-  
+
   page: fallback(
-    z.number()
+    z
+      .number()
       .int('Page must be a whole number')
       .positive('Page must be greater than 0'),
-    1
+    1,
   ),
-  
-  category: z.enum(['electronics', 'clothing', 'books'], {
-    errorMap: () => ({ message: 'Please select a valid category' })
-  }).optional(),
+
+  category: z
+    .enum(['electronics', 'clothing', 'books'], {
+      errorMap: () => ({ message: 'Please select a valid category' }),
+    })
+    .optional(),
 })
 ```
 
@@ -326,18 +346,24 @@ Implement fallback behavior for invalid parameters:
 const resilientSchema = z.object({
   // Use .catch() to provide fallback values on validation failure
   page: z.number().int().positive().catch(1),
-  
+
   // Use .default() for missing values, .catch() for invalid values
-  sortBy: z.enum(['name', 'date', 'relevance']).default('relevance').catch('relevance'),
-  
+  sortBy: z
+    .enum(['name', 'date', 'relevance'])
+    .default('relevance')
+    .catch('relevance'),
+
   // Custom recovery logic
-  dateRange: z.object({
-    start: z.string().datetime(),
-    end: z.string().datetime(),
-  }).catch({
-    start: new Date().toISOString(),
-    end: new Date().toISOString(),
-  }).optional(),
+  dateRange: z
+    .object({
+      start: z.string().datetime(),
+      end: z.string().datetime(),
+    })
+    .catch({
+      start: new Date().toISOString(),
+      end: new Date().toISOString(),
+    })
+    .optional(),
 })
 ```
 
@@ -348,24 +374,26 @@ const resilientSchema = z.object({
 Apply different validation rules based on other parameters:
 
 ```tsx
-const conditionalSchema = z.object({
-  searchType: z.enum(['basic', 'advanced']),
-  query: z.string().min(1),
-}).and(
-  z.discriminatedUnion('searchType', [
-    z.object({
-      searchType: z.literal('basic'),
-      // Basic search requires only query
-    }),
-    z.object({
-      searchType: z.literal('advanced'),
-      // Advanced search requires additional fields
-      category: z.string().min(1),
-      minPrice: z.number().min(0),
-      maxPrice: z.number().min(0),
-    }),
-  ])
-)
+const conditionalSchema = z
+  .object({
+    searchType: z.enum(['basic', 'advanced']),
+    query: z.string().min(1),
+  })
+  .and(
+    z.discriminatedUnion('searchType', [
+      z.object({
+        searchType: z.literal('basic'),
+        // Basic search requires only query
+      }),
+      z.object({
+        searchType: z.literal('advanced'),
+        // Advanced search requires additional fields
+        category: z.string().min(1),
+        minPrice: z.number().min(0),
+        maxPrice: z.number().min(0),
+      }),
+    ]),
+  )
 ```
 
 ### Schema Composition
@@ -407,7 +435,7 @@ const compiledSchema = zodValidator(
   z.object({
     query: z.string().min(1),
     page: fallback(z.number().int().positive(), 1),
-  })
+  }),
 )
 
 export const Route = createFileRoute('/search')({
@@ -424,7 +452,7 @@ function SearchPage() {
       page: search.page,
     }),
   })
-  
+
   return <div>Search Results</div>
 }
 ```
@@ -435,7 +463,11 @@ Focus on testing validation behavior specific to your schemas:
 
 ```tsx
 import { render, screen, waitFor } from '@testing-library/react'
-import { createRouter, createMemoryHistory, RouterProvider } from '@tanstack/react-router'
+import {
+  createRouter,
+  createMemoryHistory,
+  RouterProvider,
+} from '@tanstack/react-router'
 
 describe('Search Validation Behavior', () => {
   it('should show error component when validation fails', async () => {
@@ -445,14 +477,14 @@ describe('Search Validation Behavior', () => {
         initialEntries: ['/search?page=invalid&query='],
       }),
     })
-    
+
     render(<RouterProvider router={router} />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('Invalid Search Parameters')).toBeInTheDocument()
     })
   })
-  
+
   it('should apply fallback values correctly', async () => {
     const router = createRouter({
       routeTree,
@@ -460,9 +492,9 @@ describe('Search Validation Behavior', () => {
         initialEntries: ['/search?query=laptops'], // page missing
       }),
     })
-    
+
     render(<RouterProvider router={router} />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('Page: 1')).toBeInTheDocument() // Fallback applied
     })
@@ -544,20 +576,19 @@ const badSchema = z.object({
 
 // ✅ Correct - parse comma-separated values or multiple params
 const goodSchema = z.object({
-  tags: z.union([
-    z.array(z.string()), // Multiple ?tags=a&tags=b
-    z.string().transform(val => val.split(',')), // Single ?tags=a,b,c
-  ]).optional(),
+  tags: z
+    .union([
+      z.array(z.string()), // Multiple ?tags=a&tags=b
+      z.string().transform((val) => val.split(',')), // Single ?tags=a,b,c
+    ])
+    .optional(),
 })
 
 // ✅ Alternative - custom preprocessing
-const preprocessedSchema = z.preprocess(
-  (val) => {
-    if (typeof val === 'string') return val.split(',')
-    return val
-  },
-  z.array(z.string()).optional()
-)
+const preprocessedSchema = z.preprocess((val) => {
+  if (typeof val === 'string') return val.split(',')
+  return val
+}, z.array(z.string()).optional())
 ```
 
 ### Problem: Schema validation is too slow
@@ -582,14 +613,14 @@ const optimizedSchema = z.object({
 // Perform complex validation separately in component
 function SearchPage() {
   const search = Route.useSearch()
-  
+
   // Complex validation only when needed
   const [complexValidation, setComplexValidation] = useState(null)
-  
+
   useEffect(() => {
     validateComplexRules(search).then(setComplexValidation)
   }, [search])
-  
+
   return <SearchResults search={search} validation={complexValidation} />
 }
 ```

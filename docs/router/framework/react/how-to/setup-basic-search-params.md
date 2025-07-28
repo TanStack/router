@@ -75,8 +75,6 @@ export const Route = createFileRoute('/products')({
 
 **For detailed validation library comparisons and advanced validation patterns, see:** [Validate Search Parameters with Schemas](./validate-search-params.md)
 
-
-
 ## Step-by-Step Setup with Zod
 
 The rest of this guide uses Zod for examples, but the patterns apply to any validation library.
