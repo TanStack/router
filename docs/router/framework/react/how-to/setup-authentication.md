@@ -123,7 +123,7 @@ Update `src/routes/__root.tsx`:
 
 ```tsx
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 interface AuthState {
   isAuthenticated: boolean
@@ -245,6 +245,7 @@ export const Route = createFileRoute('/login')({
 function LoginComponent() {
   const { auth } = Route.useRouteContext()
   const { redirect } = Route.useSearch()
+  const navigate = Route.useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -257,8 +258,8 @@ function LoginComponent() {
 
     try {
       await auth.login(username, password)
-      // Navigate to the redirect URL
-      window.location.href = redirect
+      // Navigate to the redirect URL using router navigation
+      navigate({ to: redirect })
     } catch (err) {
       setError('Invalid username or password')
     } finally {
