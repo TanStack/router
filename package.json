@@ -90,7 +90,7 @@
       "@tanstack/virtual-file-routes": "workspace:*",
       "@tanstack/router-plugin": "workspace:*",
       "@tanstack/router-vite-plugin": "workspace:*",
-      "@tanstack/react-router-with-query": "workspace:*",
+      "@tanstack/react-router-ssr-query": "workspace:*",
       "@tanstack/zod-adapter": "workspace:*",
       "@tanstack/valibot-adapter": "workspace:*",
       "@tanstack/arktype-adapter": "workspace:*",

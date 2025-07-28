@@ -1,13 +1,13 @@
 {
-  "name": "@tanstack/react-router-with-query",
-  "version": "1.130.17",
+  "name": "@tanstack/react-router-ssr-query",
+  "version": "1.130.2",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/TanStack/router.git",
-    "directory": "packages/react-router-with-query"
+    "directory": "packages/react-router-ssr-query"
   },
   "homepage": "https://tanstack.com/router",
   "funding": {

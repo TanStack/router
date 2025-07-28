@@ -16,9 +16,9 @@
 'package: react-router-devtools':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router-devtools/**/*'
-'package: react-router-with-query':
+'package: react-router-ssr-query':
   - changed-files:
-      - any-glob-to-any-file: 'packages/react-router-with-query/**/*'
+      - any-glob-to-any-file: 'packages/react-router-ssr-query/**/*'
 'package: react-start':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start/**/*'
