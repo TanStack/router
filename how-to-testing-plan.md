@@ -52,7 +52,6 @@ Each test will use **agent-friendly static analysis** rather than running full p
 ### 🌐 Deployment & Production
 
 - [✅] **deploy-to-production.md** - Deploy to hosting platforms
-
   - **Test Approach**: Simulate deployment steps for each platform mentioned
   - **Verification**: Build process works, static assets served correctly
   - **Error Checks**: Build configuration, routing in production environments
@@ -93,7 +92,6 @@ Each test will use **agent-friendly static analysis** rather than running full p
 ### 🔐 Authentication & Authorization
 
 - [✅] **setup-authentication.md** - Basic authentication with React Context
-
   - **Test Approach**: Static analysis of API calls, imports, and code patterns
   - **Verification**: All TanStack Router APIs exist and patterns match working examples
   - **Error Checks**: Import accuracy, navigation patterns, context usage
@@ -107,7 +105,6 @@ Each test will use **agent-friendly static analysis** rather than running full p
   - **Status**: PASSED - All patterns validated against working examples
 
 - [ ] **setup-auth-providers.md** - External auth providers (Auth0, Clerk, Supabase)
-
   - **Test Approach**: Test setup steps for each provider (mock/sandbox environments)
   - **Verification**: Provider integration works, callbacks handled correctly
   - **Error Checks**: Configuration steps, TypeScript integration, error handling
@@ -120,13 +117,11 @@ Each test will use **agent-friendly static analysis** rather than running full p
 ### 🧪 Testing & Debugging
 
 - [ ] **setup-testing.md** - Testing with code-based routing
-
   - **Test Approach**: Set up testing environment following guide
   - **Verification**: Tests run successfully, routing logic testable
   - **Error Checks**: Test setup, mock configurations, TypeScript in tests
 
 - [ ] **test-file-based-routing.md** - Testing file-based routing
-
   - **Test Approach**: Create file-based routing app, implement tests
   - **Verification**: File-based routes testable, test patterns work
   - **Error Checks**: File generation, test discovery, route testing patterns
@@ -139,19 +134,16 @@ Each test will use **agent-friendly static analysis** rather than running full p
 ### 🎨 UI Library Integration
 
 - [ ] **integrate-shadcn-ui.md** - Shadcn/ui integration
-
   - **Test Approach**: Fresh project + shadcn/ui setup following guide
   - **Verification**: Components work with router, styling applied correctly
   - **Error Checks**: CSS setup, component compatibility, TypeScript integration
 
 - [ ] **integrate-material-ui.md** - Material-UI (MUI) integration
-
   - **Test Approach**: Fresh project + MUI setup following guide
   - **Verification**: MUI theming works with router, components render correctly
   - **Error Checks**: Theme provider setup, SSR compatibility, TypeScript types
 
 - [ ] **integrate-framer-motion.md** - Framer Motion animations
-
   - **Test Approach**: Fresh project + Framer Motion setup following guide
   - **Verification**: Route transitions work, animations perform correctly
   - **Error Checks**: Animation setup, performance, layout shift issues
