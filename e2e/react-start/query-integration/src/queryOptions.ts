@@ -1,6 +1,7 @@
-import { queryOptions } from "@tanstack/react-query"
+import { queryOptions } from '@tanstack/react-query'
 
-export const makeQueryOptions = (key: string) => queryOptions({
+export const makeQueryOptions = (key: string) =>
+  queryOptions({
     queryKey: ['e2e-test-query-integration', key],
     queryFn: async () => {
       console.log('fetching query data')

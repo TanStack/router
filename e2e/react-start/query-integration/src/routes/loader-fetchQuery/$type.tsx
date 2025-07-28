@@ -3,7 +3,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import z from 'zod'
 import { makeQueryOptions } from '~/queryOptions'
 
-
 export const Route = createFileRoute('/loader-fetchQuery/$type')({
   component: RouteComponent,
   params: {
@@ -14,7 +13,9 @@ export const Route = createFileRoute('/loader-fetchQuery/$type')({
         })
         .parse({ type }),
   },
-  context: ({params} ) => ({queryOptions: makeQueryOptions(`loader-fetchQuery-${params.type}`)}),
+  context: ({ params }) => ({
+    queryOptions: makeQueryOptions(`loader-fetchQuery-${params.type}`),
+  }),
   loader: ({ context, params }) => {
     const queryPromise = context.queryClient.fetchQuery(context.queryOptions)
     if (params.type === 'sync') {
