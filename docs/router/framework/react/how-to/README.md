@@ -38,7 +38,7 @@ This directory contains focused, step-by-step instructions for common TanStack R
 
 **Foundation Level (Start Here):**
 - [x] [Set Up Basic Search Parameters](./setup-basic-search-params.md) - Create type-safe search validation and reading
-- [ ] Navigate with Search Parameters - Update and manage search params with Links and navigation
+- [x] [Navigate with Search Parameters](./navigate-with-search-params.md) - Update and manage search params with Links and navigation
 
 **Intermediate Level (Common Patterns):**
 - [ ] Validate Search Parameters with Schemas - Use schema validation libraries for robust validation and type safety
