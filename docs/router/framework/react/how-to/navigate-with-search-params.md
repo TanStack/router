@@ -309,33 +309,63 @@ function Component() {
 
 ### Conditional Navigation
 
-Navigate only when certain conditions are met:
+Navigate automatically when certain conditions are met:
 
 ```tsx
-import { Link, useSearch } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 
 function ConditionalNavigation() {
+  const navigate = useNavigate()
   const search = useSearch({ from: '/products' })
+  
+  // Navigate when user is not authenticated
+  useEffect(() => {
+    if (!search.userId && search.requiresAuth) {
+      navigate({
+        to: '/login',
+        search: { redirect: window.location.pathname }
+      })
+    }
+  }, [search.userId, search.requiresAuth, navigate])
+  
+  // Auto-reset page when search query changes
+  useEffect(() => {
+    if (search.query && search.page > 1) {
+      navigate({
+        search: (prev) => ({ ...prev, page: 1 })
+      })
+    }
+  }, [search.query, search.page, navigate])
+  
+  // Navigate to results when filters are applied
+  useEffect(() => {
+    if (search.category && search.sort && !search.resultsLoaded) {
+      navigate({
+        to: '/search-results',
+        search: (prev) => ({ ...prev, resultsLoaded: true })
+      })
+    }
+  }, [search.category, search.sort, search.resultsLoaded, navigate])
   
   return (
     <div>
-      {/* Only show if not already filtered */}
+      <p>Navigation will happen automatically based on search state</p>
+      
+      {/* Still show conditional UI elements */}
       {!search.category && (
-        <Link search={{ category: 'electronics' }}>
+        <button onClick={() => navigate({ search: { category: 'electronics' } })}>
           Filter Electronics
-        </Link>
+        </button>
       )}
       
-      {/* Conditional parameter updates */}
-      <Link 
-        search={(prev) => ({
-          ...prev,
-          ...(prev.query && { page: 1 }), // Reset page if query exists
-          premium: !prev.premium
+      <button 
+        onClick={() => navigate({
+          search: (prev) => ({ ...prev, premium: !prev.premium })
         })}
       >
-        Toggle Premium
-      </Link>
+        Toggle Premium ({search.premium ? 'On' : 'Off'})
+      </button>
     </div>
   )
 }
