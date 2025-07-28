@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from './fixture'
-import type { Page } from '@playwright/test';
+import type { Page } from '@playwright/test'
 
 async function runTest(
   page: Page,
