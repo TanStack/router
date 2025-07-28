@@ -23,7 +23,7 @@ export type RouterSsrQueryOptions<TRouter extends AnyRouter> = {
 }
 
 type DehydratedRouterQueryState = {
-  dehydratedQueryClient: QueryDehydratedState
+  dehydratedQueryClient?: QueryDehydratedState
   queryStream: ReadableStream<QueryDehydratedState>
 }
 
@@ -36,20 +36,26 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   const ogDehydrate = router.options.dehydrate
 
   if (router.isServer) {
+    const sentQueries = new Set<string>()
     const queryStream = createPushableStream()
 
     router.options.dehydrate =
       async (): Promise<DehydratedRouterQueryState> => {
         router.serverSsr!.onRenderFinished(() => queryStream.close())
         const ogDehydrated = await ogDehydrate?.()
-        const dehydratedQueryClient = queryDehydrate(queryClient)
 
         const dehydratedRouter = {
           ...ogDehydrated,
-          // When critical data is dehydrated, we also dehydrate the query client
-          dehydratedQueryClient,
           // prepare the stream for queries coming up during rendering
           queryStream: queryStream.stream,
+        }
+
+        const dehydratedQueryClient = queryDehydrate(queryClient)
+        if (dehydratedQueryClient.queries.length > 0) {
+          dehydratedQueryClient.queries.forEach((query) => {
+            sentQueries.add(query.queryHash)
+          })
+          dehydratedRouter.dehydratedQueryClient = dehydratedQueryClient
         }
 
         return dehydratedRouter
@@ -65,41 +71,49 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
     })
 
     queryClient.getQueryCache().subscribe((event) => {
-      if (event.type === 'added') {
-        // before rendering starts, we do not stream individual queries
-        // instead we dehydrate the entire query client in router's dehydrate()
-        // if attachRouterServerSsrUtils() has not been called yet, `router.serverSsr` will be undefined and we also do not stream
-        if (!router.serverSsr?.isDehydrated()) {
-          return
-        }
-        if (queryStream.isClosed()) {
-          console.warn(
-            `tried to stream query ${event.query.queryHash} after stream was already closed`,
-          )
-          return
-        }
-        queryStream.enqueue(
-          queryDehydrate(queryClient, {
-            shouldDehydrateQuery: (query) => {
-              if (query.queryHash === event.query.queryHash) {
-                return (
-                  ogClientOptions.dehydrate?.shouldDehydrateQuery?.(query) ??
-                  true
-                )
-              }
-              return false
-            },
-          }),
-        )
+      // before rendering starts, we do not stream individual queries
+      // instead we dehydrate the entire query client in router's dehydrate()
+      // if attachRouterServerSsrUtils() has not been called yet, `router.serverSsr` will be undefined and we also do not stream
+      if (!router.serverSsr?.isDehydrated()) {
+        return
       }
+      if (sentQueries.has(event.query.queryHash)) {
+        return
+      }
+      if (queryStream.isClosed()) {
+        console.warn(
+          `tried to stream query ${event.query.queryHash} after stream was already closed`,
+        )
+        return
+      }
+      // promise not yet set on the query, so we cannot stream it yet
+      if (!event.query.promise) {
+        return
+      }
+      sentQueries.add(event.query.queryHash)
+      queryStream.enqueue(
+        queryDehydrate(queryClient, {
+          shouldDehydrateQuery: (query) => {
+            if (query.queryHash === event.query.queryHash) {
+              return (
+                ogClientOptions.dehydrate?.shouldDehydrateQuery?.(query) ?? true
+              )
+            }
+            return false
+          },
+        }),
+      )
     })
     // on the client
   } else {
     router.options.hydrate = async (dehydrated: DehydratedRouterQueryState) => {
       await ogHydrate?.(dehydrated)
-      // On the client, hydrate the query client with the dehydrated data
-      queryHydrate(queryClient, dehydrated.dehydratedQueryClient)
+      // hydrate the query client with the dehydrated data (if it was dehydrated on the server)
+      if (dehydrated.dehydratedQueryClient) {
+        queryHydrate(queryClient, dehydrated.dehydratedQueryClient)
+      }
 
+      // read the query stream and hydrate the queries as they come in
       const reader = dehydrated.queryStream.getReader()
       reader
         .read()
