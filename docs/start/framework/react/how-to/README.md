@@ -23,7 +23,7 @@ Core concept that affects every subsequent pattern in TanStack Start.
 **Should Cover:**
 - Understanding the execution boundary (server vs client)
 - Code organization strategies for different execution contexts
-- Common pitfalls and debugging techniques
+- Common pitfalls and how to avoid them
 - When to use each pattern
 
 ### **2. How to Create Basic Server Functions**
@@ -41,17 +41,18 @@ Core server function concepts before advanced patterns.
 - Basic HTTP methods (GET, POST)
 - Calling server functions from client components
 
-### **3. How to Debug Server Function TypeScript Issues**
+### **3. How to Write Type-Safe Server Functions**
 **Priority: Critical** | **Dependencies: #2** | **Status: 🔥 Urgent**
 
 **GitHub Issues:** [#4533](https://github.com/TanStack/router/issues/4533) (5 👍)
 
 **Should Cover:**
-- Common TypeScript errors with server functions
-- "Type instantiation is excessively deep" solutions
-- Recursive type issues and workarounds
-- Complex type inference debugging
-- Performance optimization for TypeScript
+- Designing server functions with proper TypeScript patterns
+- Avoiding "Type instantiation is excessively deep" errors
+- Structuring types to prevent recursive type issues
+- Input/output type validation patterns
+- Performance-optimized TypeScript configurations
+- Testing type safety in server functions
 
 ---
 
@@ -346,7 +347,7 @@ Core server function concepts before advanced patterns.
 ### **Phase 1: Critical Foundation (Immediate - 4 weeks)**
 1. **#1** - Isomorphic/Client/Server Code Boundaries
 2. **#2** - Basic Server Functions  
-3. **#3** - Debug Server Function TypeScript Issues 🔥
+3. **#3** - Write Type-Safe Server Functions 🔥
 4. **#4** - Server Function Middleware
 5. **#5** - Handle Redirects in Server Functions 🔥
 
