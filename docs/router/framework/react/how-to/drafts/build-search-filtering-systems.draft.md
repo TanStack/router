@@ -1,6 +1,13 @@
-# DRAFT: Content for "Build Search-Based Filtering Systems" Guide
+# DRAFT: Build Search-Based Filtering Systems
 
-## From navigate-with-search-params.md - Common Patterns Section
+**Final Destination:** `docs/router/framework/react/how-to/build-search-filtering-systems.md`  
+**Progressive Series Position:** Specialized Use Cases - Guide #9  
+**Depends On:** `setup-basic-search-params.md`, `navigate-with-search-params.md`, `validate-search-params.md`  
+**Status:** Ready for implementation - comprehensive UI patterns available  
+
+---
+
+## Content Staged from navigate-with-search-params.md
 
 ### Search Result Navigation
 
@@ -124,9 +131,7 @@ function FilterNavigation() {
 }
 ```
 
-## From navigate-with-search-params.md - Programmatic Navigation Section
-
-### Search Controls Example
+### Programmatic Search Controls
 
 Navigate programmatically with search parameter updates:
 
@@ -167,4 +172,26 @@ function SearchControls() {
 }
 ```
 
-## TODO: This content should be moved to the filtering systems guide when created
+---
+
+## Implementation Notes
+
+### Additional Content Needed:
+- [ ] Complete e-commerce filtering example
+- [ ] Advanced filter combinations (price ranges, multi-select)
+- [ ] Filter state persistence and sharing
+- [ ] Search result highlighting and sorting
+- [ ] Infinite scroll pagination patterns
+- [ ] Filter URL state management best practices
+- [ ] Accessibility considerations for filter UIs
+- [ ] Mobile-responsive filter patterns
+
+### Cross-References to Add:
+- Link to `setup-basic-search-params.md` for foundation
+- Link to `navigate-with-search-params.md` for navigation patterns
+- Link to `validate-search-params.md` for filter validation
+- Forward link to `search-params-with-data-loading.md` for data integration
+
+### README Update Required:
+- [ ] Mark guide as completed in progressive series
+- [ ] Uncomment "Common Next Steps" in related guides

@@ -1,6 +1,13 @@
-# DRAFT: Content for "Validate Search Parameters with Schemas" Guide
+# DRAFT: Validate Search Parameters with Schemas
 
-## From navigate-with-search-params.md - Navigation with Validation Section
+**Final Destination:** `docs/router/framework/react/how-to/validate-search-params.md`  
+**Progressive Series Position:** Intermediate Level (Common Patterns) - Guide #3  
+**Depends On:** `setup-basic-search-params.md`, `navigate-with-search-params.md`  
+**Status:** Ready for implementation - substantial content available  
+
+---
+
+## Content Staged from navigate-with-search-params.md
 
 ### Navigation with Validation
 
@@ -46,9 +53,7 @@ function ValidatedNavigation() {
 }
 ```
 
-## From navigate-with-search-params.md - Common Problems Section
-
-### Invalid Search Parameter Types
+### Common Problems - Invalid Search Parameter Types
 
 **Problem:** TypeScript errors when navigating with search parameters.
 
@@ -64,7 +69,7 @@ const pageNum = parseInt(pageString) || 1
 navigate({ search: { page: pageNum } })
 ```
 
-### Search Parameter Serialization Issues
+### Common Problems - Search Parameter Serialization Issues
 
 **Problem:** Complex objects don't serialize properly in URLs.
 
@@ -94,4 +99,24 @@ navigate({
 })
 ```
 
-## TODO: This content should be moved to the validation guide when created
+---
+
+## Implementation Notes
+
+### Additional Content Needed:
+- [ ] Zod schema setup and configuration
+- [ ] Valibot integration examples  
+- [ ] TypeScript integration patterns
+- [ ] Error handling strategies
+- [ ] Custom validation functions
+- [ ] Schema composition patterns
+- [ ] Runtime vs compile-time validation
+
+### Cross-References to Add:
+- Link to `setup-basic-search-params.md` for foundation
+- Link to `navigate-with-search-params.md` for navigation patterns
+- Forward link to `complex-search-param-types.md` for advanced types
+
+### README Update Required:
+- [ ] Mark guide as completed in progressive series
+- [ ] Uncomment "Common Next Steps" in related guides

@@ -1,6 +1,13 @@
-# DRAFT: Content for "Handle Search Parameters in Forms" Guide
+# DRAFT: Handle Search Parameters in Forms
 
-## From navigate-with-search-params.md - Advanced Navigation Patterns Section
+**Final Destination:** `docs/router/framework/react/how-to/search-params-in-forms.md`  
+**Progressive Series Position:** Specialized Use Cases - Guide #10  
+**Depends On:** `setup-basic-search-params.md`, `navigate-with-search-params.md`, `validate-search-params.md`  
+**Status:** Ready for implementation - form synchronization patterns available  
+
+---
+
+## Content Staged from navigate-with-search-params.md
 
 ### Navigation with State Synchronization
 
@@ -97,8 +104,6 @@ function SynchronizedForm() {
 }
 ```
 
-## From navigate-with-search-params.md - Navigation with Validation Section
-
 ### Form with Search Parameter Validation
 
 ```tsx
@@ -118,4 +123,26 @@ return (
 )
 ```
 
-## TODO: This content should be moved to the forms integration guide when created
+---
+
+## Implementation Notes
+
+### Additional Content Needed:
+- [ ] Uncontrolled form patterns with search params
+- [ ] Controlled form patterns with real-time updates
+- [ ] Form library integration (React Hook Form, Formik)
+- [ ] Debounced form updates to URL
+- [ ] Form reset and default value handling
+- [ ] Multi-step form with URL state
+- [ ] File upload forms with search state
+- [ ] Form validation error handling with URL feedback
+
+### Cross-References to Add:
+- Link to `setup-basic-search-params.md` for foundation
+- Link to `navigate-with-search-params.md` for navigation patterns
+- Link to `validate-search-params.md` for form validation
+- Forward link to `optimize-search-param-performance.md` for debouncing
+
+### README Update Required:
+- [ ] Mark guide as completed in progressive series
+- [ ] Uncomment "Common Next Steps" in related guides
