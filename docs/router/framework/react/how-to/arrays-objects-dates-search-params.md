@@ -229,10 +229,10 @@ function ViewControls() {
         4-Column Grid with Details
       </Link>
 
-      {/* Deep merge utility for complex updates */}
+      {/* Deep merge with library for complex updates */}
       <Link
         to="/dashboard"
-        search={(prev) => deepMerge(prev, {
+        search={(prev) => merge(prev, {
           filters: {
             dateCreated: { after: '2024-01-01' }
           }
@@ -244,18 +244,37 @@ function ViewControls() {
   )
 }
 
-// Utility for deep merging objects
-function deepMerge(target: any, source: any) {
-  const result = { ...target }
-  for (const key in source) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-      result[key] = deepMerge(result[key] || {}, source[key])
-    } else {
-      result[key] = source[key]
-    }
-  }
-  return result
-}
+// For deep merging, use a well-tested library:
+
+// Option 1: Lodash (most popular, full-featured)
+// npm install lodash-es
+// import { merge } from 'lodash-es'
+
+// Option 2: deepmerge (lightweight, focused)
+// npm install deepmerge
+// import merge from 'deepmerge'
+
+// Option 3: Ramda (functional programming style)
+// npm install ramda  
+// import { mergeDeepRight as merge } from 'ramda'
+
+// Example with deepmerge (recommended for most cases):
+import merge from 'deepmerge'
+
+// Handles arrays intelligently - combines by default
+const result = merge(
+  { filters: { tags: ['react'] } },
+  { filters: { tags: ['typescript'] } }
+)
+// Result: { filters: { tags: ['react', 'typescript'] } }
+
+// Override array merging behavior if needed
+const overwriteResult = merge(
+  { filters: { tags: ['react'] } },
+  { filters: { tags: ['typescript'] } },
+  { arrayMerge: (dest, source) => source } // Overwrite instead of combine
+)
+// Result: { filters: { tags: ['typescript'] } }
 ```
 
 ## Working with Dates
@@ -716,3 +735,8 @@ const onlyNeededData = Route.useSearch({
 - [Zod Documentation](https://zod.dev/) - Schema validation library
 - [MDN Date.toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString) - Date serialization reference
 - [URLSearchParams Limits](https://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers) - Browser URL length limits
+
+**Deep Merging Libraries:**
+- [deepmerge](https://www.npmjs.com/package/deepmerge) - Lightweight, focused deep merging utility
+- [Lodash merge](https://lodash.com/docs#merge) - Full-featured utility library with deep merging
+- [Ramda mergeDeepRight](https://ramdajs.com/docs/#mergeDeepRight) - Functional programming approach
