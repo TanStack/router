@@ -192,47 +192,63 @@ function SearchControls() {
 
 #### Navigation with Router Instance
 
-Use the router directly for advanced navigation scenarios:
+Use the router directly only in non-React contexts where `useNavigate` or `Link` aren't available:
 
 ```tsx
-import { useRouter } from '@tanstack/react-router'
+import { router } from './router' // Your router instance
 
-function AdvancedNavigation() {
+// ✅ Appropriate use case: Utility function outside React components
+export function navigateFromUtility(searchParams: Record<string, any>) {
+  router.navigate({
+    search: (prev) => ({ ...prev, ...searchParams })
+  })
+}
+
+// ✅ Appropriate use case: Event handlers in non-React code
+class ApiService {
+  onAuthError() {
+    // Navigate to login when auth fails
+    router.navigate({
+      to: '/login',
+      search: { redirect: window.location.pathname }
+    })
+  }
+}
+
+// ✅ Appropriate use case: Global error handler
+window.addEventListener('unhandledrejection', (event) => {
+  if (event.reason.status === 401) {
+    router.navigate({
+      to: '/login',
+      search: { error: 'session-expired' }
+    })
+  }
+})
+```
+
+**⚠️ In React components, prefer `useNavigate` instead:**
+
+```tsx
+// ❌ Avoid in React components
+function Component() {
   const router = useRouter()
   
-  const navigateWithDelay = async (searchParams: Record<string, any>) => {
-    // Show loading state
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    router.navigate({
-      search: searchParams
-    })
+  const handleClick = () => {
+    router.navigate({ search: { filter: 'active' } })
   }
   
-  const batchNavigate = (updates: Array<Record<string, any>>) => {
-    // Apply multiple search param updates
-    const finalSearch = updates.reduce((acc, update) => ({ ...acc, ...update }), {})
-    
-    router.navigate({
-      search: (prev) => ({ ...prev, ...finalSearch })
-    })
+  return <button onClick={handleClick}>Filter</button>
+}
+
+// ✅ Use useNavigate in React components
+function Component() {
+  const navigate = useNavigate()
+  
+  const handleClick = () => {
+    navigate({ search: { filter: 'active' } })
   }
   
-  return (
-    <div>
-      <button onClick={() => navigateWithDelay({ loading: true })}>
-        Navigate with Delay
-      </button>
-      
-      <button onClick={() => batchNavigate([
-        { category: 'electronics' },
-        { sort: 'price-asc' },
-        { page: 1 }
-      ])}>
-        Apply Multiple Filters
-      </button>
-    </div>
-  )
+  return <button onClick={handleClick}>Filter</button>
 }
 ```
 
