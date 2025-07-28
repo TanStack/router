@@ -18,12 +18,12 @@ export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
   const OuterWrapper = opts.WrapProvider || Fragment
 
   opts.router.options.Wrap = ({ children }) => {
-      return (
-        <OuterWrapper>
-          <QueryClientProvider client={opts.queryClient}>
-            <OGWrap>{children}</OGWrap>
-          </QueryClientProvider>
-        </OuterWrapper>
-      )
+    return (
+      <OuterWrapper>
+        <QueryClientProvider client={opts.queryClient}>
+          <OGWrap>{children}</OGWrap>
+        </QueryClientProvider>
+      </OuterWrapper>
+    )
   }
 }
