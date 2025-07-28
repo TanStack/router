@@ -49,6 +49,9 @@
 'package: router-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-plugin/**/*'
+'package: router-ssr-query-core':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/router-ssr-query-core/**/*'
 'package: router-utils':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-utils/**/*'
