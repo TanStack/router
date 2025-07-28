@@ -13,21 +13,24 @@ Complex search parameters go beyond simple strings and numbers. TanStack Router'
 ```tsx
 // Example of complex search parameters
 const complexSearch = {
-  tags: ['typescript', 'react', 'router'],           // Array
-  filters: {                                         // Nested object
+  tags: ['typescript', 'react', 'router'], // Array
+  filters: {
+    // Nested object
     category: 'web',
     minRating: 4.5,
-    active: true
+    active: true,
   },
-  dateRange: {                                       // Date objects
+  dateRange: {
+    // Date objects
     start: new Date('2024-01-01'),
-    end: new Date('2024-12-31')
+    end: new Date('2024-12-31'),
   },
-  pagination: {                                      // Nested pagination
+  pagination: {
+    // Nested pagination
     page: 1,
     size: 20,
-    sort: { field: 'name', direction: 'asc' }
-  }
+    sort: { field: 'name', direction: 'asc' },
+  },
 }
 ```
 
@@ -55,13 +58,15 @@ export const Route = createFileRoute('/products')({
 
 function ProductsComponent() {
   const { categories, tags, priceRange } = Route.useSearch()
-  
+
   return (
     <div>
       <h2>Active Categories: {categories.join(', ')}</h2>
       {tags && <p>Tags: {tags.join(', ')}</p>}
       {priceRange && (
-        <p>Price: ${priceRange[0]} - ${priceRange[1]}</p>
+        <p>
+          Price: ${priceRange[0]} - ${priceRange[1]}
+        </p>
       )}
     </div>
   )
@@ -81,17 +86,14 @@ function FilterControls() {
         to="/products"
         search={(prev) => ({
           ...prev,
-          categories: [...(prev.categories || []), 'electronics']
+          categories: [...(prev.categories || []), 'electronics'],
         })}
       >
         Add Electronics
       </Link>
 
       {/* Replace entire array */}
-      <Link
-        to="/products"
-        search={{ categories: ['books', 'music'] }}
-      >
+      <Link to="/products" search={{ categories: ['books', 'music'] }}>
         Books & Music Only
       </Link>
 
@@ -100,17 +102,15 @@ function FilterControls() {
         to="/products"
         search={(prev) => ({
           ...prev,
-          categories: prev.categories?.filter(cat => cat !== 'electronics') || []
+          categories:
+            prev.categories?.filter((cat) => cat !== 'electronics') || [],
         })}
       >
         Remove Electronics
       </Link>
 
       {/* Clear array */}
-      <Link
-        to="/products"
-        search={(prev) => ({ ...prev, categories: [] })}
-      >
+      <Link to="/products" search={(prev) => ({ ...prev, categories: [] })}>
         Clear All
       </Link>
     </div>
@@ -124,19 +124,26 @@ function FilterControls() {
 // routes/search.tsx
 const advancedArraySchema = z.object({
   // Array of objects
-  filters: z.array(z.object({
-    field: z.string(),
-    operator: z.enum(['eq', 'gt', 'lt', 'contains']),
-    value: z.union([z.string(), z.number(), z.boolean()])
-  })).default([]),
-  
+  filters: z
+    .array(
+      z.object({
+        field: z.string(),
+        operator: z.enum(['eq', 'gt', 'lt', 'contains']),
+        value: z.union([z.string(), z.number(), z.boolean()]),
+      }),
+    )
+    .default([]),
+
   // Array with constraints
   selectedIds: z.array(z.string().uuid()).max(10).default([]),
-  
+
   // Array with transformation
-  sortFields: z.array(z.string()).transform(arr => 
-    arr.filter(field => ['name', 'date', 'price'].includes(field))
-  ).default(['name']),
+  sortFields: z
+    .array(z.string())
+    .transform((arr) =>
+      arr.filter((field) => ['name', 'date', 'price'].includes(field)),
+    )
+    .default(['name']),
 })
 
 export const Route = createFileRoute('/search')({
@@ -154,20 +161,26 @@ Objects are useful for grouped parameters, complex filters, and nested configura
 ```tsx
 // routes/dashboard.tsx
 const dashboardSchema = z.object({
-  view: z.object({
-    layout: z.enum(['grid', 'list', 'cards']).default('grid'),
-    columns: z.number().min(1).max(6).default(3),
-    showDetails: z.boolean().default(false),
-  }).default({}),
-  
-  filters: z.object({
-    status: z.enum(['active', 'inactive', 'pending']).optional(),
-    dateCreated: z.object({
-      after: z.string().optional(),
-      before: z.string().optional(),
-    }).optional(),
-    metadata: z.record(z.string()).optional(), // Dynamic object keys
-  }).default({}),
+  view: z
+    .object({
+      layout: z.enum(['grid', 'list', 'cards']).default('grid'),
+      columns: z.number().min(1).max(6).default(3),
+      showDetails: z.boolean().default(false),
+    })
+    .default({}),
+
+  filters: z
+    .object({
+      status: z.enum(['active', 'inactive', 'pending']).optional(),
+      dateCreated: z
+        .object({
+          after: z.string().optional(),
+          before: z.string().optional(),
+        })
+        .optional(),
+      metadata: z.record(z.string()).optional(), // Dynamic object keys
+    })
+    .default({}),
 })
 
 export const Route = createFileRoute('/dashboard')({
@@ -177,13 +190,13 @@ export const Route = createFileRoute('/dashboard')({
 
 function DashboardComponent() {
   const { view, filters } = Route.useSearch()
-  
+
   return (
     <div>
       <div className={`layout-${view.layout} columns-${view.columns}`}>
         {/* Render based on complex object state */}
       </div>
-      
+
       {filters.status && <p>Status: {filters.status}</p>}
       {filters.dateCreated?.after && (
         <p>Created after: {filters.dateCreated.after}</p>
@@ -206,8 +219,8 @@ function ViewControls() {
           ...prev,
           view: {
             ...prev.view,
-            layout: 'list'
-          }
+            layout: 'list',
+          },
         })}
       >
         List View
@@ -222,8 +235,8 @@ function ViewControls() {
             ...prev.view,
             layout: 'grid',
             columns: 4,
-            showDetails: true
-          }
+            showDetails: true,
+          },
         })}
       >
         4-Column Grid with Details
@@ -232,11 +245,13 @@ function ViewControls() {
       {/* Deep merge with library for complex updates */}
       <Link
         to="/dashboard"
-        search={(prev) => merge(prev, {
-          filters: {
-            dateCreated: { after: '2024-01-01' }
-          }
-        })}
+        search={(prev) =>
+          merge(prev, {
+            filters: {
+              dateCreated: { after: '2024-01-01' },
+            },
+          })
+        }
       >
         Filter Recent Items
       </Link>
@@ -255,7 +270,7 @@ function ViewControls() {
 // import merge from 'deepmerge'
 
 // Option 3: Ramda (functional programming style)
-// npm install ramda  
+// npm install ramda
 // import { mergeDeepRight as merge } from 'ramda'
 
 // Example with deepmerge (recommended for most cases):
@@ -264,7 +279,7 @@ import merge from 'deepmerge'
 // Handles arrays intelligently - combines by default
 const result = merge(
   { filters: { tags: ['react'] } },
-  { filters: { tags: ['typescript'] } }
+  { filters: { tags: ['typescript'] } },
 )
 // Result: { filters: { tags: ['react', 'typescript'] } }
 
@@ -272,7 +287,7 @@ const result = merge(
 const overwriteResult = merge(
   { filters: { tags: ['react'] } },
   { filters: { tags: ['typescript'] } },
-  { arrayMerge: (dest, source) => source } // Overwrite instead of combine
+  { arrayMerge: (dest, source) => source }, // Overwrite instead of combine
 )
 // Result: { filters: { tags: ['typescript'] } }
 ```
@@ -289,19 +304,22 @@ const eventSchema = z.object({
   // ISO string dates
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
-  
+
   // Date range as object
-  dateRange: z.object({
-    start: z.string().datetime(),
-    end: z.string().datetime(),
-  }).optional(),
-  
-  // Transform string to Date object
-  selectedDate: z.string()
-    .datetime()
-    .transform(str => new Date(str))
+  dateRange: z
+    .object({
+      start: z.string().datetime(),
+      end: z.string().datetime(),
+    })
     .optional(),
-    
+
+  // Transform string to Date object
+  selectedDate: z
+    .string()
+    .datetime()
+    .transform((str) => new Date(str))
+    .optional(),
+
   // Relative dates
   timeFilter: z.enum(['today', 'week', 'month', 'year']).default('week'),
 })
@@ -313,16 +331,14 @@ export const Route = createFileRoute('/events')({
 
 function EventsComponent() {
   const search = Route.useSearch()
-  
+
   // Convert string dates back to Date objects for display
   const startDate = search.startDate ? new Date(search.startDate) : null
   const endDate = search.endDate ? new Date(search.endDate) : null
-  
+
   return (
     <div>
-      {startDate && (
-        <p>Events from: {startDate.toLocaleDateString()}</p>
-      )}
+      {startDate && <p>Events from: {startDate.toLocaleDateString()}</p>}
       {search.selectedDate && (
         <p>Selected: {search.selectedDate.toLocaleDateString()}</p>
       )}
@@ -336,7 +352,7 @@ function EventsComponent() {
 ```tsx
 function DateControls() {
   const navigate = useNavigate()
-  
+
   const setDateRange = (start: Date, end: Date) => {
     navigate({
       to: '/events',
@@ -345,15 +361,15 @@ function DateControls() {
         dateRange: {
           start: start.toISOString(),
           end: end.toISOString(),
-        }
-      })
+        },
+      }),
     })
   }
-  
+
   const setRelativeDate = (period: string) => {
     const now = new Date()
     let start: Date
-    
+
     switch (period) {
       case 'today':
         start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -367,22 +383,16 @@ function DateControls() {
       default:
         start = now
     }
-    
+
     setDateRange(start, now)
   }
-  
+
   return (
     <div>
-      <button onClick={() => setRelativeDate('today')}>
-        Today
-      </button>
-      <button onClick={() => setRelativeDate('week')}>
-        Past Week
-      </button>
-      <button onClick={() => setRelativeDate('month')}>
-        Past Month
-      </button>
-      
+      <button onClick={() => setRelativeDate('today')}>Today</button>
+      <button onClick={() => setRelativeDate('week')}>Past Week</button>
+      <button onClick={() => setRelativeDate('month')}>Past Month</button>
+
       {/* Date picker integration */}
       <input
         type="date"
@@ -392,8 +402,8 @@ function DateControls() {
             to: '/events',
             search: (prev) => ({
               ...prev,
-              selectedDate: date.toISOString()
-            })
+              selectedDate: date.toISOString(),
+            }),
           })
         }}
       />
@@ -411,43 +421,61 @@ Complex applications often need deeply nested search parameters.
 ```tsx
 // routes/analytics.tsx
 const analyticsSchema = z.object({
-  dashboard: z.object({
-    widgets: z.array(z.object({
-      id: z.string(),
-      type: z.enum(['chart', 'table', 'metric']),
-      config: z.object({
-        title: z.string(),
-        dataSource: z.string(),
-        filters: z.array(z.object({
-          field: z.string(),
-          operator: z.string(),
-          value: z.any(),
-        })),
-        visualization: z.object({
-          chartType: z.enum(['line', 'bar', 'pie']).optional(),
-          colors: z.array(z.string()).optional(),
-          axes: z.object({
-            x: z.string(),
-            y: z.array(z.string()),
-          }).optional(),
-        }).optional(),
-      }),
-    })).default([]),
-    
-    layout: z.object({
-      columns: z.number().min(1).max(12).default(2),
-      gap: z.number().default(16),
-      responsive: z.boolean().default(true),
-    }).default({}),
-    
-    timeRange: z.object({
-      preset: z.enum(['1h', '24h', '7d', '30d', 'custom']).default('24h'),
-      custom: z.object({
-        start: z.string().datetime(),
-        end: z.string().datetime(),
-      }).optional(),
-    }).default({}),
-  }).default({}),
+  dashboard: z
+    .object({
+      widgets: z
+        .array(
+          z.object({
+            id: z.string(),
+            type: z.enum(['chart', 'table', 'metric']),
+            config: z.object({
+              title: z.string(),
+              dataSource: z.string(),
+              filters: z.array(
+                z.object({
+                  field: z.string(),
+                  operator: z.string(),
+                  value: z.any(),
+                }),
+              ),
+              visualization: z
+                .object({
+                  chartType: z.enum(['line', 'bar', 'pie']).optional(),
+                  colors: z.array(z.string()).optional(),
+                  axes: z
+                    .object({
+                      x: z.string(),
+                      y: z.array(z.string()),
+                    })
+                    .optional(),
+                })
+                .optional(),
+            }),
+          }),
+        )
+        .default([]),
+
+      layout: z
+        .object({
+          columns: z.number().min(1).max(12).default(2),
+          gap: z.number().default(16),
+          responsive: z.boolean().default(true),
+        })
+        .default({}),
+
+      timeRange: z
+        .object({
+          preset: z.enum(['1h', '24h', '7d', '30d', 'custom']).default('24h'),
+          custom: z
+            .object({
+              start: z.string().datetime(),
+              end: z.string().datetime(),
+            })
+            .optional(),
+        })
+        .default({}),
+    })
+    .default({}),
 })
 
 export const Route = createFileRoute('/analytics')({
@@ -462,7 +490,7 @@ export const Route = createFileRoute('/analytics')({
 function AnalyticsControls() {
   const search = Route.useSearch()
   const navigate = useNavigate()
-  
+
   // Helper to update nested widget config
   const updateWidgetConfig = (widgetId: string, configUpdate: any) => {
     navigate({
@@ -471,19 +499,19 @@ function AnalyticsControls() {
         ...prev,
         dashboard: {
           ...prev.dashboard,
-          widgets: prev.dashboard.widgets.map(widget =>
+          widgets: prev.dashboard.widgets.map((widget) =>
             widget.id === widgetId
               ? {
                   ...widget,
-                  config: { ...widget.config, ...configUpdate }
+                  config: { ...widget.config, ...configUpdate },
                 }
-              : widget
-          )
-        }
-      })
+              : widget,
+          ),
+        },
+      }),
     })
   }
-  
+
   // Helper to add new widget
   const addWidget = (widget: any) => {
     navigate({
@@ -492,12 +520,12 @@ function AnalyticsControls() {
         ...prev,
         dashboard: {
           ...prev.dashboard,
-          widgets: [...prev.dashboard.widgets, widget]
-        }
-      })
+          widgets: [...prev.dashboard.widgets, widget],
+        },
+      }),
     })
   }
-  
+
   // Helper to update layout
   const updateLayout = (layoutUpdate: any) => {
     navigate({
@@ -506,30 +534,28 @@ function AnalyticsControls() {
         ...prev,
         dashboard: {
           ...prev.dashboard,
-          layout: { ...prev.dashboard.layout, ...layoutUpdate }
-        }
-      })
+          layout: { ...prev.dashboard.layout, ...layoutUpdate },
+        },
+      }),
     })
   }
-  
+
   return (
     <div>
-      <button 
-        onClick={() => updateLayout({ columns: 3 })}
-      >
-        3 Columns
-      </button>
-      
-      <button 
-        onClick={() => addWidget({
-          id: Date.now().toString(),
-          type: 'chart',
-          config: {
-            title: 'New Chart',
-            dataSource: 'default',
-            filters: [],
-          }
-        })}
+      <button onClick={() => updateLayout({ columns: 3 })}>3 Columns</button>
+
+      <button
+        onClick={() =>
+          addWidget({
+            id: Date.now().toString(),
+            type: 'chart',
+            config: {
+              title: 'New Chart',
+              dataSource: 'default',
+              filters: [],
+            },
+          })
+        }
       >
         Add Chart Widget
       </button>
@@ -547,20 +573,21 @@ function AnalyticsControls() {
 function WidgetComponent({ widgetId }: { widgetId: string }) {
   // Use selector to avoid unnecessary re-renders
   const widget = Route.useSearch({
-    select: (search) => 
-      search.dashboard.widgets.find(w => w.id === widgetId)
+    select: (search) => search.dashboard.widgets.find((w) => w.id === widgetId),
   })
-  
+
   const layout = Route.useSearch({
-    select: (search) => search.dashboard.layout
+    select: (search) => search.dashboard.layout,
   })
-  
+
   if (!widget) return null
-  
+
   return (
-    <div style={{ 
-      gridColumn: `span ${Math.ceil(12 / layout.columns)}`
-    }}>
+    <div
+      style={{
+        gridColumn: `span ${Math.ceil(12 / layout.columns)}`,
+      }}
+    >
       <h3>{widget.config.title}</h3>
       {/* Widget content */}
     </div>
@@ -575,20 +602,20 @@ import { useMemo } from 'react'
 
 function ComplexDataComponent() {
   const search = Route.useSearch()
-  
+
   // Memoize expensive transformations
   const processedData = useMemo(() => {
     return search.dashboard.widgets
-      .filter(widget => widget.type === 'chart')
-      .map(widget => ({
+      .filter((widget) => widget.type === 'chart')
+      .map((widget) => ({
         ...widget,
-        computedMetrics: expensiveCalculation(widget.config)
+        computedMetrics: expensiveCalculation(widget.config),
       }))
   }, [search.dashboard.widgets])
-  
+
   return (
     <div>
-      {processedData.map(widget => (
+      {processedData.map((widget) => (
         <ComplexChart key={widget.id} data={widget} />
       ))}
     </div>
@@ -691,7 +718,7 @@ search={(prev) => ({
 
 ```tsx
 // Option 3: Session storage approach
-const sessionKey = Route.useSearch({ select: s => s.sessionKey })
+const sessionKey = Route.useSearch({ select: (s) => s.sessionKey })
 const complexData = useMemo(() => {
   if (sessionKey) {
     return JSON.parse(sessionStorage.getItem(sessionKey) || '{}')
@@ -717,8 +744,8 @@ const complexData = useMemo(() => {
 const onlyNeededData = Route.useSearch({
   select: (search) => ({
     currentPage: search.pagination.page,
-    pageSize: search.pagination.size
-  })
+    pageSize: search.pagination.size,
+  }),
 })
 ```
 
@@ -737,6 +764,7 @@ const onlyNeededData = Route.useSearch({
 - [URLSearchParams Limits](https://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers) - Browser URL length limits
 
 **Deep Merging Libraries:**
+
 - [deepmerge](https://www.npmjs.com/package/deepmerge) - Lightweight, focused deep merging utility
 - [Lodash merge](https://lodash.com/docs#merge) - Full-featured utility library with deep merging
 - [Ramda mergeDeepRight](https://ramdajs.com/docs/#mergeDeepRight) - Functional programming approach
