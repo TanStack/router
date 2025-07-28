@@ -29,12 +29,41 @@ navigate({
 
 ### Using Link Components
 
+#### Preserving All Search Parameters
+
+Use `search={true}` to keep all current search parameters when navigating:
+
+```tsx
+import { Link } from '@tanstack/react-router'
+
+function Navigation() {
+  return (
+    <nav>
+      {/* Keep all search params when changing routes */}
+      <Link to="/products" search={true}>
+        View Products (Keep Filters)
+      </Link>
+      
+      {/* Same route, keep all search params */}
+      <Link search={true}>
+        Refresh Current Page
+      </Link>
+      
+      {/* Equivalent functional approach */}
+      <Link to="/products" search={(prev) => prev}>
+        View Products (Functional)
+      </Link>
+    </nav>
+  )
+}
+```
+
 #### Basic Search Parameter Updates
 
 Replace all search parameters:
 
 ```tsx
-import { Link } from '@tanstack/react-router'
+import { Link } from '@tanstack/router'
 
 function SearchForm() {
   return (
@@ -47,6 +76,11 @@ function SearchForm() {
       {/* Navigate to same route with new search */}
       <Link search={{ sort: 'price-asc' }}>
         Sort by Price
+      </Link>
+      
+      {/* Keep all current search params */}
+      <Link to="/different-page" search={true}>
+        Go to Different Page (Keep Filters)
       </Link>
     </div>
   )
@@ -113,9 +147,17 @@ function Navigation() {
       {/* Inherit current search params to new route */}
       <Link 
         to="/products"
-        search={(prev) => prev} // Carry over all search params
+        search={true} // Shorthand to carry over all search params
       >
         View Products
+      </Link>
+      
+      {/* Alternative: Functional approach (same result) */}
+      <Link 
+        to="/products"
+        search={(prev) => prev} // Explicitly carry over all search params
+      >
+        View Products (Alternative)
       </Link>
       
       {/* Transform search params for new route */}
@@ -170,6 +212,13 @@ function SearchControls() {
     })
   }
   
+  const navigateKeepingFilters = (newRoute: string) => {
+    navigate({
+      to: newRoute,
+      search: true // Keep all current search params
+    })
+  }
+  
   return (
     <div>
       <select onChange={(e) => handleSortChange(e.target.value)}>
@@ -184,6 +233,10 @@ function SearchControls() {
       
       <button onClick={() => handleSearch('latest products')}>
         Search Latest
+      </button>
+      
+      <button onClick={() => navigateKeepingFilters('/dashboard')}>
+        Go to Dashboard (Keep Current Filters)
       </button>
     </div>
   )
