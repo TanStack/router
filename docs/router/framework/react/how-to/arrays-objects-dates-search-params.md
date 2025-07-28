@@ -1,10 +1,10 @@
 ---
-title: Handle Complex Search Parameter Types
+title: Work with Arrays, Objects, and Dates in Search Parameters
 ---
 
-# How to Handle Complex Search Parameter Types
+# How to Work with Arrays, Objects, and Dates in Search Parameters
 
-Learn to work with arrays, objects, dates, and nested data structures in search parameters while maintaining type safety and URL compatibility.
+Learn to handle arrays, objects, dates, and nested data structures in search parameters while maintaining type safety and URL compatibility.
 
 ## Quick Start
 
@@ -705,10 +705,10 @@ const onlyNeededData = Route.useSearch({
 
 ## Common Next Steps
 
-<!-- - [Share Search Parameters Across Routes](./share-search-params-across-routes.md) - Inherit and manage complex search params across route hierarchies -->
-<!-- - [Optimize Search Parameter Performance](./optimize-search-param-performance.md) - Advanced performance patterns for complex search state -->
+<!-- - [Share Search Parameters Across Routes](./share-search-params-across-routes.md) - Inherit and manage search params across route hierarchies -->
+<!-- - [Optimize Search Parameter Performance](./optimize-search-param-performance.md) - Advanced performance patterns for search state -->
 <!-- - [Customize Search Parameter Serialization](./customize-search-param-serialization.md) - Implement custom serialization for compression and compatibility -->
-<!-- - [Build Search-Based Filtering Systems](./build-search-filtering-systems.md) - Create complex filtering UIs with URL state -->
+<!-- - [Build Search-Based Filtering Systems](./build-search-filtering-systems.md) - Create filtering UIs with URL state -->
 
 ## Related Resources
 

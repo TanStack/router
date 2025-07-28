@@ -598,7 +598,7 @@ function SearchPage() {
 
 After setting up schema validation, you might want to:
 
-- [Handle Complex Search Parameter Types](./complex-search-param-types.md) - Work with arrays, objects, dates, and nested data structures
+- [Work with Arrays, Objects, and Dates](./arrays-objects-dates-search-params.md) - Handle arrays, objects, dates, and nested data structures
 
 <!-- Uncomment when guides are available
 - [Share Search Parameters Across Routes](./share-search-params-across-routes.md) - Inherit and manage search params across route hierarchies
