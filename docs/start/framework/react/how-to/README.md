@@ -112,17 +112,18 @@ Core server function concepts before advanced patterns.
 ### **8. How to Deploy to Cloudflare Pages/Workers (Comprehensive)**
 **Priority: Critical** | **Dependencies: #2** | **Status: 🔥 Urgent**
 
-**GitHub Issues:** [#4779](https://github.com/TanStack/router/issues/4779), [#4473](https://github.com/TanStack/router/issues/4473) (13 👍), [#4400](https://github.com/TanStack/router/issues/4400)
+**GitHub Issues:** [#4473](https://github.com/TanStack/router/issues/4473) (13 👍), [#4400](https://github.com/TanStack/router/issues/4400)
 
 **Should Cover:**
 - Cloudflare Pages deployment setup
 - Cloudflare Workers configuration
 - `@cloudflare/vite-plugin` integration
-- Wrangler.toml configuration (updated examples)
+- Wrangler.toml configuration (best practices)
 - Post-vinxi→vite migration fixes
 - Virtual imports (`cloudflare:workflows`, `cloudflare:workers`)
 - Environment variable management
 - Custom Nitro configuration for Cloudflare
+- **Note:** Some plugin configuration issues (#4779) are upstream dependencies
 
 ### **9. How to Deploy to Netlify**
 **Priority: High** | **Dependencies: #2** | **Status: 📝 Needed**
