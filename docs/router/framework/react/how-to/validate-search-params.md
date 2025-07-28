@@ -193,29 +193,45 @@ const transformSchema = z.object({
 
 ### Basic Error Handling
 
-Handle validation errors gracefully:
+Handle validation errors through route error components:
 
 ```tsx
-import { useRouter } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
 
-function SearchPage() {
-  const router = useRouter()
-  
-  // Access validation errors
-  const validationError = router.state.lastUpdated?.searchError
-  
-  if (validationError) {
+const searchSchema = z.object({
+  query: z.string().min(1, 'Search query is required'),
+  page: z.number().int().positive('Page must be a positive number'),
+})
+
+export const Route = createFileRoute('/search')({
+  validateSearch: zodValidator(searchSchema),
+  errorComponent: ({ error }) => {
+    const router = useRouter()
+    
     return (
       <div className="error">
         <h2>Invalid Search Parameters</h2>
-        <p>{validationError.message}</p>
-        <button onClick={() => router.navigate({ to: '/search', search: {} })}>
+        <p>{error.message}</p>
+        <button 
+          onClick={() => router.navigate({ to: '/search', search: {} })}
+        >
           Reset Search
+        </button>
+        <button 
+          onClick={() => router.navigate({ to: '/search', search: { query: '', page: 1 } })}
+        >
+          Start Over
         </button>
       </div>
     )
-  }
-  
+  },
+  component: SearchPage,
+})
+
+function SearchPage() {
+  // Only called when validation succeeds
   const search = Route.useSearch()
   // ... rest of component
 }
@@ -466,14 +482,17 @@ const resilientSchema = z.object({
   page: fallback(z.number().int().positive(), 1),
 })
 
-// ✅ Alternative - handle errors at component level
+// ✅ Alternative - use errorComponent on route
+export const Route = createFileRoute('/search')({
+  validateSearch: resilientSchema,
+  errorComponent: ({ error }) => <SearchError error={error} />,
+  component: SearchPage,
+})
+
 function SearchPage() {
-  try {
-    const search = Route.useSearch()
-    return <SearchResults search={search} />
-  } catch (error) {
-    return <SearchError error={error} />
-  }
+  // Only called when validation succeeds
+  const search = Route.useSearch()
+  return <SearchResults search={search} />
 }
 ```
 
