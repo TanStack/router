@@ -8,16 +8,8 @@ import type {
   QueryClient,
   DehydratedState as QueryDehydratedState,
 } from '@tanstack/query-core'
-
-export type ValidateRouter<TRouter extends AnyRouter> =
-  NonNullable<TRouter['options']['context']> extends {
-    queryClient: QueryClient
-  }
-    ? TRouter
-    : never
-
 export type RouterSsrQueryOptions<TRouter extends AnyRouter> = {
-  router: ValidateRouter<TRouter>
+  router: TRouter
   queryClient: QueryClient
 
   /**
@@ -40,16 +32,6 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   handleRedirects = true,
 }: RouterSsrQueryOptions<TRouter>) {
   const ogOptions = router.options
-
-  router.options = {
-    ...router.options,
-    context: {
-      ...ogOptions.context,
-      // TODO remove this
-      // Pass the query client to the context, so we can access it in loaders
-      queryClient,
-    },
-  }
 
   if (router.isServer) {
     const queryStream = createPushableStream()

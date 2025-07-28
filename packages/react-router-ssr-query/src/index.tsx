@@ -1,10 +1,8 @@
 import { Fragment } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { setupCoreRouterSsrQueryIntegration } from '@tanstack/router-ssr-query-core'
+import type { RouterSsrQueryOptions } from '@tanstack/router-ssr-query-core'
 import type { AnyRouter } from '@tanstack/react-router'
-import {
-  RouterSsrQueryOptions,
-  setupCoreRouterSsrQueryIntegration,
-} from '@tanstack/router-ssr-query-core'
 
 export type Options<TRouter extends AnyRouter> =
   RouterSsrQueryOptions<TRouter> & {
@@ -21,7 +19,7 @@ export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
   opts.router.options = {
     ...ogOptions,
     Wrap: ({ children }) => {
-      const OuterWrapper = opts?.WrapProvider || Fragment
+      const OuterWrapper = opts.WrapProvider || Fragment
       const OGWrap = ogOptions.Wrap || Fragment
       return (
         <OuterWrapper>
