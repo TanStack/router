@@ -2,6 +2,8 @@
 
 This guide covers updating and managing search parameters during navigation using TanStack Router's Link components and programmatic navigation methods.
 
+**Prerequisites:** [Set Up Basic Search Parameters](./setup-basic-search-params.md) - Foundation concepts for reading and validating search params.
+
 ## Quick Start
 
 Configure navigation that updates search parameters while preserving existing state:
@@ -49,10 +51,7 @@ function SearchForm() {
         Sort by Price
       </Link>
       
-      {/* Keep all current search params */}
-      <Link to="/different-page" search={true}>
-        Go to Different Page (Keep Filters)
-      </Link>
+
     </div>
   )
 }
@@ -112,11 +111,6 @@ function Navigation() {
         View Products (Keep Filters)
       </Link>
       
-      {/* Same route, keep all search params */}
-      <Link search={true}>
-        Refresh Current Page
-      </Link>
-      
       {/* Equivalent functional approach */}
       <Link to="/products" search={(prev) => prev}>
         View Products (Functional)
@@ -152,13 +146,7 @@ function Navigation() {
         View Products
       </Link>
       
-      {/* Alternative: Functional approach (same result) */}
-      <Link 
-        to="/products"
-        search={(prev) => prev} // Explicitly carry over all search params
-      >
-        View Products (Alternative)
-      </Link>
+
       
       {/* Transform search params for new route */}
       <Link 
@@ -212,13 +200,6 @@ function SearchControls() {
     })
   }
   
-  const navigateKeepingFilters = (newRoute: string) => {
-    navigate({
-      to: newRoute,
-      search: true // Keep all current search params
-    })
-  }
-  
   return (
     <div>
       <select onChange={(e) => handleSortChange(e.target.value)}>
@@ -233,10 +214,6 @@ function SearchControls() {
       
       <button onClick={() => handleSearch('latest products')}>
         Search Latest
-      </button>
-      
-      <button onClick={() => navigateKeepingFilters('/dashboard')}>
-        Go to Dashboard (Keep Current Filters)
       </button>
     </div>
   )
@@ -319,16 +296,6 @@ function ConditionalNavigation() {
   const navigate = useNavigate()
   const search = useSearch({ from: '/products' })
   
-  // Navigate when user is not authenticated
-  useEffect(() => {
-    if (!search.userId && search.requiresAuth) {
-      navigate({
-        to: '/login',
-        search: { redirect: window.location.pathname }
-      })
-    }
-  }, [search.userId, search.requiresAuth, navigate])
-  
   // Auto-reset page when search query changes
   useEffect(() => {
     if (search.query && search.page > 1) {
@@ -338,36 +305,7 @@ function ConditionalNavigation() {
     }
   }, [search.query, search.page, navigate])
   
-  // Navigate to results when filters are applied
-  useEffect(() => {
-    if (search.category && search.sort && !search.resultsLoaded) {
-      navigate({
-        to: '/search-results',
-        search: (prev) => ({ ...prev, resultsLoaded: true })
-      })
-    }
-  }, [search.category, search.sort, search.resultsLoaded, navigate])
-  
-  return (
-    <div>
-      <p>Navigation will happen automatically based on search state</p>
-      
-      {/* Still show conditional UI elements */}
-      {!search.category && (
-        <button onClick={() => navigate({ search: { category: 'electronics' } })}>
-          Filter Electronics
-        </button>
-      )}
-      
-      <button 
-        onClick={() => navigate({
-          search: (prev) => ({ ...prev, premium: !prev.premium })
-        })}
-      >
-        Toggle Premium ({search.premium ? 'On' : 'Off'})
-      </button>
-    </div>
-  )
+  return <div>Page resets automatically when search changes</div>
 }
 ```
 
@@ -375,57 +313,7 @@ function ConditionalNavigation() {
 
 ## Common Patterns
 
-### Breadcrumb Navigation
 
-Create breadcrumbs that maintain search state:
-
-```tsx
-import { Link, useRouterState } from '@tanstack/react-router'
-
-function Breadcrumbs() {
-  const routerState = useRouterState()
-  const currentSearch = routerState.location.search
-  
-  return (
-    <nav aria-label="Breadcrumb">
-      <ol>
-        <li>
-          <Link to="/" search={{}}>Home</Link>
-        </li>
-        
-        {currentSearch.category && (
-          <li>
-            <Link 
-              to="/products"
-              search={(prev) => ({ 
-                category: prev.category,
-                // Preserve category, clear other filters
-                page: 1
-              })}
-            >
-              {currentSearch.category}
-            </Link>
-          </li>
-        )}
-        
-        {currentSearch.query && (
-          <li>
-            <Link 
-              to="/search"
-              search={(prev) => ({ 
-                query: prev.query,
-                page: 1
-              })}
-            >
-              Search: "{currentSearch.query}"
-            </Link>
-          </li>
-        )}
-      </ol>
-    </nav>
-  )
-}
-```
 
 ## Common Problems
 
@@ -461,16 +349,4 @@ function Breadcrumbs() {
 
 ## Related Resources
 
-<!-- Next steps will be uncommented as guides become available
-## Common Next Steps
-
-After setting up navigation with search parameters, you might want to:
-
-- [Validate Search Parameters with Schemas](./validate-search-params.md) - Add schema validation for robust type safety
-- [Handle Complex Search Parameter Types](./complex-search-param-types.md) - Work with arrays, objects, and dates
-- [Share Search Parameters Across Routes](./share-search-params-across-routes.md) - Inherit search params in route hierarchies
--->
-
-- [TanStack Router Search Params Guide](https://tanstack.com/router/latest/docs/framework/react/guide/search-params) - Official search parameters documentation
-- [Set Up Basic Search Parameters](./setup-basic-search-params.md) - Foundation guide for search parameter setup
-- [TanStack Router Navigation API](https://tanstack.com/router/latest/docs/framework/react/api/router/useNavigateFunction) - Complete navigation API reference
+- [TanStack Router Search Params Guide](https://tanstack.com/router/latest/docs/framework/react/guide/search-params) - Official documentation
