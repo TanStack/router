@@ -6,7 +6,7 @@ import type { AnyRouter } from '@tanstack/react-router'
 
 export type Options<TRouter extends AnyRouter> =
   RouterSsrQueryOptions<TRouter> & {
-    WrapProvider?: (props: { children: any }) => React.JSX.Element
+    wrapQueryClient?: boolean
   }
 
 export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
@@ -14,16 +14,16 @@ export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
 ) {
   setupCoreRouterSsrQueryIntegration(opts)
 
+  if (opts.wrapQueryClient === false) {
+    return
+  }
   const OGWrap = opts.router.options.Wrap || Fragment
-  const OuterWrapper = opts.WrapProvider || Fragment
 
   opts.router.options.Wrap = ({ children }) => {
     return (
-      <OuterWrapper>
-        <QueryClientProvider client={opts.queryClient}>
-          <OGWrap>{children}</OGWrap>
-        </QueryClientProvider>
-      </OuterWrapper>
+      <QueryClientProvider client={opts.queryClient}>
+        <OGWrap>{children}</OGWrap>
+      </QueryClientProvider>
     )
   }
 }
