@@ -58,6 +58,7 @@ When implementing a guide from a draft:
 ## Content Sources
 
 Most staged content originates from:
+
 - `navigate-with-search-params.md` - Content moved to maintain focus
 - Implementation planning sessions
 - User feedback and common questions
