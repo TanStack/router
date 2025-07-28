@@ -14,13 +14,10 @@ export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
 ) {
   setupCoreRouterSsrQueryIntegration(opts)
 
-  const ogOptions = opts.router.options
+  const OGWrap = opts.router.options.Wrap || Fragment
+  const OuterWrapper = opts.WrapProvider || Fragment
 
-  opts.router.options = {
-    ...ogOptions,
-    Wrap: ({ children }) => {
-      const OuterWrapper = opts.WrapProvider || Fragment
-      const OGWrap = ogOptions.Wrap || Fragment
+  opts.router.options.Wrap = ({ children }) => {
       return (
         <OuterWrapper>
           <QueryClientProvider client={opts.queryClient}>
@@ -28,6 +25,5 @@ export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
           </QueryClientProvider>
         </OuterWrapper>
       )
-    },
   }
 }
