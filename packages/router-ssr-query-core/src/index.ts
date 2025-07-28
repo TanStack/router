@@ -8,6 +8,7 @@ import type {
   QueryClient,
   DehydratedState as QueryDehydratedState,
 } from '@tanstack/query-core'
+
 export type RouterSsrQueryOptions<TRouter extends AnyRouter> = {
   router: TRouter
   queryClient: QueryClient
@@ -31,17 +32,17 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   queryClient,
   handleRedirects = true,
 }: RouterSsrQueryOptions<TRouter>) {
-  const ogOptions = router.options
+  const ogHydrate = router.options.hydrate
+  const ogDehydrate = router.options.dehydrate
 
   if (router.isServer) {
     const queryStream = createPushableStream()
 
     router.options.dehydrate =
       async (): Promise<DehydratedRouterQueryState> => {
-        const ogDehydrated = await ogOptions.dehydrate?.()
-        const dehydratedQueryClient = queryDehydrate(queryClient)
-
         router.serverSsr!.onRenderFinished(() => queryStream.close())
+        const ogDehydrated = await ogDehydrate?.()
+        const dehydratedQueryClient = queryDehydrate(queryClient)
 
         const dehydratedRouter = {
           ...ogDehydrated,
@@ -67,7 +68,8 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       if (event.type === 'added') {
         // before rendering starts, we do not stream individual queries
         // instead we dehydrate the entire query client in router's dehydrate()
-        if (!router.serverSsr!.isDehydrated()) {
+        // if attachRouterServerSsrUtils() has not been called yet, `router.serverSsr` will be undefined and we also do not stream
+        if (!router.serverSsr?.isDehydrated()) {
           return
         }
         if (queryStream.isClosed()) {
@@ -94,7 +96,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
     // on the client
   } else {
     router.options.hydrate = async (dehydrated: DehydratedRouterQueryState) => {
-      await ogOptions.hydrate?.(dehydrated)
+      await ogHydrate?.(dehydrated)
       // On the client, hydrate the query client with the dehydrated data
       queryHydrate(queryClient, dehydrated.dehydratedQueryClient)
 
