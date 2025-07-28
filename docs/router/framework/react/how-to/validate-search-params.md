@@ -10,30 +10,46 @@ Learn how to add robust schema validation to your search parameters using popula
 
 ## Quick Start
 
-Add comprehensive schema validation to your search parameters:
+Add robust validation with custom error messages, complex types, and production-ready error handling:
 
 ```tsx
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { zodValidator, fallback } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
   query: z.string().min(1, 'Search query required'),
   category: z.enum(['electronics', 'clothing', 'books', 'home']).optional(),
-  minPrice: fallback(z.number().min(0), 0),
-  maxPrice: fallback(z.number().min(0), 1000),
+  minPrice: fallback(z.number().min(0, 'Price cannot be negative'), 0),
+  maxPrice: fallback(z.number().min(0, 'Price cannot be negative'), 1000),
   inStock: fallback(z.boolean(), true),
   tags: z.array(z.string()).optional(),
+  dateRange: z.object({
+    start: z.string().datetime().optional(),
+    end: z.string().datetime().optional(),
+  }).optional(),
 })
 
 export const Route = createFileRoute('/products')({
   validateSearch: zodValidator(productSearchSchema),
+  errorComponent: ({ error }) => {
+    const router = useRouter()
+    return (
+      <div className="error">
+        <h2>Invalid Search Parameters</h2>
+        <p>{error.message}</p>
+        <button onClick={() => router.navigate({ to: '/products', search: {} })}>
+          Reset Search
+        </button>
+      </div>
+    )
+  },
   component: ProductsPage,
 })
 
 function ProductsPage() {
-  // All search params are now validated and type-safe
-  const { query, category, minPrice, maxPrice, inStock, tags } = Route.useSearch()
+  // All search params are validated, type-safe, and have fallback values applied
+  const { query, category, minPrice, maxPrice, inStock, tags, dateRange } = Route.useSearch()
 
   return (
     <div>
@@ -43,6 +59,7 @@ function ProductsPage() {
       <p>Price Range: ${minPrice} - ${maxPrice}</p>
       <p>In Stock Only: {inStock ? 'Yes' : 'No'}</p>
       {tags && <p>Tags: {tags.join(', ')}</p>}
+      {dateRange && <p>Date Range: {dateRange.start} to {dateRange.end}</p>}
     </div>
   )
 }
@@ -110,6 +127,47 @@ const searchSchema = type({
 
 export const Route = createFileRoute('/search')({
   validateSearch: searchSchema,
+  component: SearchPage,
+})
+```
+
+### Custom Validation Function
+
+For complete control, implement your own validation logic:
+
+```tsx
+export const Route = createFileRoute('/search')({
+  validateSearch: (search: Record<string, unknown>) => {
+    // Custom validation with detailed error handling
+    const result = {
+      page: 1,
+      query: '',
+      category: 'all',
+    }
+    
+    // Validate page number
+    const pageNum = Number(search.page)
+    if (isNaN(pageNum) || pageNum < 1) {
+      throw new Error('Page must be a positive number')
+    }
+    result.page = pageNum
+    
+    // Validate query string
+    if (typeof search.query === 'string' && search.query.length > 0) {
+      if (search.query.length > 100) {
+        throw new Error('Search query too long (max 100 characters)')
+      }
+      result.query = search.query
+    }
+    
+    // Validate category
+    const validCategories = ['electronics', 'clothing', 'books', 'all']
+    if (typeof search.category === 'string' && validCategories.includes(search.category)) {
+      result.category = search.category
+    }
+    
+    return result
+  },
   component: SearchPage,
 })
 ```
@@ -373,30 +431,13 @@ function SearchPage() {
 
 ## Testing Search Parameter Validation
 
-### Integration Testing with Routes
-
-Test how your routes handle search parameter validation:
+Focus on testing validation behavior specific to your schemas:
 
 ```tsx
 import { render, screen, waitFor } from '@testing-library/react'
 import { createRouter, createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 
-describe('Search Route Validation', () => {
-  it('should render component when search parameters are valid', async () => {
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({
-        initialEntries: ['/search?query=laptops&page=1'],
-      }),
-    })
-    
-    render(<RouterProvider router={router} />)
-    
-    await waitFor(() => {
-      expect(screen.getByText('Search Results')).toBeInTheDocument()
-    })
-  })
-  
+describe('Search Validation Behavior', () => {
   it('should show error component when validation fails', async () => {
     const router = createRouter({
       routeTree,
@@ -412,7 +453,7 @@ describe('Search Route Validation', () => {
     })
   })
   
-  it('should apply fallback values for missing parameters', async () => {
+  it('should apply fallback values correctly', async () => {
     const router = createRouter({
       routeTree,
       history: createMemoryHistory({
@@ -428,6 +469,8 @@ describe('Search Route Validation', () => {
   })
 })
 ```
+
+**For comprehensive route testing patterns, see:** [Set Up Testing](./setup-testing.md) and [Test File-Based Routing](./test-file-based-routing.md)
 
 ## Common Problems
 
