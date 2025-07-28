@@ -4,7 +4,7 @@ import {
   QueryClient,
   notifyManager,
 } from '@tanstack/react-query'
-import { routerWithQueryClient } from '@tanstack/react-router-with-query'
+import { routerWithQueryClient } from '@tanstack/react-router-ssr-query'
 import toast from 'react-hot-toast'
 import { ConvexQueryClient } from '@convex-dev/react-query'
 import { ConvexProvider } from 'convex/react'
