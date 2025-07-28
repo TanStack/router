@@ -594,12 +594,13 @@ function SearchPage() {
 }
 ```
 
-<!--
 ## Common Next Steps
 
 After setting up schema validation, you might want to:
 
 - [Handle Complex Search Parameter Types](./complex-search-param-types.md) - Work with arrays, objects, dates, and nested data structures
+
+<!-- Uncomment when guides are available
 - [Share Search Parameters Across Routes](./share-search-params-across-routes.md) - Inherit and manage search params across route hierarchies
 - [Debug Search Parameter Issues](./debug-search-param-issues.md) - Troubleshoot validation problems and performance issues
 -->
