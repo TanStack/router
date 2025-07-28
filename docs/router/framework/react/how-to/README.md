@@ -43,7 +43,7 @@ This directory contains focused, step-by-step instructions for common TanStack R
 
 **Intermediate Level (Common Patterns):**
 
-- [ ] Validate Search Parameters with Schemas - Use schema validation libraries for robust validation and type safety
+- [x] [Validate Search Parameters with Schemas](./validate-search-params.md) - Use schema validation libraries for robust validation and type safety
 - [ ] Handle Complex Search Parameter Types - Work with arrays, objects, dates, and nested data
 - [ ] Share Search Parameters Across Routes - Inherit and manage search params across route hierarchies
 

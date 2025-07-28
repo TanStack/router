@@ -50,11 +50,9 @@ function ProductsPage() {
 - **Error Handling**: Built-in validation error management
 - **Maintainability**: Clear, declarative schema definitions
 
-## Validation Library Options
+## Validation Library Setup
 
-TanStack Router supports any standard schema-compliant validation library. Choose the one that best fits your project:
-
-### Zod (Most Popular)
+TanStack Router supports any standard schema-compliant validation library. This guide focuses on Zod for examples, but you can use any validation library:
 
 ```bash
 npm install zod @tanstack/zod-adapter
@@ -75,61 +73,9 @@ export const Route = createFileRoute('/products')({
 })
 ```
 
-### Valibot (Lightweight Alternative)
+**For detailed validation library comparisons and advanced validation patterns, see:** [Validate Search Parameters with Schemas](./validate-search-params.md)
 
-```bash
-npm install valibot @tanstack/valibot-adapter
-```
 
-```tsx
-import { valibotValidator, fallback } from '@tanstack/valibot-adapter'
-import * as v from 'valibot'
-
-const searchSchema = v.object({
-  page: fallback(v.number(), 1),
-  category: fallback(v.string(), 'all'),
-})
-
-export const Route = createFileRoute('/products')({
-  validateSearch: valibotValidator(searchSchema),
-  component: ProductsPage,
-})
-```
-
-### Yup
-
-```bash
-npm install yup
-```
-
-```tsx
-import * as yup from 'yup'
-
-const searchSchema = yup.object({
-  page: yup.number().default(1),
-  category: yup.string().default('all'),
-})
-
-export const Route = createFileRoute('/products')({
-  validateSearch: (search) => searchSchema.validateSync(search),
-  component: ProductsPage,
-})
-```
-
-### Custom Validation Function
-
-For complete control, implement your own validation:
-
-```tsx
-export const Route = createFileRoute('/products')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    page: Number(search.page) || 1,
-    category: (search.category as string) || 'all',
-    showSale: Boolean(search.showSale),
-  }),
-  component: ProductsPage,
-})
-```
 
 ## Step-by-Step Setup with Zod
 
@@ -470,8 +416,12 @@ const schema = z.object({
 
 ## Common Next Steps
 
-<!-- Uncomment when guides are available
+After setting up basic search parameters, you might want to:
+
+- [Validate Search Parameters with Schemas](./validate-search-params.md) - Add robust validation with Zod, Valibot, or ArkType
 - [Navigate with Search Parameters](./navigate-with-search-params.md) - Learn to update search params with Links and navigation
+
+<!-- Uncomment when guides are available
 - [Handle Complex Search Parameter Types](./complex-search-param-types.md) - Work with arrays, objects, dates, and nested data
 -->
 
