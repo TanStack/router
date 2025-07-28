@@ -28,7 +28,7 @@ export const Route = createFileRoute('/products')({
 
 function ProductsPage() {
   const { page, category, showSale } = Route.useSearch()
-  
+
   return (
     <div>
       <h1>Products</h1>
@@ -43,6 +43,7 @@ function ProductsPage() {
 ## Why Use Schema Validation for Search Parameters?
 
 **Production Benefits:**
+
 - **Type Safety**: Automatic TypeScript inference
 - **Runtime Validation**: Catches invalid URL parameters gracefully
 - **Default Values**: Fallback handling for missing parameters
@@ -152,16 +153,16 @@ const shopSearchSchema = z.object({
   // Pagination
   page: fallback(z.number(), 1).default(1),
   limit: fallback(z.number(), 20).default(20),
-  
+
   // Filtering
   category: fallback(z.string(), 'all').default('all'),
   minPrice: fallback(z.number(), 0).default(0),
   maxPrice: fallback(z.number(), 1000).default(1000),
-  
+
   // Settings
   sort: fallback(z.enum(['name', 'price', 'date']), 'name').default('name'),
   ascending: fallback(z.boolean(), true).default(true),
-  
+
   // Optional parameters
   searchTerm: z.string().optional(),
   showOnlyInStock: fallback(z.boolean(), false).default(false),
@@ -190,15 +191,25 @@ Use the route's `useSearch()` hook to access validated and typed search paramete
 ```tsx
 function ShopPage() {
   const searchParams = Route.useSearch()
-  
+
   // All properties are fully type-safe and validated
-  const { page, limit, category, sort, ascending, searchTerm, showOnlyInStock } = searchParams
-  
+  const {
+    page,
+    limit,
+    category,
+    sort,
+    ascending,
+    searchTerm,
+    showOnlyInStock,
+  } = searchParams
+
   return (
     <div>
       <h1>Shop - Page {page}</h1>
       <div>Category: {category}</div>
-      <div>Sort: {sort} ({ascending ? 'ascending' : 'descending'})</div>
+      <div>
+        Sort: {sort} ({ascending ? 'ascending' : 'descending'})
+      </div>
       <div>Items per page: {limit}</div>
       <div>In stock only: {showOnlyInStock ? 'Yes' : 'No'}</div>
       {searchTerm && <div>Search: "{searchTerm}"</div>}
@@ -224,10 +235,10 @@ export const Route = createFileRoute('/posts')({
 
 function PostsPage() {
   const { page, limit } = Route.useSearch()
-  
+
   // Calculate offset for API calls
   const offset = (page - 1) * limit
-  
+
   return (
     <div>
       <h1>Posts (Page {page})</h1>
@@ -243,13 +254,10 @@ function PostsPage() {
 
 ```tsx
 const catalogSchema = z.object({
-  sort: fallback(
-    z.enum(['name', 'date', 'price']), 
-    'name'
-  ).default('name'),
+  sort: fallback(z.enum(['name', 'date', 'price']), 'name').default('name'),
   category: fallback(
-    z.enum(['electronics', 'clothing', 'books', 'all']), 
-    'all'
+    z.enum(['electronics', 'clothing', 'books', 'all']),
+    'all',
   ).default('all'),
   ascending: fallback(z.boolean(), true).default(true),
 })
@@ -266,23 +274,25 @@ export const Route = createFileRoute('/catalog')({
 const dashboardSchema = z.object({
   // Numbers with validation
   userId: fallback(z.number().positive(), 1).default(1),
-  refreshInterval: fallback(z.number().min(1000).max(60000), 5000).default(5000),
-  
+  refreshInterval: fallback(z.number().min(1000).max(60000), 5000).default(
+    5000,
+  ),
+
   // Strings with validation
   theme: fallback(z.enum(['light', 'dark']), 'light').default('light'),
   timezone: z.string().optional(),
-  
+
   // Arrays with validation
   selectedIds: fallback(z.number().array(), []).default([]),
   tags: fallback(z.string().array(), []).default([]),
-  
+
   // Objects with validation
   filters: fallback(
     z.object({
       status: z.enum(['active', 'inactive']).optional(),
       type: z.string().optional(),
-    }), 
-    {}
+    }),
+    {},
   ).default({}),
 })
 ```
@@ -312,7 +322,7 @@ const routeApi = getRouteApi('/products')
 
 export function ProductFilters() {
   const { category, sort, showSale } = routeApi.useSearch()
-  
+
   return (
     <div>
       <select value={category}>
@@ -333,12 +343,8 @@ import { useSearch } from '@tanstack/react-router'
 
 function GenericSearchDisplay() {
   const search = useSearch({ from: '/products' })
-  
-  return (
-    <div>
-      Current filters: {JSON.stringify(search, null, 2)}
-    </div>
-  )
+
+  return <div>Current filters: {JSON.stringify(search, null, 2)}</div>
 }
 ```
 
@@ -352,15 +358,15 @@ export const Route = createFileRoute('/example')({
   validateSearch: (search: Record<string, unknown>) => ({
     // Numbers need coercion from URL strings
     page: Number(search.page) || 1,
-    
+
     // Strings can be cast with defaults
     category: (search.category as string) || 'all',
-    
+
     // Booleans: TanStack Router auto-converts "true"/"false" to booleans
     showSale: Boolean(search.showSale),
-    
+
     // Arrays need JSON parsing validation
-    selectedIds: Array.isArray(search.selectedIds) 
+    selectedIds: Array.isArray(search.selectedIds)
       ? search.selectedIds.map(Number).filter(Boolean)
       : [],
   }),
@@ -432,7 +438,7 @@ const schema = z.object({
 const schema = z.object({
   // Required with default (navigation can omit, but always present in component)
   page: fallback(z.number(), 1).default(1),
-  
+
   // Truly optional (can be undefined in component)
   searchTerm: z.string().optional(),
 })
@@ -450,12 +456,14 @@ const schema = z.object({
     z.object({
       status: z.enum(['active', 'inactive']).optional(),
       tags: z.string().array().optional(),
-      dateRange: z.object({
-        start: z.string().pipe(z.coerce.date()),
-        end: z.string().pipe(z.coerce.date()),
-      }).optional(),
+      dateRange: z
+        .object({
+          start: z.string().pipe(z.coerce.date()),
+          end: z.string().pipe(z.coerce.date()),
+        })
+        .optional(),
     }),
-    {}
+    {},
   ).default({}),
 })
 ```

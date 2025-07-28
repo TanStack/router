@@ -37,20 +37,24 @@ This directory contains focused, step-by-step instructions for common TanStack R
 ### Search Parameters & URL State (Progressive Series)
 
 **Foundation Level (Start Here):**
+
 - [x] [Set Up Basic Search Parameters](./setup-basic-search-params.md) - Create type-safe search validation and reading
 - [x] [Navigate with Search Parameters](./navigate-with-search-params.md) - Update and manage search params with Links and navigation
 
 **Intermediate Level (Common Patterns):**
+
 - [ ] Validate Search Parameters with Schemas - Use schema validation libraries for robust validation and type safety
 - [ ] Handle Complex Search Parameter Types - Work with arrays, objects, dates, and nested data
 - [ ] Share Search Parameters Across Routes - Inherit and manage search params across route hierarchies
 
 **Advanced Level (Power User Patterns):**
+
 - [ ] Build Advanced Search Parameter Middleware - Create custom middleware for search param processing
 - [ ] Optimize Search Parameter Performance - Minimize re-renders and improve performance with selectors
 - [ ] Customize Search Parameter Serialization - Implement custom serialization for compression and compatibility
 
 **Specialized Use Cases:**
+
 - [ ] Build Search-Based Filtering Systems - Create complex filtering UIs with URL state
 - [ ] Handle Search Parameters in Forms - Synchronize form state with URL search parameters
 - [ ] Debug Search Parameter Issues - Troubleshoot common search param problems and performance issues
