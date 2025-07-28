@@ -4,7 +4,7 @@ import {
   QueryClient,
   notifyManager,
 } from '@tanstack/react-query'
-import { routerWithQueryClient } from '@tanstack/react-router-ssr-query'
+import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import toast from 'react-hot-toast'
 import { ConvexQueryClient } from '@convex-dev/react-query'
 import { ConvexProvider } from 'convex/react'
@@ -38,22 +38,23 @@ export function createRouter() {
   })
   convexQueryClient.connect(queryClient)
 
-  const router = routerWithQueryClient(
-    createTanStackRouter({
-      routeTree,
-      defaultPreload: 'intent',
-      defaultErrorComponent: DefaultCatchBoundary,
-      defaultNotFoundComponent: () => <NotFound />,
-      context: { queryClient },
-      Wrap: ({ children }) => (
-        <ConvexProvider client={convexQueryClient.convexClient}>
-          {children}
-        </ConvexProvider>
-      ),
-      scrollRestoration: true,
-    }),
+  const router = createTanStackRouter({
+    routeTree,
+    defaultPreload: 'intent',
+    defaultErrorComponent: DefaultCatchBoundary,
+    defaultNotFoundComponent: () => <NotFound />,
+    context: { queryClient },
+    Wrap: ({ children }) => (
+      <ConvexProvider client={convexQueryClient.convexClient}>
+        {children}
+      </ConvexProvider>
+    ),
+    scrollRestoration: true,
+  })
+  setupRouterSsrQueryIntegration({
+    router,
     queryClient,
-  )
+  })
 
   return router
 }

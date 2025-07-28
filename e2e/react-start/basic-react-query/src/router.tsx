@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
-import { routerWithQueryClient } from '@tanstack/react-router-ssr-query'
+import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
@@ -11,18 +11,19 @@ import { NotFound } from './components/NotFound'
 
 export function createRouter() {
   const queryClient = new QueryClient()
-
-  return routerWithQueryClient(
-    createTanStackRouter({
-      routeTree,
-      context: { queryClient },
-      scrollRestoration: true,
-      defaultPreload: 'intent',
-      defaultErrorComponent: DefaultCatchBoundary,
-      defaultNotFoundComponent: () => <NotFound />,
-    }),
+  const router = createTanStackRouter({
+    routeTree,
+    context: { queryClient },
+    scrollRestoration: true,
+    defaultPreload: 'intent',
+    defaultErrorComponent: DefaultCatchBoundary,
+    defaultNotFoundComponent: () => <NotFound />,
+  })
+  setupRouterSsrQueryIntegration({
+    router,
     queryClient,
-  )
+  })
+  return router
 }
 
 declare module '@tanstack/react-router' {

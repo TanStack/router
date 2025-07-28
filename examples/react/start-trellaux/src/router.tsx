@@ -4,7 +4,7 @@ import {
   QueryClient,
   notifyManager,
 } from '@tanstack/react-query'
-import { routerWithQueryClient } from '@tanstack/react-router-ssr-query'
+import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import toast from 'react-hot-toast'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
@@ -33,19 +33,20 @@ export function createRouter() {
     }),
   })
 
-  const router = routerWithQueryClient(
-    createTanStackRouter({
-      routeTree,
-      defaultPreload: 'intent',
-      defaultErrorComponent: DefaultCatchBoundary,
-      defaultNotFoundComponent: () => <NotFound />,
-      scrollRestoration: true,
-      context: {
-        queryClient,
-      },
-    }),
+  const router = createTanStackRouter({
+    routeTree,
+    defaultPreload: 'intent',
+    defaultErrorComponent: DefaultCatchBoundary,
+    defaultNotFoundComponent: () => <NotFound />,
+    scrollRestoration: true,
+    context: {
+      queryClient,
+    },
+  })
+  setupRouterSsrQueryIntegration({
+    router,
     queryClient,
-  )
+  })
 
   return router
 }
