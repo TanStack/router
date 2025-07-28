@@ -29,35 +29,6 @@ navigate({
 
 ### Using Link Components
 
-#### Preserving All Search Parameters
-
-Use `search={true}` to keep all current search parameters when navigating:
-
-```tsx
-import { Link } from '@tanstack/react-router'
-
-function Navigation() {
-  return (
-    <nav>
-      {/* Keep all search params when changing routes */}
-      <Link to="/products" search={true}>
-        View Products (Keep Filters)
-      </Link>
-      
-      {/* Same route, keep all search params */}
-      <Link search={true}>
-        Refresh Current Page
-      </Link>
-      
-      {/* Equivalent functional approach */}
-      <Link to="/products" search={(prev) => prev}>
-        View Products (Functional)
-      </Link>
-    </nav>
-  )
-}
-```
-
 #### Basic Search Parameter Updates
 
 Replace all search parameters:
@@ -122,6 +93,35 @@ function Pagination() {
         Clear Category Filter
       </Link>
     </div>
+  )
+}
+```
+
+#### Preserving All Search Parameters
+
+Use `search={true}` to keep all current search parameters when navigating:
+
+```tsx
+import { Link } from '@tanstack/react-router'
+
+function Navigation() {
+  return (
+    <nav>
+      {/* Keep all search params when changing routes */}
+      <Link to="/products" search={true}>
+        View Products (Keep Filters)
+      </Link>
+      
+      {/* Same route, keep all search params */}
+      <Link search={true}>
+        Refresh Current Page
+      </Link>
+      
+      {/* Equivalent functional approach */}
+      <Link to="/products" search={(prev) => prev}>
+        View Products (Functional)
+      </Link>
+    </nav>
   )
 }
 ```
