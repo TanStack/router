@@ -15,7 +15,7 @@ function formatPrice(price: number) {
   }).format(price)
 }
 
-// ✅ Route loaders are ISOMORPHIC (not server-only!)
+// ✅ Route loaders are ISOMORPHIC
 export const Route = createFileRoute('/products')({
   loader: async () => {
     // This runs on server during SSR AND on client during navigation
@@ -25,7 +25,7 @@ export const Route = createFileRoute('/products')({
 })
 ```
 
-**Common misconception**: Route `loader`s are server-only (like Remix). They're not - they're isomorphic.
+**Important**: Route `loader`s are isomorphic - they run on both server and client.
 
 ---
 
