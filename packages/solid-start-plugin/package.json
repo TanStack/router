@@ -70,7 +70,7 @@
   },
   "devDependencies": {
     "vite": "^6.0.0",
-    "vite-plugin-solid": "^2.11.6"
+    "vite-plugin-solid": "^2.11.8"
   },
   "peerDependencies": {
     "vite": ">=6.0.0"
