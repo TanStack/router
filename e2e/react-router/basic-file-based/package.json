@@ -30,6 +30,6 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "combinate": "^1.1.11",
-    "vite": "^6.3.5"
+    "vite": "^7.0.6"
   }
 }

@@ -76,6 +76,6 @@
     "@tanstack/directive-functions-plugin": "workspace:*",
     "esbuild": "^0.25.0",
     "typescript": "^5.7.2",
-    "vite": "^6.3.5"
+    "vite": "^7.0.6"
   }
 }
