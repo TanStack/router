@@ -1848,7 +1848,7 @@ export class RouterCore<
       pendingMatches,
       // If a cached moved to pendingMatches, remove it from cachedMatches
       cachedMatches: s.cachedMatches.filter(
-        (d) => !pendingMatches.find((e) => e.id === d.id),
+        (d) => !pendingMatches.some((e) => e.id === d.id),
       ),
     }))
   }
@@ -1906,14 +1906,14 @@ export class RouterCore<
                     const newMatches = s.pendingMatches || s.matches
 
                     exitingMatches = previousMatches.filter(
-                      (match) => !newMatches.find((d) => d.id === match.id),
+                      (match) => !newMatches.some((d) => d.id === match.id),
                     )
                     enteringMatches = newMatches.filter(
                       (match) =>
-                        !previousMatches.find((d) => d.id === match.id),
+                        !previousMatches.some((d) => d.id === match.id),
                     )
                     stayingMatches = previousMatches.filter((match) =>
-                      newMatches.find((d) => d.id === match.id),
+                      newMatches.some((d) => d.id === match.id),
                     )
 
                     return {
@@ -2107,12 +2107,12 @@ export class RouterCore<
     }
 
     const resolvePreload = (matchId: string) => {
-      return !!(allPreload && !this.state.matches.find((d) => d.id === matchId))
+      return !!(allPreload && !this.state.matches.some((d) => d.id === matchId))
     }
 
     // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
     // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
-    if (!this.isServer && this.state.matches.find((d) => d._forcePending)) {
+    if (!this.isServer && this.state.matches.some((d) => d._forcePending)) {
       triggerOnReady()
     }
 
@@ -2590,7 +2590,7 @@ export class RouterCore<
                       loaderPromise: createControlledPromise<void>(),
                       preload:
                         !!preload &&
-                        !this.state.matches.find((d) => d.id === matchId),
+                        !this.state.matches.some((d) => d.id === matchId),
                     }))
 
                     const runLoader = async () => {
