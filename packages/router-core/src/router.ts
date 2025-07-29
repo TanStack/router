@@ -2862,8 +2862,8 @@ export class RouterCore<
       const isError = d.status === 'error'
       if (isError) return true
 
-      const isStale = Date.now() - d.updatedAt >= gcTime
-      return isStale
+      const gcEligible = Date.now() - d.updatedAt >= gcTime
+      return gcEligible
     }
     this.clearCache({ filter })
   }
