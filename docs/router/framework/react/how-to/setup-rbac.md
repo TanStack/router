@@ -1,3 +1,7 @@
+---
+title: Set Up Role-Based Access Control
+---
+
 # How to Set Up Role-Based Access Control
 
 This guide covers implementing role-based access control (RBAC) and permission-based routing in TanStack Router applications.
