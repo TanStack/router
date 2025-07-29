@@ -30,7 +30,7 @@ Core concept that affects every subsequent pattern in TanStack Start.
 
 ### **2. How to Create Basic Server Functions**
 
-**Priority: Foundation** | **Dependencies: #1** | **Status: 📝 Needed**
+**Priority: Foundation** | **Dependencies: #1** | **Status: ✅ Completed**
 
 **GitHub Issues:** [#4533](https://github.com/TanStack/router/issues/4533) (TypeScript issues)
 
@@ -456,6 +456,7 @@ Core server function concepts before advanced patterns.
 ## **Available Guides**
 
 - ✅ [Write Isomorphic, Client-Only, and Server-Only Code](./write-isomorphic-client-server-code.md) - Understand execution boundaries and control where code runs in TanStack Start applications
+- ✅ [Create Basic Server Functions](./create-basic-server-functions.md) - Learn how to create, validate, and use server functions with full type safety
 - ✅ [Use Environment Variables](./use-environment-variables.md) - Set up and use environment variables securely in TanStack Start applications
 
 ---

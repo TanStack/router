@@ -14,6 +14,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 - ✅ **Guide #8: Setup Testing** - COMPLETED
 - ✅ **Environment Variables: TanStack Router** - COMPLETED in docs/router/framework/react/how-to/use-environment-variables.md
 - ✅ **Environment Variables: TanStack Start** - COMPLETED in docs/start/framework/react/how-to/use-environment-variables.md
+- ✅ **Create Basic Server Functions: TanStack Start** - COMPLETED in docs/start/framework/react/how-to/create-basic-server-functions.md
 - 🔄 **Progressive Search Params Series** - IN PROGRESS
 
 ### 🔄 Progressive Search Params How-To Series (Replaces Guide #10)

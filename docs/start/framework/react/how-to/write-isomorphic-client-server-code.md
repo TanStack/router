@@ -239,14 +239,19 @@ function CurrentTime() {
 
 ---
 
+## Common Next Steps
+
+After understanding isomorphic code patterns, you might want to:
+
+- [Create Basic Server Functions](./create-basic-server-functions.md) - Learn how to create server functions with validation and error handling
+
+<!-- Additional Next Steps (commented until guides exist)
+- [How to Write Type-Safe Server Functions](./write-type-safe-server-functions.md)
+- [How to Use Server Function Middleware](./use-server-function-middleware.md)
+-->
+
 ## Related Resources
 
 - [TanStack Start Server Functions Guide](../server-functions.md)
 - [TanStack Start Middleware Guide](../middleware.md)
 - [TanStack Router SSR Guide](../../../router/framework/react/how-to/setup-ssr.md)
-
-<!-- Next Steps (commented until guides exist)
-- [How to Create Basic Server Functions](./create-basic-server-functions.md)
-- [How to Write Type-Safe Server Functions](./write-type-safe-server-functions.md)
-- [How to Use Server Function Middleware](./use-server-function-middleware.md)
--->

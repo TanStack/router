@@ -1,0 +1,574 @@
+# How to Create Basic Server Functions
+
+Learn how to create, validate, and use server functions in TanStack Start applications. Server functions allow you to run backend logic while maintaining full type safety between client and server.
+
+## Quick Start
+
+```typescript
+// app/functions/hello.ts
+import { createServerFn } from '@tanstack/start'
+import { z } from 'zod'
+
+export const sayHello = createServerFn()
+  .validator(z.object({ name: z.string() }))
+  .handler(async ({ data }) => {
+    // This runs on the server
+    return { message: `Hello, ${data.name}!` }
+  })
+```
+
+```tsx
+// app/routes/index.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { sayHello } from '../functions/hello'
+
+export const Route = createFileRoute('/')({
+  component: HomePage,
+})
+
+function HomePage() {
+  const [result, setResult] = useState('')
+
+  const handleSubmit = async () => {
+    try {
+      const response = await sayHello({ data: { name: 'World' } })
+      setResult(response.message)
+    } catch (error) {
+      console.error('Server function failed:', error)
+    }
+  }
+
+  return (
+    <div>
+      <button onClick={handleSubmit}>Say Hello</button>
+      {result && <p>{result}</p>}
+    </div>
+  )
+}
+```
+
+## Step-by-Step Implementation
+
+### 1. Create Your First Server Function
+
+Create a new file for your server function:
+
+```typescript
+// app/functions/user.ts
+import { createServerFn } from '@tanstack/start'
+
+// Basic server function without validation
+export const getServerTime = createServerFn()
+  .handler(async () => {
+    return {
+      timestamp: new Date().toISOString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    }
+  })
+```
+
+### 2. Add Input Validation
+
+Use validation libraries like Zod or Valibot for type-safe inputs:
+
+#### With Zod
+
+```typescript
+// app/functions/user.ts
+import { createServerFn } from '@tanstack/start'
+import { z } from 'zod'
+
+const CreateUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2),
+  age: z.number().min(13).optional(),
+})
+
+export const createUser = createServerFn()
+  .validator(CreateUserSchema)
+  .handler(async ({ data }) => {
+    // data is fully typed based on the schema
+    const user = {
+      id: Math.random().toString(36),
+      email: data.email,
+      name: data.name,
+      age: data.age,
+      createdAt: new Date().toISOString(),
+    }
+    
+    // Simulate database save
+    console.log('Creating user:', user)
+    
+    return user
+  })
+```
+
+#### With Valibot
+
+```typescript
+// app/functions/user.ts
+import { createServerFn } from '@tanstack/start'
+import { object, string, number, email, minLength, minValue, optional } from 'valibot'
+
+const CreateUserSchema = object({
+  email: string([email()]),
+  name: string([minLength(2)]),
+  age: optional(number([minValue(13)])),
+})
+
+export const createUser = createServerFn()
+  .validator(CreateUserSchema)
+  .handler(async ({ data }) => {
+    // Implementation same as above
+  })
+```
+
+### 3. Handle Different HTTP Methods
+
+Server functions support different HTTP methods:
+
+```typescript
+// app/functions/api.ts
+import { createServerFn } from '@tanstack/start'
+import { z } from 'zod'
+
+// GET request (default)
+export const getUsers = createServerFn({ method: 'GET' })
+  .handler(async () => {
+    return { users: [] }
+  })
+
+// POST request
+export const createUser = createServerFn({ method: 'POST' })
+  .validator(z.object({ name: z.string() }))
+  .handler(async ({ data }) => {
+    return { id: 1, name: data.name }
+  })
+
+// PUT request
+export const updateUser = createServerFn({ method: 'PUT' })
+  .validator(z.object({ 
+    id: z.number(),
+    name: z.string() 
+  }))
+  .handler(async ({ data }) => {
+    return { id: data.id, name: data.name, updated: true }
+  })
+
+// DELETE request
+export const deleteUser = createServerFn({ method: 'DELETE' })
+  .validator(z.object({ id: z.number() }))
+  .handler(async ({ data }) => {
+    return { success: true, deletedId: data.id }
+  })
+```
+
+### 4. Implement Proper Error Handling
+
+Handle errors gracefully in your server functions:
+
+```typescript
+// app/functions/database.ts
+import { createServerFn } from '@tanstack/start'
+import { z } from 'zod'
+
+export class DatabaseError extends Error {
+  constructor(message: string, public code: string) {
+    super(message)
+    this.name = 'DatabaseError'
+  }
+}
+
+export const getUserById = createServerFn()
+  .validator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    try {
+      // Simulate database lookup
+      if (data.id === 'not-found') {
+        throw new DatabaseError('User not found', 'USER_NOT_FOUND')
+      }
+      
+      if (data.id === 'server-error') {
+        throw new DatabaseError('Database connection failed', 'DB_CONNECTION_ERROR')
+      }
+
+      return {
+        id: data.id,
+        name: 'John Doe',
+        email: 'john@example.com',
+      }
+    } catch (error) {
+      if (error instanceof DatabaseError) {
+        // Re-throw custom errors with additional context
+        throw new Error(`Database error: ${error.message} (${error.code})`)
+      }
+      
+      // Handle unexpected errors
+      console.error('Unexpected error in getUserById:', error)
+      throw new Error('Internal server error')
+    }
+  })
+```
+
+### 5. Call Server Functions from Client Components
+
+#### Basic Usage
+
+```tsx
+// app/routes/users.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { createUser, getUserById } from '../functions/database'
+
+export const Route = createFileRoute('/users')({
+  component: UsersPage,
+})
+
+function UsersPage() {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleCreateUser = async () => {
+    setLoading(true)
+    setError('')
+    
+    try {
+      const newUser = await createUser({
+        data: {
+          email: 'user@example.com',
+          name: 'New User',
+          age: 25,
+        }
+      })
+      setUser(newUser)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      <button onClick={handleCreateUser} disabled={loading}>
+        {loading ? 'Creating...' : 'Create User'}
+      </button>
+      
+      {error && <div style={{ color: 'red' }}>Error: {error}</div>}
+      {user && <pre>{JSON.stringify(user, null, 2)}</pre>}
+    </div>
+  )
+}
+```
+
+#### With Form Handling
+
+```tsx
+// app/routes/users/new.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { createUser } from '../../functions/user'
+
+export const Route = createFileRoute('/users/new')({
+  component: NewUserForm,
+})
+
+function NewUserForm() {
+  const [formData, setFormData] = useState({
+    email: '',
+    name: '',
+    age: '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [result, setResult] = useState(null)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSubmitting(true)
+    
+    try {
+      const user = await createUser({
+        data: {
+          email: formData.email,
+          name: formData.name,
+          age: formData.age ? parseInt(formData.age) : undefined,
+        }
+      })
+      setResult(user)
+      setFormData({ email: '', name: '', age: '' })
+    } catch (error) {
+      alert(`Error: ${error.message}`)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label>
+          Email:
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+            required
+          />
+        </label>
+      </div>
+      
+      <div>
+        <label>
+          Name:
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            required
+          />
+        </label>
+      </div>
+      
+      <div>
+        <label>
+          Age (optional):
+          <input
+            type="number"
+            value={formData.age}
+            onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value }))}
+            min="13"
+          />
+        </label>
+      </div>
+      
+      <button type="submit" disabled={submitting}>
+        {submitting ? 'Creating...' : 'Create User'}
+      </button>
+      
+      {result && (
+        <div>
+          <h3>User Created:</h3>
+          <pre>{JSON.stringify(result, null, 2)}</pre>
+        </div>
+      )}
+    </form>
+  )
+}
+```
+
+### 6. File Organization Best Practices
+
+Organize your server functions in a logical structure:
+
+```
+app/
+├── functions/           # Server functions directory
+│   ├── auth.ts         # Authentication functions
+│   ├── users.ts        # User management functions
+│   ├── posts.ts        # Content functions
+│   └── utils.ts        # Shared utilities
+├── routes/             # Route components
+└── utils/              # Client-side utilities
+```
+
+Example organized structure:
+
+```typescript
+// app/functions/auth.ts
+export const login = createServerFn()...
+export const logout = createServerFn()...
+export const register = createServerFn()...
+
+// app/functions/users.ts  
+export const getUsers = createServerFn()...
+export const createUser = createServerFn()...
+export const updateUser = createServerFn()...
+export const deleteUser = createServerFn()...
+
+// app/functions/posts.ts
+export const getPosts = createServerFn()...
+export const createPost = createServerFn()...
+```
+
+## Production Checklist
+
+### Security
+
+- [ ] **Input Validation**: All server functions use proper validation schemas
+- [ ] **Error Handling**: Sensitive information not exposed in error messages
+- [ ] **Authorization**: Access control implemented where needed
+- [ ] **Rate Limiting**: Consider implementing rate limiting for public endpoints
+
+### Performance
+
+- [ ] **Efficient Queries**: Database queries are optimized
+- [ ] **Caching**: Implement caching where appropriate
+- [ ] **Error Boundaries**: Client components handle server function errors gracefully
+- [ ] **Loading States**: UI shows loading indicators during server function calls
+
+### Type Safety
+
+- [ ] **Validation Schemas**: All inputs validated with Zod/Valibot
+- [ ] **Return Types**: Server functions have explicit return types
+- [ ] **Error Types**: Custom error classes for different error scenarios
+- [ ] **Client Integration**: TypeScript correctly infers types in client code
+
+### Testing
+
+- [ ] **Unit Tests**: Server function logic tested in isolation
+- [ ] **Integration Tests**: End-to-end testing of client-server communication
+- [ ] **Error Scenarios**: Error handling paths tested
+- [ ] **Validation Testing**: Input validation edge cases covered
+
+## Common Problems
+
+### Problem: "Cannot read properties of undefined" when calling server functions
+
+**Cause**: Server function not properly imported or called incorrectly.
+
+**Solution**:
+```typescript
+// ❌ Incorrect - missing await
+const result = getUserById({ data: { id: '123' } })
+
+// ✅ Correct - with await
+const result = await getUserById({ data: { id: '123' } })
+
+// ❌ Incorrect - wrong import path
+import { getUserById } from './wrong-path'
+
+// ✅ Correct - proper import path
+import { getUserById } from '../functions/database'
+```
+
+### Problem: Validation errors not being caught properly
+
+**Cause**: Missing error handling or incorrect validation schema.
+
+**Solution**:
+```typescript
+// ❌ Incorrect - validation error not handled
+try {
+  const result = await createUser({ data: { email: 'invalid' } })
+} catch (error) {
+  // This won't catch validation errors properly
+  console.log(error.message)
+}
+
+// ✅ Correct - proper error handling
+try {
+  const result = await createUser({ data: { email: 'invalid' } })
+} catch (error) {
+  if (error.message.includes('validation')) {
+    // Handle validation error
+    setValidationError(error.message)
+  } else {
+    // Handle other errors
+    setGeneralError(error.message)
+  }
+}
+```
+
+### Problem: TypeScript errors with server function types
+
+**Cause**: Missing or incorrect validation schema types.
+
+**Solution**:
+```typescript
+// ❌ Incorrect - schema and handler types don't match
+const updateUser = createServerFn()
+  .validator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    // TypeScript error: data.id is string but treating as number
+    const userId = parseInt(data.id)
+    return { id: userId }
+  })
+
+// ✅ Correct - consistent types
+const updateUser = createServerFn()
+  .validator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    const userId = parseInt(data.id, 10)
+    return { id: userId }
+  })
+```
+
+### Problem: Server function errors not reaching client
+
+**Cause**: Errors being swallowed or not properly thrown.
+
+**Solution**:
+```typescript
+// ❌ Incorrect - error swallowed
+export const riskyFunction = createServerFn()
+  .handler(async () => {
+    try {
+      // risky operation
+      return { success: true }
+    } catch (error) {
+      console.error(error) // Error logged but not thrown
+      return { success: false } // Client doesn't know about error
+    }
+  })
+
+// ✅ Correct - error properly propagated
+export const riskyFunction = createServerFn()
+  .handler(async () => {
+    try {
+      // risky operation
+      return { success: true }
+    } catch (error) {
+      console.error('Server function error:', error)
+      throw new Error('Operation failed. Please try again.')
+    }
+  })
+```
+
+### Problem: Performance issues with large payloads
+
+**Cause**: Sending too much data through server functions.
+
+**Solution**:
+```typescript
+// ❌ Incorrect - sending large objects
+export const processLargeData = createServerFn()
+  .validator(z.object({ 
+    data: z.array(z.object({
+      // Large complex object
+    }))
+  }))
+  .handler(async ({ data }) => {
+    // Processing large payload
+  })
+
+// ✅ Correct - use pagination or streaming
+export const processDataBatch = createServerFn()
+  .validator(z.object({ 
+    batchId: z.string(),
+    offset: z.number(),
+    limit: z.number().max(100)
+  }))
+  .handler(async ({ data }) => {
+    // Process smaller batches
+  })
+```
+
+<!-- ## Common Next Steps
+
+After setting up basic server functions, you might want to:
+
+- [Add middleware to server functions](./use-server-function-middleware.md)
+- [Implement authentication with server functions](./implement-authentication.md)
+- [Deploy server functions to production](./deploy-to-cloudflare.md)
+- [Write type-safe server functions](./write-type-safe-server-functions.md)
+- [Handle redirects in server functions](./handle-redirects-server-functions.md) -->
+
+## Related Resources
+
+- [TanStack Start Server Functions Documentation](../server-functions.md)
+- [Write Isomorphic, Client-Only, and Server-Only Code](./write-isomorphic-client-server-code.md)
+- [Zod Validation Library](https://zod.dev/)
+- [Valibot Validation Library](https://valibot.dev/)
+- [GitHub Issue #4533: Server Function TypeScript Issues](https://github.com/TanStack/router/issues/4533)
