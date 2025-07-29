@@ -98,7 +98,7 @@ response?: 'data' | 'full' | 'raw'
 - From other server functions
 
 > [!WARNING]
-> Server functions cannot be called from API Routes. If you need to share business logic between server functions and API Routes, extract the shared logic into utility functions that can be imported by both.
+> Server functions cannot be called from API Routes. If you need to share business logic between server functions and API Routes, extract the shared logic into utility functions that can be imported by both. See [Environment Functions](../environment-functions.md) for more.
 
 ## Accepting Parameters
 
