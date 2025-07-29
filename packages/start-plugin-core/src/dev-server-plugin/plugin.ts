@@ -22,13 +22,22 @@ export function devServerPlugin(): Plugin {
       // this will prevent vite from injecting middlewares that we don't want
       userConfig.appType = 'custom'
     },
-    configureServer(viteDevServer) {
+    async configureServer(viteDevServer) {
       if (isTest) {
         return
       }
 
-      // upon server restart, reset the injected scripts
-      globalThis.TSS_INJECTED_HEAD_SCRIPTS = undefined
+      // Extract the scripts that Vite plugins would inject into the initial HTML
+      const templateHtml = `<html><head></head><body></body></html>`
+      const transformedHtml = await viteDevServer.transformIndexHtml(
+        '/',
+        templateHtml,
+      )
+      const scripts = extractHtmlScripts(transformedHtml)
+      globalThis.TSS_INJECTED_HEAD_SCRIPTS = scripts
+        .map((script) => script.content ?? '')
+        .join(';')
+
       return () => {
         viteDevServer.middlewares.use(async (req, res, next) => {
           // Create an H3Event to have it passed into the server entry
@@ -50,19 +59,6 @@ export function devServerPlugin(): Plugin {
               throw new Error(
                 `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
               )
-            }
-
-            // Extract the scripts that Vite plugins would inject into the initial HTML
-            if (globalThis.TSS_INJECTED_HEAD_SCRIPTS === undefined) {
-              const templateHtml = `<html><head></head><body></body></html>`
-              const transformedHtml = await viteDevServer.transformIndexHtml(
-                req.url || '/',
-                templateHtml,
-              )
-              const scripts = extractHtmlScripts(transformedHtml)
-              globalThis.TSS_INJECTED_HEAD_SCRIPTS = scripts
-                .map((script) => script.content ?? '')
-                .join(';')
             }
 
             if (!isRunnableDevEnvironment(serverEnv)) {
