@@ -42,7 +42,7 @@ function RootComponent() {
 
 ```tsx
 // routes/products/index.tsx
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
@@ -58,17 +58,14 @@ export const Route = createFileRoute('/products/')({
 })
 
 function ProductsPage() {
-  const localSearch = Route.useSearch()
-  
-  // Access global search parameters from router state
-  const router = useRouter()
-  const globalSearch = router.state.location.search
+  // Route.useSearch() contains both local AND parent search params
+  const search = Route.useSearch()
   
   return (
     <div>
-      <h1>Products (Theme: {globalSearch.theme || 'light'})</h1>
-      <p>Page: {localSearch.page}</p>
-      <p>Category: {localSearch.category}</p>
+      <h1>Products (Theme: {search.theme})</h1>
+      <p>Page: {search.page}</p>
+      <p>Category: {search.category}</p>
     </div>
   )
 }
@@ -166,20 +163,17 @@ export const Route = createFileRoute('/dashboard/')({
 })
 
 function DashboardPage() {
-  const localSearch = Route.useSearch()
-  
-  // Access global search via router context
-  const router = useRouter()
-  const globalSearch = router.state.location.search
+  // Route.useSearch() contains both local AND parent search params
+  const search = Route.useSearch()
   
   return (
     <div>
-      <h1>Dashboard ({globalSearch.theme} theme)</h1>
-      <ViewToggle view={localSearch.view} />
-      <PeriodSelector period={localSearch.period} />
+      <h1>Dashboard ({search.theme} theme)</h1>
+      <ViewToggle view={search.view} />
+      <PeriodSelector period={search.period} />
       <Analytics
-        source={globalSearch.utm_source}
-        campaign={globalSearch.utm_campaign}
+        source={search.utm_source}
+        campaign={search.utm_campaign}
       />
     </div>
   )
@@ -473,18 +467,15 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
 })
 
 function DashboardPage() {
-  // Access parent layout search parameters
-  const router = useRouter()
-  const layoutSearch = router.state.matches
-    .find(match => match.routeId === '/_authenticated')
-    ?.search
+  // Route.useSearch() contains both local AND parent search params
+  const search = Route.useSearch()
   
   return (
     <div>
       <h1>Dashboard</h1>
-      {layoutSearch?.impersonate && (
+      {search.impersonate && (
         <Alert>
-          Currently impersonating: {layoutSearch.impersonate}
+          Currently impersonating: {search.impersonate}
         </Alert>
       )}
       
