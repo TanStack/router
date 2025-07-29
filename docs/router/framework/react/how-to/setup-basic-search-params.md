@@ -418,10 +418,7 @@ After setting up basic search parameters, you might want to:
 
 - [Validate Search Parameters with Schemas](./validate-search-params.md) - Add robust validation with Zod, Valibot, or ArkType
 - [Navigate with Search Parameters](./navigate-with-search-params.md) - Learn to update search params with Links and navigation
-
-<!-- Uncomment when guides are available
-- [Handle Complex Search Parameter Types](./complex-search-param-types.md) - Work with arrays, objects, dates, and nested data
--->
+- [Work with Arrays, Objects, and Dates](./arrays-objects-dates-search-params.md) - Handle arrays, objects, dates, and nested data structures
 
 ## Related Resources
 
