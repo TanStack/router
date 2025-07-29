@@ -11,7 +11,7 @@ This guide covers TanStack Start's execution model and APIs for controlling wher
 function formatPrice(price: number) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'USD',
   }).format(price)
 }
 
@@ -21,7 +21,7 @@ export const Route = createFileRoute('/products')({
     // This runs on server during SSR AND on client during navigation
     const response = await fetch('/api/products')
     return response.json()
-  }
+  },
 })
 ```
 
@@ -33,10 +33,10 @@ export const Route = createFileRoute('/products')({
 
 ### Server-Only APIs
 
-| API | Use Case | Client Behavior |
-|-----|----------|-----------------|
+| API                | Use Case                  | Client Behavior           |
+| ------------------ | ------------------------- | ------------------------- |
 | `createServerFn()` | RPC calls, data mutations | Network request to server |
-| `serverOnly(fn)` | Utility functions | Throws error |
+| `serverOnly(fn)`   | Utility functions         | Throws error              |
 
 ```tsx
 import { createServerFn, serverOnly } from '@tanstack/react-start'
@@ -55,10 +55,10 @@ const getEnvVar = serverOnly(() => process.env.DATABASE_URL)
 
 ### Client-Only APIs
 
-| API | Use Case | Server Behavior |
-|-----|----------|-----------------|
-| `clientOnly(fn)` | Browser utilities | Throws error |
-| `<ClientOnly>` | Components needing browser APIs | Renders fallback |
+| API              | Use Case                        | Server Behavior  |
+| ---------------- | ------------------------------- | ---------------- |
+| `clientOnly(fn)` | Browser utilities               | Throws error     |
+| `<ClientOnly>`   | Components needing browser APIs | Renders fallback |
 
 ```tsx
 import { clientOnly } from '@tanstack/react-start'
@@ -98,8 +98,7 @@ const getDeviceInfo = createIsomorphicFn()
 
 ```tsx
 // createServerFn: RPC pattern - server execution, client callable
-const fetchUser = createServerFn()
-  .handler(async () => await db.users.find())
+const fetchUser = createServerFn().handler(async () => await db.users.find())
 
 // Usage from client component:
 const user = await fetchUser() // ✅ Network request
@@ -139,11 +138,11 @@ const logMessage = createIsomorphicFn()
 // Component works without JS, enhanced with JS
 function SearchForm() {
   const [query, setQuery] = useState('')
-  
+
   return (
     <form action="/search" method="get">
-      <input 
-        name="q" 
+      <input
+        name="q"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -193,7 +192,7 @@ export const Route = createFileRoute('/users')({
     // This runs on BOTH server and client!
     const secret = process.env.SECRET // Exposed to client
     return fetch(`/api/users?key=${secret}`)
-  }
+  },
 })
 
 // ✅ Use server function for server-only operations
@@ -203,7 +202,7 @@ const getUsersSecurely = createServerFn().handler(() => {
 })
 
 export const Route = createFileRoute('/users')({
-  loader: () => getUsersSecurely() // Isomorphic call to server function
+  loader: () => getUsersSecurely(), // Isomorphic call to server function
 })
 ```
 
@@ -218,11 +217,11 @@ function CurrentTime() {
 // ✅ Consistent rendering
 function CurrentTime() {
   const [time, setTime] = useState<string>()
-  
+
   useEffect(() => {
     setTime(new Date().toLocaleString())
   }, [])
-  
+
   return <div>{time || 'Loading...'}</div>
 }
 ```
