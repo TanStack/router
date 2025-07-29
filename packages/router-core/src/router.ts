@@ -2867,7 +2867,11 @@ export class RouterCore<
           : (route.options.gcTime ?? this.options.defaultGcTime)) ??
         5 * 60 * 1000
 
-      return !(d.status !== 'error' && Date.now() - d.updatedAt < gcTime)
+      const isError = d.status === 'error'
+      if (isError) return true
+
+      const isStale = Date.now() - d.updatedAt >= gcTime
+      return isStale
     }
     this.clearCache({ filter })
   }
