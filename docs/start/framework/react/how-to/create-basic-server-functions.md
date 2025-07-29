@@ -555,15 +555,18 @@ export const processDataBatch = createServerFn()
   })
 ```
 
-<!-- ## Common Next Steps
+## Common Next Steps
 
 After setting up basic server functions, you might want to:
 
+- [Write Type-Safe Server Functions](./write-type-safe-server-functions.md) - Optimize TypeScript performance and avoid common type errors
+
+<!-- Additional Next Steps (commented until guides exist)
 - [Add middleware to server functions](./use-server-function-middleware.md)
 - [Implement authentication with server functions](./implement-authentication.md)
 - [Deploy server functions to production](./deploy-to-cloudflare.md)
-- [Write type-safe server functions](./write-type-safe-server-functions.md)
-- [Handle redirects in server functions](./handle-redirects-server-functions.md) -->
+- [Handle redirects in server functions](./handle-redirects-server-functions.md)
+-->
 
 ## Related Resources
 
