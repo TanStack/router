@@ -661,7 +661,7 @@ export type GetMatchFn = (matchId: string) => AnyRouteMatch | undefined
 export type UpdateMatchFn = (
   id: string,
   updater: (match: AnyRouteMatch) => AnyRouteMatch,
-) => AnyRouteMatch
+) => void
 
 export type LoadRouteChunkFn = (route: AnyRoute) => Promise<Array<void>>
 
@@ -2052,16 +2052,11 @@ export class RouterCore<
   }
 
   updateMatch: UpdateMatchFn = (id, updater) => {
-    let updated!: AnyRouteMatch
-    const isPending = this.state.pendingMatches?.find((d) => d.id === id)
-    const isMatched = this.state.matches.find((d) => d.id === id)
-    const isCached = this.state.cachedMatches.find((d) => d.id === id)
-
-    const matchesKey = isPending
+    const matchesKey = this.state.pendingMatches?.some((d) => d.id === id)
       ? 'pendingMatches'
-      : isMatched
+      : this.state.matches.some((d) => d.id === id)
         ? 'matches'
-        : isCached
+        : this.state.cachedMatches.some((d) => d.id === id)
           ? 'cachedMatches'
           : ''
 
@@ -2069,12 +2064,10 @@ export class RouterCore<
       this.__store.setState((s) => ({
         ...s,
         [matchesKey]: s[matchesKey]?.map((d) =>
-          d.id === id ? (updated = updater(d)) : d,
+          d.id === id ? updater(d) : d,
         ),
       }))
     }
-
-    return updated
   }
 
   getMatch: GetMatchFn = (matchId: string) => {
