@@ -10,8 +10,7 @@ import { createLogger } from '../utils'
 import { Queue } from './queue'
 import type { ViteBuilder } from 'vite'
 import type { $Fetch, Nitro } from 'nitropack'
-import type { TanStackStartOutputConfig } from '../plugin'
-import type { Page } from '../schema'
+import type { Page, TanStackStartOutputConfig } from '../schema'
 
 export async function prerender({
   options,

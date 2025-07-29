@@ -1405,6 +1405,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.6.0(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       postcss:
         specifier: ^8.5.1
         version: 8.5.3
@@ -4677,6 +4680,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.6.0(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       tailwindcss:
         specifier: ^4.0.8
         version: 4.1.6
@@ -4784,6 +4790,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.6.0(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.3)
@@ -5132,6 +5141,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.6.0(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -5178,6 +5190,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.6.0(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.3)
@@ -6474,9 +6489,6 @@ importers:
         specifier: ^3.24.2
         version: 3.25.57
     devDependencies:
-      '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
         specifier: 6.3.5
         version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
@@ -6896,9 +6908,6 @@ importers:
       vite:
         specifier: 6.3.5
         version: 6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
-      vite-plugin-solid:
-        specifier: '>=2.11.6'
-        version: 2.11.6(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
     devDependencies:
       esbuild:
         specifier: ^0.25.0

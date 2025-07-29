@@ -58,13 +58,15 @@ npm i @tanstack/react-start @tanstack/react-router vite
 You'll also need React:
 
 ```shell
-npm i react react-dom
+npm i react react-dom @vitejs/plugin-react
 ```
+
+Alternatively, you can also use `@vitejs/plugin-react-oxc` or `@vitejs/plugin-react-swc`.
 
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths @vitejs/plugin-react
+npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths
 ```
 
 ## Update Configuration Files
@@ -84,9 +86,6 @@ We'll then update our `package.json` to use Vite's CLI and set `"type": "module"
 
 Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 
-> [!NOTE]
-> TanStack Start will stop auto-configuring React/Solid Vite plugins. You’ll get full control - choose `@vitejs/plugin-react`, `@vitejs/plugin-react-oxc`, etc. Set `customViteReactPlugin: true` to opt in to this feature right now!
-
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
@@ -100,7 +99,8 @@ export default defineConfig({
   },
   plugins: [
     tsConfigPaths(),
-    tanstackStart({ customViteReactPlugin: true }),
+    tanstackStart(),
+    // react's vite plugin must come after start's vite plugin
     viteReact(),
   ],
 })

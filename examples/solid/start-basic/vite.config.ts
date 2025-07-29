@@ -11,7 +11,7 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    tanstackStart({ customViteSolidPlugin: true }),
+    tanstackStart(),
     viteSolid({ ssr: true }),
   ],
 })

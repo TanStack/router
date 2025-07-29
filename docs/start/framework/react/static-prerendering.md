@@ -13,6 +13,7 @@ TanStack Start can prerender your application to static HTML files, which can th
 // vite.config.ts
 
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [
@@ -53,6 +54,7 @@ export default defineConfig({
         },
       ],
     }),
+    viteReact(),
   ],
 })
 ```

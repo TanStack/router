@@ -1,11 +1,11 @@
 import * as vite from 'vite'
-import type { TanStackStartOutputConfig } from '../plugin'
+import type { TanStackStartOutputConfig } from '../schema'
 
 export function loadEnvPlugin(
   startOpts: TanStackStartOutputConfig,
 ): vite.Plugin {
   return {
-    name: 'tanstack-vite-plugin-nitro-load-env',
+    name: 'tanstack-start-core:load-env',
     enforce: 'pre',
     config(userConfig, envConfig) {
       Object.assign(

@@ -48,11 +48,12 @@ Set the `target` value to `netlify` in your `vite.config.ts` file.
 
 ```ts
 // vite.config.ts
-import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'netlify' })],
+  plugins: [tanstackStart({ target: 'netlify' }), viteSolid({ ssr: true })],
 })
 ```
 
@@ -64,11 +65,12 @@ Deploying your TanStack Start application to Vercel is easy and straightforward.
 
 ```ts
 // vite.config.ts
-import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'vercel' })],
+  plugins: [tanstackStart({ target: 'vercel' }), viteSolid({ ssr: true })],
 })
 ```
 
@@ -84,11 +86,15 @@ Set the `target` value to `cloudflare-pages` in your `vite.config.ts` file.
 
 ```ts
 // vite.config.ts
-import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'cloudflare-module' })],
+  plugins: [
+    tanstackStart({ target: 'cloudflare-module' }),
+    viteSolid({ ssr: true }),
+  ],
 })
 ```
 
@@ -110,11 +116,12 @@ Set the `target` value to `node-server` in your `vite.config.ts` file.
 
 ```ts
 // vite.config.ts
-import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'node-server' })],
+  plugins: [tanstackStart({ target: 'node-server' }), viteSolid({ ssr: true })],
 })
 ```
 
@@ -142,11 +149,12 @@ Set the `target` value to `bun` in your `vite.config.ts` file.
 
 ```ts
 // vite.config.ts
-import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'bun' })],
+  plugins: [tanstackStart({ target: 'bun' }), viteSolid({ ssr: true })],
 })
 ```
 

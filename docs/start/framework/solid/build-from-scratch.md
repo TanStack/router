@@ -59,7 +59,7 @@ npm i @tanstack/solid-start @tanstack/solid-router vite
 You'll also need Solid:
 
 ```shell
-npm i solid-js
+npm i solid-js vite-plugin-solid
 ```
 
 and some TypeScript:
@@ -85,9 +85,6 @@ We'll then update our `package.json` to use Vite's CLI and set `"type": "module"
 
 Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 
-> [!NOTE]
-> TanStack Start will stop auto-configuring React/Solid Vite plugins. You’ll get full control - choose `vite-plugin-solid`. Set `customViteSolidPlugin: true` to opt in to this feature right now!
-
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
@@ -101,7 +98,8 @@ export default defineConfig({
   },
   plugins: [
     tsConfigPaths(),
-    tanstackStart({ customViteSolidPlugin: true }),
+    tanstackStart(),
+    // solid's vite plugin must come after start's vite plugin
     viteSolid({ ssr: true }),
   ],
 })
