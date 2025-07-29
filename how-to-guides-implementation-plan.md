@@ -28,7 +28,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 **Intermediate Level (Common Patterns):**
 
 - ✅ **Search #3: Validate Search Parameters with Schemas** (`validate-search-params.md`) - COMPLETED with comprehensive validation library support
-- ⏳ **Search #4: Handle Complex Search Parameter Types** (`complex-search-param-types.md`) - Test Gap: Arrays, objects, dates
+- ✅ **Search #4: Work with Arrays, Objects, and Dates** (`arrays-objects-dates-search-params.md`) - COMPLETED with comprehensive coverage of arrays, objects, dates, and nested structures
 - ⏳ **Search #5: Share Search Parameters Across Routes** (`share-search-params-across-routes.md`) - Test Coverage: Partial (middleware tests exist)
 
 **Advanced Level (Power User Patterns):**
