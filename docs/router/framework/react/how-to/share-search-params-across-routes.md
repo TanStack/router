@@ -12,7 +12,8 @@ Share search parameters across routes using route context and middleware:
 
 ```tsx
 // routes/__root.tsx
-import { createRootRouteWithContext } from '@tanstack/react-router'
+import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 // Global search parameters shared across all routes
@@ -22,9 +23,7 @@ const globalSearchSchema = z.object({
   debug: z.boolean().default(false),
 })
 
-export const Route = createRootRouteWithContext<{
-  globalSearch: z.infer<typeof globalSearchSchema>
-}>()({
+export const Route = createRootRoute({
   validateSearch: zodValidator(globalSearchSchema),
   component: RootComponent,
 })
@@ -43,14 +42,14 @@ function RootComponent() {
 
 ```tsx
 // routes/products/index.tsx
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
 const productSearchSchema = z.object({
   // Route-specific parameters
   page: z.number().default(1),
   category: z.string().default('all'),
-  // Access global parameters via context
 })
 
 export const Route = createFileRoute('/products/')({
@@ -60,11 +59,14 @@ export const Route = createFileRoute('/products/')({
 
 function ProductsPage() {
   const localSearch = Route.useSearch()
-  const globalSearch = Route.useRouteContext().globalSearch
+  
+  // Access global search parameters from router state
+  const router = useRouter()
+  const globalSearch = router.state.location.search
   
   return (
     <div>
-      <h1>Products (Theme: {globalSearch.theme})</h1>
+      <h1>Products (Theme: {globalSearch.theme || 'light'})</h1>
       <p>Page: {localSearch.page}</p>
       <p>Category: {localSearch.category}</p>
     </div>
