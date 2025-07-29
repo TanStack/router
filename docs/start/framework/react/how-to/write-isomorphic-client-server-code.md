@@ -4,38 +4,64 @@ This guide covers the fundamental concept of execution boundaries in TanStack St
 
 ## Quick Start
 
-TanStack Start applications have three execution contexts:
+TanStack Start provides several APIs to control where code executes:
 
 - **Isomorphic code**: Runs on both server and client
-- **Server-only code**: Runs exclusively on the server
+- **Server-only code**: Runs exclusively on the server  
 - **Client-only code**: Runs exclusively in the browser
 
 ```tsx
-// isomorphic-example.tsx
-import { createServerFn } from '@tanstack/react-start'
+// execution-boundaries-example.tsx
+import { 
+  createServerFn, 
+  serverOnly, 
+  clientOnly, 
+  createIsomorphicFn 
+} from '@tanstack/react-start'
+import { ClientOnly } from '@tanstack/react-router'
 
 // ✅ Isomorphic: Works everywhere
 function formatDate(date: Date) {
   return date.toLocaleDateString()
 }
 
-// ✅ Server-only: Defined with createServerFn
+// ✅ Server-only: serverOnly() helper
+const getServerConfig = serverOnly(() => {
+  return process.env.DATABASE_URL
+})
+
+// ✅ Server-only: createServerFn for RPC
 const getServerTime = createServerFn().handler(async () => {
   return new Date().toISOString()
 })
 
-// ✅ Client-only: Check execution environment
-function getClientInfo() {
-  if (typeof window === 'undefined') {
-    throw new Error('This function only works in the browser')
-  }
-  return {
-    userAgent: window.navigator.userAgent,
-    viewport: { width: window.innerWidth, height: window.innerHeight }
-  }
+// ✅ Client-only: clientOnly() helper
+const trackEvent = clientOnly((event: string) => {
+  if (window.gtag) window.gtag('event', event)
+})
+
+// ✅ Isomorphic: Different implementations per environment
+const getEnvironment = createIsomorphicFn()
+  .server(() => 'server')
+  .client(() => 'client')
+
+// ✅ Client-only: Component wrapper
+function MyComponent() {
+  return (
+    <ClientOnly fallback={<div>Loading...</div>}>
+      <ExpensiveBrowserOnlyComponent />
+    </ClientOnly>
+  )
 }
 
-export { formatDate, getServerTime, getClientInfo }
+export { 
+  formatDate, 
+  getServerConfig, 
+  getServerTime, 
+  trackEvent, 
+  getEnvironment,
+  MyComponent 
+}
 ```
 
 ---
@@ -55,6 +81,47 @@ TanStack Start applications execute in two environments:
    - Has access to DOM, browser APIs, user interactions
    - No access to server-side resources
    - Runs after hydration and during user interactions
+
+### Choosing the Right API
+
+**When to use each execution boundary API:**
+
+| API | Use Case | Behavior |
+|-----|----------|----------|
+| `serverOnly(fn)` | Server utilities, environment access | Throws error on client |
+| `clientOnly(fn)` | Browser APIs, analytics, client interactions | Throws error on server |
+| `createServerFn()` | Remote procedure calls, data mutations | Network request from client |
+| `createIsomorphicFn()` | Different implementations per environment | Executes appropriate version |
+| `<ClientOnly>` | Components that need browser APIs | Renders fallback during SSR |
+| Manual checks | Simple conditional logic | Manual `typeof window` checks |
+
+**Examples:**
+
+```tsx
+// ✅ Use serverOnly() for environment access
+const getApiKey = serverOnly(() => process.env.API_KEY)
+
+// ✅ Use clientOnly() for browser APIs  
+const saveToStorage = clientOnly((key, value) => 
+  localStorage.setItem(key, value)
+)
+
+// ✅ Use createServerFn() for data operations
+const updateUser = createServerFn()
+  .handler(async ({ userId, data }) => {
+    // Database operations
+  })
+
+// ✅ Use createIsomorphicFn() for different implementations
+const getDeviceInfo = createIsomorphicFn()
+  .server(() => ({ type: 'server' }))
+  .client(() => ({ type: 'client', userAgent: navigator.userAgent }))
+
+// ✅ Use ClientOnly for components requiring browser APIs
+<ClientOnly fallback={<StaticChart />}>
+  <InteractiveChart />
+</ClientOnly>
+```
 
 ### Isomorphic vs Universal Code
 
@@ -82,6 +149,39 @@ function formatDateTime(date: Date) {
 ---
 
 ## Writing Server-Only Code
+
+### Using the serverOnly() Helper
+
+The `serverOnly()` helper ensures functions only execute on the server:
+
+```tsx
+// server-only-helpers.ts
+import { serverOnly } from '@tanstack/react-start'
+
+// ✅ Server-only: Function wrapper
+export const getServerConfig = serverOnly(() => {
+  return {
+    databaseUrl: process.env.DATABASE_URL,
+    apiKey: process.env.SECRET_API_KEY
+  }
+})
+
+// ✅ Server-only: With parameters
+export const hashPassword = serverOnly((password: string) => {
+  const bcrypt = require('bcrypt')
+  return bcrypt.hashSync(password, 10)
+})
+
+// ✅ Server-only: Async operations
+export const readServerFile = serverOnly(async (filename: string) => {
+  const fs = await import('node:fs/promises')
+  return fs.readFile(filename, 'utf-8')
+})
+```
+
+**How it works:**
+- On the server: Function executes normally
+- On the client: Throws an error `"serverOnly() functions can only be called on the server!"`
 
 ### Using Server Functions
 
@@ -151,6 +251,81 @@ export async function writeLogFile(message: string) {
 ---
 
 ## Writing Client-Only Code
+
+### Using the clientOnly() Helper
+
+The `clientOnly()` helper ensures functions only execute in the browser:
+
+```tsx
+// client-only-helpers.ts
+import { clientOnly } from '@tanstack/react-start'
+
+// ✅ Client-only: Browser API access
+export const getViewportSize = clientOnly(() => {
+  return {
+    width: window.innerWidth,
+    height: window.innerHeight
+  }
+})
+
+// ✅ Client-only: Local storage operations
+export const saveToStorage = clientOnly((key: string, value: any) => {
+  localStorage.setItem(key, JSON.stringify(value))
+})
+
+// ✅ Client-only: Analytics tracking
+export const trackPageView = clientOnly((page: string) => {
+  if (window.gtag) {
+    window.gtag('config', 'GA_TRACKING_ID', {
+      page_title: page
+    })
+  }
+})
+```
+
+**How it works:**
+- On the client: Function executes normally
+- On the server: Throws an error `"clientOnly() functions can only be called on the client!"`
+
+### Using the ClientOnly Component
+
+The `ClientOnly` component renders children only after hydration:
+
+```tsx
+// components/InteractiveChart.tsx
+import { ClientOnly } from '@tanstack/react-router'
+import { useState } from 'react'
+
+function ExpensiveChart() {
+  const [data, setData] = useState([])
+  
+  // This component needs browser APIs and is expensive to render
+  useEffect(() => {
+    // Browser-only chart library
+    import('chart.js').then(({ Chart }) => {
+      // Initialize chart
+    })
+  }, [])
+  
+  return <canvas id="chart" />
+}
+
+function ChartPlaceholder() {
+  return (
+    <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+      <span>Loading chart...</span>
+    </div>
+  )
+}
+
+export function InteractiveChart() {
+  return (
+    <ClientOnly fallback={<ChartPlaceholder />}>
+      <ExpensiveChart />
+    </ClientOnly>
+  )
+}
+```
 
 ### Browser API Access
 
@@ -244,6 +419,83 @@ export function ClientOnlyComponent() {
 ---
 
 ## Writing Isomorphic Code
+
+### Using createIsomorphicFn()
+
+The `createIsomorphicFn()` helper creates functions with different implementations for server and client:
+
+```tsx
+// isomorphic-functions.ts
+import { createIsomorphicFn } from '@tanstack/react-start'
+
+// ✅ Different implementations per environment
+export const getEnvironmentInfo = createIsomorphicFn()
+  .server(() => ({
+    type: 'server',
+    runtime: process.version,
+    platform: process.platform
+  }))
+  .client(() => ({
+    type: 'client',
+    userAgent: navigator.userAgent,
+    language: navigator.language
+  }))
+
+// ✅ With parameters
+export const formatMessage = createIsomorphicFn()
+  .server((message: string) => `[SERVER]: ${message}`)
+  .client((message: string) => `[CLIENT]: ${message}`)
+
+// ✅ Async operations
+export const getCurrentTime = createIsomorphicFn()
+  .server(async () => {
+    // Server might get time from database
+    return new Date().toISOString()
+  })
+  .client(async () => {
+    // Client gets time from browser
+    return new Date().toISOString()
+  })
+
+// ✅ Server-only implementation (client gets no-op)
+export const logToFile = createIsomorphicFn()
+  .server(async (message: string) => {
+    const fs = await import('node:fs/promises')
+    await fs.appendFile('app.log', `${new Date()}: ${message}\n`)
+  })
+  // No .client() - becomes no-op on client
+
+// ✅ Client-only implementation (server gets no-op)
+export const trackAnalytics = createIsomorphicFn()
+  .client((event: string, data: any) => {
+    if (window.gtag) {
+      window.gtag('event', event, data)
+    }
+  })
+  // No .server() - becomes no-op on server
+```
+
+**Usage in components:**
+
+```tsx
+// components/EnvironmentDisplay.tsx
+export function EnvironmentDisplay() {
+  const [info, setInfo] = useState(null)
+  
+  useEffect(() => {
+    // Works on both server and client with different implementations
+    const envInfo = getEnvironmentInfo()
+    setInfo(envInfo)
+  }, [])
+  
+  return (
+    <div>
+      <h3>Environment Info:</h3>
+      <pre>{JSON.stringify(info, null, 2)}</pre>
+    </div>
+  )
+}
+```
 
 ### Environment Detection
 
@@ -411,6 +663,98 @@ export function useIsomorphicState<T>(
 }
 ```
 
+### Environment-Aware Utilities
+
+Create utilities that work optimally in each environment:
+
+```tsx
+// utils/environment-aware.ts
+import { 
+  createIsomorphicFn, 
+  serverOnly, 
+  clientOnly 
+} from '@tanstack/react-start'
+
+// ✅ Logging with different outputs per environment
+export const logger = createIsomorphicFn()
+  .server((message: string, level: string = 'info') => {
+    // Server: Write to file and console
+    console.log(`[${level.toUpperCase()}]: ${message}`)
+    serverOnly(() => {
+      const fs = require('node:fs')
+      fs.appendFileSync('app.log', `${new Date()}: ${message}\n`)
+    })()
+  })
+  .client((message: string, level: string = 'info') => {
+    // Client: Console and analytics
+    console.log(`[${level.toUpperCase()}]: ${message}`)
+    clientOnly(() => {
+      if (window.gtag) {
+        window.gtag('event', 'log', { level, message })
+      }
+    })()
+  })
+
+// ✅ Performance monitoring per environment  
+export const startTimer = createIsomorphicFn()
+  .server((label: string) => {
+    console.time(label)
+    return () => console.timeEnd(label)
+  })
+  .client((label: string) => {
+    const start = performance.now()
+    return () => {
+      const duration = performance.now() - start
+      console.log(`${label}: ${duration.toFixed(2)}ms`)
+    }
+  })
+
+// ✅ Storage with fallbacks
+export const storage = {
+  get: createIsomorphicFn()
+    .server((key: string) => {
+      // Server: Use file-based storage
+      return serverOnly(() => {
+        const fs = require('node:fs')
+        try {
+          const data = fs.readFileSync('.cache', 'utf-8')
+          return JSON.parse(data)[key]
+        } catch {
+          return null
+        }
+      })()
+    })
+    .client((key: string) => {
+      // Client: Use localStorage
+      return clientOnly(() => {
+        try {
+          return JSON.parse(localStorage.getItem(key) || 'null')
+        } catch {
+          return null
+        }
+      })()
+    }),
+    
+  set: createIsomorphicFn()
+    .server((key: string, value: any) => {
+      return serverOnly(() => {
+        const fs = require('node:fs')
+        let cache = {}
+        try {
+          cache = JSON.parse(fs.readFileSync('.cache', 'utf-8'))
+        } catch {}
+        cache[key] = value
+        fs.writeFileSync('.cache', JSON.stringify(cache))
+      })()
+    })
+    .client((key: string, value: any) => {
+      return clientOnly(() => {
+        localStorage.setItem(key, JSON.stringify(value))
+      })()
+    })
+}
+```
+
 ### Server Function with Client Integration
 
 Combine server functions with client-side logic:
@@ -559,7 +903,10 @@ const getConfig = createServerFn().handler(async () => {
 // ❌ Exposes secret to client bundle
 const API_KEY = process.env.SECRET_API_KEY
 
-// ✅ Keep secrets server-only
+// ✅ Keep secrets server-only with serverOnly()
+const getApiKey = serverOnly(() => process.env.SECRET_API_KEY)
+
+// ✅ Keep secrets server-only with createServerFn()
 const getApiData = createServerFn().handler(async () => {
   const apiKey = process.env.SECRET_API_KEY
   const response = await fetch('https://api.example.com/data', {
@@ -567,6 +914,71 @@ const getApiData = createServerFn().handler(async () => {
   })
   return response.json()
 })
+```
+
+### Incorrect API Usage
+
+**Problem**: Using execution boundary APIs incorrectly.
+
+```tsx
+// ❌ Calling clientOnly function on server will throw
+const badExample = () => {
+  const data = clientOnly(() => localStorage.getItem('key'))()
+  // This crashes during SSR
+}
+
+// ✅ Use conditional execution or ClientOnly component
+const goodExample = () => {
+  const [data, setData] = useState(null)
+  
+  useEffect(() => {
+    const getData = clientOnly(() => localStorage.getItem('key'))
+    setData(getData())
+  }, [])
+  
+  return data
+}
+
+// ❌ Missing client implementation
+const incomplete = createIsomorphicFn()
+  .server(() => 'server only')
+  // No .client() - becomes no-op on client
+
+// ✅ Provide both implementations when needed
+const complete = createIsomorphicFn()
+  .server(() => 'server implementation')
+  .client(() => 'client implementation')
+```
+
+### ClientOnly Component Misuse
+
+**Problem**: Not providing appropriate fallbacks or using incorrectly.
+
+```tsx
+// ❌ No fallback causes layout shift
+<ClientOnly>
+  <ExpensiveComponent />
+</ClientOnly>
+
+// ✅ Provide fallback that matches layout
+<ClientOnly fallback={<ComponentSkeleton />}>
+  <ExpensiveComponent />
+</ClientOnly>
+
+// ❌ Using ClientOnly for simple conditional rendering
+<ClientOnly>
+  {isLoggedIn ? <UserMenu /> : <LoginButton />}
+</ClientOnly>
+
+// ✅ Use useState and useEffect for conditional logic
+const [isClient, setIsClient] = useState(false)
+useEffect(() => setIsClient(true), [])
+
+return isClient ? (
+  isLoggedIn ? <UserMenu /> : <LoginButton />
+) : (
+  <MenuSkeleton />
+)
 ```
 
 ---
