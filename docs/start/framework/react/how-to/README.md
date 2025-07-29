@@ -17,7 +17,7 @@ _Based on GitHub issues analysis and actual user pain points from the TanStack/r
 
 ### **1. How to Write Isomorphic, Client-Only, and Server-Only Code**
 
-**Priority: Foundation** | **Dependencies: None** | **Status: 📝 Needed**
+**Priority: Foundation** | **Dependencies: None** | **Status: ✅ Completed**
 
 Core concept that affects every subsequent pattern in TanStack Start.
 
@@ -396,7 +396,7 @@ Core server function concepts before advanced patterns.
 
 ### **Phase 1: Critical Foundation (Immediate - 4 weeks)**
 
-1. **#1** - Isomorphic/Client/Server Code Boundaries
+1. **#1** - Isomorphic/Client/Server Code Boundaries ✅
 2. **#2** - Basic Server Functions
 3. **#3** - Write Type-Safe Server Functions 🔥
 4. **#4** - Server Function Middleware
@@ -455,6 +455,7 @@ Core server function concepts before advanced patterns.
 
 ## **Available Guides**
 
+- ✅ [Write Isomorphic, Client-Only, and Server-Only Code](./write-isomorphic-client-server-code.md) - Understand execution boundaries and control where code runs in TanStack Start applications
 - ✅ [Use Environment Variables](./use-environment-variables.md) - Set up and use environment variables securely in TanStack Start applications
 
 ---
