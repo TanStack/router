@@ -39,6 +39,10 @@ export function devServerPlugin(): Plugin {
         .join(';')
 
       return () => {
+        // do not install middleware in middlewareMode
+        if (viteDevServer.config.server.middlewareMode) {
+          return
+        }
         viteDevServer.middlewares.use(async (req, res, next) => {
           // Create an H3Event to have it passed into the server entry
           // i.e: event => defineEventHandler(event)
