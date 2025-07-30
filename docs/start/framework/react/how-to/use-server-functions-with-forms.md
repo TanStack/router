@@ -1,6 +1,6 @@
 # How to Use Server Functions with Forms
 
-Learn how to integrate server functions with forms in TanStack Start applications for type-safe, validated form submissions with proper error handling and user feedback.
+Integrate server functions with forms for validated submissions, file uploads, and multi-step workflows.
 
 ## Quick Start
 
