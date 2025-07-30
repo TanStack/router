@@ -2739,6 +2739,10 @@ export class RouterCore<
       })
 
       await Promise.all(matchPromises)
+
+      // TODO: this should absolutely be removed, but right now removing it can cause `head` to not be entirely up to date when `load()` resolves
+      await Promise.resolve()
+
       await triggerOnReady()
     } catch (err) {
       if (isRedirect(err) || isNotFound(err)) {
