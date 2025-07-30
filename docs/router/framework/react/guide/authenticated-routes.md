@@ -171,9 +171,9 @@ This approach can also be used in conjunction with Pathless or Layout Route to p
 
 For detailed, step-by-step implementation guides, see:
 
-- [How to Set Up Basic Authentication](../how-to/setup-authentication.md) - Complete setup with React Context and protected routes
-- [How to Integrate Authentication Providers](../how-to/setup-auth-providers.md) - Use Auth0, Clerk, or Supabase
-- [How to Set Up Role-Based Access Control](../how-to/setup-rbac.md) - Implement permissions and role-based routing
+- [How to Set Up Basic Authentication](../../how-to/setup-authentication.md) - Complete setup with React Context and protected routes
+- [How to Integrate Authentication Providers](../../how-to/setup-auth-providers.md) - Use Auth0, Clerk, or Supabase
+- [How to Set Up Role-Based Access Control](../../how-to/setup-rbac.md) - Implement permissions and role-based routing
 
 ## Examples
 
