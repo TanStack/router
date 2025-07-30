@@ -1,6 +1,6 @@
 # How to Write Type-Safe Server Functions
 
-Optimize TypeScript performance and avoid common type errors when building server functions in TanStack Start. This guide focuses on advanced TypeScript patterns and performance optimizations.
+Optimize TypeScript performance and avoid "Type instantiation is excessively deep" errors in server functions.
 
 ## Quick Start
 

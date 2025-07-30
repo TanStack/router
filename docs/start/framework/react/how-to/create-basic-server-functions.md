@@ -1,6 +1,6 @@
 # How to Create Basic Server Functions
 
-Learn how to create, validate, and use server functions in TanStack Start applications. Server functions allow you to run backend logic while maintaining full type safety between client and server.
+Create and use server functions with validation, error handling, and client integration patterns.
 
 ## Quick Start
 
@@ -124,62 +124,33 @@ export const createUser = createServerFn()
   })
 ```
 
-### 3. Handle Different HTTP Methods
+### 3. HTTP Methods
 
-Server functions support GET and POST methods (POST is the default):
+Server functions support GET and POST (POST is default):
 
 ```typescript
-// app/functions/api.ts
-import { createServerFn } from '@tanstack/start'
-import { z } from 'zod'
-
-// POST request (default - no need to specify)
+// POST (default)
 export const createUser = createServerFn()
   .validator(z.object({ name: z.string() }))
   .handler(async ({ data }) => {
     return { id: 1, name: data.name }
   })
 
-// POST request (explicit)
-export const updateUser = createServerFn({ method: 'POST' })
-  .validator(z.object({ 
-    id: z.number(),
-    name: z.string() 
-  }))
-  .handler(async ({ data }) => {
-    return { id: data.id, name: data.name, updated: true }
-  })
-
-// GET request
-export const getUsers = createServerFn({ method: 'GET' })
-  .handler(async () => {
-    return { users: [] }
-  })
-
-// GET request with query parameters
+// GET with query parameters
 export const getUserById = createServerFn({ method: 'GET' })
   .validator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
-    // data comes from query parameters for GET requests
     return { id: data.id, name: 'John Doe' }
   })
 ```
 
 
 
-### 4. Call Server Functions from Client Components
-
-#### Basic Usage
+### 4. Client Integration
 
 ```tsx
-// app/routes/users.tsx
-import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { createUser } from '../functions/user'
-
-export const Route = createFileRoute('/users')({
-  component: UsersPage,
-})
 
 function UsersPage() {
   const [user, setUser] = useState(null)
@@ -192,11 +163,7 @@ function UsersPage() {
     
     try {
       const newUser = await createUser({
-        data: {
-          email: 'user@example.com',
-          name: 'New User',
-          age: 25,
-        }
+        data: { email: 'user@example.com', name: 'New User', age: 25 }
       })
       setUser(newUser)
     } catch (err) {
@@ -211,7 +178,6 @@ function UsersPage() {
       <button onClick={handleCreateUser} disabled={loading}>
         {loading ? 'Creating...' : 'Create User'}
       </button>
-      
       {error && <div style={{ color: 'red' }}>Error: {error}</div>}
       {user && <pre>{JSON.stringify(user, null, 2)}</pre>}
     </div>
@@ -221,38 +187,20 @@ function UsersPage() {
 
 
 
-### 5. File Organization Best Practices
-
-Organize your server functions in a logical structure:
+### 5. File Organization
 
 ```
-app/
-├── functions/           # Server functions directory
-│   ├── auth.ts         # Authentication functions
-│   ├── users.ts        # User management functions
-│   ├── posts.ts        # Content functions
-│   └── utils.ts        # Shared utilities
-├── routes/             # Route components
-└── utils/              # Client-side utilities
+app/functions/
+├── auth.ts         # Authentication functions
+├── users.ts        # User management
+└── posts.ts        # Content functions
 ```
-
-Example organized structure:
 
 ```typescript
-// app/functions/auth.ts
-export const login = createServerFn()...
-export const logout = createServerFn()...
-export const register = createServerFn()...
-
 // app/functions/users.ts  
 export const getUsers = createServerFn()...
 export const createUser = createServerFn()...
 export const updateUser = createServerFn()...
-export const deleteUser = createServerFn()...
-
-// app/functions/posts.ts
-export const getPosts = createServerFn()...
-export const createPost = createServerFn()...
 ```
 
 ## Production Checklist
