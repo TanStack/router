@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-start-client",
-  "version": "1.128.0",
+  "version": "1.130.8",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -25,7 +25,7 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test": "pnpm test:deps && pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
     "test:unit": "vitest",
     "test:unit:dev": "vitest --watch",
     "test:eslint": "eslint ./src",

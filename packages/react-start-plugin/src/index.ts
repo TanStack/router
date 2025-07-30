@@ -1,5 +1,7 @@
+import { fileURLToPath } from 'node:url'
 import viteReact from '@vitejs/plugin-react'
 import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
+import path from 'pathe'
 import { getTanStackStartOptions } from './schema'
 import type { TanStackStartInputConfig, WithReactPlugin } from './schema'
 import type { PluginOption } from 'vite'
@@ -26,7 +28,38 @@ export function TanStackStartVitePlugin(
     )
   }
 
+  const isInsideRouterMonoRepo = (() => {
+    const currentDir = path.dirname(fileURLToPath(import.meta.url))
+    return path.basename(path.resolve(currentDir, '../../../')) === 'packages'
+  })()
+
   return [
+    {
+      name: 'tanstack-react-start:config',
+      configEnvironment() {
+        return {
+          resolve: {
+            dedupe: ['react', 'react-dom', '@tanstack/react-router'],
+
+            external: isInsideRouterMonoRepo
+              ? ['@tanstack/react-router', '@tanstack/react-router-devtools']
+              : undefined,
+          },
+
+          optimizeDeps: {
+            exclude: ['@tanstack/react-router-devtools'],
+            include: [
+              'react',
+              'react/jsx-runtime',
+              'react/jsx-dev-runtime',
+              'react-dom',
+              'react-dom/client',
+              '@tanstack/react-router',
+            ],
+          },
+        }
+      },
+    },
     TanStackStartVitePluginCore(
       {
         framework: 'react',
@@ -66,6 +99,15 @@ import { createRouter } from '${ctx.routerFilepath}';
 export default createStartHandler({
   createRouter,
 })(defaultStreamHandler);`
+        },
+        crawlPackages(opts) {
+          if (opts.name === '@tanstack/react-router-devtools') {
+            return 'exclude'
+          }
+          if ('react' in opts.peerDependencies) {
+            return 'include'
+          }
+          return undefined
         },
       },
       options,

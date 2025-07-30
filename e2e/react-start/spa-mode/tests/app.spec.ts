@@ -1,12 +1,13 @@
-import { expect, Page } from '@playwright/test'
+import { expect } from '@playwright/test'
 import { test } from './fixture'
+import type { Page } from '@playwright/test'
 
 async function runTest(
   page: Page,
   expectedData: {
     root: 'server' | 'client'
-    posts: 'client'
-    postId: 'client'
+    posts: 'server' | 'client'
+    postId: 'server' | 'client'
   },
 ) {
   // wait for page to be loaded by waiting for the leaf route to be rendered
@@ -16,10 +17,10 @@ async function runTest(
   await Promise.all(
     Object.entries(expectedData).map(async ([route, expectedData]) => {
       await expect(page.getByTestId(`${route}-loader`)).toContainText(
-        expectedData!,
+        expectedData,
       )
       await expect(page.getByTestId(`${route}-context`)).toContainText(
-        expectedData!,
+        expectedData,
       )
     }),
   )
@@ -27,12 +28,12 @@ async function runTest(
   await expect(page.getByTestId('router-status')).toContainText('idle')
 }
 test.describe('SPA mode', () => {
-  test(`directly visiting /posts/1`, async ({ page }) => {
+  test(`directly visiting prerendered /posts/1`, async ({ page }) => {
     await page.goto('/posts/1')
     await runTest(page, {
       root: 'server',
-      posts: 'client',
-      postId: 'client',
+      posts: 'server',
+      postId: 'server',
     })
   })
 

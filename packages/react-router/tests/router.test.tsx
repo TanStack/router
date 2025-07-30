@@ -1034,8 +1034,8 @@ describe('router rendering stability', () => {
 
     await act(() => fireEvent.click(links.foo3bar1))
     await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
-    await check('barId', { value: '1', mountCount: 1 }, mountMocks),
-      await act(() => fireEvent.click(links.foo3bar2))
+    await check('barId', { value: '1', mountCount: 1 }, mountMocks)
+    await act(() => fireEvent.click(links.foo3bar2))
     await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
     await check('barId', { value: '2', mountCount: 1 }, mountMocks)
   })
@@ -1814,5 +1814,46 @@ describe('does not strip search params if search validation fails', () => {
     await act(() => render(<RouterProvider router={router} />))
 
     expect(window.location.search).toBe('?root=hello')
+  })
+})
+
+describe('statusCode reset on navigation', () => {
+  it('should reset statusCode to 200 when navigating from 404 to valid route', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home</div>,
+    })
+
+    const validRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/valid',
+      component: () => <div>Valid Route</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, validRoute])
+    const router = createRouter({ routeTree, history })
+
+    render(<RouterProvider router={router} />)
+
+    expect(router.state.statusCode).toBe(200)
+
+    await act(() => router.navigate({ to: '/' }))
+    expect(router.state.statusCode).toBe(200)
+
+    await act(() => router.navigate({ to: '/non-existing' }))
+    expect(router.state.statusCode).toBe(404)
+
+    await act(() => router.navigate({ to: '/valid' }))
+    expect(router.state.statusCode).toBe(200)
+
+    await act(() => router.navigate({ to: '/another-non-existing' }))
+    expect(router.state.statusCode).toBe(404)
   })
 })

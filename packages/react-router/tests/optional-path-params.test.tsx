@@ -143,6 +143,237 @@ describe('React Router - Optional Path Parameters', () => {
         expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
       },
     )
+
+    it.each([
+      {
+        path: '/',
+        expectedLocale: 'en' as const,
+      },
+      {
+        path: '/en',
+        expectedLocale: 'en' as const,
+      },
+      {
+        path: '/fr',
+        expectedLocale: 'fr' as const,
+      },
+    ])(
+      'should correctly render matches with and without optional parameter',
+      async ({ path, expectedLocale }) => {
+        const content = {
+          en: {
+            title: 'About Us',
+            description: 'Learn more about our company.',
+          },
+          fr: {
+            title: 'À Propos',
+            description: 'En savoir plus sur notre entreprise.',
+          },
+          es: {
+            title: 'Acerca de',
+            description: 'Conoce más sobre nuestra empresa.',
+          },
+        } as const
+
+        const rootRoute = createRootRoute()
+        const localeRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/{-$locale}',
+          beforeLoad: ({ params }) => {
+            const currentLocale = (params.locale ||
+              'en') as keyof typeof content
+
+            return {
+              content: content[currentLocale],
+            }
+          },
+        })
+
+        const indexRoute = createRoute({
+          getParentRoute: () => localeRoute,
+          path: '/',
+          component: () => {
+            const { content } = indexRoute.useRouteContext()
+            return (
+              <div data-testid="index-content">
+                <h1 data-testid="index-title">{content.title}</h1>
+                <p data-testid="index-description">{content.description}</p>
+              </div>
+            )
+          },
+        })
+
+        window.history.replaceState({}, '', path)
+
+        const router = createRouter({
+          routeTree: rootRoute.addChildren([
+            localeRoute.addChildren([indexRoute]),
+          ]),
+        })
+
+        render(<RouterProvider router={router} />)
+        await act(() => router.load())
+
+        await screen.findByTestId('index-content')
+        const titleElement = screen.getByTestId('index-title')
+        const descriptionElement = screen.getByTestId('index-description')
+        expect(titleElement).toHaveTextContent(content[expectedLocale].title)
+        expect(descriptionElement).toHaveTextContent(
+          content[expectedLocale].description,
+        )
+      },
+    )
+  })
+
+  describe('required and optional parameters on the same level', () => {
+    async function setupTestRouter() {
+      const rootRoute = createRootRoute()
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <div data-testid="index-route-component">
+              <h1>index</h1>
+              <Link
+                data-testid="reports-optional-param-link"
+                params={{ adminLevelId: 'asdf' }}
+                to="/admin-levels/{-$adminLevelId}/reports"
+              >
+                navigate to reports with optional param
+              </Link>
+            </div>
+          )
+        },
+      })
+
+      const adminLevelsRoutes = createRoute({
+        getParentRoute: () => rootRoute,
+
+        path: 'admin-levels',
+        component: () => (
+          <div data-testid="admin-levels-route-component">
+            <h1>admin-levels</h1>
+            <Outlet />
+          </div>
+        ),
+      })
+
+      const requiredParamRoute = createRoute({
+        getParentRoute: () => adminLevelsRoutes,
+        path: '$adminLevelId',
+        component: () => (
+          <div data-testid="admin-levels-route-required-param-route-component">
+            <h1>Required Param Route</h1>
+            <Outlet />
+          </div>
+        ),
+      })
+
+      const requiredParamIndexRoute = createRoute({
+        getParentRoute: () => requiredParamRoute,
+        path: '/',
+        component: () => (
+          <div data-testid="admin-levels-route-required-param-index-route-component">
+            <h1>Required Param Route Index</h1>
+          </div>
+        ),
+      })
+
+      const optionalParamRoute = createRoute({
+        getParentRoute: () => adminLevelsRoutes,
+        path: '{-$adminLevelId}',
+        component: () => (
+          <div data-testid="admin-levels-route-optional-param-route-component">
+            <h1>Optional Param Route</h1>
+            <Outlet />
+          </div>
+        ),
+      })
+
+      const reportsRoute = createRoute({
+        getParentRoute: () => optionalParamRoute,
+        path: 'reports',
+        component: () => (
+          <div data-testid="reports-route-component">
+            <h1>Reports</h1>
+            <Link
+              data-testid="navigate-to-required-param-link"
+              to="/admin-levels/$adminLevelId"
+              params={{ adminLevelId: 'asdf' }}
+            >
+              navigate to required param route
+            </Link>
+            <Outlet />
+          </div>
+        ),
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([
+          indexRoute,
+          adminLevelsRoutes.addChildren([
+            requiredParamRoute.addChildren([requiredParamIndexRoute]),
+            optionalParamRoute.addChildren([reportsRoute]),
+          ]),
+        ]),
+      })
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      return router
+    }
+
+    it('direct visit', async () => {
+      window.history.replaceState({}, '', 'admin-levels/asdf')
+      await setupTestRouter()
+
+      expect(
+        await screen.findByTestId(
+          'admin-levels-route-required-param-route-component',
+        ),
+      ).toBeInTheDocument()
+      expect(
+        await screen.findByTestId(
+          'admin-levels-route-required-param-index-route-component',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('client-side navigation', async () => {
+      window.history.replaceState({}, '', '/')
+
+      await setupTestRouter()
+
+      expect(
+        await screen.findByTestId('index-route-component'),
+      ).toBeInTheDocument()
+      const reportsLink = await screen.findByTestId(
+        'reports-optional-param-link',
+      )
+      fireEvent.click(reportsLink)
+
+      expect(
+        await screen.findByTestId('reports-route-component'),
+      ).toBeInTheDocument()
+      const requiredParamLink = await screen.findByTestId(
+        'navigate-to-required-param-link',
+      )
+      fireEvent.click(requiredParamLink)
+
+      expect(
+        await screen.findByTestId(
+          'admin-levels-route-required-param-route-component',
+        ),
+      ).toBeInTheDocument()
+
+      expect(
+        await screen.findByTestId(
+          'admin-levels-route-required-param-index-route-component',
+        ),
+      ).toBeInTheDocument()
+    })
   })
 
   describe('Link component with optional parameters', () => {
