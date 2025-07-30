@@ -75,6 +75,7 @@ vite.config.ts.timestamp_*
 # Handling VSCode settings
 /.vscode/
 !/examples/react/**/.vscode/settings.json
+!/examples/react/**/.vscode/mcp.json
 
 **/llms
 
