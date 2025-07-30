@@ -68,16 +68,11 @@ describe('ssr scripts', () => {
     render(<RouterProvider router={router} />)
     await act(() => router.load())
 
-    await waitFor(
-      () => {
-        expect(router.state.matches.map((d) => d.headScripts).flat(1)).toEqual([
-          { src: 'script.js' },
-          { src: 'script2.js' },
-          { src: 'script3.js' },
-        ])
-      },
-      { interval: 50, timeout: 200 },
-    )
+    expect(router.state.matches.map((d) => d.headScripts).flat(1)).toEqual([
+      { src: 'script.js' },
+      { src: 'script2.js' },
+      { src: 'script3.js' },
+    ])
   })
 
   test('excludes `undefined` script values', async () => {
