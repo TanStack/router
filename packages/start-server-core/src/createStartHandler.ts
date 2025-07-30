@@ -20,6 +20,7 @@ import { handleServerAction } from './server-functions-handler'
 import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
 
+import { HEADERS } from './constants'
 import type {
   AnyServerRouteWithTypes,
   ServerRouteMethodHandlerFn,
@@ -123,9 +124,19 @@ export function createStartHandler<TRouter extends AnyRouter>({
       })
 
       // Update the client-side router with the history
+      const isPrerendering = process.env.TSS_PRERENDERING === 'true'
+      // env var is set during dev is SPA mode is enabled
+      let isShell = process.env.TSS_SHELL === 'true'
+      if (isPrerendering && !isShell) {
+        // only read the shell header if we are prerendering
+        // to avoid runtime behavior changes by injecting this header
+        // the header is set by the prerender plugin
+        isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
+      }
       router.update({
         history,
-        isShell: process.env.TSS_SPA_MODE === 'true',
+        isShell,
+        isPrerendering,
       })
 
       const response = await (async () => {

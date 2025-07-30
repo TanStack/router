@@ -63,6 +63,7 @@ export function Matches() {
 }
 
 function MatchesInner() {
+  const router = useRouter()
   const matchId = useRouterState({
     select: (s) => {
       return s.matches[0]?.id
@@ -73,21 +74,28 @@ function MatchesInner() {
     select: (s) => s.loadedAt,
   })
 
+  const matchComponent = () =>
+    matchId() ? <Match matchId={matchId()!} /> : null
+
   return (
     <matchContext.Provider value={matchId}>
-      <CatchBoundary
-        getResetKey={() => resetKey()}
-        errorComponent={ErrorComponent}
-        onCatch={(error) => {
-          warning(
-            false,
-            `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-          )
-          warning(false, error.message || error.toString())
-        }}
-      >
-        {matchId() ? <Match matchId={matchId()!} /> : null}
-      </CatchBoundary>
+      {router.options.disableGlobalCatchBoundary ? (
+        matchComponent()
+      ) : (
+        <CatchBoundary
+          getResetKey={() => resetKey()}
+          errorComponent={ErrorComponent}
+          onCatch={(error) => {
+            warning(
+              false,
+              `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+            )
+            warning(false, error.message || error.toString())
+          }}
+        >
+          {matchComponent()}
+        </CatchBoundary>
+      )}
     </matchContext.Provider>
   )
 }
