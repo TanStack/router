@@ -400,6 +400,23 @@ function contractTree(tree: RootNode) {
  * ```
  * if (a) return route1;
  * ```
+ * 
+ * TODO: this could be improved by
+ * - looking at length covering checks
+ *   ```
+ *   if (l >= 2 && a) return route1;
+ *   if (l === 2 && a) return route2; // this is unreachable
+ *   ```
+ * - looking recursively through previous siblings of the parent, not just previous siblings in the same parent
+ *   ```
+ *   if (a) {
+ *     if (b) return route1;
+ *   }
+ *   if (c) return route2;
+ *   if (a) {
+ *     if (b && c) return route3; // this is unreachable
+ *   }
+ *   ```
  */
 function pruneTree(tree: RootNode) {
   const stack: Array<RootNode | BranchNode> = [tree]
@@ -410,8 +427,7 @@ function pruneTree(tree: RootNode) {
 
       for (let j = 0; j < i; j++) {
         const sibling = node.children[j]!
-        if (sibling.type !== 'leaf') continue // only a leaf node is guaranteed to return if its conditions are met
-        const currentIsUnreachable = sibling.conditions.every((c) => child.conditions.some((sc) => sc.key === c.key))
+        const currentIsUnreachable = flattenConditions(sibling).some(variant => variant.every((c) => child.conditions.some((sc) => sc.key === c.key)))
         if (currentIsUnreachable) {
           node.children.splice(i, 1)
           i -= 1
@@ -423,6 +439,21 @@ function pruneTree(tree: RootNode) {
       stack.push(child)
     }
   }
+}
+
+/**
+ * Returns a list of all sets of conditions that end up with a match from the given node.
+ */
+function flattenConditions(node: LeafNode | BranchNode): Array<Array<Condition>> {
+  if (node.type === 'leaf') return [node.conditions]
+  const conditions: Array<Array<Condition>> = []
+  for (const child of node.children) {
+    const variants = flattenConditions(child)
+    for (const variant of variants) {
+      conditions.push([...node.conditions, ...variant])
+    }
+  }
+  return conditions
 }
 
 function printTree(node: RootNode | BranchNode | LeafNode) {

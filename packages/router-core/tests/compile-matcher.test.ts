@@ -269,7 +269,6 @@ describe('work in progress', () => {
             return ["/momomo/{-$one}/$two", params({ one: s2, two: s3 }, 4)];
           if (length(3)) return ["/momomo/{-$one}/$two", params({ two: s2 }, 3)];
         }
-        if (length(3) && sc1 === "a") return ["/a/{-$slug}", params({ slug: s2 }, 3)];
       }
       if (l >= 2) {
         if (length(2) && sc1 === "a") return ["/a/{-$slug}", params({}, 2)];
