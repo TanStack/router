@@ -937,25 +937,18 @@ describe('React Router - Optional Path Parameters', () => {
             return (
               <div>
                 <h1>Rooms</h1>
-                <div data-testid="locale-param">
-                  {locale ?? 'undefined'}
-                </div>
-                <div data-testid="rooms-param">
-                  {rooms ?? 'undefined'}
-                </div>
+                <div data-testid="locale-param">{locale ?? 'undefined'}</div>
+                <div data-testid="rooms-param">{rooms ?? 'undefined'}</div>
                 <Outlet />
               </div>
             )
           },
         })
 
-
         window.history.replaceState({}, '', path)
 
         const router = createRouter({
-          routeTree: rootRoute.addChildren([
-            roomsRoute
-          ]),
+          routeTree: rootRoute.addChildren([roomsRoute]),
         })
 
         render(<RouterProvider router={router} />)
