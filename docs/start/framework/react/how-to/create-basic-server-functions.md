@@ -146,14 +146,87 @@ export const getUserById = createServerFn({ method: 'GET' })
 
 
 
-### 4. Client Integration
+### 4. Using Server Functions in Loaders
+
+```tsx
+// app/functions/users.ts
+export const getUsers = createServerFn({ method: 'GET' })
+  .handler(async () => {
+    return await db.users.findMany()
+  })
+
+export const getUserById = createServerFn({ method: 'GET' })
+  .validator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    const user = await db.users.findById(data.id)
+    if (!user) throw new Error('User not found')
+    return user
+  })
+```
+
+```tsx
+// app/routes/users/index.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { getUsers } from '../../functions/users'
+
+export const Route = createFileRoute('/users/')({
+  loader: async () => {
+    const users = await getUsers()
+    return { users }
+  },
+  component: UsersPage,
+})
+
+function UsersPage() {
+  const { users } = Route.useLoaderData()
+  
+  return (
+    <div>
+      <h1>Users</h1>
+      {users.map(user => (
+        <div key={user.id}>
+          <h2>{user.name}</h2>
+          <p>{user.email}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+```tsx
+// app/routes/users/$userId.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { getUserById } from '../../functions/users'
+
+export const Route = createFileRoute('/users/$userId')({
+  loader: async ({ params }) => {
+    const user = await getUserById({ data: { id: params.userId } })
+    return { user }
+  },
+  component: UserDetail,
+})
+
+function UserDetail() {
+  const { user } = Route.useLoaderData()
+  
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>Email: {user.email}</p>
+      <p>Created: {new Date(user.createdAt).toLocaleDateString()}</p>
+    </div>
+  )
+}
+```
+
+### 5. Using Server Functions in Client Components
 
 ```tsx
 import { useState } from 'react'
-import { createUser } from '../functions/user'
+import { createUser } from '../functions/users'
 
-function UsersPage() {
-  const [user, setUser] = useState(null)
+function CreateUserForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -162,10 +235,10 @@ function UsersPage() {
     setError('')
     
     try {
-      const newUser = await createUser({
+      await createUser({
         data: { email: 'user@example.com', name: 'New User', age: 25 }
       })
-      setUser(newUser)
+      // Optionally refresh or navigate
     } catch (err) {
       setError(err.message)
     } finally {
@@ -179,7 +252,6 @@ function UsersPage() {
         {loading ? 'Creating...' : 'Create User'}
       </button>
       {error && <div style={{ color: 'red' }}>Error: {error}</div>}
-      {user && <pre>{JSON.stringify(user, null, 2)}</pre>}
     </div>
   )
 }
@@ -187,7 +259,7 @@ function UsersPage() {
 
 
 
-### 5. File Organization
+### 6. File Organization
 
 ```
 app/functions/
