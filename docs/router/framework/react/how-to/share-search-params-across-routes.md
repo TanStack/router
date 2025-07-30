@@ -37,7 +37,7 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   const { theme, lang, debug } = Route.useSearch()
-  
+
   return (
     <div className={`app theme-${theme} lang-${lang}`}>
       {debug && <DebugPanel />}
@@ -66,7 +66,7 @@ export const Route = createFileRoute('/products/')({
 function ProductsPage() {
   // Contains both local (page, category) AND inherited (theme, lang, debug) parameters
   const search = Route.useSearch()
-  
+
   return (
     <div>
       <h1>Products (Theme: {search.theme})</h1>
@@ -100,7 +100,7 @@ export const Route = createFileRoute('/_authenticated')({
 
 function AuthenticatedLayout() {
   const search = Route.useSearch()
-  
+
   return (
     <div className="authenticated-layout">
       {search.sidebar && <Sidebar />}
@@ -108,9 +108,7 @@ function AuthenticatedLayout() {
         {search.notifications && <NotificationBar />}
         <Outlet />
       </main>
-      {search.impersonate && (
-        <ImpersonationBanner user={search.impersonate} />
-      )}
+      {search.impersonate && <ImpersonationBanner user={search.impersonate} />}
     </div>
   )
 }
@@ -127,7 +125,7 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
 function DashboardPage() {
   // Contains inherited auth parameters (impersonate, sidebar, notifications)
   const search = Route.useSearch()
-  
+
   return (
     <div>
       <h1>Dashboard</h1>
@@ -143,16 +141,19 @@ function DashboardPage() {
 ## Common Use Cases
 
 **Global Application Settings:**
+
 - Theme, language, timezone
 - Debug flags, feature toggles
 - Analytics tracking (UTM parameters)
 
 **Section-Specific State:**
+
 - Authentication context (user role, impersonation)
 - Layout preferences (sidebar, density)
 - Workspace or organization context
 
 **Persistent UI State:**
+
 - Modal visibility, drawer state
 - Filter presets, view modes
 - Accessibility preferences
