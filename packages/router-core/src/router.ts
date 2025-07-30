@@ -2681,9 +2681,8 @@ export class RouterCore<
                 // Do nothing
               } else if (loaderShouldRunAsync && !sync) {
                 loaderIsRunningAsync = true
-                ;(async () => {
-                  try {
-                    await runLoader()
+                runLoader()
+                  .then(() => {
                     const { loaderPromise, loadPromise } =
                       this.getMatch(matchId)!
                     loaderPromise?.resolve()
@@ -2692,12 +2691,13 @@ export class RouterCore<
                       ...prev,
                       loaderPromise: undefined,
                     }))
-                  } catch (err) {
+                  })
+                  .catch((err) => {
                     if (isRedirect(err)) {
-                      await this.navigate(err.options)
+                      return this.navigate(err.options)
                     }
-                  }
-                })()
+                    return
+                  })()
               } else if (
                 status !== 'success' ||
                 (loaderShouldRunAsync && sync)
