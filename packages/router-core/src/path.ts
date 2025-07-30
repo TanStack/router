@@ -811,6 +811,9 @@ function isMatch(
               futureRouteSegment?.type === SEGMENT_TYPE_PARAM ||
               futureRouteSegment?.type === SEGMENT_TYPE_WILDCARD
             ) {
+              if (baseSegments.length < routeSegments.length) {
+                shouldMatchOptional = false
+              }
               break
             }
           }
