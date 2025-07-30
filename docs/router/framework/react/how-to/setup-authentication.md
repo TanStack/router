@@ -1,7 +1,3 @@
----
-title: Set Up Basic Authentication and Protected Routes
----
-
 # How to Set Up Basic Authentication and Protected Routes
 
 This guide covers implementing basic authentication patterns and protecting routes in TanStack Router applications.

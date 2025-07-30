@@ -1,7 +1,3 @@
----
-title: Set Up Authentication Providers
----
-
 # How to Integrate Authentication Providers
 
 This guide covers integrating popular authentication services (Auth0, Clerk, Supabase) with TanStack Router.
