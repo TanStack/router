@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import ReactDOMServer from 'react-dom/server'
 
 import {
