@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, test } from 'vitest'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import ReactDOMServer from 'react-dom/server'
 
 import {
@@ -12,6 +12,10 @@ import {
   createRouter,
 } from '../src'
 import { Scripts } from '../src/Scripts'
+
+afterEach(() => {
+  cleanup()
+})
 
 describe('ssr scripts', () => {
   test('it works', async () => {
@@ -61,13 +65,19 @@ describe('ssr scripts', () => {
       isServer: true,
     })
 
-    await router.load()
+    render(<RouterProvider router={router} />)
+    await act(() => router.load())
 
-    expect(router.state.matches.map((d) => d.headScripts).flat(1)).toEqual([
-      { src: 'script.js' },
-      { src: 'script2.js' },
-      { src: 'script3.js' },
-    ])
+    await waitFor(
+      () => {
+        expect(router.state.matches.map((d) => d.headScripts).flat(1)).toEqual([
+          { src: 'script.js' },
+          { src: 'script2.js' },
+          { src: 'script3.js' },
+        ])
+      },
+      { interval: 50, timeout: 200 },
+    )
   })
 
   test('excludes `undefined` script values', async () => {
