@@ -126,28 +126,22 @@ export const createUser = createServerFn()
 
 ### 3. Handle Different HTTP Methods
 
-Server functions support different HTTP methods:
+Server functions support GET and POST methods (POST is the default):
 
 ```typescript
 // app/functions/api.ts
 import { createServerFn } from '@tanstack/start'
 import { z } from 'zod'
 
-// GET request (default)
-export const getUsers = createServerFn({ method: 'GET' })
-  .handler(async () => {
-    return { users: [] }
-  })
-
-// POST request
-export const createUser = createServerFn({ method: 'POST' })
+// POST request (default - no need to specify)
+export const createUser = createServerFn()
   .validator(z.object({ name: z.string() }))
   .handler(async ({ data }) => {
     return { id: 1, name: data.name }
   })
 
-// PUT request
-export const updateUser = createServerFn({ method: 'PUT' })
+// POST request (explicit)
+export const updateUser = createServerFn({ method: 'POST' })
   .validator(z.object({ 
     id: z.number(),
     name: z.string() 
@@ -156,11 +150,18 @@ export const updateUser = createServerFn({ method: 'PUT' })
     return { id: data.id, name: data.name, updated: true }
   })
 
-// DELETE request
-export const deleteUser = createServerFn({ method: 'DELETE' })
-  .validator(z.object({ id: z.number() }))
+// GET request
+export const getUsers = createServerFn({ method: 'GET' })
+  .handler(async () => {
+    return { users: [] }
+  })
+
+// GET request with query parameters
+export const getUserById = createServerFn({ method: 'GET' })
+  .validator(z.object({ id: z.string() }))
   .handler(async ({ data }) => {
-    return { success: true, deletedId: data.id }
+    // data comes from query parameters for GET requests
+    return { id: data.id, name: 'John Doe' }
   })
 ```
 
