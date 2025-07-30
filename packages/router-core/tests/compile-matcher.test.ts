@@ -105,7 +105,8 @@ const routeTree = createRouteTree([
   '/z/y/x',
   '/images/thumb_{$}', // wildcard with prefix
   '/logs/{$}.txt', // wildcard with suffix
-  '/cache/temp_{$}.log', // wildcard with prefix and suffix
+  '/cache/temp_{$}.log', // wildcard with prefix and suffix,
+  '/momomo/{-$one}/$two'
 ])
 
 // required keys on a `route` object for `processRouteTree` to correctly generate `flatRoutes`
@@ -160,6 +161,7 @@ describe('work in progress', () => {
         "/b/$id",
         "/foo/$bar",
         "/users/$id",
+        "/momomo/{-$one}/$two",
         "/a/{-$slug}",
         "/b/{-$slug}",
         "/posts/{-$slug}",
@@ -262,6 +264,12 @@ describe('work in progress', () => {
           if (sc1 === "b") return ["/b/$id", params({ id: s2 }, 3)];
           if (sc1 === "users") return ["/users/$id", params({ id: s2 }, 3)];
         }
+        if (sc1 === "momomo") {
+          if (length(4))
+            return ["/momomo/{-$one}/$two", params({ one: s2, two: s3 }, 4)];
+          if (length(3)) return ["/momomo/{-$one}/$two", params({ two: s2 }, 3)];
+        }
+        if (length(3) && sc1 === "a") return ["/a/{-$slug}", params({ slug: s2 }, 3)];
       }
       if (l >= 2) {
         if (length(2) && sc1 === "a") return ["/a/{-$slug}", params({}, 2)];
@@ -361,6 +369,8 @@ describe('work in progress', () => {
     '/logs/2020/01/01/error.txt',
     '/cache/temp_user456.log',
     '/a/b/c/d/e',
+    '/momomo/1111/2222',
+    '/momomo/2222',
   ])('matching %s', (s) => {
     const originalMatch = originalMatcher(s)
     const buildMatch = buildMatcher(parsePathname, s)
