@@ -16,6 +16,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 - ✅ **Environment Variables: TanStack Start** - COMPLETED in docs/start/framework/react/how-to/use-environment-variables.md
 - ✅ **Create Basic Server Functions: TanStack Start** - COMPLETED in docs/start/framework/react/how-to/create-basic-server-functions.md
 - ✅ **Write Type-Safe Server Functions: TanStack Start** - COMPLETED in docs/start/framework/react/how-to/write-type-safe-server-functions.md
+- ✅ **Use Server Functions with Forms: TanStack Start** - COMPLETED in docs/start/framework/react/how-to/use-server-functions-with-forms.md
 - 🔄 **Progressive Search Params Series** - IN PROGRESS
 
 ### 🔄 Progressive Search Params How-To Series (Replaces Guide #10)

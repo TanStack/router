@@ -219,100 +219,7 @@ function UsersPage() {
 }
 ```
 
-#### With Form Handling
 
-```tsx
-// app/routes/users/new.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
-import { createUser } from '../../functions/user'
-
-export const Route = createFileRoute('/users/new')({
-  component: NewUserForm,
-})
-
-function NewUserForm() {
-  const [formData, setFormData] = useState({
-    email: '',
-    name: '',
-    age: '',
-  })
-  const [submitting, setSubmitting] = useState(false)
-  const [result, setResult] = useState(null)
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
-    
-    try {
-      const user = await createUser({
-        data: {
-          email: formData.email,
-          name: formData.name,
-          age: formData.age ? parseInt(formData.age) : undefined,
-        }
-      })
-      setResult(user)
-      setFormData({ email: '', name: '', age: '' })
-    } catch (error) {
-      alert(`Error: ${error.message}`)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <label>
-          Email:
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-            required
-          />
-        </label>
-      </div>
-      
-      <div>
-        <label>
-          Name:
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            required
-          />
-        </label>
-      </div>
-      
-      <div>
-        <label>
-          Age (optional):
-          <input
-            type="number"
-            value={formData.age}
-            onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value }))}
-            min="13"
-          />
-        </label>
-      </div>
-      
-      <button type="submit" disabled={submitting}>
-        {submitting ? 'Creating...' : 'Create User'}
-      </button>
-      
-      {result && (
-        <div>
-          <h3>User Created:</h3>
-          <pre>{JSON.stringify(result, null, 2)}</pre>
-        </div>
-      )}
-    </form>
-  )
-}
-```
 
 ### 5. File Organization Best Practices
 
@@ -516,6 +423,7 @@ export const processDataBatch = createServerFn()
 After setting up basic server functions, you might want to:
 
 - [Write Type-Safe Server Functions](./write-type-safe-server-functions.md) - Optimize TypeScript performance and avoid common type errors
+- [Use Server Functions with Forms](./use-server-functions-with-forms.md) - Integrate server functions with forms for validated submissions
 
 <!-- Additional Next Steps (commented until guides exist)
 - [Add middleware to server functions](./use-server-function-middleware.md)
