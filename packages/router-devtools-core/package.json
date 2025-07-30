@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-devtools-core",
-  "version": "1.130.8",
+  "version": "1.130.9",
   "description": "Modern and scalable routing for Web applications",
   "author": "Tanner Linsley",
   "license": "MIT",
