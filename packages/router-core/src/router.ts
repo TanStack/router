@@ -2697,7 +2697,7 @@ export class RouterCore<
                       return this.navigate(err.options)
                     }
                     return
-                  })()
+                  })
               } else if (
                 status !== 'success' ||
                 (loaderShouldRunAsync && sync)
