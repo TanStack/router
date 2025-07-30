@@ -1,4 +1,6 @@
-# How to Integrate TanStack Router with Shadcn/ui
+---
+title: How to Integrate TanStack Router with Shadcn/ui
+---
 
 This guide covers setting up Shadcn/ui with TanStack Router, including solutions for common animation and compatibility issues.
 

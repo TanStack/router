@@ -1,4 +1,6 @@
-# How to Integrate TanStack Router with Material-UI (MUI)
+---
+title: How to Integrate TanStack Router with Material-UI (MUI)
+---
 
 This guide covers setting up Material-UI with TanStack Router, including proper TypeScript integration and component composition patterns.
 

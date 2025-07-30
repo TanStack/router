@@ -1,4 +1,6 @@
-# How to Write Isomorphic, Client-Only, and Server-Only Code
+---
+title: How to Write Isomorphic, Client-Only, and Server-Only Code
+---
 
 This guide covers TanStack Start's execution model and APIs for controlling where code runs.
 

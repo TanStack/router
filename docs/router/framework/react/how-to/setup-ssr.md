@@ -1,4 +1,6 @@
-# How to Set Up Server-Side Rendering (SSR)
+---
+title: How to Set Up Server-Side Rendering (SSR)
+---
 
 > [!IMPORTANT] > **[TanStack Start](../guide/tanstack-start.md) is the recommended way to set up SSR** - it provides SSR, streaming, and deployment with zero configuration.
 >

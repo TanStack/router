@@ -2,8 +2,6 @@
 title: How to Migrate from React Router v7
 ---
 
-# How to Migrate from React Router v7
-
 This guide provides a step-by-step process to migrate your application from React Router v7 to TanStack Router. We'll cover the complete migration process from removing React Router dependencies to implementing TanStack Router's type-safe routing patterns.
 
 ## Quick Start

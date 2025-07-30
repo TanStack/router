@@ -1,4 +1,6 @@
-# How to Test Router with File-Based Routing
+---
+title: How to Test Router with File-Based Routing
+---
 
 This guide covers testing TanStack Router applications that use file-based routing, including testing route generation, file-based route components, and file-based routing patterns.
 

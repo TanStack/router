@@ -1,4 +1,6 @@
-# How to Deploy TanStack Router to Production
+---
+title: How to Deploy TanStack Router to Production
+---
 
 This guide covers deploying TanStack Router applications to popular hosting platforms.
 

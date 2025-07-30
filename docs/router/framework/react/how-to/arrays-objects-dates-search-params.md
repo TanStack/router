@@ -2,8 +2,6 @@
 title: Work with Arrays, Objects, and Dates in Search Parameters
 ---
 
-# How to Work with Arrays, Objects, and Dates in Search Parameters
-
 Learn to handle arrays, objects, dates, and nested data structures in search parameters while maintaining type safety and URL compatibility.
 
 ## Quick Start

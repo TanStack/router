@@ -2,8 +2,6 @@
 title: Validate Search Parameters with Schemas
 ---
 
-# How to Validate Search Parameters with Schemas
-
 Learn how to add robust schema validation to your search parameters using popular validation libraries like Zod, Valibot, and ArkType. This guide covers validation setup, error handling, type safety, and common validation patterns for production applications.
 
 **Prerequisites:** [Set Up Basic Search Parameters](./setup-basic-search-params.md) - Foundation concepts for reading and working with search params.

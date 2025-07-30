@@ -1,4 +1,6 @@
-# How to Integrate TanStack Router with Chakra UI
+---
+title: How to Integrate TanStack Router with Chakra UI
+---
 
 This guide covers setting up Chakra UI with TanStack Router, including theme configuration and creating responsive, accessible components.
 
