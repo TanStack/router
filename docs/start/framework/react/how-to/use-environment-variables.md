@@ -1,4 +1,6 @@
-# How to Use Environment Variables in TanStack Start
+---
+title: How to Use Environment Variables
+---
 
 Learn how to securely configure and use environment variables in your TanStack Start application across different contexts (server functions, client code, and build processes).
 
