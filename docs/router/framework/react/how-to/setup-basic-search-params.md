@@ -1,8 +1,6 @@
 ---
-title: Set Up Basic Search Parameters
+title: How to Set Up Basic Search Parameters
 ---
-
-# How to Set Up Basic Search Parameters
 
 Learn how to add type-safe, production-ready search parameters to your TanStack Router routes using schema validation. This guide covers the fundamentals of search parameter validation, reading values, and handling different data types with any standard schema-compliant validation library.
 

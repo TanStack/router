@@ -1,4 +1,6 @@
-# How to Use Environment Variables in TanStack Router
+---
+title: How to Use Environment Variables
+---
 
 Learn how to configure and use environment variables in your TanStack Router application for API endpoints, feature flags, and build configuration across different bundlers.
 

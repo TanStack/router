@@ -1,4 +1,6 @@
-# How to Navigate with Search Parameters
+---
+title: How to Navigate with Search Parameters
+---
 
 This guide covers updating and managing search parameters during navigation using TanStack Router's Link components and programmatic navigation methods.
 

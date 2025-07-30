@@ -2,8 +2,6 @@
 title: How to Install TanStack Router
 ---
 
-# How to Install TanStack Router
-
 ## Prerequisites
 
 - React 18.x.x or 19.x.x

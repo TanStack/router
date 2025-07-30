@@ -1,4 +1,6 @@
-# How to Debug Common Router Issues
+---
+title: How to Debug Common Router Issues
+---
 
 This guide covers debugging common TanStack Router problems, from route matching failures to navigation issues and performance problems.
 

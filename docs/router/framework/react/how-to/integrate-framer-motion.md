@@ -1,4 +1,6 @@
-# How to Integrate TanStack Router with Framer Motion
+---
+title: How to Integrate TanStack Router with Framer Motion
+---
 
 This guide covers setting up Framer Motion with TanStack Router for smooth route transitions and navigation animations.
 
