@@ -165,54 +165,9 @@ export const getUserById = createServerFn({ method: 'GET' })
   })
 ```
 
-### 4. Implement Proper Error Handling
 
-Handle errors gracefully in your server functions:
 
-```typescript
-// app/functions/database.ts
-import { createServerFn } from '@tanstack/start'
-import { z } from 'zod'
-
-export class DatabaseError extends Error {
-  constructor(message: string, public code: string) {
-    super(message)
-    this.name = 'DatabaseError'
-  }
-}
-
-export const getUserById = createServerFn()
-  .validator(z.object({ id: z.string() }))
-  .handler(async ({ data }) => {
-    try {
-      // Simulate database lookup
-      if (data.id === 'not-found') {
-        throw new DatabaseError('User not found', 'USER_NOT_FOUND')
-      }
-      
-      if (data.id === 'server-error') {
-        throw new DatabaseError('Database connection failed', 'DB_CONNECTION_ERROR')
-      }
-
-      return {
-        id: data.id,
-        name: 'John Doe',
-        email: 'john@example.com',
-      }
-    } catch (error) {
-      if (error instanceof DatabaseError) {
-        // Re-throw custom errors with additional context
-        throw new Error(`Database error: ${error.message} (${error.code})`)
-      }
-      
-      // Handle unexpected errors
-      console.error('Unexpected error in getUserById:', error)
-      throw new Error('Internal server error')
-    }
-  })
-```
-
-### 5. Call Server Functions from Client Components
+### 4. Call Server Functions from Client Components
 
 #### Basic Usage
 
@@ -220,7 +175,7 @@ export const getUserById = createServerFn()
 // app/routes/users.tsx
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { createUser, getUserById } from '../functions/database'
+import { createUser } from '../functions/user'
 
 export const Route = createFileRoute('/users')({
   component: UsersPage,
@@ -359,7 +314,7 @@ function NewUserForm() {
 }
 ```
 
-### 6. File Organization Best Practices
+### 5. File Organization Best Practices
 
 Organize your server functions in a logical structure:
 
