@@ -45,7 +45,7 @@ This directory contains focused, step-by-step instructions for common TanStack R
 
 - [x] [Validate Search Parameters with Schemas](./validate-search-params.md) - Use schema validation libraries for robust validation and type safety
 - [x] [Work with Arrays, Objects, and Dates](./arrays-objects-dates-search-params.md) - Handle arrays, objects, dates, and nested data structures
-- [ ] Share Search Parameters Across Routes - Inherit and manage search params across route hierarchies
+- [x] [Share Search Parameters Across Routes](./share-search-params-across-routes.md) - Inherit and manage search params across route hierarchies
 
 **Advanced Level (Power User Patterns):**
 
