@@ -100,22 +100,18 @@ export const updateUserProfile = createServerFn()
   })
 ```
 
-### 2. Use Explicit Return Types
+### 2. Use Explicit Return Types for Complex Objects
 
-Always specify return types to avoid inference overhead:
+Specify return types for better documentation and IntelliSense, especially for complex objects:
 
 ```typescript
-// ❌ TypeScript infers complex return type
-export const getComplexData = createServerFn()
-  .handler(async ({ data }) => {
-    return {
-      users: await fetchUsers(),
-      posts: await fetchPosts(),
-      comments: await fetchComments()
-    }
+// ✅ Inference is fine for simple returns
+export const getSimpleData = createServerFn()
+  .handler(async () => {
+    return { message: 'Hello world', timestamp: Date.now() }
   })
 
-// ✅ Explicit return type
+// ✅ Explicit types help with complex objects
 interface DashboardData {
   users: User[]
   posts: Post[]
@@ -604,14 +600,13 @@ interface UserSettings {
 
 ### Problem: Slow TypeScript compilation with server functions
 
-**Cause**: Complex type inference or large union types.
+**Cause**: Deeply nested types or excessive spread operations, not inference itself.
 
 **Solution**:
 ```typescript
-// ❌ Slow inference
+// ❌ Complex spread operations can be slow
 const complexHandler = createServerFn()
   .handler(async ({ data }) => {
-    // TypeScript struggles to infer this
     return data.items.map(item => ({
       ...item,
       ...processItem(item),
@@ -619,16 +614,10 @@ const complexHandler = createServerFn()
     }))
   })
 
-// ✅ Explicit types
-interface ProcessedItem {
-  id: string
-  processed: boolean
-  metadata: ItemMetadata
-}
-
+// ✅ Simpler object construction
 const optimizedHandler = createServerFn()
-  .handler(async ({ data }): Promise<ProcessedItem[]> => {
-    return data.items.map(item => processItemToType(item))
+  .handler(async ({ data }) => {
+    return data.items.map(item => processItemToSimpleObject(item))
   })
 ```
 
