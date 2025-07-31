@@ -1034,8 +1034,8 @@ describe('router rendering stability', () => {
 
     await act(() => fireEvent.click(links.foo3bar1))
     await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
-    await check('barId', { value: '1', mountCount: 1 }, mountMocks),
-      await act(() => fireEvent.click(links.foo3bar2))
+    await check('barId', { value: '1', mountCount: 1 }, mountMocks)
+    await act(() => fireEvent.click(links.foo3bar2))
     await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
     await check('barId', { value: '2', mountCount: 1 }, mountMocks)
   })

@@ -2,6 +2,7 @@ import path from 'node:path'
 import { rmSync } from 'node:fs'
 import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
+import { HEADERS } from '@tanstack/start-server-core'
 import {
   CLIENT_DIST_DIR,
   SSR_ENTRY_FILE,
@@ -155,7 +156,13 @@ async function buildNitroApp(
 
     options.pages.push({
       path: maskUrl.toString().replace('http://localhost', ''),
-      prerender: options.spa.prerender,
+      prerender: {
+        ...options.spa.prerender,
+        headers: {
+          ...options.spa.prerender.headers,
+          [HEADERS.TSS_SHELL]: 'true',
+        },
+      },
       sitemap: {
         exclude: true,
       },

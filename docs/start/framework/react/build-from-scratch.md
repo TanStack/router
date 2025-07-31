@@ -64,7 +64,7 @@ npm i react react-dom
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths
+npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths @vitejs/plugin-react
 ```
 
 ## Update Configuration Files

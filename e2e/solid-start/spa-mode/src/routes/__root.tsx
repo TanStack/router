@@ -1,16 +1,15 @@
 /// <reference types="vite/client" />
 import {
   ClientOnly,
-  HeadContent,
   Link,
   Outlet,
   Scripts,
   createRootRoute,
   useRouterState,
 } from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import type * as Solid from 'solid-js'
 import appCss from '~/styles/app.css?url'
-import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -28,9 +27,6 @@ export const Route = createRootRoute({
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
-  ssr: () => {
-    throw new Error('ssr() should not be called in SPA mode')
-  },
   beforeLoad: () => {
     console.log(
       `beforeLoad for ${Route.id} called on the ${typeof window !== 'undefined' ? 'client' : 'server'}`,

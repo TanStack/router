@@ -4,7 +4,6 @@
    1. By default, firebase will configure an accepted domain for localhost...update if necessary!
 2. Enable Authentication in the Firebase console
 3. Add GitHub as an authentication provider:
-
    - Go to **Authentication** > **Sign-in method** > **GitHub**
    - Enable GitHub authentication
    - You'll need to set up OAuth in your GitHub account:

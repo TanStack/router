@@ -5,7 +5,47 @@ This document outlines the multi-PR process for implementing the remaining how-t
 ## Progress Tracking
 
 - ✅ **Guide #1: Deploy to Production** - COMPLETED in docs/router/framework/react/how-to/deploy-to-production.md
-- ⏳ **Guides #2-11** - Pending implementation
+- ✅ **Guide #2: Setup SSR** - COMPLETED in docs/router/framework/react/how-to/setup-ssr.md
+- ✅ **Guide #3: Migrate from React Router v7** - COMPLETED in docs/router/framework/react/how-to/migrate-from-react-router.md
+- ⏳ **Guide #4: Fix Build Issues** - MOVED TO DEBUGGING DIRECTORY
+- ✅ **Guide #5: Integrate UI Libraries** - COMPLETED (split into individual guides)
+- ✅ **Guide #6: Setup Authentication** - COMPLETED (split into three focused guides)
+- ✅ **Guide #7: Debug Router Issues** - COMPLETED
+- ✅ **Guide #8: Setup Testing** - COMPLETED
+- ✅ **Environment Variables: TanStack Router** - COMPLETED in docs/router/framework/react/how-to/use-environment-variables.md
+- ✅ **Environment Variables: TanStack Start** - COMPLETED in docs/start/framework/react/how-to/use-environment-variables.md
+- 🔄 **Progressive Search Params Series** - IN PROGRESS
+
+### 🔄 Progressive Search Params How-To Series (Replaces Guide #10)
+
+**Status:** Ready for implementation with test verification
+
+**Foundation Level (Start Here):**
+
+- ✅ **Search #1: Setup Basic Search Parameters** (`setup-basic-search-params.md`) - COMPLETED with comprehensive validation library support
+- ✅ **Search #2: Navigate with Search Parameters** (`navigate-with-search-params.md`) - COMPLETED with comprehensive Link patterns and programmatic navigation
+
+**Intermediate Level (Common Patterns):**
+
+- ✅ **Search #3: Validate Search Parameters with Schemas** (`validate-search-params.md`) - COMPLETED with comprehensive validation library support
+- ✅ **Search #4: Work with Arrays, Objects, and Dates** (`arrays-objects-dates-search-params.md`) - COMPLETED with comprehensive coverage of arrays, objects, dates, and nested structures
+- ✅ **Search #5: Share Search Parameters Across Routes** (`share-search-params-across-routes.md`) - COMPLETED with comprehensive sharing patterns and middleware examples
+
+**Advanced Level (Power User Patterns):**
+
+- ⏳ **Search #6: Build Advanced Search Parameter Middleware** (`advanced-search-param-middleware.md`) - Test Coverage: Good (existing middleware tests)
+- ⏳ **Search #7: Optimize Search Parameter Performance** (`optimize-search-param-performance.md`) - Test Gap: Performance patterns, selectors
+- ⏳ **Search #8: Customize Search Parameter Serialization** (`customize-search-param-serialization.md`) - Test Gap: Custom serializers
+
+**Specialized Use Cases:**
+
+- ⏳ **Search #9: Build Search-Based Filtering Systems** (`build-search-filtering-systems.md`) - Test Gap: Complex filtering patterns
+- ⏳ **Search #10: Handle Search Parameters in Forms** (`search-params-in-forms.md`) - Test Gap: Form integration patterns
+- ⏳ **Search #11: Debug Search Parameter Issues** (`debug-search-param-issues.md`) - Test Coverage: Partial (debug tests exist)
+- ⏳ **Search #12: Use Search Parameters with Data Loading** (`search-params-with-data-loading.md`) - Test Gap: Loader integration patterns
+
+- ⏳ **Guide #9: Setup Dev Environment** - PENDING
+- ⏳ **Guide #11: Advanced Routing Patterns** - PENDING
 
 ## Implementation Process
 
@@ -26,7 +66,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 ### Multi-PR Guidelines:
 
 - **One guide per PR** for focused reviews and easier iteration
-- **Start with highest priority** guides (#2, #3, #4...)
+- **Start with highest priority** guides (#4, #5, #6...)
 - **Cross-reference between guides** as they become available
 - **Update tracking status** in each PR
 
@@ -34,54 +74,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 
 ## Next Agent Tasks
 
-### Priority 1: Guide #2 - How to Set Up Server-Side Rendering (SSR)
-
-**File:** `docs/router/framework/react/how-to/setup-ssr.md`
-
-**Context for Agent:**
-
-- Multiple GitHub issues show React import errors in SSR
-- Bun runtime SSR issues need addressing
-- Focus on TanStack Router SSR (not Start framework)
-- Reference existing guide: `docs/router/framework/react/guide/ssr.md` but create focused how-to
-
-**Content Requirements:**
-
-- Setting up SSR with Vite
-- Configuring entry-client.tsx and entry-server.tsx
-- Handling hydration mismatches
-- SSR with different deployment targets (Node.js, Bun, Edge)
-- Server context setup and data loading
-- Common Problems: React import errors, hydration issues, Bun compatibility
-
-**Cross-References to Add:**
-
-- Uncomment SSR link in deploy-to-production.md "Common Next Steps"
-
----
-
-### Priority 2: Guide #3 - How to Migrate from React Router v6
-
-**File:** `docs/router/framework/react/how-to/migrate-from-react-router.md`
-
-**Context for Agent:**
-
-- Large user base needs migration path
-- Existing migration guide exists at `docs/router/framework/react/migrate-from-react-router.md`
-- Transform existing guide into focused how-to format or create complementary step-by-step version
-
-**Content Requirements:**
-
-- Step-by-step migration checklist
-- Converting Route components to file-based routing
-- Updating Link and Navigate usage
-- Search params migration
-- Loader/action pattern conversions
-- Common Problems: API differences, breaking changes, component refactoring
-
----
-
-### Priority 3: Guide #4 - How to Fix Common Build and Bundler Issues
+### Priority 1: Guide #4 - How to Fix Common Build and Bundler Issues
 
 **File:** `docs/router/framework/react/how-to/fix-build-issues.md`
 
@@ -101,7 +94,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 
 ---
 
-### Priority 4: Guide #5 - How to Integrate with Popular UI Libraries
+### Priority 2: Guide #5 - How to Integrate with Popular UI Libraries
 
 **File:** `docs/router/framework/react/how-to/integrate-ui-libraries.md`
 
@@ -120,7 +113,7 @@ This document outlines the multi-PR process for implementing the remaining how-t
 
 ---
 
-### Priority 5: Guide #6 - How to Set Up Authentication and Protected Routes
+### Priority 3: Guide #6 - How to Set Up Authentication and Protected Routes
 
 **File:** `docs/router/framework/react/how-to/setup-authentication.md`
 
@@ -197,13 +190,20 @@ Update this section as guides are completed:
 
 ```
 ✅ Guide #1: Deploy to Production - COMPLETED
-⏳ Guide #2: Setup SSR - IN PROGRESS
-⏳ Guide #3: Migrate from React Router - PENDING
-⏳ Guide #4: Fix Build Issues - PENDING
-⏳ Guide #5: Integrate UI Libraries - PENDING
-⏳ Guide #6: Setup Authentication - PENDING
-⏳ Guide #7: Debug Router Issues - PENDING
-⏳ Guide #8: Setup Testing - PENDING
+✅ Guide #2: Setup SSR - COMPLETED
+✅ Guide #3: Migrate from React Router - COMPLETED
+⏳ Guide #4: Fix Build Issues - MOVED TO DEBUGGING DIRECTORY
+✅ Guide #5: Integrate UI Libraries - COMPLETED (split into individual guides)
+  ✅ Shadcn/ui Integration - COMPLETED
+  ✅ Material-UI Integration - COMPLETED
+  ✅ Framer Motion Integration - COMPLETED
+  ✅ Chakra UI Integration - COMPLETED
+✅ Guide #6: Setup Authentication - COMPLETED (split into three focused guides)
+  ✅ Basic Authentication Setup - COMPLETED
+  ✅ Authentication Providers Integration - COMPLETED
+  ✅ Role-Based Access Control - COMPLETED
+✅ Guide #7: Debug Router Issues - COMPLETED
+✅ Guide #8: Setup Testing - COMPLETED
 ⏳ Guide #9: Setup Dev Environment - PENDING
 ⏳ Guide #10: Handle Search Parameters - PENDING
 ⏳ Guide #11: Advanced Routing Patterns - PENDING

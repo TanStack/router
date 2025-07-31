@@ -56,3 +56,5 @@ export type {
 } from './serverRoute'
 
 export * from './virtual-modules'
+
+export { HEADERS } from './constants'

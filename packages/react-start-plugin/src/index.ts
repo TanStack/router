@@ -55,7 +55,6 @@ export function TanStackStartVitePlugin(
               'react-dom',
               'react-dom/client',
               '@tanstack/react-router',
-              '@tanstack/react-store',
             ],
           },
         }
@@ -100,6 +99,15 @@ import { createRouter } from '${ctx.routerFilepath}';
 export default createStartHandler({
   createRouter,
 })(defaultStreamHandler);`
+        },
+        crawlPackages(opts) {
+          if (opts.name === '@tanstack/react-router-devtools') {
+            return 'exclude'
+          }
+          if ('react' in opts.peerDependencies) {
+            return 'include'
+          }
+          return undefined
         },
       },
       options,

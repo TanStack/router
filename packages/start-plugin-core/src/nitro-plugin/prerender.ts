@@ -89,6 +89,8 @@ export async function prerender({
     path.resolve(path.join(nodeNitro.options.output.serverDir, serverFilename)),
   ).toString()
 
+  process.env.TSS_PRERENDERING = 'true'
+
   const { closePrerenderer, localFetch } = (await import(serverEntrypoint)) as {
     closePrerenderer: () => void
     localFetch: $Fetch
@@ -174,7 +176,10 @@ export async function prerender({
           const res = await localFetch<Response>(
             withBase(encodedRoute, nodeNitro.options.baseURL),
             {
-              headers: { 'x-nitro-prerender': encodedRoute },
+              headers: {
+                ...prerenderOptions.headers,
+                'x-nitro-prerender': encodedRoute,
+              },
             },
           )
 

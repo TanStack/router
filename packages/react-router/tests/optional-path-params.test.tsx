@@ -895,6 +895,70 @@ describe('React Router - Optional Path Parameters', () => {
         expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
       },
     )
+
+    it.each([
+      {
+        path: '/chambres',
+        expected: {
+          rooms: 'chambres',
+          locale: 'undefined',
+        },
+      },
+      {
+        path: '/fr/chambres',
+        expected: {
+          rooms: 'chambres',
+          locale: 'fr',
+        },
+      },
+      {
+        path: '/rooms',
+        expected: {
+          rooms: 'rooms',
+          locale: 'undefined',
+        },
+      },
+      {
+        path: '/en/rooms',
+        expected: {
+          rooms: 'rooms',
+          locale: 'en',
+        },
+      },
+    ])(
+      'should handle routes with required param after optional param: $path',
+      async ({ path, expected }) => {
+        const rootRoute = createRootRoute()
+        const roomsRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/{-$locale}/$rooms',
+          component: () => {
+            const { locale, rooms } = roomsRoute.useParams()
+            return (
+              <div>
+                <h1>Rooms</h1>
+                <div data-testid="locale-param">{locale ?? 'undefined'}</div>
+                <div data-testid="rooms-param">{rooms ?? 'undefined'}</div>
+                <Outlet />
+              </div>
+            )
+          },
+        })
+
+        window.history.replaceState({}, '', path)
+
+        const router = createRouter({
+          routeTree: rootRoute.addChildren([roomsRoute]),
+        })
+
+        render(<RouterProvider router={router} />)
+        await act(() => router.load())
+        const roomsParam = await screen.findByTestId('rooms-param')
+        expect(roomsParam).toHaveTextContent(expected.rooms)
+        const localeParam = await screen.findByTestId('locale-param')
+        expect(localeParam).toHaveTextContent(expected.locale)
+      },
+    )
   })
 
   describe('edge cases and error handling', () => {
