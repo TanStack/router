@@ -206,24 +206,20 @@ Quite often you might want to reload the current location, for example, to rerun
 Another common need is to navigate one route back relative to the current location or some other matched route in the current tree. By specifying a `to` route path of `".."` navigation will be resolved to either the first parent route preceding the current location or, if specified, preceding the `"from"` route path.
 
 ```tsx
-export const Route = createFileRoute("/posts/$postId")({
+export const Route = createFileRoute('/posts/$postId')({
   component: PostComponent,
-});
+})
 
 function PostComponent() {
   return (
     <div>
-      <Link to=".">
-        Reload the current route of /posts/$postId
-      </Link>
-      <Link to="..">
-        Navigate to /posts
-      </Link>
+      <Link to=".">Reload the current route of /posts/$postId</Link>
+      <Link to="..">Navigate to /posts</Link>
       <Link from="/posts" to="..">
         Navigate to root
       </Link>
     </div>
-  );
+  )
 }
 ```
 
