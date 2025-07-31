@@ -165,12 +165,46 @@ const testCases = [
   '/momomo/2222',
 ]
 
-describe('build.bench', () => {
+describe('build.bench needle in a haystack', () => {
   bench(
     'original',
     () => {
       for (const from of testCases) {
         original(from)
+      }
+    },
+    { warmupIterations: 10 },
+  )
+  bench(
+    'compiled',
+    () => {
+      for (const from of testCases) {
+        compiled(from)
+      }
+    },
+    { warmupIterations: 10 },
+  )
+})
+
+/**
+ * Sometimes in the app, we already know the path we want to match against.
+ * The compiled matcher does not support this.
+ * This benchmark tests the performance of the compiled matcher looking through ALL routes
+ * vs. the original matcher comparing against a single path.
+ */
+describe('build.bench single match', () => {
+  const solutions = testCases.map((from) => original(from)?.fullPath)
+
+  const cache: ParsePathnameCache = createLRUCache(1000)
+  const originalSingle = (from: string, to: string) => matchPathname('/', from, { to }, cache)
+
+  bench(
+    'original (single)',
+    () => {
+      for (let i = 0; i < testCases.length; i++) {
+        const from = testCases[i]!
+        const match = solutions[i]!
+        originalSingle(from, match)
       }
     },
     { warmupIterations: 10 },
