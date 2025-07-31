@@ -264,16 +264,16 @@ describe('work in progress', () => {
           if (sc1 === "b") return ["/b/$id", params({ id: s2 }, 3)];
           if (sc1 === "users") return ["/users/$id", params({ id: s2 }, 3)];
         }
-        if (sc1 === "momomo") {
-          if (length(4))
-            return ["/momomo/{-$one}/$two", params({ one: s2, two: s3 }, 4)];
-          if (length(3)) return ["/momomo/{-$one}/$two", params({ two: s2 }, 3)];
-        }
+        if (length(4) && sc1 === "momomo")
+          return ["/momomo/{-$one}/$two", params({ one: s2, two: s3 }, 4)];
+        if (length(3) && sc1 === "momomo")
+          return ["/momomo/{-$one}/$two", params({ two: s2 }, 3)];
       }
       if (l >= 2) {
-        if (length(2) && sc1 === "a") return ["/a/{-$slug}", params({}, 2)];
-        if (length(3) && sc1 === "b") return ["/b/{-$slug}", params({ slug: s2 }, 3)];
-        if (length(2) && sc1 === "b") return ["/b/{-$slug}", params({}, 2)];
+        if (length(2)) {
+          if (sc1 === "a") return ["/a/{-$slug}", params({}, 2)];
+          if (sc1 === "b") return ["/b/{-$slug}", params({}, 2)];
+        }
         if (length(3) && sc1 === "posts")
           return ["/posts/{-$slug}", params({ slug: s2 }, 3)];
         if (length(2) && sc1 === "posts") return ["/posts/{-$slug}", params({}, 2)];
@@ -322,12 +322,8 @@ describe('work in progress', () => {
             "/files/$",
             { _splat: s.slice(2).join("/"), "*": s.slice(2).join("/") },
           ];
-        if (length(2)) {
-          if (sc1 === "a") return ["/a", params({}, 2)];
-          if (sc1 === "about") return ["/about", params({}, 2)];
-          if (sc1 === "b") return ["/b", params({}, 2)];
-          if (sc1 === "one") return ["/one", params({}, 2)];
-        }
+        if (length(2) && sc1 === "about") return ["/about", params({}, 2)];
+        if (length(2) && sc1 === "one") return ["/one", params({}, 2)];
       }
       if (length(1)) return ["/", params({}, 1)];
       if (length(4) && sc2 === "bar" && sc3 === "foo")
