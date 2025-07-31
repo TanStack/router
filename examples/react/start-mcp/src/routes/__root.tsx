@@ -22,7 +22,7 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  component: RootComponent,
+  shellComponent: RootComponent,
 })
 
 function RootComponent() {
