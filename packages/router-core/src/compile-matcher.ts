@@ -416,6 +416,8 @@ function removeUnreachable(nodes: Array<LeafNode>) {
         if (c.type === 'length' && c.direction === 'gte') {
           return candidate.conditions.some((sc) => sc.key === c.key || (sc.type === 'length' && sc.direction === 'eq' && sc.value >= c.value))
         }
+        // TODO: we could add other "covering" cases like the one above here,
+        // such as the sibling having a `startsWith` condition and the candidate having a static condition that starts with the same value (taking case sensitivity into account)
         return candidate.conditions.some((sc) => sc.key === c.key)
       })
       if (candidateIsUnreachable) {
