@@ -107,6 +107,7 @@ const routeTree = createRouteTree([
   '/images/thumb_{$}', // wildcard with prefix
   '/logs/{$}.txt', // wildcard with suffix
   '/cache/temp_{$}.log', // wildcard with prefix and suffix
+  '/momomo/{-$one}/$two'
 ])
 const result = processRouteTree({ routeTree })
 
@@ -160,6 +161,8 @@ const testCases = [
   '/logs/error.txt',
   '/cache/temp_user456.log',
   '/a/b/c/d/e',
+  '/momomo/1111/2222',
+  '/momomo/2222',
 ]
 
 describe('build.bench', () => {
