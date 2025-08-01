@@ -425,5 +425,30 @@ describe('processRouteTree', () => {
         expect(result.flatRoutes.map((r) => r.id)).toEqual(expected)
       },
     )
+
+    it.each([
+      {
+        routes: ['/f{$param}', '/foo{$param}'],
+        expected: ['/foo{$param}', '/f{$param}'],
+      },
+      {
+        routes: ['/{$param}r', '/{$param}bar'],
+        expected: ['/{$param}bar', '/{$param}r'],
+      },
+      {
+        routes: ['/f{$param}bar', '/foo{$param}r'],
+        expected: ['/foo{$param}r', '/f{$param}bar'],
+      },
+      {
+        routes: ['/foo{$param}r', '/f{$param}baaaaaar'], // very long suffix can "override" prefix
+        expected: ['/f{$param}baaaaaar', '/foo{$param}r'],
+      },
+    ])(
+      'length of prefix and suffix are considered in ranking: $routes',
+      ({ routes, expected }) => {
+        const result = processRouteTree({ routeTree: createRouteTree(routes) })
+        expect(result.flatRoutes.map((r) => r.id)).toEqual(expected)
+      },
+    )
   })
 })
