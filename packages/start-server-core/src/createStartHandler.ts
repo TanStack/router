@@ -279,7 +279,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
           !response.options.to.startsWith('/')
         ) {
           throw new Error(
-            `Server side redirects must use absolute paths via the 'href' or 'to' options. Received: ${JSON.stringify(response.options)}`,
+            `Server side redirects must use absolute paths via the 'href' or 'to' options. The redirect() method's "to" property accepts an internal path only. Use the "href" property to provide an external URL. Received: ${JSON.stringify(response.options)}`,
           )
         }
 
