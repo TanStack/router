@@ -212,6 +212,10 @@
             {
               "label": "Material UI",
               "to": "framework/react/examples/start-material-ui"
+            },
+            {
+              "label": "MCP Server",
+              "to": "framework/react/examples/start-mcp"
             }
           ]
         },
