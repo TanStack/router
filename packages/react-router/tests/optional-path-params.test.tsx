@@ -43,7 +43,7 @@ describe('React Router - Optional Path Parameters', () => {
       await act(() => router.load())
 
       const paramsElement = await screen.findByTestId('params')
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({})
+      expect(JSON.parse(paramsElement.textContent)).toEqual({})
     })
 
     it('should match route with one optional parameter', async () => {
@@ -71,7 +71,7 @@ describe('React Router - Optional Path Parameters', () => {
       await act(() => router.load())
 
       const paramsElement = await screen.findByTestId('params')
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({
+      expect(JSON.parse(paramsElement.textContent)).toEqual({
         category: 'tech',
       })
     })
@@ -101,7 +101,7 @@ describe('React Router - Optional Path Parameters', () => {
       await act(() => router.load())
 
       const paramsElement = await screen.findByTestId('params')
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({
+      expect(JSON.parse(paramsElement.textContent)).toEqual({
         category: 'tech',
         slug: 'hello-world',
       })
@@ -140,7 +140,7 @@ describe('React Router - Optional Path Parameters', () => {
         await act(() => router.load())
 
         const paramsElement = await screen.findByTestId('params')
-        expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
+        expect(JSON.parse(paramsElement.textContent)).toEqual(expectedParams)
       },
     )
 
@@ -500,7 +500,7 @@ describe('React Router - Optional Path Parameters', () => {
 
         await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
         const paramsElement = await screen.findByTestId('params')
-        expect(JSON.parse(paramsElement.textContent!)).toEqual({})
+        expect(JSON.parse(paramsElement.textContent)).toEqual({})
         expect(router.state.location.pathname).toBe('/posts')
       }
 
@@ -520,7 +520,7 @@ describe('React Router - Optional Path Parameters', () => {
 
         await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
         const updatedParamsElement = await screen.findByTestId('params')
-        expect(JSON.parse(updatedParamsElement.textContent!)).toEqual({
+        expect(JSON.parse(updatedParamsElement.textContent)).toEqual({
           category: 'tech',
         })
         expect(router.state.location.pathname).toBe('/posts/tech')
@@ -847,10 +847,10 @@ describe('React Router - Optional Path Parameters', () => {
       const paramsElement = await screen.findByTestId('params')
       const searchElement = await screen.findByTestId('search')
 
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({
+      expect(JSON.parse(paramsElement.textContent)).toEqual({
         category: 'tech',
       })
-      expect(JSON.parse(searchElement.textContent!)).toEqual({
+      expect(JSON.parse(searchElement.textContent)).toEqual({
         page: 2,
         sort: 'title',
       })
@@ -892,7 +892,7 @@ describe('React Router - Optional Path Parameters', () => {
         await act(() => router.load())
 
         const paramsElement = await screen.findByTestId('params')
-        expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
+        expect(JSON.parse(paramsElement.textContent)).toEqual(expectedParams)
       },
     )
 
@@ -1001,8 +1001,8 @@ describe('React Router - Optional Path Parameters', () => {
       const paramsElement = await screen.findByTestId('params')
       const loaderDataElement = await screen.findByTestId('loader-data')
 
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({})
-      expect(JSON.parse(loaderDataElement.textContent!)).toEqual({
+      expect(JSON.parse(paramsElement.textContent)).toEqual({})
+      expect(JSON.parse(loaderDataElement.textContent)).toEqual({
         category: 'all',
         data: 'Data for all',
       })
