@@ -3212,18 +3212,36 @@ export type ProcessRouteTreeResult<TRouteLike extends RouteLike> = {
 const REQUIRED_PARAM_BASE_SCORE = 0.5
 const OPTIONAL_PARAM_BASE_SCORE = 0.4
 const WILDCARD_PARAM_BASE_SCORE = 0.25
+const BOTH_PRESENCE_BASE_SCORE = 0.05
+const PREFIX_PRESENCE_BASE_SCORE = 0.02
+const SUFFIX_PRESENCE_BASE_SCORE = 0.01
+const PREFIX_LENGTH_SCORE_MULTIPLIER = 0.0002
+const SUFFIX_LENGTH_SCORE_MULTIPLIER = 0.0001
 
 function handleParam(segment: Segment, baseScore: number) {
   if (segment.prefixSegment && segment.suffixSegment) {
-    return baseScore + 0.05
+    return (
+      baseScore +
+      BOTH_PRESENCE_BASE_SCORE +
+      PREFIX_LENGTH_SCORE_MULTIPLIER * segment.prefixSegment.length +
+      SUFFIX_LENGTH_SCORE_MULTIPLIER * segment.suffixSegment.length
+    )
   }
 
   if (segment.prefixSegment) {
-    return baseScore + 0.02
+    return (
+      baseScore +
+      PREFIX_PRESENCE_BASE_SCORE +
+      PREFIX_LENGTH_SCORE_MULTIPLIER * segment.prefixSegment.length
+    )
   }
 
   if (segment.suffixSegment) {
-    return baseScore + 0.01
+    return (
+      baseScore +
+      SUFFIX_PRESENCE_BASE_SCORE +
+      SUFFIX_LENGTH_SCORE_MULTIPLIER * segment.suffixSegment.length
+    )
   }
 
   return baseScore
