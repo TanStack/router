@@ -2,6 +2,7 @@ import { clsx as cx } from 'clsx'
 import { default as invariant } from 'tiny-invariant'
 import { interpolatePath, rootRouteId, trimPath } from '@tanstack/router-core'
 import { Show, createMemo } from 'solid-js'
+import { omitInternalKeys } from '@tanstack/history'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
 import useLocalStorage from './useLocalStorage'
@@ -103,6 +104,7 @@ function RouteComp({
         '/',
         string,
         '__root__',
+        undefined,
         undefined,
         {},
         {},
@@ -228,6 +230,17 @@ function RouteComp({
   )
 }
 
+function getMergedStrictState(routerState: any) {
+  const matches = [
+    ...(routerState.pendingMatches ?? []),
+    ...routerState.matches,
+  ]
+  return Object.assign(
+    {},
+    ...matches.map((m: any) => m._strictState).filter(Boolean),
+  ) as Record<string, any>
+}
+
 export const BaseTanStackRouterDevtoolsPanel =
   function BaseTanStackRouterDevtoolsPanel({
     ...props
@@ -278,6 +291,12 @@ export const BaseTanStackRouterDevtoolsPanel =
       () => Object.keys(routerState().location.search).length,
     )
 
+    const validatedState = createMemo(() =>
+      omitInternalKeys(getMergedStrictState(routerState())),
+    )
+
+    const hasState = createMemo(() => Object.keys(validatedState()).length)
+
     const explorerState = createMemo(() => {
       return {
         ...router(),
@@ -323,6 +342,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     const activeMatchLoaderData = createMemo(() => activeMatch()?.loaderData)
     const activeMatchValue = createMemo(() => activeMatch())
     const locationSearchValue = createMemo(() => routerState().location.search)
+    const validatedStateValue = createMemo(() => validatedState())
 
     return (
       <div
@@ -621,6 +641,23 @@ export const BaseTanStackRouterDevtoolsPanel =
                   obj[next] = {}
                   return obj
                 }, {})}
+              />
+            </div>
+          </div>
+        ) : null}
+        {hasState() ? (
+          <div class={styles().fourthContainer}>
+            <div class={styles().detailsHeader}>State Params</div>
+            <div class={styles().detailsContent}>
+              <Explorer
+                value={validatedStateValue}
+                defaultExpanded={Object.keys(validatedState()).reduce(
+                  (obj: any, next) => {
+                    obj[next] = {}
+                    return obj
+                  },
+                  {},
+                )}
               />
             </div>
           </div>
