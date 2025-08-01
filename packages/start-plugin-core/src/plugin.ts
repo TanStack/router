@@ -47,6 +47,7 @@ export interface TanStackStartVitePluginCoreOptions {
   crawlPackages?: (opts: {
     name: string
     peerDependencies: Record<string, any>
+    exports?: Record<string, any>
   }) => 'include' | 'exclude' | undefined
 }
 // this needs to live outside of the TanStackStartVitePluginCore since it will be invoked multiple times by vite
@@ -110,6 +111,7 @@ export function TanStackStartVitePluginCore(
               const internalResult = opts.crawlPackages?.({
                 name: pkgJson.name,
                 peerDependencies,
+                exports: pkgJson.exports,
               })
               if (internalResult) {
                 if (internalResult === 'exclude') {

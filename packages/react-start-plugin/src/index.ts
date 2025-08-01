@@ -104,7 +104,11 @@ export default createStartHandler({
           if (opts.name === '@tanstack/react-router-devtools') {
             return 'exclude'
           }
-          if ('react' in opts.peerDependencies) {
+          if (
+            opts.exports &&
+            '.' in opts.exports &&
+            'react' in opts.peerDependencies
+          ) {
             return 'include'
           }
           return undefined
