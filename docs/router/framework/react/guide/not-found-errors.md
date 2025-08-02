@@ -240,7 +240,7 @@ export const Route = createFileRoute('/posts/$postId')({
       })
     return { post }
   },
-  // `data: unknown` is passed to the component via the `data` option when calling `notFound`
+  // `data: any` is passed to the component via the `data` option when calling `notFound`
   notFoundComponent: ({ data }) => {
     // ❌ useLoaderData is not valid here: const { post } = Route.useLoaderData()
 
