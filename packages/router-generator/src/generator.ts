@@ -18,6 +18,7 @@ import {
   createRouteNodesByFullPath,
   createRouteNodesById,
   createRouteNodesByTo,
+  detectExportsFromSource,
   determineNodePath,
   findParent,
   format,
@@ -1208,15 +1209,13 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
       updatedCacheEntry.mtimeMs = stats.mtimeMs
     }
 
-    const rootRouteExports: Array<string> = []
-    for (const plugin of this.pluginsWithTransform) {
-      const exportName = plugin.transformPlugin.exportName
-      // TODO we need to parse instead of just string match
-      // otherwise a commented out export will still be detected
-      if (rootNodeFile.fileContent.includes(`export const ${exportName}`)) {
-        rootRouteExports.push(exportName)
-      }
-    }
+    const exportNames = this.pluginsWithTransform.map(
+      (plugin) => plugin.transformPlugin.exportName,
+    )
+    const rootRouteExports = detectExportsFromSource(
+      rootNodeFile.fileContent,
+      exportNames,
+    )
 
     updatedCacheEntry.exports = rootRouteExports
     node.exports = rootRouteExports
