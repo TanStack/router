@@ -13,7 +13,7 @@
     "@tanstack/arktype-adapter": "^1.130.12",
     "@tanstack/react-query": "^5.66.0",
     "@tanstack/react-router": "^1.130.12",
-    "@tanstack/react-router-devtools": "^1.130.12",
+    "@tanstack/react-router-devtools": "^1.130.13",
     "@tanstack/router-plugin": "^1.130.12",
     "@tanstack/valibot-adapter": "^1.130.12",
     "@tanstack/zod-adapter": "^1.130.12",
