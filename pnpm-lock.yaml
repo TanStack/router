@@ -2154,7 +2154,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.27.7)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -2200,7 +2200,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.7)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -4665,9 +4665,6 @@ importers:
         specifier: ^3.24.2
         version: 3.25.57
     devDependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.8
-        version: 4.1.6(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       '@types/node':
         specifier: ^22.5.4
         version: 22.13.4
@@ -4677,9 +4674,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
-      tailwindcss:
-        specifier: ^4.0.8
-        version: 4.1.6
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -6118,18 +6112,12 @@ importers:
         specifier: ^3.24.2
         version: 3.25.57
     devDependencies:
-      '@tailwindcss/vite':
-        specifier: ^4.0.8
-        version: 4.1.6(vite@6.3.5(@types/node@22.13.4)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       '@types/node':
         specifier: ^22.10.2
         version: 22.13.4
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
-      tailwindcss:
-        specifier: ^4.0.0
-        version: 4.1.6
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
