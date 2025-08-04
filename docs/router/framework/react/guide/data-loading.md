@@ -71,7 +71,10 @@ export const Route = createFileRoute('/posts')({
 The `loader` function receives a single object with the following properties:
 
 - `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `loader` function becomes outdated.
-- `cause` - The cause of the current route match, either `enter` or `stay`.
+- `cause` - The cause of the current route match. Can be either one of the following:
+  - `enter` - When the route is matched and loaded after not being matched in the previous location.
+  - `preload` - When the route is being preloaded.
+  - `stay` - When the route is matched and loaded after being matched in the previous location.
 - `context` - The route's context object, which is a merged union of:
   - Parent route context
   - This route's context as provided by the `beforeLoad` option

@@ -31,6 +31,11 @@ export interface IsomorphicFnBase extends IsomorphicFn {
 }
 
 // this is a dummy function, it will be replaced by the transformer
+// if we use `createIsomorphicFn` in this library itself, vite tries to execute it before the transformer runs
+// therefore we must return a dummy function that allows calling `server` and `client` method chains.
 export function createIsomorphicFn(): IsomorphicFnBase {
-  return null!
+  return {
+    server: () => ({ client: () => () => {} }),
+    client: () => ({ server: () => () => {} }),
+  } as any
 }

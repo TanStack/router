@@ -30,7 +30,7 @@ An instance of the `Router` has the following properties and methods:
 
 ### `.matchRoutes` method
 
-- Type: `(pathname: string, locationSearch: Record<string, any>, opts?: { throwOnError?: boolean; }) => RouteMatch[]`
+- Type: `(pathname: string, locationSearch?: Record<string, any>, opts?: { throwOnError?: boolean; }) => RouteMatch[]`
 - Matches a pathname and search params against the router's route tree and returns an array of route matches.
 - If `opts.throwOnError` is `true`, any errors that occur during the matching process will be thrown (in addition to being returned in the route match's `error` property).
 

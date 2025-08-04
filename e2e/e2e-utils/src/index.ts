@@ -1,4 +1,6 @@
-export { derivePort } from './derivePort'
+export { derivePort, getDummyServerPort, getTestServerPort } from './derivePort'
 export { localDummyServer } from './localDummyServer'
 export { toRuntimePath } from './to-runtime-path'
 export { resolveRuntimeSuffix } from './resolve-runtime-suffix'
+export { e2eStartDummyServer, e2eStopDummyServer } from './e2eSetupTeardown'
+export type { Post } from './posts'

@@ -2,6 +2,7 @@ import path from 'node:path'
 import { rmSync } from 'node:fs'
 import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
+import { HEADERS } from '@tanstack/start-server-core'
 import {
   CLIENT_DIST_DIR,
   SSR_ENTRY_FILE,
@@ -132,12 +133,15 @@ async function buildNitroApp(
 
   // If the user has not set a prerender option, we need to set it to true
   // if the pages array is not empty and has sub options requiring for prerendering
+  // If the user has explicitly set prerender.enabled, this should be respected
   if (options.prerender?.enabled !== false) {
     options.prerender = {
       ...options.prerender,
-      enabled: options.pages.some((d) =>
-        typeof d === 'string' ? false : !!d.prerender?.enabled,
-      ),
+      enabled:
+        options.prerender?.enabled ??
+        options.pages.some((d) =>
+          typeof d === 'string' ? false : !!d.prerender?.enabled,
+        ),
     }
   }
 
@@ -152,7 +156,13 @@ async function buildNitroApp(
 
     options.pages.push({
       path: maskUrl.toString().replace('http://localhost', ''),
-      prerender: options.spa.prerender,
+      prerender: {
+        ...options.spa.prerender,
+        headers: {
+          ...options.spa.prerender.headers,
+          [HEADERS.TSS_SHELL]: 'true',
+        },
+      },
       sitemap: {
         exclude: true,
       },

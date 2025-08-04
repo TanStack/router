@@ -11,8 +11,14 @@ The `ErrorComponent` component accepts the following props:
 
 ### `props.error` prop
 
-- Type: `any`
+- Type: `TError` (defaults to `Error`)
 - The error that was thrown by the component's children
+
+### `props.info` prop
+
+- Type: `{ componentStack: string }`
+- Optional
+- Additional information about where the error was thrown, such as the React component stack trace.
 
 ### `props.reset` prop
 

@@ -94,6 +94,9 @@
 'package: start-server-functions-server':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-server-functions-server/**/*'
+'package: start-storage-context':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/start-storage-context/**/*'
 'package: valibot-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/valibot-adapter/**/*'

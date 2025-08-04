@@ -716,9 +716,9 @@ test('clears pendingTimeout when match resolves', async () => {
   })
 
   render(<RouterProvider router={router} />)
+  await act(() => router.latestLoadPromise)
   const linkToFoo = await screen.findByTestId('link-to-foo')
   fireEvent.click(linkToFoo)
-  await router.latestLoadPromise
   const fooElement = await screen.findByText('Nested Foo page')
   expect(fooElement).toBeInTheDocument()
 

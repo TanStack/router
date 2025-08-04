@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import type { GeneratorPlugin } from './plugin/types'
@@ -127,7 +127,6 @@ export function getConfig(
     if (!path.isAbsolute(dir)) {
       dir = path.resolve(process.cwd(), dir)
     }
-    mkdirSync(dir, { recursive: true })
     return dir
   }
 

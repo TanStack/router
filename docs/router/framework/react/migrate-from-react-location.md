@@ -22,7 +22,7 @@ In this guide we'll go over the process of migrating the [React Location Basic e
 
 ### Step 1: Swap over to TanStack Router's dependencies
 
-First, we need to install the dependencies for TanStack Router.
+First, we need to install the dependencies for TanStack Router. For detailed installation instructions, see our [How to Install TanStack Router](./how-to/install.md) guide.
 
 ```sh
 npm install @tanstack/react-router @tanstack/router-devtools
@@ -70,7 +70,7 @@ Create a `tsr.config.json` file in the root of your project with the following c
 }
 ```
 
-You can find the full list of options for the `tsr.config.json` file [here](../routing/file-based-routing.md#options).
+You can find the full list of options for the `tsr.config.json` file [here](../../../api/file-based-routing.md).
 
 ### Step 4: Create the routes directory
 

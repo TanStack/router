@@ -36,3 +36,12 @@ The `Redirect` object accepts/contains the following properties:
 - Type: `HeadersInit`
 - Optional
 - The HTTP headers to use when redirecting.
+
+### Navigation Properties
+
+Since `Redirect` extends `NavigateOptions`, it also supports navigation properties:
+
+- **`to`**: Use for internal application routes (e.g., `/dashboard`, `../profile`)
+- **`href`**: Use for external URLs (e.g., `https://example.com`, `https://authprovider.com`)
+
+> **Important**: For external URLs, always use the `href` property instead of `to`. The `to` property is designed for internal navigation within your application.

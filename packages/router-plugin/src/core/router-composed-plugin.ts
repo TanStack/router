@@ -1,3 +1,4 @@
+import { getConfig } from '@tanstack/router-generator'
 import { unpluginRouterGeneratorFactory } from './router-generator-plugin'
 import { unpluginRouterCodeSplitterFactory } from './router-code-splitter-plugin'
 import { unpluginRouterHmrFactory } from './router-hmr-plugin'
@@ -8,6 +9,9 @@ import type { UnpluginFactory } from 'unplugin'
 export const unpluginRouterComposedFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}, meta) => {
+  const ROOT: string = process.cwd()
+  const userConfig = getConfig(options, ROOT)
+
   const getPlugin = (pluginFactory: UnpluginFactory<Partial<Config>>) => {
     const plugin = pluginFactory(options, meta)
     if (!Array.isArray(plugin)) {
@@ -21,16 +25,16 @@ export const unpluginRouterComposedFactory: UnpluginFactory<
   const routeAutoImport = getPlugin(unpluginRouteAutoImportFactory)
 
   const result = [...routerGenerator]
-  if (options.autoCodeSplitting) {
+  if (userConfig.autoCodeSplitting) {
     result.push(...routerCodeSplitter)
   }
-  if (options.verboseFileRoutes === false) {
+  if (userConfig.verboseFileRoutes === false) {
     result.push(...routeAutoImport)
   }
 
   const isProduction = process.env.NODE_ENV === 'production'
 
-  if (!isProduction && !options.autoCodeSplitting) {
+  if (!isProduction && !userConfig.autoCodeSplitting) {
     const routerHmr = getPlugin(unpluginRouterHmrFactory)
     result.push(...routerHmr)
   }

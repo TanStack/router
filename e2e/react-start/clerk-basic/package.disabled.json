@@ -8,7 +8,7 @@
     "dev:e2e": "vite dev",
     "build": "vite build",
     "start": "node .output/server/index.mjs",
-    "test:e2e": "exit 0; playwright test --project=chromium"
+    "test:e2e": "exit 0; rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
     "@clerk/tanstack-react-start": "^0.12.0",
