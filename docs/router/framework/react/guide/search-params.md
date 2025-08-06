@@ -204,7 +204,7 @@ For validation libraries we recommend using adapters which infer the correct `in
 ### Zod 4
 
 > [!WARNING]
-> Zod v4.0.6 or higher is required for native TanStack Router support.
+> Zod v4.0.6 or higher is recommended for proper type inference.
 
 When using [Zod 4](https://zod.dev/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is possible thanks to `zod` enhanced type inference, which preserves complete type information when using [Standard Schema](https://github.com/standard-schema/standard-schema).
 
@@ -216,6 +216,26 @@ const productSearchSchema = z.object({
   page: z.number().default(1),
   filter: z.string().default(''),
   sort: z.enum(['newest', 'oldest', 'price']).default('newest').catch('newest'),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: productSearchSchema,
+})
+```
+
+Alternatively, you can use the [Zod Mini](https://zod.dev/packages/mini) variant
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import * as z from 'zod/mini'
+
+const productSearchSchema = z.object({
+  page: z._default(z.number(), 1),
+  filter: z._default(z.string(), ''),
+  sort: z.catch(
+    z._default(z.enum(['newest', 'oldest', 'price']), 'newest'),
+    'newest',
+  ),
 })
 
 export const Route = createFileRoute('/shop/products/')({
