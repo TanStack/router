@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "vite-plugin-solid": "^2.11.2",
+    "vite-plugin-solid": "^2.11.8",
     "combinate": "^1.1.11",
     "typescript": "^5.7.2",
     "vite": "^6.3.5",
