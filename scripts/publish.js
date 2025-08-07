@@ -93,10 +93,6 @@ await publish({
       packageDir: 'packages/solid-start',
     },
     {
-      name: '@tanstack/solid-start-plugin',
-      packageDir: 'packages/solid-start-plugin',
-    },
-    {
       name: '@tanstack/solid-start-client',
       packageDir: 'packages/solid-start-client',
     },
@@ -119,10 +115,6 @@ await publish({
     {
       name: '@tanstack/react-start',
       packageDir: 'packages/react-start',
-    },
-    {
-      name: '@tanstack/react-start-plugin',
-      packageDir: 'packages/react-start-plugin',
     },
     {
       name: '@tanstack/react-start-client',

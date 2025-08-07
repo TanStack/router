@@ -5,7 +5,13 @@ import type { TanStackStartInputConfig } from '@tanstack/start-plugin-core'
 import type { PluginOption } from 'vite'
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
-const defaultEntryDir = path.resolve(currentDir, '..', 'default-entry')
+const defaultEntryDir = path.resolve(
+  currentDir,
+  '..',
+  '..',
+  'plugin',
+  'default-entry',
+)
 const defaultEntryPaths = {
   client: path.resolve(defaultEntryDir, 'client'),
   server: path.resolve(defaultEntryDir, 'server'),

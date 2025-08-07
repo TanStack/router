@@ -25,9 +25,6 @@
 'package: react-start-client':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start-client/**/*'
-'package: react-start-plugin':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/react-start-plugin/**/*'
 'package: react-start-server':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start-server/**/*'
@@ -70,9 +67,6 @@
 'package: solid-start-client':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-start-client/**/*'
-'package: solid-start-plugin':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/solid-start-plugin/**/*'
 'package: solid-start-server':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-start-server/**/*'
