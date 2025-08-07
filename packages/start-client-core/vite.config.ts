@@ -16,6 +16,5 @@ export default mergeConfig(
   tanstackViteConfig({
     srcDir: './src',
     entry: './src/index.tsx',
-    // externalDeps: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
   }),
 )
