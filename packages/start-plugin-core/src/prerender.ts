@@ -214,7 +214,9 @@ export async function prerender({
             retriesByPath.set(page.path, retries + 1)
             addCrawlPageTask(page)
           } else {
-            throw error
+            if (prerenderOptions.failOnError ?? true) {
+              throw error
+            }
           }
         }
       })
