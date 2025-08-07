@@ -5,7 +5,6 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
-import { createTanStackConfig } from './schema'
 import { nitroPlugin } from './nitro-plugin/plugin'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin'
@@ -18,23 +17,13 @@ import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { resolveVirtualEntriesPlugin } from './resolve-virtual-entries-plugin/plugin'
-import type { createTanStackStartOptionsSchema } from './schema'
+import { parseStartConfig } from './schema'
+import type {
+  TanStackStartInputConfig,
+  TanStackStartOutputConfig,
+} from './schema'
 import type { PluginOption, Rollup } from 'vite'
-import type { z } from 'zod'
 import type { CompileStartFrameworkOptions } from './compilers'
-
-export type TanStackStartInputConfig = z.input<
-  ReturnType<typeof createTanStackStartOptionsSchema>
->
-
-const defaultConfig = createTanStackConfig()
-export function getTanStackStartOptions(opts?: TanStackStartInputConfig) {
-  return defaultConfig.parse(opts)
-}
-
-export type TanStackStartOutputConfig = ReturnType<
-  typeof getTanStackStartOptions
->
 
 export interface TanStackStartVitePluginCoreOptions {
   framework: CompileStartFrameworkOptions
@@ -54,18 +43,19 @@ export interface TanStackStartVitePluginCoreOptions {
 let ssrBundle: Rollup.OutputBundle
 
 export function TanStackStartVitePluginCore(
-  opts: TanStackStartVitePluginCoreOptions,
-  startConfig: TanStackStartOutputConfig,
+  corePluginOpts: TanStackStartVitePluginCoreOptions,
+  startPluginOpts: TanStackStartInputConfig,
 ): Array<PluginOption> {
+  const startConfig = parseStartConfig(startPluginOpts)
   return [
     tanStackStartRouter({
       ...startConfig.tsr,
-      target: opts.framework,
+      target: corePluginOpts.framework,
       autoCodeSplitting: true,
     }),
-    resolveVirtualEntriesPlugin(opts, startConfig),
+    resolveVirtualEntriesPlugin(corePluginOpts, startConfig),
     {
-      name: 'tanstack-start-core:config-client',
+      name: 'tanstack-start-core:config',
       async config(viteConfig, { command }) {
         const viteAppBase = trimPathRight(viteConfig.base || '/')
         globalThis.TSS_APP_BASE = viteAppBase
@@ -83,8 +73,8 @@ export function TanStackStartVitePluginCore(
           return nitroOutputPublicDir
         })()
 
-        const startPackageName = `@tanstack/${opts.framework}-start`
-        const routerPackageName = `@tanstack/${opts.framework}-router`
+        const startPackageName = `@tanstack/${corePluginOpts.framework}-start`
+        const routerPackageName = `@tanstack/${corePluginOpts.framework}-router`
 
         const additionalOptimizeDeps = {
           include: new Set<string>(),
@@ -108,7 +98,7 @@ export function TanStackStartVitePluginCore(
             const peerDependencies = pkgJson['peerDependencies']
 
             if (peerDependencies) {
-              const internalResult = opts.crawlPackages?.({
+              const internalResult = corePluginOpts.crawlPackages?.({
                 name: pkgJson.name,
                 peerDependencies,
                 exports: pkgJson.exports,
@@ -179,7 +169,7 @@ export function TanStackStartVitePluginCore(
           resolve: {
             noExternal: [
               '@tanstack/start**',
-              `@tanstack/${opts.framework}-start**`,
+              `@tanstack/${corePluginOpts.framework}-start**`,
               ...Object.values(VIRTUAL_MODULES),
               startPackageName,
               ...result.ssr.noExternal.sort(),
@@ -211,7 +201,7 @@ export function TanStackStartVitePluginCore(
       },
     },
     // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPluginEnv
-    startCompilerPlugin(opts.framework, {
+    startCompilerPlugin(corePluginOpts.framework, {
       client: { envName: VITE_ENVIRONMENT_NAMES.client },
       server: { envName: VITE_ENVIRONMENT_NAMES.server },
     }),
@@ -221,14 +211,14 @@ export function TanStackStartVitePluginCore(
       manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
       client: {
         getRuntimeCode: () =>
-          `import { createClientRpc } from '@tanstack/${opts.framework}-start/server-functions-client'`,
+          `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/server-functions-client'`,
         replacer: (d) =>
           `createClientRpc('${d.functionId}', '${startConfig.serverFns.base}')`,
         envName: VITE_ENVIRONMENT_NAMES.client,
       },
       server: {
         getRuntimeCode: () =>
-          `import { createServerRpc } from '@tanstack/${opts.framework}-start/server-functions-server'`,
+          `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server-functions-server'`,
         replacer: (d) =>
           `createServerRpc('${d.functionId}', '${startConfig.serverFns.base}', ${d.fn})`,
         envName: VITE_ENVIRONMENT_NAMES.server,

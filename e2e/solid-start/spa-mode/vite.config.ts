@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
+import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
   server: {
@@ -25,5 +26,6 @@ export default defineConfig({
         },
       ],
     }),
+    viteSolid({ ssr: true }),
   ],
 })

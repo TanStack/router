@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",
+    "@vitejs/plugin-react": "^4.3.4",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
