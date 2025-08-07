@@ -71,7 +71,7 @@ export function devServerPlugin(): PluginOption {
               // this request entry point must implement the `fetch` API as follows:
               /**
                * export default {
-               *  async fetch(req: Request) => Promise<Response>
+               *  fetch(req: Request): Promise<Response>
                * }
                */
               const serverEntry = await serverEnv.runner.import(
