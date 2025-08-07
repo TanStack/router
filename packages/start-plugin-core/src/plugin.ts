@@ -22,7 +22,7 @@ import type { PluginOption } from 'vite'
 import type { CompileStartFrameworkOptions } from './compilers'
 
 export interface TanStackStartVitePluginCoreOptions {
-  framework: CompileStartFrameworkOptions,
+  framework: CompileStartFrameworkOptions
   defaultEntryPaths: {
     client: string
     server: string
@@ -34,12 +34,13 @@ export interface TanStackStartVitePluginCoreOptions {
   }) => 'include' | 'exclude' | undefined
 }
 
-
 export function TanStackStartVitePluginCore(
   corePluginOpts: TanStackStartVitePluginCoreOptions,
   startPluginOpts: TanStackStartInputConfig,
 ): Array<PluginOption> {
   const startConfig = parseStartConfig(startPluginOpts)
+
+  let clientBundle: vite.Rollup.OutputBundle
 
   return [
     tanStackStartRouter({
@@ -82,8 +83,7 @@ export function TanStackStartVitePluginCore(
           required: false,
         })
 
-       
-        let clientAlias : string 
+        let clientAlias: string
         if (clientEntryPath) {
           clientAlias = vite.normalizePath(
             path.join('/@fs', path.resolve(root, clientEntryPath)),
@@ -91,21 +91,22 @@ export function TanStackStartVitePluginCore(
         } else {
           clientAlias = corePluginOpts.defaultEntryPaths.client
         }
-        let serverAlias : string
+        let serverAlias: string
         if (serverEntryPath) {
-          serverAlias = vite.normalizePath(
-            path.resolve(root, serverEntryPath),
-          )
+          serverAlias = vite.normalizePath(path.resolve(root, serverEntryPath))
         } else {
           serverAlias = corePluginOpts.defaultEntryPaths.server
         }
-        const entryAliasConfiguration : Record<typeof ENTRY_POINTS[keyof typeof ENTRY_POINTS], string> = {
+        const entryAliasConfiguration: Record<
+          (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS],
+          string
+        > = {
           [ENTRY_POINTS.router]: routerFilePath,
           [ENTRY_POINTS.client]: clientAlias,
           [ENTRY_POINTS.server]: serverAlias,
         }
 
-        // TODO 
+        // TODO
         /* const nitroOutputPublicDir = await (async () => {
           // Create a dummy nitro app to get the resolved public output path
           const dummyNitroApp = await createNitro({

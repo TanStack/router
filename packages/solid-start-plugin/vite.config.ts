@@ -25,6 +25,6 @@ export default mergeConfig(
     entry: './src/index.ts',
     srcDir: './src',
     outDir: './dist',
-    cjs: false
+    cjs: false,
   }),
 )

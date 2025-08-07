@@ -4,9 +4,7 @@ import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
 
 const config = defineConfig({
-  plugins: [
-    solid({ solid: { generate: 'ssr' } }),
-  ],
+  plugins: [solid({ solid: { generate: 'ssr' } })],
   test: {
     name: packageJson.name,
     watch: false,
