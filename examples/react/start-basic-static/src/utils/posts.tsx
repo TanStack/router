@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import axios from 'redaxios'
 import { notFound } from '@tanstack/react-router'
 import { logMiddleware } from './loggingMiddleware'
+import { staticFunctionMiddleware } from '@tanstack/start-static-server-functions'
 
 export type PostType = {
   id: string
@@ -9,8 +10,8 @@ export type PostType = {
   body: string
 }
 
-export const fetchPost = createServerFn({ method: 'GET', type: 'static' })
-  .middleware([logMiddleware])
+export const fetchPost = createServerFn({ method: 'GET' })
+  .middleware([logMiddleware, staticFunctionMiddleware])
   .validator((d: string) => d)
   .handler(async ({ data }) => {
     console.info(`Fetching post with id ${data}...`)
@@ -27,8 +28,8 @@ export const fetchPost = createServerFn({ method: 'GET', type: 'static' })
     return post
   })
 
-export const fetchPosts = createServerFn({ method: 'GET', type: 'static' })
-  .middleware([logMiddleware])
+export const fetchPosts = createServerFn({ method: 'GET' })
+  .middleware([logMiddleware, staticFunctionMiddleware])
   .handler(async () => {
     console.info('Fetching posts...')
     return axios

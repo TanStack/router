@@ -46,6 +46,7 @@ overrides:
   '@tanstack/server-functions-plugin': workspace:*
   '@tanstack/directive-functions-plugin': workspace:*
   '@tanstack/router-utils': workspace:*
+  '@tanstack/start-static-server-functions': workspace:*
 
 importers:
 
@@ -4980,6 +4981,9 @@ importers:
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
+      '@tanstack/start-static-server-functions':
+        specifier: workspace:*
+        version: link:../../../packages/start-static-server-functions
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -6250,6 +6254,9 @@ importers:
       '@tanstack/solid-start':
         specifier: workspace:*
         version: link:../../../packages/solid-start
+      '@tanstack/start-static-server-functions':
+        specifier: workspace:*
+        version: link:../../../packages/start-static-server-functions
       redaxios:
         specifier: ^0.5.1
         version: 0.5.1
@@ -7165,6 +7172,12 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
+
+  packages/start-static-server-functions:
+    dependencies:
+      '@tanstack/start-client-core':
+        specifier: workspace:*
+        version: link:../start-client-core
 
   packages/start-storage-context:
     dependencies:

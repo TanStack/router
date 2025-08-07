@@ -77,7 +77,6 @@ export type {
   ServerFnBaseOptions,
   NextFn,
   Method,
-  StaticCachedResult,
   OptionalFetcher,
   RequiredFetcher,
 } from './createServerFn'
@@ -87,6 +86,5 @@ export {
   serverFnBaseToMiddleware,
   extractFormDataContext,
   flattenMiddlewares,
-  serverFnStaticCache,
   executeMiddleware,
 } from './createServerFn'

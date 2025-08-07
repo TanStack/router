@@ -170,59 +170,14 @@ export function createServerFn<
               signal,
             }
 
-            const run = () =>
-              executeMiddleware(resolvedMiddleware, 'server', ctx).then(
-                (d) => ({
-                  // Only send the result and sendContext back to the client
-                  result: d.result,
-                  error: d.error,
-                  context: d.sendContext,
-                }),
-              )
-
-            if (ctx.type === 'static') {
-              let response: StaticCachedResult | undefined
-
-              // If we can get the cached item, try to get it
-              if (serverFnStaticCache?.getItem) {
-                // If this throws, it's okay to let it bubble up
-                response = await serverFnStaticCache.getItem(ctx)
-              }
-
-              if (!response) {
-                // If there's no cached item, execute the server function
-                response = await run()
-                  .then((d) => {
-                    return {
-                      ctx: d,
-                      error: null,
-                    }
-                  })
-                  .catch((e) => {
-                    return {
-                      ctx: undefined,
-                      error: e,
-                    }
-                  })
-
-                if (serverFnStaticCache?.setItem) {
-                  await serverFnStaticCache.setItem(ctx, response)
-                }
-              }
-
-              invariant(
-                response,
-                'No response from both server and static cache!',
-              )
-
-              if (response.error) {
-                throw response.error
-              }
-
-              return response.ctx
-            }
-
-            return run()
+            return executeMiddleware(resolvedMiddleware, 'server', ctx).then(
+              (d) => ({
+                // Only send the result and sendContext back to the client
+                result: d.result,
+                error: d.error,
+                context: d.sendContext,
+              }),
+            )
           },
         },
       ) as any
@@ -633,176 +588,6 @@ export interface ServerFnBuilder<
   >
 }
 
-export type StaticCachedResult = {
-  ctx?: {
-    result: any
-    context: any
-  }
-  error?: any
-}
-
-export type ServerFnStaticCache = {
-  getItem: (
-    ctx: ServerFnMiddlewareResult,
-  ) => StaticCachedResult | Promise<StaticCachedResult | undefined>
-  setItem: (
-    ctx: ServerFnMiddlewareResult,
-    response: StaticCachedResult,
-  ) => Promise<void>
-  fetchItem: (
-    ctx: ServerFnMiddlewareResult,
-  ) => StaticCachedResult | Promise<StaticCachedResult | undefined>
-}
-
-export let serverFnStaticCache: ServerFnStaticCache | undefined
-
-export function setServerFnStaticCache(
-  cache?: ServerFnStaticCache | (() => ServerFnStaticCache | undefined),
-) {
-  const previousCache = serverFnStaticCache
-  serverFnStaticCache = typeof cache === 'function' ? cache() : cache
-
-  return () => {
-    serverFnStaticCache = previousCache
-  }
-}
-
-export function createServerFnStaticCache(
-  serverFnStaticCache: ServerFnStaticCache,
-) {
-  return serverFnStaticCache
-}
-
-/**
- * This is a simple hash function for generating a hash from a string to make the filenames shorter.
- *
- * It is not cryptographically secure (as its using SHA-1) and should not be used for any security purposes.
- *
- * It is only used to generate a hash for the static cache filenames.
- *
- * @param message - The input string to hash.
- * @returns A promise that resolves to the SHA-1 hash of the input string in hexadecimal format.
- *
- * @example
- * ```typescript
- * const hash = await sha1Hash("hello");
- * console.log(hash); // Outputs the SHA-1 hash of "hello" -> "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"
- * ```
- */
-async function sha1Hash(message: string): Promise<string> {
-  // Encode the string as UTF-8
-  const msgBuffer = new TextEncoder().encode(message)
-
-  // Hash the message
-  const hashBuffer = await crypto.subtle.digest('SHA-1', msgBuffer)
-
-  // Convert the ArrayBuffer to a string
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
-  return hashHex
-}
-
-setServerFnStaticCache(() => {
-  const getStaticCacheUrl = async (
-    options: ServerFnMiddlewareResult,
-    hash: string,
-  ) => {
-    const filename = await sha1Hash(`${options.functionId}__${hash}`)
-    return `/__tsr/staticServerFnCache/${filename}.json`
-  }
-
-  const jsonToFilenameSafeString = (json: any) => {
-    // Custom replacer to sort keys
-    const sortedKeysReplacer = (key: string, value: any) =>
-      value && typeof value === 'object' && !Array.isArray(value)
-        ? Object.keys(value)
-            .sort()
-            .reduce((acc: any, curr: string) => {
-              acc[curr] = value[curr]
-              return acc
-            }, {})
-        : value
-
-    // Convert JSON to string with sorted keys
-    const jsonString = JSON.stringify(json ?? '', sortedKeysReplacer)
-
-    // Replace characters invalid in filenames
-    return jsonString
-      .replace(/[/\\?%*:|"<>]/g, '-') // Replace invalid characters with a dash
-      .replace(/\s+/g, '_') // Optionally replace whitespace with underscores
-  }
-
-  const staticClientCache =
-    typeof document !== 'undefined' ? new Map<string, any>() : null
-
-  return createServerFnStaticCache({
-    getItem: async (ctx) => {
-      if (typeof document === 'undefined') {
-        const hash = jsonToFilenameSafeString(ctx.data)
-        const url = await getStaticCacheUrl(ctx, hash)
-        const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
-
-        // Use fs instead of fetch to read from filesystem
-        const { promises: fs } = await import('node:fs')
-        const path = await import('node:path')
-        const filePath = path.join(publicUrl, url)
-
-        const [cachedResult, readError] = await fs
-          .readFile(filePath, 'utf-8')
-          .then((c) => [
-            startSerializer.parse(c) as {
-              ctx: unknown
-              error: any
-            },
-            null,
-          ])
-          .catch((e) => [null, e])
-
-        if (readError && readError.code !== 'ENOENT') {
-          throw readError
-        }
-
-        return cachedResult as StaticCachedResult
-      }
-
-      return undefined
-    },
-    setItem: async (ctx, response) => {
-      const { promises: fs } = await import('node:fs')
-      const path = await import('node:path')
-
-      const hash = jsonToFilenameSafeString(ctx.data)
-      const url = await getStaticCacheUrl(ctx, hash)
-      const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
-      const filePath = path.join(publicUrl, url)
-
-      // Ensure the directory exists
-      await fs.mkdir(path.dirname(filePath), { recursive: true })
-
-      // Store the result with fs
-      await fs.writeFile(filePath, startSerializer.stringify(response))
-    },
-    fetchItem: async (ctx) => {
-      const hash = jsonToFilenameSafeString(ctx.data)
-      const url = await getStaticCacheUrl(ctx, hash)
-
-      let result: any = staticClientCache?.get(url)
-
-      if (!result) {
-        result = await fetch(url, {
-          method: 'GET',
-        })
-          .then((r) => r.text())
-          .then((d) => startSerializer.parse(d))
-
-        staticClientCache?.set(url, result)
-      }
-
-      return result
-    },
-  })
-})
-
 export function extractFormDataContext(formData: FormData) {
   const serializedContext = formData.get('__TSR_CONTEXT')
   formData.delete('__TSR_CONTEXT')
@@ -959,32 +744,6 @@ export function serverFnBaseToMiddleware(
           context: sendContext,
           type: typeof ctx.type === 'function' ? ctx.type(ctx) : ctx.type,
         } as any
-
-        if (
-          ctx.type === 'static' &&
-          process.env.NODE_ENV === 'production' &&
-          typeof document !== 'undefined'
-        ) {
-          invariant(
-            serverFnStaticCache,
-            'serverFnStaticCache.fetchItem is not available!',
-          )
-
-          const result = await serverFnStaticCache.fetchItem(payload)
-
-          if (result) {
-            if (result.error) {
-              throw result.error
-            }
-
-            return next(result.ctx)
-          }
-
-          warning(
-            result,
-            `No static cache item found for ${payload.functionId}__${JSON.stringify(payload.data)}, falling back to server function...`,
-          )
-        }
 
         // Execute the extracted function
         // but not before serializing the context

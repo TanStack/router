@@ -141,6 +141,10 @@ await publish({
       packageDir: 'packages/start-plugin-core',
     },
     {
+      name: '@tanstack/start-static-server-functions',
+      packageDir: 'packages/start-static-server-functions',
+    },
+    {
       name: '@tanstack/router-utils',
       packageDir: 'packages/router-utils',
     },

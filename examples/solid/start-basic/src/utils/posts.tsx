@@ -8,7 +8,7 @@ export type PostType = {
   body: string
 }
 
-export const fetchPost = createServerFn({ method: 'GET', type: 'static' })
+export const fetchPost = createServerFn({ method: 'GET' })
   .validator((d: string) => d)
   .handler(async ({ data }) => {
     console.info(`Fetching post with id ${data}...`)
@@ -28,7 +28,6 @@ export const fetchPost = createServerFn({ method: 'GET', type: 'static' })
 
 export const fetchPosts = createServerFn({
   method: 'GET',
-  type: 'static',
 }).handler(async () => {
   console.info('Fetching posts...')
   return axios
