@@ -1,16 +1,9 @@
 import { fileURLToPath } from 'node:url'
-import viteReact from '@vitejs/plugin-react'
 import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
 import path from 'pathe'
-import { getTanStackStartOptions } from './schema'
-import type { TanStackStartInputConfig, WithReactPlugin } from './schema'
+import type { TanStackStartInputConfig } from '@tanstack/start-plugin-core'
 import type { PluginOption } from 'vite'
 
-export type {
-  TanStackStartInputConfig,
-  TanStackStartOutputConfig,
-  WithReactPlugin,
-} from './schema'
 
 function hasRootExport(
   exportsField?: Record<string, unknown> | string,
@@ -29,22 +22,9 @@ function hasRootExport(
   return false
 }
 
-export function TanStackStartVitePlugin(
-  opts?: TanStackStartInputConfig & WithReactPlugin,
+export function tanstackStart(
+  options?: TanStackStartInputConfig,
 ): Array<PluginOption> {
-  type OptionsWithReact = ReturnType<typeof getTanStackStartOptions> &
-    WithReactPlugin
-  const options: OptionsWithReact = getTanStackStartOptions(opts)
-
-  if (opts?.customViteReactPlugin !== true) {
-    console.warn(
-      `please add the vite-react plugin to your Vite config and set 'customViteReactPlugin: true'`,
-    )
-    console.warn(
-      `TanStack Start will not configure the vite-react plugin in future anymore.`,
-    )
-  }
-
   const isInsideRouterMonoRepo = (() => {
     const currentDir = path.dirname(fileURLToPath(import.meta.url))
     return path.basename(path.resolve(currentDir, '../../../')) === 'packages'
@@ -129,8 +109,5 @@ export default createStartHandler({
       },
       options,
     ),
-    !opts?.customViteReactPlugin && viteReact(options.react),
   ]
 }
-
-export { TanStackStartVitePlugin as tanstackStart }

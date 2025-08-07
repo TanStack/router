@@ -48,11 +48,12 @@ Set the `target` value to `'netlify'` in the TanStack Start Vite plugin in `vite
 
 ```ts
 // vite.config.ts
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'netlify' })],
+  plugins: [tanstackStart({ target: 'netlify' }), viteReact()],
 })
 ```
 
@@ -64,11 +65,12 @@ Set the `target` value to `'vercel'` in the TanStack Start Vite plugin in `vite.
 
 ```ts
 // vite.config.ts
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'vercel' })],
+  plugins: [tanstackStart({ target: 'vercel' }), viteReact()],
 })
 ```
 
@@ -84,11 +86,12 @@ Set the `target` value to `cloudflare-module` in your `vite.config.ts` file.
 
 ```ts
 // vite.config.ts
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'cloudflare-module' })],
+  plugins: [tanstackStart({ target: 'cloudflare-module' }), viteReact()],
 })
 ```
 
@@ -114,11 +117,12 @@ Set the `target` value to `node-server` in your `vite.config.ts` file.
 
 ```ts
 // vite.config.ts
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'node-server' })],
+  plugins: [tanstackStart({ target: 'node-server' }), viteReact()],
 })
 ```
 
@@ -149,11 +153,12 @@ Set the `target` value to `bun` in your `vite.config.ts` file.
 
 ```ts
 // vite.config.ts
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'bun' })],
+  plugins: [tanstackStart({ target: 'bun' }), viteReact()],
 })
 ```
 

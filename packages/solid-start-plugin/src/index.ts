@@ -1,31 +1,10 @@
-import viteSolid from 'vite-plugin-solid'
 import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
-import { getTanStackStartOptions } from './schema'
+import type { TanStackStartInputConfig } from '@tanstack/start-plugin-core'
 import type { PluginOption } from 'vite'
-import type { TanStackStartInputConfig, WithSolidPlugin } from './schema'
 
-export type {
-  TanStackStartInputConfig,
-  TanStackStartOutputConfig,
-  WithSolidPlugin,
-} from './schema'
-
-export function TanStackStartVitePlugin(
-  opts?: TanStackStartInputConfig & WithSolidPlugin,
+export function tanstackStart(
+  options?: TanStackStartInputConfig,
 ): Array<PluginOption> {
-  type OptionsWithSolid = ReturnType<typeof getTanStackStartOptions> &
-    WithSolidPlugin
-  const options: OptionsWithSolid = getTanStackStartOptions(opts)
-
-  if (opts?.customViteSolidPlugin !== true) {
-    console.warn(
-      `please add the vite-solid plugin to your Vite config and set 'customViteSolidPlugin: true'`,
-    )
-    console.warn(
-      `TanStack Start will not configure the vite-solid plugin in future anymore.`,
-    )
-  }
-
   return [
     TanStackStartVitePluginCore(
       {
@@ -62,8 +41,5 @@ export default createStartHandler({
       },
       options,
     ),
-    !opts?.customViteSolidPlugin && viteSolid({ ...options.solid, ssr: true }),
   ]
 }
-
-export { TanStackStartVitePlugin as tanstackStart }

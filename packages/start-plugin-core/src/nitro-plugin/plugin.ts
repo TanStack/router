@@ -10,6 +10,7 @@ import {
 } from '../constants'
 import { buildSitemap } from './build-sitemap'
 import { prerender } from './prerender'
+import type { TanStackStartOutputConfig } from '../schema'
 import type {
   EnvironmentOptions,
   PluginOption,
@@ -17,7 +18,6 @@ import type {
   ViteBuilder,
 } from 'vite'
 import type { Nitro, NitroConfig } from 'nitropack'
-import type { TanStackStartOutputConfig } from '../plugin'
 
 export function nitroPlugin(
   options: TanStackStartOutputConfig,

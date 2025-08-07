@@ -1,9 +1,7 @@
 import path from 'node:path'
 import * as vite from 'vite'
-import type {
-  TanStackStartOutputConfig,
-  TanStackStartVitePluginCoreOptions,
-} from '../plugin'
+import type { TanStackStartVitePluginCoreOptions } from '../plugin'
+import type { TanStackStartOutputConfig } from '../schema'
 
 export function resolveVirtualEntriesPlugin(
   opts: TanStackStartVitePluginCoreOptions,
