@@ -44,6 +44,12 @@ function getH3Event() {
   return event.h3Event
 }
 
+export function getRequest(): Request {
+  const event = getH3Event()
+  return event.req
+}
+
+// not public API (yet)
 export function getValidatedQuery<TSchema extends StandardSchemaV1>(
   schema: StandardSchemaV1,
 ): Promise<StandardSchemaV1.InferOutput<TSchema>> {
@@ -55,7 +61,7 @@ export function getRequestHeaders(): TypedHeaders<RequestHeaderMap> {
   return getH3Event().req.headers as any
 }
 
-export function getRequestHeade(name: RequestHeaderName): string | undefined {
+export function getRequestHeader(name: RequestHeaderName): string | undefined {
   return getRequestHeaders().get(name) || undefined
 }
 
@@ -241,6 +247,13 @@ export function deleteCookie(
   h3.deleteCookie(event, name, options)
 }
 
+function getDefaultSessionConfig(config: SessionConfig): SessionConfig {
+  return {
+    name: 'start',
+    ...config,
+  }
+}
+
 /**
  * Create a session manager for the current request.
  */
@@ -248,7 +261,7 @@ export function useSession<TSessionData extends SessionData = SessionData>(
   config: SessionConfig,
 ): Promise<SessionManager<TSessionData>> {
   const event = getH3Event()
-  return h3.useSession(event, config)
+  return h3.useSession(event, getDefaultSessionConfig(config))
 }
 /**
  * Get the session for the current request
@@ -257,7 +270,7 @@ export function getSession<TSessionData extends SessionData = SessionData>(
   config: SessionConfig,
 ): Promise<Session<TSessionData>> {
   const event = getH3Event()
-  return h3.getSession(event, config)
+  return h3.getSession(event, getDefaultSessionConfig(config))
 }
 
 /**
@@ -268,7 +281,7 @@ export function updateSession<TSessionData extends SessionData = SessionData>(
   update?: SessionUpdate<TSessionData>,
 ): Promise<Session<TSessionData>> {
   const event = getH3Event()
-  return h3.updateSession(event, config, update)
+  return h3.updateSession(event, getDefaultSessionConfig(config), update)
 }
 
 /**
@@ -276,7 +289,7 @@ export function updateSession<TSessionData extends SessionData = SessionData>(
  */
 export function sealSession(config: SessionConfig): Promise<string> {
   const event = getH3Event()
-  return h3.sealSession(event, config)
+  return h3.sealSession(event, getDefaultSessionConfig(config))
 }
 /**
  * Decrypt and verify the session data for the current request.
@@ -286,7 +299,7 @@ export function unsealSession(
   sealed: string,
 ): Promise<Partial<Session>> {
   const event = getH3Event()
-  return h3.unsealSession(event, config, sealed)
+  return h3.unsealSession(event, getDefaultSessionConfig(config), sealed)
 }
 
 /**
@@ -294,5 +307,5 @@ export function unsealSession(
  */
 export function clearSession(config: Partial<SessionConfig>): Promise<void> {
   const event = getH3Event()
-  return h3.clearSession(event, config)
+  return h3.clearSession(event, { name: 'start', ...config })
 }
