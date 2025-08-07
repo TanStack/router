@@ -25,3 +25,7 @@ declare module 'tanstack-start-server-fn-manifest:v' {
 
   export default serverFnManifest
 }
+
+declare module 'tanstack-start-injected-head-scripts:v' {
+  export const injectedHeadScripts: string | undefined
+}

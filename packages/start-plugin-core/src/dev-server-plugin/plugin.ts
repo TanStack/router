@@ -1,117 +1,117 @@
 import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
+import { resolveViteId } from '../utils'
 import { extractHtmlScripts } from './extract-html-scripts'
-import type { Connect, DevEnvironment, Plugin } from 'vite'
+import type { Connect, DevEnvironment, PluginOption } from 'vite'
 
-/* eslint-disable no-var */
-declare global {
-  var TSS_INJECTED_HEAD_SCRIPTS: string | undefined
-}
-
-export function devServerPlugin(): Plugin {
-  // let config: UserConfig
+export function devServerPlugin(): PluginOption {
   let isTest = false
 
-  return {
-    name: 'tanstack-start-core:dev-server',
-    config(userConfig, { mode }) {
-      // config = userConfig
-      isTest = isTest ? isTest : mode === 'test'
-      // see https://vite.dev/config/shared-options.html#apptype
-      // this will prevent vite from injecting middlewares that we don't want
-      userConfig.appType = 'custom'
-    },
-    async configureServer(viteDevServer) {
-      if (isTest) {
-        return
-      }
+  let injectedHeadScripts: string | undefined
 
-      // Extract the scripts that Vite plugins would inject into the initial HTML
-      const templateHtml = `<html><head></head><body></body></html>`
-      const transformedHtml = await viteDevServer.transformIndexHtml(
-        '/',
-        templateHtml,
-      )
-      const scripts = extractHtmlScripts(transformedHtml)
-      globalThis.TSS_INJECTED_HEAD_SCRIPTS = scripts
-        .map((script) => script.content ?? '')
-        .join(';')
-
-      return () => {
-        // do not install middleware in middlewareMode
-        if (viteDevServer.config.server.middlewareMode) {
+  return [
+    {
+      name: 'tanstack-start-core:dev-server',
+      config(_userConfig, { mode }) {
+        isTest = isTest ? isTest : mode === 'test'
+      },
+      async configureServer(viteDevServer) {
+        if (isTest) {
           return
         }
-        viteDevServer.middlewares.use(async (req, res, next) => {
-          // Create an H3Event to have it passed into the server entry
-          // i.e: event => defineEventHandler(event)
 
-          // fix the request URL to match the original URL
-          // otherwise, the request URL will '/index.html'
-          if (req.originalUrl) {
-            req.url = req.originalUrl
+        // Extract the scripts that Vite plugins would inject into the initial HTML
+        const templateHtml = `<html><head></head><body></body></html>`
+        const transformedHtml = await viteDevServer.transformIndexHtml(
+          '/',
+          templateHtml,
+        )
+        const scripts = extractHtmlScripts(transformedHtml)
+        injectedHeadScripts = scripts.filter((script) => script.content)
+          .join(';')
+
+        return () => {
+          // do not install middleware in middlewareMode
+          if (viteDevServer.config.server.middlewareMode) {
+            return
           }
-          const event = createEvent(req, res)
 
           const serverEnv = viteDevServer.environments[
             VITE_ENVIRONMENT_NAMES.server
           ] as DevEnvironment | undefined
 
-          try {
-            if (!serverEnv) {
-              throw new Error(
-                `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
-              )
-            }
-
-            if (!isRunnableDevEnvironment(serverEnv)) {
-              return next()
-            }
-
-            // Import and resolve the request by running the server entry point
-            // i.e export default defineEventHandler((event) => { ... })
-            const serverEntry = await serverEnv.runner.import(
-              '/~start/server-entry',
+          if (!serverEnv) {
+            throw new Error(
+              `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
             )
-            const response = await serverEntry['default'](event)
+          }
 
-            return sendWebResponse(event, response)
-          } catch (e) {
-            console.error(e)
-            viteDevServer.ssrFixStacktrace(e as Error)
+          // do not install middleware if SSR env in case another plugin already did
+          if (
+            !isRunnableDevEnvironment(serverEnv) ||
+            // do not check via `isFetchableDevEnvironment` since nitro does implement the `FetchableDevEnvironment` interface but not via inheritance (which this helper checks)
+            'dispatchFetch' in serverEnv
+          ) {
+            return
+          }
 
-            if (
-              getHeader(event, 'content-type')?.includes('application/json')
-            ) {
+          viteDevServer.middlewares.use(async (req, res) => {
+            // Create an H3Event to have it passed into the server entry
+            // i.e: event => defineEventHandler(event)
+
+            // fix the request URL to match the original URL
+            // otherwise, the request URL will '/index.html'
+            if (req.originalUrl) {
+              req.url = req.originalUrl
+            }
+            const event = createEvent(req, res)
+
+            try {
+              // Import and resolve the request by running the server entry point
+              // i.e export default defineEventHandler((event) => { ... })
+              const serverEntry = await serverEnv.runner.import(
+                '/~start/server-entry',
+              )
+              const response = await serverEntry['default'](event)
+
+              return sendWebResponse(event, response)
+            } catch (e) {
+              console.error(e)
+              viteDevServer.ssrFixStacktrace(e as Error)
+
+              if (
+                getHeader(event, 'content-type')?.includes('application/json')
+              ) {
+                return sendWebResponse(
+                  event,
+                  new Response(
+                    JSON.stringify(
+                      {
+                        status: 500,
+                        error: 'Internal Server Error',
+                        message:
+                          'An unexpected error occurred. Please try again later.',
+                        timestamp: new Date().toISOString(),
+                      },
+                      null,
+                      2,
+                    ),
+                    {
+                      status: 500,
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                    },
+                  ),
+                )
+              }
+
               return sendWebResponse(
                 event,
                 new Response(
-                  JSON.stringify(
-                    {
-                      status: 500,
-                      error: 'Internal Server Error',
-                      message:
-                        'An unexpected error occurred. Please try again later.',
-                      timestamp: new Date().toISOString(),
-                    },
-                    null,
-                    2,
-                  ),
-                  {
-                    status: 500,
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                  },
-                ),
-              )
-            }
-
-            return sendWebResponse(
-              event,
-              new Response(
-                `
+                  `
               <!DOCTYPE html>
               <html lang="en">
                 <head>
@@ -128,19 +128,40 @@ export function devServerPlugin(): Plugin {
                 </body>
               </html>
             `,
-                {
-                  status: 500,
-                  headers: {
-                    'Content-Type': 'text/html',
+                  {
+                    status: 500,
+                    headers: {
+                      'Content-Type': 'text/html',
+                    },
                   },
-                },
-              ),
-            )
-          }
-        })
-      }
+                ),
+              )
+            }
+          })
+        }
+      },
     },
-  }
+    {
+      name: 'tanstack-start-core:dev-server:injected-head-scripts',
+      applyToEnvironment: (env) => env.name === VITE_ENVIRONMENT_NAMES.server,
+      resolveId: {
+        filter: { id: new RegExp(VIRTUAL_MODULES.injectedHeadScripts) },
+        handler(_id) {
+          return resolveViteId(VIRTUAL_MODULES.injectedHeadScripts)
+        },
+      },
+      load: {
+        filter: {
+          id: new RegExp(resolveViteId(VIRTUAL_MODULES.injectedHeadScripts)),
+        },
+        handler() {
+          const mod = `
+        export const injectedHeadScripts = ${JSON.stringify(injectedHeadScripts) || 'undefined'}`
+          return mod
+        },
+      },
+    },
+  ]
 }
 
 /**
