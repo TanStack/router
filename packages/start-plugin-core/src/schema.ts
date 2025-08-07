@@ -1,13 +1,13 @@
 import path from 'node:path'
-import { existsSync } from 'node:fs'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-generator'
-import type { NitroConfig } from 'nitropack'
 
 const tsrConfig = configSchema
   .omit({ autoCodeSplitting: true })
   .partial()
   .extend({
+    // this is relative to vite root
+    // TODO why is this nested under tsr?
     srcDirectory: z.string().optional().default('src'),
   })
 
@@ -25,38 +25,6 @@ export function parseStartConfig(
     options.tsr.generatedRouteTree ??
     path.join(srcDirectory, 'routeTree.gen.ts')
 
-  const clientEntryPath = (() => {
-    if (options.client.entry) {
-      return path.join(srcDirectory, options.client.entry)
-    }
-
-    if (existsSync(path.join(srcDirectory, 'client.tsx'))) {
-      return path.join(srcDirectory, 'client.tsx')
-    }
-
-    return '/~start/default-client-entry'
-  })()
-
-  const serverEntryPath = (() => {
-    if (options.server.entry) {
-      return path.join(srcDirectory, options.server.entry)
-    }
-
-    if (existsSync(path.join(srcDirectory, 'server.tsx'))) {
-      return path.join(srcDirectory, 'server.tsx')
-    }
-
-    if (existsSync(path.join(srcDirectory, 'server.ts'))) {
-      return path.join(srcDirectory, 'server.ts')
-    }
-
-    if (existsSync(path.join(srcDirectory, 'server.js'))) {
-      return path.join(srcDirectory, 'server.js')
-    }
-
-    return '/~start/default-server-entry'
-  })()
-
   return {
     ...options,
     tsr: {
@@ -67,8 +35,6 @@ export function parseStartConfig(
         generatedRouteTree,
       }),
     },
-    clientEntryPath,
-    serverEntryPath,
   }
 }
 
@@ -155,9 +121,14 @@ const pageSchema = pageBaseSchema.extend({
 
 const tanstackStartOptionsSchema = z
   .object({
-    root: z.string().optional().default(process.cwd()),
-    target: z.custom<NitroConfig['preset']>().optional(),
     tsr: tsrConfig.optional().default({}),
+    router: z
+      .object({
+        // TODO naming?
+        entry: z.string().optional(),
+      })
+      .optional()
+      .default({}),
     client: z
       .object({
         entry: z.string().optional(),

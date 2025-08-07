@@ -4,6 +4,15 @@ import path from 'pathe'
 import type { TanStackStartInputConfig } from '@tanstack/start-plugin-core'
 import type { PluginOption } from 'vite'
 
+const currentDir = path.dirname(fileURLToPath(import.meta.url))
+const defaultEntryDir = path.resolve(currentDir, '..', 'default-entry')
+const defaultEntryPaths = {
+  client: path.resolve(defaultEntryDir, 'client'),
+  server: path.resolve(defaultEntryDir, 'server'),
+}
+
+const isInsideRouterMonoRepo = path.basename(path.resolve(currentDir, '../../../')) === 'packages'
+
 
 function hasRootExport(
   exportsField?: Record<string, unknown> | string,
@@ -25,11 +34,6 @@ function hasRootExport(
 export function tanstackStart(
   options?: TanStackStartInputConfig,
 ): Array<PluginOption> {
-  const isInsideRouterMonoRepo = (() => {
-    const currentDir = path.dirname(fileURLToPath(import.meta.url))
-    return path.basename(path.resolve(currentDir, '../../../')) === 'packages'
-  })()
-
   return [
     {
       name: 'tanstack-react-start:config',
@@ -60,43 +64,7 @@ export function tanstackStart(
     TanStackStartVitePluginCore(
       {
         framework: 'react',
-        getVirtualServerRootHandler(ctx) {
-          return `
-import { toWebRequest, defineEventHandler } from '@tanstack/react-start/server';
-import serverEntry from '${ctx.serverEntryFilepath}';
-
-export default defineEventHandler(function(event) {
-  const request = toWebRequest(event);
-  return serverEntry({ request });
-});`
-        },
-        getVirtualClientEntry(ctx) {
-          return `
-import { StrictMode, startTransition } from 'react';
-import { hydrateRoot } from 'react-dom/client';
-import { StartClient } from '@tanstack/react-start';
-import { createRouter } from '${ctx.routerFilepath}';
-
-const router = createRouter();
-
-startTransition(() => {
-  hydrateRoot(
-    document,
-    <StrictMode>
-      <StartClient router={router} />
-    </StrictMode>
-  );
-});`
-        },
-        getVirtualServerEntry(ctx) {
-          return `
-import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server';
-import { createRouter } from '${ctx.routerFilepath}';
-
-export default createStartHandler({
-  createRouter,
-})(defaultStreamHandler);`
-        },
+        defaultEntryPaths,
         crawlPackages(opts) {
           if (opts.name === '@tanstack/react-router-devtools') {
             return 'exclude'

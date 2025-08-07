@@ -5,6 +5,7 @@
   "compilerOptions": {
     "outDir": "dist/esm",
     "target": "esnext",
-    "noEmit": true
+    "noEmit": true,
+    "jsx": "react-jsx"
   }
 }

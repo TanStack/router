@@ -1,66 +1,157 @@
 import path from 'node:path'
-import { createNitro } from 'nitropack'
 import { trimPathRight } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
-import { nitroPlugin } from './nitro-plugin/plugin'
+import { resolveModulePath } from 'exsolve'
+import { join } from 'pathe'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin'
-import {
-  CLIENT_DIST_DIR,
-  SSR_ENTRY_FILE,
-  VITE_ENVIRONMENT_NAMES,
-} from './constants'
+import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import { devServerPlugin } from './dev-server-plugin/plugin'
-import { resolveVirtualEntriesPlugin } from './resolve-virtual-entries-plugin/plugin'
 import { parseStartConfig } from './schema'
-import type {
-  TanStackStartInputConfig,
-  TanStackStartOutputConfig,
-} from './schema'
-import type { PluginOption, Rollup } from 'vite'
+import type { TanStackStartInputConfig } from './schema'
+import type { PluginOption } from 'vite'
 import type { CompileStartFrameworkOptions } from './compilers'
 
 export interface TanStackStartVitePluginCoreOptions {
-  framework: CompileStartFrameworkOptions
-  getVirtualServerRootHandler: (ctx: {
-    routerFilepath: string
-    serverEntryFilepath: string
-  }) => string
-  getVirtualServerEntry: (ctx: { routerFilepath: string }) => string
-  getVirtualClientEntry: (ctx: { routerFilepath: string }) => string
+  framework: CompileStartFrameworkOptions,
+  defaultEntryPaths: {
+    client: string
+    server: string
+  }
   crawlPackages?: (opts: {
     name: string
     peerDependencies: Record<string, any>
     exports?: Record<string, any> | string
   }) => 'include' | 'exclude' | undefined
 }
-// this needs to live outside of the TanStackStartVitePluginCore since it will be invoked multiple times by vite
-let ssrBundle: Rollup.OutputBundle
 
+interface ResolveModuleOptions {
+  baseName: string
+  from: string
+}
+function resolveModule(opts: ResolveModuleOptions): string | undefined {
+  let baseName = opts.baseName
+  if (!baseName.startsWith('./')) {
+    baseName = `./${baseName}`
+  }
+  return resolveModulePath(baseName, {
+    from: opts.from,
+    extensions: ['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx'],
+    try: true,
+  })
+}
+
+function resolveEntry<
+  TRequired extends boolean,
+  TReturn = TRequired extends true ? string : string | undefined,
+>(opts: {
+  type: string
+  configuredEntry?: string
+  defaultEntry: string
+  resolvedSrcDirectory: string
+  root: string
+  required: TRequired
+}): TReturn {
+  let resolveOptions: ResolveModuleOptions
+
+  // if entry was not configured, use default relative to srcDirectory
+  if (!opts.configuredEntry) {
+    resolveOptions = {
+      baseName: opts.defaultEntry,
+      from: opts.resolvedSrcDirectory,
+    }
+  } else {
+    resolveOptions = {
+      baseName: opts.configuredEntry,
+      from: opts.root,
+    }
+  }
+
+  const resolvedEntry = resolveModule(resolveOptions)
+  if (opts.required && !resolvedEntry) {
+    throw new Error(
+      `Could not resolve entry for ${opts.type}: ${resolveOptions.baseName} in ${resolveOptions.from}`,
+    )
+  }
+  return resolvedEntry as TReturn
+}
 export function TanStackStartVitePluginCore(
   corePluginOpts: TanStackStartVitePluginCoreOptions,
   startPluginOpts: TanStackStartInputConfig,
 ): Array<PluginOption> {
   const startConfig = parseStartConfig(startPluginOpts)
+
   return [
     tanStackStartRouter({
       ...startConfig.tsr,
       target: corePluginOpts.framework,
       autoCodeSplitting: true,
     }),
-    resolveVirtualEntriesPlugin(corePluginOpts, startConfig),
     {
       name: 'tanstack-start-core:config',
       async config(viteConfig, { command }) {
         const viteAppBase = trimPathRight(viteConfig.base || '/')
         globalThis.TSS_APP_BASE = viteAppBase
 
-        const nitroOutputPublicDir = await (async () => {
+        const root = viteConfig.root || process.cwd()
+        const resolvedSrcDirectory = join(root, startConfig.tsr.srcDirectory)
+
+        const routerFilePath = resolveEntry({
+          type: 'router entry',
+          configuredEntry: startConfig.router.entry,
+          defaultEntry: 'router',
+          root,
+          resolvedSrcDirectory,
+          required: true,
+        })
+        const clientEntryPath = resolveEntry({
+          type: 'client entry',
+          configuredEntry: startConfig.client.entry,
+          defaultEntry: 'client',
+          root,
+          resolvedSrcDirectory,
+          required: false,
+        })
+
+        const serverEntryPath = resolveEntry({
+          type: 'server entry',
+          configuredEntry: startConfig.server.entry,
+          defaultEntry: 'server',
+          root,
+          resolvedSrcDirectory,
+          required: false,
+        })
+
+       
+        let clientAlias : string 
+        if (clientEntryPath) {
+          clientAlias = vite.normalizePath(
+            path.join('/@fs', path.resolve(root, clientEntryPath)),
+          )
+        } else {
+          clientAlias = corePluginOpts.defaultEntryPaths.client
+        }
+        let serverAlias : string
+        if (serverEntryPath) {
+          serverAlias = vite.normalizePath(
+            path.resolve(root, serverEntryPath),
+          )
+        } else {
+          serverAlias = corePluginOpts.defaultEntryPaths.server
+        }
+        const entryAliasConfiguration : Record<typeof ENTRY_POINTS[keyof typeof ENTRY_POINTS], string> = {
+          [ENTRY_POINTS.router]: routerFilePath,
+          [ENTRY_POINTS.client]: clientAlias,
+          [ENTRY_POINTS.server]: serverAlias,
+        }
+
+        // TODO 
+        /* const nitroOutputPublicDir = await (async () => {
           // Create a dummy nitro app to get the resolved public output path
           const dummyNitroApp = await createNitro({
             preset: startConfig.target,
@@ -71,7 +162,7 @@ export function TanStackStartVitePluginCore(
           await dummyNitroApp.close()
 
           return nitroOutputPublicDir
-        })()
+        })()*/
 
         const startPackageName = `@tanstack/${corePluginOpts.framework}-start`
         const routerPackageName = `@tanstack/${corePluginOpts.framework}-router`
@@ -121,18 +212,22 @@ export function TanStackStartVitePluginCore(
 
         return {
           base: viteAppBase,
+          // see https://vite.dev/config/shared-options.html#apptype
+          // this will prevent vite from injecting middlewares that we don't want
+          appType: viteConfig.appType ?? 'custom',
           environments: {
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
               build: {
-                manifest: true,
                 rollupOptions: {
                   input: {
-                    main: getClientEntryPath(startConfig),
+                    main: ENTRY_POINTS.client, // getClientEntryPath(startConfig),
                   },
+                  /*
+                  TODO unclear whether we still need this
                   output: {
                     dir: path.resolve(startConfig.root, CLIENT_DIST_DIR),
-                  },
+                  },*/
                   // TODO: this should be removed
                   external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
                 },
@@ -142,23 +237,15 @@ export function TanStackStartVitePluginCore(
               consumer: 'server',
               build: {
                 ssr: true,
-                // we don't write to the file system as the below 'capture-output' plugin will
-                // capture the output and write it to the virtual file system
-                write: false,
-                copyPublicDir: false,
                 rollupOptions: {
-                  output: {
-                    entryFileNames: SSR_ENTRY_FILE,
-                  },
-                  plugins: [
-                    {
-                      name: 'capture-output',
-                      generateBundle(_options, bundle) {
-                        // TODO: can this hook be called more than once?
-                        ssrBundle = bundle
-                      },
-                    },
-                  ],
+                  input:
+                    viteConfig.environments?.ssr?.build?.rollupOptions?.input ??
+                    ENTRY_POINTS.server,
+
+                  // unclear whether we need this still?
+                  // output: {
+                  //  entryFileNames: SSR_ENTRY_FILE,
+                  // },
                 },
                 commonjsOptions: {
                   include: [/node_modules/],
@@ -176,6 +263,9 @@ export function TanStackStartVitePluginCore(
             ],
             external: [...result.ssr.external.sort()],
             dedupe: [startPackageName],
+            alias: {
+              ...entryAliasConfiguration,
+            },
           },
           optimizeDeps: {
             exclude: [
@@ -193,9 +283,33 @@ export function TanStackStartVitePluginCore(
             // This is not the same as injecting environment variables.
 
             ...defineReplaceEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
-            ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
+            ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', 'TODO' /* nitroOutputPublicDir*/),
             ...defineReplaceEnv('TSS_APP_BASE', viteAppBase),
             ...(command === 'serve' ? defineReplaceEnv('TSS_SHELL', startConfig.spa?.enabled ? 'true' : 'false') : {}),
+          },
+          builder: {
+            sharedPlugins: true,
+            async buildApp(builder) {
+              const client = builder.environments[VITE_ENVIRONMENT_NAMES.client]
+              const server = builder.environments[VITE_ENVIRONMENT_NAMES.server]
+
+              if (!client) {
+                throw new Error('Client environment not found')
+              }
+
+              if (!server) {
+                throw new Error('SSR environment not found')
+              }
+
+              if (!client.isBuilt) {
+                // Build the client bundle first
+                await builder.build(client)
+              }
+              if (!server.isBuilt) {
+                // Build the SSR bundle
+                await builder.build(server)
+              }
+            },
           },
         }
       },
@@ -224,10 +338,9 @@ export function TanStackStartVitePluginCore(
         envName: VITE_ENVIRONMENT_NAMES.server,
       },
     }),
-    loadEnvPlugin(startConfig),
-    startManifestPlugin({ clientEntry: getClientEntryPath(startConfig) }),
+    loadEnvPlugin(),
+    startManifestPlugin(),
     devServerPlugin(),
-    nitroPlugin(startConfig, () => ssrBundle),
     {
       name: 'tanstack-start:core:capture-client-bundle',
       applyToEnvironment(e) {
@@ -249,23 +362,4 @@ function defineReplaceEnv<TKey extends string, TValue extends string>(
     [`process.env.${key}`]: JSON.stringify(value),
     [`import.meta.env.${key}`]: JSON.stringify(value),
   } as { [P in `process.env.${TKey}` | `import.meta.env.${TKey}`]: TValue }
-}
-
-const getClientEntryPath = (startConfig: TanStackStartOutputConfig) => {
-  // when the user specifies a custom client entry path, we need to resolve it
-  // relative to the root of the project, keeping in mind that if not specified
-  // it will be /~start/default-client-entry which is a virtual path
-  // that is resolved by vite to the actual client entry path
-  const entry = startConfig.clientEntryPath.startsWith(
-    '/~start/default-client-entry',
-  )
-    ? startConfig.clientEntryPath
-    : vite.normalizePath(
-        path.join(
-          '/@fs',
-          path.resolve(startConfig.root, startConfig.clientEntryPath),
-        ),
-      )
-
-  return entry
 }
