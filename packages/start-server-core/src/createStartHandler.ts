@@ -14,7 +14,7 @@ import {
 } from '@tanstack/router-core'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { runWithStartContext } from '@tanstack/start-storage-context'
-import { getResponseHeaders, requestHandler } from './h3'
+import { getResponseHeaders, requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
 import { VIRTUAL_MODULES } from './virtual-modules'
@@ -25,7 +25,7 @@ import type {
   AnyServerRouteWithTypes,
   ServerRouteMethodHandlerFn,
 } from './serverRoute'
-import type { RequestHandler } from './h3'
+import type { RequestHandler } from './request-response'
 import type {
   AnyRoute,
   AnyRouter,
@@ -43,9 +43,9 @@ export type CustomizeStartHandler<TRouter extends AnyRouter> = (
 
 function getStartResponseHeaders(opts: { router: AnyRouter }) {
   const headers = mergeHeaders(
-    getResponseHeaders(),
+    getResponseHeaders() as Headers,
     {
-      'Content-Type': 'text/html; charset=UTF-8',
+      'Content-Type': 'text/html; charset=utf-8',
     },
     ...opts.router.state.matches.map((match) => {
       return match.headers
@@ -71,7 +71,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
   return (cb) => {
     const originalFetch = globalThis.fetch
 
-    const startRequestResolver: RequestHandler = async ({ request }) => {
+    const startRequestResolver: RequestHandler = async (request) => {
       // Patching fetch function to use our request resolver
       // if the input starts with `/` which is a common pattern for
       // client-side routing.
@@ -80,7 +80,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       globalThis.fetch = async function (input, init) {
         function resolve(url: URL, requestOptions: RequestInit | undefined) {
           const fetchRequest = new Request(url, requestOptions)
-          return startRequestResolver({ request: fetchRequest })
+          return startRequestResolver(fetchRequest)
         }
 
         function getOrigin() {

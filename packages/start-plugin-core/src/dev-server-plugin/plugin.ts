@@ -1,6 +1,6 @@
-import { createEvent, getHeader, sendWebResponse } from 'h3'
 import { isRunnableDevEnvironment } from 'vite'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
+import { NodeRequest, sendNodeResponse } from "srvx/node";
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { resolveViteId } from '../utils'
 import { extractHtmlScripts } from './extract-html-scripts'
@@ -29,7 +29,7 @@ export function devServerPlugin(): PluginOption {
           templateHtml,
         )
         const scripts = extractHtmlScripts(transformedHtml)
-        injectedHeadScripts = scripts.filter((script) => script.content)
+        injectedHeadScripts = scripts.flatMap((script) => script.content ?? [])
           .join(';')
 
         return () => {
@@ -58,34 +58,36 @@ export function devServerPlugin(): PluginOption {
           }
 
           viteDevServer.middlewares.use(async (req, res) => {
-            // Create an H3Event to have it passed into the server entry
-            // i.e: event => defineEventHandler(event)
-
             // fix the request URL to match the original URL
             // otherwise, the request URL will '/index.html'
             if (req.originalUrl) {
               req.url = req.originalUrl
             }
-            const event = createEvent(req, res)
+            const webReq = new NodeRequest({ req, res })
 
             try {
-              // Import and resolve the request by running the server entry point
-              // i.e export default defineEventHandler((event) => { ... })
+              // Import and resolve the request by running the server request entry point
+              // this request entry point must implement the `fetch` API as follows:
+              /**
+               * export default {
+               *  async fetch(req: Request) => Promise<Response>
+               * } 
+               */
               const serverEntry = await serverEnv.runner.import(
                 '/~start/server-entry',
               )
-              const response = await serverEntry['default'](event)
+              const webRes = await serverEntry['default'].fetch(webReq)
 
-              return sendWebResponse(event, response)
+              return sendNodeResponse(res, webRes)
             } catch (e) {
               console.error(e)
               viteDevServer.ssrFixStacktrace(e as Error)
 
               if (
-                getHeader(event, 'content-type')?.includes('application/json')
+                webReq.headers.get('content-type')?.includes('application/json')
               ) {
-                return sendWebResponse(
-                  event,
+                return sendNodeResponse(
+                  res,
                   new Response(
                     JSON.stringify(
                       {
@@ -108,8 +110,8 @@ export function devServerPlugin(): PluginOption {
                 )
               }
 
-              return sendWebResponse(
-                event,
+              return sendNodeResponse(
+                res,
                 new Response(
                   `
               <!DOCTYPE html>
@@ -143,7 +145,8 @@ export function devServerPlugin(): PluginOption {
     },
     {
       name: 'tanstack-start-core:dev-server:injected-head-scripts',
-      applyToEnvironment: (env) => env.name === VITE_ENVIRONMENT_NAMES.server,
+      sharedDuringBuild: true,
+      applyToEnvironment: (env) => env.config.consumer === 'server',
       resolveId: {
         filter: { id: new RegExp(VIRTUAL_MODULES.injectedHeadScripts) },
         handler(_id) {
