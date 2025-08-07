@@ -62,11 +62,11 @@ export interface SessionConfig {
   password: string
   /** Session expiration time in seconds */
   maxAge?: number
-  /** default is h3 */
+  /** default is 'start' */
   name?: string
   /** Default is secure, httpOnly, / */
   cookie?: false | CookieSerializeOptions
-  /** Default is x-h3-session / x-{name}-session */
+  /** Default is x-start-session / x-{name}-session */
   sessionHeader?: false | string
   seal?: SealOptions
   crypto?: Crypto
