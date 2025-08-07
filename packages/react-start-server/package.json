@@ -66,13 +66,10 @@
     "@tanstack/react-router": "workspace:*",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
-    "@tanstack/start-server-core": "workspace:*",
-    "h3": "1.13.0",
-    "isbot": "^5.1.22"
+    "@tanstack/start-server-core": "workspace:*"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "esbuild": "^0.25.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.7.2"
