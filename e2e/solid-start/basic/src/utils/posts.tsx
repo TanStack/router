@@ -8,12 +8,18 @@ export type PostType = {
   body: string
 }
 
+let queryURL = 'https://jsonplaceholder.typicode.com'
+
+if (import.meta.env.VITE_NODE_ENV === 'test') {
+  queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
+}
+
 export const fetchPost = createServerFn({ method: 'GET' })
   .validator((postId: string) => postId)
   .handler(async ({ data: postId }) => {
     console.info(`Fetching post with id ${postId}...`)
     const post = await axios
-      .get<PostType>(`https://jsonplaceholder.typicode.com/posts/${postId}`)
+      .get<PostType>(`${queryURL}/posts/${postId}`)
       .then((r) => r.data)
       .catch((err) => {
         console.error(err)
@@ -30,7 +36,7 @@ export const fetchPosts = createServerFn({ method: 'GET' }).handler(
   async () => {
     console.info('Fetching posts...')
     return axios
-      .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
+      .get<Array<PostType>>(`${queryURL}/posts`)
       .then((r) => r.data.slice(0, 10))
   },
 )

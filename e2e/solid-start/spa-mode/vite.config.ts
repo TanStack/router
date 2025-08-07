@@ -13,7 +13,17 @@ export default defineConfig({
     tanstackStart({
       spa: {
         enabled: true,
+        prerender: {
+          outputPath: 'index.html',
+          crawlLinks: true,
+        },
       },
+      pages: [
+        {
+          path: '/posts/1',
+          prerender: { enabled: true, outputPath: '/posts/1/index.html' },
+        },
+      ],
     }),
   ],
 })
