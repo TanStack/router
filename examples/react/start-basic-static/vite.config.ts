@@ -22,7 +22,7 @@ export default defineConfig({
       },
       prerender: {
         failOnError: false,
-      }
+      },
     }),
   ],
 })
