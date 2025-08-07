@@ -67,11 +67,9 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
-    "@tanstack/start-server-core": "workspace:*",
-    "isbot": "^5.1.22"
+    "@tanstack/start-server-core": "workspace:*"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0",
     "solid-js": "^1.9.5",
     "typescript": "^5.7.2",
     "vite-plugin-solid": "^2.11.8"
