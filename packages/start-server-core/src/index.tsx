@@ -12,7 +12,7 @@ export type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 
 export { handleServerAction } from './server-functions-handler'
 
-export * from './h3'
+export * from './request-response'
 
 export {
   createServerRoute,

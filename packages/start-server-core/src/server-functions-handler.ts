@@ -1,9 +1,9 @@
 import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import { startSerializer } from '@tanstack/start-client-core'
-import { getEvent, getResponseStatus } from './h3'
 import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
+import { getResponseStatus } from './request-response'
 
 function sanitizeBase(base: string | undefined) {
   if (!base) {
@@ -190,7 +190,7 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
       return new Response(
         result !== undefined ? startSerializer.stringify(result) : undefined,
         {
-          status: getResponseStatus(getEvent()),
+          status: getResponseStatus(),
           headers: {
             'Content-Type': 'application/json',
           },
