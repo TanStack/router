@@ -1,7 +1,7 @@
 import { isRunnableDevEnvironment } from 'vite'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
-import { VITE_ENVIRONMENT_NAMES } from '../constants'
+import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { resolveViteId } from '../utils'
 import { extractHtmlScripts } from './extract-html-scripts'
 import type { Connect, DevEnvironment, PluginOption } from 'vite'
@@ -75,7 +75,7 @@ export function devServerPlugin(): PluginOption {
                * }
                */
               const serverEntry = await serverEnv.runner.import(
-                '/~start/server-entry',
+                ENTRY_POINTS.server,
               )
               const webRes = await serverEntry['default'].fetch(webReq)
 
