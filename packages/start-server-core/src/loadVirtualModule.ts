@@ -15,6 +15,8 @@ export async function loadVirtualModule<TId extends keyof VirtualModules>(
       return (await import('tanstack-start-manifest:v')) as any
     case VIRTUAL_MODULES.serverFnManifest:
       return (await import('tanstack-start-server-fn-manifest:v')) as any
+    case VIRTUAL_MODULES.injectedHeadScripts:
+      return (await import('tanstack-start-injected-head-scripts:v')) as any
     default:
       throw new Error(`Unknown virtual module: ${id}`)
   }

@@ -1,7 +1,4 @@
-/* eslint-disable no-var */
 declare global {
-  var TSS_INJECTED_HEAD_SCRIPTS: string | undefined
-
   namespace NodeJS {
     interface ProcessEnv {
       TSS_APP_BASE?: string
