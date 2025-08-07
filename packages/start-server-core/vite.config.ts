@@ -20,5 +20,6 @@ export default mergeConfig(
     srcDir: './src',
     entry: './src/index.tsx',
     externalDeps: [...Object.values(VIRTUAL_MODULES)],
+    cjs: false,
   }),
 )
