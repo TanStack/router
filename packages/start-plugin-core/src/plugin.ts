@@ -4,7 +4,6 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
-import { resolveModulePath } from 'exsolve'
 import { join } from 'pathe'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin'
@@ -13,6 +12,7 @@ import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { parseStartConfig } from './schema'
+import { resolveEntry } from './resolve-entries'
 import type { TanStackStartInputConfig } from './schema'
 import type { PluginOption } from 'vite'
 import type { CompileStartFrameworkOptions } from './compilers'
@@ -30,56 +30,7 @@ export interface TanStackStartVitePluginCoreOptions {
   }) => 'include' | 'exclude' | undefined
 }
 
-interface ResolveModuleOptions {
-  baseName: string
-  from: string
-}
-function resolveModule(opts: ResolveModuleOptions): string | undefined {
-  let baseName = opts.baseName
-  if (!baseName.startsWith('./')) {
-    baseName = `./${baseName}`
-  }
-  return resolveModulePath(baseName, {
-    from: opts.from,
-    extensions: ['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx'],
-    try: true,
-  })
-}
 
-function resolveEntry<
-  TRequired extends boolean,
-  TReturn = TRequired extends true ? string : string | undefined,
->(opts: {
-  type: string
-  configuredEntry?: string
-  defaultEntry: string
-  resolvedSrcDirectory: string
-  root: string
-  required: TRequired
-}): TReturn {
-  let resolveOptions: ResolveModuleOptions
-
-  // if entry was not configured, use default relative to srcDirectory
-  if (!opts.configuredEntry) {
-    resolveOptions = {
-      baseName: opts.defaultEntry,
-      from: opts.resolvedSrcDirectory,
-    }
-  } else {
-    resolveOptions = {
-      baseName: opts.configuredEntry,
-      from: opts.root,
-    }
-  }
-
-  const resolvedEntry = resolveModule(resolveOptions)
-  if (opts.required && !resolvedEntry) {
-    throw new Error(
-      `Could not resolve entry for ${opts.type}: ${resolveOptions.baseName} in ${resolveOptions.from}`,
-    )
-  }
-  return resolvedEntry as TReturn
-}
 export function TanStackStartVitePluginCore(
   corePluginOpts: TanStackStartVitePluginCoreOptions,
   startPluginOpts: TanStackStartInputConfig,
