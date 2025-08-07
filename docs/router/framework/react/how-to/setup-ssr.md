@@ -2,7 +2,7 @@
 title: How to Set Up Server-Side Rendering (SSR)
 ---
 
-> [!IMPORTANT] > **[TanStack Start](../guide/tanstack-start.md) is the recommended way to set up SSR** - it provides SSR, streaming, and deployment with zero configuration.
+> [!IMPORTANT] > **[TanStack Start](../../guide/tanstack-start.md) is the recommended way to set up SSR** - it provides SSR, streaming, and deployment with zero configuration.
 >
 > Use the manual setup below only if you need to integrate with an existing server.
 
@@ -423,7 +423,7 @@ export default defineConfig(({ isSsrBuild }) => ({
 
 ## Common Problems
 
-> [!TIP] > **Most of these problems are automatically solved by [TanStack Start](../guide/tanstack-start.md).** The issues below are primarily relevant for manual SSR setups.
+> [!TIP] > **Most of these problems are automatically solved by [TanStack Start](../../guide/tanstack-start.md).** The issues below are primarily relevant for manual SSR setups.
 
 ### React Import Errors
 
@@ -537,15 +537,15 @@ const ssrConfig = {
 
 ## Related Resources
 
-- [TanStack Start](../guide/tanstack-start.md) - **Recommended full-stack React framework with SSR**
-- [SSR Guide (Detailed)](../guide/ssr.md) - Comprehensive SSR concepts, utilities, and theory
-- [Data Loading](../guide/data-loading.md) - SSR-compatible data loading patterns
+- [TanStack Start](../../guide/tanstack-start.md) - **Recommended full-stack React framework with SSR**
+- [SSR Guide (Detailed)](../../guide/ssr.md) - Comprehensive SSR concepts, utilities, and theory
+- [Data Loading](../../guide/data-loading.md) - SSR-compatible data loading patterns
 
 ## Common Next Steps
 
-- [Deploy to Production](./deploy-to-production.md) - Deploy your SSR app
-- [Setup Authentication](./setup-authentication.md) - Add auth to SSR routes
-- [Debug Router Issues](./debug-router-issues.md) - Troubleshoot SSR-specific routing problems
+- [Deploy to Production](../deploy-to-production.md) - Deploy your SSR app
+- [Setup Authentication](../setup-authentication.md) - Add auth to SSR routes
+- [Debug Router Issues](../debug-router-issues.md) - Troubleshoot SSR-specific routing problems
 
 <!-- TODO: Uncomment as guides are created
 - [Fix Build Issues](./fix-build-issues.md) - Troubleshoot bundler problems
