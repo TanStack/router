@@ -13,6 +13,10 @@ import { loadEnvPlugin } from './load-env-plugin/plugin'
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { parseStartConfig } from './schema'
 import { resolveEntry } from './resolve-entries'
+import {
+  getClientOutputDirectory,
+  getServerOutputDirectory,
+} from './output-directory'
 import type { TanStackStartInputConfig } from './schema'
 import type { PluginOption } from 'vite'
 import type { CompileStartFrameworkOptions } from './compilers'
@@ -170,37 +174,38 @@ export function TanStackStartVitePluginCore(
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
               build: {
+                emptyOutDir:
+                  viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.client]
+                    ?.build?.emptyOutDir ?? true,
                 rollupOptions: {
                   input: {
-                    main: ENTRY_POINTS.client, // getClientEntryPath(startConfig),
+                    main: ENTRY_POINTS.client,
                   },
-                  /*
-                  TODO unclear whether we still need this
-                  output: {
-                    dir: path.resolve(startConfig.root, CLIENT_DIST_DIR),
-                  },*/
                   // TODO: this should be removed
                   external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
                 },
+                outDir: getClientOutputDirectory(viteConfig),
               },
             },
             [VITE_ENVIRONMENT_NAMES.server]: {
               consumer: 'server',
               build: {
+                emptyOutDir:
+                  viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
+                    ?.build?.emptyOutDir ?? false,
                 ssr: true,
                 rollupOptions: {
                   input:
-                    viteConfig.environments?.ssr?.build?.rollupOptions?.input ??
-                    ENTRY_POINTS.server,
-
-                  // unclear whether we need this still?
-                  // output: {
-                  //  entryFileNames: SSR_ENTRY_FILE,
-                  // },
+                    viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
+                      ?.build?.rollupOptions?.input ?? ENTRY_POINTS.server,
                 },
+                outDir: getServerOutputDirectory(viteConfig),
                 commonjsOptions: {
                   include: [/node_modules/],
                 },
+                copyPublicDir:
+                  viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
+                    ?.build?.copyPublicDir ?? false,
               },
             },
           },
