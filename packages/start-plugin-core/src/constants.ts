@@ -5,6 +5,9 @@ export const VITE_ENVIRONMENT_NAMES = {
   client: 'client',
 } as const
 
+export type ViteEnvironmentNames =
+  (typeof VITE_ENVIRONMENT_NAMES)[keyof typeof VITE_ENVIRONMENT_NAMES]
+
 // for client and router:
 // if a user has a custom server/client entry point file, resolve.alias will point to this
 // otherwise it will be aliased to the default entry point in the respective framework plugin

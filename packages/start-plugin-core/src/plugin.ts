@@ -17,6 +17,8 @@ import {
   getClientOutputDirectory,
   getServerOutputDirectory,
 } from './output-directory'
+import { postServerBuild } from './post-server-build'
+import type { ViteEnvironmentNames } from './constants'
 import type { TanStackStartInputConfig } from './schema'
 import type { PluginOption } from 'vite'
 import type { CompileStartFrameworkOptions } from './compilers'
@@ -40,7 +42,17 @@ export function TanStackStartVitePluginCore(
 ): Array<PluginOption> {
   const startConfig = parseStartConfig(startPluginOpts)
 
-  let clientBundle: vite.Rollup.OutputBundle
+  const capturedBundle: Partial<
+    Record<ViteEnvironmentNames, vite.Rollup.OutputBundle>
+  > = {}
+
+  function getBundle(envName: ViteEnvironmentNames): vite.Rollup.OutputBundle {
+    const bundle = capturedBundle[envName]
+    if (!bundle) {
+      throw new Error(`No bundle captured for environment: ${envName}`)
+    }
+    return bundle
+  }
 
   return [
     tanStackStartRouter({
@@ -266,6 +278,8 @@ export function TanStackStartVitePluginCore(
                 // Build the SSR bundle
                 await builder.build(server)
               }
+              const serverBundle = getBundle(VITE_ENVIRONMENT_NAMES.server)
+              await postServerBuild({ builder, startConfig, serverBundle })
             },
           },
         }
@@ -296,16 +310,25 @@ export function TanStackStartVitePluginCore(
       },
     }),
     loadEnvPlugin(),
-    startManifestPlugin({ getClientBundle: () => clientBundle }),
+    startManifestPlugin({
+      getClientBundle: () => getBundle(VITE_ENVIRONMENT_NAMES.client),
+    }),
     devServerPlugin(),
     {
-      name: 'tanstack-start:core:capture-client-bundle',
+      name: 'tanstack-start:core:capture-bundle',
       applyToEnvironment(e) {
-        return e.name === VITE_ENVIRONMENT_NAMES.client
+        return (
+          e.name === VITE_ENVIRONMENT_NAMES.client ||
+          e.name === VITE_ENVIRONMENT_NAMES.server
+        )
       },
       enforce: 'post',
       generateBundle(_options, bundle) {
-        clientBundle = bundle
+        const environment = this.environment.name as ViteEnvironmentNames
+        if (!Object.values(VITE_ENVIRONMENT_NAMES).includes(environment)) {
+          throw new Error(`Unknown environment: ${environment}`)
+        }
+        capturedBundle[environment] = bundle
       },
     },
   ]
