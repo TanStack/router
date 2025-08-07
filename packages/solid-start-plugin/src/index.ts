@@ -11,7 +11,6 @@ const defaultEntryPaths = {
   server: path.resolve(defaultEntryDir, 'server'),
 }
 
-
 export function tanstackStart(
   options?: TanStackStartInputConfig,
 ): Array<PluginOption> {

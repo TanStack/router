@@ -11,7 +11,8 @@ const defaultEntryPaths = {
   server: path.resolve(defaultEntryDir, 'server'),
 }
 
-const isInsideRouterMonoRepo = path.basename(path.resolve(currentDir, '../../../')) === 'packages'
+const isInsideRouterMonoRepo =
+  path.basename(path.resolve(currentDir, '../../../')) === 'packages'
 
 
 function hasRootExport(
