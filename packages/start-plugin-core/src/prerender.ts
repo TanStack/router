@@ -1,32 +1,29 @@
-import { promises as fsp } from 'node:fs'
+import { existsSync, promises as fsp, rmSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import os from 'node:os'
-import path from 'node:path'
-import { getRollupConfig } from 'nitropack/rollup'
-import { build as buildNitro, createNitro } from 'nitropack'
+import path from 'pathe'
 import { joinURL, withBase, withoutBase } from 'ufo'
-import { VITE_ENVIRONMENT_NAMES } from '../constants'
-import { createLogger } from '../utils'
+import { VITE_ENVIRONMENT_NAMES } from './constants'
+import { createLogger } from './utils'
 import { Queue } from './queue'
-import type { ViteBuilder } from 'vite'
-import type { $Fetch, Nitro } from 'nitropack'
-import type { Page, TanStackStartOutputConfig } from '../schema'
+import type { Rollup, ViteBuilder } from 'vite'
+import type { Page, TanStackStartOutputConfig } from './schema'
 
 export async function prerender({
-  options,
-  nitro,
+  startConfig,
   builder,
+  serverBundle,
 }: {
-  options: TanStackStartOutputConfig
-  nitro: Nitro
+  startConfig: TanStackStartOutputConfig
   builder: ViteBuilder
+  serverBundle: Rollup.OutputBundle
 }) {
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
 
   // If prerender is enabled but no pages are provided, default to prerendering the root page
-  if (options.prerender?.enabled && !options.pages.length) {
-    options.pages = [
+  if (startConfig.prerender?.enabled && !startConfig.pages.length) {
+    startConfig.pages = [
       {
         path: '/',
       },
@@ -41,76 +38,52 @@ export async function prerender({
     )
   }
 
-  const prerenderOutputDir = path.resolve(
-    options.root,
-    '.tanstack',
-    'start',
-    'build',
-    'prerenderer',
-  )
-
-  const nodeNitro = await createNitro({
-    ...nitro.options._config,
-    preset: 'nitro-prerender',
-    logLevel: 0,
-    output: {
-      dir: prerenderOutputDir,
-      serverDir: path.resolve(prerenderOutputDir, 'server'),
-      publicDir: path.resolve(prerenderOutputDir, 'public'),
-    },
-  })
-
-  const nodeNitroRollupOptions = getRollupConfig(nodeNitro)
-
-  const build = serverEnv.config.build
-
-  build.outDir = prerenderOutputDir
-
-  build.rollupOptions = {
-    ...build.rollupOptions,
-    ...nodeNitroRollupOptions,
-    output: {
-      ...build.rollupOptions.output,
-      ...nodeNitroRollupOptions.output,
-      sourcemap: undefined,
-    },
+  const clientEnv = builder.environments[VITE_ENVIRONMENT_NAMES.client]
+  if (!clientEnv) {
+    throw new Error(
+      `Vite's "${VITE_ENVIRONMENT_NAMES.client}" environment not found`,
+    )
   }
 
-  await buildNitro(nodeNitro)
+  const outputDir = clientEnv.config.build.outDir
 
-  // Import renderer entry
-  const serverFilename =
-    typeof nodeNitroRollupOptions.output.entryFileNames === 'string'
-      ? nodeNitroRollupOptions.output.entryFileNames
-      : 'index.mjs'
-
-  const serverEntrypoint = pathToFileURL(
-    path.resolve(path.join(nodeNitro.options.output.serverDir, serverFilename)),
-  ).toString()
-
+  const entryFile = findEntryFileInBundle(serverBundle)
+  let fullEntryFilePath = path.join(serverEnv.config.build.outDir, entryFile)
   process.env.TSS_PRERENDERING = 'true'
 
-  const { closePrerenderer, localFetch } = (await import(serverEntrypoint)) as {
-    closePrerenderer: () => void
-    localFetch: $Fetch
+  if (!existsSync(fullEntryFilePath)) {
+    // if the file does not exist, we need to write the bundle to a temporary directory
+    // this can happen e.g. with nitro that postprocesses the bundle and thus does not write SSR build to disk
+    const bundleOutputDir = path.resolve(
+      serverEnv.config.root,
+      '.tanstack',
+      'start',
+      'prerender',
+    )
+    rmSync(bundleOutputDir, { recursive: true, force: true })
+    await writeBundleToDisk({ bundle: serverBundle, outDir: bundleOutputDir })
+    fullEntryFilePath = path.join(bundleOutputDir, entryFile)
+  }
+
+  const { default: serverEntrypoint } = await import(
+    pathToFileURL(fullEntryFilePath).toString()
+  )
+
+  function localFetch(path: string, options?: RequestInit): Promise<Response> {
+    const url = new URL(`http://localhost${path}`)
+    return serverEntrypoint.fetch(new Request(url, options))
   }
 
   try {
     // Crawl all pages
-    const pages = await prerenderPages()
+    const pages = await prerenderPages({ outputDir })
 
     logger.info(`Prerendered ${pages.length} pages:`)
     pages.forEach((page) => {
       logger.info(`- ${page}`)
     })
-
-    // TODO: Write the prerendered pages to the output directory
   } catch (error) {
     logger.error(error)
-  } finally {
-    // Ensure server is always closed
-    // server.process.kill()
-    closePrerenderer()
   }
 
   function extractLinks(html: string): Array<string> {
@@ -128,14 +101,14 @@ export async function prerender({
     return links
   }
 
-  async function prerenderPages() {
+  async function prerenderPages({ outputDir }: { outputDir: string }) {
     const seen = new Set<string>()
     const retriesByPath = new Map<string, number>()
-    const concurrency = options.prerender?.concurrency ?? os.cpus().length
+    const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
 
-    options.pages.forEach((page) => addCrawlPageTask(page))
+    startConfig.pages.forEach((page) => addCrawlPageTask(page))
 
     await queue.start()
 
@@ -149,18 +122,19 @@ export async function prerender({
       seen.add(page.path)
 
       if (page.fromCrawl) {
-        options.pages.push(page)
+        startConfig.pages.push(page)
       }
 
       // If not enabled, skip
       if (!(page.prerender?.enabled ?? true)) return
 
       // If there is a filter link, check if the page should be prerendered
-      if (options.prerender?.filter && !options.prerender.filter(page)) return
+      if (startConfig.prerender?.filter && !startConfig.prerender.filter(page))
+        return
 
       // Resolve the merged default and page-specific prerender options
       const prerenderOptions = {
-        ...options.prerender,
+        ...startConfig.prerender,
         ...page.prerender,
       }
 
@@ -172,15 +146,11 @@ export async function prerender({
           // Fetch the route
           const encodedRoute = encodeURI(page.path)
 
-          const res = await localFetch<Response>(
-            withBase(encodedRoute, nodeNitro.options.baseURL),
-            {
-              headers: {
-                ...prerenderOptions.headers,
-                'x-nitro-prerender': encodedRoute,
-              },
+          const res = await localFetch(withBase(encodedRoute, TSS_APP_BASE), {
+            headers: {
+              ...prerenderOptions.headers,
             },
-          )
+          })
 
           if (!res.ok) {
             throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`, {
@@ -209,12 +179,12 @@ export async function prerender({
 
           const filename = withoutBase(
             isImplicitHTML ? htmlPath : routeWithIndex,
-            nitro.options.baseURL,
+            TSS_APP_BASE,
           )
 
           const html = await res.text()
 
-          const filepath = path.join(nitro.options.output.publicDir, filename)
+          const filepath = path.join(outputDir, filename)
 
           await fsp.mkdir(path.dirname(filepath), {
             recursive: true,
@@ -249,5 +219,41 @@ export async function prerender({
         }
       })
     }
+  }
+}
+
+function findEntryFileInBundle(bundle: Rollup.OutputBundle): string {
+  let entryFile: string | undefined
+
+  for (const [_name, file] of Object.entries(bundle)) {
+    if (file.type === 'chunk') {
+      if (file.isEntry) {
+        if (entryFile !== undefined) {
+          throw new Error(
+            `Multiple entry points found. Only one entry point is allowed.`,
+          )
+        }
+        entryFile = file.fileName
+      }
+    }
+  }
+  if (entryFile === undefined) {
+    throw new Error(`No entry point found in the bundle.`)
+  }
+  return entryFile
+}
+
+export async function writeBundleToDisk({
+  bundle,
+  outDir,
+}: {
+  bundle: Rollup.OutputBundle
+  outDir: string
+}) {
+  for (const [fileName, asset] of Object.entries(bundle)) {
+    const fullPath = path.join(outDir, fileName)
+    const content = asset.type === 'asset' ? asset.source : asset.code
+    await fsp.mkdir(path.dirname(fullPath), { recursive: true })
+    await fsp.writeFile(fullPath, content)
   }
 }

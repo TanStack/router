@@ -1,8 +1,8 @@
 import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { create } from 'xmlbuilder2'
-import { createLogger } from '../utils'
-import type { TanStackStartOutputConfig } from '../schema'
+import { createLogger } from './utils'
+import type { TanStackStartOutputConfig } from './schema'
 import type { XMLBuilder } from 'xmlbuilder2/lib/interfaces'
 
 export type SitemapUrl = {
@@ -123,17 +123,17 @@ function jsonToXml(sitemapData: SitemapData): string {
 }
 
 export function buildSitemap({
-  options,
+  startConfig,
   publicDir,
 }: {
-  options: TanStackStartOutputConfig
+  startConfig: TanStackStartOutputConfig
   publicDir: string
 }) {
   const logger = createLogger('sitemap')
 
-  let sitemapOptions = options.sitemap
+  let sitemapOptions = startConfig.sitemap
 
-  if (!sitemapOptions && options.pages.length) {
+  if (!sitemapOptions && startConfig.pages.length) {
     sitemapOptions = { enabled: true, outputPath: 'sitemap.xml' }
   }
 
@@ -144,7 +144,7 @@ export function buildSitemap({
   const { host, outputPath } = sitemapOptions
 
   if (!host) {
-    if (!options.sitemap) {
+    if (!startConfig.sitemap) {
       logger.info(
         'Hint: Pages found, but no sitemap host has been set. To enable sitemap generation, set the `sitemap.host` option.',
       )
@@ -159,7 +159,7 @@ export function buildSitemap({
     throw new Error('Sitemap output path is not set')
   }
 
-  const { pages } = options
+  const { pages } = startConfig
 
   if (!pages.length) {
     logger.info('No pages were found to build the sitemap. Skipping...')
