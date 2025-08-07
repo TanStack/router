@@ -14,6 +14,18 @@ export default defineConfig({
     tanstackStart({
       spa: {
         enabled: true,
+        prerender: {
+          crawlLinks: true,
+        },
+      },
+      sitemap: {
+        host: 'https://localhost:3000',
+      },
+      prerender: {
+        failOnError: true,
+        filter: (page) => {
+          return !page.path.includes('exist')
+        },
       },
     }),
     viteSolid({ ssr: true }),
