@@ -1,6 +1,6 @@
 import { isRunnableDevEnvironment } from 'vite'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
-import { NodeRequest, sendNodeResponse } from "srvx/node";
+import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { resolveViteId } from '../utils'
 import { extractHtmlScripts } from './extract-html-scripts'
@@ -29,7 +29,8 @@ export function devServerPlugin(): PluginOption {
           templateHtml,
         )
         const scripts = extractHtmlScripts(transformedHtml)
-        injectedHeadScripts = scripts.flatMap((script) => script.content ?? [])
+        injectedHeadScripts = scripts
+          .flatMap((script) => script.content ?? [])
           .join(';')
 
         return () => {
@@ -71,7 +72,7 @@ export function devServerPlugin(): PluginOption {
               /**
                * export default {
                *  async fetch(req: Request) => Promise<Response>
-               * } 
+               * }
                */
               const serverEntry = await serverEnv.runner.import(
                 '/~start/server-entry',

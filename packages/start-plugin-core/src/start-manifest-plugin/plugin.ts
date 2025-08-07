@@ -3,7 +3,8 @@ import { rootRouteId } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { tsrSplit } from '@tanstack/router-plugin'
 import { resolveViteId } from '../utils'
-import type { PluginOption, ResolvedConfig, Rollup } from 'vite'
+import { ENTRY_POINTS } from '../constants'
+import type { PluginOption, Rollup } from 'vite'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 export const getCSSRecursively = (
@@ -39,18 +40,10 @@ export const getCSSRecursively = (
 }
 
 const resolvedModuleId = resolveViteId(VIRTUAL_MODULES.startManifest)
-export function startManifestPlugin(opts: {
-  clientEntry: string
-}): PluginOption {
-  let config: ResolvedConfig
-
+export function startManifestPlugin(): PluginOption {
   return {
     name: 'tanstack-start:start-manifest-plugin',
     enforce: 'pre',
-
-    configResolved(resolvedConfig) {
-      config = resolvedConfig
-    },
     resolveId: {
       filter: { id: new RegExp(VIRTUAL_MODULES.startManifest) },
       handler(id) {
@@ -76,10 +69,10 @@ export function startManifestPlugin(opts: {
           const APP_BASE = globalThis.TSS_APP_BASE
 
           // If we're in development, return a dummy manifest
-          if (config.command === 'serve') {
+          if (this.environment.config.command === 'serve') {
             return `export const tsrStartManifest = () => ({
             routes: {},
-            clientEntry: '${joinURL(APP_BASE, opts.clientEntry)}',
+            clientEntry: '${joinURL('/@id', ENTRY_POINTS.client)}',
           })`
           }
 
@@ -88,7 +81,6 @@ export function startManifestPlugin(opts: {
           const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST.routes
 
           // This is where hydration will start, from when the SSR'd page reaches the browser.
-          // By default, this'd be the virtual entry of `/~start/default-client-entry.tsx`, unless a custom entry is provided.
           let entryFile: Rollup.OutputChunk | undefined
 
           const clientBundle = globalThis.TSS_CLIENT_BUNDLE
@@ -222,12 +214,12 @@ export function startManifestPlugin(opts: {
 
           recurseRoute(routeTreeRoutes[rootRouteId]!)
 
-          const routesManifest = {
+          const startManifest = {
             routes: routeTreeRoutes,
             clientEntry: joinURL(APP_BASE, entryFile.fileName),
           }
 
-          return `export const tsrStartManifest = () => (${JSON.stringify(routesManifest)})`
+          return `export const tsrStartManifest = () => (${JSON.stringify(startManifest)})`
         }
 
         return undefined
