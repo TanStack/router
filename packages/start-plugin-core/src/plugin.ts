@@ -295,7 +295,7 @@ export function TanStackStartVitePluginCore(
       },
     }),
     loadEnvPlugin(),
-    startManifestPlugin(),
+    startManifestPlugin({ getClientBundle: () => clientBundle }),
     devServerPlugin(),
     {
       name: 'tanstack-start:core:capture-client-bundle',
@@ -304,7 +304,7 @@ export function TanStackStartVitePluginCore(
       },
       enforce: 'post',
       generateBundle(_options, bundle) {
-        globalThis.TSS_CLIENT_BUNDLE = bundle
+        clientBundle = bundle
       },
     },
   ]
