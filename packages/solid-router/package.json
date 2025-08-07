@@ -114,7 +114,7 @@
     "combinate": "^1.1.11",
     "eslint-plugin-solid": "^0.14.5",
     "solid-js": "^1.9.5",
-    "vite-plugin-solid": "^2.11.2",
+    "vite-plugin-solid": "^2.11.8",
     "zod": "^3.23.8"
   },
   "peerDependencies": {
