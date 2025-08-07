@@ -40,7 +40,9 @@ export const getCSSRecursively = (
 }
 
 const resolvedModuleId = resolveViteId(VIRTUAL_MODULES.startManifest)
-export function startManifestPlugin(): PluginOption {
+export function startManifestPlugin(opts: {
+  getClientBundle: () => Rollup.OutputBundle
+}): PluginOption {
   return {
     name: 'tanstack-start:start-manifest-plugin',
     enforce: 'pre',
@@ -83,7 +85,7 @@ export function startManifestPlugin(): PluginOption {
           // This is where hydration will start, from when the SSR'd page reaches the browser.
           let entryFile: Rollup.OutputChunk | undefined
 
-          const clientBundle = globalThis.TSS_CLIENT_BUNDLE
+          const clientBundle = opts.getClientBundle()
           const chunksByFileName = new Map<string, Rollup.OutputChunk>()
 
           const routeChunks: Record<
