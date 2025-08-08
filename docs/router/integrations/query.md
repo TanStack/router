@@ -112,7 +112,7 @@ function PostsPage() {
 
 ### Prefetching and streaming
 
-You can also prefetch with `fetchQuery` or `ensureQueryData` in a loader without consuming the data in a component. If you return the promise directly from the loader, it will be awaited and thus block the SSR request until the query finishes. If you don't await the promise nor return it, the query will be started on the server and will be streamed to the client without blocking the SSR request. 
+You can also prefetch with `fetchQuery` or `ensureQueryData` in a loader without consuming the data in a component. If you return the promise directly from the loader, it will be awaited and thus block the SSR request until the query finishes. If you don't await the promise nor return it, the query will be started on the server and will be streamed to the client without blocking the SSR request.
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
@@ -138,7 +138,6 @@ If a query or mutation throws a `redirect(...)`, the integration intercepts it o
 
 - Enabled by default
 - Disable with `handleRedirects: false` if you need custom handling
-
 
 ## Works with TanStack Start
 
