@@ -10,7 +10,7 @@ overrides:
   '@types/react': ^19.0.8
   '@types/react-dom': ^19.0.3
   eslint: ^9.22.0
-  vite: 7.1.1
+  vite: ^7.1.1
   '@playwright/test': ^1.52.0
   '@tanstack/react-query': 5.66.0
   '@tanstack/history': workspace:*
@@ -143,7 +143,7 @@ importers:
         specifier: npm:typescript@5.8
         version: typescript@5.8.3
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vitest:
         specifier: ^3.2.4
@@ -198,7 +198,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/basic-esbuild-file-based:
@@ -299,7 +299,7 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/basic-file-based-code-splitting:
@@ -348,7 +348,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/basic-react-query:
@@ -400,7 +400,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/basic-react-query-file-based:
@@ -458,7 +458,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/basic-scroll-restoration:
@@ -507,7 +507,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/basic-virtual-file-based:
@@ -562,7 +562,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/basic-virtual-named-export-config-file-based:
@@ -617,7 +617,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/generator-cli-only:
@@ -666,7 +666,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/js-only-file-based:
@@ -715,7 +715,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/rspack-basic-file-based:
@@ -877,7 +877,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-router/sentry-integration:
@@ -932,7 +932,7 @@ importers:
         specifier: ^4.3.4
         version: 4.3.4(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   e2e/react-start/basic:
@@ -996,7 +996,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -1035,7 +1035,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
     devDependencies:
       '@playwright/test':
@@ -1105,7 +1105,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
     devDependencies:
       '@playwright/test':
@@ -1169,7 +1169,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
     devDependencies:
       '@types/react':
@@ -1212,7 +1212,7 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
     devDependencies:
       '@tanstack/router-e2e-utils':
@@ -1255,7 +1255,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -1325,7 +1325,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -1386,7 +1386,7 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -1447,7 +1447,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -1520,7 +1520,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -1606,7 +1606,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.3
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -1639,7 +1639,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -1740,7 +1740,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -1777,7 +1777,7 @@ importers:
         specifier: workspace:^
         version: link:../../e2e-utils
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -1863,7 +1863,7 @@ importers:
         specifier: ^1.1.11
         version: 1.1.11
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -1903,7 +1903,7 @@ importers:
         specifier: workspace:^
         version: link:../../e2e-utils
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -1943,7 +1943,7 @@ importers:
         specifier: workspace:^
         version: link:../../e2e-utils
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -1986,7 +1986,7 @@ importers:
         specifier: workspace:^
         version: link:../../e2e-utils
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -2035,7 +2035,7 @@ importers:
         specifier: workspace:^
         version: link:../../e2e-utils
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -2081,7 +2081,7 @@ importers:
         specifier: workspace:^
         version: link:../../e2e-utils
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -2127,7 +2127,7 @@ importers:
         specifier: workspace:^
         version: link:../../e2e-utils
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -2159,7 +2159,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.7)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -2205,7 +2205,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.27.7)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -2268,7 +2268,7 @@ importers:
         specifier: workspace:^
         version: link:../../e2e-utils
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -2295,7 +2295,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -2347,7 +2347,7 @@ importers:
         specifier: ^1.9.5
         version: 1.9.5
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
     devDependencies:
       '@tanstack/router-e2e-utils':
@@ -2384,7 +2384,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -2445,7 +2445,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -2510,7 +2510,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.3
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -2540,7 +2540,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -2604,7 +2604,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -2675,7 +2675,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.3
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -2705,7 +2705,7 @@ importers:
         specifier: ^2.6.0
         version: 2.6.0
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       zod:
         specifier: ^3.24.2
@@ -2785,7 +2785,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/authenticated-routes-firebase:
@@ -2840,7 +2840,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic:
@@ -2883,7 +2883,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic-default-search-params:
@@ -2932,7 +2932,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic-devtools-panel:
@@ -2978,7 +2978,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic-file-based:
@@ -3027,7 +3027,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic-non-nested-devtools:
@@ -3070,7 +3070,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic-react-query:
@@ -3119,7 +3119,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic-react-query-file-based:
@@ -3174,7 +3174,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic-ssr-file-based:
@@ -3223,7 +3223,7 @@ importers:
         specifier: ^5.8.3
         version: 5.8.3
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic-ssr-streaming-file-based:
@@ -3272,7 +3272,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.3
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic-virtual-file-based:
@@ -3324,7 +3324,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/basic-virtual-inside-file-based:
@@ -3376,7 +3376,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/deferred-data:
@@ -3422,7 +3422,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/kitchen-sink:
@@ -3471,7 +3471,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/kitchen-sink-file-based:
@@ -3523,7 +3523,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/kitchen-sink-react-query:
@@ -3578,7 +3578,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/kitchen-sink-react-query-file-based:
@@ -3636,7 +3636,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/large-file-based:
@@ -3688,7 +3688,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/location-masking:
@@ -3737,7 +3737,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/navigation-blocking:
@@ -3783,7 +3783,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/quickstart:
@@ -3823,7 +3823,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/quickstart-esbuild-file-based:
@@ -3906,7 +3906,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/quickstart-rspack-file-based:
@@ -4041,7 +4041,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4090,7 +4090,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4127,7 +4127,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4152,7 +4152,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/router-monorepo-react-query/packages/router:
@@ -4198,7 +4198,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4241,7 +4241,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4284,7 +4284,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4330,7 +4330,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4364,7 +4364,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4407,7 +4407,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4453,7 +4453,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4484,7 +4484,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4527,7 +4527,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-dts:
         specifier: ^4.5.0
@@ -4573,7 +4573,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/search-validator-adapters:
@@ -4643,7 +4643,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/start-bare:
@@ -4683,7 +4683,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -4738,7 +4738,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -4799,7 +4799,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -4860,7 +4860,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -4912,7 +4912,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -4967,7 +4967,7 @@ importers:
         specifier: ^5.6.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.3
@@ -5022,7 +5022,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -5104,7 +5104,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -5144,7 +5144,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/start-large:
@@ -5202,7 +5202,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -5257,7 +5257,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -5309,7 +5309,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -5358,7 +5358,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -5431,7 +5431,7 @@ importers:
         specifier: ^5.6.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -5486,7 +5486,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
@@ -5538,7 +5538,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/with-framer-motion:
@@ -5587,7 +5587,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/with-trpc:
@@ -5648,7 +5648,7 @@ importers:
         specifier: ^4.20.3
         version: 4.20.3
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/react/with-trpc-react-query:
@@ -5718,7 +5718,7 @@ importers:
         specifier: ^4.20.3
         version: 4.20.3
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   examples/solid/basic:
@@ -5755,7 +5755,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -5789,7 +5789,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -5829,7 +5829,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -5869,7 +5869,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -5912,7 +5912,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -5958,7 +5958,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -6013,7 +6013,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.3
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -6056,7 +6056,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -6096,7 +6096,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -6136,7 +6136,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -6182,7 +6182,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -6231,7 +6231,7 @@ importers:
         specifier: ^5.6.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -6295,7 +6295,7 @@ importers:
         specifier: ^7.20.7
         version: 7.20.7
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   packages/eslint-plugin-router:
@@ -6432,7 +6432,7 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0(react@19.0.0)
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   packages/react-start-client:
@@ -6676,7 +6676,7 @@ importers:
         specifier: ^2.1.2
         version: 2.3.4
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.8
@@ -6886,7 +6886,7 @@ importers:
         specifier: workspace:*
         version: link:../router-utils
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   packages/solid-start-client:
@@ -7039,7 +7039,7 @@ importers:
         specifier: ^7.20.5
         version: 7.20.5
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   packages/start-server-core:
@@ -7079,7 +7079,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.2
       vite:
-        specifier: 7.1.1
+        specifier: ^7.1.1
         version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   packages/start-server-functions-client:
@@ -10545,7 +10545,7 @@ packages:
   '@tailwindcss/vite@4.1.6':
     resolution: {integrity: sha512-zjtqjDeY1w3g2beYQtrMAf51n5G7o+UwmyOjtsDMP7t6XyoRMOidcoKP32ps7AkNOHIXEOK0bhIC05dj8oJp4w==}
     peerDependencies:
-      vite: 7.1.1
+      vite: ^7.1.1
 
   '@tanstack/config@0.16.1':
     resolution: {integrity: sha512-GLt1xyQCGRty58N2jv0ONouv8OU46FjkbcSSTiAKwydcX+JycZ7FCLWt05lefrvuV8Eay0eNuN0sYUemObZLEA==}
@@ -10960,13 +10960,13 @@ packages:
     resolution: {integrity: sha512-SCCPBJtYLdE8PX/7ZQAs1QAZ8Jqwih+0VBLum1EGqmCCQal+MIUqLCzj3ZUy8ufbC0cAM4LRlSTm7IQJwWT4ug==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
-      vite: 7.1.1
+      vite: ^7.1.1
 
   '@vitejs/plugin-react@4.6.0':
     resolution: {integrity: sha512-5Kgff+m8e2PB+9j51eGHEpn5kUzRKH2Ry0qGoe8ItJg7pqnkPrYPkDQZGgGmTa0EGarHrkjLvOdU3b1fzI8otQ==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
-      vite: 7.1.1
+      vite: ^7.1.1
 
   '@vitest/browser@3.0.6':
     resolution: {integrity: sha512-FqKwCAkALZfNzGNx4YvRJa6HCWM2USWTjOdNO2egI/s6+3WkIl4xAlYISOARLJLDAI3yCXcpTtuUUF39K8TQgw==}
@@ -10990,7 +10990,7 @@ packages:
     resolution: {integrity: sha512-KPztr4/tn7qDGZfqlSPQoF2VgJcKxnDNhmfR3VgZ6Fy1bO8T9Fc1stUiTXtqz0yG24VpD00pZP5f8EOFknjNuQ==}
     peerDependencies:
       msw: ^2.4.9
-      vite: 7.1.1
+      vite: ^7.1.1
     peerDependenciesMeta:
       msw:
         optional: true
@@ -11001,7 +11001,7 @@ packages:
     resolution: {integrity: sha512-46ryTE9RZO/rfDd7pEqFl7etuyzekzEhUbTW3BvmeO/BcCMEgq59BKhek3dXDWgAj4oMK6OZi+vRr1wPW6qjEQ==}
     peerDependencies:
       msw: ^2.4.9
-      vite: 7.1.1
+      vite: ^7.1.1
     peerDependenciesMeta:
       msw:
         optional: true
@@ -15754,7 +15754,7 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       typescript: '*'
-      vite: 7.1.1
+      vite: ^7.1.1
     peerDependenciesMeta:
       vite:
         optional: true
@@ -15763,7 +15763,7 @@ packages:
     resolution: {integrity: sha512-M1lrPTdi7gilLYRZoLmGYnl4fbPryVYsehPN9JgaxjJKTs8/f7tuAlvCCvOLB5gRDQTTKnptBcB0ACsaw2wNLw==}
     peerDependencies:
       typescript: '*'
-      vite: 7.1.1
+      vite: ^7.1.1
     peerDependenciesMeta:
       vite:
         optional: true
@@ -15771,14 +15771,14 @@ packages:
   vite-plugin-externalize-deps@0.9.0:
     resolution: {integrity: sha512-wg3qb5gCy2d1KpPKyD9wkXMcYJ84yjgziHrStq9/8R7chhUC73mhQz+tVtvhFiICQHsBn1pnkY4IBbPqF9JHNw==}
     peerDependencies:
-      vite: 7.1.1
+      vite: ^7.1.1
 
   vite-plugin-solid@2.11.8:
     resolution: {integrity: sha512-hFrCxBfv3B1BmFqnJF4JOCYpjrmi/zwyeKjcomQ0khh8HFyQ8SbuBWQ7zGojfrz6HUOBFrJBNySDi/JgAHytWg==}
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
       solid-js: ^1.7.2
-      vite: 7.1.1
+      vite: ^7.1.1
     peerDependenciesMeta:
       '@testing-library/jest-dom':
         optional: true
@@ -15786,7 +15786,7 @@ packages:
   vite-tsconfig-paths@5.1.4:
     resolution: {integrity: sha512-cYj0LRuLV2c2sMqhqhGpaO3LretdtMn/BVX4cPLanIZuwwrkVl+lK84E/miEXkCHWXuq65rhNN4rXsBcOB3S4w==}
     peerDependencies:
-      vite: 7.1.1
+      vite: ^7.1.1
     peerDependenciesMeta:
       vite:
         optional: true
@@ -15834,7 +15834,7 @@ packages:
   vitefu@1.1.1:
     resolution: {integrity: sha512-B/Fegf3i8zh0yFbpzZ21amWzHmuNlLlmJT6n7bu5e+pCHUKQIfXSYokrqOBGEMMe9UG2sostKQF9mml/vYaWJQ==}
     peerDependencies:
-      vite: 7.1.1
+      vite: ^7.1.1
     peerDependenciesMeta:
       vite:
         optional: true
