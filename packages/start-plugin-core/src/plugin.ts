@@ -253,6 +253,7 @@ export function TanStackStartVitePluginCore(
             ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', getClientOutputDirectory(viteConfig)),
             ...defineReplaceEnv('TSS_APP_BASE', viteAppBase),
             ...(command === 'serve' ? defineReplaceEnv('TSS_SHELL', startConfig.spa?.enabled ? 'true' : 'false') : {}),
+            ...defineReplaceEnv('TSS_DEV_SERVER', command === 'serve' ? 'true' : 'false'),
           },
           builder: {
             sharedPlugins: true,

@@ -6,6 +6,7 @@ declare global {
       TSS_OUTPUT_PUBLIC_DIR?: string
       TSS_SHELL?: 'true' | 'false'
       TSS_PRERENDERING?: 'true' | 'false'
+      TSS_DEV_SERVER?: 'true' | 'false'
     }
   }
 }

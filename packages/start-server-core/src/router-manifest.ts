@@ -20,7 +20,7 @@ export async function getStartManifest(opts: { basePath: string }) {
   rootRoute.assets = rootRoute.assets || []
 
   let script = `import('${startManifest.clientEntry}')`
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.TSS_DEV_SERVER === 'true') {
     const { injectedHeadScripts } = await loadVirtualModule(
       VIRTUAL_MODULES.injectedHeadScripts,
     )
