@@ -678,7 +678,7 @@ Before deploying your migrated application:
 1. TanStack Router has built-in SSR capabilities - use TanStack Start for full-stack applications
 2. Use TanStack Router's lazy routes for code splitting
 3. Configure SSR using TanStack Router's native APIs
-4. Follow the [SSR setup guide](./setup-ssr.md) for detailed instructions
+4. Follow the [SSR setup guide](../setup-ssr.md) for detailed instructions
 
 ### Routes Not Matching
 
@@ -737,8 +737,8 @@ After successfully migrating to TanStack Router, consider these enhancements:
 ## Related Resources
 
 - [TanStack Router Documentation](https://tanstack.com/router) - Complete API reference
-- [File-Based Routing Guide](../routing/file-based-routing.md) - Detailed routing concepts
-- [Navigation Guide](../guide/navigation.md) - Complete navigation patterns
-- [Search Parameters Guide](../guide/search-params.md) - Advanced search param usage
-- [Type Safety Guide](../guide/type-safety.md) - TypeScript integration details
+- [File-Based Routing Guide](../../routing/file-based-routing.md) - Detailed routing concepts
+- [Navigation Guide](../../guide/navigation.md) - Complete navigation patterns
+- [Search Parameters Guide](../../guide/search-params.md) - Advanced search param usage
+- [Type Safety Guide](../../guide/type-safety.md) - TypeScript integration details
 - [React Router v7 Changelog](https://reactrouter.com/start/changelog) - What changed in v7
