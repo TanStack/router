@@ -172,7 +172,7 @@ export function useBlocker(
   })
 
   React.useEffect(() => {
-    const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
+    async function* blockerFnComposed(blockerFnArgs: BlockerFnArgs) {
       function getLocation(
         location: HistoryLocation,
       ): AnyShouldBlockFnLocation {
@@ -208,8 +208,9 @@ export function useBlocker(
       if (!shouldBlock) {
         return false
       }
-
+      let resolvePromise: (value: boolean) => void = () => {}
       const promise = new Promise<boolean>((resolve) => {
+        resolvePromise = resolve
         setResolver({
           status: 'blocked',
           current,
@@ -219,7 +220,7 @@ export function useBlocker(
           reset: () => resolve(true),
         })
       })
-
+      yield resolvePromise
       const canNavigateAsync = await promise
       setResolver({
         status: 'idle',
