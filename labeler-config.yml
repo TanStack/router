@@ -88,6 +88,9 @@
 'package: start-server-functions-server':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-server-functions-server/**/*'
+'package: start-static-server-functions':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/start-static-server-functions/**/*'
 'package: start-storage-context':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-storage-context/**/*'
