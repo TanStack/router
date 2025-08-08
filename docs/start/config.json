@@ -42,6 +42,10 @@
               "to": "framework/react/static-server-functions"
             },
             {
+              "label": "Environment Functions",
+              "to": "framework/react/environment-functions"
+            },
+            {
               "label": "Middleware",
               "to": "framework/react/middleware"
             },
@@ -121,6 +125,10 @@
             {
               "label": "Static Server Functions",
               "to": "framework/solid/static-server-functions"
+            },
+            {
+              "label": "Environment Functions",
+              "to": "framework/react/environment-functions"
             },
             {
               "label": "Middleware",
