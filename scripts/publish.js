@@ -29,6 +29,10 @@ await publish({
       packageDir: 'packages/react-router-ssr-query',
     },
     {
+      name: '@tanstack/router-ssr-query-core',
+      packageDir: 'packages/router-ssr-query-core',
+    },
+    {
       name: '@tanstack/zod-adapter',
       packageDir: 'packages/zod-adapter',
     },

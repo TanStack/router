@@ -65,10 +65,10 @@
   },
   "devDependencies": {
     "@tanstack/router-core": ">=1.127.0",
-    "@tanstack/query-core": ">=5.49.0"
+    "@tanstack/query-core": ">=5.66.0"
   },
   "peerDependencies": {
     "@tanstack/router-core": ">=1.127.0",
-    "@tanstack/query-core": ">=5.49.0"
+    "@tanstack/query-core": ">=5.66.0"
   }
 }
