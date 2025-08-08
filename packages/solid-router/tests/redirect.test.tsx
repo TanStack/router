@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
+import invariant from 'tiny-invariant'
 import {
   Link,
   RouterProvider,
@@ -10,7 +11,6 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  invariant,
   redirect,
   useRouter,
 } from '../src'
