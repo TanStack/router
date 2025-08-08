@@ -92,7 +92,7 @@ const serverFnStaticCache: ServerFnStaticCache = {
 
       const [cachedResult, readError] = await fs
         .readFile(filePath, 'utf-8')
-        .then((c) => [startSerializer.parse(c) as unknown, null])
+        .then((c) => [startSerializer.parse(c), null])
         .catch((e) => [null, e])
 
       if (readError && readError.code !== 'ENOENT') {
