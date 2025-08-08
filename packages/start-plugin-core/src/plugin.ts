@@ -194,8 +194,6 @@ export function TanStackStartVitePluginCore(
                   input: {
                     main: ENTRY_POINTS.client,
                   },
-                  // TODO: this should be removed
-                  external: ['node:fs', 'node:path', 'node:os', 'node:crypto'],
                 },
                 outDir: getClientOutputDirectory(viteConfig),
               },
