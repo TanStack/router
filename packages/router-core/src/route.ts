@@ -14,7 +14,7 @@ import type {
   RouteMatch,
 } from './Matches'
 import type { RootRouteId } from './root'
-import type { ParseRoute, RouteById, RoutePaths } from './routeInfo'
+import type { ParseRoute, RouteById, RouteIds, RoutePaths } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
@@ -1322,9 +1322,11 @@ export type ErrorComponentProps<TError = Error> = {
   info?: { componentStack: string }
   reset: () => void
 }
-export type NotFoundRouteProps = {
-  // TODO: Make sure this is `| null | undefined` (this is for global not-founds)
-  data: unknown
+
+export type NotFoundRouteProps<TData = unknown> = {
+  data?: TData
+  isNotFound: boolean
+  routeId: RouteIds<RegisteredRouter['routeTree']>
 }
 
 export class BaseRoute<
