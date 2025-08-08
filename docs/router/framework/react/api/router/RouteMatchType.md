@@ -9,6 +9,8 @@ The `RouteMatch` type represents a route match in TanStack Router.
 interface RouteMatch {
   id: string
   routeId: string
+  fullPath: string
+  index: number
   pathname: string
   params: Route['allParams']
   status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
@@ -24,7 +26,13 @@ interface RouteMatch {
   search: Route['fullSearchSchema']
   fetchedAt: number
   abortController: AbortController
-  cause: 'enter' | 'stay'
+  cause: 'preload' | 'enter' | 'stay'
+  fetchCount: number
+  preload: boolean
+  invalid: boolean
+  headers?: Record<string, string>
+  globalNotFound?: boolean
   ssr?: boolean | 'data-only'
+  displayPendingPromise?: Promise<void>
 }
 ```
