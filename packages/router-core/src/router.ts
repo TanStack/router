@@ -614,8 +614,8 @@ export type InvalidateFn<TRouter extends AnyRouter> = (opts?: {
 }) => Promise<void>
 
 export type ParseLocationFn<TRouteTree extends AnyRoute> = (
+  locationToParse: HistoryLocation,
   previousLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>,
-  locationToParse?: HistoryLocation,
 ) => ParsedLocation<FullSearchSchema<TRouteTree>>
 
 export type GetMatchRoutesFn = (
@@ -901,7 +901,7 @@ export class RouterCore<
               initialEntries: [this.basepath || '/'],
             })
           : createBrowserHistory()) as TRouterHistory)
-      this.latestLocation = this.parseLocation()
+      this.updateLatestLocation()
     }
 
     if (this.options.routeTree !== this.routeTree) {
@@ -937,6 +937,13 @@ export class RouterCore<
 
   get state() {
     return this.__store.state
+  }
+
+  updateLatestLocation = () => {
+    this.latestLocation = this.parseLocation(
+      this.history.location,
+      this.latestLocation,
+    )
   }
 
   buildRouteTree = () => {
@@ -985,8 +992,8 @@ export class RouterCore<
   }
 
   parseLocation: ParseLocationFn<TRouteTree> = (
-    previousLocation,
     locationToParse,
+    previousLocation,
   ) => {
     const parse = ({
       pathname,
@@ -1007,7 +1014,7 @@ export class RouterCore<
       }
     }
 
-    const location = parse(locationToParse ?? this.history.location)
+    const location = parse(locationToParse)
 
     const { __tempLocation, __tempKey } = location.state
 
@@ -1805,7 +1812,7 @@ export class RouterCore<
   beforeLoad = () => {
     // Cancel any pending matches
     this.cancelMatches()
-    this.latestLocation = this.parseLocation(this.latestLocation)
+    this.updateLatestLocation()
 
     if (this.isServer) {
       // for SPAs on the initial load, this is handled by the Transitioner
