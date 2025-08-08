@@ -71,6 +71,6 @@
   "devDependencies": {
     "@tanstack/directive-functions-plugin": "workspace:*",
     "typescript": "^5.7.2",
-    "vite": "^7.0.6"
+    "vite": "^7.1.1"
   }
 }

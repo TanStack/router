@@ -85,7 +85,7 @@
   "devDependencies": {
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
-    "vite": "^7.0.6"
+    "vite": "^7.1.1"
   },
   "peerDependencies": {
     "vite": ">=7.0.0"

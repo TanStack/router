@@ -77,7 +77,7 @@
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
     "@types/babel__traverse": "^7.20.7",
-    "vite": "^7.0.6"
+    "vite": "^7.1.1"
   },
   "peerDependencies": {
     "vite": ">=6.0.0 || >=7.0.0"
