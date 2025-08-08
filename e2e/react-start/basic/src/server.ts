@@ -8,6 +8,10 @@ import { createRouter } from './router'
 
 console.log("[server-entry]: using custom server entry in 'src/server.ts'")
 
-export default createStartHandler({
+const fetch = createStartHandler({
   createRouter,
 })(defaultStreamHandler)
+
+export default {
+  fetch,
+}
