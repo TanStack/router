@@ -2,7 +2,6 @@ import type {
   ConstrainValidator,
   Method,
   ServerFnResponseType,
-  ServerFnTypeOrTypeFn,
 } from './createServerFn'
 import type {
   AnyRouter,
@@ -552,12 +551,6 @@ export interface FunctionMiddlewareClientFnOptions<
   next: FunctionMiddlewareClientNextFn<TMiddlewares>
   filename: string
   functionId: string
-  type: ServerFnTypeOrTypeFn<
-    Method,
-    TServerFnResponseType,
-    TMiddlewares,
-    TValidator
-  >
   router: TRouter
 }
 

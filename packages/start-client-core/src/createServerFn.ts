@@ -1,5 +1,3 @@
-import { default as invariant } from 'tiny-invariant'
-import { default as warning } from 'tiny-warning'
 import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 import { getStartContext } from '@tanstack/start-storage-context'
@@ -49,7 +47,6 @@ export function createServerFn<
   options?: {
     method?: TMethod
     response?: TServerFnResponseType
-    type?: ServerFnType
   },
   __opts?: ServerFnBaseOptions<
     TMethod,
@@ -90,15 +87,6 @@ export function createServerFn<
         TMiddlewares,
         TValidator
       >(undefined, Object.assign(resolvedOptions, { validator })) as any
-    },
-    type: (type) => {
-      return createServerFn<
-        TMethod,
-        ServerFnResponseType,
-        TResponse,
-        TMiddlewares,
-        TValidator
-      >(undefined, Object.assign(resolvedOptions, { type })) as any
     },
     handler: (...args) => {
       // This function signature changes due to AST transformations
@@ -158,11 +146,6 @@ export function createServerFn<
           __executeServer: async (opts_: any, signal: AbortSignal) => {
             const opts =
               opts_ instanceof FormData ? extractFormDataContext(opts_) : opts_
-
-            opts.type =
-              typeof resolvedOptions.type === 'function'
-                ? resolvedOptions.type(opts)
-                : resolvedOptions.type
 
             const ctx = {
               ...extractedFn,
@@ -322,11 +305,8 @@ export interface RequiredFetcher<
 
 export type FetcherBaseOptions = {
   headers?: HeadersInit
-  type?: ServerFnType
   signal?: AbortSignal
 }
-
-export type ServerFnType = 'static' | 'dynamic'
 
 export interface OptionalFetcherDataOptions<TMiddlewares, TValidator>
   extends FetcherBaseOptions {
@@ -421,12 +401,6 @@ export type ServerFnBaseOptions<
     TResponse
   >
   functionId: string
-  type: ServerFnTypeOrTypeFn<
-    TMethod,
-    TServerFnResponseType,
-    TMiddlewares,
-    AnyValidator
-  >
 }
 
 export type ValidatorInputStringify<TValidator> = SerializerStringifyBy<
@@ -471,7 +445,6 @@ export interface ServerFnAfterMiddleware<
   TMiddlewares,
   TValidator,
 > extends ServerFnValidator<TMethod, TServerFnResponseType, TMiddlewares>,
-    ServerFnTyper<TMethod, TServerFnResponseType, TMiddlewares, TValidator>,
     ServerFnHandler<TMethod, TServerFnResponseType, TMiddlewares, TValidator> {}
 
 export type ValidatorFn<
@@ -501,46 +474,7 @@ export interface ServerFnAfterValidator<
   TMiddlewares,
   TValidator,
 > extends ServerFnMiddleware<TMethod, TServerFnResponseType, TValidator>,
-    ServerFnTyper<TMethod, TServerFnResponseType, TMiddlewares, TValidator>,
     ServerFnHandler<TMethod, TServerFnResponseType, TMiddlewares, TValidator> {}
-
-// Typer
-export interface ServerFnTyper<
-  TMethod extends Method,
-  TServerFnResponseType extends ServerFnResponseType,
-  TMiddlewares,
-  TValidator,
-> {
-  type: (
-    typer: ServerFnTypeOrTypeFn<
-      TMethod,
-      TServerFnResponseType,
-      TMiddlewares,
-      TValidator
-    >,
-  ) => ServerFnAfterTyper<
-    TMethod,
-    TServerFnResponseType,
-    TMiddlewares,
-    TValidator
-  >
-}
-
-export type ServerFnTypeOrTypeFn<
-  TMethod extends Method,
-  TServerFnResponseType extends ServerFnResponseType,
-  TMiddlewares,
-  TValidator,
-> =
-  | ServerFnType
-  | ((
-      ctx: ServerFnCtx<
-        TMethod,
-        TServerFnResponseType,
-        TMiddlewares,
-        TValidator
-      >,
-    ) => ServerFnType)
 
 export interface ServerFnAfterTyper<
   TMethod extends Method,
@@ -577,7 +511,6 @@ export interface ServerFnBuilder<
   TServerFnResponseType extends ServerFnResponseType = 'data',
 > extends ServerFnMiddleware<TMethod, TServerFnResponseType, undefined>,
     ServerFnValidator<TMethod, TServerFnResponseType, undefined>,
-    ServerFnTyper<TMethod, TServerFnResponseType, undefined, undefined>,
     ServerFnHandler<TMethod, TServerFnResponseType, undefined, undefined> {
   options: ServerFnBaseOptions<
     TMethod,
@@ -644,7 +577,6 @@ export type ServerFnMiddlewareOptions = {
   signal?: AbortSignal
   sendContext?: any
   context?: any
-  type: ServerFnTypeOrTypeFn<any, any, any, any>
   functionId: string
   router?: AnyRouter
 }
@@ -652,7 +584,6 @@ export type ServerFnMiddlewareOptions = {
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
   result?: unknown
   error?: unknown
-  type: ServerFnTypeOrTypeFn<any, any, any, any>
 }
 
 export type NextFn = (
@@ -742,7 +673,6 @@ export function serverFnBaseToMiddleware(
           ...ctx,
           // switch the sendContext over to context
           context: sendContext,
-          type: typeof ctx.type === 'function' ? ctx.type(ctx) : ctx.type,
         } as any
 
         // Execute the extracted function

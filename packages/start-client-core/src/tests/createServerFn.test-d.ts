@@ -52,7 +52,6 @@ test('createServerFn with validator', () => {
   expectTypeOf(fn).parameter(0).toEqualTypeOf<{
     data: { input: string }
     headers?: HeadersInit
-    type?: 'static' | 'dynamic'
     signal?: AbortSignal
   }>()
 
@@ -168,7 +167,6 @@ describe('createServerFn with middleware and validator', () => {
         readonly inputC: 'inputC'
       }
       headers?: HeadersInit
-      type?: 'static' | 'dynamic'
       signal?: AbortSignal
     }>()
 
@@ -212,7 +210,6 @@ describe('createServerFn with middleware and validator', () => {
         readonly inputC: 'inputC'
       }
       headers?: HeadersInit
-      type?: 'static' | 'dynamic'
       signal?: AbortSignal
     }>()
 
@@ -323,7 +320,6 @@ test('createServerFn where validator is optional if object is optional', () => {
     | {
         data?: 'c' | undefined
         headers?: HeadersInit
-        type?: 'static' | 'dynamic'
         signal?: AbortSignal
       }
     | undefined
@@ -347,7 +343,6 @@ test('createServerFn where data is optional if there is no validator', () => {
     | {
         data?: undefined
         headers?: HeadersInit
-        type?: 'static' | 'dynamic'
         signal?: AbortSignal
       }
     | undefined
@@ -509,7 +504,6 @@ test('createServerFn validator infers unknown for default input type', () => {
     | {
         data?: unknown | undefined
         headers?: HeadersInit
-        type?: 'static' | 'dynamic'
         signal?: AbortSignal
       }
     | undefined

@@ -73,7 +73,6 @@ export type {
   ServerFnMiddlewareOptions,
   ServerFnMiddlewareResult,
   ServerFnBuilder,
-  ServerFnType,
   ServerFnBaseOptions,
   NextFn,
   Method,
