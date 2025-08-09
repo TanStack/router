@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { createServerFn } from '@tanstack/react-start'
-import { getHeaders, setHeader } from '@tanstack/react-start/server'
+import { getRequestHeaders, setResponseHeaders } from '@tanstack/react-start/server'
 import type { HTTPHeaderName } from '@tanstack/react-start/server'
 
 export const Route = createFileRoute('/headers')({
@@ -17,11 +17,11 @@ export const Route = createFileRoute('/headers')({
 })
 
 export const getTestHeaders = createServerFn().handler(() => {
-  setHeader('x-test-header', 'test-value')
+  setResponseHeaders('x-test-header', 'test-value')
 
   return {
-    serverHeaders: getHeaders(),
-    headers: getHeaders(),
+    serverHeaders: getRequestHeaders(),
+    headers: getRequestHeaders(),
   }
 })
 

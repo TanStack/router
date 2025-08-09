@@ -1,7 +1,10 @@
 import * as fs from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { PORT } from '../playwright.config'
+import { getTestServerPort } from '@tanstack/router-e2e-utils'
+import packageJson from '../package.json' with { type: 'json' }
 import type { Page } from '@playwright/test'
+
+const PORT = await getTestServerPort(packageJson.name)
 
 test('invoking a server function with custom response status code', async ({
   page,

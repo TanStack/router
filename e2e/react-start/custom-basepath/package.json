@@ -7,7 +7,7 @@
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "node .output/server/index.mjs",
+    "start": "pnpx srvx --prod dist/server.js",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
@@ -31,6 +31,7 @@
     "autoprefixer": "^10.4.20",
     "combinate": "^1.1.11",
     "postcss": "^8.5.1",
+		"srvx": "^0.8.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"

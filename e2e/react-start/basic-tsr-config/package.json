@@ -7,7 +7,7 @@
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "rimraf ./count.txt && vite build && tsc --noEmit",
-    "start": "node .output/server/index.mjs",
+    "start": "pnpx srvx --prod dist/server.js",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
@@ -22,6 +22,7 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+		"srvx": "^0.8.6",
     "typescript": "^5.7.2"
   }
 }
