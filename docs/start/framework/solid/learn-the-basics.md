@@ -60,9 +60,23 @@ import {
 
 import { createRouter } from './router'
 
-export default createStartHandler({
+const fetch = createStartHandler({
   createRouter,
 })(defaultStreamHandler)
+
+export default {
+  fetch,
+}
+```
+
+The entry point must conform to the following interface:
+
+```tsx
+export default {
+  fetch(req: Request): Promise<Response> {
+    // ...
+  },
+}
 ```
 
 Whether we are statically generating our app or serving it dynamically, the `server.ts` file is the entry point for doing all SSR-related work.

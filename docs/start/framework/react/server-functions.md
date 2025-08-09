@@ -360,7 +360,7 @@ function Test() {
 
 ## Server Function Context
 
-In addition to the single parameter that server functions accept, you can also access server request context from within any server function using utilities from `@tanstack/react-start/server`. Under the hood, we use [Unjs](https://unjs.io/)'s `h3` package to perform cross-platform HTTP requests.
+In addition to the single parameter that server functions accept, you can also access server request context from within any server function using utilities from `@tanstack/react-start/server`.
 
 There are many context functions available to you for things like:
 
@@ -369,23 +369,20 @@ There are many context functions available to you for things like:
 - Accessing/setting sessions/cookies
 - Setting response status codes and status messages
 - Dealing with multi-part form data
-- Reading/Setting custom server context properties
-
-For a full list of available context functions, see all of the available [h3 Methods](https://h3.unjs.io/utils/request) or inspect the [@tanstack/start-server-core Source Code](https://github.com/TanStack/router/tree/main/packages/start-server-core/src).
 
 For starters, here are a few examples:
 
 ## Accessing the Request Context
 
-Let's use the `getWebRequest` function to access the request itself from within a server function:
+Let's use the `getRequest` function to access the request itself from within a server function:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
-import { getWebRequest } from '@tanstack/react-start/server'
+import { getRequest } from '@tanstack/react-start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const request = getWebRequest()
+    const request = getRequest()
 
     console.log(request.method) // GET
 
@@ -396,15 +393,15 @@ export const getServerTime = createServerFn({ method: 'GET' }).handler(
 
 ## Accessing Headers
 
-Use the `getHeaders` function to access all headers from within a server function:
+Use the `getRequestHeaders` function to access all headers from within a server function:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
-import { getHeaders } from '@tanstack/react-start/server'
+import { getRequestHeaders } from '@tanstack/react-start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
-    console.log(getHeaders())
+    console.log(getRequestHeaders())
     // {
     //   "accept": "*/*",
     //   "accept-encoding": "gzip, deflate, br",
@@ -417,15 +414,15 @@ export const getServerTime = createServerFn({ method: 'GET' }).handler(
 )
 ```
 
-You can also access individual headers using the `getHeader` function:
+You can also access individual headers using the `getRequestHeader` function:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
-import { getHeader } from '@tanstack/react-start/server'
+import { getRequestHeader } from '@tanstack/react-start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
-    console.log(getHeader('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
+    console.log(getRequestHeader('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
   },
 )
 ```
@@ -466,15 +463,15 @@ By default, server functions assume that any non-Response object returned is eit
 
 ## Responding with Custom Headers
 
-To respond with custom headers, you can use the `setHeader` function:
+To respond with custom headers, you can use the `setResponseHeader` function:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
-import { setHeader } from '@tanstack/react-start/server'
+import { setResponseHeader } from '@tanstack/react-start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
-    setHeader('X-Custom-Header', 'value')
+    setResponseHeader('X-Custom-Header', 'value')
     return new Date().toISOString()
   },
 )
@@ -747,8 +744,6 @@ export const auth = createServerFn({ method: 'GET' }).handler(async () => {
   })
 })
 ```
-
-> ⚠️ Do not use `@tanstack/react-start/server`'s `sendRedirect` function to send soft redirects from within server functions. This will send the redirect using the `Location` header and will force a full page hard navigation on the client.
 
 ## Redirect Headers
 

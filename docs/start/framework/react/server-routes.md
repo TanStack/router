@@ -99,37 +99,11 @@ In the examples above, you may have noticed that the file naming conventions are
 
 ## Handling Server Route Requests
 
-Server route requests are handled by Start's `createStartHandler` in your `server.ts` entry file.
-
-```tsx
-// server.ts
-import {
-  createStartHandler,
-  defaultStreamHandler,
-} from '@tanstack/react-start/server'
-import { createRouter } from './router'
-
-export default createStartHandler({
-  createRouter,
-})(defaultStreamHandler)
-```
+Server route requests are handled by Start automatically by default or by Start's `createStartHandler` in your custom `src/server.ts` entry point file.
 
 The start handler is responsible for matching an incoming request to a server route and executing the appropriate middleware and handler.
 
-Remember, if you need to customize the server handler, you can do so by creating a custom handler and then passing the event to the start handler:
-
-```tsx
-// server.ts
-import { createStartHandler } from '@tanstack/react-start/server'
-
-export default defineHandler((event) => {
-  const startHandler = createStartHandler({
-    createRouter,
-  })(defaultStreamHandler)
-
-  return startHandler(event)
-})
-```
+If you need to customize the server handler, you can do so by creating a custom handler and then passing the event to the start handler. See [The Server Entry Point](../learn-the-basics#the-server-entry-point-optional).
 
 ## Defining a Server Route
 
@@ -366,15 +340,15 @@ Sometimes you may need to set headers in the response. You can do this by either
   // Hello, World!
   ```
 
-- Or using the `setHeaders` helper function from `@tanstack/react-start/server`.
+- Or using the `setResponseHeaders` helper function from `@tanstack/react-start/server`.
 
   ```ts
   // routes/hello.ts
-  import { setHeaders } from '@tanstack/react-start/server'
+  import { setResponseHeaders } from '@tanstack/react-start/server'
 
   export const ServerRoute = createServerFileRoute().methods({
     GET: async ({ request }) => {
-      setHeaders({
+      setResponseHeaders({
         'Content-Type': 'text/plain',
       })
       return new Response('Hello, World!')
