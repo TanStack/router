@@ -13,6 +13,7 @@
     "@tanstack/react-router": "^1.131.2",
     "@tanstack/react-router-devtools": "^1.131.2",
     "@tanstack/react-start": "^1.131.2",
+    "@vitejs/plugin-react": "^4.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
