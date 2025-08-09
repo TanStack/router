@@ -21,7 +21,7 @@ export const Route = createFileRoute('/headers')({
 
 export const getTestHeaders = createServerFn().handler(() => {
   setResponseHeader('x-test-header', 'test-value')
-  const reqHeaders= Object.fromEntries(getRequestHeaders().entries())
+  const reqHeaders = Object.fromEntries(getRequestHeaders().entries())
 
   return {
     serverHeaders: reqHeaders,

@@ -26,7 +26,7 @@ const eventStorage = new AsyncLocalStorage<StartEvent>()
 
 export type RequestHandler = (request: Request) => Promise<Response> | Response
 
-export type {ResponseHeaderName, RequestHeaderName}
+export type { ResponseHeaderName, RequestHeaderName }
 
 export function requestHandler(handler: RequestHandler) {
   return (request: Request): Promise<Response> | Response => {
