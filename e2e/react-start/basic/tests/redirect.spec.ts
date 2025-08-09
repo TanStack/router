@@ -184,6 +184,8 @@ test.describe('redirects', () => {
 
       await page.goto(`/redirect/${target}/serverFn/via-useServerFn?${q}`)
 
+      await page.waitForLoadState('networkidle')
+
       const button = page.getByTestId('redirect-on-click')
 
       let fullPageLoad = false
