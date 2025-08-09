@@ -432,6 +432,8 @@ Middleware functionality is tree-shaken based on the environment for each bundle
 Middlewares can handle errors by using a try...catch block and throwing a `Response` object. 
 This will cause the middleware chain to short-circuit and return the response to the client.
 
+Ideally, this middleware would be one of the first middlewares in the chain, to catch all subsequent errors.
+
 ```tsx
 const errorHandlingMiddleware = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
