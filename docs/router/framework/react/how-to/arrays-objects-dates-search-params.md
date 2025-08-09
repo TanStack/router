@@ -756,7 +756,7 @@ const onlyNeededData = Route.useSearch({
 
 ## Related Resources
 
-- [Search Params Guide](../guide/search-params.md) - Core concepts and JSON-first approach
+- [Search Params Guide](../../guide/search-params.md) - Core concepts and JSON-first approach
 - [Zod Documentation](https://zod.dev/) - Schema validation library
 - [MDN Date.toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString) - Date serialization reference
 - [URLSearchParams Limits](https://stackoverflow.com/questions/417142/what-is-the-maximum-length-of-a-url-in-different-browsers) - Browser URL length limits
