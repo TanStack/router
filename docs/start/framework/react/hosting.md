@@ -36,6 +36,7 @@ When a TanStack Start application is being deployed, the `target` value in the T
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
 - [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
+- [`cloudflare-module`](#cloudflare-workers): Deploy to Cloudflare Workers
 - [`node-server`](#nodejs): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
 - ... and more to come!
@@ -92,13 +93,29 @@ export default defineConfig({
 })
 ```
 
-2. Add a `wrangler.toml` config file
+2. Add a `wrangler.jsonc` config file (recommended)
+
+```jsonc
+// wrangler.jsonc
+{
+  "name": "your-cloudflare-project-name",
+  "main": "./.output/server/index.mjs",
+  "compatibility_date": "2025-08-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./.output/public"
+  }
+}
+```
+
+Or, if you prefer TOML, add a `wrangler.toml` config file instead:
 
 ```toml
 # wrangler.toml
 name = "your-cloudflare-project-name"
 main = "./.output/server/index.mjs"
-compatibility_date = "2025-04-01"
+compatibility_date = "2025-08-09"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
@@ -107,6 +124,60 @@ directory = "./.output/public"
 ```
 
 Deploy your application to Cloudflare Workers using their one-click deployment process, and you're ready to go!
+
+#### Deploy to Cloudflare button
+
+If you want others to deploy your TanStack Start app on Cloudflare Workers with a single click, you can embed Cloudflare’s Deploy button in your README or docs. Replace `<YOUR_REPO_URL>` with your public GitHub/GitLab repository URL:
+
+```md
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=<YOUR_REPO_URL>)
+```
+
+- Note that the Deploy button currently supports Workers applications only, not Pages applications.
+- Cloudflare will read your `wrangler.jsonc` (preferred) or `wrangler.toml` to automatically provision resources and bind them to your Worker. Ensure any required bindings (for example `vars`, KV/D1/R2, Durable Objects, Secrets Store) are declared with sensible defaults so deployments succeed.
+- For more, see the official docs: [Deploy to Cloudflare buttons](https://developers.cloudflare.com/workers/platform/deploy-buttons/).
+
+### Cloudflare Pages
+
+When deploying to Cloudflare Pages, you'll need to complete a few extra steps before your users can start using your app.
+
+1. Update `vite.config.ts`
+
+Set the `target` value to `cloudflare-pages` in your `vite.config.ts` file.
+
+```ts
+// vite.config.ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [tanstackStart({ target: 'cloudflare-pages' })],
+})
+```
+
+2. Add a `wrangler.jsonc` config file (preferred)
+
+```jsonc
+// wrangler.jsonc
+{
+  "name": "your-cloudflare-project-name",
+  "pages_build_output_dir": "./.output/public",
+  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_date": "2025-08-09"
+}
+```
+
+Or, if you prefer TOML, add a `wrangler.toml` config file instead:
+
+```toml
+# wrangler.toml
+name = "your-cloudflare-project-name"
+pages_build_output_dir = "./.output/public"
+compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2025-08-09"
+```
+
+Deploy your application to Cloudflare Pages (connect your repo in the Pages dashboard and set the output directory to `./.output/public`) and you're ready to go!
 
 ### Node.js
 
