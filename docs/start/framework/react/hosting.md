@@ -35,10 +35,11 @@ When a TanStack Start application is being deployed, the `target` value in the T
 
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
-- [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
 - [`cloudflare-module`](#cloudflare-workers): Deploy to Cloudflare Workers
+- [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
 - [`node-server`](#nodejs): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
+- [`docker`](#docker): Deploy using Docker
 - ... and more to come!
 
 Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice.
@@ -239,3 +240,137 @@ You're now ready to deploy your application to a Bun server. You can start your 
 ```sh
 bun run .output/server/index.mjs
 ```
+
+### Docker
+
+> [!NOTE]
+> The examples below use Bun. You can use Node.js instead by setting `target: 'node-server'`, choosing a Node base image, and running the server with `node .output/server/index.mjs`.
+
+You can containerize a TanStack Start app with Bun using a small, production‑ready multi‑stage Docker build. This assumes you've configured `vite.config.ts` with `target: 'bun'` as shown above and that your app builds into `.output/`.
+
+1. Create a `Dockerfile`
+
+```dockerfile
+# Use the official Bun image
+# See tags at https://hub.docker.com/r/oven/bun/tags
+FROM oven/bun:1.2.19 AS base
+WORKDIR /usr/src/app
+
+# Install dependencies into a temp directory to leverage Docker layer caching
+FROM base AS install
+RUN mkdir -p /temp/dev
+COPY package.json bun.lock* /temp/dev/
+RUN cd /temp/dev && bun install --frozen-lockfile
+
+# Install only production dependencies
+RUN mkdir -p /temp/prod
+COPY package.json bun.lock* /temp/prod/
+RUN cd /temp/prod && bun install --frozen-lockfile --production
+
+# Copy source and build
+FROM base AS prerelease
+COPY --from=install /temp/dev/node_modules node_modules
+COPY . .
+
+ENV NODE_ENV=production
+RUN bun run build --config vite.config.ts
+
+# Final, minimal runtime image
+FROM oven/bun:1.2.19 AS release
+WORKDIR /usr/src/app
+
+# Optional: curl for health checks
+USER root
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+COPY --from=install /temp/prod/node_modules node_modules
+COPY --from=prerelease /usr/src/app/.output ./.output
+COPY --from=prerelease /usr/src/app/package.json ./package.json
+
+# Non-root runtime
+USER bun
+
+# Expose the app port inside the container
+EXPOSE 5173/tcp
+
+# Ensure the server binds to all interfaces and the expected port
+ENV HOST=0.0.0.0
+ENV PORT=5173
+
+# Optional health check hitting the root route
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -fsS http://localhost:5173/ || exit 1
+
+# Start the Bun server (SSR entry emitted by TanStack Start)
+ENTRYPOINT ["bun", "run", ".output/server/index.mjs"]
+```
+
+2. Add a `.dockerignore` (recommended)
+
+```gitignore
+node_modules
+.git
+.output
+.env*
+Dockerfile
+docker-compose.yml
+dist
+.vite
+```
+
+3. Build and run
+
+```sh
+docker build -t my-tanstack-start-app .
+docker run --rm -p 8080:5173 \
+  -e HOST=0.0.0.0 -e PORT=5173 \
+  my-tanstack-start-app
+```
+
+Your app will be available at `http://localhost:8080`.
+
+#### Optional: docker-compose
+
+```yaml
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:5173"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=5173
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+```
+
+#### Deploying on Coolify
+
+> [!NOTE]
+> The same Docker setup works on platforms like Railway, Fly.io, Render, and most container platforms that can build from a `Dockerfile` or run a pre-built image. Ensure `HOST`/`PORT` are set and map container port `5173`.
+
+You can deploy this Docker setup on Coolify either from your Git repository (Coolify builds the image from the `Dockerfile`) or from a pre-built image in a registry.
+
+- Create a new service → Docker → Build from Git.
+- Connect your repo and select the branch; ensure `Dockerfile` path is correct (usually `./Dockerfile`).
+- Set environment variables:
+  - `NODE_ENV=production`
+  - `HOST=0.0.0.0`
+  - `PORT=5173`
+- Expose the container port `5173`. If assigning a domain, Coolify will proxy via 80/443 automatically.
+- Optional: configure a health check with path `/` and internal port `5173`.
+- Deploy. Coolify will build, run, and keep the service updated on new pushes if you enable auto-deploy.
+
+#### Notes
+- The server listens on `PORT` (default `5173`). When running in Docker, map a host port (for example `8080`) to `5173`.
+- Set `HOST=0.0.0.0` so the server binds to all interfaces inside the container.
+- The build outputs `.output/server/index.mjs` (server) and `.output/public` (static assets). The Dockerfile copies these from the build stage into the final image.
+- Use the `oven/bun` image tag that matches your Bun version. Pinning a minor series (for example `1.2.19`) balances stability and security updates.
