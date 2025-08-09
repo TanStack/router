@@ -32,7 +32,8 @@ export function requestHandler(handler: RequestHandler) {
   return (request: Request): Promise<Response> | Response => {
     const h3Event = new h3.H3Event(request)
 
-    return eventStorage.run({ h3Event }, () => handler(request))
+    const response = eventStorage.run({ h3Event }, () => handler(request))
+    return h3.toResponse(response, h3Event)
   }
 }
 
