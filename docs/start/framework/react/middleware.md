@@ -429,7 +429,7 @@ Middleware functionality is tree-shaken based on the environment for each bundle
 
 ## Handling Errors
 
-Middlewares can handle errors by using a try...catch block and throwing a `Response` object. 
+Middlewares can handle errors by using a try...catch block and throwing a `Response` object.
 This will cause the middleware chain to short-circuit and return the response to the client.
 
 Ideally, this middleware would be one of the first middlewares in the chain, to catch all subsequent errors.
@@ -457,8 +457,12 @@ const errorHandlingMiddleware = createMiddleware({ type: 'function' }).server(
         })
       }
 
-      throw error // <-- This will be handled by the next middleware in the chain
+      // If the error is not part of the custom logic, it should be handled by the next middleware in the chain
+      // If the error is not handled by any other middleware, it will be captured by the server-functions-handler, and the error will be serialized and returned to the client
+      throw error
     }
   },
 )
 ```
+
+˜
