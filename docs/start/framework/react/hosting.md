@@ -313,7 +313,7 @@ node_modules
 .output
 .env*
 Dockerfile
-docker-compose.yml
+docker-compose.yaml
 dist
 .vite
 ```
@@ -329,7 +329,13 @@ docker run --rm -p 8080:5173 \
 
 Your app will be available at `http://localhost:8080`.
 
-#### Optional: docker-compose
+> [!NOTE]
+> If you're also running a database or other services locally (for example Postgres on `5432`, Redis on `6379`, MySQL on `3306`), map those ports as needed (for example `-p 5432:5432`). In production, prefer internal networking between containers and avoid exposing databases publicly.
+
+#### Optional: docker-compose.yaml
+
+> [!NOTE]
+> Use `docker-compose.yaml` when your TanStack Start app includes multiple services (for example Postgres, Redis, background workers) or you want to manage shared networks, health checks, and restart policies together. For a single-service app, a `Dockerfile` alone is usually sufficient.
 
 ```yaml
 services:
@@ -350,6 +356,15 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    # Example: connect to Postgres in the same compose project
+    # services typically communicate over the default network using service names
+    # (for example DATABASE_URL=postgres://postgres:password@db:5432/postgres)
+  # db:
+  #   image: postgres:16
+  #   environment:
+  #     - POSTGRES_PASSWORD=password
+  #   ports:
+  #     - "5432:5432" # Only expose if you need host access; otherwise omit
 ```
 
 #### Deploying on Coolify
@@ -357,20 +372,30 @@ services:
 > [!NOTE]
 > The same Docker setup works on platforms like Railway, Fly.io, Render, and most container platforms that can build from a `Dockerfile` or run a pre-built image. Ensure `HOST`/`PORT` are set and map container port `5173`.
 
-You can deploy this Docker setup on Coolify either from your Git repository (Coolify builds the image from the `Dockerfile`) or from a pre-built image in a registry.
+Choose one of the following based on your setup:
 
-- Create a new service → Docker → Build from Git.
-- Connect your repo and select the branch; ensure `Dockerfile` path is correct (usually `./Dockerfile`).
-- Set environment variables:
-  - `NODE_ENV=production`
-  - `HOST=0.0.0.0`
-  - `PORT=5173`
-- Expose the container port `5173`. If assigning a domain, Coolify will proxy via 80/443 automatically.
-- Optional: configure a health check with path `/` and internal port `5173`.
-- Deploy. Coolify will build, run, and keep the service updated on new pushes if you enable auto-deploy.
+##### Option A — Docker Compose (recommended for multi‑service apps)
+- Create a new service → Docker Compose → Build from Git.
+- Connect your repo and branch; ensure the `docker-compose.yaml` path is correct (usually `./docker-compose.yaml`).
+- In Build Pack, select Docker Compose (Coolify defaults to Nixpacks). Set Base Directory if your compose lives in a subfolder (for example `/apps/web`).
+- Keep databases (for example Postgres on `5432`) internal; reference them via service names (for example `db:5432`).
+- Set environment variables on the `app` service:
+  - `NODE_ENV=production`, `HOST=0.0.0.0`, `PORT=5173`
+- Network settings: set the internal application port to `5173` (Coolify defaults to `3000`). If you attach a domain, Coolify proxies via 80/443.
+- Deploy. Enable auto‑deploy on pushes if desired.
+
+##### Option B — Dockerfile (recommended for single‑service apps)
+- Create a new service → Docker → Build from Git (or use a pre‑built image from a registry).
+- Connect your repo and branch; verify `Dockerfile` path (usually `./Dockerfile`).
+- In Build Pack, select Dockerfile (Coolify defaults to Nixpacks). Set Base Directory if your app is in a subfolder.
+- Set environment variables: `NODE_ENV=production`, `HOST=0.0.0.0`, `PORT=5173`.
+- Network settings: set the internal application port to `5173` (Coolify defaults to `3000`). Optionally configure a health check `/` on port `5173`.
+- Deploy. Coolify will build and run the service and can auto‑deploy on new pushes.
 
 #### Notes
 - The server listens on `PORT` (default `5173`). When running in Docker, map a host port (for example `8080`) to `5173`.
 - Set `HOST=0.0.0.0` so the server binds to all interfaces inside the container.
 - The build outputs `.output/server/index.mjs` (server) and `.output/public` (static assets). The Dockerfile copies these from the build stage into the final image.
 - Use the `oven/bun` image tag that matches your Bun version. Pinning a minor series (for example `1.2.19`) balances stability and security updates.
+ - Using a database? If Postgres is part of your deployment, ensure the app can reach port `5432` (prefer internal networking). Avoid exposing databases publicly; for local access map `5432:5432`. Apply the same guidance for other services (for example Redis `6379`, MySQL `3306`).
+  - If your database lives in a different Coolify stack, enable “Connect to Predefined Network” and reference the database service by its full stack-aware name. Otherwise, keep all services in the same compose stack to use the default internal network.
