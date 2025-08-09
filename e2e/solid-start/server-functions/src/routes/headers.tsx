@@ -1,8 +1,11 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
 import { createServerFn } from '@tanstack/solid-start'
-import { getHeaders, setHeader } from '@tanstack/solid-start/server'
-import type { HTTPHeaderName } from '@tanstack/solid-start/server'
+import {
+  getRequestHeaders,
+  setResponseHeader,
+} from '@tanstack/solid-start/server'
+import type { RequestHeaderName } from '@tanstack/solid-start/server'
 
 export const Route = createFileRoute('/headers')({
   loader: async () => {
@@ -17,11 +20,11 @@ export const Route = createFileRoute('/headers')({
 })
 
 export const getTestHeaders = createServerFn().handler(() => {
-  setHeader('x-test-header', 'test-value')
+  setResponseHeader('x-test-header', 'test-value')
 
   return {
-    serverHeaders: getHeaders(),
-    headers: getHeaders(),
+    serverHeaders: getRequestHeaders(),
+    headers: getRequestHeaders(),
   }
 })
 
