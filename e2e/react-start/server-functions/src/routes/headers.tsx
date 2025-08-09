@@ -1,7 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 import { createServerFn } from '@tanstack/react-start'
-import { getRequestHeaders, setResponseHeaders } from '@tanstack/react-start/server'
+import {
+  getRequestHeaders,
+  setResponseHeaders,
+} from '@tanstack/react-start/server'
 import type { HTTPHeaderName } from '@tanstack/react-start/server'
 
 export const Route = createFileRoute('/headers')({
