@@ -137,10 +137,14 @@ export interface RouteMatch<
   searchError: unknown
   updatedAt: number
   loadPromise?: ControlledPromise<void>
+  /** @internal */
   beforeLoadPromise?: ControlledPromise<void>
+  /** @internal */
   loaderPromise?: ControlledPromise<void>
   loaderData?: TLoaderData
+  /** @internal */
   __routeContext: Record<string, unknown>
+  /** @internal */
   __beforeLoadContext?: Record<string, unknown>
   context: TAllContext
   search: TFullSearchSchema
