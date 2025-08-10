@@ -393,6 +393,12 @@ export interface RequiredToOptions<
   in out TFrom extends string,
   in out TTo extends string | undefined,
 > {
+  /**
+   * The internal route path to navigate to. This should be a relative or absolute path within your application.
+   * For external URLs, use the `href` property instead.
+   * @example "/dashboard" or "../profile"
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#href)
+   */
   to: ToPathOption<TRouter, TFrom, TTo> & {}
 }
 
@@ -401,6 +407,12 @@ export interface OptionalToOptions<
   in out TFrom extends string,
   in out TTo extends string | undefined,
 > {
+  /**
+   * The internal route path to navigate to. This should be a relative or absolute path within your application.
+   * For external URLs, use the `href` property instead.
+   * @example "/dashboard" or "../profile"
+   * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType#href)
+   */
   to?: ToPathOption<TRouter, TFrom, TTo> & {}
 }
 

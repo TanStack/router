@@ -20,6 +20,7 @@ import { handleServerAction } from './server-functions-handler'
 import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
 
+import { HEADERS } from './constants'
 import type {
   AnyServerRouteWithTypes,
   ServerRouteMethodHandlerFn,
@@ -110,7 +111,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       }
 
       const url = new URL(request.url)
-      const href = decodeURIComponent(url.href.replace(url.origin, ''))
+      const href = url.href.replace(url.origin, '')
 
       const APP_BASE = process.env.TSS_APP_BASE || '/'
 
@@ -123,9 +124,19 @@ export function createStartHandler<TRouter extends AnyRouter>({
       })
 
       // Update the client-side router with the history
+      const isPrerendering = process.env.TSS_PRERENDERING === 'true'
+      // env var is set during dev is SPA mode is enabled
+      let isShell = process.env.TSS_SHELL === 'true'
+      if (isPrerendering && !isShell) {
+        // only read the shell header if we are prerendering
+        // to avoid runtime behavior changes by injecting this header
+        // the header is set by the prerender plugin
+        isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
+      }
       router.update({
         history,
-        isShell: process.env.TSS_SPA_MODE === 'true',
+        isShell,
+        isPrerendering,
       })
 
       const response = await (async () => {
@@ -268,7 +279,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
           !response.options.to.startsWith('/')
         ) {
           throw new Error(
-            `Server side redirects must use absolute paths via the 'href' or 'to' options. Received: ${JSON.stringify(response.options)}`,
+            `Server side redirects must use absolute paths via the 'href' or 'to' options. The redirect() method's "to" property accepts an internal path only. Use the "href" property to provide an external URL. Received: ${JSON.stringify(response.options)}`,
           )
         }
 
