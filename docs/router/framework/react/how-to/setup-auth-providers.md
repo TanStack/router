@@ -619,8 +619,8 @@ export const Route = createFileRoute('/_authenticated')({
 
 After integrating authentication providers, you might want to:
 
-- [How to Set Up Role-Based Access Control](./setup-rbac.md) - Add permission-based routing
-- [How to Set Up Basic Authentication](./setup-authentication.md) - Custom auth implementation
+- [How to Set Up Role-Based Access Control](../setup-rbac.md) - Add permission-based routing
+- [How to Set Up Basic Authentication](../setup-authentication.md) - Custom auth implementation
 
 <!-- TODO: Uncomment as how-to guides are created
 - [How to Handle User Sessions](./handle-user-sessions.md)

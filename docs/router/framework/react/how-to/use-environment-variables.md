@@ -684,6 +684,6 @@ const getBooleanEnv = (value: string | undefined, defaultValue = false) => {
 
 ## Related Resources
 
-- [TanStack Router File-Based Routing](../routing/file-based-routing.md) - Learn about route configuration
+- [TanStack Router File-Based Routing](../../routing/file-based-routing.md) - Learn about route configuration
 - [Vite Environment Variables](https://vitejs.dev/guide/env-and-mode.html) - Official Vite documentation
 - [Webpack DefinePlugin](https://webpack.js.org/plugins/define-plugin/) - Webpack environment configuration

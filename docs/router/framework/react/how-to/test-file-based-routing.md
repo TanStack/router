@@ -940,13 +940,13 @@ beforeEach(() => {
 
 After setting up file-based route testing, you might want to:
 
-- [How to Set Up Testing with Code-Based Routing](./setup-testing.md) - Testing patterns for manually defined routes
-- [How to Debug Router Issues](./debug-router-issues.md) - Debug file-based routing issues
-- [File-Based Routing Guide](../routing/file-based-routing.md) - Learn more about file-based routing
+- [How to Set Up Testing with Code-Based Routing](../setup-testing.md) - Testing patterns for manually defined routes
+- [How to Debug Router Issues](../debug-router-issues.md) - Debug file-based routing issues
+- [File-Based Routing Guide](../../routing/file-based-routing.md) - Learn more about file-based routing
 
 ## Related Resources
 
-- [TanStack Router File-Based Routing](../routing/file-based-routing.md) - Complete file-based routing guide
-- [File Naming Conventions](../routing/file-naming-conventions.md) - Understanding file structure
+- [TanStack Router File-Based Routing](../../routing/file-based-routing.md) - Complete file-based routing guide
+- [File Naming Conventions](../../routing/file-naming-conventions.md) - Understanding file structure
 - [Testing Library](https://testing-library.com/) - Component testing utilities
 - [Vitest](https://vitest.dev/) - Testing framework documentation

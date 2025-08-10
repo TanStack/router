@@ -1090,7 +1090,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
       mkdirSync(this.config.tmpDir, { recursive: true })
       this.sessionId = crypto.randomBytes(4).toString('hex')
     }
-    return `${this.sessionId}-${hash}`
+    return path.join(this.config.tmpDir, `${this.sessionId}-${hash}`)
   }
 
   private async isRouteFileCacheFresh(node: RouteNode): Promise<

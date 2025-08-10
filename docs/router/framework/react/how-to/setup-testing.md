@@ -6,7 +6,7 @@ This guide covers setting up comprehensive testing for TanStack Router applicati
 
 Set up testing by configuring your test framework (Vitest/Jest), creating router test utilities, and implementing patterns for testing navigation, route components, and data loading with manually defined routes.
 
-> **Using File-Based Routing?** See [How to Test File-Based Routing](./test-file-based-routing.md) for patterns specific to file-based routing applications.
+> **Using File-Based Routing?** See [How to Test File-Based Routing](../test-file-based-routing.md) for patterns specific to file-based routing applications.
 
 ---
 
@@ -957,9 +957,9 @@ await waitFor(() => {
 
 After setting up code-based routing testing, you might want to:
 
-- [How to Test File-Based Routing](./test-file-based-routing.md) - Specific patterns for file-based routing apps
-- [How to Set Up Basic Authentication](./setup-authentication.md) - Test authentication flows
-- [How to Debug Common Router Issues](./debug-router-issues.md) - Debug test failures
+- [How to Test File-Based Routing](../test-file-based-routing.md) - Specific patterns for file-based routing apps
+- [How to Set Up Basic Authentication](../setup-authentication.md) - Test authentication flows
+- [How to Debug Common Router Issues](../debug-router-issues.md) - Debug test failures
 
 <!-- TODO: Uncomment as guides are created
 - [How to Set Up Continuous Integration](./setup-ci.md)
@@ -968,7 +968,7 @@ After setting up code-based routing testing, you might want to:
 
 ## Related Resources
 
-- [Code-Based Routing Guide](../routing/code-based-routing.md) - Understanding code-based routing
+- [Code-Based Routing Guide](../../routing/code-based-routing.md) - Understanding code-based routing
 - [Vitest Documentation](https://vitest.dev/) - Testing framework
 - [Testing Library React](https://testing-library.com/docs/react-testing-library/intro/) - Component testing utilities
 - [Playwright Documentation](https://playwright.dev/) - E2E testing framework

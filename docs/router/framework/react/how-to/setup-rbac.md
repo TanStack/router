@@ -723,8 +723,8 @@ function usePermissions() {
 
 After setting up RBAC, you might want to:
 
-- [How to Set Up Basic Authentication](./setup-authentication.md) - Core auth implementation
-- [How to Integrate Authentication Providers](./setup-auth-providers.md) - Use external auth services
+- [How to Set Up Basic Authentication](../setup-authentication.md) - Core auth implementation
+- [How to Integrate Authentication Providers](../setup-auth-providers.md) - Use external auth services
 
 <!-- TODO: Uncomment as how-to guides are created
 - [How to Implement Dynamic Permissions](./setup-dynamic-permissions.md)
@@ -733,6 +733,6 @@ After setting up RBAC, you might want to:
 
 ## Related Resources
 
-- [Authenticated Routes Guide](../guide/authenticated-routes.md) - Core authentication concepts
-- [Router Context Guide](../guide/router-context.md) - Understanding router context
+- [Authenticated Routes Guide](../../guide/authenticated-routes.md) - Core authentication concepts
+- [Router Context Guide](../../guide/router-context.md) - Understanding router context
 - [RBAC Best Practices](https://auth0.com/docs/manage-users/access-control/rbac) - General RBAC principles

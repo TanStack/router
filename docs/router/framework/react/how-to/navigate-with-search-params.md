@@ -4,7 +4,7 @@ title: How to Navigate with Search Parameters
 
 This guide covers updating and managing search parameters during navigation using TanStack Router's Link components and programmatic navigation methods.
 
-**Prerequisites:** [Set Up Basic Search Parameters](./setup-basic-search-params.md) - Foundation concepts for reading and validating search params.
+**Prerequisites:** [Set Up Basic Search Parameters](../setup-basic-search-params.md) - Foundation concepts for reading and validating search params.
 
 ## Quick Start
 
@@ -333,8 +333,8 @@ function ConditionalNavigation() {
 
 After mastering navigation with search parameters, you might want to:
 
-- [Validate Search Parameters with Schemas](./validate-search-params.md) - Add robust validation with Zod, Valibot, or ArkType
-- [Work with Arrays, Objects, and Dates](./arrays-objects-dates-search-params.md) - Handle arrays, objects, dates, and nested data structures
+- [Validate Search Parameters with Schemas](../validate-search-params.md) - Add robust validation with Zod, Valibot, or ArkType
+- [Work with Arrays, Objects, and Dates](../arrays-objects-dates-search-params.md) - Handle arrays, objects, dates, and nested data structures
 
 <!-- Uncomment when guides are available
 - [Share Search Parameters Across Routes](./share-search-params-across-routes.md) - Inherit and manage search params across route hierarchies

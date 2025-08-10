@@ -240,6 +240,6 @@ After implementing shared search parameters, you might want to:
 
 ## Related Resources
 
-- [Set Up Basic Search Parameters](./setup-basic-search-params.md) - Learn search parameter fundamentals
-- [Navigate with Search Parameters](./navigate-with-search-params.md) - Navigate while preserving search state
-- [Validate Search Parameters with Schemas](./validate-search-params.md) - Add type safety to shared parameters
+- [Set Up Basic Search Parameters](../setup-basic-search-params.md) - Learn search parameter fundamentals
+- [Navigate with Search Parameters](../navigate-with-search-params.md) - Navigate while preserving search state
+- [Validate Search Parameters with Schemas](../validate-search-params.md) - Add type safety to shared parameters

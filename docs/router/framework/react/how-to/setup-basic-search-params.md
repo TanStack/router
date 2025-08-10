@@ -71,7 +71,7 @@ export const Route = createFileRoute('/products')({
 })
 ```
 
-**For detailed validation library comparisons and advanced validation patterns, see:** [Validate Search Parameters with Schemas](./validate-search-params.md)
+**For detailed validation library comparisons and advanced validation patterns, see:** [Validate Search Parameters with Schemas](../validate-search-params.md)
 
 ## Step-by-Step Setup with Zod
 
@@ -414,9 +414,9 @@ const schema = z.object({
 
 After setting up basic search parameters, you might want to:
 
-- [Validate Search Parameters with Schemas](./validate-search-params.md) - Add robust validation with Zod, Valibot, or ArkType
-- [Navigate with Search Parameters](./navigate-with-search-params.md) - Learn to update search params with Links and navigation
-- [Work with Arrays, Objects, and Dates](./arrays-objects-dates-search-params.md) - Handle arrays, objects, dates, and nested data structures
+- [Validate Search Parameters with Schemas](../validate-search-params.md) - Add robust validation with Zod, Valibot, or ArkType
+- [Navigate with Search Parameters](../navigate-with-search-params.md) - Learn to update search params with Links and navigation
+- [Work with Arrays, Objects, and Dates](../arrays-objects-dates-search-params.md) - Handle arrays, objects, dates, and nested data structures
 
 ## Related Resources
 
@@ -427,5 +427,5 @@ After setting up basic search parameters, you might want to:
 - **TanStack Router:**
   - [TanStack Zod Adapter](https://tanstack.com/router/latest/docs/framework/react/api/router/zodValidator) - Official Zod adapter
   - [TanStack Valibot Adapter](https://tanstack.com/router/latest/docs/framework/react/api/router/valibotValidator) - Official Valibot adapter
-  - [Search Parameters Guide](../guide/search-params.md) - Comprehensive search parameters documentation
-  - [Type Safety Guide](../guide/type-safety.md) - Understanding TanStack Router's type safety
+  - [Search Parameters Guide](../../guide/search-params.md) - Comprehensive search parameters documentation
+  - [Type Safety Guide](../../guide/type-safety.md) - Understanding TanStack Router's type safety
