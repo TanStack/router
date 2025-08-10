@@ -20,14 +20,14 @@ export type FindValueByIndex<
 
 export type FindValueByKey<TKey, TValue> =
   TValue extends ReadonlyArray<any>
-  ? FindValueByIndex<TKey, TValue>
-  : TValue[TKey & keyof TValue]
+    ? FindValueByIndex<TKey, TValue>
+    : TValue[TKey & keyof TValue]
 
 export type CreateMatchAndValue<TMatch, TValue> = TValue extends any
   ? {
-    match: TMatch
-    value: TValue
-  }
+      match: TMatch
+      value: TValue
+    }
   : never
 
 export type NextMatchAndValue<
@@ -35,19 +35,19 @@ export type NextMatchAndValue<
   TMatchAndValue extends AnyMatchAndValue,
 > = TMatchAndValue extends any
   ? CreateMatchAndValue<
-    TMatchAndValue['match'],
-    FindValueByKey<TKey, TMatchAndValue['value']>
-  >
+      TMatchAndValue['match'],
+      FindValueByKey<TKey, TMatchAndValue['value']>
+    >
   : never
 
 export type IsMatchKeyOf<TValue> =
   TValue extends ReadonlyArray<any>
-  ? number extends TValue['length']
-  ? `${number}`
-  : keyof TValue & `${number}`
-  : TValue extends object
-  ? keyof TValue & string
-  : never
+    ? number extends TValue['length']
+      ? `${number}`
+      : keyof TValue & `${number}`
+    : TValue extends object
+      ? keyof TValue & string
+      : never
 
 export type IsMatchPath<
   TParentPath extends string,
@@ -59,8 +59,8 @@ export type IsMatchResult<
   TMatchAndValue extends AnyMatchAndValue,
 > = TMatchAndValue extends any
   ? TKey extends keyof TMatchAndValue['value']
-  ? TMatchAndValue['match']
-  : never
+    ? TMatchAndValue['match']
+    : never
   : never
 
 export type IsMatchParse<
@@ -69,16 +69,16 @@ export type IsMatchParse<
   TParentPath extends string = '',
 > = TPath extends `${string}.${string}`
   ? TPath extends `${infer TFirst}.${infer TRest}`
-  ? IsMatchParse<
-    TRest,
-    NextMatchAndValue<TFirst, TMatchAndValue>,
-    `${TParentPath}${TFirst}.`
-  >
-  : never
+    ? IsMatchParse<
+        TRest,
+        NextMatchAndValue<TFirst, TMatchAndValue>,
+        `${TParentPath}${TFirst}.`
+      >
+    : never
   : {
-    path: IsMatchPath<TParentPath, TMatchAndValue>
-    result: IsMatchResult<TPath, TMatchAndValue>
-  }
+      path: IsMatchPath<TParentPath, TMatchAndValue>
+      result: IsMatchResult<TPath, TMatchAndValue>
+    }
 
 export type IsMatch<TMatch, TPath> = IsMatchParse<
   TPath,
@@ -179,11 +179,11 @@ export interface PreValidationErrorHandlingRouteMatch<
   index: number
   pathname: string
   search:
-  | { status: 'success'; value: TFullSearchSchema }
-  | { status: 'error'; error: unknown }
+    | { status: 'success'; value: TFullSearchSchema }
+    | { status: 'error'; error: unknown }
   params:
-  | { status: 'success'; value: TAllParams }
-  | { status: 'error'; error: unknown }
+    | { status: 'success'; value: TAllParams }
+    | { status: 'error'; error: unknown }
   staticData: StaticDataRouteOption
   ssr?: boolean | 'data-only'
 }
@@ -193,11 +193,11 @@ export type MakePreValidationErrorHandlingRouteMatchUnion<
   TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
 > = TRoute extends any
   ? PreValidationErrorHandlingRouteMatch<
-    TRoute['id'],
-    TRoute['fullPath'],
-    TRoute['types']['allParams'],
-    TRoute['types']['fullSearchSchema']
-  >
+      TRoute['id'],
+      TRoute['fullPath'],
+      TRoute['types']['allParams'],
+      TRoute['types']['fullSearchSchema']
+    >
   : never
 
 export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
@@ -218,17 +218,17 @@ export type MakeRouteMatch<
   TRouteId,
   RouteById<TRouteTree, TRouteId>['types']['fullPath'],
   TStrict extends false
-  ? AllParams<TRouteTree>
-  : RouteById<TRouteTree, TRouteId>['types']['allParams'],
+    ? AllParams<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['allParams'],
   TStrict extends false
-  ? FullSearchSchema<TRouteTree>
-  : RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
+    ? FullSearchSchema<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
   TStrict extends false
-  ? AllLoaderData<TRouteTree>
-  : RouteById<TRouteTree, TRouteId>['types']['loaderData'],
+    ? AllLoaderData<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['loaderData'],
   TStrict extends false
-  ? AllContext<TRouteTree>
-  : RouteById<TRouteTree, TRouteId>['types']['allContext'],
+    ? AllContext<TRouteTree>
+    : RouteById<TRouteTree, TRouteId>['types']['allContext'],
   RouteById<TRouteTree, TRouteId>['types']['loaderDeps']
 >
 
@@ -239,14 +239,14 @@ export type MakeRouteMatchUnion<
   TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
 > = TRoute extends any
   ? RouteMatch<
-    TRoute['id'],
-    TRoute['fullPath'],
-    TRoute['types']['allParams'],
-    TRoute['types']['fullSearchSchema'],
-    TRoute['types']['loaderData'],
-    TRoute['types']['allContext'],
-    TRoute['types']['loaderDeps']
-  >
+      TRoute['id'],
+      TRoute['fullPath'],
+      TRoute['types']['allParams'],
+      TRoute['types']['fullSearchSchema'],
+      TRoute['types']['loaderData'],
+      TRoute['types']['allContext'],
+      TRoute['types']['loaderDeps']
+    >
   : never
 
 /**
