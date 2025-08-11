@@ -74,7 +74,7 @@ export function startManifestPlugin(opts: {
           if (this.environment.config.command === 'serve') {
             return `export const tsrStartManifest = () => ({
             routes: {},
-            clientEntry: '${joinURL('/@id', ENTRY_POINTS.client)}',
+            clientEntry: '${joinURL(APP_BASE, '@id', ENTRY_POINTS.client)}',
           })`
           }
 
