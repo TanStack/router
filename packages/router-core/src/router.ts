@@ -2484,24 +2484,24 @@ export class RouterCore<
                     }
 
                     return Promise.all([
-                        route.options.head?.(assetContext),
-                        route.options.scripts?.(assetContext),
-                        route.options.headers?.(assetContext),
-                      ]).then(([headFnContent, scripts, headers]) => {
-                    const meta = headFnContent?.meta
-                    const links = headFnContent?.links
-                    const headScripts = headFnContent?.scripts
-                    const styles = headFnContent?.styles
+                      route.options.head?.(assetContext),
+                      route.options.scripts?.(assetContext),
+                      route.options.headers?.(assetContext),
+                    ]).then(([headFnContent, scripts, headers]) => {
+                      const meta = headFnContent?.meta
+                      const links = headFnContent?.links
+                      const headScripts = headFnContent?.scripts
+                      const styles = headFnContent?.styles
 
-                    return {
-                      meta,
-                      links,
-                      headScripts,
-                      headers,
-                      scripts,
-                      styles,
-                    }
-})
+                      return {
+                        meta,
+                        links,
+                        headScripts,
+                        headers,
+                        scripts,
+                        styles,
+                      }
+                    })
                   }
 
                   const potentialPendingMinPromise = async () => {
