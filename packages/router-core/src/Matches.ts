@@ -147,7 +147,6 @@ export interface RouteMatch<
     displayPendingPromise?: Promise<void>
     minPendingPromise?: ControlledPromise<void>
     dehydrated?: boolean
-    ssr?: boolean | 'data-only'
   }
   loaderData?: TLoaderData
   /** @internal */
@@ -166,6 +165,7 @@ export interface RouteMatch<
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
+  ssr?: boolean | 'data-only'
   _forcePending?: boolean
   _displayPending?: boolean
 }
