@@ -2474,7 +2474,7 @@ export class RouterCore<
                       !route.options.scripts &&
                       !route.options.headers
                     ) {
-                      return
+                      return {}
                     }
                     const assetContext = {
                       matches,
