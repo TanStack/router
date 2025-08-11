@@ -2483,20 +2483,11 @@ export class RouterCore<
                       loaderData: match.loaderData,
                     }
 
-                    // DEBUG: this is just for testing purposes, the goal is to use `Promise.all`, not this weird thing
-                    return Promise.resolve(async () => {
-                      const headFnContent =
-                        await route.options.head?.(assetContext)
-                      const scripts =
-                        await route.options.scripts?.(assetContext)
-                      const headers =
-                        await route.options.headers?.(assetContext)
-
-                      // return Promise.all([
-                      //   route.options.head?.(assetContext),
-                      //   route.options.scripts?.(assetContext),
-                      //   route.options.headers?.(assetContext),
-                      // ]).then(([headFnContent, scripts, headers]) => {
+                    return Promise.all([
+                      route.options.head?.(assetContext),
+                      route.options.scripts?.(assetContext),
+                      route.options.headers?.(assetContext),
+                    ]).then(([headFnContent, scripts, headers]) => {
                       const meta = headFnContent?.meta
                       const links = headFnContent?.links
                       const headScripts = headFnContent?.scripts
