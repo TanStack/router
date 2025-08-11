@@ -16,11 +16,7 @@ afterEach(() => {
   cleanup()
 })
 
-function setup({
-  RootComponent,
-}: {
-  RootComponent: RouteComponent
-}) {
+function setup({ RootComponent }: { RootComponent: RouteComponent }) {
   const rootRoute = createRootRoute({
     component: RootComponent,
   })
@@ -51,7 +47,7 @@ function setup({
 }
 
 describe('Store updates during navigation', () => {
-  it('isn\'t called *too many* times', async () => {
+  it("isn't called *too many* times", async () => {
     const select = vi.fn()
 
     setup({
@@ -62,7 +58,9 @@ describe('Store updates during navigation', () => {
     })
 
     // navigate to /posts
-    const link = await waitFor(() => screen.getByRole('link', { name: 'Posts' }))
+    const link = await waitFor(() =>
+      screen.getByRole('link', { name: 'Posts' }),
+    )
     const before = select.mock.calls.length
     act(() => link.click())
     const title = await waitFor(() => screen.getByText('PostsTitle'))
