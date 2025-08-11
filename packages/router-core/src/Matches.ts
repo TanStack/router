@@ -138,9 +138,11 @@ export interface RouteMatch<
   updatedAt: number
   loadPromise?: ControlledPromise<void>
   /** @internal */
-  beforeLoadPromise?: ControlledPromise<void>
-  /** @internal */
-  loaderPromise?: ControlledPromise<void>
+  __nonReactive: {
+    beforeLoadPromise?: ControlledPromise<void>
+    loaderPromise?: ControlledPromise<void>
+    pendingTimeout?: ReturnType<typeof setTimeout>
+  }
   loaderData?: TLoaderData
   /** @internal */
   __routeContext: Record<string, unknown>
@@ -159,7 +161,6 @@ export interface RouteMatch<
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
   minPendingPromise?: ControlledPromise<void>
-  pendingTimeout?: ReturnType<typeof setTimeout>
   ssr?: boolean | 'data-only'
   _dehydrated?: boolean
   _forcePending?: boolean

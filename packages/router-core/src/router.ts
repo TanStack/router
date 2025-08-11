@@ -1285,6 +1285,7 @@ export class RouterCore<
           error: undefined,
           paramsError: parseErrors[index],
           __routeContext: {},
+          __nonReactive: {},
           __beforeLoadContext: undefined,
           context: {},
           abortController: new AbortController(),
@@ -1388,13 +1389,8 @@ export class RouterCore<
     if (!match) return
 
     match.abortController.abort()
-    this.updateMatch(id, (prev) => {
-      clearTimeout(prev.pendingTimeout)
-      return {
-        ...prev,
-        pendingTimeout: undefined,
-      }
-    })
+    match.__nonReactive.pendingTimeout = undefined
+    clearTimeout(match.__nonReactive.pendingTimeout)
   }
 
   cancelMatches = () => {
@@ -2133,8 +2129,10 @@ export class RouterCore<
           }
         }
 
-        match.beforeLoadPromise?.resolve()
-        match.loaderPromise?.resolve()
+        match.__nonReactive.beforeLoadPromise?.resolve()
+        match.__nonReactive.loaderPromise?.resolve()
+        match.__nonReactive.beforeLoadPromise = undefined
+        match.__nonReactive.loaderPromise = undefined
 
         updateMatch(match.id, (prev) => ({
           ...prev,
@@ -2145,8 +2143,6 @@ export class RouterCore<
               : 'error',
           isFetching: false,
           error: err,
-          beforeLoadPromise: undefined,
-          loaderPromise: undefined,
         }))
 
         if (!(err as any).routeId) {
@@ -2216,7 +2212,8 @@ export class RouterCore<
               }
 
               updateMatch(matchId, (prev) => {
-                prev.beforeLoadPromise?.resolve()
+                prev.__nonReactive.beforeLoadPromise?.resolve()
+                prev.__nonReactive.beforeLoadPromise = undefined
                 prev.loadPromise?.resolve()
 
                 return {
@@ -2226,7 +2223,6 @@ export class RouterCore<
                   isFetching: false,
                   updatedAt: Date.now(),
                   abortController: new AbortController(),
-                  beforeLoadPromise: undefined,
                 }
               })
             }
@@ -2321,9 +2317,10 @@ export class RouterCore<
 
               let executeBeforeLoad = true
               const setupPendingTimeout = () => {
+                const match = this.getMatch(matchId)!
                 if (
                   shouldPending &&
-                  this.getMatch(matchId)!.pendingTimeout === undefined
+                  match.__nonReactive.pendingTimeout === undefined
                 ) {
                   const pendingTimeout = setTimeout(() => {
                     try {
@@ -2332,22 +2329,19 @@ export class RouterCore<
                       triggerOnReady()
                     } catch {}
                   }, pendingMs)
-                  updateMatch(matchId, (prev) => ({
-                    ...prev,
-                    pendingTimeout,
-                  }))
+                  match.__nonReactive.pendingTimeout = pendingTimeout
                 }
               }
               if (
                 // If we are in the middle of a load, either of these will be present
                 // (not to be confused with `loadPromise`, which is always defined)
-                existingMatch.beforeLoadPromise ||
-                existingMatch.loaderPromise
+                existingMatch.__nonReactive.beforeLoadPromise ||
+                existingMatch.__nonReactive.loaderPromise
               ) {
                 setupPendingTimeout()
 
                 // Wait for the beforeLoad to resolve before we continue
-                await existingMatch.beforeLoadPromise
+                await existingMatch.__nonReactive.beforeLoadPromise
                 const match = this.getMatch(matchId)!
                 if (match.status === 'error') {
                   executeBeforeLoad = true
@@ -2364,12 +2358,12 @@ export class RouterCore<
                   updateMatch(matchId, (prev) => {
                     // explicitly capture the previous loadPromise
                     const prevLoadPromise = prev.loadPromise
+                    prev.__nonReactive.beforeLoadPromise = createControlledPromise<void>()
                     return {
                       ...prev,
                       loadPromise: createControlledPromise<void>(() => {
                         prevLoadPromise?.resolve()
                       }),
-                      beforeLoadPromise: createControlledPromise<void>(),
                     }
                   })
 
@@ -2453,11 +2447,11 @@ export class RouterCore<
                 }
 
                 updateMatch(matchId, (prev) => {
-                  prev.beforeLoadPromise?.resolve()
+                  prev.__nonReactive.beforeLoadPromise?.resolve()
+                  prev.__nonReactive.beforeLoadPromise = undefined
 
                   return {
                     ...prev,
-                    beforeLoadPromise: undefined,
                     isFetching: false,
                   }
                 })
@@ -2524,7 +2518,7 @@ export class RouterCore<
                     }
                   }
                   // there is a loaderPromise, so we are in the middle of a load
-                  else if (prevMatch.loaderPromise) {
+                  else if (prevMatch.__nonReactive.loaderPromise) {
                     // do not block if we already have stale data we can show
                     // but only if the ongoing load is not a preload since error handling is different for preloads
                     // and we don't want to swallow errors
@@ -2535,7 +2529,7 @@ export class RouterCore<
                     ) {
                       return this.getMatch(matchId)!
                     }
-                    await prevMatch.loaderPromise
+                    await prevMatch.__nonReactive.loaderPromise
                     const match = this.getMatch(matchId)!
                     if (match.error) {
                       handleRedirectAndNotFound(match, match.error)
@@ -2592,13 +2586,15 @@ export class RouterCore<
                         ? shouldReloadOption(getLoaderContext())
                         : shouldReloadOption
 
-                    updateMatch(matchId, (prev) => ({
-                      ...prev,
-                      loaderPromise: createControlledPromise<void>(),
-                      preload:
-                        !!preload &&
-                        !this.state.matches.some((d) => d.id === matchId),
-                    }))
+                    updateMatch(matchId, (prev) => {
+                      prev.__nonReactive.loaderPromise = createControlledPromise<void>()
+                      return ({
+                        ...prev,
+                        preload:
+                          !!preload &&
+                          !this.state.matches.some((d) => d.id === matchId),
+                      })
+                    })
 
                     const runLoader = async () => {
                       try {
@@ -2682,11 +2678,13 @@ export class RouterCore<
                       } catch (err) {
                         const head = await executeHead()
 
-                        updateMatch(matchId, (prev) => ({
-                          ...prev,
-                          loaderPromise: undefined,
-                          ...head,
-                        }))
+                        updateMatch(matchId, (prev) => {
+                          prev.__nonReactive.loaderPromise = undefined
+                          return ({
+                            ...prev,
+                            ...head,
+                          })
+                        })
                         handleRedirectAndNotFound(this.getMatch(matchId)!, err)
                       }
                     }
@@ -2703,14 +2701,10 @@ export class RouterCore<
                       ;(async () => {
                         try {
                           await runLoader()
-                          const { loaderPromise, loadPromise } =
-                            this.getMatch(matchId)!
-                          loaderPromise?.resolve()
-                          loadPromise?.resolve()
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            loaderPromise: undefined,
-                          }))
+                          const match = this.getMatch(matchId)!
+                          match.__nonReactive.loaderPromise?.resolve()
+                          match.loadPromise?.resolve()
+                          match.__nonReactive.loaderPromise = undefined
                         } catch (err) {
                           if (isRedirect(err)) {
                             await this.navigate(err.options)
@@ -2734,24 +2728,23 @@ export class RouterCore<
                     }
                   }
                   if (!loaderIsRunningAsync) {
-                    const { loaderPromise, loadPromise } =
+                    const match =
                       this.getMatch(matchId)!
-                    loaderPromise?.resolve()
-                    loadPromise?.resolve()
+                    match.__nonReactive.loaderPromise?.resolve()
+                    match.loadPromise?.resolve()
                   }
 
                   updateMatch(matchId, (prev) => {
-                    clearTimeout(prev.pendingTimeout)
+                    clearTimeout(prev.__nonReactive.pendingTimeout)
+                    prev.__nonReactive.pendingTimeout = undefined
+                    if (!loaderIsRunningAsync)
+                      prev.__nonReactive.loaderPromise = undefined
                     return {
                       ...prev,
                       isFetching: loaderIsRunningAsync
                         ? prev.isFetching
                         : false,
-                      loaderPromise: loaderIsRunningAsync
-                        ? prev.loaderPromise
-                        : undefined,
                       invalid: false,
-                      pendingTimeout: undefined,
                       _dehydrated: undefined,
                     }
                   })
