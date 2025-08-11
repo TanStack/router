@@ -2687,10 +2687,13 @@ export class RouterCore<
                         const head = await executeHead()
 
                         if (head) {
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            ...head,
-                          }))
+                          updateMatch(matchId, (prev) => {
+                            prev._nonReactive.loaderPromise = undefined
+                            return {
+                              ...prev,
+                              ...head,
+                            }
+                          })
                         }
                         const match = this.getMatch(matchId)!
                         match._nonReactive.loaderPromise = undefined
