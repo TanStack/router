@@ -2299,6 +2299,20 @@ export class RouterCore<
                 continue
               }
 
+              const handleSearchAndParamSerialErrors = (
+                index: number,
+                matchId: string,
+              ) => {
+                const { paramsError, searchError } = this.getMatch(matchId)!
+                if (paramsError) {
+                  handleSerialError(index, paramsError, 'PARSE_PARAMS')
+                }
+
+                if (searchError) {
+                  handleSerialError(index, searchError, 'VALIDATE_SEARCH')
+                }
+              }
+
               const shouldPending = !!(
                 onReady &&
                 !this.isServer &&
@@ -2312,7 +2326,6 @@ export class RouterCore<
                   (this.options as any)?.defaultPendingComponent)
               )
 
-              let executeBeforeLoad = true
               const setupPendingTimeout = () => {
                 const match = this.getMatch(matchId)!
                 if (
@@ -2329,14 +2342,33 @@ export class RouterCore<
                   match._nonReactive.pendingTimeout = pendingTimeout
                 }
               }
-              if (
-                // If we are in the middle of a load, either of these will be present
-                // (not to be confused with `loadPromise`, which is always defined)
+
+              // If we are in the middle of a load, either of these will be present
+              // (not to be confused with `loadPromise`, which is always defined)
+              const hasBeforeLoadOrLoaderPromise =
                 existingMatch._nonReactive.beforeLoadPromise ||
                 existingMatch._nonReactive.loaderPromise
-              ) {
-                setupPendingTimeout()
 
+              if (hasBeforeLoadOrLoaderPromise) {
+                setupPendingTimeout()
+              }
+              // we can bail out early if there is no `beforeLoad`
+              if (!route.options.beforeLoad) {
+                handleSearchAndParamSerialErrors(index, matchId)
+                const parentMatchContext =
+                  parentMatch?.context ?? this.options.context ?? {}
+                updateMatch(matchId, (prev) => ({
+                  ...prev,
+                  context: {
+                    ...parentMatchContext,
+                    ...prev.__routeContext,
+                  },
+                }))
+                continue
+              }
+
+              let executeBeforeLoad = true
+              if (hasBeforeLoadOrLoaderPromise) {
                 // Wait for the beforeLoad to resolve before we continue
                 await existingMatch._nonReactive.beforeLoadPromise
                 const match = this.getMatch(matchId)!
@@ -2349,6 +2381,9 @@ export class RouterCore<
                   handleRedirectAndNotFound(match, match.error)
                 }
               }
+
+              let beforeLoadContext =
+                this.getMatch(matchId)!.__beforeLoadContext
               if (executeBeforeLoad) {
                 // If we are not in the middle of a load OR the previous load failed, start it
                 try {
@@ -2362,15 +2397,7 @@ export class RouterCore<
                       prevLoadPromise?.resolve()
                     })
 
-                  const { paramsError, searchError } = this.getMatch(matchId)!
-
-                  if (paramsError) {
-                    handleSerialError(index, paramsError, 'PARSE_PARAMS')
-                  }
-
-                  if (searchError) {
-                    handleSerialError(index, searchError, 'VALIDATE_SEARCH')
-                  }
+                  handleSearchAndParamSerialErrors(index, matchId)
 
                   setupPendingTimeout()
 
@@ -2415,8 +2442,8 @@ export class RouterCore<
                     matches,
                   }
 
-                  const beforeLoadContext =
-                    await route.options.beforeLoad?.(beforeLoadFnContext)
+                  beforeLoadContext =
+                    await route.options.beforeLoad!(beforeLoadFnContext)
 
                   if (
                     isRedirect(beforeLoadContext) ||
@@ -2424,20 +2451,15 @@ export class RouterCore<
                   ) {
                     handleSerialError(index, beforeLoadContext, 'BEFORE_LOAD')
                   }
-
-                  updateMatch(matchId, (prev) => {
-                    return {
-                      ...prev,
-                      __beforeLoadContext: beforeLoadContext,
-                      context: {
-                        ...parentMatchContext,
-                        ...prev.__routeContext,
-                        ...beforeLoadContext,
-                      },
-                      abortController,
-                    }
-                  })
                 } catch (err) {
+                  updateMatch(matchId, (prev) => ({
+                    ...prev,
+                    __beforeLoadContext: beforeLoadContext,
+                    context: {
+                      ...prev.context,
+                      ...beforeLoadContext,
+                    },
+                  }))
                   handleSerialError(index, err, 'BEFORE_LOAD')
                 }
 
@@ -2447,7 +2469,12 @@ export class RouterCore<
 
                   return {
                     ...prev,
+                    __beforeLoadContext: beforeLoadContext,
                     isFetching: false,
+                    context: {
+                      ...prev.context,
+                      ...beforeLoadContext,
+                    },
                   }
                 })
               }
