@@ -228,7 +228,6 @@ export function TanStackStartVitePluginCore(
               startPackageName,
               ...result.ssr.noExternal.sort(),
             ],
-            external: [...result.ssr.external.sort()],
             dedupe: [startPackageName],
             alias: {
               ...entryAliasConfiguration,
