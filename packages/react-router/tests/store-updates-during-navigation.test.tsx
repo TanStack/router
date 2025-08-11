@@ -34,13 +34,16 @@ function setup({ RootComponent }: { RootComponent: RouteComponent }) {
   const postsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/posts',
-    beforeLoad: () => new Promise<void>((resolve) => setTimeout(resolve, 10)),
-    loader: () => new Promise<void>((resolve) => setTimeout(resolve, 10)),
+    beforeLoad: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
+    loader: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
     component: () => <h1>PostsTitle</h1>,
   })
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    defaultPendingMs: 100,
+    defaultPendingMinMs: 300,
+    defaultPendingComponent: () => <p>Loading...</p>,
   })
 
   return render(<RouterProvider router={router} />)
