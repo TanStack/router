@@ -26,24 +26,24 @@ export type WithoutEmpty<T> = T extends any ? ({} extends T ? never : T) : never
 
 export type Expand<T> = T extends object
   ? T extends infer O
-  ? O extends Function
-  ? O
-  : { [K in keyof O]: O[K] }
-  : never
+    ? O extends Function
+      ? O
+      : { [K in keyof O]: O[K] }
+    : never
   : T
 
 export type DeepPartial<T> = T extends object
   ? {
-    [P in keyof T]?: DeepPartial<T[P]>
-  }
+      [P in keyof T]?: DeepPartial<T[P]>
+    }
   : T
 
 export type MakeDifferenceOptional<TLeft, TRight> = keyof TLeft &
   keyof TRight extends never
   ? TRight
   : Omit<TRight, keyof TLeft & keyof TRight> & {
-    [K in keyof TLeft & keyof TRight]?: TRight[K]
-  }
+      [K in keyof TLeft & keyof TRight]?: TRight[K]
+    }
 
 // from https://stackoverflow.com/a/53955431
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -55,30 +55,30 @@ export type IsUnion<T, U extends T = T> = (
 
 export type IsNonEmptyObject<T> = T extends object
   ? keyof T extends never
-  ? false
-  : true
+    ? false
+    : true
   : false
 
 export type Assign<TLeft, TRight> = TLeft extends any
   ? TRight extends any
-  ? IsNonEmptyObject<TLeft> extends false
-  ? TRight
-  : IsNonEmptyObject<TRight> extends false
-  ? TLeft
-  : keyof TLeft & keyof TRight extends never
-  ? TLeft & TRight
-  : Omit<TLeft, keyof TRight> & TRight
-  : never
+    ? IsNonEmptyObject<TLeft> extends false
+      ? TRight
+      : IsNonEmptyObject<TRight> extends false
+        ? TLeft
+        : keyof TLeft & keyof TRight extends never
+          ? TLeft & TRight
+          : Omit<TLeft, keyof TRight> & TRight
+    : never
   : never
 
 export type IntersectAssign<TLeft, TRight> = TLeft extends any
   ? TRight extends any
-  ? IsNonEmptyObject<TLeft> extends false
-  ? TRight
-  : IsNonEmptyObject<TRight> extends false
-  ? TLeft
-  : TRight & TLeft
-  : never
+    ? IsNonEmptyObject<TLeft> extends false
+      ? TRight
+      : IsNonEmptyObject<TRight> extends false
+        ? TLeft
+        : TRight & TLeft
+    : never
   : never
 
 export type Timeout = ReturnType<typeof setTimeout>
@@ -97,16 +97,16 @@ export type ExtractObjects<TUnion> = TUnion extends MergeAllPrimitive
 
 export type PartialMergeAllObject<TUnion> =
   ExtractObjects<TUnion> extends infer TObj
-  ? [TObj] extends [never]
-  ? never
-  : {
-    [TKey in TObj extends any ? keyof TObj : never]?: TObj extends any
-    ? TKey extends keyof TObj
-    ? TObj[TKey]
+    ? [TObj] extends [never]
+      ? never
+      : {
+          [TKey in TObj extends any ? keyof TObj : never]?: TObj extends any
+            ? TKey extends keyof TObj
+              ? TObj[TKey]
+              : never
+            : never
+        }
     : never
-    : never
-  }
-  : never
 
 export type MergeAllPrimitive =
   | ReadonlyArray<any>
@@ -121,8 +121,8 @@ export type MergeAllPrimitive =
 export type ExtractPrimitives<TUnion> = TUnion extends MergeAllPrimitive
   ? TUnion
   : TUnion extends object
-  ? never
-  : TUnion
+    ? never
+    : TUnion
 
 export type PartialMergeAll<TUnion> =
   | ExtractPrimitives<TUnion>
@@ -155,10 +155,10 @@ export type MergeAllObjects<
 > = [keyof TIntersected] extends [never]
   ? never
   : {
-    [TKey in keyof TIntersected]: TUnion extends any
-    ? TUnion[TKey & keyof TUnion]
-    : never
-  }
+      [TKey in keyof TIntersected]: TUnion extends any
+        ? TUnion[TKey & keyof TUnion]
+        : never
+    }
 
 export type MergeAll<TUnion> =
   | MergeAllObjects<TUnion>
@@ -166,8 +166,8 @@ export type MergeAll<TUnion> =
 
 export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
   ? unknown extends T
-  ? never
-  : 'Function is not serializable'
+    ? never
+    : 'Function is not serializable'
   : { [K in keyof T]: ValidateJSON<T[K]> }
 
 export type LooseReturnType<T> = T extends (
@@ -180,8 +180,8 @@ export type LooseAsyncReturnType<T> = T extends (
   ...args: Array<any>
 ) => infer TReturn
   ? TReturn extends Promise<infer TReturn>
-  ? TReturn
-  : TReturn
+    ? TReturn
+    : TReturn
   : never
 
 export function last<T>(arr: Array<T>) {
@@ -232,14 +232,14 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
     const prevItems = array
       ? prev
       : (Object.keys(prev) as Array<unknown>).concat(
-        Object.getOwnPropertySymbols(prev),
-      )
+          Object.getOwnPropertySymbols(prev),
+        )
     const prevSize = prevItems.length
     const nextItems = array
       ? next
       : (Object.keys(next) as Array<unknown>).concat(
-        Object.getOwnPropertySymbols(next),
-      )
+          Object.getOwnPropertySymbols(next),
+        )
     const nextSize = nextItems.length
     const copy: any = array ? [] : {}
 
@@ -361,8 +361,8 @@ export function deepEqual(
 
 export type StringLiteral<T> = T extends string
   ? string extends T
-  ? string
-  : T
+    ? string
+    : T
   : never
 
 export type ThrowOrOptional<T, TThrow extends boolean> = TThrow extends true
@@ -375,13 +375,13 @@ export type StrictOrFrom<
   TStrict extends boolean = true,
 > = TStrict extends false
   ? {
-    from?: never
-    strict: TStrict
-  }
+      from?: never
+      strict: TStrict
+    }
   : {
-    from: ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
-    strict?: TStrict
-  }
+      from: ConstrainLiteral<TFrom, RouteIds<TRouter['routeTree']>>
+      strict?: TStrict
+    }
 
 export type ThrowConstraint<
   TStrict extends boolean,
@@ -474,10 +474,12 @@ export function isModuleNotFoundError(error: any): boolean {
   )
 }
 
-export function isPromise<T>(value: Promise<Awaited<T>> | T): value is Promise<Awaited<T>> {
+export function isPromise<T>(
+  value: Promise<Awaited<T>> | T,
+): value is Promise<Awaited<T>> {
   return Boolean(
     value &&
-    (typeof value === 'object') &&
-    typeof (value as Promise<T>).then === 'function'
+      typeof value === 'object' &&
+      typeof (value as Promise<T>).then === 'function',
   )
 }

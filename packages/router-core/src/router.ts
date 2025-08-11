@@ -2612,8 +2612,7 @@ export class RouterCore<
                           const loaderResult =
                             route.options.loader?.(getLoaderContext())
                           const loaderResultIsPromise =
-                            route.options.loader &&
-                            isPromise(loaderResult)
+                            route.options.loader && isPromise(loaderResult)
 
                           const willLoadSomething = !!(
                             loaderResultIsPromise ||
