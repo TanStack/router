@@ -2384,6 +2384,7 @@ export class RouterCore<
 
               let beforeLoadContext =
                 this.getMatch(matchId)!.__beforeLoadContext
+              const context = {}
               if (executeBeforeLoad) {
                 // If we are not in the middle of a load OR the previous load failed, start it
                 try {
@@ -2406,19 +2407,10 @@ export class RouterCore<
                   const parentMatchContext =
                     parentMatch?.context ?? this.options.context ?? undefined
 
-                  updateMatch(matchId, (prev) => ({
-                    ...prev,
-                    isFetching: 'beforeLoad',
-                    fetchCount: prev.fetchCount + 1,
-                    abortController,
-                    context: {
-                      ...parentMatchContext,
-                      ...prev.__routeContext,
-                    },
-                  }))
-
-                  const { search, params, context, cause } =
+                  const { search, params, __routeContext, cause } =
                     this.getMatch(matchId)!
+
+                  Object.assign(context, parentMatchContext, __routeContext)
 
                   const preload = resolvePreload(matchId)
 
@@ -2442,8 +2434,24 @@ export class RouterCore<
                     matches,
                   }
 
-                  beforeLoadContext =
-                    await route.options.beforeLoad!(beforeLoadFnContext)
+                  const beforeLoadResult =
+                    route.options.beforeLoad!(beforeLoadFnContext)
+                  const beforeLoadIsAsync =
+                    beforeLoadResult && 'then' in beforeLoadResult
+
+                  if (beforeLoadIsAsync) {
+                    updateMatch(matchId, (prev) => ({
+                      ...prev,
+                      isFetching: 'beforeLoad',
+                      fetchCount: prev.fetchCount + 1,
+                      abortController,
+                      context,
+                    }))
+                  }
+
+                  beforeLoadContext = beforeLoadIsAsync
+                    ? await beforeLoadResult
+                    : beforeLoadResult
 
                   if (
                     isRedirect(beforeLoadContext) ||
@@ -2457,6 +2465,7 @@ export class RouterCore<
                     __beforeLoadContext: beforeLoadContext,
                     context: {
                       ...prev.context,
+                      context,
                       ...beforeLoadContext,
                     },
                   }))
@@ -2473,6 +2482,7 @@ export class RouterCore<
                     isFetching: false,
                     context: {
                       ...prev.context,
+                      ...context,
                       ...beforeLoadContext,
                     },
                   }
