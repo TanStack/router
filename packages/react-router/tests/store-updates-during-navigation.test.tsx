@@ -26,8 +26,8 @@ function setup({
   RootComponent: RouteComponent
   beforeLoad?: () => any
   loader?: () => any
-  defaultPendingMs?: number,
-  defaultPendingMinMs?: number,
+  defaultPendingMs?: number
+  defaultPendingMinMs?: number
 }) {
   const rootRoute = createRootRoute({
     component: RootComponent,
@@ -61,8 +61,8 @@ function setup({
   return render(<RouterProvider router={router} />)
 }
 
-describe('Store doesn\'t update *too many* times during navigation', () => {
-  test("everything (async loader, async beforeLoad, pendingMs)", async () => {
+describe("Store doesn't update *too many* times during navigation", () => {
+  test('everything (async loader, async beforeLoad, pendingMs)', async () => {
     const select = vi.fn()
 
     setup({
@@ -101,7 +101,7 @@ describe('Store doesn\'t update *too many* times during navigation', () => {
         useRouterState({ select })
         return <Outlet />
       },
-      beforeLoad: () => { },
+      beforeLoad: () => {},
       loader: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
       defaultPendingMs: 100,
       defaultPendingMinMs: 300,
