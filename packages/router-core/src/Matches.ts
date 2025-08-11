@@ -150,7 +150,7 @@ export interface RouteMatch<
   }
   loaderData?: TLoaderData
   /** @internal */
-  __routeContext: Record<string, unknown>
+  __routeContext?: Record<string, unknown>
   /** @internal */
   __beforeLoadContext?: Record<string, unknown>
   context: TAllContext

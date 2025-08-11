@@ -1146,8 +1146,8 @@ export class RouterCore<
       const parentMatchId = parentMatch?.id
 
       const parentContext = !parentMatchId
-        ? ((this.options.context as any) ?? {})
-        : (parentMatch.context ?? this.options.context ?? {})
+        ? ((this.options.context as any) ?? undefined)
+        : (parentMatch.context ?? this.options.context ?? undefined)
 
       return parentContext
     }
@@ -1169,12 +1169,12 @@ export class RouterCore<
       ] = (() => {
         // Validate the search params and stabilize them
         const parentSearch = parentMatch?.search ?? next.search
-        const parentStrictSearch = parentMatch?._strictSearch ?? {}
+        const parentStrictSearch = parentMatch?._strictSearch ?? undefined
 
         try {
           const strictSearch =
             validateSearch(route.options.validateSearch, { ...parentSearch }) ??
-            {}
+            undefined
 
           return [
             {
@@ -1284,7 +1284,7 @@ export class RouterCore<
           isFetching: false,
           error: undefined,
           paramsError: parseErrors[index],
-          __routeContext: {},
+          __routeContext: undefined,
           _nonReactive: {
             loadPromise: createControlledPromise(),
           },
@@ -1337,22 +1337,25 @@ export class RouterCore<
         const parentContext = getParentContext(parentMatch)
 
         // Update the match's context
-        const contextFnContext: RouteContextOptions<any, any, any, any> = {
-          deps: match.loaderDeps,
-          params: match.params,
-          context: parentContext,
-          location: next,
-          navigate: (opts: any) =>
-            this.navigate({ ...opts, _fromLocation: next }),
-          buildLocation: this.buildLocation,
-          cause: match.cause,
-          abortController: match.abortController,
-          preload: !!match.preload,
-          matches,
-        }
 
-        // Get the route context
-        match.__routeContext = route.options.context?.(contextFnContext) ?? {}
+        if (route.options.context) {
+          const contextFnContext: RouteContextOptions<any, any, any, any> = {
+            deps: match.loaderDeps,
+            params: match.params,
+            context: parentContext ?? {},
+            location: next,
+            navigate: (opts: any) =>
+              this.navigate({ ...opts, _fromLocation: next }),
+            buildLocation: this.buildLocation,
+            cause: match.cause,
+            abortController: match.abortController,
+            preload: !!match.preload,
+            matches,
+          }
+          // Get the route context
+          match.__routeContext =
+            route.options.context(contextFnContext) ?? undefined
+        }
 
         match.context = {
           ...parentContext,
@@ -1486,13 +1489,9 @@ export class RouterCore<
         parseCache: this.parsePathnameCache,
       }).interpolatedPath
 
-      const destRoutes = this.matchRoutes(
-        interpolatedNextTo,
-        {},
-        {
-          _buildLocation: true,
-        },
-      ).map((d) => this.looseRoutesById[d.routeId]!)
+      const destRoutes = this.matchRoutes(interpolatedNextTo, undefined, {
+        _buildLocation: true,
+      }).map((d) => this.looseRoutesById[d.routeId]!)
 
       // If there are any params, we need to stringify them
       if (Object.keys(nextParams).length > 0) {
@@ -2378,7 +2377,7 @@ export class RouterCore<
                   const abortController = new AbortController()
 
                   const parentMatchContext =
-                    parentMatch?.context ?? this.options.context ?? {}
+                    parentMatch?.context ?? this.options.context ?? undefined
 
                   updateMatch(matchId, (prev) => ({
                     ...prev,
@@ -2787,7 +2786,7 @@ export class RouterCore<
           invalid: true,
           ...(opts?.forcePending || d.status === 'error'
             ? ({ status: 'pending', error: undefined } as const)
-            : {}),
+            : undefined),
         }
       }
       return d
@@ -3558,7 +3557,8 @@ function applySearchMiddleware({
             try {
               const validatedSearch = {
                 ...result,
-                ...(validateSearch(route.options.validateSearch, result) ?? {}),
+                ...(validateSearch(route.options.validateSearch, result) ??
+                  undefined),
               }
               return validatedSearch
             } catch {
