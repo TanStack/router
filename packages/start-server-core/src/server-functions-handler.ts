@@ -3,7 +3,7 @@ import invariant from 'tiny-invariant'
 import { startSerializer } from '@tanstack/start-client-core'
 import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
-import { getResponseStatus } from './request-response'
+import { getResponse } from './request-response'
 
 function sanitizeBase(base: string | undefined) {
   if (!base) {
@@ -187,10 +187,12 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
         return isNotFoundResponse(result)
       }
 
+      const response = getResponse()
       return new Response(
         result !== undefined ? startSerializer.stringify(result) : undefined,
         {
-          status: getResponseStatus(),
+          status: response?.status,
+          statusText: response?.statusText,
           headers: {
             'Content-Type': 'application/json',
           },
@@ -245,7 +247,7 @@ function isNotFoundResponse(error: any) {
   const { headers, ...rest } = error
 
   return new Response(JSON.stringify(rest), {
-    status: 200,
+    status: 404,
     headers: {
       'Content-Type': 'application/json',
       ...(headers || {}),

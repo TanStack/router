@@ -1,6 +1,25 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 
-import * as h3 from 'h3'
+import {
+  H3Event,
+  clearSession as h3_clearSession,
+  deleteCookie as h3_deleteCookie,
+  getRequestHost as h3_getRequestHost,
+  getRequestIP as h3_getRequestIP,
+  getRequestProtocol as h3_getRequestProtocol,
+  getRequestURL as h3_getRequestURL,
+  getSession as h3_getSession,
+  getValidatedQuery as h3_getValidatedQuery,
+  parseCookies as h3_parseCookies,
+  sanitizeStatusCode as h3_sanitizeStatusCode,
+  sanitizeStatusMessage as h3_sanitizeStatusMessage,
+  sealSession as h3_sealSession,
+  setCookie as h3_setCookie,
+  toResponse as h3_toResponse,
+  unsealSession as h3_unsealSession,
+  updateSession as h3_updateSession,
+  useSession as h3_useSession,
+} from 'h3'
 import type {
   RequestHeaderMap,
   RequestHeaderName,
@@ -20,7 +39,7 @@ import type {
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 
 interface StartEvent {
-  h3Event: h3.H3Event
+  h3Event: H3Event
 }
 const eventStorage = new AsyncLocalStorage<StartEvent>()
 
@@ -30,10 +49,10 @@ export type { ResponseHeaderName, RequestHeaderName }
 
 export function requestHandler(handler: RequestHandler) {
   return (request: Request): Promise<Response> | Response => {
-    const h3Event = new h3.H3Event(request)
+    const h3Event = new H3Event(request)
 
     const response = eventStorage.run({ h3Event }, () => handler(request))
-    return h3.toResponse(response, h3Event)
+    return h3_toResponse(response, h3Event)
   }
 }
 
@@ -52,13 +71,6 @@ export function getRequest(): Request {
   return event.req
 }
 
-// not public API (yet)
-export function getValidatedQuery<TSchema extends StandardSchemaV1>(
-  schema: StandardSchemaV1,
-): Promise<StandardSchemaV1.InferOutput<TSchema>> {
-  return h3.getValidatedQuery(getH3Event(), schema)
-}
-
 export function getRequestHeaders(): TypedHeaders<RequestHeaderMap> {
   // TODO `as any` not needed when fetchdts is updated
   return getH3Event().req.headers as any
@@ -68,7 +80,6 @@ export function getRequestHeader(name: RequestHeaderName): string | undefined {
   return getRequestHeaders().get(name) || undefined
 }
 
-// TODO discuss: do we want to expose this?
 export function getRequestIP(opts?: {
   /**
    * Use the X-Forwarded-For HTTP header set by proxies.
@@ -77,10 +88,9 @@ export function getRequestIP(opts?: {
    */
   xForwardedFor?: boolean
 }) {
-  return h3.getRequestIP(getH3Event(), opts)
+  return h3_getRequestIP(getH3Event(), opts)
 }
 
-// TODO discuss: do we want to expose this?
 /**
  * Get the request hostname.
  *
@@ -89,10 +99,9 @@ export function getRequestIP(opts?: {
  * If no host header is found, it will default to "localhost".
  */
 export function getRequestHost(opts?: { xForwardedHost?: boolean }) {
-  return h3.getRequestHost(getH3Event(), opts)
+  return h3_getRequestHost(getH3Event(), opts)
 }
 
-// TODO do we want to expose this?
 /**
  * Get the full incoming request URL.
  *
@@ -104,10 +113,9 @@ export function getRequestUrl(opts?: {
   xForwardedHost?: boolean
   xForwardedProto?: boolean
 }) {
-  return h3.getRequestURL(getH3Event(), opts)
+  return h3_getRequestURL(getH3Event(), opts)
 }
 
-// TODO do we want to expose this?
 /**
  * Get the request protocol.
  *
@@ -118,7 +126,7 @@ export function getRequestUrl(opts?: {
 export function getRequestProtocol(opts?: {
   xForwardedProto?: boolean
 }): 'http' | 'https' | (string & {}) {
-  return h3.getRequestProtocol(getH3Event(), opts)
+  return h3_getRequestProtocol(getH3Event(), opts)
 }
 
 export function setResponseHeaders(
@@ -185,10 +193,10 @@ export function getResponseStatus(): number {
 export function setResponseStatus(code?: number, text?: string): void {
   const event = getH3Event()
   if (code) {
-    event.res.status = h3.sanitizeStatusCode(code, event.res.status)
+    event.res.status = h3_sanitizeStatusCode(code, event.res.status)
   }
   if (text) {
-    event.res.statusText = h3.sanitizeStatusMessage(text)
+    event.res.statusText = h3_sanitizeStatusMessage(text)
   }
 }
 
@@ -201,7 +209,7 @@ export function setResponseStatus(code?: number, text?: string): void {
  */
 export function getCookies(): Record<string, string> {
   const event = getH3Event()
-  return h3.parseCookies(event)
+  return h3_parseCookies(event)
 }
 
 /**
@@ -231,7 +239,7 @@ export function setCookie(
   options?: CookieSerializeOptions,
 ): void {
   const event = getH3Event()
-  h3.setCookie(event, name, value, options)
+  h3_setCookie(event, name, value, options)
 }
 
 /**
@@ -247,7 +255,7 @@ export function deleteCookie(
   options?: CookieSerializeOptions,
 ): void {
   const event = getH3Event()
-  h3.deleteCookie(event, name, options)
+  h3_deleteCookie(event, name, options)
 }
 
 function getDefaultSessionConfig(config: SessionConfig): SessionConfig {
@@ -264,7 +272,7 @@ export function useSession<TSessionData extends SessionData = SessionData>(
   config: SessionConfig,
 ): Promise<SessionManager<TSessionData>> {
   const event = getH3Event()
-  return h3.useSession(event, getDefaultSessionConfig(config))
+  return h3_useSession(event, getDefaultSessionConfig(config))
 }
 /**
  * Get the session for the current request
@@ -273,7 +281,7 @@ export function getSession<TSessionData extends SessionData = SessionData>(
   config: SessionConfig,
 ): Promise<Session<TSessionData>> {
   const event = getH3Event()
-  return h3.getSession(event, getDefaultSessionConfig(config))
+  return h3_getSession(event, getDefaultSessionConfig(config))
 }
 
 /**
@@ -284,7 +292,7 @@ export function updateSession<TSessionData extends SessionData = SessionData>(
   update?: SessionUpdate<TSessionData>,
 ): Promise<Session<TSessionData>> {
   const event = getH3Event()
-  return h3.updateSession(event, getDefaultSessionConfig(config), update)
+  return h3_updateSession(event, getDefaultSessionConfig(config), update)
 }
 
 /**
@@ -292,7 +300,7 @@ export function updateSession<TSessionData extends SessionData = SessionData>(
  */
 export function sealSession(config: SessionConfig): Promise<string> {
   const event = getH3Event()
-  return h3.sealSession(event, getDefaultSessionConfig(config))
+  return h3_sealSession(event, getDefaultSessionConfig(config))
 }
 /**
  * Decrypt and verify the session data for the current request.
@@ -302,7 +310,7 @@ export function unsealSession(
   sealed: string,
 ): Promise<Partial<Session>> {
   const event = getH3Event()
-  return h3.unsealSession(event, getDefaultSessionConfig(config), sealed)
+  return h3_unsealSession(event, getDefaultSessionConfig(config), sealed)
 }
 
 /**
@@ -310,5 +318,18 @@ export function unsealSession(
  */
 export function clearSession(config: Partial<SessionConfig>): Promise<void> {
   const event = getH3Event()
-  return h3.clearSession(event, { name: 'start', ...config })
+  return h3_clearSession(event, { name: 'start', ...config })
+}
+
+// not public API
+export function getResponse() {
+  const event = getH3Event()
+  return event._res
+}
+
+// not public API (yet)
+export function getValidatedQuery<TSchema extends StandardSchemaV1>(
+  schema: StandardSchemaV1,
+): Promise<StandardSchemaV1.InferOutput<TSchema>> {
+  return h3_getValidatedQuery(getH3Event(), schema)
 }

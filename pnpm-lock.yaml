@@ -2261,7 +2261,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.7)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -2307,7 +2307,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.27.7)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -7235,27 +7235,17 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       cookie-es:
-        specifier: ^1.2.2
-        version: 1.2.2
+        specifier: ^2.0.0
+        version: 2.0.0
       fetchdts:
-        specifier: ^0.1.5
-        version: 0.1.5
+        specifier: ^0.1.6
+        version: 0.1.6
       h3:
         specifier: 2.0.0-beta.3
         version: 2.0.0-beta.3(crossws@0.4.1(srvx@0.8.6))
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
-    devDependencies:
-      '@tanstack/directive-functions-plugin':
-        specifier: workspace:*
-        version: link:../directive-functions-plugin
-      typescript:
-        specifier: ^5.7.2
-        version: 5.8.2
-      vite:
-        specifier: ^7.1.1
-        version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
   packages/start-server-functions-client:
     dependencies:
@@ -12798,8 +12788,8 @@ packages:
     resolution: {integrity: sha512-7yAQpD2UMJzLi1Dqv7qFYnPbaPx7ZfFK6PiIxQ4PfkGPyNyl2Ugx+a/umUonmKqjhM4DnfbMvdX6otXq83soQQ==}
     engines: {node: ^12.20 || >= 14.13}
 
-  fetchdts@0.1.5:
-    resolution: {integrity: sha512-GCxyHdCCUm56atms+sIjOsAENvhebk3HAM1CfzgKCgMRjPUylpkkPmNknsaXe1gDRqM3cJbMhpkXMhCzXSE+Jg==}
+  fetchdts@0.1.6:
+    resolution: {integrity: sha512-yR7rc9v+7KOEnSU5sOJfH9OaxhWRfrrk3am1CUliTCy6Bc+JQtGcxFT9MxvmbU34wA8HYkCk5r9lVRAld8IAcQ==}
 
   fflate@0.8.2:
     resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
@@ -22299,7 +22289,7 @@ snapshots:
       node-domexception: 1.0.0
       web-streams-polyfill: 3.3.3
 
-  fetchdts@0.1.5: {}
+  fetchdts@0.1.6: {}
 
   fflate@0.8.2: {}
 
@@ -22642,7 +22632,7 @@ snapshots:
   h3@2.0.0-beta.3(crossws@0.4.1(srvx@0.8.6)):
     dependencies:
       cookie-es: 2.0.0
-      fetchdts: 0.1.5
+      fetchdts: 0.1.6
       rou3: 0.7.3
       srvx: 0.8.6
     optionalDependencies:
