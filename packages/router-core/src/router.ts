@@ -1974,7 +1974,7 @@ export class RouterCore<
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType
    */
-  navigate: NavigateFn = ({ to, reloadDocument, href, ...rest }) => {
+  navigate: NavigateFn = async ({ to, reloadDocument, href, ...rest }) => {
     if (!reloadDocument && href) {
       try {
         new URL(`${href}`)
@@ -1987,6 +1987,26 @@ export class RouterCore<
         const location = this.buildLocation({ to, ...rest } as any)
         href = location.url
       }
+
+      // Check blockers for external URLs unless ignoreBlocker is true
+      if (!rest.ignoreBlocker) {
+        // Cast to access internal getBlockers method
+        const historyWithBlockers = this.history as any
+        const blockers = historyWithBlockers.getBlockers?.() ?? []
+        for (const blocker of blockers) {
+          if (blocker?.blockerFn) {
+            const shouldBlock = await blocker.blockerFn({
+              currentLocation: this.latestLocation,
+              nextLocation: this.latestLocation, // External URLs don't have a next location in our router
+              action: 'PUSH',
+            })
+            if (shouldBlock) {
+              return Promise.resolve()
+            }
+          }
+        }
+      }
+
       if (rest.replace) {
         window.location.replace(href)
       } else {

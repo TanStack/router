@@ -7,6 +7,7 @@ import { z } from 'zod'
 import {
   RouterProvider,
   createBrowserHistory,
+  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
@@ -562,5 +563,34 @@ describe('useBlocker', () => {
     ).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/non-existent')
+  })
+
+  test('navigate function should handle external URLs with ignoreBlocker', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home</div>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({
+        initialEntries: ['/'],
+      }),
+    })
+
+    await expect(
+      router.navigate({
+        to: 'https://example.com',
+        ignoreBlocker: true,
+      }),
+    ).resolves.toBeUndefined()
+
+    await expect(
+      router.navigate({
+        to: 'https://example.com',
+      }),
+    ).resolves.toBeUndefined()
   })
 })
