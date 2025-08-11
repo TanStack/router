@@ -183,7 +183,7 @@ export function useBlocker(
             routeId: '__notFound__',
             fullPath: pathname,
             pathname: pathname,
-            params: matchedRoutes.routeParams || {},
+            params: matchedRoutes.routeParams,
             search: router.options.parseSearch(location.search),
           }
         }

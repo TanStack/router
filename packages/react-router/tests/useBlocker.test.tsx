@@ -444,7 +444,7 @@ describe('useBlocker', () => {
 
   test('should allow navigation from 404 page when blocker is active', async () => {
     const rootRoute = createRootRoute({
-      notFoundComponent: () => {
+      notFoundComponent: function NotFoundComponent() {
         const navigate = useNavigate()
 
         useBlocker({ shouldBlockFn: () => true })
@@ -512,7 +512,7 @@ describe('useBlocker', () => {
 
   test('should handle blocker navigation from 404 to another 404', async () => {
     const rootRoute = createRootRoute({
-      notFoundComponent: () => {
+      notFoundComponent: function NotFoundComponent() {
         const navigate = useNavigate()
 
         useBlocker({ shouldBlockFn: () => true })
