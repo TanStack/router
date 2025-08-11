@@ -185,8 +185,7 @@ export const MatchInner = (props: { matchId: string }): any => {
 
   const matchState = useRouterState({
     select: (s) => {
-      const matchIndex = s.matches.findIndex((d) => d.id === props.matchId)
-      const match = s.matches[matchIndex]!
+      const match = s.matches.find((d) => d.id === props.matchId)!
       const routeId = match.routeId as string
 
       const remountFn =
