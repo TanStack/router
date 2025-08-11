@@ -9,6 +9,7 @@ import {
   createControlledPromise,
   deepEqual,
   functionalUpdate,
+  isPromise,
   last,
   pick,
   replaceEqualDeep,
@@ -2436,8 +2437,7 @@ export class RouterCore<
 
                   const beforeLoadResult =
                     route.options.beforeLoad!(beforeLoadFnContext)
-                  const beforeLoadIsAsync =
-                    beforeLoadResult && 'then' in beforeLoadResult
+                  const beforeLoadIsAsync = isPromise(beforeLoadResult)
 
                   if (beforeLoadIsAsync) {
                     updateMatch(matchId, (prev) => ({
