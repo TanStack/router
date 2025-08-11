@@ -2383,6 +2383,10 @@ export class RouterCore<
                   handleRedirectAndNotFound(match, match.error)
                 }
               }
+
+              let beforeLoadContext =
+                this.getMatch(matchId)!.__beforeLoadContext
+
               if (executeBeforeLoad) {
                 // If we are not in the middle of a load OR the previous load failed, start it
                 try {
@@ -2441,7 +2445,7 @@ export class RouterCore<
                     matches,
                   }
 
-                  const beforeLoadContext =
+                  beforeLoadContext =
                     await route.options.beforeLoad!(beforeLoadFnContext)
 
                   if (
@@ -2450,18 +2454,15 @@ export class RouterCore<
                   ) {
                     handleSerialError(index, beforeLoadContext, 'BEFORE_LOAD')
                   }
-
-                  updateMatch(matchId, (prev) => {
-                    return {
-                      ...prev,
-                      __beforeLoadContext: beforeLoadContext,
-                      context: {
-                        ...prev.context,
-                        ...beforeLoadContext,
-                      },
-                    }
-                  })
                 } catch (err) {
+                  updateMatch(matchId, (prev) => ({
+                    ...prev,
+                    __beforeLoadContext: beforeLoadContext,
+                    context: {
+                      ...prev.context,
+                      ...beforeLoadContext,
+                    },
+                  }))
                   handleSerialError(index, err, 'BEFORE_LOAD')
                 }
 
@@ -2471,7 +2472,12 @@ export class RouterCore<
 
                   return {
                     ...prev,
+                    __beforeLoadContext: beforeLoadContext,
                     isFetching: false,
+                    context: {
+                      ...prev.context,
+                      ...beforeLoadContext,
+                    },
                   }
                 })
               }
@@ -2493,21 +2499,33 @@ export class RouterCore<
                     if (!match) {
                       return
                     }
+                    if (
+                      !route.options.head &&
+                      !route.options.scripts &&
+                      !route.options.headers
+                    ) {
+                      return
+                    }
                     const assetContext = {
                       matches,
                       match,
                       params: match.params,
                       loaderData: match.loaderData,
                     }
-                    const headFnContent =
-                      await route.options.head?.(assetContext)
+
+                    const [headFnContent, scripts, headers] = await Promise.all(
+                      [
+                        route.options.head?.(assetContext),
+                        route.options.scripts?.(assetContext),
+                        route.options.headers?.(assetContext),
+                      ],
+                    )
+
                     const meta = headFnContent?.meta
                     const links = headFnContent?.links
                     const headScripts = headFnContent?.scripts
                     const styles = headFnContent?.styles
 
-                    const scripts = await route.options.scripts?.(assetContext)
-                    const headers = await route.options.headers?.(assetContext)
                     return {
                       meta,
                       links,
@@ -2518,21 +2536,21 @@ export class RouterCore<
                     }
                   }
 
-                  const potentialPendingMinPromise = async () => {
+                  const potentialPendingMinPromise = () => {
                     const latestMatch = this.getMatch(matchId)!
-                    if (latestMatch._nonReactive.minPendingPromise) {
-                      await latestMatch._nonReactive.minPendingPromise
-                    }
+                    return latestMatch._nonReactive.minPendingPromise
                   }
 
                   const prevMatch = this.getMatch(matchId)!
                   if (shouldSkipLoader(matchId)) {
                     if (this.isServer) {
                       const head = await executeHead()
-                      updateMatch(matchId, (prev) => ({
-                        ...prev,
-                        ...head,
-                      }))
+                      if (head) {
+                        updateMatch(matchId, (prev) => ({
+                          ...prev,
+                          ...head,
+                        }))
+                      }
                       return this.getMatch(matchId)!
                     }
                   }
@@ -2634,23 +2652,25 @@ export class RouterCore<
                             this.loadRouteChunk(route)
                           }
 
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            isFetching: 'loader',
-                          }))
+                          if (route.options.loader) {
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              isFetching: 'loader',
+                            }))
 
-                          // Kick off the loader!
-                          const loaderData =
-                            await route.options.loader?.(getLoaderContext())
+                            // Kick off the loader!
+                            const loaderData =
+                              await route.options.loader(getLoaderContext())
 
-                          handleRedirectAndNotFound(
-                            this.getMatch(matchId)!,
-                            loaderData,
-                          )
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            loaderData,
-                          }))
+                            handleRedirectAndNotFound(
+                              this.getMatch(matchId)!,
+                              loaderData,
+                            )
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              loaderData,
+                            }))
+                          }
 
                           // Lazy option can modify the route options,
                           // so we need to wait for it to resolve before
@@ -2698,14 +2718,15 @@ export class RouterCore<
                       } catch (err) {
                         const head = await executeHead()
 
-                        updateMatch(matchId, (prev) => {
-                          prev._nonReactive.loaderPromise = undefined
-                          return {
+                        if (head) {
+                          updateMatch(matchId, (prev) => ({
                             ...prev,
                             ...head,
-                          }
-                        })
-                        handleRedirectAndNotFound(this.getMatch(matchId)!, err)
+                          }))
+                        }
+                        const match = this.getMatch(matchId)!
+                        match._nonReactive.loaderPromise = undefined
+                        handleRedirectAndNotFound(match, err)
                       }
                     }
 
@@ -2741,10 +2762,12 @@ export class RouterCore<
                       // reason: parent's beforeLoad may have changed the route context
                       // and only now do we know the route context (and that the loader would not run)
                       const head = await executeHead()
-                      updateMatch(matchId, (prev) => ({
-                        ...prev,
-                        ...head,
-                      }))
+                      if (head) {
+                        updateMatch(matchId, (prev) => ({
+                          ...prev,
+                          ...head,
+                        }))
+                      }
                     }
                   }
                   if (!loaderIsRunningAsync) {
