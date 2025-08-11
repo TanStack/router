@@ -2463,7 +2463,7 @@ export class RouterCore<
                   let loaderIsRunningAsync = false
                   const route = this.looseRoutesById[routeId]!
 
-                  const executeHead = async () => {
+                  const executeHead = () => {
                     const match = this.getMatch(matchId)
                     // in case of a redirecting match during preload, the match does not exist
                     if (!match) {
@@ -2483,14 +2483,11 @@ export class RouterCore<
                       loaderData: match.loaderData,
                     }
 
-                    const [headFnContent, scripts, headers] = await Promise.all(
-                      [
+                    return Promise.all([
                         route.options.head?.(assetContext),
                         route.options.scripts?.(assetContext),
                         route.options.headers?.(assetContext),
-                      ],
-                    )
-
+                      ]).then(([headFnContent, scripts, headers]) => {
                     const meta = headFnContent?.meta
                     const links = headFnContent?.links
                     const headScripts = headFnContent?.scripts
@@ -2504,6 +2501,7 @@ export class RouterCore<
                       scripts,
                       styles,
                     }
+})
                   }
 
                   const potentialPendingMinPromise = async () => {
