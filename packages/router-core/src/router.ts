@@ -2645,8 +2645,7 @@ export class RouterCore<
                         try {
                           if (
                             !this.isServer ||
-                            (this.isServer &&
-                              this.getMatch(matchId)!.ssr === true)
+                            this.getMatch(matchId)!.ssr === true
                           ) {
                             this.loadRouteChunk(route)
                           }
