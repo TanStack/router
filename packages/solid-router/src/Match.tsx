@@ -232,7 +232,8 @@ export const MatchInner = (props: { matchId: string }): any => {
       <Solid.Match when={match()._displayPending}>
         {(_) => {
           const [displayPendingResult] = Solid.createResource(
-            () => router.getMatch(match().id)?.displayPendingPromise,
+            () =>
+              router.getMatch(match().id)?._nonReactive.displayPendingPromise,
           )
 
           return <>{displayPendingResult()}</>
@@ -241,7 +242,7 @@ export const MatchInner = (props: { matchId: string }): any => {
       <Solid.Match when={match()._forcePending}>
         {(_) => {
           const [minPendingResult] = Solid.createResource(
-            () => router.getMatch(match().id)?.minPendingPromise,
+            () => router.getMatch(match().id)?._nonReactive.minPendingPromise,
           )
 
           return <>{minPendingResult()}</>
@@ -252,33 +253,29 @@ export const MatchInner = (props: { matchId: string }): any => {
           const pendingMinMs =
             route().options.pendingMinMs ?? router.options.defaultPendingMinMs
 
-          if (pendingMinMs && !router.getMatch(match().id)?.minPendingPromise) {
-            // Create a promise that will resolve after the minPendingMs
-            if (!router.isServer) {
-              const minPendingPromise = createControlledPromise<void>()
+          if (pendingMinMs) {
+            const routerMatch = router.getMatch(match().id)
+            if (routerMatch && !routerMatch._nonReactive.minPendingPromise) {
+              // Create a promise that will resolve after the minPendingMs
+              if (!router.isServer) {
+                const minPendingPromise = createControlledPromise<void>()
 
-              Promise.resolve().then(() => {
-                router.updateMatch(match().id, (prev) => ({
-                  ...prev,
-                  minPendingPromise,
-                }))
-              })
+                Promise.resolve().then(() => {
+                  routerMatch._nonReactive.minPendingPromise = minPendingPromise
+                })
 
-              setTimeout(() => {
-                minPendingPromise.resolve()
-
-                // We've handled the minPendingPromise, so we can delete it
-                router.updateMatch(match().id, (prev) => ({
-                  ...prev,
-                  minPendingPromise: undefined,
-                }))
-              }, pendingMinMs)
+                setTimeout(() => {
+                  minPendingPromise.resolve()
+                  // We've handled the minPendingPromise, so we can delete it
+                  routerMatch._nonReactive.minPendingPromise = undefined
+                }, pendingMinMs)
+              }
             }
           }
 
           const [loaderResult] = Solid.createResource(async () => {
             await new Promise((r) => setTimeout(r, 0))
-            return router.getMatch(match().id)?.loadPromise
+            return router.getMatch(match().id)?._nonReactive.loadPromise
           })
 
           return <>{loaderResult()}</>
@@ -297,7 +294,7 @@ export const MatchInner = (props: { matchId: string }): any => {
 
           const [loaderResult] = Solid.createResource(async () => {
             await new Promise((r) => setTimeout(r, 0))
-            return router.getMatch(match().id)?.loadPromise
+            return router.getMatch(match().id)?._nonReactive.loadPromise
           })
 
           return <>{loaderResult()}</>

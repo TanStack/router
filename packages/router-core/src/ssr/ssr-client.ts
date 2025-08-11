@@ -80,17 +80,19 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       route.options.pendingMinMs ?? router.options.defaultPendingMinMs
     if (pendingMinMs) {
       const minPendingPromise = createControlledPromise<void>()
-      match.minPendingPromise = minPendingPromise
+      match._nonReactive.minPendingPromise = minPendingPromise
       match._forcePending = true
 
       setTimeout(() => {
         minPendingPromise.resolve()
         // We've handled the minPendingPromise, so we can delete it
-        router.updateMatch(match.id, (prev) => ({
-          ...prev,
-          minPendingPromise: undefined,
-          _forcePending: undefined,
-        }))
+        router.updateMatch(match.id, (prev) => {
+          prev._nonReactive.minPendingPromise = undefined
+          return {
+            ...prev,
+            _forcePending: undefined,
+          }
+        })
       }, pendingMinMs)
     }
   }
@@ -110,9 +112,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     Object.assign(match, hydrateMatch(dehydratedMatch))
 
     if (match.ssr === false) {
-      match._dehydrated = false
+      match._nonReactive.dehydrated = false
     } else {
-      match._dehydrated = true
+      match._nonReactive.dehydrated = true
     }
 
     if (match.ssr === 'data-only' || match.ssr === false) {
@@ -190,7 +192,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   if (!hasSsrFalseMatches && !isSpaMode) {
     matches.forEach((match) => {
       // remove the _dehydrate flag since we won't run router.load() which would remove it
-      match._dehydrated = undefined
+      match._nonReactive.dehydrated = undefined
     })
     return routeChunkPromise
   }
@@ -213,7 +215,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     setMatchForcePending(match)
 
     match._displayPending = true
-    match.displayPendingPromise = loadPromise
+    match._nonReactive.displayPendingPromise = loadPromise
 
     loadPromise.then(() => {
       batch(() => {

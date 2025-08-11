@@ -227,11 +227,11 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }, [key, route.options.component, router.options.defaultComponent])
 
   if (match._displayPending) {
-    throw router.getMatch(match.id)?.displayPendingPromise
+    throw router.getMatch(match.id)?._nonReactive.displayPendingPromise
   }
 
   if (match._forcePending) {
-    throw router.getMatch(match.id)?.minPendingPromise
+    throw router.getMatch(match.id)?._nonReactive.minPendingPromise
   }
 
   // see also hydrate() in packages/router-core/src/ssr/ssr-client.ts
@@ -239,31 +239,26 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     // We're pending, and if we have a minPendingMs, we need to wait for it
     const pendingMinMs =
       route.options.pendingMinMs ?? router.options.defaultPendingMinMs
+    if (pendingMinMs) {
+      const routerMatch = router.getMatch(match.id)
+      if (routerMatch && !routerMatch._nonReactive.minPendingPromise) {
+        // Create a promise that will resolve after the minPendingMs
+        if (!router.isServer) {
+          const minPendingPromise = createControlledPromise<void>()
 
-    if (pendingMinMs && !router.getMatch(match.id)?.minPendingPromise) {
-      // Create a promise that will resolve after the minPendingMs
-      if (!router.isServer) {
-        const minPendingPromise = createControlledPromise<void>()
+          Promise.resolve().then(() => {
+            routerMatch._nonReactive.minPendingPromise = minPendingPromise
+          })
 
-        Promise.resolve().then(() => {
-          router.updateMatch(match.id, (prev) => ({
-            ...prev,
-            minPendingPromise,
-          }))
-        })
-
-        setTimeout(() => {
-          minPendingPromise.resolve()
-
-          // We've handled the minPendingPromise, so we can delete it
-          router.updateMatch(match.id, (prev) => ({
-            ...prev,
-            minPendingPromise: undefined,
-          }))
-        }, pendingMinMs)
+          setTimeout(() => {
+            minPendingPromise.resolve()
+            // We've handled the minPendingPromise, so we can delete it
+            routerMatch._nonReactive.minPendingPromise = undefined
+          }, pendingMinMs)
+        }
       }
     }
-    throw router.getMatch(match.id)?.loadPromise
+    throw router.getMatch(match.id)?._nonReactive.loadPromise
   }
 
   if (match.status === 'notFound') {
@@ -280,7 +275,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     //   false,
     //   'Tried to render a redirected route match! This is a weird circumstance, please file an issue!',
     // )
-    throw router.getMatch(match.id)?.loadPromise
+    throw router.getMatch(match.id)?._nonReactive.loadPromise
   }
 
   if (match.status === 'error') {
