@@ -2494,11 +2494,9 @@ export class RouterCore<
                     }
                   }
 
-                  const potentialPendingMinPromise = async () => {
+                  const potentialPendingMinPromise = () => {
                     const latestMatch = this.getMatch(matchId)!
-                    if (latestMatch._nonReactive.minPendingPromise) {
-                      await latestMatch._nonReactive.minPendingPromise
-                    }
+                    return latestMatch._nonReactive.minPendingPromise
                   }
 
                   const prevMatch = this.getMatch(matchId)!
@@ -2604,40 +2602,70 @@ export class RouterCore<
                         try {
                           if (
                             !this.isServer ||
-                            (this.isServer &&
-                              this.getMatch(matchId)!.ssr === true)
+                            this.getMatch(matchId)!.ssr === true
                           ) {
                             this.loadRouteChunk(route)
                           }
 
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            isFetching: 'loader',
-                          }))
-
                           // Kick off the loader!
-                          const loaderData =
-                            await route.options.loader?.(getLoaderContext())
+                          const loaderResult =
+                            route.options.loader?.(getLoaderContext())
+                          const loaderResultIsPromise =
+                            route.options.loader &&
+                            loaderResult &&
+                            'then' in loaderResult
 
-                          handleRedirectAndNotFound(
-                            this.getMatch(matchId)!,
-                            loaderData,
+                          const willLoadSomething = !!(
+                            loaderResultIsPromise ||
+                            !route._lazyLoaded ||
+                            !route._componentsLoaded ||
+                            route.options.head ||
+                            route.options.scripts ||
+                            route.options.headers ||
+                            this.getMatch(matchId)!._nonReactive
+                              .minPendingPromise
                           )
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            loaderData,
-                          }))
+
+                          if (willLoadSomething) {
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              isFetching: 'loader',
+                            }))
+                          }
+
+                          if (route.options.loader) {
+                            const loaderData = loaderResultIsPromise
+                              ? await loaderResult
+                              : loaderResult
+
+                            handleRedirectAndNotFound(
+                              this.getMatch(matchId)!,
+                              loaderData,
+                            )
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              loaderData,
+                            }))
+                          }
 
                           // Lazy option can modify the route options,
                           // so we need to wait for it to resolve before
                           // we can use the options
-                          await route._lazyPromise
-                          const head = await executeHead()
-                          await potentialPendingMinPromise()
+                          if (!route._lazyLoaded) await route._lazyPromise
+                          let head = undefined
+                          if (
+                            route.options.head ||
+                            route.options.scripts ||
+                            route.options.headers
+                          )
+                            head = await executeHead()
+                          const pendingPromise = potentialPendingMinPromise()
+                          if (pendingPromise) await pendingPromise
 
                           // Last but not least, wait for the the components
                           // to be preloaded before we resolve the match
-                          await route._componentsPromise
+                          if (!route._componentsLoaded)
+                            await route._componentsPromise
                           updateMatch(matchId, (prev) => ({
                             ...prev,
                             error: undefined,
@@ -2870,9 +2898,11 @@ export class RouterCore<
           // explicitly don't copy over the lazy route's id
           const { id: _id, ...options } = lazyRoute.options
           Object.assign(route.options, options)
+          route._lazyLoaded = true
         })
       } else {
         route._lazyPromise = Promise.resolve()
+        route._lazyLoaded = true
       }
     }
 
@@ -2890,8 +2920,8 @@ export class RouterCore<
           }),
         ),
       )
+      route._componentsPromise.then(() => (route._componentsLoaded = true))
     }
-    return route._componentsPromise
   }
 
   preloadRoute: PreloadRouteFn<

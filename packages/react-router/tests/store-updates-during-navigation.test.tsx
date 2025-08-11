@@ -73,6 +73,6 @@ describe('Store updates during navigation', () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(after - before).toBe(19)
+    expect(after - before).toBe(17)
   })
 })

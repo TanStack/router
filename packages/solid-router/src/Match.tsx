@@ -262,9 +262,7 @@ export const MatchInner = (props: { matchId: string }): any => {
               if (!router.isServer) {
                 const minPendingPromise = createControlledPromise<void>()
 
-                Promise.resolve().then(() => {
-                  routerMatch._nonReactive.minPendingPromise = minPendingPromise
-                })
+                routerMatch._nonReactive.minPendingPromise = minPendingPromise
 
                 setTimeout(() => {
                   minPendingPromise.resolve()

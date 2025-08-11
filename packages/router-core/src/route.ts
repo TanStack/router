@@ -589,7 +589,10 @@ export interface Route<
     TBeforeLoadFn
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
+  /** @internal */
   _componentsPromise?: Promise<Array<void>>
+  /** @internal */
+  _componentsLoaded?: boolean
   lazyFn?: () => Promise<
     LazyRoute<
       Route<
@@ -610,7 +613,10 @@ export interface Route<
       >
     >
   >
+  /** @internal */
   _lazyPromise?: Promise<void>
+  /** @internal */
+  _lazyLoaded?: boolean
   rank: number
   to: TrimPathRight<TFullPath>
   init: (opts: { originalIndex: number }) => void
