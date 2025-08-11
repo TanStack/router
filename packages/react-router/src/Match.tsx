@@ -213,7 +213,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
           error: match.error,
           _forcePending: match._forcePending,
           _displayPending: match._displayPending,
-        }
+        },
       }
     },
     structuralSharing: true as any,
