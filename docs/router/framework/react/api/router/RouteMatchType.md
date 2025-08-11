@@ -24,6 +24,5 @@ interface RouteMatch {
   fetchedAt: number
   abortController: AbortController
   cause: 'enter' | 'stay'
-  ssr?: boolean | 'data-only'
 }
 ```

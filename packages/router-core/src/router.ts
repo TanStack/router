@@ -2174,10 +2174,8 @@ export class RouterCore<
         return true
       }
 
-      if (this.isServer) {
-        if (match.ssr === false) {
-          return true
-        }
+      if (this.isServer && match._nonReactive.ssr === false) {
+        return true
       }
       return false
     }
@@ -2248,15 +2246,13 @@ export class RouterCore<
                   ssr = matchId === rootRouteId
                 } else {
                   const defaultSsr = this.options.defaultSsr ?? true
-                  if (parentMatch?.ssr === false) {
+                  if (parentMatch?._nonReactive.ssr === false) {
                     ssr = false
                   } else {
                     let tempSsr: boolean | 'data-only'
                     if (route.options.ssr === undefined) {
                       tempSsr = defaultSsr
                     } else if (typeof route.options.ssr === 'function') {
-                      const { search, params } = this.getMatch(matchId)!
-
                       function makeMaybe(value: any, error: any) {
                         if (error) {
                           return { status: 'error' as const, error }
@@ -2265,8 +2261,14 @@ export class RouterCore<
                       }
 
                       const ssrFnContext: SsrContextOptions<any, any, any> = {
-                        search: makeMaybe(search, existingMatch.searchError),
-                        params: makeMaybe(params, existingMatch.paramsError),
+                        search: makeMaybe(
+                          existingMatch.search,
+                          existingMatch.searchError,
+                        ),
+                        params: makeMaybe(
+                          existingMatch.params,
+                          existingMatch.paramsError,
+                        ),
                         location,
                         matches: matches.map((match) => ({
                           index: match.index,
@@ -2277,7 +2279,7 @@ export class RouterCore<
                           routeId: match.routeId,
                           search: makeMaybe(match.search, match.searchError),
                           params: makeMaybe(match.params, match.paramsError),
-                          ssr: match.ssr,
+                          ssr: match._nonReactive.ssr,
                         })),
                       }
                       tempSsr =
@@ -2286,17 +2288,17 @@ export class RouterCore<
                       tempSsr = route.options.ssr
                     }
 
-                    if (tempSsr === true && parentMatch?.ssr === 'data-only') {
+                    if (
+                      tempSsr === true &&
+                      parentMatch?._nonReactive.ssr === 'data-only'
+                    ) {
                       ssr = 'data-only'
                     } else {
                       ssr = tempSsr
                     }
                   }
                 }
-                updateMatch(matchId, (prev) => ({
-                  ...prev,
-                  ssr,
-                }))
+                existingMatch._nonReactive.ssr = ssr
               }
 
               if (shouldSkipLoader(matchId)) {
@@ -2609,7 +2611,7 @@ export class RouterCore<
                           if (
                             !this.isServer ||
                             (this.isServer &&
-                              this.getMatch(matchId)!.ssr === true)
+                              this.getMatch(matchId)!._nonReactive.ssr === true)
                           ) {
                             this.loadRouteChunk(route)
                           }

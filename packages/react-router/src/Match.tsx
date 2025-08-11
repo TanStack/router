@@ -38,7 +38,7 @@ export const Match = React.memo(function MatchImpl({
       )
       return {
         routeId: match.routeId,
-        ssr: match.ssr,
+        ssr: match._nonReactive.ssr,
         _displayPending: match._displayPending,
       }
     },

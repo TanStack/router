@@ -31,7 +31,7 @@ export const Match = (props: { matchId: string }) => {
       )
       return {
         routeId: match.routeId,
-        ssr: match.ssr,
+        ssr: match._nonReactive.ssr,
         _displayPending: match._displayPending,
       }
     },

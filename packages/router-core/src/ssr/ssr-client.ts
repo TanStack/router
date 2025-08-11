@@ -27,7 +27,7 @@ function hydrateMatch(
   match.__beforeLoadContext = deyhydratedMatch.b
   match.loaderData = deyhydratedMatch.l
   match.status = deyhydratedMatch.s
-  match.ssr = deyhydratedMatch.ssr
+  match._nonReactive.ssr = deyhydratedMatch.ssr
   match.updatedAt = deyhydratedMatch.u
   match.error = deyhydratedMatch.e
 }
@@ -38,7 +38,7 @@ export interface DehydratedMatch {
   e?: MakeRouteMatch['error']
   u: MakeRouteMatch['updatedAt']
   s: MakeRouteMatch['status']
-  ssr?: MakeRouteMatch['ssr']
+  ssr?: MakeRouteMatch['_nonReactive']['ssr']
 }
 
 export interface DehydratedRouter {
@@ -105,15 +105,18 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     )
     if (!dehydratedMatch) {
       match._nonReactive.dehydrated = false
-      match.ssr = false
+      match._nonReactive.ssr = false
       return
     }
 
     hydrateMatch(match, dehydratedMatch)
 
-    match._nonReactive.dehydrated = match.ssr !== false
+    match._nonReactive.dehydrated = match._nonReactive.ssr !== false
 
-    if (match.ssr === 'data-only' || match.ssr === false) {
+    if (
+      match._nonReactive.ssr === 'data-only' ||
+      match._nonReactive.ssr === false
+    ) {
       if (firstNonSsrMatchIndex === undefined) {
         firstNonSsrMatchIndex = match.index
         setMatchForcePending(match)
@@ -183,7 +186,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   )
 
   const isSpaMode = matches[matches.length - 1]!.id !== lastMatchId
-  const hasSsrFalseMatches = matches.some((m) => m.ssr === false)
+  const hasSsrFalseMatches = matches.some((m) => m._nonReactive.ssr === false)
   // all matches have data from the server and we are not in SPA mode so we don't need to kick of router.load()
   if (!hasSsrFalseMatches && !isSpaMode) {
     matches.forEach((match) => {

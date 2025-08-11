@@ -32,18 +32,13 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
     s: match.status,
   }
 
-  const properties = [
-    ['__beforeLoadContext', 'b'],
-    ['loaderData', 'l'],
-    ['error', 'e'],
-    ['ssr', 'ssr'],
-  ] as const
+  if (match.__beforeLoadContext !== undefined)
+    dehydratedMatch.b = match.__beforeLoadContext
+  if (match.loaderData !== undefined) dehydratedMatch.l = match.loaderData
+  if (match.error !== undefined) dehydratedMatch.e = match.error
+  if (match._nonReactive.ssr !== undefined)
+    dehydratedMatch.ssr = match._nonReactive.ssr
 
-  for (const [key, shorthand] of properties) {
-    if (match[key] !== undefined) {
-      dehydratedMatch[shorthand] = match[key]
-    }
-  }
   return dehydratedMatch
 }
 
