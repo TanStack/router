@@ -430,7 +430,7 @@ Middleware functionality is tree-shaken based on the environment for each bundle
 ## Handling Errors
 
 Middlewares can handle errors thrown by server functions or other middlewares by using a try...catch block and throwing a `Response` object.
-This will cause the middleware chain to short-circuit and return the response to the client.
+This will cause the error to bubble-up the middleware chain and ultimately return the response to the client.
 
 Ideally, this middleware would be one of the first middlewares in the chain, to catch all subsequent errors.
 
