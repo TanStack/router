@@ -6,7 +6,6 @@ import {
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
-  pick,
   rootRouteId,
 } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -37,7 +36,11 @@ export const Match = React.memo(function MatchImpl({
         match,
         `Could not find match for matchId "${matchId}". Please file an issue!`,
       )
-      return pick(match, ['routeId', 'ssr', '_displayPending'])
+      return {
+        routeId: match.routeId,
+        ssr: match.ssr,
+        _displayPending: match._displayPending,
+      }
     },
     structuralSharing: true as any,
   })
@@ -204,13 +207,13 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       return {
         key,
         routeId,
-        match: pick(match, [
-          'id',
-          'status',
-          'error',
-          '_forcePending',
-          '_displayPending',
-        ]),
+        match: {
+          id: match.id,
+          status: match.status,
+          error: match.error,
+          _forcePending: match._forcePending,
+          _displayPending: match._displayPending,
+        }
       }
     },
     structuralSharing: true as any,

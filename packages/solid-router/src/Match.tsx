@@ -6,7 +6,6 @@ import {
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
-  pick,
   rootRouteId,
 } from '@tanstack/router-core'
 import { Dynamic } from 'solid-js/web'
@@ -30,7 +29,11 @@ export const Match = (props: { matchId: string }) => {
         match,
         `Could not find match for matchId "${props.matchId}". Please file an issue!`,
       )
-      return pick(match, ['routeId', 'ssr', '_displayPending'])
+      return {
+        routeId: match.routeId,
+        ssr: match.ssr,
+        _displayPending: match._displayPending,
+      }
     },
   })
 
@@ -200,13 +203,13 @@ export const MatchInner = (props: { matchId: string }): any => {
       return {
         key,
         routeId,
-        match: pick(match, [
-          'id',
-          'status',
-          'error',
-          '_forcePending',
-          '_displayPending',
-        ]),
+        match: {
+          id: match.id,
+          status: match.status,
+          error: match.error,
+          _forcePending: match._forcePending,
+          _displayPending: match._displayPending,
+        },
       }
     },
   })
