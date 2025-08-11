@@ -2300,6 +2300,20 @@ export class RouterCore<
                 continue
               }
 
+              const handleSearchAndParamSerialErrors = (
+                index: number,
+                matchId: string,
+              ) => {
+                const { paramsError, searchError } = this.getMatch(matchId)!
+                if (paramsError) {
+                  handleSerialError(index, paramsError, 'PARSE_PARAMS')
+                }
+
+                if (searchError) {
+                  handleSerialError(index, searchError, 'VALIDATE_SEARCH')
+                }
+              }
+
               const shouldPending = !!(
                 onReady &&
                 !this.isServer &&
@@ -2312,146 +2326,154 @@ export class RouterCore<
                 (route.options.pendingComponent ??
                   (this.options as any)?.defaultPendingComponent)
               )
-
-              if (route.options.beforeLoad) {
-                let executeBeforeLoad = true
-                const setupPendingTimeout = () => {
-                  const match = this.getMatch(matchId)!
-                  if (
-                    shouldPending &&
-                    match._nonReactive.pendingTimeout === undefined
-                  ) {
-                    const pendingTimeout = setTimeout(() => {
-                      try {
-                        // Update the match and prematurely resolve the loadMatches promise so that
-                        // the pending component can start rendering
-                        triggerOnReady()
-                      } catch {}
-                    }, pendingMs)
-                    match._nonReactive.pendingTimeout = pendingTimeout
-                  }
-                }
+              const setupPendingTimeout = () => {
+                const match = this.getMatch(matchId)!
                 if (
-                  // If we are in the middle of a load, either of these will be present
-                  // (not to be confused with `loadPromise`, which is always defined)
-                  existingMatch._nonReactive.beforeLoadPromise ||
-                  existingMatch._nonReactive.loaderPromise
+                  shouldPending &&
+                  match._nonReactive.pendingTimeout === undefined
                 ) {
+                  const pendingTimeout = setTimeout(() => {
+                    try {
+                      // Update the match and prematurely resolve the loadMatches promise so that
+                      // the pending component can start rendering
+                      triggerOnReady()
+                    } catch {}
+                  }, pendingMs)
+                  match._nonReactive.pendingTimeout = pendingTimeout
+                }
+              }
+
+              // If we are in the middle of a load, either of these will be present
+              // (not to be confused with `loadPromise`, which is always defined)
+              const hasBeforeLoadOrLoaderPromise =
+                existingMatch._nonReactive.beforeLoadPromise ||
+                existingMatch._nonReactive.loaderPromise
+
+              if (hasBeforeLoadOrLoaderPromise) {
+                setupPendingTimeout()
+              }
+
+              // we can bail out early if there is no `beforeLoad`
+              if (!route.options.beforeLoad) {
+                handleSearchAndParamSerialErrors(index, matchId)
+                const parentMatchContext =
+                  parentMatch?.context ?? this.options.context ?? {}
+                updateMatch(matchId, (prev) => ({
+                  ...prev,
+                  context: {
+                    ...parentMatchContext,
+                    ...prev.__routeContext,
+                  },
+                }))
+                continue
+              }
+
+              let executeBeforeLoad = true
+
+              if (hasBeforeLoadOrLoaderPromise) {
+                // Wait for the beforeLoad to resolve before we continue
+                await existingMatch._nonReactive.beforeLoadPromise
+                const match = this.getMatch(matchId)!
+                if (match.status === 'error') {
+                  executeBeforeLoad = true
+                } else if (
+                  match.preload &&
+                  (match.status === 'redirected' || match.status === 'notFound')
+                ) {
+                  handleRedirectAndNotFound(match, match.error)
+                }
+              }
+              if (executeBeforeLoad) {
+                // If we are not in the middle of a load OR the previous load failed, start it
+                try {
+                  const match = this.getMatch(matchId)!
+                  match._nonReactive.beforeLoadPromise =
+                    createControlledPromise<void>()
+                  // explicitly capture the previous loadPromise
+                  const prevLoadPromise = match._nonReactive.loadPromise
+                  match._nonReactive.loadPromise =
+                    createControlledPromise<void>(() => {
+                      prevLoadPromise?.resolve()
+                    })
+
+                  handleSearchAndParamSerialErrors(index, matchId)
+
                   setupPendingTimeout()
 
-                  // Wait for the beforeLoad to resolve before we continue
-                  await existingMatch._nonReactive.beforeLoadPromise
-                  const match = this.getMatch(matchId)!
-                  if (match.status === 'error') {
-                    executeBeforeLoad = true
-                  } else if (
-                    match.preload &&
-                    (match.status === 'redirected' ||
-                      match.status === 'notFound')
-                  ) {
-                    handleRedirectAndNotFound(match, match.error)
+                  const abortController = new AbortController()
+
+                  const parentMatchContext =
+                    parentMatch?.context ?? this.options.context ?? {}
+
+                  updateMatch(matchId, (prev) => ({
+                    ...prev,
+                    isFetching: 'beforeLoad',
+                    fetchCount: prev.fetchCount + 1,
+                    abortController,
+                    context: {
+                      ...parentMatchContext,
+                      ...prev.__routeContext,
+                    },
+                  }))
+
+                  const { search, params, context, cause } =
+                    this.getMatch(matchId)!
+
+                  const preload = resolvePreload(matchId)
+
+                  const beforeLoadFnContext: BeforeLoadContextOptions<
+                    any,
+                    any,
+                    any,
+                    any,
+                    any
+                  > = {
+                    search,
+                    abortController,
+                    params,
+                    preload,
+                    context,
+                    location,
+                    navigate: (opts: any) =>
+                      this.navigate({ ...opts, _fromLocation: location }),
+                    buildLocation: this.buildLocation,
+                    cause: preload ? 'preload' : cause,
+                    matches,
                   }
-                }
-                if (executeBeforeLoad) {
-                  // If we are not in the middle of a load OR the previous load failed, start it
-                  try {
-                    const match = this.getMatch(matchId)!
-                    match._nonReactive.beforeLoadPromise =
-                      createControlledPromise<void>()
-                    // explicitly capture the previous loadPromise
-                    const prevLoadPromise = match._nonReactive.loadPromise
-                    match._nonReactive.loadPromise =
-                      createControlledPromise<void>(() => {
-                        prevLoadPromise?.resolve()
-                      })
 
-                    const { paramsError, searchError } = this.getMatch(matchId)!
+                  const beforeLoadContext =
+                    await route.options.beforeLoad!(beforeLoadFnContext)
 
-                    if (paramsError) {
-                      handleSerialError(index, paramsError, 'PARSE_PARAMS')
-                    }
-
-                    if (searchError) {
-                      handleSerialError(index, searchError, 'VALIDATE_SEARCH')
-                    }
-
-                    setupPendingTimeout()
-
-                    const abortController = new AbortController()
-
-                    const parentMatchContext =
-                      parentMatch?.context ?? this.options.context ?? {}
-
-                    updateMatch(matchId, (prev) => ({
-                      ...prev,
-                      isFetching: 'beforeLoad',
-                      fetchCount: prev.fetchCount + 1,
-                      abortController,
-                      context: {
-                        ...parentMatchContext,
-                        ...prev.__routeContext,
-                      },
-                    }))
-
-                    const { search, params, context, cause } =
-                      this.getMatch(matchId)!
-
-                    const preload = resolvePreload(matchId)
-
-                    const beforeLoadFnContext: BeforeLoadContextOptions<
-                      any,
-                      any,
-                      any,
-                      any,
-                      any
-                    > = {
-                      search,
-                      abortController,
-                      params,
-                      preload,
-                      context,
-                      location,
-                      navigate: (opts: any) =>
-                        this.navigate({ ...opts, _fromLocation: location }),
-                      buildLocation: this.buildLocation,
-                      cause: preload ? 'preload' : cause,
-                      matches,
-                    }
-
-                    const beforeLoadContext =
-                      await route.options.beforeLoad!(beforeLoadFnContext)
-
-                    if (
-                      isRedirect(beforeLoadContext) ||
-                      isNotFound(beforeLoadContext)
-                    ) {
-                      handleSerialError(index, beforeLoadContext, 'BEFORE_LOAD')
-                    }
-
-                    updateMatch(matchId, (prev) => {
-                      return {
-                        ...prev,
-                        __beforeLoadContext: beforeLoadContext,
-                        context: {
-                          ...prev.context,
-                          ...beforeLoadContext,
-                        },
-                      }
-                    })
-                  } catch (err) {
-                    handleSerialError(index, err, 'BEFORE_LOAD')
+                  if (
+                    isRedirect(beforeLoadContext) ||
+                    isNotFound(beforeLoadContext)
+                  ) {
+                    handleSerialError(index, beforeLoadContext, 'BEFORE_LOAD')
                   }
 
                   updateMatch(matchId, (prev) => {
-                    prev._nonReactive.beforeLoadPromise?.resolve()
-                    prev._nonReactive.beforeLoadPromise = undefined
-
                     return {
                       ...prev,
-                      isFetching: false,
+                      __beforeLoadContext: beforeLoadContext,
+                      context: {
+                        ...prev.context,
+                        ...beforeLoadContext,
+                      },
                     }
                   })
+                } catch (err) {
+                  handleSerialError(index, err, 'BEFORE_LOAD')
                 }
+
+                updateMatch(matchId, (prev) => {
+                  prev._nonReactive.beforeLoadPromise?.resolve()
+                  prev._nonReactive.beforeLoadPromise = undefined
+
+                  return {
+                    ...prev,
+                    isFetching: false,
+                  }
+                })
               }
             }
 
