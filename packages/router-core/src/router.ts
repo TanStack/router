@@ -2293,10 +2293,7 @@ export class RouterCore<
                     }
                   }
                 }
-                updateMatch(matchId, (prev) => ({
-                  ...prev,
-                  ssr,
-                }))
+                existingMatch.ssr = ssr
               }
 
               if (shouldSkipLoader(matchId)) {

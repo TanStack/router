@@ -165,6 +165,7 @@ export interface RouteMatch<
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
+  /** This attribute is not reactive */
   ssr?: boolean | 'data-only'
   _forcePending?: boolean
   _displayPending?: boolean
