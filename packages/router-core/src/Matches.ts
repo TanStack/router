@@ -136,11 +136,18 @@ export interface RouteMatch<
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  loadPromise?: ControlledPromise<void>
-  /** @internal */
-  beforeLoadPromise?: ControlledPromise<void>
-  /** @internal */
-  loaderPromise?: ControlledPromise<void>
+  _nonReactive: {
+    /** @internal */
+    beforeLoadPromise?: ControlledPromise<void>
+    /** @internal */
+    loaderPromise?: ControlledPromise<void>
+    /** @internal */
+    pendingTimeout?: ReturnType<typeof setTimeout>
+    loadPromise?: ControlledPromise<void>
+    displayPendingPromise?: Promise<void>
+    minPendingPromise?: ControlledPromise<void>
+    dehydrated?: boolean
+  }
   loaderData?: TLoaderData
   /** @internal */
   __routeContext: Record<string, unknown>
@@ -158,12 +165,9 @@ export interface RouteMatch<
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
-  minPendingPromise?: ControlledPromise<void>
-  pendingTimeout?: ReturnType<typeof setTimeout>
+  /** This attribute is not reactive */
   ssr?: boolean | 'data-only'
-  _dehydrated?: boolean
   _forcePending?: boolean
-  displayPendingPromise?: Promise<void>
   _displayPending?: boolean
 }
 
