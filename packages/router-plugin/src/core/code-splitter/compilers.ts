@@ -652,6 +652,30 @@ export function compileCodeSplitVirtualRoute(
                   ),
                 ]),
               )
+            } else if (t.isBooleanLiteral(splitNode)) {
+              // Handle boolean literals (false/true)
+              // No code splitting needed for literal values
+              programPath.pushContainer(
+                'body',
+                t.variableDeclaration('const', [
+                  t.variableDeclarator(
+                    t.identifier(splitMeta.localExporterIdent),
+                    splitNode,
+                  ),
+                ]),
+              )
+            } else if (t.isNullLiteral(splitNode)) {
+              // Handle null literals
+              // No code splitting needed for null values
+              programPath.pushContainer(
+                'body',
+                t.variableDeclaration('const', [
+                  t.variableDeclarator(
+                    t.identifier(splitMeta.localExporterIdent),
+                    splitNode,
+                  ),
+                ]),
+              )
             } else {
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
