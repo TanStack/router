@@ -5,12 +5,11 @@ import {
 import { createClerkHandler } from '@clerk/tanstack-react-start/server'
 import { createRouter } from './router'
 
-const handler = createStartHandler({
+const startHandler = createStartHandler({
   createRouter,
 })
-
-const clerkHandler = createClerkHandler(handler)
+const fetch = createClerkHandler(startHandler)(defaultStreamHandler)
 
 export default {
-  fetch: clerkHandler(defaultStreamHandler),
+  fetch,
 }
