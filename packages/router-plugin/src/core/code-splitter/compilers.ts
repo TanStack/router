@@ -223,7 +223,8 @@ export function compileCodeSplitReferenceRoute(
                       // These values mean "don't use this component, fallback to parent"
                       // No code splitting needed to preserve fallback behavior
                       if (
-                        (t.isBooleanLiteral(prop.value) && prop.value.value === false) ||
+                        (t.isBooleanLiteral(prop.value) &&
+                          prop.value.value === false) ||
                         t.isNullLiteral(prop.value)
                       ) {
                         return
