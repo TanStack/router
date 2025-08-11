@@ -219,6 +219,16 @@ export function compileCodeSplitReferenceRoute(
                         return
                       }
 
+                      // Exit early if the value is false or null
+                      // These values mean "don't use this component, fallback to parent"
+                      // No code splitting needed to preserve fallback behavior
+                      if (
+                        (t.isBooleanLiteral(prop.value) && prop.value.value === false) ||
+                        t.isNullLiteral(prop.value)
+                      ) {
+                        return
+                      }
+
                       const splitNodeMeta = SPLIT_NODES_CONFIG.get(key as any)!
 
                       // We need to extract the existing search params from the filename, if any
@@ -654,7 +664,12 @@ export function compileCodeSplitVirtualRoute(
               )
             } else if (t.isBooleanLiteral(splitNode)) {
               // Handle boolean literals (false/true)
-              // No code splitting needed for literal values
+              if (splitNode.value === false) {
+                // false means "don't use this component, fallback to parent"
+                // Skip code splitting to preserve fallback behavior
+                return
+              }
+              // For true or other boolean values, proceed with splitting
               programPath.pushContainer(
                 'body',
                 t.variableDeclaration('const', [
@@ -666,16 +681,9 @@ export function compileCodeSplitVirtualRoute(
               )
             } else if (t.isNullLiteral(splitNode)) {
               // Handle null literals
-              // No code splitting needed for null values
-              programPath.pushContainer(
-                'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitMeta.localExporterIdent),
-                    splitNode,
-                  ),
-                ]),
-              )
+              // null means "don't use this component, fallback to parent"
+              // Skip code splitting to preserve fallback behavior
+              return
             } else {
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
