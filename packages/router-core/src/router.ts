@@ -9,6 +9,7 @@ import {
   createControlledPromise,
   deepEqual,
   functionalUpdate,
+  isPromise,
   last,
   pick,
   replaceEqualDeep,
@@ -2612,8 +2613,7 @@ export class RouterCore<
                             route.options.loader?.(getLoaderContext())
                           const loaderResultIsPromise =
                             route.options.loader &&
-                            loaderResult &&
-                            'then' in loaderResult
+                            isPromise(loaderResult)
 
                           const willLoadSomething = !!(
                             loaderResultIsPromise ||
