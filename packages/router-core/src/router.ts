@@ -2358,7 +2358,8 @@ export class RouterCore<
                   updateMatch(matchId, (prev) => {
                     // explicitly capture the previous loadPromise
                     const prevLoadPromise = prev.loadPromise
-                    prev.__nonReactive.beforeLoadPromise = createControlledPromise<void>()
+                    prev.__nonReactive.beforeLoadPromise =
+                      createControlledPromise<void>()
                     return {
                       ...prev,
                       loadPromise: createControlledPromise<void>(() => {
@@ -2587,13 +2588,14 @@ export class RouterCore<
                         : shouldReloadOption
 
                     updateMatch(matchId, (prev) => {
-                      prev.__nonReactive.loaderPromise = createControlledPromise<void>()
-                      return ({
+                      prev.__nonReactive.loaderPromise =
+                        createControlledPromise<void>()
+                      return {
                         ...prev,
                         preload:
                           !!preload &&
                           !this.state.matches.some((d) => d.id === matchId),
-                      })
+                      }
                     })
 
                     const runLoader = async () => {
@@ -2680,10 +2682,10 @@ export class RouterCore<
 
                         updateMatch(matchId, (prev) => {
                           prev.__nonReactive.loaderPromise = undefined
-                          return ({
+                          return {
                             ...prev,
                             ...head,
-                          })
+                          }
                         })
                         handleRedirectAndNotFound(this.getMatch(matchId)!, err)
                       }
@@ -2728,8 +2730,7 @@ export class RouterCore<
                     }
                   }
                   if (!loaderIsRunningAsync) {
-                    const match =
-                      this.getMatch(matchId)!
+                    const match = this.getMatch(matchId)!
                     match.__nonReactive.loaderPromise?.resolve()
                     match.loadPromise?.resolve()
                   }
