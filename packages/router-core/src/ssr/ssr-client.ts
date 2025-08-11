@@ -105,7 +105,8 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       (d) => d.i === match.id,
     )
     if (!dehydratedMatch) {
-      Object.assign(match, { dehydrated: false, ssr: false })
+      match._nonReactive.dehydrated = false
+      match.ssr = false
       return
     }
 
