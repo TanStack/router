@@ -21,16 +21,17 @@ export const Route = createFileRoute('/headers')({
 
 export const getTestHeaders = createServerFn().handler(() => {
   setResponseHeader('x-test-header', 'test-value')
+  const reqHeaders = Object.fromEntries(getRequestHeaders().entries())
 
   return {
-    serverHeaders: getRequestHeaders(),
-    headers: getRequestHeaders(),
+    serverHeaders: reqHeaders,
+    headers: reqHeaders,
   }
 })
 
 type TestHeadersResult = {
-  headers?: Partial<Record<HTTPHeaderName, string | undefined>>
-  serverHeaders?: Partial<Record<HTTPHeaderName, string | undefined>>
+  headers?: Partial<Record<RequestHeaderName, string | undefined>>
+  serverHeaders?: Partial<Record<RequestHeaderName, string | undefined>>
 }
 
 function ResponseHeaders({
