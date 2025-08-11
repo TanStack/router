@@ -421,47 +421,6 @@ export function createControlledPromise<T>(onResolve?: (value: T) => void) {
   return controlledPromise
 }
 
-/**
- *
- * @deprecated use `jsesc` instead
- */
-export function escapeJSON(jsonString: string) {
-  return jsonString
-    .replace(/\\/g, '\\\\') // Escape backslashes
-    .replace(/'/g, "\\'") // Escape single quotes
-    .replace(/"/g, '\\"') // Escape double quotes
-}
-
-export function shallow<T>(objA: T, objB: T) {
-  if (Object.is(objA, objB)) {
-    return true
-  }
-
-  if (
-    typeof objA !== 'object' ||
-    objA === null ||
-    typeof objB !== 'object' ||
-    objB === null
-  ) {
-    return false
-  }
-
-  const keysA = Object.keys(objA)
-  if (keysA.length !== Object.keys(objB).length) {
-    return false
-  }
-
-  for (const item of keysA) {
-    if (
-      !Object.prototype.hasOwnProperty.call(objB, item) ||
-      !Object.is(objA[item as keyof T], objB[item as keyof T])
-    ) {
-      return false
-    }
-  }
-  return true
-}
-
 export function isModuleNotFoundError(error: any): boolean {
   // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"

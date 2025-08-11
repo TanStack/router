@@ -273,8 +273,6 @@ export {
   isPlainObject,
   isPlainArray,
   deepEqual,
-  escapeJSON,
-  shallow,
   createControlledPromise,
   isModuleNotFoundError,
 } from './utils'
