@@ -108,10 +108,10 @@ export type DefaultRemountDepsFn<TRouteTree extends AnyRoute> = (
   opts: MakeRemountDepsOptionsUnion<TRouteTree>,
 ) => any
 
-export interface DefaultRouterOptionsExtensions {}
+export interface DefaultRouterOptionsExtensions { }
 
 export interface RouterOptionsExtensions
-  extends DefaultRouterOptionsExtensions {}
+  extends DefaultRouterOptionsExtensions { }
 
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
@@ -518,12 +518,12 @@ export type InferRouterContext<TRouteTree extends AnyRoute> =
 
 export type RouterContextOptions<TRouteTree extends AnyRoute> =
   AnyContext extends InferRouterContext<TRouteTree>
-    ? {
-        context?: InferRouterContext<TRouteTree>
-      }
-    : {
-        context: InferRouterContext<TRouteTree>
-      }
+  ? {
+    context?: InferRouterContext<TRouteTree>
+  }
+  : {
+    context: InferRouterContext<TRouteTree>
+  }
 
 export type RouterConstructorOptions<
   TRouteTree extends AnyRoute,
@@ -695,14 +695,14 @@ export type AnyRouter = RouterCore<any, any, any, any, any>
 
 export interface ViewTransitionOptions {
   types:
-    | Array<string>
-    | ((locationChangeInfo: {
-        fromLocation?: ParsedLocation
-        toLocation: ParsedLocation
-        pathChanged: boolean
-        hrefChanged: boolean
-        hashChanged: boolean
-      }) => Array<string>)
+  | Array<string>
+  | ((locationChangeInfo: {
+    fromLocation?: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+    hrefChanged: boolean
+    hashChanged: boolean
+  }) => Array<string>)
 }
 
 export function defaultSerializeError(err: unknown) {
@@ -713,7 +713,7 @@ export function defaultSerializeError(err: unknown) {
     }
 
     if (process.env.NODE_ENV === 'development') {
-      ;(obj as any).stack = err.stack
+      ; (obj as any).stack = err.stack
     }
 
     return obj
@@ -748,12 +748,12 @@ export type CreateRouterFn = <
   options: undefined extends number
     ? 'strictNullChecks must be enabled in tsconfig.json'
     : RouterConstructorOptions<
-        TRouteTree,
-        TTrailingSlashOption,
-        TDefaultStructuralSharingOption,
-        TRouterHistory,
-        TDehydrated
-      >,
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >,
 ) => RouterCore<
   TRouteTree,
   TTrailingSlashOption,
@@ -868,11 +868,11 @@ export class RouterCore<
 
     this.pathParamsDecodeCharMap = this.options.pathParamsAllowedCharacters
       ? new Map(
-          this.options.pathParamsAllowedCharacters.map((char) => [
-            encodeURIComponent(char),
-            char,
-          ]),
-        )
+        this.options.pathParamsAllowedCharacters.map((char) => [
+          encodeURIComponent(char),
+          char,
+        ]),
+      )
       : undefined
 
     if (
@@ -898,8 +898,8 @@ export class RouterCore<
         this.options.history ??
         ((this.isServer
           ? createMemoryHistory({
-              initialEntries: [this.basepath || '/'],
-            })
+            initialEntries: [this.basepath || '/'],
+          })
           : createBrowserHistory()) as TRouterHistory)
       this.updateLatestLocation()
     }
@@ -1085,7 +1085,7 @@ export class RouterCore<
       foundRoute
         ? foundRoute.path !== '/' && routeParams['**']
         : // Or if we didn't find a route and we have left over path
-          trimPathRight(next.pathname)
+        trimPathRight(next.pathname)
     ) {
       // If the user has defined an (old) 404 route, use it
       if (this.options.notFoundRoute) {
@@ -1259,9 +1259,9 @@ export class RouterCore<
       } else {
         const status =
           route.options.loader ||
-          route.options.beforeLoad ||
-          route.lazyFn ||
-          routeNeedsPreload(route)
+            route.options.beforeLoad ||
+            route.lazyFn ||
+            routeNeedsPreload(route)
             ? 'pending'
             : 'success'
 
@@ -1478,9 +1478,9 @@ export class RouterCore<
           : (dest.params ?? true) === true
             ? fromParams
             : {
-                ...fromParams,
-                ...functionalUpdate(dest.params as any, fromParams),
-              }
+              ...fromParams,
+              ...functionalUpdate(dest.params as any, fromParams),
+            }
 
       // Interpolate the path first to get the actual resolved path, then match against that
       const interpolatedNextTo = interpolatePath({
@@ -1665,7 +1665,7 @@ export class RouterCore<
         '__hashScrollIntoViewOptions',
       ] as const
       ignoredProps.forEach((prop) => {
-        ;(next.state as any)[prop] = this.latestLocation.state[prop]
+        ; (next.state as any)[prop] = this.latestLocation.state[prop]
       })
       const isEqual = deepEqual(next.state, this.latestLocation.state)
       ignoredProps.forEach((prop) => {
@@ -1779,7 +1779,7 @@ export class RouterCore<
       try {
         new URL(`${href}`)
         reloadDocument = true
-      } catch {}
+      } catch { }
     }
 
     if (reloadDocument) {
@@ -1934,18 +1934,18 @@ export class RouterCore<
                   this.clearExpiredCache()
                 })
 
-                //
-                ;(
-                  [
-                    [exitingMatches, 'onLeave'],
-                    [enteringMatches, 'onEnter'],
-                    [stayingMatches, 'onStay'],
-                  ] as const
-                ).forEach(([matches, hook]) => {
-                  matches.forEach((match) => {
-                    this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+                  //
+                  ; (
+                    [
+                      [exitingMatches, 'onLeave'],
+                      [enteringMatches, 'onEnter'],
+                      [stayingMatches, 'onStay'],
+                    ] as const
+                  ).forEach(([matches, hook]) => {
+                    matches.forEach((match) => {
+                      this.looseRoutesById[match.routeId]!.options[hook]?.(match)
+                    })
                   })
-                })
               })
             },
           })
@@ -2033,11 +2033,11 @@ export class RouterCore<
         const resolvedViewTransitionTypes =
           typeof shouldViewTransition.types === 'function'
             ? shouldViewTransition.types(
-                getLocationChangeInfo({
-                  resolvedLocation: prevLocation,
-                  location: next,
-                }),
-              )
+              getLocationChangeInfo({
+                resolvedLocation: prevLocation,
+                location: next,
+              }),
+            )
             : shouldViewTransition.types
 
         startViewTransitionParams = {
@@ -2146,7 +2146,7 @@ export class RouterCore<
         }))
 
         if (!(err as any).routeId) {
-          ;(err as any).routeId = match.routeId
+          ; (err as any).routeId = match.routeId
         }
 
         match._nonReactive.loadPromise?.resolve()
@@ -2183,7 +2183,7 @@ export class RouterCore<
 
     try {
       await new Promise<void>((resolveAll, rejectAll) => {
-        ;(async () => {
+        ; (async () => {
           try {
             const handleSerialError = (
               index: number,
@@ -2324,7 +2324,7 @@ export class RouterCore<
                       // Update the match and prematurely resolve the loadMatches promise so that
                       // the pending component can start rendering
                       triggerOnReady()
-                    } catch {}
+                    } catch { }
                   }, pendingMs)
                   match._nonReactive.pendingTimeout = pendingTimeout
                 }
@@ -2469,21 +2469,33 @@ export class RouterCore<
                     if (!match) {
                       return
                     }
+                    if (
+                      !route.options.head &&
+                      !route.options.scripts &&
+                      !route.options.headers
+                    ) {
+                      return
+                    }
                     const assetContext = {
                       matches,
                       match,
                       params: match.params,
                       loaderData: match.loaderData,
                     }
-                    const headFnContent =
-                      await route.options.head?.(assetContext)
+
+                    const [headFnContent, scripts, headers] = await Promise.all(
+                      [
+                        route.options.head?.(assetContext),
+                        route.options.scripts?.(assetContext),
+                        route.options.headers?.(assetContext),
+                      ],
+                    )
+
                     const meta = headFnContent?.meta
                     const links = headFnContent?.links
                     const headScripts = headFnContent?.scripts
                     const styles = headFnContent?.styles
 
-                    const scripts = await route.options.scripts?.(assetContext)
-                    const headers = await route.options.headers?.(assetContext)
                     return {
                       meta,
                       links,
@@ -2505,10 +2517,12 @@ export class RouterCore<
                   if (shouldSkipLoader(matchId)) {
                     if (this.isServer) {
                       const head = await executeHead()
-                      updateMatch(matchId, (prev) => ({
-                        ...prev,
-                        ...head,
-                      }))
+                      if (head) {
+                        updateMatch(matchId, (prev) => ({
+                          ...prev,
+                          ...head,
+                        }))
+                      }
                       return this.getMatch(matchId)!
                     }
                   }
@@ -2674,14 +2688,15 @@ export class RouterCore<
                       } catch (err) {
                         const head = await executeHead()
 
-                        updateMatch(matchId, (prev) => {
-                          prev._nonReactive.loaderPromise = undefined
-                          return {
+                        if (head) {
+                          updateMatch(matchId, (prev) => ({
                             ...prev,
                             ...head,
-                          }
-                        })
-                        handleRedirectAndNotFound(this.getMatch(matchId)!, err)
+                          }))
+                        }
+                        const match = this.getMatch(matchId)!
+                        match._nonReactive.loaderPromise = undefined
+                        handleRedirectAndNotFound(match, err)
                       }
                     }
 
@@ -2694,19 +2709,19 @@ export class RouterCore<
                       // Do nothing
                     } else if (loaderShouldRunAsync && !sync) {
                       loaderIsRunningAsync = true
-                      ;(async () => {
-                        try {
-                          await runLoader()
-                          const match = this.getMatch(matchId)!
-                          match._nonReactive.loaderPromise?.resolve()
-                          match._nonReactive.loadPromise?.resolve()
-                          match._nonReactive.loaderPromise = undefined
-                        } catch (err) {
-                          if (isRedirect(err)) {
-                            await this.navigate(err.options)
+                        ; (async () => {
+                          try {
+                            await runLoader()
+                            const match = this.getMatch(matchId)!
+                            match._nonReactive.loaderPromise?.resolve()
+                            match._nonReactive.loadPromise?.resolve()
+                            match._nonReactive.loaderPromise = undefined
+                          } catch (err) {
+                            if (isRedirect(err)) {
+                              await this.navigate(err.options)
+                            }
                           }
-                        }
-                      })()
+                        })()
                     } else if (
                       status !== 'success' ||
                       (loaderShouldRunAsync && sync)
@@ -2717,10 +2732,12 @@ export class RouterCore<
                       // reason: parent's beforeLoad may have changed the route context
                       // and only now do we know the route context (and that the loader would not run)
                       const head = await executeHead()
-                      updateMatch(matchId, (prev) => ({
-                        ...prev,
-                        ...head,
-                      }))
+                      if (head) {
+                        updateMatch(matchId, (prev) => ({
+                          ...prev,
+                          ...head,
+                        }))
+                      }
                     }
                   }
                   if (!loaderIsRunningAsync) {
@@ -2976,9 +2993,9 @@ export class RouterCore<
       ...location,
       to: location.to
         ? this.resolvePathWithBase(
-            (location.from || '') as string,
-            location.to as string,
-          )
+          (location.from || '') as string,
+          location.to as string,
+        )
         : undefined,
       params: location.params || {},
       leaveParams: true,
@@ -3099,9 +3116,9 @@ export class RouterCore<
   }
 }
 
-export class SearchParamError extends Error {}
+export class SearchParamError extends Error { }
 
-export class PathParamError extends Error {}
+export class PathParamError extends Error { }
 
 const normalize = (str: string) =>
   str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
