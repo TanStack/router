@@ -461,6 +461,7 @@ export interface BuildNextOptions {
   _fromLocation?: ParsedLocation
   unsafeRelative?: 'path'
   _isNavigate?: boolean
+  _isDefinedFrom?: boolean
 }
 
 type NavigationEventInfo = {
@@ -1422,7 +1423,9 @@ export class RouterCore<
       // By default, start with the current location
       let fromPath = this.resolvePathWithBase(lastMatch.fullPath, '.')
       const toPath = dest.to
-        ? this.resolvePathWithBase(fromPath, `${dest.to}`)
+        ? dest.from && dest._isDefinedFrom
+          ? this.resolvePathWithBase(dest.from, `${dest.to}`)
+          : this.resolvePathWithBase(fromPath, `${dest.to}`)
         : this.resolvePathWithBase(fromPath, '.')
 
       const routeIsChanging =
@@ -1437,7 +1440,7 @@ export class RouterCore<
         fromPath = dest.from
 
         // do this check only on navigations during test or development
-        if (process.env.NODE_ENV !== 'production' && dest._isNavigate) {
+        if (process.env.NODE_ENV !== 'production' && dest._isNavigate && dest._isDefinedFrom ) {
           const allFromMatches = this.getMatchedRoutes(
             dest.from,
             undefined,

@@ -34,6 +34,7 @@ export function useNavigate<
       return navigate({
         ...options,
         from,
+        _isDefinedFrom: !!options.from,
       })
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

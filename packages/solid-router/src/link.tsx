@@ -287,6 +287,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
+        _isDefinedFrom: !!_options().from,
         ..._options(),
         replace: local.replace,
         resetScroll: local.resetScroll,

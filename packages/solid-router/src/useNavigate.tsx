@@ -44,7 +44,8 @@ export function Navigate<
 
   Solid.onMount(() => {
     navigate({
-      ...props,
+      _isDefinedFrom: !!props.from,
+      ...props
     })
   })
 
