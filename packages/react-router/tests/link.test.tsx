@@ -820,11 +820,14 @@ describe('Link', () => {
       history,
     })
 
-    render(<RouterProvider router={router} basepath={"/Dashboard"} />)
+    render(<RouterProvider router={router} basepath={'/Dashboard'} />)
 
     // Start at index page
     const toPostsLink = await screen.findByTestId('to-posts')
-    expect(toPostsLink).toHaveAttribute('href', '/Dashboard/posts?page=1&filter=active')
+    expect(toPostsLink).toHaveAttribute(
+      'href',
+      '/Dashboard/posts?page=1&filter=active',
+    )
 
     // Navigate to posts with initial search params
     await act(() => fireEvent.click(toPostsLink))
