@@ -213,9 +213,11 @@ export function compileCodeSplitReferenceRoute(
                       // These values mean "don't use this component, fallback to parent"
                       // No code splitting needed to preserve fallback behavior
                       if (
-                        (t.isBooleanLiteral(prop.value) && prop.value.value === false) ||
+                        (t.isBooleanLiteral(prop.value) &&
+                          prop.value.value === false) ||
                         t.isNullLiteral(prop.value) ||
-                        (t.isIdentifier(prop.value) && prop.value.name === 'undefined')
+                        (t.isIdentifier(prop.value) &&
+                          prop.value.name === 'undefined')
                       ) {
                         return
                       }
@@ -662,7 +664,9 @@ export function compileCodeSplitVirtualRoute(
               }
               // true is not a valid value for errorComponent, but handle it gracefully
               // This should not happen with proper TypeScript usage
-              console.warn(`Unexpected boolean value '${splitNode.value}' for ${splitMeta.routeIdent}. Only 'false' is valid.`)
+              console.warn(
+                `Unexpected boolean value '${splitNode.value}' for ${splitMeta.routeIdent}. Only 'false' is valid.`,
+              )
               return
             } else if (t.isNullLiteral(splitNode)) {
               // Handle null literals
