@@ -99,7 +99,24 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type InjectedHtmlEntry = Promise<string>
 
-export interface DefaultRegister {
+type FindRouter<TKeys extends keyof MetaRegister = keyof MetaRegister> =
+  TKeys extends any
+    ? Register[MetaRegister[TKeys]] extends never
+      ? never
+      : Register[MetaRegister[TKeys]]
+    : never
+
+export type RegisteredRouter = [FindRouter] extends [never]
+  ? Register['router']
+  : FindRouter['~types']['router']
+
+export interface AdditionalRegister {}
+
+export interface MetaRegister {
+  //router: unknown
+}
+
+export interface DefaultRegister extends AdditionalRegister {
   router: AnyRouter
   config: AnyRouterConfig
   ssr: SSROption
@@ -108,8 +125,6 @@ export interface DefaultRegister {
 export interface Register extends DefaultRegister {
   // router: Router
 }
-
-export type RegisteredRouter = Register['router']
 
 export type DefaultRemountDepsFn<TRouteTree extends AnyRoute> = (
   opts: MakeRemountDepsOptionsUnion<TRouteTree>,

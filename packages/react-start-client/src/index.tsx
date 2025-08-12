@@ -56,3 +56,5 @@ export {
 export { StartClient } from './StartClient'
 export { renderRsc } from './renderRSC'
 export { useServerFn } from './useServerFn'
+
+export * from '@tanstack/start-client-core'

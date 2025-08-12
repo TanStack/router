@@ -37,10 +37,13 @@ import type {
   SessionUpdate,
 } from './session'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
+import { RegisteredRequestContext } from '@tanstack/start-client-core'
 
 interface StartEvent {
   h3Event: H3Event
+  context?: RegisteredRequestContext
 }
+
 const eventStorage = new AsyncLocalStorage<StartEvent>()
 
 export type RequestHandler = (request: Request) => Promise<Response> | Response
@@ -50,20 +53,31 @@ export type { ResponseHeaderName, RequestHeaderName }
 export function requestHandler(handler: RequestHandler) {
   return (request: Request): Promise<Response> | Response => {
     const h3Event = new H3Event(request)
-
     const response = eventStorage.run({ h3Event }, () => handler(request))
     return h3_toResponse(response, h3Event)
   }
 }
 
-function getH3Event() {
+function getEvent(): StartEvent {
   const event = eventStorage.getStore()
   if (!event) {
     throw new Error(
       `No StartEvent found in AsyncLocalStorage. Make sure you are using the function within the server runtime.`,
     )
   }
-  return event.h3Event
+  return event
+}
+
+export function getRequestContext(): RegisteredRequestContext | undefined {
+  return getEvent().context
+}
+
+export function setRequestContext(context: RegisteredRequestContext) {
+  getEvent().context = context
+}
+
+function getH3Event() {
+  return getEvent().h3Event
 }
 
 export function getRequest(): Request {

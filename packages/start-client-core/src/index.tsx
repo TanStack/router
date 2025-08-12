@@ -83,3 +83,18 @@ export {
   TSS_SERVER_FUNCTION,
   X_TSS_SERIALIZED,
 } from './constants'
+
+export type {
+AnyStartConfig,
+CreateStartOptions,
+ResolveStartRouter,
+StartConfig,
+StartConfigTypes,
+ValidateStartOptions,
+RegisteredStartConfig,
+RegisteredRequestContext
+} from './createStart'
+
+export { createStart } from './createStart'
+
+export type { Register} from '@tanstack/router-core'
