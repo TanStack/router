@@ -209,23 +209,13 @@ export function compileCodeSplitReferenceRoute(
                         return
                       }
 
-                      // Exit early if the value is undefined
-                      // Since we don't need to run an import just to get the value of `undefined`
-                      // This is useful for cases like: `createFileRoute('/')({ component: undefined })`
-                      if (
-                        t.isIdentifier(prop.value) &&
-                        prop.value.name === 'undefined'
-                      ) {
-                        return
-                      }
-
-                      // Exit early if the value is false or null
+                      // Exit early if the value is false, null, or undefined
                       // These values mean "don't use this component, fallback to parent"
                       // No code splitting needed to preserve fallback behavior
                       if (
-                        (t.isBooleanLiteral(prop.value) &&
-                          prop.value.value === false) ||
-                        t.isNullLiteral(prop.value)
+                        (t.isBooleanLiteral(prop.value) && prop.value.value === false) ||
+                        t.isNullLiteral(prop.value) ||
+                        (t.isIdentifier(prop.value) && prop.value.name === 'undefined')
                       ) {
                         return
                       }
@@ -664,22 +654,16 @@ export function compileCodeSplitVirtualRoute(
                 ]),
               )
             } else if (t.isBooleanLiteral(splitNode)) {
-              // Handle boolean literals (false/true)
+              // Handle boolean literals - only false is valid for errorComponent
               if (splitNode.value === false) {
                 // false means "don't use this component, fallback to parent"
                 // Skip code splitting to preserve fallback behavior
                 return
               }
-              // For true or other boolean values, proceed with splitting
-              programPath.pushContainer(
-                'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitMeta.localExporterIdent),
-                    splitNode,
-                  ),
-                ]),
-              )
+              // true is not a valid value for errorComponent, but handle it gracefully
+              // This should not happen with proper TypeScript usage
+              console.warn(`Unexpected boolean value '${splitNode.value}' for ${splitMeta.routeIdent}. Only 'false' is valid.`)
+              return
             } else if (t.isNullLiteral(splitNode)) {
               // Handle null literals
               // null means "don't use this component, fallback to parent"
