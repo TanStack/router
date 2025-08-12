@@ -1535,7 +1535,7 @@ test.each([true, false])(
             onClick={() =>
               navigate({
                 from: '/posts',
-                to: '.'
+                to: '.',
               })
             }
           >
@@ -1576,7 +1576,7 @@ test.each([true, false])(
             onClick={() =>
               navigate({
                 from: '/posts/$postId',
-                to: '.'
+                to: '.',
               })
             }
           >
@@ -1630,7 +1630,11 @@ test.each([true, false])(
     const router = createRouter({
       routeTree: rootRoute.addChildren([
         indexRoute,
-        layoutRoute.addChildren([postsRoute.addChildren([postDetailRoute.addChildren([postInfoRoute, postNotesRoute])])]),
+        layoutRoute.addChildren([
+          postsRoute.addChildren([
+            postDetailRoute.addChildren([postInfoRoute, postNotesRoute]),
+          ]),
+        ]),
       ]),
       trailingSlash: trailingSlash ? 'always' : 'never',
     })
@@ -1648,7 +1652,9 @@ test.each([true, false])(
 
     fireEvent.click(firstPostButton)
 
-    expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
+    expect(
+      await screen.findByTestId('post-detail-index-heading'),
+    ).toBeInTheDocument()
     expect(window.location.pathname).toEqual(`/posts/1${tail}`)
 
     const postInfoButton = await screen.findByTestId('post-info-btn')
@@ -1658,14 +1664,16 @@ test.each([true, false])(
     expect(await screen.findByTestId('post-info-heading')).toBeInTheDocument()
     expect(window.location.pathname).toEqual(`/posts/1/info${tail}`)
 
-    const toPostDetailIndexButton = await screen.findByTestId('to-post-detail-index-btn')
+    const toPostDetailIndexButton = await screen.findByTestId(
+      'to-post-detail-index-btn',
+    )
 
     fireEvent.click(toPostDetailIndexButton)
 
-    expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
     expect(
-      screen.queryByTestId("'post-info-heading"),
-    ).not.toBeInTheDocument()
+      await screen.findByTestId('post-detail-index-heading'),
+    ).toBeInTheDocument()
+    expect(screen.queryByTestId("'post-info-heading")).not.toBeInTheDocument()
     expect(window.location.pathname).toEqual(`/posts/1${tail}`)
 
     const postNotesButton = await screen.findByTestId('post-notes-btn')
@@ -1680,9 +1688,7 @@ test.each([true, false])(
     fireEvent.click(toPostsIndexButton)
 
     expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
-    expect(
-      screen.queryByTestId("'post-notes-heading"),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByTestId("'post-notes-heading")).not.toBeInTheDocument()
     expect(
       screen.queryByTestId("'post-detail-index-heading"),
     ).not.toBeInTheDocument()
@@ -1692,7 +1698,9 @@ test.each([true, false])(
 
     fireEvent.click(secondPostButton)
 
-    expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
+    expect(
+      await screen.findByTestId('post-detail-index-heading'),
+    ).toBeInTheDocument()
     expect(window.location.pathname).toEqual(`/posts/2${tail}`)
   },
 )

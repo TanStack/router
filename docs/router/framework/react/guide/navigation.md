@@ -217,15 +217,13 @@ function PostComponent() {
     <div>
       <Link to=".">Reload the current route of /posts/$postId</Link>
       <Link to="..">Navigate back to /posts</Link>
-      
       // the below are all equivalent
       <Link to="/posts">Navigate back to /posts</Link>
-      <Link from="/posts" to=".">Navigate back to /posts</Link>
-      
-      // the below are all equivalent
-      <Link to="/">
-        Navigate to root
+      <Link from="/posts" to=".">
+        Navigate back to /posts
       </Link>
+      // the below are all equivalent
+      <Link to="/">Navigate to root</Link>
       <Link from="/posts" to="..">
         Navigate to root
       </Link>

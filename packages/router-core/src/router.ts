@@ -1440,7 +1440,11 @@ export class RouterCore<
         fromPath = dest.from
 
         // do this check only on navigations during test or development
-        if (process.env.NODE_ENV !== 'production' && dest._isNavigate && dest._isDefinedFrom ) {
+        if (
+          process.env.NODE_ENV !== 'production' &&
+          dest._isNavigate &&
+          dest._isDefinedFrom
+        ) {
           const allFromMatches = this.getMatchedRoutes(
             dest.from,
             undefined,

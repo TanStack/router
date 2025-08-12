@@ -285,7 +285,7 @@ export function useLinkProps<
         hashScrollIntoView,
         startTransition,
         viewTransition,
-        ignoreBlocker
+        ignoreBlocker,
       })
     }
   }
