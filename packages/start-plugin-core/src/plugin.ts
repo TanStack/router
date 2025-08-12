@@ -311,7 +311,7 @@ export function TanStackStartVitePluginCore(
     startManifestPlugin({
       getClientBundle: () => getBundle(VITE_ENVIRONMENT_NAMES.client),
     }),
-    devServerPlugin(),
+    devServerPlugin({ startConfig }),
     {
       name: 'tanstack-start:core:capture-bundle',
       applyToEnvironment(e) {

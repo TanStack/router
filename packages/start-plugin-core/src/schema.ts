@@ -173,6 +173,9 @@ const tanstackStartOptionsSchema = z
       .and(pagePrerenderOptionsSchema.optional())
       .optional(),
     spa: spaSchema.optional(),
+    vite: z
+      .object({ installDevServerMiddleware: z.boolean().optional() })
+      .optional(),
   })
   .optional()
   .default({})

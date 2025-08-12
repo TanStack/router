@@ -5,8 +5,13 @@ import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { resolveViteId } from '../utils'
 import { extractHtmlScripts } from './extract-html-scripts'
 import type { Connect, DevEnvironment, PluginOption } from 'vite'
+import type { TanStackStartOutputConfig } from '../schema'
 
-export function devServerPlugin(): PluginOption {
+export function devServerPlugin({
+  startConfig,
+}: {
+  startConfig: TanStackStartOutputConfig
+}): PluginOption {
   let isTest = false
 
   let injectedHeadScripts: string | undefined
@@ -34,11 +39,6 @@ export function devServerPlugin(): PluginOption {
           .join(';')
 
         return () => {
-          // do not install middleware in middlewareMode
-          if (viteDevServer.config.server.middlewareMode) {
-            return
-          }
-
           const serverEnv = viteDevServer.environments[
             VITE_ENVIRONMENT_NAMES.server
           ] as DevEnvironment | undefined
@@ -48,14 +48,30 @@ export function devServerPlugin(): PluginOption {
               `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
             )
           }
-
-          // do not install middleware if SSR env in case another plugin already did
-          if (
-            !isRunnableDevEnvironment(serverEnv) ||
-            // do not check via `isFetchableDevEnvironment` since nitro does implement the `FetchableDevEnvironment` interface but not via inheritance (which this helper checks)
-            'dispatchFetch' in serverEnv
-          ) {
+          const installMiddleware = startConfig.vite?.installDevServerMiddleware
+          if (installMiddleware === false) {
             return
+          }
+          if (installMiddleware == undefined) {
+            // do not install middleware in middlewareMode by default
+            if (viteDevServer.config.server.middlewareMode) {
+              return
+            }
+
+            // do not install middleware if SSR env in case another plugin already did
+            if (
+              !isRunnableDevEnvironment(serverEnv) ||
+              // do not check via `isFetchableDevEnvironment` since nitro does implement the `FetchableDevEnvironment` interface but not via inheritance (which this helper checks)
+              'dispatchFetch' in serverEnv
+            ) {
+              return
+            }
+          }
+
+          if (!isRunnableDevEnvironment(serverEnv)) {
+            throw new Error(
+              'cannot install vite dev server middleware for TanStack Start since the SSR environment is not a RunnableDevEnvironment',
+            )
           }
 
           viteDevServer.middlewares.use(async (req, res) => {
