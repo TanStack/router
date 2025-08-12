@@ -201,9 +201,11 @@ As seen above, it's common to provide the `route.fullPath` as the `from` route p
 
 ### Special relative paths: `"."` and `".."`
 
-Quite often you might want to reload the current location, for example, to rerun the loaders on the current and/or parent routes, or maybe there was a change in search parameters. This can be achieved by specifying a `to` route path of `"."` which will reload the current location. This is only applicable to the current location, and hence any `from` route path specified is ignored.
+Quite often you might want to reload the current location, for example, to rerun the loaders on the current and/or parent routes, or maybe there was a change in search parameters. This can be achieved by specifying a `to` route path of `"."` which will reload the current location.
 
-Another common need is to navigate one route back relative to the current location or some other matched route in the current tree. By specifying a `to` route path of `".."` navigation will be resolved to either the first parent route preceding the current location or, if specified, preceding the `"from"` route path.
+Another common need is to navigate one route back relative to the current location. By specifying a `to` route path of `".."` navigation will be resolved to the first parent route preceding the current location.
+
+While both of these can be used in conjunction with `from` to navigate relative to some other matched route in the current tree, it is recommended to use a defined `to` route path should you need to navigate to a different location since this is more explicit in its intent.
 
 ```tsx
 export const Route = createFileRoute('/posts/$postId')({
@@ -214,7 +216,16 @@ function PostComponent() {
   return (
     <div>
       <Link to=".">Reload the current route of /posts/$postId</Link>
-      <Link to="..">Navigate to /posts</Link>
+      <Link to="..">Navigate back to /posts</Link>
+      
+      // the below are all equivalent
+      <Link to="/posts">Navigate back to /posts</Link>
+      <Link from="/posts" to=".">Navigate back to /posts</Link>
+      
+      // the below are all equivalent
+      <Link to="/">
+        Navigate to root
+      </Link>
       <Link from="/posts" to="..">
         Navigate to root
       </Link>
