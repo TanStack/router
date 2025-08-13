@@ -1420,7 +1420,7 @@ export class RouterCore<
 
       // First let's find the starting pathname
       // By default, start with the current location
-      let fromPath = lastMatch.fullPath
+      let fromPath = this.resolvePathWithBase(lastMatch.fullPath, '.')
       const toPath = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
         : this.resolvePathWithBase(fromPath, '.')
@@ -1460,6 +1460,8 @@ export class RouterCore<
           }
         }
       }
+
+      fromPath = this.resolvePathWithBase(fromPath, '.')
 
       // From search should always use the current location
       const fromSearch = lastMatch.search
