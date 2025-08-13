@@ -1,5 +1,8 @@
 import { fileURLToPath } from 'node:url'
-import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
+import {
+  TanStackStartVitePluginCore,
+  VITE_ENVIRONMENT_NAMES,
+} from '@tanstack/start-plugin-core'
 import path from 'pathe'
 import type { TanStackStartInputConfig } from '@tanstack/start-plugin-core'
 import type { PluginOption } from 'vite'
@@ -43,14 +46,15 @@ export function tanstackStart(
   return [
     {
       name: 'tanstack-react-start:config',
-      configEnvironment() {
+      configEnvironment(env, userConfig) {
         return {
           resolve: {
             dedupe: ['react', 'react-dom', '@tanstack/react-router'],
 
-            external: isInsideRouterMonoRepo
-              ? ['@tanstack/react-router', '@tanstack/react-router-devtools']
-              : undefined,
+            external:
+              userConfig.resolve?.noExternal === true || !isInsideRouterMonoRepo
+                ? undefined
+                : ['@tanstack/react-router', '@tanstack/react-router-devtools'],
           },
 
           optimizeDeps: {
@@ -62,6 +66,9 @@ export function tanstackStart(
               'react-dom',
               'react-dom/client',
               '@tanstack/react-router',
+              ...(env === VITE_ENVIRONMENT_NAMES.server
+                ? ['react-dom/server']
+                : []),
             ],
           },
         }

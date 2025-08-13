@@ -218,6 +218,18 @@ export function TanStackStartVitePluginCore(
                   viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
                     ?.build?.copyPublicDir ?? false,
               },
+              optimizeDeps: {
+                exclude: [
+                  ...Object.values(VIRTUAL_MODULES),
+                  ...result.optimizeDeps.exclude.sort(),
+                  ...additionalOptimizeDeps.exclude,
+                  `@tanstack/${corePluginOpts.framework}-start/server-functions-server`,
+                ],
+                include: [
+                  ...additionalOptimizeDeps.include,
+                  ...result.optimizeDeps.include.sort(),
+                ],
+              },
             },
           },
           resolve: {
