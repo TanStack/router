@@ -209,12 +209,14 @@ export function compileCodeSplitReferenceRoute(
                         return
                       }
 
-                      // Exit early if the value is undefined
-                      // Since we don't need to run an import just to get the value of `undefined`
-                      // This is useful for cases like: `createFileRoute('/')({ component: undefined })`
+                      // Exit early if the value is a boolean, null, or undefined.
+                      // These values mean "don't use this component, fallback to parent"
+                      // No code splitting needed to preserve fallback behavior
                       if (
-                        t.isIdentifier(prop.value) &&
-                        prop.value.name === 'undefined'
+                        t.isBooleanLiteral(prop.value) ||
+                        t.isNullLiteral(prop.value) ||
+                        (t.isIdentifier(prop.value) &&
+                          prop.value.name === 'undefined')
                       ) {
                         return
                       }
@@ -652,6 +654,14 @@ export function compileCodeSplitVirtualRoute(
                   ),
                 ]),
               )
+            } else if (t.isBooleanLiteral(splitNode)) {
+              // Handle boolean literals
+              // This exits early here, since this value will be kept in the reference file
+              return
+            } else if (t.isNullLiteral(splitNode)) {
+              // Handle null literals
+              // This exits early here, since this value will be kept in the reference file
+              return
             } else {
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)

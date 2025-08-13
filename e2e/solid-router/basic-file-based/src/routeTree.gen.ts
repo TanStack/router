@@ -14,6 +14,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
+import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
@@ -61,6 +62,11 @@ const EditingBRoute = EditingBRouteImport.update({
 const EditingARoute = EditingARouteImport.update({
   id: '/editing-a',
   path: '/editing-a',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComponentTypesTestRoute = ComponentTypesTestRouteImport.update({
+  id: '/component-types-test',
+  path: '/component-types-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnchorRoute = AnchorRouteImport.update({
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/anchor': typeof AnchorRoute
+  '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/posts': typeof PostsRouteWithChildren
@@ -232,6 +239,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof groupLayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
+  '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
@@ -261,6 +269,7 @@ export interface FileRoutesById {
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
+  '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/posts': typeof PostsRouteWithChildren
@@ -295,6 +304,7 @@ export interface FileRouteTypes {
     | '/'
     | '/search-params'
     | '/anchor'
+    | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
     | '/posts'
@@ -323,6 +333,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/anchor'
+    | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
     | '/onlyrouteinside'
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/_layout'
     | '/anchor'
+    | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
     | '/posts'
@@ -385,6 +397,7 @@ export interface RootRouteChildren {
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
+  ComponentTypesTestRoute: typeof ComponentTypesTestRoute
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
   PostsRoute: typeof PostsRouteWithChildren
@@ -427,6 +440,13 @@ declare module '@tanstack/solid-router' {
       path: '/editing-a'
       fullPath: '/editing-a'
       preLoaderRoute: typeof EditingARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/component-types-test': {
+      id: '/component-types-test'
+      path: '/component-types-test'
+      fullPath: '/component-types-test'
+      preLoaderRoute: typeof ComponentTypesTestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/anchor': {
@@ -720,6 +740,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
+  ComponentTypesTestRoute: ComponentTypesTestRoute,
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
   PostsRoute: PostsRouteWithChildren,
