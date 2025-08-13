@@ -11,7 +11,9 @@
 import { createFileRoute } from '@tanstack/solid-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
 import { Route as AnchorRouteImport } from './routes/anchor'
@@ -48,9 +50,19 @@ const groupRoute = groupRouteImport.update({
   id: '/(group)',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RemountDepsRoute = RemountDepsRouteImport.update({
+  id: '/remountDeps',
+  path: '/remountDeps',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotRemountDepsRoute = NotRemountDepsRouteImport.update({
+  id: '/notRemountDeps',
+  path: '/notRemountDeps',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EditingBRoute = EditingBRouteImport.update({
@@ -206,7 +218,9 @@ export interface FileRoutesByFullPath {
   '/anchor': typeof AnchorRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
+  '/remountDeps': typeof RemountDepsRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
@@ -234,6 +248,8 @@ export interface FileRoutesByTo {
   '/anchor': typeof AnchorRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/notRemountDeps': typeof NotRemountDepsRoute
+  '/remountDeps': typeof RemountDepsRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
@@ -263,7 +279,9 @@ export interface FileRoutesById {
   '/anchor': typeof AnchorRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
+  '/remountDeps': typeof RemountDepsRoute
   '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/(group)': typeof groupRouteWithChildren
   '/(group)/_layout': typeof groupLayoutRouteWithChildren
@@ -297,7 +315,9 @@ export interface FileRouteTypes {
     | '/anchor'
     | '/editing-a'
     | '/editing-b'
+    | '/notRemountDeps'
     | '/posts'
+    | '/remountDeps'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
@@ -325,6 +345,8 @@ export interface FileRouteTypes {
     | '/anchor'
     | '/editing-a'
     | '/editing-b'
+    | '/notRemountDeps'
+    | '/remountDeps'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
@@ -353,7 +375,9 @@ export interface FileRouteTypes {
     | '/anchor'
     | '/editing-a'
     | '/editing-b'
+    | '/notRemountDeps'
     | '/posts'
+    | '/remountDeps'
     | '/(another-group)/onlyrouteinside'
     | '/(group)'
     | '/(group)/_layout'
@@ -387,7 +411,9 @@ export interface RootRouteChildren {
   AnchorRoute: typeof AnchorRoute
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
+  NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
+  RemountDepsRoute: typeof RemountDepsRoute
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupRoute: typeof groupRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
@@ -408,11 +434,25 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof groupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/remountDeps': {
+      id: '/remountDeps'
+      path: '/remountDeps'
+      fullPath: '/remountDeps'
+      preLoaderRoute: typeof RemountDepsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notRemountDeps': {
+      id: '/notRemountDeps'
+      path: '/notRemountDeps'
+      fullPath: '/notRemountDeps'
+      preLoaderRoute: typeof NotRemountDepsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/editing-b': {
@@ -722,7 +762,9 @@ const rootRouteChildren: RootRouteChildren = {
   AnchorRoute: AnchorRoute,
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
+  NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
+  RemountDepsRoute: RemountDepsRoute,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
