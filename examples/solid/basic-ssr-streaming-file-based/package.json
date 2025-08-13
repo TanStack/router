@@ -11,8 +11,8 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.131.8",
-    "@tanstack/solid-router-devtools": "^1.131.8",
+    "@tanstack/solid-router": "^1.131.9",
+    "@tanstack/solid-router-devtools": "^1.131.9",
     "autoprefixer": "^10.4.20",
     "compression": "^1.7.5",
     "express": "^4.21.2",
