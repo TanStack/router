@@ -49,7 +49,7 @@ import type { LinkComponentRoute } from './link'
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
     component?: RouteComponent
-    errorComponent?: false | null | ErrorRouteComponent<any>
+    errorComponent?: false | null | ErrorRouteComponent
     notFoundComponent?: NotFoundRouteComponent
     pendingComponent?: RouteComponent
   }
@@ -555,9 +555,7 @@ export type AsyncRouteComponent<TProps> = RouteTypes<TProps>['component'] & {
 
 export type RouteComponent = AsyncRouteComponent<{}>
 
-export type ErrorRouteComponent<TError = Error> = AsyncRouteComponent<
-  ErrorComponentProps<TError>
->
+export type ErrorRouteComponent = AsyncRouteComponent<ErrorComponentProps>
 
 export type NotFoundRouteComponent = RouteTypes<NotFoundRouteProps>['component']
 
