@@ -116,16 +116,19 @@ To make sure it that it does not conflict with TanStack Router, you should add `
 
 ```json
 {
-  rules: {
-    "@typescript-eslint/only-throw-error": ["error", {
-      "allow": [
-        {
-          "from": "package",
-          "package": "@tanstack/router-core",
-          "name": "Redirect"
-        }
-      ]
-    }]
+  "rules": {
+    "@typescript-eslint/only-throw-error": [
+      "error",
+      {
+        "allow": [
+          {
+            "from": "package",
+            "package": "@tanstack/router-core",
+            "name": "Redirect"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
