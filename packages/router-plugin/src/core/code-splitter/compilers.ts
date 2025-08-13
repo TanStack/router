@@ -209,12 +209,11 @@ export function compileCodeSplitReferenceRoute(
                         return
                       }
 
-                      // Exit early if the value is false, null, or undefined
+                      // Exit early if the value is a boolean, null, or undefined.
                       // These values mean "don't use this component, fallback to parent"
                       // No code splitting needed to preserve fallback behavior
                       if (
-                        (t.isBooleanLiteral(prop.value) &&
-                          prop.value.value === false) ||
+                        t.isBooleanLiteral(prop.value) ||
                         t.isNullLiteral(prop.value) ||
                         (t.isIdentifier(prop.value) &&
                           prop.value.name === 'undefined')
@@ -656,22 +655,12 @@ export function compileCodeSplitVirtualRoute(
                 ]),
               )
             } else if (t.isBooleanLiteral(splitNode)) {
-              // Handle boolean literals - only false is valid for errorComponent
-              if (splitNode.value === false) {
-                // false means "don't use this component, fallback to parent"
-                // Skip code splitting to preserve fallback behavior
-                return
-              }
-              // true is not a valid value for errorComponent, but handle it gracefully
-              // This should not happen with proper TypeScript usage
-              console.warn(
-                `Unexpected boolean value '${splitNode.value}' for ${splitMeta.routeIdent}. Only 'false' is valid.`,
-              )
+              // Handle boolean literals
+              // This exits early here, since this value will be kept in the reference file
               return
             } else if (t.isNullLiteral(splitNode)) {
               // Handle null literals
-              // null means "don't use this component, fallback to parent"
-              // Skip code splitting to preserve fallback behavior
+              // This exits early here, since this value will be kept in the reference file
               return
             } else {
               console.info('Unexpected splitNode type:', splitNode)
