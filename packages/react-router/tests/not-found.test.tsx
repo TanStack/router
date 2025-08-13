@@ -126,19 +126,19 @@ test.each([
 )
 
 test('defaultNotFoundComponent and notFoundComponent receives data props via spread operator', async () => {
+  const isCustomData = (data: unknown): data is typeof customData => {
+    return 'message' in (data as typeof customData)
+  }
+
   const customData = {
     message: 'Custom not found message',
   }
 
   const DefaultNotFoundComponentWithProps = (props: NotFoundRouteProps) => (
     <div data-testid="default-not-found-with-props">
-      <span data-testid="message">{props.data.message}</span>
-    </div>
-  )
-
-  const NotFoundComponentWithProps = (props: NotFoundRouteProps) => (
-    <div data-testid="not-found-with-props">
-      <span data-testid="message">{props.data.message}</span>
+      <span data-testid="message">
+        {isCustomData(props.data) && <span>{props.data.message}</span>}
+      </span>
     </div>
   )
 
@@ -194,7 +194,13 @@ test('defaultNotFoundComponent and notFoundComponent receives data props via spr
     component: () => (
       <div data-testid="not-found-route-component">Should not render</div>
     ),
-    notFoundComponent: NotFoundComponentWithProps,
+    notFoundComponent: (props) => (
+      <div data-testid="not-found-with-props">
+        <span data-testid="message">
+          {isCustomData(props.data) && <span>{props.data.message}</span>}
+        </span>
+      </div>
+    ),
   })
 
   const router = createRouter({
