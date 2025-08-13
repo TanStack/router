@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ErrorComponentTestRouteImport } from './routes/error-component-test'
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as PathlessLayoutRouteImport } from './routes/_pathlessLayout'
 import { Route as PostsRouteRouteImport } from './routes/posts.route'
@@ -20,11 +19,6 @@ import { Route as PathlessLayoutNestedLayoutRouteImport } from './routes/_pathle
 import { Route as PathlessLayoutNestedLayoutRouteBRouteImport } from './routes/_pathlessLayout/_nested-layout/route-b'
 import { Route as PathlessLayoutNestedLayoutRouteARouteImport } from './routes/_pathlessLayout/_nested-layout/route-a'
 
-const ErrorComponentTestRoute = ErrorComponentTestRouteImport.update({
-  id: '/error-component-test',
-  path: '/error-component-test',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AnchorRoute = AnchorRouteImport.update({
   id: '/anchor',
   path: '/anchor',
@@ -76,7 +70,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteRouteWithChildren
   '/anchor': typeof AnchorRoute
-  '/error-component-test': typeof ErrorComponentTestRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
@@ -85,7 +78,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/anchor': typeof AnchorRoute
-  '/error-component-test': typeof ErrorComponentTestRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts': typeof PostsIndexRoute
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
@@ -97,7 +89,6 @@ export interface FileRoutesById {
   '/posts': typeof PostsRouteRouteWithChildren
   '/_pathlessLayout': typeof PathlessLayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
-  '/error-component-test': typeof ErrorComponentTestRoute
   '/_pathlessLayout/_nested-layout': typeof PathlessLayoutNestedLayoutRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/posts/': typeof PostsIndexRoute
@@ -110,27 +101,18 @@ export interface FileRouteTypes {
     | '/'
     | '/posts'
     | '/anchor'
-    | '/error-component-test'
     | '/posts/$postId'
     | '/posts/'
     | '/route-a'
     | '/route-b'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/anchor'
-    | '/error-component-test'
-    | '/posts/$postId'
-    | '/posts'
-    | '/route-a'
-    | '/route-b'
+  to: '/' | '/anchor' | '/posts/$postId' | '/posts' | '/route-a' | '/route-b'
   id:
     | '__root__'
     | '/'
     | '/posts'
     | '/_pathlessLayout'
     | '/anchor'
-    | '/error-component-test'
     | '/_pathlessLayout/_nested-layout'
     | '/posts/$postId'
     | '/posts/'
@@ -143,18 +125,10 @@ export interface RootRouteChildren {
   PostsRouteRoute: typeof PostsRouteRouteWithChildren
   PathlessLayoutRoute: typeof PathlessLayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
-  ErrorComponentTestRoute: typeof ErrorComponentTestRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/error-component-test': {
-      id: '/error-component-test'
-      path: '/error-component-test'
-      fullPath: '/error-component-test'
-      preLoaderRoute: typeof ErrorComponentTestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/anchor': {
       id: '/anchor'
       path: '/anchor'
@@ -270,7 +244,6 @@ const rootRouteChildren: RootRouteChildren = {
   PostsRouteRoute: PostsRouteRouteWithChildren,
   PathlessLayoutRoute: PathlessLayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
-  ErrorComponentTestRoute: ErrorComponentTestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
