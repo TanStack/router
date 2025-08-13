@@ -1323,8 +1323,8 @@ export type ErrorComponentProps<TError = Error> = {
   reset: () => void
 }
 
-export type NotFoundRouteProps<TData = unknown> = {
-  data?: TData
+export type NotFoundRouteProps = {
+  data?: unknown
   isNotFound: boolean
   routeId: RouteIds<RegisteredRouter['routeTree']>
 }
