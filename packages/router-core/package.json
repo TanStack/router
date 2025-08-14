@@ -79,6 +79,7 @@
     "node": ">=12"
   },
   "dependencies": {
+    "@tanstack/devtools-event-client": "0.2.1",
     "@tanstack/history": "workspace:*",
     "@tanstack/store": "^0.7.0",
     "cookie-es": "^1.2.2",

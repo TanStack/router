@@ -412,3 +412,4 @@ export type {
   ValidateUseSearchResult,
   ValidateUseParamsResult,
 } from './typePrimitives'
+export { routerEventClient } from "./eventClient"
