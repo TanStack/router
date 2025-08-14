@@ -2121,7 +2121,10 @@ export class RouterCore<
       triggerOnReady()
     }
 
-    const handleRedirectAndNotFound = (match: AnyRouteMatch | undefined, err: any) => {
+    const handleRedirectAndNotFound = (
+      match: AnyRouteMatch | undefined,
+      err: any,
+    ) => {
       if (isRedirect(err) || isNotFound(err)) {
         if (isRedirect(err)) {
           if (err.redirectHandled) {
