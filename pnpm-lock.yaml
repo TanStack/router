@@ -6606,6 +6606,9 @@ importers:
 
   packages/router-core:
     dependencies:
+      '@tanstack/devtools-event-client':
+        specifier: 0.2.1
+        version: 0.2.1
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
@@ -6662,6 +6665,9 @@ importers:
 
   packages/router-devtools-core:
     dependencies:
+      '@tanstack/devtools-event-client':
+        specifier: ^0.2.1
+        version: 0.2.1
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
@@ -10399,6 +10405,10 @@ packages:
     resolution: {integrity: sha512-GLt1xyQCGRty58N2jv0ONouv8OU46FjkbcSSTiAKwydcX+JycZ7FCLWt05lefrvuV8Eay0eNuN0sYUemObZLEA==}
     engines: {node: '>=18'}
     hasBin: true
+
+  '@tanstack/devtools-event-client@0.2.1':
+    resolution: {integrity: sha512-78AAfg9KfSDE+pQLRJo20bxX3A40ea14kFqNmzuMb7zFJNfR5L87kAEOju6QXu7cbk9r2r7EEV2a8PgHOsD7Kg==}
+    engines: {node: '>=18'}
 
   '@tanstack/query-core@5.66.0':
     resolution: {integrity: sha512-J+JeBtthiKxrpzUu7rfIPDzhscXF2p5zE/hVdrqkACBP8Yu0M96mwJ5m/8cPPYQE9aRNvXztXHlNwIh4FEeMZw==}
@@ -19263,6 +19273,8 @@ snapshots:
       - supports-color
       - typescript
       - vite
+
+  '@tanstack/devtools-event-client@0.2.1': {}
 
   '@tanstack/query-core@5.66.0': {}
 

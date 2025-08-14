@@ -1,8 +1,11 @@
+import { routerEventClient } from "@tanstack/router-core"
 import { render } from 'solid-js/web'
 import { createSignal, lazy } from 'solid-js'
 import { DevtoolsOnCloseContext, ShadowDomTargetContext } from './context'
-import type { JSX } from 'solid-js'
+import type { JSX, Signal } from 'solid-js'
 import type { AnyRouter } from '@tanstack/router-core'
+
+
 
 interface TanStackRouterDevtoolsPanelCoreOptions {
   /**
@@ -38,7 +41,7 @@ interface TanStackRouterDevtoolsPanelCoreOptions {
 }
 
 class TanStackRouterDevtoolsPanelCore {
-  #router: any
+  #router: Signal<AnyRouter>
   #routerState: any
   #style: any
   #className: any
@@ -74,6 +77,10 @@ class TanStackRouterDevtoolsPanelCore {
     const dispose = render(() => {
       const [router] = this.#router
       const [routerState] = this.#routerState
+      routerEventClient.on("state-change", e => {
+        router().__store.setState(e.payload)
+      })
+
       const [style] = this.#style
       const [className] = this.#className
       const shadowDOMTarget = this.#shadowDOMTarget
@@ -94,7 +101,7 @@ class TanStackRouterDevtoolsPanelCore {
         <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
           <DevtoolsOnCloseContext.Provider
             value={{
-              onCloseClick: () => {},
+              onCloseClick: () => { },
             }}
           >
             <BaseTanStackRouterDevtoolsPanel
