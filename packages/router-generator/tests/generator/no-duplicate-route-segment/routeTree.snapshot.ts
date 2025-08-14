@@ -20,6 +20,7 @@ const FooRoute = FooRouteImport.update({
   id: '/foo',
   path: '/foo',
   getParentRoute: () => rootRouteImport,
+  isVirtualLayout: true,
 } as any)
 const FooLayoutRouteRoute = FooLayoutRouteRouteImport.update({
   id: '/_layout',
