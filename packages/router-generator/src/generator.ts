@@ -1,6 +1,6 @@
 import path from 'node:path'
 import * as fsp from 'node:fs/promises'
-import { mkdtempSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import crypto from 'node:crypto'
 import { deepEqual, rootRouteId } from '@tanstack/router-core'
 import { logging } from './logger'
@@ -58,8 +58,9 @@ import type { Logger } from './logger'
 import type { TransformPlugin } from './transform/types'
 
 interface fs {
-  stat: (filePath: string) => Promise<{ mtimeMs: bigint }>
-  mkdtempSync: (prefix: string) => string
+  stat: (
+    filePath: string,
+  ) => Promise<{ mtimeMs: bigint; mode: number; uid: number; gid: number }>
   rename: (oldPath: string, newPath: string) => Promise<void>
   writeFile: (filePath: string, content: string) => Promise<void>
   readFile: (
@@ -67,11 +68,20 @@ interface fs {
   ) => Promise<
     { stat: { mtimeMs: bigint }; fileContent: string } | 'file-not-existing'
   >
+  chmod: (filePath: string, mode: number) => Promise<void>
+  chown: (filePath: string, uid: number, gid: number) => Promise<void>
 }
 
 const DefaultFileSystem: fs = {
-  stat: (filePath) => fsp.stat(filePath, { bigint: true }),
-  mkdtempSync: mkdtempSync,
+  stat: async (filePath) => {
+    const res = await fsp.stat(filePath, { bigint: true })
+    return {
+      mtimeMs: res.mtimeMs,
+      mode: Number(res.mode),
+      uid: Number(res.uid),
+      gid: Number(res.gid),
+    }
+  },
   rename: (oldPath, newPath) => fsp.rename(oldPath, newPath),
   writeFile: (filePath, content) => fsp.writeFile(filePath, content),
   readFile: async (filePath: string) => {
@@ -90,6 +100,8 @@ const DefaultFileSystem: fs = {
       throw e
     }
   },
+  chmod: (filePath, mode) => fsp.chmod(filePath, mode),
+  chown: (filePath, uid, gid) => fsp.chown(filePath, uid, gid),
 }
 
 interface Rerun {
@@ -164,7 +176,7 @@ export class Generator {
 
   private root: string
   private routesDirectoryPath: string
-  private tmpDir: string
+  private sessionId?: string
   private fs: fs
   private logger: Logger
   private generatedRouteTreePath: string
@@ -182,9 +194,6 @@ export class Generator {
     this.logger = logging({ disabled: this.config.disableLogging })
     this.root = opts.root
     this.fs = opts.fs || DefaultFileSystem
-    this.tmpDir = this.fs.mkdtempSync(
-      path.join(this.config.tmpDir, 'router-generator-'),
-    )
     this.generatedRouteTreePath = path.resolve(this.config.generatedRouteTree)
     this.targetTemplate = getTargetTemplate(this.config)
 
@@ -897,7 +906,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
             tLazyRouteTemplate.template(),
           {
             tsrImports: tLazyRouteTemplate.imports.tsrImports(),
-            tsrPath: escapedRoutePath.replaceAll(/\{(.+)\}/gm, '$1'),
+            tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
             tsrExportStart:
               tLazyRouteTemplate.imports.tsrExportStart(escapedRoutePath),
             tsrExportEnd: tLazyRouteTemplate.imports.tsrExportEnd(),
@@ -925,7 +934,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
             tRouteTemplate.template(),
           {
             tsrImports: tRouteTemplate.imports.tsrImports(),
-            tsrPath: escapedRoutePath.replaceAll(/\{(.+)\}/gm, '$1'),
+            tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
             tsrExportStart:
               tRouteTemplate.imports.tsrExportStart(escapedRoutePath),
             tsrExportEnd: tRouteTemplate.imports.tsrExportEnd(),
@@ -1049,6 +1058,31 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
           event: { type: 'update', path: opts.filePath },
         })
       }
+      const newFileState = await this.fs.stat(tmpPath)
+      if (newFileState.mode !== beforeStat.mode) {
+        await this.fs.chmod(tmpPath, beforeStat.mode)
+      }
+      if (
+        newFileState.uid !== beforeStat.uid ||
+        newFileState.gid !== beforeStat.gid
+      ) {
+        try {
+          await this.fs.chown(tmpPath, beforeStat.uid, beforeStat.gid)
+        } catch (err) {
+          if (
+            typeof err === 'object' &&
+            err !== null &&
+            'code' in err &&
+            (err as any).code === 'EPERM'
+          ) {
+            console.warn(
+              `[safeFileWrite] chown failed: ${(err as any).message}`,
+            )
+          } else {
+            throw err
+          }
+        }
+      }
     } else {
       if (await checkFileExists(opts.filePath)) {
         throw rerun({
@@ -1068,7 +1102,13 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
   private getTempFileName(filePath: string) {
     const absPath = path.resolve(filePath)
     const hash = crypto.createHash('md5').update(absPath).digest('hex')
-    return path.join(this.tmpDir, hash)
+    // lazy initialize sessionId to only create tmpDir when it is first needed
+    if (!this.sessionId) {
+      // ensure the directory exists
+      mkdirSync(this.config.tmpDir, { recursive: true })
+      this.sessionId = crypto.randomBytes(4).toString('hex')
+    }
+    return path.join(this.config.tmpDir, `${this.sessionId}-${hash}`)
   }
 
   private async isRouteFileCacheFresh(node: RouteNode): Promise<
@@ -1239,7 +1279,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
 
     node.isNonPath =
       lastRouteSegment.startsWith('_') ||
-      this.routeGroupPatternRegex.test(lastRouteSegment)
+      split.every((part) => this.routeGroupPatternRegex.test(part))
 
     node.cleanedPath = removeGroups(
       removeUnderscores(removeLayoutSegments(node.path)) ?? '',

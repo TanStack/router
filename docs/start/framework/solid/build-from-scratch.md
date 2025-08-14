@@ -85,17 +85,25 @@ We'll then update our `package.json` to use Vite's CLI and set `"type": "module"
 
 Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 
+> [!NOTE]
+> TanStack Start will stop auto-configuring React/Solid Vite plugins. You’ll get full control - choose `vite-plugin-solid`. Set `customViteSolidPlugin: true` to opt in to this feature right now!
+
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
   server: {
     port: 3000,
   },
-  plugins: [tsConfigPaths(), tanstackStart()],
+  plugins: [
+    tsConfigPaths(),
+    tanstackStart({ customViteSolidPlugin: true }),
+    viteSolid({ ssr: true }),
+  ],
 })
 ```
 
@@ -220,7 +228,7 @@ const updateCount = createServerFn({ method: 'POST' })
     await fs.promises.writeFile(filePath, `${count + data}`)
   })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/')({
   component: Home,
   loader: async () => await getCount(),
 })

@@ -16,7 +16,7 @@ import { seo } from '../utils/seo'
 import { getSupabaseServerClient } from '../utils/supabase'
 
 const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
-  const supabase = await getSupabaseServerClient()
+  const supabase = getSupabaseServerClient()
   const { data, error: _error } = await supabase.auth.getUser()
 
   if (!data.user?.email) {
@@ -29,6 +29,13 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
 })
 
 export const Route = createRootRoute({
+  beforeLoad: async () => {
+    const user = await fetchUser()
+
+    return {
+      user,
+    }
+  },
   head: () => ({
     meta: [
       {
@@ -67,13 +74,6 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/favicon.ico' },
     ],
   }),
-  beforeLoad: async () => {
-    const user = await fetchUser()
-
-    return {
-      user,
-    }
-  },
   errorComponent: (props) => {
     return (
       <RootDocument>

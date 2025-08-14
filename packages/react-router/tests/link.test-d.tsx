@@ -4040,6 +4040,25 @@ test('that createLink refs forward correctly', () => {
     .toEqualTypeOf<Parameters<typeof BasicLinkComponent>[0]['ref']>()
 })
 
+test('createLink should preserve correct ref type with required interface properties', () => {
+  interface MyLinkProps extends React.ComponentPropsWithRef<'a'> {
+    extra: unknown
+  }
+
+  const MyLink = React.forwardRef<HTMLAnchorElement, MyLinkProps>(
+    (props, ref) => {
+      return <a ref={ref} {...props} />
+    },
+  )
+
+  const CreatedLink = createLink(MyLink)
+
+  expectTypeOf(CreatedLink)
+    .parameter(0)
+    .toHaveProperty('ref')
+    .toEqualTypeOf<React.Ref<HTMLAnchorElement> | undefined>()
+})
+
 test('ResolveRelativePath', () => {
   expectTypeOf<ResolveRelativePath<'/', '/posts'>>().toEqualTypeOf<'/posts'>()
 

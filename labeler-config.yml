@@ -16,9 +16,9 @@
 'package: react-router-devtools':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router-devtools/**/*'
-'package: react-router-with-query':
+'package: react-router-ssr-query':
   - changed-files:
-      - any-glob-to-any-file: 'packages/react-router-with-query/**/*'
+      - any-glob-to-any-file: 'packages/react-router-ssr-query/**/*'
 'package: react-start':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start/**/*'
@@ -49,6 +49,9 @@
 'package: router-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-plugin/**/*'
+'package: router-ssr-query-core':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/router-ssr-query-core/**/*'
 'package: router-utils':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-utils/**/*'
@@ -94,6 +97,9 @@
 'package: start-server-functions-server':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-server-functions-server/**/*'
+'package: start-storage-context':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/start-storage-context/**/*'
 'package: valibot-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/valibot-adapter/**/*'

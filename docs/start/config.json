@@ -50,8 +50,8 @@
               "to": "framework/react/server-routes"
             },
             {
-              "label": "SSR",
-              "to": "framework/react/ssr"
+              "label": "Selective SSR",
+              "to": "framework/react/selective-ssr"
             },
             {
               "label": "SPA Mode",
@@ -80,6 +80,10 @@
             {
               "label": "Path Aliases",
               "to": "framework/react/path-aliases"
+            },
+            {
+              "label": "Tailwind CSS Integration",
+              "to": "framework/react/tailwind-integration"
             },
             {
               "label": "Migrate from Next.js",
@@ -127,8 +131,8 @@
               "to": "framework/solid/server-routes"
             },
             {
-              "label": "SSR",
-              "to": "framework/solid/ssr"
+              "label": "Selective SSR",
+              "to": "framework/solid/selective-ssr"
             },
             {
               "label": "SPA Mode",
@@ -153,6 +157,10 @@
             {
               "label": "Static Prerendering",
               "to": "framework/solid/static-prerendering"
+            },
+            {
+              "label": "Tailwind CSS Integration",
+              "to": "framework/solid/tailwind-integration"
             },
             {
               "label": "Path Aliases",

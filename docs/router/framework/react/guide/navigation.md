@@ -199,6 +199,30 @@ const link = (
 
 As seen above, it's common to provide the `route.fullPath` as the `from` route path. This is because the `route.fullPath` is a reference that will update if you refactor your application. However, sometimes it's not possible to import the route directly, in which case it's fine to provide the route path directly as a string. It will still get type-checked as per usual!
 
+### Special relative paths: `"."` and `".."`
+
+Quite often you might want to reload the current location, for example, to rerun the loaders on the current and/or parent routes, or maybe there was a change in search parameters. This can be achieved by specifying a `to` route path of `"."` which will reload the current location. This is only applicable to the current location, and hence any `from` route path specified is ignored.
+
+Another common need is to navigate one route back relative to the current location or some other matched route in the current tree. By specifying a `to` route path of `".."` navigation will be resolved to either the first parent route preceding the current location or, if specified, preceding the `"from"` route path.
+
+```tsx
+export const Route = createFileRoute('/posts/$postId')({
+  component: PostComponent,
+})
+
+function PostComponent() {
+  return (
+    <div>
+      <Link to=".">Reload the current route of /posts/$postId</Link>
+      <Link to="..">Navigate to /posts</Link>
+      <Link from="/posts" to="..">
+        Navigate to root
+      </Link>
+    </div>
+  )
+}
+```
+
 ### Search Param Links
 
 Search params are a great way to provide additional context to a route. For example, you might want to provide a search query to a search page:
@@ -252,6 +276,262 @@ const link = (
     Section 1
   </Link>
 )
+```
+
+### Navigating with Optional Parameters
+
+Optional path parameters provide flexible navigation patterns where you can include or omit parameters as needed. Optional parameters use the `{-$paramName}` syntax and offer fine-grained control over URL structure.
+
+#### Parameter Inheritance vs Removal
+
+When navigating with optional parameters, you have two main strategies:
+
+**Inheriting Current Parameters**
+Use `params: {}` to inherit all current route parameters:
+
+```tsx
+// Inherits current route parameters
+<Link to="/posts/{-$category}" params={{}}>
+  All Posts
+</Link>
+```
+
+**Removing Parameters**  
+Set parameters to `undefined` to explicitly remove them:
+
+```tsx
+// Removes the category parameter
+<Link to="/posts/{-$category}" params={{ category: undefined }}>
+  All Posts
+</Link>
+```
+
+#### Basic Optional Parameter Navigation
+
+```tsx
+// Navigate with optional parameter
+<Link
+  to="/posts/{-$category}"
+  params={{ category: 'tech' }}
+>
+  Tech Posts
+</Link>
+
+// Navigate without optional parameter
+<Link
+  to="/posts/{-$category}"
+  params={{ category: undefined }}
+>
+  All Posts
+</Link>
+
+// Navigate using parameter inheritance
+<Link
+  to="/posts/{-$category}"
+  params={{}}
+>
+  Current Category
+</Link>
+```
+
+#### Function-Style Parameter Updates
+
+Function-style parameter updates are particularly useful with optional parameters:
+
+```tsx
+// Remove a parameter using function syntax
+<Link
+  to="/posts/{-$category}"
+  params={(prev) => ({ ...prev, category: undefined })}
+>
+  Clear Category
+</Link>
+
+// Update a parameter while keeping others
+<Link
+  to="/articles/{-$category}/{-$slug}"
+  params={(prev) => ({ ...prev, category: 'news' })}
+>
+  News Articles
+</Link>
+
+// Conditionally set parameters
+<Link
+  to="/posts/{-$category}"
+  params={(prev) => ({
+    ...prev,
+    category: someCondition ? 'tech' : undefined
+  })}
+>
+  Conditional Category
+</Link>
+```
+
+#### Multiple Optional Parameters
+
+When working with multiple optional parameters, you can mix and match which ones to include:
+
+```tsx
+// Navigate with some optional parameters
+<Link
+  to="/posts/{-$category}/{-$slug}"
+  params={{ category: 'tech', slug: undefined }}
+>
+  Tech Posts
+</Link>
+
+// Remove all optional parameters
+<Link
+  to="/posts/{-$category}/{-$slug}"
+  params={{ category: undefined, slug: undefined }}
+>
+  All Posts
+</Link>
+
+// Set multiple parameters
+<Link
+  to="/posts/{-$category}/{-$slug}"
+  params={{ category: 'tech', slug: 'react-tips' }}
+>
+  Specific Post
+</Link>
+```
+
+#### Mixed Required and Optional Parameters
+
+Optional parameters work seamlessly with required parameters:
+
+```tsx
+// Required 'id', optional 'tab'
+<Link
+  to="/users/$id/{-$tab}"
+  params={{ id: '123', tab: 'settings' }}
+>
+  User Settings
+</Link>
+
+// Remove optional parameter while keeping required
+<Link
+  to="/users/$id/{-$tab}"
+  params={{ id: '123', tab: undefined }}
+>
+  User Profile
+</Link>
+
+// Use function style with mixed parameters
+<Link
+  to="/users/$id/{-$tab}"
+  params={(prev) => ({ ...prev, tab: 'notifications' })}
+>
+  User Notifications
+</Link>
+```
+
+#### Advanced Optional Parameter Patterns
+
+**Prefix and Suffix Parameters**
+Optional parameters with prefix/suffix work with navigation:
+
+```tsx
+// Navigate to file with optional name
+<Link
+  to="/files/prefix{-$name}.txt"
+  params={{ name: 'document' }}
+>
+  Document File
+</Link>
+
+// Navigate to file without optional name
+<Link
+  to="/files/prefix{-$name}.txt"
+  params={{ name: undefined }}
+>
+  Default File
+</Link>
+```
+
+**All Optional Parameters**
+Routes where all parameters are optional:
+
+```tsx
+// Navigate to specific date
+<Link
+  to="/{-$year}/{-$month}/{-$day}"
+  params={{ year: '2023', month: '12', day: '25' }}
+>
+  Christmas 2023
+</Link>
+
+// Navigate to partial date
+<Link
+  to="/{-$year}/{-$month}/{-$day}"
+  params={{ year: '2023', month: '12', day: undefined }}
+>
+  December 2023
+</Link>
+
+// Navigate to root with all parameters removed
+<Link
+  to="/{-$year}/{-$month}/{-$day}"
+  params={{ year: undefined, month: undefined, day: undefined }}
+>
+  Home
+</Link>
+```
+
+#### Navigation with Search Params and Optional Parameters
+
+Optional parameters work great in combination with search params:
+
+```tsx
+// Combine optional path params with search params
+<Link
+  to="/posts/{-$category}"
+  params={{ category: 'tech' }}
+  search={{ page: 1, sort: 'newest' }}
+>
+  Tech Posts - Page 1
+</Link>
+
+// Remove path param but keep search params
+<Link
+  to="/posts/{-$category}"
+  params={{ category: undefined }}
+  search={(prev) => prev}
+>
+  All Posts - Same Filters
+</Link>
+```
+
+#### Imperative Navigation with Optional Parameters
+
+All the same patterns work with imperative navigation:
+
+```tsx
+function Component() {
+  const navigate = useNavigate()
+
+  const clearFilters = () => {
+    navigate({
+      to: '/posts/{-$category}/{-$tag}',
+      params: { category: undefined, tag: undefined },
+    })
+  }
+
+  const setCategory = (category: string) => {
+    navigate({
+      to: '/posts/{-$category}/{-$tag}',
+      params: (prev) => ({ ...prev, category }),
+    })
+  }
+
+  const applyFilters = (category?: string, tag?: string) => {
+    navigate({
+      to: '/posts/{-$category}/{-$tag}',
+      params: { category, tag },
+    })
+  }
+}
 ```
 
 ### Active & Inactive Props

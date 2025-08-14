@@ -1,27 +1,27 @@
-import * as crypto from 'node:crypto'
+import fs from 'node:fs'
+import { getRandomPort } from 'get-port-please'
 
 /**
- * Hash a string and map it to a range [min, max].
- * @param {string} input - The string to hash.
- * @param {number} min - Minimum port value.
- * @param {number} max - Maximum port value.
- * @returns {number} A port within the range [min, max].
+ * Check if a port has been allocated, if it hasn't generate a random port and save it.
+ * @param {string} input - port test allocation
+ * @returns {number} A random port.
  */
-export function derivePort(
-  input: string,
-  min: number = 5600,
-  max: number = 65535,
-): number {
-  // Hash the input using SHA-256
-  const hash = crypto.createHash('sha256').update(input).digest('hex')
+export async function derivePort(input: string): Promise<number> {
+  const portFile = `port-${input}.txt`
 
-  // Convert hash to an integer
-  const hashInt = parseInt(hash.slice(0, 8), 16) // Use the first 8 characters
+  if (!fs.existsSync(portFile)) {
+    fs.writeFileSync(portFile, (await getRandomPort()).toString())
+  }
 
-  // Map hash value to the port range
-  const port = min + (hashInt % (max - min + 1))
+  const portNumber = parseInt(await fs.promises.readFile(portFile, 'utf-8'))
+  console.info(`Mapped "${input}" to port ${portNumber}`)
+  return portNumber
+}
 
-  console.info(`Mapped "${input}" to port ${port}`)
+export async function getDummyServerPort(input: string): Promise<number> {
+  return await derivePort(`${input}-external`)
+}
 
-  return port
+export async function getTestServerPort(input: string): Promise<number> {
+  return await derivePort(input)
 }

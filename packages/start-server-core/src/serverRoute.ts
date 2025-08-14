@@ -45,7 +45,22 @@ export interface ServerRouteOptions<
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyRequestMiddleware>>
   methods?: Record<
     string,
-    ServerRouteMethodHandlerFn<TParentRoute, TFullPath, TMiddlewares, any, any>
+    | ServerRouteMethodHandlerFn<
+        TParentRoute,
+        TFullPath,
+        TMiddlewares,
+        any,
+        any
+      >
+    | {
+        _options: ServerRouteMethodBuilderOptions<
+          TParentRoute,
+          TFullPath,
+          TMiddlewares,
+          unknown,
+          unknown
+        >
+      }
   >
   caseSensitive?: boolean
 }

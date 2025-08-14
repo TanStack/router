@@ -364,6 +364,7 @@ describe('redirect', () => {
           searchStr: '',
           state: {
             __TSR_index: 0,
+            __TSR_key: currentRedirect.options._fromLocation!.state.__TSR_key,
             key: currentRedirect.options._fromLocation!.state.key,
           },
         },

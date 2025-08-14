@@ -21,6 +21,8 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
 
     transform: {
       filter: {
+        // this is necessary for webpack / rspack to avoid matching .html files
+        id: /\.(m|c)?(j|t)sx?$/,
         code: /createFileRoute\(|createLazyFileRoute\(/,
       },
       handler(code, id) {

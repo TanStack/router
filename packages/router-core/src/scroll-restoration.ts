@@ -2,6 +2,7 @@ import { functionalUpdate } from './utils'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
 import type { NonNullableUpdater } from './utils'
+import type { HistoryLocation } from '@tanstack/history'
 
 export type ScrollRestorationEntry = { scrollX: number; scrollY: number }
 
@@ -79,7 +80,7 @@ export const scrollRestorationCache = createScrollRestorationCache()
  */
 
 export const defaultGetScrollRestorationKey = (location: ParsedLocation) => {
-  return location.state.key! || location.href
+  return location.state.__TSR_key! || location.href
 }
 
 export function getCssSelector(el: any): string {
@@ -100,15 +101,21 @@ let ignoreScroll = false
 // unless they are passed in as arguments. Why? Because we need to be able to
 // toString() it into a script tag to execute as early as possible in the browser
 // during SSR. Additionally, we also call it from within the router lifecycle
-export function restoreScroll(
-  storageKey: string,
-  key: string | undefined,
-  behavior: ScrollToOptions['behavior'] | undefined,
-  shouldScrollRestoration: boolean | undefined,
-  scrollToTopSelectors:
-    | Array<string | (() => Element | null | undefined)>
-    | undefined,
-) {
+export function restoreScroll({
+  storageKey,
+  key,
+  behavior,
+  shouldScrollRestoration,
+  scrollToTopSelectors,
+  location,
+}: {
+  storageKey: string
+  key?: string
+  behavior?: ScrollToOptions['behavior']
+  shouldScrollRestoration?: boolean
+  scrollToTopSelectors?: Array<string | (() => Element | null | undefined)>
+  location?: HistoryLocation
+}) {
   let byKey: ScrollRestorationByKey
 
   try {
@@ -128,7 +135,11 @@ export function restoreScroll(
   ;(() => {
     // If we have a cached entry for this location state,
     // we always need to prefer that over the hash scroll.
-    if (shouldScrollRestoration && elementEntries) {
+    if (
+      shouldScrollRestoration &&
+      elementEntries &&
+      Object.keys(elementEntries).length > 0
+    ) {
       for (const elementSelector in elementEntries) {
         const entry = elementEntries[elementSelector]!
         if (elementSelector === 'window') {
@@ -153,7 +164,7 @@ export function restoreScroll(
     // Which means we've never seen this location before,
     // we need to check if there is a hash in the URL.
     // If there is, we need to scroll it's ID into view.
-    const hash = window.location.hash.split('#')[1]
+    const hash = (location ?? window.location).hash.split('#')[1]
 
     if (hash) {
       const hashScrollIntoViewOptions =
@@ -321,13 +332,14 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       return
     }
 
-    restoreScroll(
+    restoreScroll({
       storageKey,
-      cacheKey,
-      router.options.scrollRestorationBehavior || undefined,
-      router.isScrollRestoring || undefined,
-      router.options.scrollToTopSelectors || undefined,
-    )
+      key: cacheKey,
+      behavior: router.options.scrollRestorationBehavior,
+      shouldScrollRestoration: router.isScrollRestoring,
+      scrollToTopSelectors: router.options.scrollToTopSelectors,
+      location: router.history.location,
+    })
 
     if (router.isScrollRestoring) {
       // Mark the location as having been seen

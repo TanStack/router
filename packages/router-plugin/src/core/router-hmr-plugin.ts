@@ -1,15 +1,21 @@
 import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
-import { getConfig } from './config'
 import { routeHmrStatement } from './route-hmr-statement'
 import { debug } from './utils'
-import type { Config } from './config'
+import { getConfig } from './config'
 import type { UnpluginFactory } from 'unplugin'
+import type { Config } from './config'
 
 /**
  * This plugin adds HMR support for file routes.
  * It is only added to the composed plugin in dev when autoCodeSplitting is disabled, since the code splitting plugin
  * handles HMR for code-split routes itself.
  */
+
+const includeCode = [
+  'createFileRoute(',
+  'createRootRoute(',
+  'createRootRouteWithContext(',
+]
 export const unpluginRouterHmrFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}) => {
@@ -19,10 +25,13 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
   return {
     name: 'tanstack-router:hmr',
     enforce: 'pre',
-
     transform: {
       filter: {
-        code: 'createFileRoute(',
+        // this is necessary for webpack / rspack to avoid matching .html files
+        id: /\.(m|c)?(j|t)sx?$/,
+        code: {
+          include: includeCode,
+        },
       },
       handler(code, id) {
         if (!globalThis.TSR_ROUTES_BY_ID_MAP?.has(id)) {
@@ -45,22 +54,17 @@ export const unpluginRouterHmrFactory: UnpluginFactory<
         return result
       },
     },
-
     vite: {
       configResolved(config) {
         ROOT = config.root
         userConfig = getConfig(options, ROOT)
       },
-    },
-
-    rspack() {
-      ROOT = process.cwd()
-      userConfig = getConfig(options, ROOT)
-    },
-
-    webpack() {
-      ROOT = process.cwd()
-      userConfig = getConfig(options, ROOT)
+      applyToEnvironment(environment) {
+        if (userConfig.plugin?.vite?.environmentName) {
+          return userConfig.plugin.vite.environmentName === environment.name
+        }
+        return true
+      },
     },
   }
 }

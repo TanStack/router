@@ -1,3 +1,5 @@
+export * from './global'
+
 export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
 export { preloadWarning } from './link'
@@ -64,16 +66,6 @@ export type {
   LazyRouteOptions,
   CreateLazyFileRoute,
 } from './fileRoute'
-
-export type {
-  StartSerializer,
-  Serializable,
-  SerializerParse,
-  SerializerParseBy,
-  SerializerStringify,
-  SerializerStringifyBy,
-  SerializerExtensions,
-} from './serializer'
 
 export type { ParsedLocation } from './location'
 export type { Manifest, RouterManagedTag } from './manifest'
@@ -186,6 +178,7 @@ export type {
   RouteContextOptions,
   BeforeLoadContextOptions,
   RootRouteOptions,
+  RootRouteOptionsExtensions,
   UpdatableRouteOptionsExtensions,
   RouteConstraints,
   RouteTypesById,
@@ -214,11 +207,6 @@ export {
 } from './router'
 export type {
   ViewTransitionOptions,
-  ExtractedBaseEntry,
-  ExtractedStream,
-  ExtractedPromise,
-  ExtractedEntry,
-  StreamState,
   TrailingSlashOption,
   Register,
   AnyRouter,
@@ -243,7 +231,6 @@ export type {
   InvalidateFn,
   ControllablePromise,
   InjectedHtmlEntry,
-  RouterErrorSerializer,
   EmitFn,
   LoadFn,
   GetMatchFn,
@@ -254,7 +241,6 @@ export type {
   MatchRoutesFn,
   StartTransitionFn,
   LoadRouteChunkFn,
-  ServerSrr,
   ClearCacheFn,
   CreateRouterFn,
   ProcessRouteTreeResult,
@@ -290,6 +276,7 @@ export {
   escapeJSON,
   shallow,
   createControlledPromise,
+  isModuleNotFoundError,
 } from './utils'
 export type {
   NoInfer,
@@ -326,6 +313,7 @@ export type {
   StrictOrFrom,
   LooseReturnType,
   LooseAsyncReturnType,
+  Awaitable,
 } from './utils'
 
 export type {

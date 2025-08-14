@@ -643,6 +643,226 @@ describe('Link', () => {
     expect(pageZero).toBeInTheDocument()
   })
 
+  test('when navigation to . from /posts while updating search from /', async () => {
+    const RootComponent = () => {
+      return (
+        <>
+          <div data-testid="root-nav">
+            <Link
+              to="."
+              search={{ page: 2, filter: 'inactive' }}
+              data-testid="update-search"
+            >
+              Update Search
+            </Link>
+          </div>
+          <Outlet />
+        </>
+      )
+    }
+
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link
+              to="/posts"
+              search={{ page: 1, filter: 'active' }}
+              data-testid="to-posts"
+            >
+              Go to Posts
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      const search = useSearch({ strict: false })
+      return (
+        <>
+          <h1>Posts</h1>
+          <span data-testid="current-page">Page: {search.page}</span>
+          <span data-testid="current-filter">Filter: {search.filter}</span>
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      validateSearch: (input: Record<string, unknown>) => {
+        return {
+          page: input.page ? Number(input.page) : 1,
+          filter: (input.filter as string) || 'all',
+        }
+      },
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    // Start at index page
+    const toPostsLink = await screen.findByTestId('to-posts')
+    expect(toPostsLink).toHaveAttribute('href', '/posts?page=1&filter=active')
+
+    // Navigate to posts with initial search params
+    await act(() => fireEvent.click(toPostsLink))
+
+    // Verify we're on posts with initial search
+    const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
+    expect(postsHeading).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/posts')
+    expect(window.location.search).toBe('?page=1&filter=active')
+
+    const currentPage = await screen.findByTestId('current-page')
+    const currentFilter = await screen.findByTestId('current-filter')
+    expect(currentPage).toHaveTextContent('Page: 1')
+    expect(currentFilter).toHaveTextContent('Filter: active')
+
+    // Navigate to current route (.) with updated search
+    const updateSearchLink = await screen.findByTestId('update-search')
+    expect(updateSearchLink).toHaveAttribute(
+      'href',
+      '/posts?page=2&filter=inactive',
+    )
+
+    await act(() => fireEvent.click(updateSearchLink))
+
+    // Verify search was updated
+    expect(window.location.pathname).toBe('/posts')
+    expect(window.location.search).toBe('?page=2&filter=inactive')
+
+    const updatedPage = await screen.findByTestId('current-page')
+    const updatedFilter = await screen.findByTestId('current-filter')
+    expect(updatedPage).toHaveTextContent('Page: 2')
+    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+  })
+
+  test('when navigation to . from /posts while updating search from / and using base path', async () => {
+    const RootComponent = () => {
+      return (
+        <>
+          <div data-testid="root-nav">
+            <Link
+              to="."
+              search={{ page: 2, filter: 'inactive' }}
+              data-testid="update-search"
+            >
+              Update Search
+            </Link>
+          </div>
+          <Outlet />
+        </>
+      )
+    }
+
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link
+              to="/posts"
+              search={{ page: 1, filter: 'active' }}
+              data-testid="to-posts"
+            >
+              Go to Posts
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      const search = useSearch({ strict: false })
+      return (
+        <>
+          <h1>Posts</h1>
+          <span data-testid="current-page">Page: {search.page}</span>
+          <span data-testid="current-filter">Filter: {search.filter}</span>
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      validateSearch: (input: Record<string, unknown>) => {
+        return {
+          page: input.page ? Number(input.page) : 1,
+          filter: (input.filter as string) || 'all',
+        }
+      },
+      component: PostsComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} basepath={'/Dashboard'} />)
+
+    // Start at index page
+    const toPostsLink = await screen.findByTestId('to-posts')
+    expect(toPostsLink).toHaveAttribute(
+      'href',
+      '/Dashboard/posts?page=1&filter=active',
+    )
+
+    // Navigate to posts with initial search params
+    await act(() => fireEvent.click(toPostsLink))
+
+    // Verify we're on posts with initial search
+    const postsHeading = await screen.findByRole('heading', { name: 'Posts' })
+    expect(postsHeading).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/Dashboard/posts')
+    expect(window.location.search).toBe('?page=1&filter=active')
+
+    const currentPage = await screen.findByTestId('current-page')
+    const currentFilter = await screen.findByTestId('current-filter')
+    expect(currentPage).toHaveTextContent('Page: 1')
+    expect(currentFilter).toHaveTextContent('Filter: active')
+
+    // Navigate to current route (.) with updated search
+    const updateSearchLink = await screen.findByTestId('update-search')
+
+    expect(updateSearchLink).toHaveAttribute(
+      'href',
+      '/Dashboard/posts?page=2&filter=inactive',
+    )
+
+    await act(() => fireEvent.click(updateSearchLink))
+
+    // Verify search was updated
+    expect(window.location.pathname).toBe('/Dashboard/posts')
+    expect(window.location.search).toBe('?page=2&filter=inactive')
+
+    const updatedPage = await screen.findByTestId('current-page')
+    const updatedFilter = await screen.findByTestId('current-filter')
+    expect(updatedPage).toHaveTextContent('Page: 2')
+    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+  })
+
   test('when navigating to /posts with invalid search', async () => {
     const rootRoute = createRootRoute()
     const onError = vi.fn()
@@ -1383,6 +1603,132 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/posts/id1')
   })
 
+  test('when navigating from /posts/$postId to "/"', async () => {
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <Link to="/" data-testid="home-link">
+              Home
+            </Link>
+            <Link to="/posts" data-testid="posts-link">
+              Posts
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1 data-testid="home-heading">Index</h1>
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <>
+          <h1>Posts</h1>
+          <Link
+            to="/posts/$postId"
+            params={{ postId: 'id1' }}
+            data-testid="post1-link"
+          >
+            To first post
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'posts',
+      component: PostsComponent,
+    })
+
+    const PostsIndexComponent = () => {
+      return (
+        <>
+          <h1 data-testid="posts-index-heading">Posts Index</h1>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsIndexRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '/',
+      component: PostsIndexComponent,
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span data-testid="post-param">Params: {params.postId}</span>
+        </>
+      )
+    }
+
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postId',
+      component: PostComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        postsRoute.addChildren([postsIndexRoute, postRoute]),
+      ]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByTestId('posts-link')
+
+    expect(postsLink).toHaveAttribute('href', '/posts')
+
+    await act(() => fireEvent.click(postsLink))
+
+    const postsText = await screen.findByTestId('posts-index-heading')
+    expect(postsText).toBeInTheDocument()
+
+    const postLink = await screen.findByTestId('post1-link')
+
+    expect(postLink).toHaveAttribute('href', '/posts/id1')
+
+    await act(() => fireEvent.click(postLink))
+
+    const paramText = await screen.findByTestId('post-param')
+    expect(paramText).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts/id1')
+
+    const homeLink = await screen.findByTestId('home-link')
+
+    const consoleWarnSpy = vi.spyOn(console, 'warn')
+
+    await act(() => fireEvent.click(homeLink))
+
+    expect(window.location.pathname).toBe('/')
+    const homeHeading = await screen.findByTestId('home-heading')
+    expect(homeHeading).toBeInTheDocument()
+
+    expect(consoleWarnSpy).not.toHaveBeenCalled()
+
+    consoleWarnSpy.mockRestore()
+  })
+
   test('when navigating from /posts to ../posts/$postId', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -1754,6 +2100,192 @@ describe('Link', () => {
     expect(paramsText2).toBeInTheDocument()
 
     expect(ErrorComponent).not.toHaveBeenCalled()
+  })
+
+  test('when navigating from /dashboard/posts/$postId to /dashboard/users', async () => {
+    const ErrorComponent = vi.fn(() => <div>Something went wrong!</div>)
+
+    const rootRoute = createRootRoute({
+      errorComponent: ErrorComponent,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link to="/dashboard" data-testid="dashboard-link">
+              dashboard
+            </Link>
+          </>
+        )
+      },
+    })
+
+    const dashboardRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'dashboard',
+      component: () => {
+        return (
+          <>
+            <h1 data-testid="dashboard-heading">dashboard</h1>
+            <Link to="/dashboard/posts" data-testid="posts-link">
+              posts
+            </Link>
+            <Link to="/dashboard/users" data-testid="users-link">
+              users
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const PostsComponent = () => {
+      return (
+        <>
+          <h1 data-testid="posts-heading">Posts</h1>
+          <Link
+            to="/dashboard/posts/$postid"
+            data-testid="post1-link"
+            params={{ postid: 'id1' }}
+          >
+            Post1
+          </Link>
+          <Link
+            to="/dashboard/posts/$postid"
+            data-testid="post2-link"
+            params={{ postid: 'id2' }}
+          >
+            Post2
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const UsersComponent = () => {
+      return (
+        <>
+          <h1 data-testid="users-heading">Users</h1>
+          <Link
+            to="/dashboard/users/$userid"
+            data-testid="user1-link"
+            params={{ userid: 'id1' }}
+          >
+            User1
+          </Link>
+          <Link
+            to="/dashboard/users/$userid"
+            data-testid="user2-link"
+            params={{ userid: 'id2' }}
+          >
+            User2
+          </Link>
+          <Outlet />
+        </>
+      )
+    }
+
+    const postsRoute = createRoute({
+      getParentRoute: () => dashboardRoute,
+      path: 'posts',
+      component: PostsComponent,
+    })
+
+    const usersRoute = createRoute({
+      getParentRoute: () => dashboardRoute,
+      path: 'users',
+      component: UsersComponent,
+    })
+
+    const PostComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span data-testid="post-component">Params: {params.postId}</span>
+        </>
+      )
+    }
+
+    const UserComponent = () => {
+      const params = useParams({ strict: false })
+      return (
+        <>
+          <span data-testid="user-component">Params: {params.userId}</span>
+        </>
+      )
+    }
+    const postRoute = createRoute({
+      getParentRoute: () => postsRoute,
+      path: '$postid',
+      component: PostComponent,
+    })
+
+    const userRoute = createRoute({
+      getParentRoute: () => usersRoute,
+      path: '$userid',
+      component: UserComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        dashboardRoute.addChildren([
+          postsRoute.addChildren([postRoute]),
+          usersRoute.addChildren([userRoute]),
+        ]),
+      ]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const dashboardLink = await screen.findByTestId('dashboard-link')
+
+    await act(() => fireEvent.click(dashboardLink))
+
+    const dashboardHeading = await screen.findByTestId('dashboard-heading')
+
+    expect(dashboardHeading).toBeInTheDocument()
+
+    const postsLink = await screen.findByTestId('posts-link')
+    await act(() => fireEvent.click(postsLink))
+
+    const postsHeading = await screen.findByTestId('posts-heading')
+
+    expect(window.location.pathname).toEqual('/dashboard/posts')
+    expect(postsHeading).toBeInTheDocument()
+
+    const post1Link = await screen.findByTestId('post1-link')
+    await act(() => fireEvent.click(post1Link))
+    const post1Heading = await screen.findByTestId('post-component')
+
+    expect(window.location.pathname).toEqual('/dashboard/posts/id1')
+    expect(post1Heading).toBeInTheDocument()
+
+    const consoleWarnSpy = vi.spyOn(console, 'warn')
+
+    const usersLink = await screen.findByTestId('users-link')
+    await act(() => fireEvent.click(usersLink))
+
+    const usersHeading = await screen.findByTestId('users-heading')
+
+    expect(window.location.pathname).toEqual('/dashboard/users')
+    expect(usersHeading).toBeInTheDocument()
+
+    const user1Link = await screen.findByTestId('user1-link')
+    await act(() => fireEvent.click(user1Link))
+    const user1Heading = await screen.findByTestId('user-component')
+
+    expect(window.location.pathname).toEqual('/dashboard/users/id1')
+    expect(user1Heading).toBeInTheDocument()
+
+    expect(consoleWarnSpy).not.toHaveBeenCalled()
+
+    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts/$postId to ./info and the current route is /posts/$postId/details', async () => {
@@ -2588,6 +3120,12 @@ describe('Link', () => {
     expect(postsLink).toHaveAttribute('href', '/posts/id1/details')
 
     await act(() => fireEvent.click(postsLink))
+
+    const invoicesLink = await screen.findByRole('link', {
+      name: 'To Invoices',
+    })
+
+    fireEvent.click(invoicesLink)
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'Could not find match for from: /invoices',
@@ -3731,15 +4269,21 @@ describe('Link', () => {
 
   test('Router.preload="viewport", should trigger the IntersectionObserver\'s observe and disconnect methods', async () => {
     const rootRoute = createRootRoute()
+    const RouteComponent = () => {
+      const [count, setCount] = React.useState(0)
+      return (
+        <>
+          <h1>Index Heading</h1>
+          <output>{count}</output>
+          <button onClick={() => setCount((c) => c + 1)}>Render</button>
+          <Link to="/">Index Link</Link>
+        </>
+      )
+    }
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => (
-        <>
-          <h1>Index Heading</h1>
-          <Link to="/">Index Link</Link>
-        </>
-      ),
+      component: RouteComponent,
     })
 
     const router = createRouter({
@@ -3758,6 +4302,17 @@ describe('Link', () => {
 
     expect(ioDisconnectMock).toBeCalled()
     expect(ioDisconnectMock).toBeCalledTimes(1) // since React.StrictMode is enabled it should have disconnected
+
+    const output = screen.getByRole('status')
+    expect(output).toHaveTextContent('0')
+
+    const button = screen.getByRole('button', { name: 'Render' })
+    fireEvent.click(button)
+    await waitFor(() => {
+      expect(output).toHaveTextContent('1')
+    })
+    expect(ioObserveMock).toBeCalledTimes(2) // it should not observe again
+    expect(ioDisconnectMock).toBeCalledTimes(1) // it should not disconnect again
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {
@@ -4473,347 +5028,382 @@ describe('search middleware', () => {
   })
 })
 
-describe('relative links', () => {
-  const setupRouter = () => {
-    const rootRoute = createRootRoute()
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => {
-        return <h1>Index Route</h1>
-      },
-    })
-    const aRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: 'a',
-      component: () => {
-        return (
-          <>
-            <h1>A Route</h1>
-            <Outlet />
-          </>
-        )
-      },
-    })
+describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
+  'relative links with %s',
+  ({ basepath }) => {
+    const setupRouter = () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return <h1>Index Route</h1>
+        },
+      })
+      const aRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'a',
+        component: () => {
+          return (
+            <>
+              <h1>A Route</h1>
+              <Outlet />
+            </>
+          )
+        },
+      })
 
-    const bRoute = createRoute({
-      getParentRoute: () => aRoute,
-      path: 'b',
-      component: () => {
-        return (
-          <>
-            <h1>B Route</h1>
-            <Link to="..">Link to Parent</Link>
-          </>
-        )
-      },
-    })
+      const bRoute = createRoute({
+        getParentRoute: () => aRoute,
+        path: 'b',
+        component: () => {
+          return (
+            <>
+              <h1>B Route</h1>
+              <Link to="..">Link to Parent</Link>
+            </>
+          )
+        },
+      })
 
-    const paramRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: 'param/$param',
-      component: () => {
-        return (
-          <>
-            <h1>Param Route</h1>
-            <Link to="./a">Link to ./a</Link>
-            <Link to="c" unsafeRelative="path">
-              Link to c
-            </Link>
-            <Link to="../c" unsafeRelative="path">
-              Link to ../c
-            </Link>
-            <Outlet />
-          </>
-        )
-      },
-    })
+      const paramRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'param/$param',
+        component: () => {
+          return (
+            <>
+              <h1>Param Route</h1>
+              <Link to="./a">Link to ./a</Link>
+              <Link to="c" unsafeRelative="path">
+                Link to c
+              </Link>
+              <Link to="../c" unsafeRelative="path">
+                Link to ../c
+              </Link>
+              <Outlet />
+            </>
+          )
+        },
+      })
 
-    const paramARoute = createRoute({
-      getParentRoute: () => paramRoute,
-      path: 'a',
-      component: () => {
-        return (
-          <>
-            <h1>Param A Route</h1>
-            <Link to="..">Link to .. from /param/foo/a</Link>
-            <Outlet />
-          </>
-        )
-      },
-    })
+      const paramARoute = createRoute({
+        getParentRoute: () => paramRoute,
+        path: 'a',
+        component: () => {
+          return (
+            <>
+              <h1>Param A Route</h1>
+              <Link to="..">Link to .. from /param/foo/a</Link>
+              <Outlet />
+            </>
+          )
+        },
+      })
 
-    const paramBRoute = createRoute({
-      getParentRoute: () => paramARoute,
-      path: 'b',
-      component: () => {
-        return (
-          <>
-            <h1>Param B Route</h1>
-            <Link to="..">Link to Parent</Link>
-            <Link to=".." params={{ param: 'bar' }}>
-              Link to Parent with param:bar
-            </Link>
-            <paramBRoute.Link
-              to=".."
-              params={(prev) => ({ ...prev, param: 'bar' })}
-            >
-              Link to Parent with param:bar functional
-            </paramBRoute.Link>
-          </>
-        )
-      },
-    })
+      const paramBRoute = createRoute({
+        getParentRoute: () => paramARoute,
+        path: 'b',
+        component: () => {
+          return (
+            <>
+              <h1>Param B Route</h1>
+              <Link to="..">Link to Parent</Link>
+              <Link to="." params={{ param: 'bar' }}>
+                Link to . with param:bar
+              </Link>
+              <Link to=".." params={{ param: 'bar' }}>
+                Link to Parent with param:bar
+              </Link>
+              <paramBRoute.Link
+                to=".."
+                params={(prev) => ({ ...prev, param: 'bar' })}
+              >
+                Link to Parent with param:bar functional
+              </paramBRoute.Link>
+            </>
+          )
+        },
+      })
 
-    const paramCRoute = createRoute({
-      getParentRoute: () => paramARoute,
-      path: 'c',
-      component: () => {
-        return <h1>Param C Route</h1>
-      },
-    })
+      const paramCRoute = createRoute({
+        getParentRoute: () => paramARoute,
+        path: 'c',
+        component: () => {
+          return <h1>Param C Route</h1>
+        },
+      })
 
-    const splatRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: 'splat/$',
-      component: () => {
-        return (
-          <>
-            <h1>Splat Route</h1>
-            <Link to=".." unsafeRelative="path">
-              Unsafe link to ..
-            </Link>
-            <Link to="." unsafeRelative="path">
-              Unsafe link to .
-            </Link>
-            <Link to="./child" unsafeRelative="path">
-              Unsafe link to ./child
-            </Link>
-          </>
-        )
-      },
-    })
+      const splatRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'splat/$',
+        component: () => {
+          return (
+            <>
+              <h1>Splat Route</h1>
+              <Link to=".." unsafeRelative="path">
+                Unsafe link to ..
+              </Link>
+              <Link to="." unsafeRelative="path">
+                Unsafe link to .
+              </Link>
+              <Link to="./child" unsafeRelative="path">
+                Unsafe link to ./child
+              </Link>
+            </>
+          )
+        },
+      })
 
-    return createRouter({
-      routeTree: rootRoute.addChildren([
-        indexRoute,
-        aRoute.addChildren([bRoute]),
-        paramRoute.addChildren([
-          paramARoute.addChildren([paramBRoute, paramCRoute]),
+      return createRouter({
+        routeTree: rootRoute.addChildren([
+          indexRoute,
+          aRoute.addChildren([bRoute]),
+          paramRoute.addChildren([
+            paramARoute.addChildren([paramBRoute, paramCRoute]),
+          ]),
+          splatRoute,
         ]),
-        splatRoute,
-      ]),
-      history,
-    })
-  }
+        history,
+        basepath: basepath === '' ? undefined : basepath,
+      })
+    }
 
-  test('should navigate to the parent route', async () => {
-    const router = setupRouter()
+    test('should navigate to the parent route', async () => {
+      const router = setupRouter()
 
-    render(<RouterProvider router={router} />)
+      render(<RouterProvider router={router} />)
 
-    // Navigate to /a/b
-    await act(async () => {
-      history.push('/a/b')
-    })
+      // Navigate to /a/b
+      await act(async () => {
+        history.push(`${basepath}/a/b`)
+      })
 
-    // Inspect the link to go up a parent
-    const parentLink = await screen.findByText('Link to Parent')
-    expect(parentLink.getAttribute('href')).toBe('/a')
+      // Inspect the link to go up a parent
+      const parentLink = await screen.findByText('Link to Parent')
+      expect(parentLink.getAttribute('href')).toBe(`${basepath}/a`)
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(parentLink)
-    })
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(parentLink)
+      })
 
-    expect(window.location.pathname).toBe('/a')
-  })
-
-  test('should navigate to the parent route and keep params', async () => {
-    const router = setupRouter()
-
-    render(<RouterProvider router={router} />)
-
-    // Navigate to /param/oldParamValue/a/b
-    await act(async () => {
-      history.push('/param/foo/a/b')
+      expect(window.location.pathname).toBe(`${basepath}/a`)
     })
 
-    // Inspect the link to go up a parent and keep the params
-    const parentLink = await screen.findByText('Link to Parent')
-    expect(parentLink.getAttribute('href')).toBe('/param/foo/a')
+    test('should navigate to the parent route and keep params', async () => {
+      const router = setupRouter()
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(parentLink)
+      render(<RouterProvider router={router} />)
+
+      // Navigate to /param/oldParamValue/a/b
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
+
+      // Inspect the link to go up a parent and keep the params
+      const parentLink = await screen.findByText('Link to Parent')
+      expect(parentLink.getAttribute('href')).toBe(`${basepath}/param/foo/a`)
+
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(parentLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
 
-    expect(window.location.pathname).toBe('/param/foo/a')
-  })
+    test('should navigate to the parent route and change params', async () => {
+      const router = setupRouter()
 
-  test('should navigate to the parent route and change params', async () => {
-    const router = setupRouter()
+      render(<RouterProvider router={router} />)
 
-    render(<RouterProvider router={router} />)
+      // Navigate to /param/oldParamValue/a/b
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
 
-    // Navigate to /param/oldParamValue/a/b
-    await act(async () => {
-      history.push('/param/foo/a/b')
+      // Inspect the link to go up a parent and keep the params
+      const parentLink = await screen.findByText(
+        'Link to Parent with param:bar',
+      )
+      expect(parentLink.getAttribute('href')).toBe(`${basepath}/param/bar/a`)
+
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(parentLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
     })
 
-    // Inspect the link to go up a parent and keep the params
-    const parentLink = await screen.findByText('Link to Parent with param:bar')
-    expect(parentLink.getAttribute('href')).toBe('/param/bar/a')
+    test('should navigate to a relative link based on render location', async () => {
+      const router = setupRouter()
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(parentLink)
+      render(<RouterProvider router={router} />)
+
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
+
+      // Inspect the relative link to ./a
+      const relativeLink = await screen.findByText('Link to ./a')
+      expect(relativeLink.getAttribute('href')).toBe(`${basepath}/param/foo/a`)
+
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(relativeLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
 
-    expect(window.location.pathname).toBe('/param/bar/a')
-  })
+    test('should navigate to a parent link based on render location', async () => {
+      const router = setupRouter()
 
-  test('should navigate to a relative link based on render location', async () => {
-    const router = setupRouter()
+      render(<RouterProvider router={router} />)
 
-    render(<RouterProvider router={router} />)
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
 
-    await act(async () => {
-      history.push('/param/foo/a/b')
+      // Inspect the relative link to ./a
+      const relativeLink = await screen.findByText(
+        'Link to .. from /param/foo/a',
+      )
+      expect(relativeLink.getAttribute('href')).toBe(`${basepath}/param/foo`)
+
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(relativeLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/param/foo`)
     })
 
-    // Inspect the relative link to ./a
-    const relativeLink = await screen.findByText('Link to ./a')
-    expect(relativeLink.getAttribute('href')).toBe('/param/foo/a')
+    test('should navigate to a child link based on pathname', async () => {
+      const router = setupRouter()
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(relativeLink)
+      render(<RouterProvider router={router} />)
+
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
+
+      // Inspect the relative link to ./a
+      const relativeLink = await screen.findByText('Link to c')
+      expect(relativeLink.getAttribute('href')).toBe(
+        `${basepath}/param/foo/a/b/c`,
+      )
+
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(relativeLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a/b/c`)
     })
 
-    expect(window.location.pathname).toBe('/param/foo/a')
-  })
+    test('should navigate to a relative link based on pathname', async () => {
+      const router = setupRouter()
 
-  test('should navigate to a parent link based on render location', async () => {
-    const router = setupRouter()
+      render(<RouterProvider router={router} />)
 
-    render(<RouterProvider router={router} />)
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
 
-    await act(async () => {
-      history.push('/param/foo/a/b')
+      // Inspect the relative link to ./a
+      const relativeLink = await screen.findByText('Link to ../c')
+      expect(relativeLink.getAttribute('href')).toBe(
+        `${basepath}/param/foo/a/c`,
+      )
+
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(relativeLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a/c`)
     })
 
-    // Inspect the relative link to ./a
-    const relativeLink = await screen.findByText('Link to .. from /param/foo/a')
-    expect(relativeLink.getAttribute('href')).toBe('/param/foo')
+    test('should navigate to parent inside of splat route based on pathname', async () => {
+      const router = setupRouter()
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(relativeLink)
+      render(<RouterProvider router={router} />)
+
+      await act(async () => {
+        history.push(`${basepath}/splat/a/b/c/d`)
+      })
+
+      const relativeLink = await screen.findByText('Unsafe link to ..')
+      expect(relativeLink.getAttribute('href')).toBe(`${basepath}/splat/a/b/c`)
+
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(relativeLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c`)
     })
 
-    expect(window.location.pathname).toBe('/param/foo')
-  })
+    test('should navigate to same route inside of splat route based on pathname', async () => {
+      const router = setupRouter()
 
-  test('should navigate to a child link based on pathname', async () => {
-    const router = setupRouter()
+      render(<RouterProvider router={router} />)
 
-    render(<RouterProvider router={router} />)
+      await act(async () => {
+        history.push(`${basepath}/splat/a/b/c`)
+      })
 
-    await act(async () => {
-      history.push('/param/foo/a/b')
+      const relativeLink = await screen.findByText('Unsafe link to .')
+      expect(relativeLink.getAttribute('href')).toBe(`${basepath}/splat/a/b/c`)
+
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(relativeLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c`)
     })
 
-    // Inspect the relative link to ./a
-    const relativeLink = await screen.findByText('Link to c')
-    expect(relativeLink.getAttribute('href')).toBe('/param/foo/a/b/c')
+    test('should navigate to child route inside of splat route based on pathname', async () => {
+      const router = setupRouter()
 
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(relativeLink)
+      render(<RouterProvider router={router} />)
+
+      await act(async () => {
+        history.push(`${basepath}/splat/a/b/c`)
+      })
+
+      const relativeLink = await screen.findByText('Unsafe link to ./child')
+      expect(relativeLink.getAttribute('href')).toBe(
+        `${basepath}/splat/a/b/c/child`,
+      )
+
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(relativeLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/splat/a/b/c/child`)
     })
 
-    expect(window.location.pathname).toBe('/param/foo/a/b/c')
-  })
+    test('should navigate to same route with different params', async () => {
+      const router = setupRouter()
 
-  test('should navigate to a relative link based on pathname', async () => {
-    const router = setupRouter()
+      render(<RouterProvider router={router} />)
 
-    render(<RouterProvider router={router} />)
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
 
-    await act(async () => {
-      history.push('/param/foo/a/b')
+      const parentLink = await screen.findByText('Link to . with param:bar')
+
+      await act(async () => {
+        fireEvent.click(parentLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
     })
-
-    // Inspect the relative link to ./a
-    const relativeLink = await screen.findByText('Link to ../c')
-    expect(relativeLink.getAttribute('href')).toBe('/param/foo/a/c')
-
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(relativeLink)
-    })
-
-    expect(window.location.pathname).toBe('/param/foo/a/c')
-  })
-
-  test('should navigate to parent inside of splat route based on pathname', async () => {
-    const router = setupRouter()
-
-    render(<RouterProvider router={router} />)
-
-    await act(async () => {
-      history.push('/splat/a/b/c/d')
-    })
-
-    const relativeLink = await screen.findByText('Unsafe link to ..')
-    expect(relativeLink.getAttribute('href')).toBe('/splat/a/b/c')
-
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(relativeLink)
-    })
-
-    expect(window.location.pathname).toBe('/splat/a/b/c')
-  })
-
-  test('should navigate to same route inside of splat route based on pathname', async () => {
-    const router = setupRouter()
-
-    render(<RouterProvider router={router} />)
-
-    await act(async () => {
-      history.push('/splat/a/b/c')
-    })
-
-    const relativeLink = await screen.findByText('Unsafe link to .')
-    expect(relativeLink.getAttribute('href')).toBe('/splat/a/b/c')
-
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(relativeLink)
-    })
-
-    expect(window.location.pathname).toBe('/splat/a/b/c')
-  })
-
-  test('should navigate to child route inside of splat route based on pathname', async () => {
-    const router = setupRouter()
-
-    render(<RouterProvider router={router} />)
-
-    await act(async () => {
-      history.push('/splat/a/b/c')
-    })
-
-    const relativeLink = await screen.findByText('Unsafe link to ./child')
-    expect(relativeLink.getAttribute('href')).toBe('/splat/a/b/c/child')
-
-    // Click the link and ensure the new location
-    await act(async () => {
-      fireEvent.click(relativeLink)
-    })
-
-    expect(window.location.pathname).toBe('/splat/a/b/c/child')
-  })
-})
+  },
+)

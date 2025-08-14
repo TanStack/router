@@ -2,7 +2,7 @@ import {
   TanStackDirectiveFunctionsPlugin,
   TanStackDirectiveFunctionsPluginEnv,
 } from '@tanstack/directive-functions-plugin'
-import type { Plugin, ViteDevServer } from 'vite'
+import type { DevEnvironment, Plugin, ViteDevServer } from 'vite'
 import type {
   DirectiveFn,
   ReplacerFn,
@@ -31,6 +31,10 @@ export type ServerFnPluginEnvOpts = {
   replacer: ReplacerFn
 }
 
+const debug =
+  process.env.TSR_VITE_DEBUG &&
+  ['true', 'server-functions-plugin'].includes(process.env.TSR_VITE_DEBUG)
+
 export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
   client: Array<Plugin>
   ssr: Array<Plugin>
@@ -39,17 +43,21 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
   const directiveFnsById: Record<string, DirectiveFn> = {}
   let viteDevServer: ViteDevServer | undefined
 
-  const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
-    // When directives are compiled, save them to our global variable
-    // This variable will be used both during development to incrementally
-    // look up server functions and during build/production to produce a
-    // static manifest that can be read by the server build
-    Object.assign(directiveFnsById, d)
-    invalidateVirtualModule(
-      viteDevServer,
-      resolveViteId(opts.manifestVirtualImportId),
-    )
-  }
+  const onDirectiveFnsById = buildOnDirectiveFnsByIdCallback({
+    directiveFnsById,
+    manifestVirtualImportId: opts.manifestVirtualImportId,
+    invalidateModule: (id) => {
+      if (viteDevServer) {
+        const mod = viteDevServer.moduleGraph.getModuleById(id)
+        if (mod) {
+          if (debug) {
+            console.info(`invalidating module ${JSON.stringify(mod.id)}`)
+          }
+          viteDevServer.moduleGraph.invalidateModule(mod)
+        }
+      }
+    },
+  })
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -150,35 +158,40 @@ export interface TanStackServerFnPluginEnvOpts {
 }
 
 export function TanStackServerFnPluginEnv(
-  opts: TanStackServerFnPluginEnvOpts,
+  _opts: TanStackServerFnPluginEnvOpts,
 ): Array<Plugin> {
-  opts = {
-    ...opts,
+  const opts = {
+    ..._opts,
     client: {
-      ...opts.client,
-      envName: opts.client.envName || 'client',
+      ..._opts.client,
+      envName: _opts.client.envName || 'client',
     },
     server: {
-      ...opts.server,
-      envName: opts.server.envName || 'server',
+      ..._opts.server,
+      envName: _opts.server.envName || 'server',
     },
   }
 
   const directiveFnsById: Record<string, DirectiveFn> = {}
-  let viteDevServer: ViteDevServer | undefined
+  let serverDevEnv: DevEnvironment | undefined
 
-  const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
-    // When directives are compiled, save them to our global variable
-    // This variable will be used both during development to incrementally
-    // look up server functions and during build/production to produce a
-    // static manifest that can be read by the server build
-    Object.assign(directiveFnsById, d)
-
-    invalidateVirtualModule(
-      viteDevServer,
-      resolveViteId(opts.manifestVirtualImportId),
-    )
-  }
+  const onDirectiveFnsById = buildOnDirectiveFnsByIdCallback({
+    directiveFnsById,
+    manifestVirtualImportId: opts.manifestVirtualImportId,
+    invalidateModule: (id) => {
+      if (serverDevEnv) {
+        const mod = serverDevEnv.moduleGraph.getModuleById(id)
+        if (mod) {
+          if (debug) {
+            console.info(
+              `invalidating module ${JSON.stringify(mod.id)} in server environment`,
+            )
+          }
+          serverDevEnv.moduleGraph.invalidateModule(mod)
+        }
+      }
+    },
+  })
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -208,29 +221,30 @@ export function TanStackServerFnPluginEnv(
     {
       // On the server, we need to be able to read the server-function manifest from the client build.
       // This is likely used in the handler for server functions, so we can find the server function
-      // by its ID, import it, and call it. We can't do this in memory here because the builds happen in isolation,
-      // so the manifest is like a serialized state from the client build to the server build
+      // by its ID, import it, and call it.
       name: 'tanstack-start-server-fn-vite-plugin-manifest-server',
       enforce: 'pre',
-      configureServer(server) {
-        viteDevServer = server
+      configureServer(viteDevServer) {
+        serverDevEnv = viteDevServer.environments[opts.server.envName]
+        if (!serverDevEnv) {
+          throw new Error(
+            `TanStackServerFnPluginEnv: environment "${opts.server.envName}" not found`,
+          )
+        }
       },
-      applyToEnvironment(environment) {
-        return environment.name === opts.server.envName
-      },
-      resolveId(id) {
-        if (id === opts.manifestVirtualImportId) {
+      resolveId: {
+        filter: { id: new RegExp(opts.manifestVirtualImportId) },
+        handler(id) {
           return resolveViteId(id)
-        }
-
-        return undefined
+        },
       },
-      load(id) {
-        if (id !== resolveViteId(opts.manifestVirtualImportId)) {
-          return undefined
-        }
-
-        const manifestWithImports = `
+      load: {
+        filter: { id: new RegExp(resolveViteId(opts.manifestVirtualImportId)) },
+        handler() {
+          if (this.environment.name !== opts.server.envName) {
+            return `export default {}`
+          }
+          const manifestWithImports = `
           export default {${Object.entries(directiveFnsById)
             .map(
               ([id, fn]: any) =>
@@ -241,7 +255,8 @@ export function TanStackServerFnPluginEnv(
             )
             .join(',')}}`
 
-        return manifestWithImports
+          return manifestWithImports
+        },
       },
     },
   ]
@@ -251,14 +266,33 @@ function resolveViteId(id: string) {
   return `\0${id}`
 }
 
-function invalidateVirtualModule(
-  viteDevServer: ViteDevServer | undefined,
-  resolvedId: string,
-) {
-  if (viteDevServer) {
-    const mod = viteDevServer.moduleGraph.getModuleById(resolvedId)
-    if (mod) {
-      viteDevServer.moduleGraph.invalidateModule(mod)
+function buildOnDirectiveFnsByIdCallback(opts: {
+  invalidateModule: (resolvedId: string) => void
+  directiveFnsById: Record<string, DirectiveFn>
+  manifestVirtualImportId: string
+}) {
+  const onDirectiveFnsById = (d: Record<string, DirectiveFn>) => {
+    if (debug) {
+      console.info(`onDirectiveFnsById received: `, d)
+    }
+
+    // do we already know all the server functions? if so, we can exit early
+    // this could happen if the same file is compiled first in the client and then in the server environment
+    const newKeys = Object.keys(d).filter(
+      (key) => !(key in opts.directiveFnsById),
+    )
+    if (newKeys.length > 0) {
+      // When directives are compiled, save them to `directiveFnsById`
+      // This state will be used both during development to incrementally
+      // look up server functions and during build/production to produce a
+      // static manifest that can be read by the server build
+      Object.assign(opts.directiveFnsById, d)
+      if (debug) {
+        console.info(`directiveFnsById after update: `, opts.directiveFnsById)
+      }
+
+      opts.invalidateModule(resolveViteId(opts.manifestVirtualImportId))
     }
   }
+  return onDirectiveFnsById
 }

@@ -90,30 +90,35 @@ export function TanStackDirectiveFunctionsPluginEnv(
     buildStart() {
       root = this.environment.config.root
     },
-    // applyToEnvironment(env) {
-    //   return [
-    //     opts.environments.client.envName,
-    //     opts.environments.server.envName,
-    //   ].includes(env.name)
-    // },
-    transform(code, id) {
-      const envOptions = [
-        opts.environments.client,
-        opts.environments.server,
-      ].find((e) => e.envName === this.environment.name)
+    applyToEnvironment(env) {
+      return [
+        opts.environments.client.envName,
+        opts.environments.server.envName,
+      ].includes(env.name)
+    },
+    transform: {
+      filter: {
+        code: directiveRx,
+      },
+      handler(code, id) {
+        const envOptions = [
+          opts.environments.client,
+          opts.environments.server,
+        ].find((e) => e.envName === this.environment.name)
 
-      if (!envOptions) {
-        throw new Error(`Environment ${this.environment.name} not found`)
-      }
+        if (!envOptions) {
+          throw new Error(`Environment ${this.environment.name} not found`)
+        }
 
-      return transformCode({
-        ...opts,
-        ...envOptions,
-        code,
-        id,
-        directiveRx,
-        root,
-      })
+        return transformCode({
+          ...opts,
+          ...envOptions,
+          code,
+          id,
+          directiveRx,
+          root,
+        })
+      },
     },
   }
 }
@@ -145,17 +150,21 @@ function transformCode({
 
   if (debug) console.info(`${envLabel}: Compiling Directives: `, id)
 
-  const { compiledResult, directiveFnsById } = compileDirectives({
-    directive,
-    directiveLabel,
-    getRuntimeCode,
-    replacer,
-    code,
-    root,
-    filename: id,
-  })
-
-  onDirectiveFnsById?.(directiveFnsById)
+  const { compiledResult, directiveFnsById, isDirectiveSplitParam } =
+    compileDirectives({
+      directive,
+      directiveLabel,
+      getRuntimeCode,
+      replacer,
+      code,
+      root,
+      filename: id,
+    })
+  // when we process a file with a directive split param, we have already encountered the directives in that file
+  // (otherwise we wouldn't have gotten here)
+  if (!isDirectiveSplitParam) {
+    onDirectiveFnsById?.(directiveFnsById)
+  }
 
   if (debug) {
     logDiff(code, compiledResult.code)

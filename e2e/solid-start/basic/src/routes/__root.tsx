@@ -41,6 +41,17 @@ export const Route = createRootRoute({
       { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
       { rel: 'icon', href: '/favicon.ico' },
     ],
+    styles: [
+      {
+        media: 'all and (min-width: 500px)',
+        children: `
+        .inline-div {
+          color: white;
+          background-color: gray;
+          max-width: 250px;
+        }`,
+      },
+    ],
   }),
   errorComponent: (props) => <p>{props.error.stack}</p>,
   notFoundComponent: () => <NotFound />,
@@ -119,6 +130,7 @@ function RootComponent() {
         </Link>
       </div>
       <Outlet />
+      <div class="inline-div">This is an inline styled div</div>
       <TanStackRouterDevtoolsInProd />
     </>
   )

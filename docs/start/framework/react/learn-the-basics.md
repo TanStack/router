@@ -18,7 +18,7 @@ This is the file that will dictate the behavior of TanStack Router used within S
 from the default [preloading functionality](/router/latest/docs/framework/react/guide/preloading) to [caching staleness](/router/latest/docs/framework/react/guide/data-loading).
 
 ```tsx
-// app/router.tsx
+// src/router.tsx
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
@@ -77,7 +77,7 @@ Whether we are statically generating our app or serving it dynamically, the `ser
 Getting our html to the client is only half the battle. Once there, we need to hydrate our client-side JavaScript once the route resolves to the client. We do this by hydrating the root of our application with the `StartClient` component:
 
 ```tsx
-// app/client.tsx
+// src/client.tsx
 import { StartClient } from '@tanstack/react-start'
 import { StrictMode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
@@ -102,7 +102,7 @@ Other than the client entry point (which is optional by default), the `__root` r
 Because it is **always rendered**, it is the perfect place to construct your application shell and take care of any global logic.
 
 ```tsx
-// app/routes/__root.tsx
+// src/routes/__root.tsx
 import {
   Outlet,
   createRootRoute,
@@ -165,7 +165,7 @@ Routes are an extensive feature of TanStack Router, and are covered thoroughly i
 - Much more!
 
 ```tsx
-// app/routes/index.tsx
+// src/routes/index.tsx
 import * as fs from 'node:fs'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
@@ -294,13 +294,13 @@ export const updateUser = createServerFn({ method: 'POST' })
 // Somewhere else in your application
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
-import { useServerFunction } from '@tanstack/react-start'
+import { useServerFn } from '@tanstack/react-start'
 import { updateUser, type User } from '...'
 
 export function useUpdateUser() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const _updateUser = useServerFunction(updateUser)
+  const _updateUser = useServerFn(updateUser)
 
   return useCallback(
     async (user: User) => {

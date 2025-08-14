@@ -11,9 +11,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
+import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
+import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
@@ -70,9 +74,25 @@ const groupRoute = groupRouteImport.update({
   id: '/(group)',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char45824Char54620Char48124Char44397Route =
+  Char45824Char54620Char48124Char44397RouteImport.update({
+    id: '/대한민국',
+    path: '/대한민국',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const RemountDepsRoute = RemountDepsRouteImport.update({
+  id: '/remountDeps',
+  path: '/remountDeps',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotRemountDepsRoute = NotRemountDepsRouteImport.update({
+  id: '/notRemountDeps',
+  path: '/notRemountDeps',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EditingBRoute = EditingBRouteImport.update({
@@ -83,6 +103,11 @@ const EditingBRoute = EditingBRouteImport.update({
 const EditingARoute = EditingARouteImport.update({
   id: '/editing-a',
   path: '/editing-a',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComponentTypesTestRoute = ComponentTypesTestRouteImport.update({
+  id: '/component-types-test',
+  path: '/component-types-test',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnchorRoute = AnchorRouteImport.update({
@@ -344,9 +369,13 @@ export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/anchor': typeof AnchorRoute
+  '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
+  '/remountDeps': typeof RemountDepsRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/qux': typeof virtualLayoutQuxQuxLayoutRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
@@ -389,8 +418,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof groupLayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
+  '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/notRemountDeps': typeof NotRemountDepsRoute
+  '/remountDeps': typeof RemountDepsRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/qux': typeof virtualLayoutQuxQuxLayoutRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
@@ -434,9 +467,13 @@ export interface FileRoutesById {
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
+  '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
+  '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
+  '/remountDeps': typeof RemountDepsRoute
+  '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/(virtualLayout)/qux': typeof virtualLayoutQuxRouteRouteWithChildren
   '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/(group)': typeof groupRouteWithChildren
@@ -490,9 +527,13 @@ export interface FileRouteTypes {
     | '/'
     | '/search-params'
     | '/anchor'
+    | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
+    | '/notRemountDeps'
     | '/posts'
+    | '/remountDeps'
+    | '/대한민국'
     | '/qux'
     | '/onlyrouteinside'
     | '/inside'
@@ -535,8 +576,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/anchor'
+    | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
+    | '/notRemountDeps'
+    | '/remountDeps'
+    | '/대한민국'
     | '/qux'
     | '/onlyrouteinside'
     | '/inside'
@@ -579,9 +624,13 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/_layout'
     | '/anchor'
+    | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
+    | '/notRemountDeps'
     | '/posts'
+    | '/remountDeps'
+    | '/대한민국'
     | '/(virtualLayout)/qux'
     | '/(another-group)/onlyrouteinside'
     | '/(group)'
@@ -635,9 +684,13 @@ export interface RootRouteChildren {
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
+  ComponentTypesTestRoute: typeof ComponentTypesTestRoute
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
+  NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
+  RemountDepsRoute: typeof RemountDepsRoute
+  Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
   virtualLayoutQuxRouteRoute: typeof virtualLayoutQuxRouteRouteWithChildren
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupRoute: typeof groupRouteWithChildren
@@ -673,11 +726,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof groupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/remountDeps': {
+      id: '/remountDeps'
+      path: '/remountDeps'
+      fullPath: '/remountDeps'
+      preLoaderRoute: typeof RemountDepsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notRemountDeps': {
+      id: '/notRemountDeps'
+      path: '/notRemountDeps'
+      fullPath: '/notRemountDeps'
+      preLoaderRoute: typeof NotRemountDepsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/editing-b': {
@@ -692,6 +766,13 @@ declare module '@tanstack/react-router' {
       path: '/editing-a'
       fullPath: '/editing-a'
       preLoaderRoute: typeof EditingARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/component-types-test': {
+      id: '/component-types-test'
+      path: '/component-types-test'
+      fullPath: '/component-types-test'
+      preLoaderRoute: typeof ComponentTypesTestRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/anchor': {
@@ -1214,9 +1295,14 @@ const rootRouteChildren: RootRouteChildren = {
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
+  ComponentTypesTestRoute: ComponentTypesTestRoute,
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
+  NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
+  RemountDepsRoute: RemountDepsRoute,
+  Char45824Char54620Char48124Char44397Route:
+    Char45824Char54620Char48124Char44397Route,
   virtualLayoutQuxRouteRoute: virtualLayoutQuxRouteRouteWithChildren,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,

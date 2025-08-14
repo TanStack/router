@@ -13,6 +13,7 @@ The following options are available for configuring the file-based routing:
 - [`virtualRouteConfig`](#virtualrouteconfig)
 - [`routeFilePrefix`](#routefileprefix)
 - [`routeFileIgnorePrefix`](#routefileignoreprefix)
+- [`routeFileIgnorePattern`](#routefileignorepattern)
 - [`indexToken`](#indextoken)
 - [`routeToken`](#routetoken)
 - [`quoteStyle`](#quotestyle)
@@ -58,6 +59,12 @@ This option is used to configure the Virtual File Routes feature. See the "Virtu
 
 By default, this value is set to `undefined`.
 
+### `routeFilePrefix`
+
+This option is used to identify route files in the route directory. This means that only files that start with this prefix will be considered for routing.
+
+By default, this value is set to `` and as such all files in the route directory will be considered for routing.
+
 ### `routeFileIgnorePrefix`
 
 This option is used to ignore specific files and directories in the route directory. This can be useful if you want to "opt-in" certain files or directories that you do not want to be considered for routing.
@@ -80,12 +87,6 @@ src/routes
 This option is used to ignore specific files and directories in the route directory. It can be used in regular expression format. For example, `.((css|const).ts)|test-page` will ignore files / directories with names containing `.css.ts`, `.const.ts` or `test-page`.
 
 By default, this value is set to `undefined`.
-
-### `routeFilePrefix`
-
-This option is used to identify route files in the route directory. This means that only files that start with this prefix will be considered for routing.
-
-By default, this value is set to `` and as such all files in the route directory will be considered for routing.
 
 ### `routeToken`
 
@@ -134,7 +135,7 @@ By default, this value is set to `false`.
 
 ### `autoCodeSplitting`
 
-This feature is only available is you are using the TanStack Router Bundler Plugin.
+This feature is only available if you are using the TanStack Router Bundler Plugin.
 
 This option is used to enable automatic code-splitting for non-critical route configuration items. See the "Automatic Code-Splitting" guide for more information.
 

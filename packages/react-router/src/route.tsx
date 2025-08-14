@@ -49,9 +49,17 @@ import type { LinkComponentRoute } from './link'
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
     component?: RouteComponent
-    errorComponent?: false | null | ErrorRouteComponent
+    errorComponent?: false | null | undefined | ErrorRouteComponent
     notFoundComponent?: NotFoundRouteComponent
     pendingComponent?: RouteComponent
+  }
+
+  export interface RootRouteOptionsExtensions {
+    shellComponent?: ({
+      children,
+    }: {
+      children: React.ReactNode
+    }) => React.ReactNode
   }
 
   export interface RouteExtensions<
@@ -534,21 +542,22 @@ export function createRouteMask<
   return opts as any
 }
 
-export type ReactNode = any
+export interface DefaultRouteTypes<TProps> {
+  component:
+    | ((props: TProps) => any)
+    | React.LazyExoticComponent<(props: TProps) => any>
+}
+export interface RouteTypes<TProps> extends DefaultRouteTypes<TProps> {}
 
-export type SyncRouteComponent<TProps> =
-  | ((props: TProps) => ReactNode)
-  | React.LazyExoticComponent<(props: TProps) => ReactNode>
-
-export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
+export type AsyncRouteComponent<TProps> = RouteTypes<TProps>['component'] & {
   preload?: () => Promise<void>
 }
 
-export type RouteComponent<TProps = any> = AsyncRouteComponent<TProps>
+export type RouteComponent = AsyncRouteComponent<{}>
 
-export type ErrorRouteComponent = RouteComponent<ErrorComponentProps>
+export type ErrorRouteComponent = AsyncRouteComponent<ErrorComponentProps>
 
-export type NotFoundRouteComponent = SyncRouteComponent<NotFoundRouteProps>
+export type NotFoundRouteComponent = RouteTypes<NotFoundRouteProps>['component']
 
 export class NotFoundRoute<
   TParentRoute extends AnyRootRoute,

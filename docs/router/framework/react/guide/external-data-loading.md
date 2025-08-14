@@ -48,7 +48,7 @@ Here is a naive illustration (don't do this) of using a Route's `loader` option 
 // src/routes/posts.tsx
 let postsCache = []
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts')({
   loader: async () => {
     postsCache = await fetchPosts()
   },
@@ -80,7 +80,7 @@ const postsQueryOptions = queryOptions({
   queryFn: () => fetchPosts(),
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/posts')({
   // Use the `loader` option to ensure that the data is loaded
   loader: () => queryClient.ensureQueryData(postsQueryOptions),
   component: () => {
@@ -102,10 +102,10 @@ export const Route = createFileRoute({
 
 ### Error handling with TanStack Query
 
-When an error occurs while using `suspense` with `Tanstack Query`, you'll need to let queries know that you want to try again when re-rendering. This can be done by using the `reset` function provided by the `useQueryErrorResetBoundary` hook. We can invoke this function in an effect as soon as the error component mounts. This will make sure that the query is reset and will try to fetch data again when the route component is rendered again. This will also cover cases where users navigate away from our route instead of clicking the `retry` button.
+When an error occurs while using `suspense` with `TanStack Query`, you'll need to let queries know that you want to try again when re-rendering. This can be done by using the `reset` function provided by the `useQueryErrorResetBoundary` hook. We can invoke this function in an effect as soon as the error component mounts. This will make sure that the query is reset and will try to fetch data again when the route component is rendered again. This will also cover cases where users navigate away from our route instead of clicking the `retry` button.
 
 ```tsx
-export const Route = createFileRoute({
+export const Route = createFileRoute('/')({
   loader: () => queryClient.ensureQueryData(postsQueryOptions),
   errorComponent: ({ error, reset }) => {
     const router = useRouter()
@@ -141,7 +141,7 @@ Tools that are able can integrate with TanStack Router's convenient Dehydration/
 
 **For critical data needed for the first render/paint**, TanStack Router supports **`dehydrate` and `hydrate`** options when configuring the `Router`. These callbacks are functions that are automatically called on the server and client when the router dehydrates and hydrates normally and allow you to augment the dehydrated data with your own data.
 
-The `dehydrate` function can return any serializable JSON data which will get merged and injected into the dehydrated payload that is sent to the client. This payload is delivered via the `DehydrateRouter` component which, when rendered, provides the data back to you in the `hydrate` function on the client.
+The `dehydrate` function can return any serializable JSON data which will get merged and injected into the dehydrated payload that is sent to the client.
 
 For example, let's dehydrate and hydrate a TanStack Query `QueryClient` so that our data we fetched on the server will be available for hydration on the client.
 

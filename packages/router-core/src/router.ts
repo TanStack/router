@@ -14,6 +14,10 @@ import {
   replaceEqualDeep,
 } from './utils'
 import {
+  SEGMENT_TYPE_OPTIONAL_PARAM,
+  SEGMENT_TYPE_PARAM,
+  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_WILDCARD,
   cleanPath,
   interpolatePath,
   joinPaths,
@@ -29,6 +33,8 @@ import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
+import { createLRUCache } from './lru-cache'
+import type { ParsePathnameCache, Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -46,7 +52,6 @@ import type {
   Updater,
 } from './utils'
 import type { ParsedLocation } from './location'
-import type { DeferredPromiseState } from './defer'
 import type {
   AnyContext,
   AnyRoute,
@@ -57,6 +62,7 @@ import type {
   RouteContextOptions,
   RouteMask,
   SearchMiddleware,
+  SsrContextOptions,
 } from './route'
 import type {
   FullSearchSchema,
@@ -77,16 +83,9 @@ import type {
   NavigateFn,
 } from './RouterProvider'
 import type { Manifest } from './manifest'
-import type { StartSerializer } from './serializer'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
-
-declare global {
-  interface Window {
-    __TSR_ROUTER__?: AnyRouter
-  }
-}
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -287,7 +286,7 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#dehydrate-method)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration)
    */
-  dehydrate?: () => TDehydrated
+  dehydrate?: () => Awaitable<TDehydrated>
   /**
    * A function that will be called when the router is hydrated.
    *
@@ -342,7 +341,22 @@ export interface RouterOptions<
    */
   isServer?: boolean
 
-  defaultSsr?: boolean
+  /**
+   * @default false
+   */
+  isShell?: boolean
+
+  /**
+   * @default false
+   */
+  isPrerendering?: boolean
+
+  /**
+   * The default `ssr` a route should use if no `ssr` is provided.
+   *
+   * @default true
+   */
+  defaultSsr?: boolean | 'data-only'
 
   search?: {
     /**
@@ -398,6 +412,17 @@ export interface RouterOptions<
    * @default ['window']
    */
   scrollToTopSelectors?: Array<string | (() => Element | null | undefined)>
+
+  /**
+   * When `true`, disables the global catch boundary that normally wraps all route matches.
+   * This allows unhandled errors to bubble up to top-level error handlers in the browser.
+   *
+   * Useful for testing tools (like Storybook Test Runner), error reporting services,
+   * and debugging scenarios where you want errors to reach the browser's global error handlers.
+   *
+   * @default false
+   */
+  disableGlobalCatchBoundary?: boolean
 }
 
 export interface RouterState<
@@ -435,6 +460,7 @@ export interface BuildNextOptions {
   href?: string
   _fromLocation?: ParsedLocation
   unsafeRelative?: 'path'
+  _isNavigate?: boolean
 }
 
 type NavigationEventInfo = {
@@ -445,7 +471,7 @@ type NavigationEventInfo = {
   hashChanged: boolean
 }
 
-export type RouterEvents = {
+export interface RouterEvents {
   onBeforeNavigate: {
     type: 'onBeforeNavigate'
   } & NavigationEventInfo
@@ -461,10 +487,6 @@ export type RouterEvents = {
   onBeforeRouteMount: {
     type: 'onBeforeRouteMount'
   } & NavigationEventInfo
-  onInjectedHtml: {
-    type: 'onInjectedHtml'
-    promise: Promise<string>
-  }
   onRendered: {
     type: 'onRendered'
   } & NavigationEventInfo
@@ -478,6 +500,11 @@ export type RouterListener<TRouterEvent extends RouterEvent> = {
   eventType: TRouterEvent['type']
   fn: ListenerFn<TRouterEvent>
 }
+
+export type SubscribeFn = <TType extends keyof RouterEvents>(
+  eventType: TType,
+  fn: ListenerFn<RouterEvents[TType]>,
+) => () => void
 
 export interface MatchRoutesOpts {
   preload?: boolean
@@ -515,11 +542,6 @@ export type RouterConstructorOptions<
   'context'
 > &
   RouterContextOptions<TRouteTree>
-
-export interface RouterErrorSerializer<TSerializedError> {
-  serialize: (err: unknown) => TSerializedError
-  deserialize: (err: TSerializedError) => unknown
-}
 
 export type PreloadRouteFn<
   TRouteTree extends AnyRoute,
@@ -588,11 +610,12 @@ export type UpdateFn<
 export type InvalidateFn<TRouter extends AnyRouter> = (opts?: {
   filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
   sync?: boolean
+  forcePending?: boolean
 }) => Promise<void>
 
 export type ParseLocationFn<TRouteTree extends AnyRoute> = (
+  locationToParse: HistoryLocation,
   previousLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>,
-  locationToParse?: HistoryLocation,
 ) => ParsedLocation<FullSearchSchema<TRouteTree>>
 
 export type GetMatchRoutesFn = (
@@ -616,17 +639,15 @@ export type CommitLocationFn = ({
 
 export type StartTransitionFn = (fn: () => void) => void
 
-export type SubscribeFn = <TType extends keyof RouterEvents>(
-  eventType: TType,
-  fn: ListenerFn<RouterEvents[TType]>,
-) => () => void
-
 export interface MatchRoutesFn {
   (
     pathname: string,
-    locationSearch: AnySchema,
+    locationSearch?: AnySchema,
     opts?: MatchRoutesOpts,
-  ): Array<AnyRouteMatch>
+  ): Array<MakeRouteMatchUnion>
+  /**
+   * @deprecated use the following signature instead
+   */
   (next: ParsedLocation, opts?: MatchRoutesOpts): Array<AnyRouteMatch>
   (
     pathnameOrNext: string | ParsedLocation,
@@ -640,7 +661,7 @@ export type GetMatchFn = (matchId: string) => AnyRouteMatch | undefined
 export type UpdateMatchFn = (
   id: string,
   updater: (match: AnyRouteMatch) => AnyRouteMatch,
-) => AnyRouteMatch
+) => void
 
 export type LoadRouteChunkFn = (route: AnyRoute) => Promise<Array<void>>
 
@@ -650,16 +671,16 @@ export type ClearCacheFn<TRouter extends AnyRouter> = (opts?: {
   filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
 }) => void
 
-export interface ServerSrr {
+export interface ServerSsr {
   injectedHtml: Array<InjectedHtmlEntry>
   injectHtml: (getHtml: () => string | Promise<string>) => Promise<void>
   injectScript: (
     getScript: () => string | Promise<string>,
     opts?: { logScript?: boolean },
   ) => Promise<void>
-  streamValue: (key: string, value: any) => void
-  streamedKeys: Set<string>
-  onMatchSettled: (opts: { router: AnyRouter; match: AnyRouteMatch }) => any
+  isDehydrated: () => boolean
+  onRenderFinished: (listener: () => void) => void
+  dehydrate: () => Promise<void>
 }
 
 export type AnyRouterWithContext<TContext> = RouterCore<
@@ -701,29 +722,6 @@ export function defaultSerializeError(err: unknown) {
   return {
     data: err,
   }
-}
-export interface ExtractedBaseEntry {
-  dataType: '__beforeLoadContext' | 'loaderData'
-  type: string
-  path: Array<string>
-  id: number
-  matchIndex: number
-}
-
-export interface ExtractedStream extends ExtractedBaseEntry {
-  type: 'stream'
-  streamState: StreamState
-}
-
-export interface ExtractedPromise extends ExtractedBaseEntry {
-  type: 'promise'
-  promiseState: DeferredPromiseState<any>
-}
-
-export type ExtractedEntry = ExtractedStream | ExtractedPromise
-
-export type StreamState = {
-  promises: Array<ControlledPromise<string | null>>
 }
 
 export type TrailingSlashOption = 'always' | 'never' | 'preserve'
@@ -830,7 +828,7 @@ export class RouterCore<
     })
 
     if (typeof document !== 'undefined') {
-      ;(window as any).__TSR_ROUTER__ = this
+      self.__TSR_ROUTER__ = this
     }
   }
 
@@ -839,7 +837,13 @@ export class RouterCore<
   // router can be used in a non-react environment if necessary
   startTransition: StartTransitionFn = (fn) => fn()
 
-  isShell = false
+  isShell() {
+    return !!this.options.isShell
+  }
+
+  isPrerendering() {
+    return !!this.options.isPrerendering
+  }
 
   update: UpdateFn<
     TRouteTree,
@@ -897,7 +901,7 @@ export class RouterCore<
               initialEntries: [this.basepath || '/'],
             })
           : createBrowserHistory()) as TRouterHistory)
-      this.latestLocation = this.parseLocation()
+      this.updateLatestLocation()
     }
 
     if (this.options.routeTree !== this.routeTree) {
@@ -929,14 +933,17 @@ export class RouterCore<
         'selector(:active-view-transition-type(a)',
       )
     }
-
-    if ((this.latestLocation.search as any).__TSS_SHELL) {
-      this.isShell = true
-    }
   }
 
   get state() {
     return this.__store.state
+  }
+
+  updateLatestLocation = () => {
+    this.latestLocation = this.parseLocation(
+      this.history.location,
+      this.latestLocation,
+    )
   }
 
   buildRouteTree = () => {
@@ -945,7 +952,6 @@ export class RouterCore<
       initRoute: (route, i) => {
         route.init({
           originalIndex: i,
-          defaultSsr: this.options.defaultSsr,
         })
       },
     })
@@ -959,7 +965,6 @@ export class RouterCore<
     if (notFoundRoute) {
       notFoundRoute.init({
         originalIndex: 99999999999,
-        defaultSsr: this.options.defaultSsr,
       })
       this.routesById[notFoundRoute.id] = notFoundRoute
     }
@@ -987,8 +992,8 @@ export class RouterCore<
   }
 
   parseLocation: ParseLocationFn<TRouteTree> = (
-    previousLocation,
     locationToParse,
+    previousLocation,
   ) => {
     const parse = ({
       pathname,
@@ -1009,14 +1014,15 @@ export class RouterCore<
       }
     }
 
-    const location = parse(locationToParse ?? this.history.location)
+    const location = parse(locationToParse)
 
     const { __tempLocation, __tempKey } = location.state
 
     if (__tempLocation && (!__tempKey || __tempKey === this.tempLocationKey)) {
       // Sync up the location keys
       const parsedTempLocation = parse(__tempLocation) as any
-      parsedTempLocation.state.key = location.state.key
+      parsedTempLocation.state.key = location.state.key // TODO: Remove in v2 - use __TSR_key instead
+      parsedTempLocation.state.__TSR_key = location.state.__TSR_key
 
       delete parsedTempLocation.state.__tempLocation
 
@@ -1036,6 +1042,7 @@ export class RouterCore<
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
       caseSensitive: this.options.caseSensitive,
+      parseCache: this.parsePathnameCache,
     })
     return resolvedPath
   }
@@ -1044,15 +1051,6 @@ export class RouterCore<
     return this.routesById as Record<string, AnyRoute>
   }
 
-  /**
-  @deprecated use the following signature instead
-  ```ts
-  matchRoutes (
-    next: ParsedLocation,
-    opts?: { preload?: boolean; throwOnError?: boolean },
-  ): Array<AnyRouteMatch>;
-  ```
-*/
   matchRoutes: MatchRoutesFn = (
     pathnameOrNext: string | ParsedLocation,
     locationSearchOrOpts?: AnySchema | MatchRoutesOpts,
@@ -1148,8 +1146,8 @@ export class RouterCore<
       const parentMatchId = parentMatch?.id
 
       const parentContext = !parentMatchId
-        ? ((this.options.context as any) ?? {})
-        : (parentMatch.context ?? this.options.context ?? {})
+        ? ((this.options.context as any) ?? undefined)
+        : (parentMatch.context ?? this.options.context ?? undefined)
 
       return parentContext
     }
@@ -1171,12 +1169,12 @@ export class RouterCore<
       ] = (() => {
         // Validate the search params and stabilize them
         const parentSearch = parentMatch?.search ?? next.search
-        const parentStrictSearch = parentMatch?._strictSearch ?? {}
+        const parentStrictSearch = parentMatch?._strictSearch ?? undefined
 
         try {
           const strictSearch =
             validateSearch(route.options.validateSearch, { ...parentSearch }) ??
-            {}
+            undefined
 
           return [
             {
@@ -1226,6 +1224,7 @@ export class RouterCore<
           params: routeParams,
           leaveWildcards: true,
           decodeCharMap: this.pathParamsDecodeCharMap,
+          parseCache: this.parsePathnameCache,
         }).interpolatedPath + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
@@ -1285,8 +1284,11 @@ export class RouterCore<
           isFetching: false,
           error: undefined,
           paramsError: parseErrors[index],
-          __routeContext: {},
-          __beforeLoadContext: {},
+          __routeContext: undefined,
+          _nonReactive: {
+            loadPromise: createControlledPromise(),
+          },
+          __beforeLoadContext: undefined,
           context: {},
           abortController: new AbortController(),
           fetchCount: 0,
@@ -1301,7 +1303,6 @@ export class RouterCore<
           headScripts: undefined,
           meta: undefined,
           staticData: route.options.staticData || {},
-          loadPromise: createControlledPromise(),
           fullPath: route.fullPath,
         }
       }
@@ -1336,22 +1337,25 @@ export class RouterCore<
         const parentContext = getParentContext(parentMatch)
 
         // Update the match's context
-        const contextFnContext: RouteContextOptions<any, any, any, any> = {
-          deps: match.loaderDeps,
-          params: match.params,
-          context: parentContext,
-          location: next,
-          navigate: (opts: any) =>
-            this.navigate({ ...opts, _fromLocation: next }),
-          buildLocation: this.buildLocation,
-          cause: match.cause,
-          abortController: match.abortController,
-          preload: !!match.preload,
-          matches,
-        }
 
-        // Get the route context
-        match.__routeContext = route.options.context?.(contextFnContext) ?? {}
+        if (route.options.context) {
+          const contextFnContext: RouteContextOptions<any, any, any, any> = {
+            deps: match.loaderDeps,
+            params: match.params,
+            context: parentContext ?? {},
+            location: next,
+            navigate: (opts: any) =>
+              this.navigate({ ...opts, _fromLocation: next }),
+            buildLocation: this.buildLocation,
+            cause: match.cause,
+            abortController: match.abortController,
+            preload: !!match.preload,
+            matches,
+          }
+          // Get the route context
+          match.__routeContext =
+            route.options.context(contextFnContext) ?? undefined
+        }
 
         match.context = {
           ...parentContext,
@@ -1363,6 +1367,9 @@ export class RouterCore<
 
     return matches
   }
+
+  /** a cache for `parsePathname` */
+  private parsePathnameCache: ParsePathnameCache = createLRUCache(1000)
 
   getMatchedRoutes: GetMatchRoutesFn = (
     pathname: string,
@@ -1376,6 +1383,7 @@ export class RouterCore<
       routesByPath: this.routesByPath,
       routesById: this.routesById,
       flatRoutes: this.flatRoutes,
+      parseCache: this.parsePathnameCache,
     })
   }
 
@@ -1385,7 +1393,8 @@ export class RouterCore<
     if (!match) return
 
     match.abortController.abort()
-    clearTimeout(match.pendingTimeout)
+    match._nonReactive.pendingTimeout = undefined
+    clearTimeout(match._nonReactive.pendingTimeout)
   }
 
   cancelMatches = () => {
@@ -1403,32 +1412,56 @@ export class RouterCore<
       // We allow the caller to override the current location
       const currentLocation = dest._fromLocation || this.latestLocation
 
-      const allFromMatches = this.matchRoutes(currentLocation, {
+      const allCurrentLocationMatches = this.matchRoutes(currentLocation, {
         _buildLocation: true,
       })
 
-      const lastMatch = last(allFromMatches)!
+      const lastMatch = last(allCurrentLocationMatches)!
 
       // First let's find the starting pathname
       // By default, start with the current location
-      let fromPath = lastMatch.fullPath
+      let fromPath = this.resolvePathWithBase(lastMatch.fullPath, '.')
+      const toPath = dest.to
+        ? this.resolvePathWithBase(fromPath, `${dest.to}`)
+        : this.resolvePathWithBase(fromPath, '.')
 
-      // If there is a to, it means we are changing the path in some way
-      // So we need to find the relative fromPath
+      const routeIsChanging =
+        !!dest.to &&
+        !comparePaths(dest.to.toString(), fromPath) &&
+        !comparePaths(toPath, fromPath)
+
+      // If the route is changing we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
         fromPath = currentLocation.pathname
-      } else if (dest.to && dest.from) {
+      } else if (routeIsChanging && dest.from) {
         fromPath = dest.from
-        const existingFrom = [...allFromMatches].reverse().find((d) => {
-          return (
-            d.fullPath === fromPath || d.fullPath === joinPaths([fromPath, '/'])
-          )
-        })
 
-        if (!existingFrom) {
-          console.warn(`Could not find match for from: ${dest.from}`)
+        // do this check only on navigations during test or development
+        if (process.env.NODE_ENV !== 'production' && dest._isNavigate) {
+          const allFromMatches = this.getMatchedRoutes(
+            dest.from,
+            undefined,
+          ).matchedRoutes
+
+          const matchedFrom = [...allCurrentLocationMatches]
+            .reverse()
+            .find((d) => {
+              return comparePaths(d.fullPath, fromPath)
+            })
+
+          const matchedCurrent = [...allFromMatches].reverse().find((d) => {
+            return comparePaths(d.fullPath, currentLocation.pathname)
+          })
+
+          // for from to be invalid it shouldn't just be unmatched to currentLocation
+          // but the currentLocation should also be unmatched to from
+          if (!matchedFrom && !matchedCurrent) {
+            console.warn(`Could not find match for from: ${fromPath}`)
+          }
         }
       }
+
+      fromPath = this.resolvePathWithBase(fromPath, '.')
 
       // From search should always use the current location
       const fromSearch = lastMatch.search
@@ -1438,24 +1471,29 @@ export class RouterCore<
       // Resolve the next to
       const nextTo = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
-        : fromPath
+        : this.resolvePathWithBase(fromPath, '.')
 
       // Resolve the next params
       let nextParams =
-        (dest.params ?? true) === true
-          ? fromParams
-          : {
-              ...fromParams,
-              ...functionalUpdate(dest.params as any, fromParams),
-            }
+        dest.params === false || dest.params === null
+          ? {}
+          : (dest.params ?? true) === true
+            ? fromParams
+            : {
+                ...fromParams,
+                ...functionalUpdate(dest.params as any, fromParams),
+              }
 
-      const destRoutes = this.matchRoutes(
-        nextTo,
-        {},
-        {
-          _buildLocation: true,
-        },
-      ).map((d) => this.looseRoutesById[d.routeId]!)
+      // Interpolate the path first to get the actual resolved path, then match against that
+      const interpolatedNextTo = interpolatePath({
+        path: nextTo,
+        params: nextParams ?? {},
+        parseCache: this.parsePathnameCache,
+      }).interpolatedPath
+
+      const destRoutes = this.matchRoutes(interpolatedNextTo, undefined, {
+        _buildLocation: true,
+      }).map((d) => this.looseRoutesById[d.routeId]!)
 
       // If there are any params, we need to stringify them
       if (Object.keys(nextParams).length > 0) {
@@ -1471,13 +1509,15 @@ export class RouterCore<
           })
       }
 
-      // Interpolate the next to into the next pathname
       const nextPathname = interpolatePath({
+        // Use the original template path for interpolation
+        // This preserves the original parameter syntax including optional parameters
         path: nextTo,
         params: nextParams ?? {},
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
+        parseCache: this.parsePathnameCache,
       }).interpolatedPath
 
       // Resolve the next search
@@ -1561,11 +1601,16 @@ export class RouterCore<
         let params = {}
 
         const foundMask = this.options.routeMasks?.find((d) => {
-          const match = matchPathname(this.basepath, next.pathname, {
-            to: d.from,
-            caseSensitive: false,
-            fuzzy: false,
-          })
+          const match = matchPathname(
+            this.basepath,
+            next.pathname,
+            {
+              to: d.from,
+              caseSensitive: false,
+              fuzzy: false,
+            },
+            this.parsePathnameCache,
+          )
 
           if (match) {
             params = match
@@ -1616,7 +1661,8 @@ export class RouterCore<
       // temporarily add the previous values to the next state so they don't affect
       // the comparison
       const ignoredProps = [
-        'key',
+        'key', // TODO: Remove in v2 - use __TSR_key instead
+        '__TSR_key',
         '__TSR_index',
         '__hashScrollIntoViewOptions',
       ] as const
@@ -1657,7 +1703,8 @@ export class RouterCore<
                 ...nextHistory.state,
                 __tempKey: undefined!,
                 __tempLocation: undefined!,
-                key: undefined!,
+                __TSR_key: undefined!,
+                key: undefined!, // TODO: Remove in v2 - use __TSR_key instead
               },
             },
           },
@@ -1704,6 +1751,7 @@ export class RouterCore<
   }: BuildNextOptions & CommitLocationOptions = {}) => {
     if (href) {
       const currentIndex = this.history.location.state.__TSR_index
+
       const parsed = parseHref(href, {
         __TSR_index: replace ? currentIndex : currentIndex + 1,
       })
@@ -1717,6 +1765,7 @@ export class RouterCore<
       ...(rest as any),
       _includeValidateSearch: true,
     })
+
     return this.commitLocation({
       ...location,
       viewTransition,
@@ -1745,13 +1794,14 @@ export class RouterCore<
       } else {
         window.location.href = href
       }
-      return
+      return Promise.resolve()
     }
 
     return this.buildAndCommitLocation({
       ...rest,
       href,
       to: to as string,
+      _isNavigate: true,
     })
   }
 
@@ -1760,7 +1810,7 @@ export class RouterCore<
   beforeLoad = () => {
     // Cancel any pending matches
     this.cancelMatches()
-    this.latestLocation = this.parseLocation(this.latestLocation)
+    this.updateLatestLocation()
 
     if (this.isServer) {
       // for SPAs on the initial load, this is handled by the Transitioner
@@ -1772,7 +1822,21 @@ export class RouterCore<
         state: true,
         _includeValidateSearch: true,
       })
-      if (trimPath(this.latestLocation.href) !== trimPath(nextLocation.href)) {
+
+      // Normalize URLs for comparison to handle encoding differences
+      // Browser history always stores encoded URLs while buildLocation may produce decoded URLs
+      const normalizeUrl = (url: string) => {
+        try {
+          return encodeURI(decodeURI(url))
+        } catch {
+          return url
+        }
+      }
+
+      if (
+        trimPath(normalizeUrl(this.latestLocation.href)) !==
+        trimPath(normalizeUrl(nextLocation.href))
+      ) {
         throw redirect({ href: nextLocation.href })
       }
     }
@@ -1783,20 +1847,20 @@ export class RouterCore<
     this.__store.setState((s) => ({
       ...s,
       status: 'pending',
+      statusCode: 200,
       isLoading: true,
       location: this.latestLocation,
       pendingMatches,
       // If a cached moved to pendingMatches, remove it from cachedMatches
-      cachedMatches: s.cachedMatches.filter((d) => {
-        return !pendingMatches.find((e) => e.id === d.id)
-      }),
+      cachedMatches: s.cachedMatches.filter(
+        (d) => !pendingMatches.some((e) => e.id === d.id),
+      ),
     }))
   }
 
   load: LoadFn = async (opts?: { sync?: boolean }): Promise<void> => {
     let redirect: AnyRedirect | undefined
     let notFound: NotFoundError | undefined
-
     let loadPromise: Promise<void>
 
     // eslint-disable-next-line prefer-const
@@ -1847,14 +1911,14 @@ export class RouterCore<
                     const newMatches = s.pendingMatches || s.matches
 
                     exitingMatches = previousMatches.filter(
-                      (match) => !newMatches.find((d) => d.id === match.id),
+                      (match) => !newMatches.some((d) => d.id === match.id),
                     )
                     enteringMatches = newMatches.filter(
                       (match) =>
-                        !previousMatches.find((d) => d.id === match.id),
+                        !previousMatches.some((d) => d.id === match.id),
                     )
                     stayingMatches = previousMatches.filter((match) =>
-                      newMatches.find((d) => d.id === match.id),
+                      newMatches.some((d) => d.id === match.id),
                     )
 
                     return {
@@ -1993,37 +2057,29 @@ export class RouterCore<
   }
 
   updateMatch: UpdateMatchFn = (id, updater) => {
-    let updated!: AnyRouteMatch
-    const isPending = this.state.pendingMatches?.find((d) => d.id === id)
-    const isMatched = this.state.matches.find((d) => d.id === id)
-    const isCached = this.state.cachedMatches.find((d) => d.id === id)
-
-    const matchesKey = isPending
+    const matchesKey = this.state.pendingMatches?.some((d) => d.id === id)
       ? 'pendingMatches'
-      : isMatched
+      : this.state.matches.some((d) => d.id === id)
         ? 'matches'
-        : isCached
+        : this.state.cachedMatches.some((d) => d.id === id)
           ? 'cachedMatches'
           : ''
 
     if (matchesKey) {
       this.__store.setState((s) => ({
         ...s,
-        [matchesKey]: s[matchesKey]?.map((d) =>
-          d.id === id ? (updated = updater(d)) : d,
-        ),
+        [matchesKey]: s[matchesKey]?.map((d) => (d.id === id ? updater(d) : d)),
       }))
     }
-
-    return updated
   }
 
   getMatch: GetMatchFn = (matchId: string) => {
-    return [
-      ...this.state.cachedMatches,
-      ...(this.state.pendingMatches ?? []),
-      ...this.state.matches,
-    ].find((d) => d.id === matchId)
+    const findFn = (d: { id: string }) => d.id === matchId
+    return (
+      this.state.cachedMatches.find(findFn) ??
+      this.state.pendingMatches?.find(findFn) ??
+      this.state.matches.find(findFn)
+    )
   }
 
   loadMatches = async ({
@@ -2056,7 +2112,13 @@ export class RouterCore<
     }
 
     const resolvePreload = (matchId: string) => {
-      return !!(allPreload && !this.state.matches.find((d) => d.id === matchId))
+      return !!(allPreload && !this.state.matches.some((d) => d.id === matchId))
+    }
+
+    // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
+    // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
+    if (!this.isServer && this.state.matches.some((d) => d._forcePending)) {
+      triggerOnReady()
     }
 
     const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
@@ -2069,8 +2131,10 @@ export class RouterCore<
           }
         }
 
-        match.beforeLoadPromise?.resolve()
-        match.loaderPromise?.resolve()
+        match._nonReactive.beforeLoadPromise?.resolve()
+        match._nonReactive.loaderPromise?.resolve()
+        match._nonReactive.beforeLoadPromise = undefined
+        match._nonReactive.loaderPromise = undefined
 
         updateMatch(match.id, (prev) => ({
           ...prev,
@@ -2081,15 +2145,13 @@ export class RouterCore<
               : 'error',
           isFetching: false,
           error: err,
-          beforeLoadPromise: undefined,
-          loaderPromise: undefined,
         }))
 
         if (!(err as any).routeId) {
           ;(err as any).routeId = match.routeId
         }
 
-        match.loadPromise?.resolve()
+        match._nonReactive.loadPromise?.resolve()
 
         if (isRedirect(err)) {
           rendered = true
@@ -2101,13 +2163,24 @@ export class RouterCore<
           this._handleNotFound(matches, err, {
             updateMatch,
           })
-          this.serverSsr?.onMatchSettled({
-            router: this,
-            match: this.getMatch(match.id)!,
-          })
           throw err
         }
       }
+    }
+
+    const shouldSkipLoader = (matchId: string) => {
+      const match = this.getMatch(matchId)!
+      // upon hydration, we skip the loader if the match has been dehydrated on the server
+      if (!this.isServer && match._nonReactive.dehydrated) {
+        return true
+      }
+
+      if (this.isServer) {
+        if (match.ssr === false) {
+          return true
+        }
+      }
+      return false
     }
 
     try {
@@ -2141,8 +2214,9 @@ export class RouterCore<
               }
 
               updateMatch(matchId, (prev) => {
-                prev.beforeLoadPromise?.resolve()
-                prev.loadPromise?.resolve()
+                prev._nonReactive.beforeLoadPromise?.resolve()
+                prev._nonReactive.beforeLoadPromise = undefined
+                prev._nonReactive.loadPromise?.resolve()
 
                 return {
                   ...prev,
@@ -2151,7 +2225,6 @@ export class RouterCore<
                   isFetching: false,
                   updatedAt: Date.now(),
                   abortController: new AbortController(),
-                  beforeLoadPromise: undefined,
                 }
               })
             }
@@ -2159,11 +2232,74 @@ export class RouterCore<
             for (const [index, { id: matchId, routeId }] of matches.entries()) {
               const existingMatch = this.getMatch(matchId)!
               const parentMatchId = matches[index - 1]?.id
+              const parentMatch = parentMatchId
+                ? this.getMatch(parentMatchId)!
+                : undefined
 
               const route = this.looseRoutesById[routeId]!
 
               const pendingMs =
                 route.options.pendingMs ?? this.options.defaultPendingMs
+
+              // on the server, determine whether SSR the current match or not
+              if (this.isServer) {
+                let ssr: boolean | 'data-only'
+                // in SPA mode, only SSR the root route
+                if (this.isShell()) {
+                  ssr = matchId === rootRouteId
+                } else {
+                  const defaultSsr = this.options.defaultSsr ?? true
+                  if (parentMatch?.ssr === false) {
+                    ssr = false
+                  } else {
+                    let tempSsr: boolean | 'data-only'
+                    if (route.options.ssr === undefined) {
+                      tempSsr = defaultSsr
+                    } else if (typeof route.options.ssr === 'function') {
+                      const { search, params } = this.getMatch(matchId)!
+
+                      function makeMaybe(value: any, error: any) {
+                        if (error) {
+                          return { status: 'error' as const, error }
+                        }
+                        return { status: 'success' as const, value }
+                      }
+
+                      const ssrFnContext: SsrContextOptions<any, any, any> = {
+                        search: makeMaybe(search, existingMatch.searchError),
+                        params: makeMaybe(params, existingMatch.paramsError),
+                        location,
+                        matches: matches.map((match) => ({
+                          index: match.index,
+                          pathname: match.pathname,
+                          fullPath: match.fullPath,
+                          staticData: match.staticData,
+                          id: match.id,
+                          routeId: match.routeId,
+                          search: makeMaybe(match.search, match.searchError),
+                          params: makeMaybe(match.params, match.paramsError),
+                          ssr: match.ssr,
+                        })),
+                      }
+                      tempSsr =
+                        (await route.options.ssr(ssrFnContext)) ?? defaultSsr
+                    } else {
+                      tempSsr = route.options.ssr
+                    }
+
+                    if (tempSsr === true && parentMatch?.ssr === 'data-only') {
+                      ssr = 'data-only'
+                    } else {
+                      ssr = tempSsr
+                    }
+                  }
+                }
+                existingMatch.ssr = ssr
+              }
+
+              if (shouldSkipLoader(matchId)) {
+                continue
+              }
 
               const shouldPending = !!(
                 onReady &&
@@ -2179,55 +2315,54 @@ export class RouterCore<
               )
 
               let executeBeforeLoad = true
-              if (
-                // If we are in the middle of a load, either of these will be present
-                // (not to be confused with `loadPromise`, which is always defined)
-                existingMatch.beforeLoadPromise ||
-                existingMatch.loaderPromise
-              ) {
-                if (shouldPending) {
-                  setTimeout(() => {
+              const setupPendingTimeout = () => {
+                const match = this.getMatch(matchId)!
+                if (
+                  shouldPending &&
+                  match._nonReactive.pendingTimeout === undefined
+                ) {
+                  const pendingTimeout = setTimeout(() => {
                     try {
                       // Update the match and prematurely resolve the loadMatches promise so that
                       // the pending component can start rendering
                       triggerOnReady()
                     } catch {}
                   }, pendingMs)
+                  match._nonReactive.pendingTimeout = pendingTimeout
                 }
+              }
+              if (
+                // If we are in the middle of a load, either of these will be present
+                // (not to be confused with `loadPromise`, which is always defined)
+                existingMatch._nonReactive.beforeLoadPromise ||
+                existingMatch._nonReactive.loaderPromise
+              ) {
+                setupPendingTimeout()
 
                 // Wait for the beforeLoad to resolve before we continue
-                await existingMatch.beforeLoadPromise
-                executeBeforeLoad = this.getMatch(matchId)!.status === 'error'
+                await existingMatch._nonReactive.beforeLoadPromise
+                const match = this.getMatch(matchId)!
+                if (match.status === 'error') {
+                  executeBeforeLoad = true
+                } else if (
+                  match.preload &&
+                  (match.status === 'redirected' || match.status === 'notFound')
+                ) {
+                  handleRedirectAndNotFound(match, match.error)
+                }
               }
               if (executeBeforeLoad) {
                 // If we are not in the middle of a load OR the previous load failed, start it
                 try {
-                  updateMatch(matchId, (prev) => {
-                    // explicitly capture the previous loadPromise
-                    const prevLoadPromise = prev.loadPromise
-                    return {
-                      ...prev,
-                      loadPromise: createControlledPromise<void>(() => {
-                        prevLoadPromise?.resolve()
-                      }),
-                      beforeLoadPromise: createControlledPromise<void>(),
-                    }
-                  })
-                  const abortController = new AbortController()
-
-                  let pendingTimeout: ReturnType<typeof setTimeout>
-
-                  if (shouldPending) {
-                    // If we might show a pending component, we need to wait for the
-                    // pending promise to resolve before we start showing that state
-                    pendingTimeout = setTimeout(() => {
-                      try {
-                        // Update the match and prematurely resolve the loadMatches promise so that
-                        // the pending component can start rendering
-                        triggerOnReady()
-                      } catch {}
-                    }, pendingMs)
-                  }
+                  const match = this.getMatch(matchId)!
+                  match._nonReactive.beforeLoadPromise =
+                    createControlledPromise<void>()
+                  // explicitly capture the previous loadPromise
+                  const prevLoadPromise = match._nonReactive.loadPromise
+                  match._nonReactive.loadPromise =
+                    createControlledPromise<void>(() => {
+                      prevLoadPromise?.resolve()
+                    })
 
                   const { paramsError, searchError } = this.getMatch(matchId)!
 
@@ -2239,19 +2374,20 @@ export class RouterCore<
                     handleSerialError(index, searchError, 'VALIDATE_SEARCH')
                   }
 
-                  const getParentMatchContext = () =>
-                    parentMatchId
-                      ? this.getMatch(parentMatchId)!.context
-                      : (this.options.context ?? {})
+                  setupPendingTimeout()
+
+                  const abortController = new AbortController()
+
+                  const parentMatchContext =
+                    parentMatch?.context ?? this.options.context ?? undefined
 
                   updateMatch(matchId, (prev) => ({
                     ...prev,
                     isFetching: 'beforeLoad',
                     fetchCount: prev.fetchCount + 1,
                     abortController,
-                    pendingTimeout,
                     context: {
-                      ...getParentMatchContext(),
+                      ...parentMatchContext,
                       ...prev.__routeContext,
                     },
                   }))
@@ -2282,8 +2418,7 @@ export class RouterCore<
                   }
 
                   const beforeLoadContext =
-                    (await route.options.beforeLoad?.(beforeLoadFnContext)) ??
-                    {}
+                    await route.options.beforeLoad?.(beforeLoadFnContext)
 
                   if (
                     isRedirect(beforeLoadContext) ||
@@ -2297,7 +2432,7 @@ export class RouterCore<
                       ...prev,
                       __beforeLoadContext: beforeLoadContext,
                       context: {
-                        ...getParentMatchContext(),
+                        ...parentMatchContext,
                         ...prev.__routeContext,
                         ...beforeLoadContext,
                       },
@@ -2309,11 +2444,11 @@ export class RouterCore<
                 }
 
                 updateMatch(matchId, (prev) => {
-                  prev.beforeLoadPromise?.resolve()
+                  prev._nonReactive.beforeLoadPromise?.resolve()
+                  prev._nonReactive.beforeLoadPromise = undefined
 
                   return {
                     ...prev,
-                    beforeLoadPromise: undefined,
                     isFetching: false,
                   }
                 })
@@ -2326,21 +2461,78 @@ export class RouterCore<
             validResolvedMatches.forEach(({ id: matchId, routeId }, index) => {
               matchPromises.push(
                 (async () => {
-                  const { loaderPromise: prevLoaderPromise } =
-                    this.getMatch(matchId)!
-
                   let loaderShouldRunAsync = false
                   let loaderIsRunningAsync = false
+                  const route = this.looseRoutesById[routeId]!
 
-                  if (prevLoaderPromise) {
-                    await prevLoaderPromise
+                  const executeHead = async () => {
+                    const match = this.getMatch(matchId)
+                    // in case of a redirecting match during preload, the match does not exist
+                    if (!match) {
+                      return
+                    }
+                    const assetContext = {
+                      matches,
+                      match,
+                      params: match.params,
+                      loaderData: match.loaderData,
+                    }
+                    const headFnContent =
+                      await route.options.head?.(assetContext)
+                    const meta = headFnContent?.meta
+                    const links = headFnContent?.links
+                    const headScripts = headFnContent?.scripts
+                    const styles = headFnContent?.styles
+
+                    const scripts = await route.options.scripts?.(assetContext)
+                    const headers = await route.options.headers?.(assetContext)
+                    return {
+                      meta,
+                      links,
+                      headScripts,
+                      headers,
+                      scripts,
+                      styles,
+                    }
+                  }
+
+                  const potentialPendingMinPromise = async () => {
+                    const latestMatch = this.getMatch(matchId)!
+                    if (latestMatch._nonReactive.minPendingPromise) {
+                      await latestMatch._nonReactive.minPendingPromise
+                    }
+                  }
+
+                  const prevMatch = this.getMatch(matchId)!
+                  if (shouldSkipLoader(matchId)) {
+                    if (this.isServer) {
+                      const head = await executeHead()
+                      updateMatch(matchId, (prev) => ({
+                        ...prev,
+                        ...head,
+                      }))
+                      return this.getMatch(matchId)!
+                    }
+                  }
+                  // there is a loaderPromise, so we are in the middle of a load
+                  else if (prevMatch._nonReactive.loaderPromise) {
+                    // do not block if we already have stale data we can show
+                    // but only if the ongoing load is not a preload since error handling is different for preloads
+                    // and we don't want to swallow errors
+                    if (
+                      prevMatch.status === 'success' &&
+                      !sync &&
+                      !prevMatch.preload
+                    ) {
+                      return this.getMatch(matchId)!
+                    }
+                    await prevMatch._nonReactive.loaderPromise
                     const match = this.getMatch(matchId)!
                     if (match.error) {
                       handleRedirectAndNotFound(match, match.error)
                     }
                   } else {
                     const parentMatchPromise = matchPromises[index - 1] as any
-                    const route = this.looseRoutesById[routeId]!
 
                     const getLoaderContext = (): LoaderFnContext => {
                       const {
@@ -2391,38 +2583,16 @@ export class RouterCore<
                         ? shouldReloadOption(getLoaderContext())
                         : shouldReloadOption
 
-                    updateMatch(matchId, (prev) => ({
-                      ...prev,
-                      loaderPromise: createControlledPromise<void>(),
-                      preload:
-                        !!preload &&
-                        !this.state.matches.find((d) => d.id === matchId),
-                    }))
-
-                    const executeHead = async () => {
-                      const match = this.getMatch(matchId)
-                      // in case of a redirecting match during preload, the match does not exist
-                      if (!match) {
-                        return
+                    updateMatch(matchId, (prev) => {
+                      prev._nonReactive.loaderPromise =
+                        createControlledPromise<void>()
+                      return {
+                        ...prev,
+                        preload:
+                          !!preload &&
+                          !this.state.matches.some((d) => d.id === matchId),
                       }
-                      const assetContext = {
-                        matches,
-                        match,
-                        params: match.params,
-                        loaderData: match.loaderData,
-                      }
-                      const headFnContent =
-                        await route.options.head?.(assetContext)
-                      const meta = headFnContent?.meta
-                      const links = headFnContent?.links
-                      const headScripts = headFnContent?.scripts
-
-                      const scripts =
-                        await route.options.scripts?.(assetContext)
-                      const headers =
-                        await route.options.headers?.(assetContext)
-                      return { meta, links, headScripts, headers, scripts }
-                    }
+                    })
 
                     const runLoader = async () => {
                       try {
@@ -2431,17 +2601,16 @@ export class RouterCore<
                         // a minimum duration, we''ll wait for it to resolve
                         // before committing to the match and resolving
                         // the loadPromise
-                        const potentialPendingMinPromise = async () => {
-                          const latestMatch = this.getMatch(matchId)!
-
-                          if (latestMatch.minPendingPromise) {
-                            await latestMatch.minPendingPromise
-                          }
-                        }
 
                         // Actually run the loader and handle the result
                         try {
-                          this.loadRouteChunk(route)
+                          if (
+                            !this.isServer ||
+                            (this.isServer &&
+                              this.getMatch(matchId)!.ssr === true)
+                          ) {
+                            this.loadRouteChunk(route)
+                          }
 
                           updateMatch(matchId, (prev) => ({
                             ...prev,
@@ -2456,29 +2625,27 @@ export class RouterCore<
                             this.getMatch(matchId)!,
                             loaderData,
                           )
+                          updateMatch(matchId, (prev) => ({
+                            ...prev,
+                            loaderData,
+                          }))
 
                           // Lazy option can modify the route options,
                           // so we need to wait for it to resolve before
                           // we can use the options
                           await route._lazyPromise
-
+                          const head = await executeHead()
                           await potentialPendingMinPromise()
 
                           // Last but not least, wait for the the components
                           // to be preloaded before we resolve the match
                           await route._componentsPromise
-
                           updateMatch(matchId, (prev) => ({
                             ...prev,
                             error: undefined,
                             status: 'success',
                             isFetching: false,
                             updatedAt: Date.now(),
-                            loaderData,
-                          }))
-                          const head = await executeHead()
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
                             ...head,
                           }))
                         } catch (e) {
@@ -2506,19 +2673,16 @@ export class RouterCore<
                             ...head,
                           }))
                         }
-
-                        this.serverSsr?.onMatchSettled({
-                          router: this,
-                          match: this.getMatch(matchId)!,
-                        })
                       } catch (err) {
                         const head = await executeHead()
 
-                        updateMatch(matchId, (prev) => ({
-                          ...prev,
-                          loaderPromise: undefined,
-                          ...head,
-                        }))
+                        updateMatch(matchId, (prev) => {
+                          prev._nonReactive.loaderPromise = undefined
+                          return {
+                            ...prev,
+                            ...head,
+                          }
+                        })
                         handleRedirectAndNotFound(this.getMatch(matchId)!, err)
                       }
                     }
@@ -2535,14 +2699,10 @@ export class RouterCore<
                       ;(async () => {
                         try {
                           await runLoader()
-                          const { loaderPromise, loadPromise } =
-                            this.getMatch(matchId)!
-                          loaderPromise?.resolve()
-                          loadPromise?.resolve()
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            loaderPromise: undefined,
-                          }))
+                          const match = this.getMatch(matchId)!
+                          match._nonReactive.loaderPromise?.resolve()
+                          match._nonReactive.loadPromise?.resolve()
+                          match._nonReactive.loaderPromise = undefined
                         } catch (err) {
                           if (isRedirect(err)) {
                             await this.navigate(err.options)
@@ -2566,20 +2726,25 @@ export class RouterCore<
                     }
                   }
                   if (!loaderIsRunningAsync) {
-                    const { loaderPromise, loadPromise } =
-                      this.getMatch(matchId)!
-                    loaderPromise?.resolve()
-                    loadPromise?.resolve()
+                    const match = this.getMatch(matchId)!
+                    match._nonReactive.loaderPromise?.resolve()
+                    match._nonReactive.loadPromise?.resolve()
                   }
 
-                  updateMatch(matchId, (prev) => ({
-                    ...prev,
-                    isFetching: loaderIsRunningAsync ? prev.isFetching : false,
-                    loaderPromise: loaderIsRunningAsync
-                      ? prev.loaderPromise
-                      : undefined,
-                    invalid: false,
-                  }))
+                  updateMatch(matchId, (prev) => {
+                    clearTimeout(prev._nonReactive.pendingTimeout)
+                    prev._nonReactive.pendingTimeout = undefined
+                    if (!loaderIsRunningAsync)
+                      prev._nonReactive.loaderPromise = undefined
+                    prev._nonReactive.dehydrated = undefined
+                    return {
+                      ...prev,
+                      isFetching: loaderIsRunningAsync
+                        ? prev.isFetching
+                        : false,
+                      invalid: false,
+                    }
+                  })
                   return this.getMatch(matchId)!
                 })(),
               )
@@ -2621,9 +2786,9 @@ export class RouterCore<
         return {
           ...d,
           invalid: true,
-          ...(d.status === 'error'
+          ...(opts?.forcePending || d.status === 'error'
             ? ({ status: 'pending', error: undefined } as const)
-            : {}),
+            : undefined),
         }
       }
       return d
@@ -2691,7 +2856,11 @@ export class RouterCore<
           : (route.options.gcTime ?? this.options.defaultGcTime)) ??
         5 * 60 * 1000
 
-      return !(d.status !== 'error' && Date.now() - d.updatedAt < gcTime)
+      const isError = d.status === 'error'
+      if (isError) return true
+
+      const gcEligible = Date.now() - d.updatedAt >= gcTime
+      return gcEligible
     }
     this.clearCache({ filter })
   }
@@ -2829,10 +2998,15 @@ export class RouterCore<
       ? this.latestLocation
       : this.state.resolvedLocation || this.state.location
 
-    const match = matchPathname(this.basepath, baseLocation.pathname, {
-      ...opts,
-      to: next.pathname,
-    }) as any
+    const match = matchPathname(
+      this.basepath,
+      baseLocation.pathname,
+      {
+        ...opts,
+        to: next.pathname,
+      },
+      this.parsePathnameCache,
+    ) as any
 
     if (!match) {
       return false
@@ -2854,24 +3028,9 @@ export class RouterCore<
 
   ssr?: {
     manifest: Manifest | undefined
-    serializer: StartSerializer
   }
 
-  serverSsr?: {
-    injectedHtml: Array<InjectedHtmlEntry>
-    injectHtml: (getHtml: () => string | Promise<string>) => Promise<void>
-    injectScript: (
-      getScript: () => string | Promise<string>,
-      opts?: { logScript?: boolean },
-    ) => Promise<void>
-    streamValue: (key: string, value: any) => void
-    streamedKeys: Set<string>
-    onMatchSettled: (opts: { router: AnyRouter; match: AnyRouteMatch }) => any
-  }
-
-  clientSsr?: {
-    getStreamedValue: <T>(key: string) => T | undefined
-  }
+  serverSsr?: ServerSsr
 
   _handleNotFound = (
     matches: Array<AnyRouteMatch>,
@@ -2945,6 +3104,12 @@ export class RouterCore<
 export class SearchParamError extends Error {}
 
 export class PathParamError extends Error {}
+
+const normalize = (str: string) =>
+  str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
+function comparePaths(a: string, b: string) {
+  return normalize(a) === normalize(b)
+}
 
 // A function that takes an import() argument which is a function and returns a new function that will
 // proxy arguments from the caller to the imported function, retaining all type
@@ -3041,6 +3206,45 @@ export type ProcessRouteTreeResult<TRouteLike extends RouteLike> = {
   routesByPath: Record<string, TRouteLike>
   flatRoutes: Array<TRouteLike>
 }
+
+const REQUIRED_PARAM_BASE_SCORE = 0.5
+const OPTIONAL_PARAM_BASE_SCORE = 0.4
+const WILDCARD_PARAM_BASE_SCORE = 0.25
+const BOTH_PRESENCE_BASE_SCORE = 0.05
+const PREFIX_PRESENCE_BASE_SCORE = 0.02
+const SUFFIX_PRESENCE_BASE_SCORE = 0.01
+const PREFIX_LENGTH_SCORE_MULTIPLIER = 0.0002
+const SUFFIX_LENGTH_SCORE_MULTIPLIER = 0.0001
+
+function handleParam(segment: Segment, baseScore: number) {
+  if (segment.prefixSegment && segment.suffixSegment) {
+    return (
+      baseScore +
+      BOTH_PRESENCE_BASE_SCORE +
+      PREFIX_LENGTH_SCORE_MULTIPLIER * segment.prefixSegment.length +
+      SUFFIX_LENGTH_SCORE_MULTIPLIER * segment.suffixSegment.length
+    )
+  }
+
+  if (segment.prefixSegment) {
+    return (
+      baseScore +
+      PREFIX_PRESENCE_BASE_SCORE +
+      PREFIX_LENGTH_SCORE_MULTIPLIER * segment.prefixSegment.length
+    )
+  }
+
+  if (segment.suffixSegment) {
+    return (
+      baseScore +
+      SUFFIX_PRESENCE_BASE_SCORE +
+      SUFFIX_LENGTH_SCORE_MULTIPLIER * segment.suffixSegment.length
+    )
+  }
+
+  return baseScore
+}
+
 export function processRouteTree<TRouteLike extends RouteLike>({
   routeTree,
   initRoute,
@@ -3087,9 +3291,11 @@ export function processRouteTree<TRouteLike extends RouteLike>({
   const scoredRoutes: Array<{
     child: TRouteLike
     trimmed: string
-    parsed: ReturnType<typeof parsePathname>
+    parsed: ReadonlyArray<Segment>
     index: number
     scores: Array<number>
+    hasStaticAfter: boolean
+    optionalParamCount: number
   }> = []
 
   const routes: Array<TRouteLike> = Object.values(routesById)
@@ -3100,81 +3306,94 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     }
 
     const trimmed = trimPathLeft(d.fullPath)
-    const parsed = parsePathname(trimmed)
+    let parsed = parsePathname(trimmed)
 
     // Removes the leading slash if it is not the only remaining segment
-    while (parsed.length > 1 && parsed[0]?.value === '/') {
-      parsed.shift()
+    let skip = 0
+    while (parsed.length > skip + 1 && parsed[skip]?.value === '/') {
+      skip++
     }
+    if (skip > 0) parsed = parsed.slice(skip)
 
-    const scores = parsed.map((segment) => {
+    let optionalParamCount = 0
+    let hasStaticAfter = false
+    const scores = parsed.map((segment, index) => {
       if (segment.value === '/') {
         return 0.75
       }
 
-      if (
-        segment.type === 'param' &&
-        segment.prefixSegment &&
-        segment.suffixSegment
-      ) {
-        return 0.55
+      let baseScore: number | undefined = undefined
+      if (segment.type === SEGMENT_TYPE_PARAM) {
+        baseScore = REQUIRED_PARAM_BASE_SCORE
+      } else if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
+        baseScore = OPTIONAL_PARAM_BASE_SCORE
+        optionalParamCount++
+      } else if (segment.type === SEGMENT_TYPE_WILDCARD) {
+        baseScore = WILDCARD_PARAM_BASE_SCORE
       }
 
-      if (segment.type === 'param' && segment.prefixSegment) {
-        return 0.52
-      }
+      if (baseScore) {
+        // if there is any static segment (that is not an index) after a required / optional param,
+        // we will boost this param so it ranks higher than a required/optional param without a static segment after it
+        // JUST FOR SORTING, NOT FOR MATCHING
+        for (let i = index + 1; i < parsed.length; i++) {
+          const nextSegment = parsed[i]!
+          if (
+            nextSegment.type === SEGMENT_TYPE_PATHNAME &&
+            nextSegment.value !== '/'
+          ) {
+            hasStaticAfter = true
+            return handleParam(segment, baseScore + 0.2)
+          }
+        }
 
-      if (segment.type === 'param' && segment.suffixSegment) {
-        return 0.51
-      }
-
-      if (segment.type === 'param') {
-        return 0.5
-      }
-
-      if (
-        segment.type === 'wildcard' &&
-        segment.prefixSegment &&
-        segment.suffixSegment
-      ) {
-        return 0.3
-      }
-
-      if (segment.type === 'wildcard' && segment.prefixSegment) {
-        return 0.27
-      }
-
-      if (segment.type === 'wildcard' && segment.suffixSegment) {
-        return 0.26
-      }
-
-      if (segment.type === 'wildcard') {
-        return 0.25
+        return handleParam(segment, baseScore)
       }
 
       return 1
     })
 
-    scoredRoutes.push({ child: d, trimmed, parsed, index: i, scores })
+    scoredRoutes.push({
+      child: d,
+      trimmed,
+      parsed,
+      index: i,
+      scores,
+      optionalParamCount,
+      hasStaticAfter,
+    })
   })
 
   const flatRoutes = scoredRoutes
     .sort((a, b) => {
       const minLength = Math.min(a.scores.length, b.scores.length)
 
-      // Sort by min available score
+      // Sort by segment-by-segment score comparison ONLY for the common prefix
       for (let i = 0; i < minLength; i++) {
         if (a.scores[i] !== b.scores[i]) {
           return b.scores[i]! - a.scores[i]!
         }
       }
 
-      // Sort by length of score
+      // If all common segments have equal scores, then consider length and specificity
       if (a.scores.length !== b.scores.length) {
+        // If different number of optional parameters, fewer optional parameters wins (more specific)
+        // only if both or none of the routes has static segments after the params
+        if (a.optionalParamCount !== b.optionalParamCount) {
+          if (a.hasStaticAfter === b.hasStaticAfter) {
+            return a.optionalParamCount - b.optionalParamCount
+          } else if (a.hasStaticAfter && !b.hasStaticAfter) {
+            return -1
+          } else if (!a.hasStaticAfter && b.hasStaticAfter) {
+            return 1
+          }
+        }
+
+        // If same number of optional parameters, longer path wins (for static segments)
         return b.scores.length - a.scores.length
       }
 
-      // Sort by min available parsed value
+      // Sort by min available parsed value for alphabetical ordering
       for (let i = 0; i < minLength; i++) {
         if (a.parsed[i]!.value !== b.parsed[i]!.value) {
           return a.parsed[i]!.value > b.parsed[i]!.value ? 1 : -1
@@ -3200,6 +3419,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesByPath,
   routesById,
   flatRoutes,
+  parseCache,
 }: {
   pathname: string
   routePathname?: string
@@ -3208,15 +3428,22 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesByPath: Record<string, TRouteLike>
   routesById: Record<string, TRouteLike>
   flatRoutes: Array<TRouteLike>
+  parseCache?: ParsePathnameCache
 }) {
   let routeParams: Record<string, string> = {}
   const trimmedPath = trimPathRight(pathname)
   const getMatchedParams = (route: TRouteLike) => {
-    const result = matchPathname(basepath, trimmedPath, {
-      to: route.fullPath,
-      caseSensitive: route.options?.caseSensitive ?? caseSensitive,
-      fuzzy: true,
-    })
+    const result = matchPathname(
+      basepath,
+      trimmedPath,
+      {
+        to: route.fullPath,
+        caseSensitive: route.options?.caseSensitive ?? caseSensitive,
+        // we need fuzzy matching for `notFoundMode: 'fuzzy'`
+        fuzzy: true,
+      },
+      parseCache,
+    )
     return result
   }
 
@@ -3225,18 +3452,36 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   if (foundRoute) {
     routeParams = getMatchedParams(foundRoute)!
   } else {
-    foundRoute = flatRoutes.find((route) => {
+    // iterate over flatRoutes to find the best match
+    // if we find a fuzzy matching route, keep looking for a perfect fit
+    let fuzzyMatch:
+      | { foundRoute: TRouteLike; routeParams: Record<string, string> }
+      | undefined = undefined
+    for (const route of flatRoutes) {
       if (route.options?.isVirtualLayout) return false
 
       const matchedParams = getMatchedParams(route)
 
       if (matchedParams) {
-        routeParams = matchedParams
-        return true
+        if (
+          route.path !== '/' &&
+          (matchedParams as Record<string, string>)['**']
+        ) {
+          if (!fuzzyMatch) {
+            fuzzyMatch = { foundRoute: route, routeParams: matchedParams }
+          }
+        } else {
+          foundRoute = route
+          routeParams = matchedParams
+          break
+        }
       }
-
-      return false
-    })
+    }
+    // did not find a perfect fit, so take the fuzzy matching route if it exists
+    if (!foundRoute && fuzzyMatch) {
+      foundRoute = fuzzyMatch.foundRoute
+      routeParams = fuzzyMatch.routeParams
+    }
   }
 
   let routeCursor: TRouteLike = foundRoute || routesById[rootRouteId]!
@@ -3245,8 +3490,9 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 
   while (routeCursor.parentRoute) {
     routeCursor = routeCursor.parentRoute as TRouteLike
-    matchedRoutes.unshift(routeCursor)
+    matchedRoutes.push(routeCursor)
   }
+  matchedRoutes.reverse()
 
   return { matchedRoutes, routeParams, foundRoute }
 }
@@ -3316,7 +3562,8 @@ function applySearchMiddleware({
             try {
               const validatedSearch = {
                 ...result,
-                ...(validateSearch(route.options.validateSearch, result) ?? {}),
+                ...(validateSearch(route.options.validateSearch, result) ??
+                  undefined),
               }
               return validatedSearch
             } catch {
