@@ -43,7 +43,7 @@ type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
   | {
       status: 'blocked'
       current: MakeShouldBlockFnLocationUnion<TRouter>
-      next: MakeShouldBlockFnLocationUnion<TRouter>
+      next: MakeShouldBlockFnLocationUnion<TRouter> | undefined
       action: HistoryAction
       proceed: () => void
       reset: () => void
@@ -58,8 +58,8 @@ type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
     }
 
 type ShouldBlockFnArgs<TRouter extends AnyRouter = RegisteredRouter> = {
-  current: MakeShouldBlockFnLocationUnion<TRouter> | null
-  next: MakeShouldBlockFnLocationUnion<TRouter> | null
+  current: MakeShouldBlockFnLocationUnion<TRouter>
+  next: MakeShouldBlockFnLocationUnion<TRouter> | undefined
   action: HistoryAction
 }
 
@@ -186,14 +186,14 @@ export function useBlocker(
     const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
       function getLocation(
         location: HistoryLocation,
-      ): AnyShouldBlockFnLocation | null {
+      ): AnyShouldBlockFnLocation | undefined {
         const parsedLocation = router.parseLocation(undefined, location)
         const matchedRoutes = router.getMatchedRoutes(
           parsedLocation.pathname,
           undefined,
         )
         if (matchedRoutes.foundRoute === undefined) {
-          return null
+          return undefined
         }
         return {
           routeId: matchedRoutes.foundRoute.id,
