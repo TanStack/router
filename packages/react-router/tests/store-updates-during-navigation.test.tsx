@@ -16,7 +16,7 @@ afterEach(() => {
   cleanup()
 })
 
-async function setupAndRun({
+function setup({
   beforeLoad,
   loader,
   head,
@@ -78,6 +78,10 @@ async function setupAndRun({
 
   render(<RouterProvider router={router} />)
 
+  return { select, router }
+}
+
+async function run({ select }: ReturnType<typeof setup>, opts?: {}) {
   // navigate to /posts
   const link = await waitFor(() => screen.getByRole('link', { name: 'Posts' }))
   const before = select.mock.calls.length
@@ -93,7 +97,7 @@ async function setupAndRun({
 
 describe("Store doesn't update *too many* times during navigation", () => {
   test('async loader, async beforeLoad, pendingMs', async () => {
-    const updates = await setupAndRun({
+    const params = setup({
       beforeLoad: () =>
         new Promise<void>((resolve) => setTimeout(resolve, 100)),
       loader: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
@@ -101,22 +105,29 @@ describe("Store doesn't update *too many* times during navigation", () => {
       defaultPendingMinMs: 300,
     })
 
+    const updates = await run(params)
+
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     expect(updates).toBe(19)
   })
 
-  test('redirection', async () => {
-    const updates = await setupAndRun({
-      beforeLoad: () => {
+  test('redirection in preload', async () => {
+    const { select, router } = setup({
+      loader: () => {
         throw redirect({ to: '/other' })
       },
     })
 
+    const before = select.mock.calls.length
+    await router.preloadRoute({ to: '/posts' })
+    const after = select.mock.calls.length
+    const updates = after - before
+
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(26)
+    expect(updates).toBe(8)
   })
 })
