@@ -19,12 +19,11 @@ Start provide three core environment functions:
 
 Use `createIsomorphicFn()` to define functions that behave differently depending on whether they are called on the client or the server. This is useful for safely sharing logic across environments while delegating environment-specific behavior to appropriate handlers. 
 
-> [!WARNING]
-> Unimplemented function results in a no-op function.
-
 ### Complete Implementation
 
 ```tsx
+import { createIsomorphicFn } from '@tanstack/react-start';
+
 const getEnv = createIsomorphicFn()
   .server(() => 'server')
   .client(() => 'client')
@@ -39,6 +38,8 @@ const env = getEnv()
 Here is an example of `createIsomorphicFn()` with only server implementation:
 
 ```tsx
+import { createIsomorphicFn } from '@tanstack/react-start';
+
 const serverImplementationOnly = createIsomorphicFn().server(() => 'server')
 
 const server = serverImplementationOnly()
@@ -51,6 +52,8 @@ const server = serverImplementationOnly()
 Here is an example of `createIsomorphicFn()` with only client implementation:
 
 ```tsx
+import { createIsomorphicFn } from '@tanstack/react-start';
+
 const clientImplementationOnly = createIsomorphicFn().client(() => 'client')
 
 const client = clientImplementationOnly()
@@ -63,10 +66,21 @@ const client = clientImplementationOnly()
 Here is an example of `createIsomorphicFn()` without any environment specific implementation:
 
 ```tsx
+import { createIsomorphicFn } from '@tanstack/react-start';
+
 const noImplementation = createIsomorphicFn()
 
 const noop = noImplementation()
 // ℹ️ On both **client** and **server**, it is no-op (returns `undefined`)
+```
+
+#### What is a no-op?
+
+A no-op (short for "no operation") is a function that does nothing when executed - it simply returns `undefined` without performing any operations.
+
+```tsx
+// basic no-op implementation
+function noop() {}
 ```
 
 ---
@@ -78,6 +92,8 @@ The `serverOnly` and `clientOnly` helpers enforce strict environment-bound execu
 ### `serverOnly`
 
 ```tsx
+import { serverOnly } from '@tanstack/react-start';
+
 const foo = serverOnly(() => 'bar')
 
 foo() // ✅ On server: returns "bar"
@@ -87,6 +103,8 @@ foo() // ✅ On server: returns "bar"
 ### `clientOnly`
 
 ```tsx
+import { clientOnly } from '@tanstack/react-start';
+
 const foo = clientOnly(() => 'bar')
 
 foo() // ✅ On client: returns "bar"
@@ -100,6 +118,7 @@ foo() // ✅ On client: returns "bar"
 
 Environment functions are tree-shaken based on the environment for each bundle produced.
 
-On the server, functions created using `createIsomorphicFn()` are tree-shaken. So, all code used inside `.client()` are not included in server bundle, and vice-versa.
+Functions created using `createIsomorphicFn()` are tree-shaken. All codes inside `.client()` are not included in server bundle, and vice-versa.
 
 On the server, implementation of `clientOnly` functions are replaced with a function that throws an `Error`. The reverse is true for `serverOnly` functions on the client.
+
