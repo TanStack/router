@@ -79,12 +79,12 @@ async function setupAndRun({
   render(<RouterProvider router={router} />)
 
   // navigate to /posts
-  const link = await waitFor(() =>
-    screen.getByRole('link', { name: 'Posts' }),
-  )
+  const link = await waitFor(() => screen.getByRole('link', { name: 'Posts' }))
   const before = select.mock.calls.length
   act(() => link.click())
-  const title = await waitFor(() => screen.getByRole('heading', { name: /Title$/ })) // matches /posts and /other
+  const title = await waitFor(() =>
+    screen.getByRole('heading', { name: /Title$/ }),
+  ) // matches /posts and /other
   expect(title).toBeInTheDocument()
   const after = select.mock.calls.length
 
@@ -109,7 +109,9 @@ describe("Store doesn't update *too many* times during navigation", () => {
 
   test('redirection', async () => {
     const updates = await setupAndRun({
-      beforeLoad: () => { throw redirect({ to: '/other' }) }
+      beforeLoad: () => {
+        throw redirect({ to: '/other' })
+      },
     })
 
     // This number should be as small as possible to minimize the amount of work
