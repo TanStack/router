@@ -2370,39 +2370,6 @@ export class RouterCore<
     route: AnyRoute,
   ): void | Promise<void> => {
     const match = this.getMatch(matchId)!
-    const abortController = new AbortController()
-    const parentMatchId = innerLoadContext.matches[index - 1]?.id
-    const parentMatch = parentMatchId
-      ? this.getMatch(parentMatchId)!
-      : undefined
-    const parentMatchContext =
-      parentMatch?.context ?? this.options.context ?? undefined
-    const context = {
-      ...parentMatchContext,
-      ...match.__routeContext,
-    }
-
-    let isPending = false
-
-    const pending = () => {
-      isPending = true
-      innerLoadContext.updateMatch(matchId, (prev) => ({
-        ...prev,
-        isFetching: 'beforeLoad',
-        fetchCount: prev.fetchCount + 1,
-        abortController,
-        context,
-      }))
-    }
-
-    const resolve = () => {
-      match._nonReactive.beforeLoadPromise?.resolve()
-      match._nonReactive.beforeLoadPromise = undefined
-      innerLoadContext.updateMatch(matchId, (prev) => ({
-        ...prev,
-        isFetching: false,
-      }))
-    }
 
     match._nonReactive.beforeLoadPromise = createControlledPromise<void>()
     // explicitly capture the previous loadPromise
@@ -2411,7 +2378,7 @@ export class RouterCore<
       prevLoadPromise?.resolve()
     })
 
-    const { paramsError, searchError } = this.getMatch(matchId)!
+    const { paramsError, searchError } = match
 
     if (paramsError) {
       this.handleSerialError(
@@ -2433,6 +2400,39 @@ export class RouterCore<
 
     this.setupPendingTimeout(innerLoadContext, matchId, route)
 
+    const abortController = new AbortController()
+
+    const parentMatchId = innerLoadContext.matches[index - 1]?.id
+    const parentMatch = parentMatchId
+      ? this.getMatch(parentMatchId)!
+      : undefined
+    const parentMatchContext =
+      parentMatch?.context ?? this.options.context ?? undefined
+
+    const context = { ...parentMatchContext, ...match.__routeContext }
+
+    let isPending = false
+    const pending = () => {
+      if (isPending) return
+      isPending = true
+      innerLoadContext.updateMatch(matchId, (prev) => ({
+        ...prev,
+        isFetching: 'beforeLoad',
+        fetchCount: prev.fetchCount + 1,
+        abortController,
+        context,
+      }))
+    }
+
+    const resolve = () => {
+      match._nonReactive.beforeLoadPromise?.resolve()
+      match._nonReactive.beforeLoadPromise = undefined
+      innerLoadContext.updateMatch(matchId, (prev) => ({
+        ...prev,
+        isFetching: false,
+      }))
+    }
+
     // if there is no `beforeLoad` option, skip everything, batch update the store, return early
     if (!route.options.beforeLoad) {
       batch(() => {
@@ -2442,35 +2442,6 @@ export class RouterCore<
       return
     }
 
-    const updateContext = (beforeLoadContext: any) => {
-      if (beforeLoadContext === undefined) {
-        batch(() => {
-          if (!isPending) pending()
-          resolve()
-        })
-        return
-      }
-      if (isRedirect(beforeLoadContext) || isNotFound(beforeLoadContext)) {
-        this.handleSerialError(
-          innerLoadContext,
-          index,
-          beforeLoadContext,
-          'BEFORE_LOAD',
-        )
-      }
-      batch(() => {
-        if (!isPending) pending()
-        innerLoadContext.updateMatch(matchId, (prev) => ({
-          ...prev,
-          __beforeLoadContext: beforeLoadContext,
-          context: {
-            ...prev.context,
-            ...beforeLoadContext,
-          },
-        }))
-        resolve()
-      })
-    }
     const { search, params, cause } = match
     const preload = this.resolvePreload(innerLoadContext, matchId)
     const beforeLoadFnContext: BeforeLoadContextOptions<
@@ -2487,27 +2458,61 @@ export class RouterCore<
       context,
       location: innerLoadContext.location,
       navigate: (opts: any) =>
-        this.navigate({
-          ...opts,
-          _fromLocation: innerLoadContext.location,
-        }),
+        this.navigate({ ...opts, _fromLocation: innerLoadContext.location }),
       buildLocation: this.buildLocation,
       cause: preload ? 'preload' : cause,
       matches: innerLoadContext.matches,
     }
+
+    const updateContext = (beforeLoadContext: any) => {
+      if (beforeLoadContext === undefined) {
+        batch(() => {
+          pending()
+          resolve()
+        })
+        return
+      }
+      if (isRedirect(beforeLoadContext) || isNotFound(beforeLoadContext)) {
+        pending()
+        this.handleSerialError(
+          innerLoadContext,
+          index,
+          beforeLoadContext,
+          'BEFORE_LOAD',
+        )
+      }
+
+      batch(() => {
+        pending()
+        innerLoadContext.updateMatch(matchId, (prev) => ({
+          ...prev,
+          __beforeLoadContext: beforeLoadContext,
+          context: {
+            ...prev.context,
+            ...beforeLoadContext,
+          },
+        }))
+        resolve()
+      })
+    }
+
+    let beforeLoadContext
     try {
-      const beforeLoadContext = route.options.beforeLoad(beforeLoadFnContext)
+      beforeLoadContext = route.options.beforeLoad(beforeLoadFnContext)
       if (isPromise(beforeLoadContext)) {
         pending()
-        return beforeLoadContext.then(updateContext).catch((err) => {
-          this.handleSerialError(innerLoadContext, index, err, 'BEFORE_LOAD')
-        })
-      } else {
-        updateContext(beforeLoadContext)
+        return beforeLoadContext
+          .catch((err) => {
+            this.handleSerialError(innerLoadContext, index, err, 'BEFORE_LOAD')
+          })
+          .then(updateContext)
       }
     } catch (err) {
+      pending()
       this.handleSerialError(innerLoadContext, index, err, 'BEFORE_LOAD')
     }
+
+    updateContext(beforeLoadContext)
     return
   }
 
@@ -2927,6 +2932,11 @@ export class RouterCore<
             for (let i = 0; i < innerLoadContext.matches.length; i++) {
               const beforeLoad = this.handleBeforeLoad(innerLoadContext, i)
               if (isPromise(beforeLoad)) await beforeLoad
+              console.log(
+                'before load done',
+                innerLoadContext.matches[i]!.id,
+                this.getMatch(innerLoadContext.matches[i]!.id)?.context,
+              )
             }
 
             // Execute all loaders in parallel
