@@ -2127,7 +2127,11 @@ export class RouterCore<
     ) => {
       if (!isRedirect(err) && !isNotFound(err)) return
 
-      if (isRedirect(err) && err.redirectHandled && !err.options.reloadDocument) {
+      if (
+        isRedirect(err) &&
+        err.redirectHandled &&
+        !err.options.reloadDocument
+      ) {
         throw err
       }
 
@@ -2139,14 +2143,14 @@ export class RouterCore<
         match._nonReactive.loaderPromise = undefined
 
         const status = isRedirect(err) ? 'redirected' : 'notFound'
-        
+
         updateMatch(match.id, (prev) => ({
           ...prev,
           status,
           isFetching: false,
           error: err,
         }))
-        
+
         if (isNotFound(err) && !err.routeId) {
           err.routeId = match.routeId
         }
