@@ -13,7 +13,7 @@
     "@tanstack/react-query-devtools": "^5.66.0",
     "@tanstack/react-router": "^1.131.14",
     "@tanstack/react-router-devtools": "^1.131.14",
-    "@tanstack/router-plugin": "^1.131.14",
+    "@tanstack/router-plugin": "^1.131.15",
     "immer": "^10.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -11,7 +11,7 @@
   "dependencies": {
     "@tanstack/react-router": "^1.131.14",
     "@tanstack/react-router-devtools": "^1.131.14",
-    "@tanstack/router-plugin": "^1.131.14",
+    "@tanstack/router-plugin": "^1.131.15",
     "autoprefixer": "^10.4.20",
     "firebase": "^11.4.0",
     "postcss": "^8.5.1",
