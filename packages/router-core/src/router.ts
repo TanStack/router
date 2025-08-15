@@ -2095,49 +2095,80 @@ export class RouterCore<
     )
   }
 
-  private executeHead(
-    route: AnyRoute,
-    matchId: string,
-    matches: Array<AnyRouteMatch>,
+  private async triggerOnReady(innerLoadContext: InnerLoadContext) {
+    if (!innerLoadContext.rendered) {
+      innerLoadContext.rendered = true
+      if (innerLoadContext.onReady) await innerLoadContext.onReady()
+    }
+  }
+
+  private resolvePreload(allPreload: boolean | undefined, matchId: string) {
+    return !!(allPreload && !this.state.matches.some((d) => d.id === matchId))
+  }
+
+  private handleRedirectAndNotFound(
+    innerLoadContext: InnerLoadContext,
+    match: AnyRouteMatch | undefined,
+    err: unknown,
   ) {
-    const match = this.getMatch(matchId)
+    if (!isRedirect(err) && !isNotFound(err)) return
+
+    if (isRedirect(err) && err.redirectHandled && !err.options.reloadDocument) {
+      throw err
+    }
+
     // in case of a redirecting match during preload, the match does not exist
-    if (!match) {
-      return
-    }
-    if (
-      !route.options.head &&
-      !route.options.scripts &&
-      !route.options.headers
-    ) {
-      return
-    }
-    const assetContext = {
-      matches,
-      match,
-      params: match.params,
-      loaderData: match.loaderData,
-    }
+    if (match) {
+      match._nonReactive.beforeLoadPromise?.resolve()
+      match._nonReactive.loaderPromise?.resolve()
+      match._nonReactive.beforeLoadPromise = undefined
+      match._nonReactive.loaderPromise = undefined
 
-    return Promise.all([
-      route.options.head?.(assetContext),
-      route.options.scripts?.(assetContext),
-      route.options.headers?.(assetContext),
-    ]).then(([headFnContent, scripts, headers]) => {
-      const meta = headFnContent?.meta
-      const links = headFnContent?.links
-      const headScripts = headFnContent?.scripts
-      const styles = headFnContent?.styles
+      const status = isRedirect(err) ? 'redirected' : 'notFound'
 
-      return {
-        meta,
-        links,
-        headScripts,
-        headers,
-        scripts,
-        styles,
+      innerLoadContext.updateMatch(match.id, (prev) => ({
+        ...prev,
+        status,
+        isFetching: false,
+        error: err,
+      }))
+
+      if (isNotFound(err) && !err.routeId) {
+        err.routeId = match.routeId
       }
-    })
+
+      match._nonReactive.loadPromise?.resolve()
+    }
+
+    if (isRedirect(err)) {
+      innerLoadContext.rendered = true
+      err.options._fromLocation = innerLoadContext.location
+      err.redirectHandled = true
+      err = this.resolveRedirect(err)
+      throw err
+    } else {
+      this._handleNotFound(
+        innerLoadContext.matches,
+        err,
+        innerLoadContext.updateMatch,
+      )
+      throw err
+    }
+  }
+
+  private shouldSkipLoader(matchId: string) {
+    const match = this.getMatch(matchId)!
+    // upon hydration, we skip the loader if the match has been dehydrated on the server
+    if (!this.isServer && match._nonReactive.dehydrated) {
+      return true
+    }
+
+    if (this.isServer) {
+      if (match.ssr === false) {
+        return true
+      }
+    }
+    return false
   }
 
   private handleSerialError(
@@ -2189,25 +2220,6 @@ export class RouterCore<
         abortController: new AbortController(),
       }
     })
-  }
-
-  private shouldSkipLoader(matchId: string) {
-    const match = this.getMatch(matchId)!
-    // upon hydration, we skip the loader if the match has been dehydrated on the server
-    if (!this.isServer && match._nonReactive.dehydrated) {
-      return true
-    }
-
-    if (this.isServer) {
-      if (match.ssr === false) {
-        return true
-      }
-    }
-    return false
-  }
-
-  private resolvePreload(allPreload: boolean | undefined, matchId: string) {
-    return !!(allPreload && !this.state.matches.some((d) => d.id === matchId))
   }
 
   async handleBeforeLoad(innerLoadContext: InnerLoadContext, index: number) {
@@ -2438,61 +2450,49 @@ export class RouterCore<
     }
   }
 
-  private handleRedirectAndNotFound(
-    innerLoadContext: InnerLoadContext,
-    match: AnyRouteMatch | undefined,
-    err: unknown,
+  private executeHead(
+    route: AnyRoute,
+    matchId: string,
+    matches: Array<AnyRouteMatch>,
   ) {
-    if (!isRedirect(err) && !isNotFound(err)) return
-
-    if (isRedirect(err) && err.redirectHandled && !err.options.reloadDocument) {
-      throw err
-    }
-
+    const match = this.getMatch(matchId)
     // in case of a redirecting match during preload, the match does not exist
-    if (match) {
-      match._nonReactive.beforeLoadPromise?.resolve()
-      match._nonReactive.loaderPromise?.resolve()
-      match._nonReactive.beforeLoadPromise = undefined
-      match._nonReactive.loaderPromise = undefined
+    if (!match) {
+      return
+    }
+    if (
+      !route.options.head &&
+      !route.options.scripts &&
+      !route.options.headers
+    ) {
+      return
+    }
+    const assetContext = {
+      matches,
+      match,
+      params: match.params,
+      loaderData: match.loaderData,
+    }
 
-      const status = isRedirect(err) ? 'redirected' : 'notFound'
+    return Promise.all([
+      route.options.head?.(assetContext),
+      route.options.scripts?.(assetContext),
+      route.options.headers?.(assetContext),
+    ]).then(([headFnContent, scripts, headers]) => {
+      const meta = headFnContent?.meta
+      const links = headFnContent?.links
+      const headScripts = headFnContent?.scripts
+      const styles = headFnContent?.styles
 
-      innerLoadContext.updateMatch(match.id, (prev) => ({
-        ...prev,
-        status,
-        isFetching: false,
-        error: err,
-      }))
-
-      if (isNotFound(err) && !err.routeId) {
-        err.routeId = match.routeId
+      return {
+        meta,
+        links,
+        headScripts,
+        headers,
+        scripts,
+        styles,
       }
-
-      match._nonReactive.loadPromise?.resolve()
-    }
-
-    if (isRedirect(err)) {
-      innerLoadContext.rendered = true
-      err.options._fromLocation = innerLoadContext.location
-      err.redirectHandled = true
-      err = this.resolveRedirect(err)
-      throw err
-    } else {
-      this._handleNotFound(
-        innerLoadContext.matches,
-        err,
-        innerLoadContext.updateMatch,
-      )
-      throw err
-    }
-  }
-
-  private async triggerOnReady(innerLoadContext: InnerLoadContext) {
-    if (!innerLoadContext.rendered) {
-      innerLoadContext.rendered = true
-      if (innerLoadContext.onReady) await innerLoadContext.onReady()
-    }
+    })
   }
 
   private async loadRouteMatch(
