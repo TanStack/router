@@ -9,6 +9,7 @@ import {
   createControlledPromise,
   deepEqual,
   functionalUpdate,
+  isPromise,
   last,
   pick,
   replaceEqualDeep,
@@ -2508,11 +2509,9 @@ export class RouterCore<
                     })
                   }
 
-                  const potentialPendingMinPromise = async () => {
+                  const potentialPendingMinPromise = () => {
                     const latestMatch = this.getMatch(matchId)!
-                    if (latestMatch._nonReactive.minPendingPromise) {
-                      await latestMatch._nonReactive.minPendingPromise
-                    }
+                    return latestMatch._nonReactive.minPendingPromise
                   }
 
                   const prevMatch = this.getMatch(matchId)!
@@ -2621,41 +2620,63 @@ export class RouterCore<
                         try {
                           if (
                             !this.isServer ||
-                            (this.isServer &&
-                              this.getMatch(matchId)!.ssr === true)
+                            this.getMatch(matchId)!.ssr === true
                           ) {
                             this.loadRouteChunk(route)
                           }
 
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            isFetching: 'loader',
-                          }))
-
                           // Kick off the loader!
-                          const loaderData =
-                            await route.options.loader?.(getLoaderContext())
+                          const loaderResult =
+                            route.options.loader?.(getLoaderContext())
+                          const loaderResultIsPromise =
+                            route.options.loader && isPromise(loaderResult)
 
-                          handleRedirectAndNotFound(
-                            this.getMatch(matchId),
-                            loaderData,
+                          const willLoadSomething = !!(
+                            loaderResultIsPromise ||
+                            route._lazyPromise ||
+                            route._componentsPromise ||
+                            route.options.head ||
+                            route.options.scripts ||
+                            route.options.headers ||
+                            this.getMatch(matchId)!._nonReactive
+                              .minPendingPromise
                           )
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            loaderData,
-                          }))
+
+                          if (willLoadSomething) {
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              isFetching: 'loader',
+                            }))
+                          }
+
+                          if (route.options.loader) {
+                            const loaderData = loaderResultIsPromise
+                              ? await loaderResult
+                              : loaderResult
+
+                            handleRedirectAndNotFound(
+                              this.getMatch(matchId),
+                              loaderData,
+                            )
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              loaderData,
+                            }))
+                          }
 
                           // Lazy option can modify the route options,
                           // so we need to wait for it to resolve before
                           // we can use the options
-                          await route._lazyPromise
+                          if (route._lazyPromise) await route._lazyPromise
                           const headResult = executeHead()
                           const head = headResult ? await headResult : undefined
-                          await potentialPendingMinPromise()
+                          const pendingPromise = potentialPendingMinPromise()
+                          if (pendingPromise) await pendingPromise
 
                           // Last but not least, wait for the the components
                           // to be preloaded before we resolve the match
-                          await route._componentsPromise
+                          if (route._componentsPromise)
+                            await route._componentsPromise
                           updateMatch(matchId, (prev) => ({
                             ...prev,
                             error: undefined,
@@ -2890,33 +2911,44 @@ export class RouterCore<
   }
 
   loadRouteChunk = (route: AnyRoute) => {
-    if (route._lazyPromise === undefined) {
+    if (!route._lazyLoaded && route._lazyPromise === undefined) {
       if (route.lazyFn) {
         route._lazyPromise = route.lazyFn().then((lazyRoute) => {
           // explicitly don't copy over the lazy route's id
           const { id: _id, ...options } = lazyRoute.options
           Object.assign(route.options, options)
+          route._lazyLoaded = true
+          route._lazyPromise = undefined // gc promise, we won't need it anymore
         })
       } else {
-        route._lazyPromise = Promise.resolve()
+        route._lazyLoaded = true
       }
     }
 
     // If for some reason lazy resolves more lazy components...
-    // We'll wait for that before pre attempt to preload any
+    // We'll wait for that before we attempt to preload the
     // components themselves.
-    if (route._componentsPromise === undefined) {
-      route._componentsPromise = route._lazyPromise.then(() =>
-        Promise.all(
-          componentTypes.map(async (type) => {
-            const component = route.options[type]
-            if ((component as any)?.preload) {
-              await (component as any).preload()
-            }
-          }),
-        ),
-      )
+    if (!route._componentsLoaded && route._componentsPromise === undefined) {
+      const loadComponents = () => {
+        const preloads = []
+        for (const type of componentTypes) {
+          const preload = (route.options[type] as any)?.preload
+          if (preload) preloads.push(preload())
+        }
+        if (preloads.length)
+          return Promise.all(preloads).then(() => {
+            route._componentsLoaded = true
+            route._componentsPromise = undefined // gc promise, we won't need it anymore
+          })
+        route._componentsLoaded = true
+        route._componentsPromise = undefined // gc promise, we won't need it anymore
+        return
+      }
+      route._componentsPromise = route._lazyPromise
+        ? route._lazyPromise.then(loadComponents)
+        : loadComponents()
     }
+
     return route._componentsPromise
   }
 

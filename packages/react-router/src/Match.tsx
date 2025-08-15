@@ -248,9 +248,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         if (!router.isServer) {
           const minPendingPromise = createControlledPromise<void>()
 
-          Promise.resolve().then(() => {
-            routerMatch._nonReactive.minPendingPromise = minPendingPromise
-          })
+          routerMatch._nonReactive.minPendingPromise = minPendingPromise
 
           setTimeout(() => {
             minPendingPromise.resolve()
