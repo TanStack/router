@@ -590,7 +590,7 @@ export interface Route<
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
   /** @internal */
-  _componentsPromise?: Promise<Array<void>>
+  _componentsPromise?: Promise<void>
   /** @internal */
   _componentsLoaded?: boolean
   lazyFn?: () => Promise<
@@ -1413,7 +1413,8 @@ export class BaseRoute<
     >
   >
   _lazyPromise?: Promise<void>
-  _componentsPromise?: Promise<Array<void>>
+  /** @internal */
+  _componentsPromise?: Promise<void>
 
   constructor(
     options?: RouteOptions<

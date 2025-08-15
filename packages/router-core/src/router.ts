@@ -2633,8 +2633,8 @@ export class RouterCore<
 
                           const willLoadSomething = !!(
                             loaderResultIsPromise ||
-                            !route._lazyLoaded ||
-                            !route._componentsLoaded ||
+                            route._lazyPromise ||
+                            route._componentsPromise ||
                             route.options.head ||
                             route.options.scripts ||
                             route.options.headers ||
@@ -2667,7 +2667,7 @@ export class RouterCore<
                           // Lazy option can modify the route options,
                           // so we need to wait for it to resolve before
                           // we can use the options
-                          if (!route._lazyLoaded) await route._lazyPromise
+                          if (route._lazyPromise) await route._lazyPromise
                           const headResult = executeHead()
                           const head = headResult ? await headResult : undefined
                           const pendingPromise = potentialPendingMinPromise()
@@ -2675,7 +2675,7 @@ export class RouterCore<
 
                           // Last but not least, wait for the the components
                           // to be preloaded before we resolve the match
-                          if (!route._componentsLoaded)
+                          if (route._componentsPromise)
                             await route._componentsPromise
                           updateMatch(matchId, (prev) => ({
                             ...prev,
@@ -2911,36 +2911,45 @@ export class RouterCore<
   }
 
   loadRouteChunk = (route: AnyRoute) => {
-    if (route._lazyPromise === undefined) {
+    if (!route._lazyLoaded && route._lazyPromise === undefined) {
       if (route.lazyFn) {
         route._lazyPromise = route.lazyFn().then((lazyRoute) => {
           // explicitly don't copy over the lazy route's id
           const { id: _id, ...options } = lazyRoute.options
           Object.assign(route.options, options)
           route._lazyLoaded = true
+          route._lazyPromise = undefined // gc promise, we won't need it anymore
         })
       } else {
-        route._lazyPromise = Promise.resolve()
         route._lazyLoaded = true
       }
     }
 
     // If for some reason lazy resolves more lazy components...
-    // We'll wait for that before pre attempt to preload any
+    // We'll wait for that before we attempt to preload the
     // components themselves.
-    if (route._componentsPromise === undefined) {
-      route._componentsPromise = route._lazyPromise.then(() =>
-        Promise.all(
-          componentTypes.map(async (type) => {
-            const component = route.options[type]
-            if ((component as any)?.preload) {
-              await (component as any).preload()
-            }
-          }),
-        ),
-      )
-      route._componentsPromise.then(() => (route._componentsLoaded = true))
+    if (!route._componentsLoaded && route._componentsPromise === undefined) {
+      const loadComponents = () => {
+        const preloads = []
+        for (const type of componentTypes) {
+          const preload = (route.options[type] as any)?.preload
+          if (preload) preloads.push(preload())
+        }
+        if (preloads.length)
+          return Promise.all(preloads).then(() => {
+            route._componentsLoaded = true
+            route._componentsPromise = undefined // gc promise, we won't need it anymore
+          })
+        route._componentsLoaded = true
+        route._componentsPromise = undefined // gc promise, we won't need it anymore
+        return
+      }
+      route._componentsPromise = route._lazyPromise
+        ? route._lazyPromise.then(loadComponents)
+        : loadComponents()
     }
+
+    return route._componentsPromise
   }
 
   preloadRoute: PreloadRouteFn<
