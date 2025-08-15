@@ -2124,54 +2124,50 @@ export class RouterCore<
 
     const handleRedirectAndNotFound = (
       match: AnyRouteMatch | undefined,
-      err: any,
+      err: unknown,
     ) => {
-      if (isRedirect(err) || isNotFound(err)) {
-        if (isRedirect(err)) {
-          if (err.redirectHandled) {
-            if (!err.options.reloadDocument) {
-              throw err
-            }
-          }
+      if (!isRedirect(err) && !isNotFound(err)) return
+
+      if (
+        isRedirect(err) &&
+        err.redirectHandled &&
+        !err.options.reloadDocument
+      ) {
+        throw err
+      }
+
+      // in case of a redirecting match during preload, the match does not exist
+      if (match) {
+        match._nonReactive.beforeLoadPromise?.resolve()
+        match._nonReactive.loaderPromise?.resolve()
+        match._nonReactive.beforeLoadPromise = undefined
+        match._nonReactive.loaderPromise = undefined
+
+        const status = isRedirect(err) ? 'redirected' : 'notFound'
+
+        updateMatch(match.id, (prev) => ({
+          ...prev,
+          status,
+          isFetching: false,
+          error: err,
+        }))
+
+        if (isNotFound(err) && !err.routeId) {
+          err.routeId = match.routeId
         }
 
-        // in case of a redirecting match during preload, the match does not exist
-        if (match) {
-          match._nonReactive.beforeLoadPromise?.resolve()
-          match._nonReactive.loaderPromise?.resolve()
-          match._nonReactive.beforeLoadPromise = undefined
-          match._nonReactive.loaderPromise = undefined
+        match._nonReactive.loadPromise?.resolve()
+      }
 
-          updateMatch(match.id, (prev) => ({
-            ...prev,
-            status: isRedirect(err)
-              ? 'redirected'
-              : isNotFound(err)
-                ? 'notFound'
-                : 'error',
-            isFetching: false,
-            error: err,
-          }))
-
-          if (!(err as any).routeId) {
-            ;(err as any).routeId = match.routeId
-          }
-
-          match._nonReactive.loadPromise?.resolve()
-        }
-
-        if (isRedirect(err)) {
-          rendered = true
-          err.options._fromLocation = location
-          err.redirectHandled = true
-          err = this.resolveRedirect(err)
-          throw err
-        } else if (isNotFound(err)) {
-          this._handleNotFound(matches, err, {
-            updateMatch,
-          })
-          throw err
-        }
+      if (isRedirect(err)) {
+        rendered = true
+        err.options._fromLocation = location
+        err.redirectHandled = true
+        err = this.resolveRedirect(err)
+        throw err
+      } else {
+        this._handleNotFound(matches, err, updateMatch)
+        throw err
       }
     }
 
@@ -3086,14 +3082,10 @@ export class RouterCore<
   _handleNotFound = (
     matches: Array<AnyRouteMatch>,
     err: NotFoundError,
-    {
-      updateMatch = this.updateMatch,
-    }: {
-      updateMatch?: (
-        id: string,
-        updater: (match: AnyRouteMatch) => AnyRouteMatch,
-      ) => void
-    } = {},
+    updateMatch: (
+      id: string,
+      updater: (match: AnyRouteMatch) => AnyRouteMatch,
+    ) => void = this.updateMatch,
   ) => {
     // Find the route that should handle the not found error
     // First check if a specific route is requested to show the error
@@ -3139,9 +3131,7 @@ export class RouterCore<
 
     if ((err as any).routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute) {
       err.routeId = routeCursor.parentRoute.id
-      this._handleNotFound(matches, err, {
-        updateMatch,
-      })
+      this._handleNotFound(matches, err, updateMatch)
     }
   }
 
