@@ -1393,8 +1393,8 @@ export class RouterCore<
     if (!match) return
 
     match.abortController.abort()
-    match._nonReactive.pendingTimeout = undefined
     clearTimeout(match._nonReactive.pendingTimeout)
+    match._nonReactive.pendingTimeout = undefined
   }
 
   cancelMatches = () => {
@@ -2121,7 +2121,10 @@ export class RouterCore<
       triggerOnReady()
     }
 
-    const handleRedirectAndNotFound = (match: AnyRouteMatch, err: any) => {
+    const handleRedirectAndNotFound = (
+      match: AnyRouteMatch | undefined,
+      err: any,
+    ) => {
       if (isRedirect(err) || isNotFound(err)) {
         if (isRedirect(err)) {
           if (err.redirectHandled) {
@@ -2131,27 +2134,30 @@ export class RouterCore<
           }
         }
 
-        match._nonReactive.beforeLoadPromise?.resolve()
-        match._nonReactive.loaderPromise?.resolve()
-        match._nonReactive.beforeLoadPromise = undefined
-        match._nonReactive.loaderPromise = undefined
+        // in case of a redirecting match during preload, the match does not exist
+        if (match) {
+          match._nonReactive.beforeLoadPromise?.resolve()
+          match._nonReactive.loaderPromise?.resolve()
+          match._nonReactive.beforeLoadPromise = undefined
+          match._nonReactive.loaderPromise = undefined
 
-        updateMatch(match.id, (prev) => ({
-          ...prev,
-          status: isRedirect(err)
-            ? 'redirected'
-            : isNotFound(err)
-              ? 'notFound'
-              : 'error',
-          isFetching: false,
-          error: err,
-        }))
+          updateMatch(match.id, (prev) => ({
+            ...prev,
+            status: isRedirect(err)
+              ? 'redirected'
+              : isNotFound(err)
+                ? 'notFound'
+                : 'error',
+            isFetching: false,
+            error: err,
+          }))
 
-        if (!(err as any).routeId) {
-          ;(err as any).routeId = match.routeId
+          if (!(err as any).routeId) {
+            ;(err as any).routeId = match.routeId
+          }
+
+          match._nonReactive.loadPromise?.resolve()
         }
-
-        match._nonReactive.loadPromise?.resolve()
 
         if (isRedirect(err)) {
           rendered = true
@@ -2204,13 +2210,13 @@ export class RouterCore<
 
               err.routerCode = routerCode
               firstBadMatchIndex = firstBadMatchIndex ?? index
-              handleRedirectAndNotFound(this.getMatch(matchId)!, err)
+              handleRedirectAndNotFound(this.getMatch(matchId), err)
 
               try {
                 route.options.onError?.(err)
               } catch (errorHandlerErr) {
                 err = errorHandlerErr
-                handleRedirectAndNotFound(this.getMatch(matchId)!, err)
+                handleRedirectAndNotFound(this.getMatch(matchId), err)
               }
 
               updateMatch(matchId, (prev) => {
@@ -2465,10 +2471,17 @@ export class RouterCore<
                   let loaderIsRunningAsync = false
                   const route = this.looseRoutesById[routeId]!
 
-                  const executeHead = async () => {
+                  const executeHead = () => {
                     const match = this.getMatch(matchId)
                     // in case of a redirecting match during preload, the match does not exist
                     if (!match) {
+                      return
+                    }
+                    if (
+                      !route.options.head &&
+                      !route.options.scripts &&
+                      !route.options.headers
+                    ) {
                       return
                     }
                     const assetContext = {
@@ -2477,23 +2490,26 @@ export class RouterCore<
                       params: match.params,
                       loaderData: match.loaderData,
                     }
-                    const headFnContent =
-                      await route.options.head?.(assetContext)
-                    const meta = headFnContent?.meta
-                    const links = headFnContent?.links
-                    const headScripts = headFnContent?.scripts
-                    const styles = headFnContent?.styles
 
-                    const scripts = await route.options.scripts?.(assetContext)
-                    const headers = await route.options.headers?.(assetContext)
-                    return {
-                      meta,
-                      links,
-                      headScripts,
-                      headers,
-                      scripts,
-                      styles,
-                    }
+                    return Promise.all([
+                      route.options.head?.(assetContext),
+                      route.options.scripts?.(assetContext),
+                      route.options.headers?.(assetContext),
+                    ]).then(([headFnContent, scripts, headers]) => {
+                      const meta = headFnContent?.meta
+                      const links = headFnContent?.links
+                      const headScripts = headFnContent?.scripts
+                      const styles = headFnContent?.styles
+
+                      return {
+                        meta,
+                        links,
+                        headScripts,
+                        headers,
+                        scripts,
+                        styles,
+                      }
+                    })
                   }
 
                   const potentialPendingMinPromise = async () => {
@@ -2506,11 +2522,14 @@ export class RouterCore<
                   const prevMatch = this.getMatch(matchId)!
                   if (shouldSkipLoader(matchId)) {
                     if (this.isServer) {
-                      const head = await executeHead()
-                      updateMatch(matchId, (prev) => ({
-                        ...prev,
-                        ...head,
-                      }))
+                      const headResult = executeHead()
+                      if (headResult) {
+                        const head = await headResult
+                        updateMatch(matchId, (prev) => ({
+                          ...prev,
+                          ...head,
+                        }))
+                      }
                       return this.getMatch(matchId)!
                     }
                   }
@@ -2622,7 +2641,7 @@ export class RouterCore<
                             await route.options.loader?.(getLoaderContext())
 
                           handleRedirectAndNotFound(
-                            this.getMatch(matchId)!,
+                            this.getMatch(matchId),
                             loaderData,
                           )
                           updateMatch(matchId, (prev) => ({
@@ -2634,7 +2653,8 @@ export class RouterCore<
                           // so we need to wait for it to resolve before
                           // we can use the options
                           await route._lazyPromise
-                          const head = await executeHead()
+                          const headResult = executeHead()
+                          const head = headResult ? await headResult : undefined
                           await potentialPendingMinPromise()
 
                           // Last but not least, wait for the the components
@@ -2653,18 +2673,19 @@ export class RouterCore<
 
                           await potentialPendingMinPromise()
 
-                          handleRedirectAndNotFound(this.getMatch(matchId)!, e)
+                          handleRedirectAndNotFound(this.getMatch(matchId), e)
 
                           try {
                             route.options.onError?.(e)
                           } catch (onErrorError) {
                             error = onErrorError
                             handleRedirectAndNotFound(
-                              this.getMatch(matchId)!,
+                              this.getMatch(matchId),
                               onErrorError,
                             )
                           }
-                          const head = await executeHead()
+                          const headResult = executeHead()
+                          const head = headResult ? await headResult : undefined
                           updateMatch(matchId, (prev) => ({
                             ...prev,
                             error,
@@ -2674,16 +2695,20 @@ export class RouterCore<
                           }))
                         }
                       } catch (err) {
-                        const head = await executeHead()
-
-                        updateMatch(matchId, (prev) => {
-                          prev._nonReactive.loaderPromise = undefined
-                          return {
-                            ...prev,
-                            ...head,
+                        const match = this.getMatch(matchId)
+                        // in case of a redirecting match during preload, the match does not exist
+                        if (match) {
+                          const headResult = executeHead()
+                          if (headResult) {
+                            const head = await headResult
+                            updateMatch(matchId, (prev) => ({
+                              ...prev,
+                              ...head,
+                            }))
                           }
-                        })
-                        handleRedirectAndNotFound(this.getMatch(matchId)!, err)
+                          match._nonReactive.loaderPromise = undefined
+                        }
+                        handleRedirectAndNotFound(match, err)
                       }
                     }
 
@@ -2718,11 +2743,14 @@ export class RouterCore<
                       // if the loader did not run, still update head.
                       // reason: parent's beforeLoad may have changed the route context
                       // and only now do we know the route context (and that the loader would not run)
-                      const head = await executeHead()
-                      updateMatch(matchId, (prev) => ({
-                        ...prev,
-                        ...head,
-                      }))
+                      const headResult = executeHead()
+                      if (headResult) {
+                        const head = await headResult
+                        updateMatch(matchId, (prev) => ({
+                          ...prev,
+                          ...head,
+                        }))
+                      }
                     }
                   }
                   if (!loaderIsRunningAsync) {
