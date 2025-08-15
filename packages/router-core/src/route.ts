@@ -1412,6 +1412,7 @@ export class BaseRoute<
       >
     >
   >
+  /** @internal */
   _lazyPromise?: Promise<void>
   /** @internal */
   _componentsPromise?: Promise<void>
