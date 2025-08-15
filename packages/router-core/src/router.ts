@@ -2283,6 +2283,7 @@ export class RouterCore<
         ssr: match.ssr,
       })),
     }
+
     const tempSsr = route.options.ssr(ssrFnContext)
     if (isPromise(tempSsr)) {
       return tempSsr.then((ssr) => {
@@ -2455,7 +2456,7 @@ export class RouterCore<
         matches: innerLoadContext.matches,
       }
 
-      const then = (beforeLoadContext: any) => {
+      const updateContext = (beforeLoadContext: any) => {
         if (isRedirect(beforeLoadContext) || isNotFound(beforeLoadContext)) {
           this.handleSerialError(
             innerLoadContext,
@@ -2480,13 +2481,13 @@ export class RouterCore<
       const beforeLoadContext = route.options.beforeLoad?.(beforeLoadFnContext)
       if (isPromise(beforeLoadContext)) {
         return beforeLoadContext
-          .then(then)
+          .then(updateContext)
           .catch((err) => {
             this.handleSerialError(innerLoadContext, index, err, 'BEFORE_LOAD')
           })
           .then(resolve)
       } else {
-        then(beforeLoadContext)
+        updateContext(beforeLoadContext)
       }
     } catch (err) {
       this.handleSerialError(innerLoadContext, index, err, 'BEFORE_LOAD')
