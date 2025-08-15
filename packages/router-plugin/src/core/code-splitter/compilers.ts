@@ -586,9 +586,10 @@ export function compileCodeSplitVirtualRoute(
               if (t.isIdentifier(splitNode.id)) {
                 splitMeta.localExporterIdent = splitNode.id.name
                 splitMeta.shouldRemoveNode = false
-              }
-              else {
-                throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
+              } else {
+                throw new Error(
+                  `Unexpected splitNode type ☝️: ${splitNode.type}`,
+                )
               }
             } else if (t.isCallExpression(splitNode)) {
               const outputSplitNodeCode = generateFromAst(splitNode).code

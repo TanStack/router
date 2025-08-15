@@ -20,10 +20,6 @@ function OtherComponent() {
   return <div>App component name is {componentName}</div>
 }
 
-
 export const Route = createFileRoute('/')({
   component: App,
 })
-
-
-
