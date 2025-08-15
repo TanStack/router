@@ -144,5 +144,10 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         console.info('✅ ' + PLUGIN_NAME + ': route-tree generation done')
       })
     },
+    esbuild: {
+      config() {
+        initConfigAndGenerator()
+      },
+    },
   }
 }
