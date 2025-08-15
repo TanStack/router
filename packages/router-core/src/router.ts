@@ -2371,24 +2371,27 @@ export class RouterCore<
   ): void | Promise<void> => {
     const match = this.getMatch(matchId)!
     const abortController = new AbortController()
+    const parentMatchId = innerLoadContext.matches[index - 1]?.id
+    const parentMatch = parentMatchId
+      ? this.getMatch(parentMatchId)!
+      : undefined
+    const parentMatchContext =
+      parentMatch?.context ?? this.options.context ?? undefined
+    const context = {
+      ...parentMatchContext,
+      ...match.__routeContext,
+    }
+
+    let isPending = false
 
     const pending = () => {
-      const parentMatchId = innerLoadContext.matches[index - 1]?.id
-      const parentMatch = parentMatchId
-        ? this.getMatch(parentMatchId)!
-        : undefined
-      const parentMatchContext =
-        parentMatch?.context ?? this.options.context ?? undefined
-
+      isPending = true
       innerLoadContext.updateMatch(matchId, (prev) => ({
         ...prev,
         isFetching: 'beforeLoad',
         fetchCount: prev.fetchCount + 1,
         abortController,
-        context: {
-          ...parentMatchContext,
-          ...prev.__routeContext,
-        },
+        context,
       }))
     }
 
@@ -2439,11 +2442,12 @@ export class RouterCore<
       return
     }
 
-    pending()
-
     const updateContext = (beforeLoadContext: any) => {
       if (beforeLoadContext === undefined) {
-        resolve()
+        batch(() => {
+          if (!isPending) pending()
+          resolve()
+        })
         return
       }
       if (isRedirect(beforeLoadContext) || isNotFound(beforeLoadContext)) {
@@ -2455,6 +2459,7 @@ export class RouterCore<
         )
       }
       batch(() => {
+        if (!isPending) pending()
         innerLoadContext.updateMatch(matchId, (prev) => ({
           ...prev,
           __beforeLoadContext: beforeLoadContext,
@@ -2466,7 +2471,7 @@ export class RouterCore<
         resolve()
       })
     }
-    const { search, params, context, cause } = this.getMatch(matchId)!
+    const { search, params, cause } = match
     const preload = this.resolvePreload(innerLoadContext, matchId)
     const beforeLoadFnContext: BeforeLoadContextOptions<
       any,
@@ -2493,6 +2498,7 @@ export class RouterCore<
     try {
       const beforeLoadContext = route.options.beforeLoad(beforeLoadFnContext)
       if (isPromise(beforeLoadContext)) {
+        pending()
         return beforeLoadContext.then(updateContext).catch((err) => {
           this.handleSerialError(innerLoadContext, index, err, 'BEFORE_LOAD')
         })
