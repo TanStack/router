@@ -2932,11 +2932,6 @@ export class RouterCore<
             for (let i = 0; i < innerLoadContext.matches.length; i++) {
               const beforeLoad = this.handleBeforeLoad(innerLoadContext, i)
               if (isPromise(beforeLoad)) await beforeLoad
-              console.log(
-                'before load done',
-                innerLoadContext.matches[i]!.id,
-                this.getMatch(innerLoadContext.matches[i]!.id)?.context,
-              )
             }
 
             // Execute all loaders in parallel
