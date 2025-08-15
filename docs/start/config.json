@@ -128,7 +128,7 @@
             },
             {
               "label": "Environment Functions",
-              "to": "framework/react/environment-functions"
+              "to": "framework/solid/environment-functions"
             },
             {
               "label": "Middleware",
