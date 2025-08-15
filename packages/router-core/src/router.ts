@@ -1905,7 +1905,6 @@ export class RouterCore<
             sync: opts?.sync,
             matches: this.state.pendingMatches as Array<AnyRouteMatch>,
             location: next,
-            updateMatch: this.updateMatch,
             // eslint-disable-next-line @typescript-eslint/require-await
             onReady: async () => {
               // eslint-disable-next-line @typescript-eslint/require-await
@@ -2095,22 +2094,25 @@ export class RouterCore<
     )
   }
 
-  private async triggerOnReady(innerLoadContext: InnerLoadContext) {
+  private triggerOnReady = async (innerLoadContext: InnerLoadContext) => {
     if (!innerLoadContext.rendered) {
       innerLoadContext.rendered = true
       if (innerLoadContext.onReady) await innerLoadContext.onReady()
     }
   }
 
-  private resolvePreload(allPreload: boolean | undefined, matchId: string) {
+  private resolvePreload = (
+    allPreload: boolean | undefined,
+    matchId: string,
+  ) => {
     return !!(allPreload && !this.state.matches.some((d) => d.id === matchId))
   }
 
-  private handleRedirectAndNotFound(
+  private handleRedirectAndNotFound = (
     innerLoadContext: InnerLoadContext,
     match: AnyRouteMatch | undefined,
     err: unknown,
-  ) {
+  ) => {
     if (!isRedirect(err) && !isNotFound(err)) return
 
     if (isRedirect(err) && err.redirectHandled && !err.options.reloadDocument) {
@@ -2147,16 +2149,12 @@ export class RouterCore<
       err = this.resolveRedirect(err)
       throw err
     } else {
-      this._handleNotFound(
-        innerLoadContext.matches,
-        err,
-        innerLoadContext.updateMatch,
-      )
+      this._handleNotFound(innerLoadContext, err)
       throw err
     }
   }
 
-  private shouldSkipLoader(matchId: string) {
+  private shouldSkipLoader = (matchId: string) => {
     const match = this.getMatch(matchId)!
     // upon hydration, we skip the loader if the match has been dehydrated on the server
     if (!this.isServer && match._nonReactive.dehydrated) {
@@ -2171,12 +2169,12 @@ export class RouterCore<
     return false
   }
 
-  private handleSerialError(
+  private handleSerialError = (
     innerLoadContext: InnerLoadContext,
     index: number,
     err: any,
     routerCode: string,
-  ) {
+  ) => {
     const { id: matchId, routeId } = innerLoadContext.matches[index]!
     const route = this.looseRoutesById[routeId]!
 
@@ -2222,7 +2220,10 @@ export class RouterCore<
     })
   }
 
-  async handleBeforeLoad(innerLoadContext: InnerLoadContext, index: number) {
+  private handleBeforeLoad = async (
+    innerLoadContext: InnerLoadContext,
+    index: number,
+  ) => {
     const { id: matchId, routeId } = innerLoadContext.matches[index]!
     const existingMatch = this.getMatch(matchId)!
     const parentMatchId = innerLoadContext.matches[index - 1]?.id
@@ -2450,11 +2451,11 @@ export class RouterCore<
     }
   }
 
-  private executeHead(
+  private executeHead = (
     route: AnyRoute,
     matchId: string,
     matches: Array<AnyRouteMatch>,
-  ) {
+  ) => {
     const match = this.getMatch(matchId)
     // in case of a redirecting match during preload, the match does not exist
     if (!match) {
@@ -2495,11 +2496,11 @@ export class RouterCore<
     })
   }
 
-  private async loadRouteMatch(
+  private loadRouteMatch = async (
     innerLoadContext: InnerLoadContext,
     index: number,
     matchPromises: Array<Promise<AnyRouteMatch>>,
-  ): Promise<AnyRouteMatch> {
+  ): Promise<AnyRouteMatch> => {
     const { id: matchId, routeId } = innerLoadContext.matches[index]!
     let loaderShouldRunAsync = false
     let loaderIsRunningAsync = false
@@ -2803,10 +2804,11 @@ export class RouterCore<
     matches: Array<AnyRouteMatch>
     preload?: boolean
     onReady?: () => Promise<void>
-    updateMatch: UpdateMatchFn
+    updateMatch?: UpdateMatchFn
     sync?: boolean
   }): Promise<Array<MakeRouteMatch>> => {
     const innerLoadContext = baseContext as InnerLoadContext
+    innerLoadContext.updateMatch ??= this.updateMatch
 
     // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
     // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
@@ -3126,13 +3128,9 @@ export class RouterCore<
 
   serverSsr?: ServerSsr
 
-  _handleNotFound = (
-    matches: Array<AnyRouteMatch>,
+  private _handleNotFound = (
+    innerLoadContext: InnerLoadContext,
     err: NotFoundError,
-    updateMatch: (
-      id: string,
-      updater: (match: AnyRouteMatch) => AnyRouteMatch,
-    ) => void = this.updateMatch,
   ) => {
     // Find the route that should handle the not found error
     // First check if a specific route is requested to show the error
@@ -3140,7 +3138,7 @@ export class RouterCore<
     const matchesByRouteId: Record<string, AnyRouteMatch> = {}
 
     // Setup routesByRouteId object for quick access
-    for (const match of matches) {
+    for (const match of innerLoadContext.matches) {
       matchesByRouteId[match.routeId] = match
     }
 
@@ -3169,7 +3167,7 @@ export class RouterCore<
     )
 
     // Assign the error to the match - using non-null assertion since we've checked with invariant
-    updateMatch(matchForRoute.id, (prev) => ({
+    innerLoadContext.updateMatch(matchForRoute.id, (prev) => ({
       ...prev,
       status: 'notFound',
       error: err,
@@ -3178,7 +3176,7 @@ export class RouterCore<
 
     if ((err as any).routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute) {
       err.routeId = routeCursor.parentRoute.id
-      this._handleNotFound(matches, err, updateMatch)
+      this._handleNotFound(innerLoadContext, err)
     }
   }
 
