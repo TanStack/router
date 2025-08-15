@@ -7,9 +7,9 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
   useRouterState,
 } from '../src'
-import type { RouteComponent } from '../src'
 
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
@@ -17,27 +17,36 @@ afterEach(() => {
 })
 
 function setup({
-  RootComponent,
   beforeLoad,
   loader,
+  head,
+  headers,
+  scripts,
   defaultPendingMs,
   defaultPendingMinMs,
 }: {
-  RootComponent: RouteComponent
   beforeLoad?: () => any
   loader?: () => any
+  head?: () => any
+  headers?: () => any
+  scripts?: () => any
   defaultPendingMs?: number
   defaultPendingMinMs?: number
 }) {
+  const select = vi.fn()
+
   const rootRoute = createRootRoute({
-    component: RootComponent,
+    component: function RootComponent() {
+      useRouterState({ select })
+      return <Outlet />
+    },
   })
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
     component: () => (
       <>
-        <h1>IndexTitle</h1>
+        <h1>Index</h1>
         <Link to="/posts">Posts</Link>
       </>
     ),
@@ -48,28 +57,47 @@ function setup({
     path: '/posts',
     beforeLoad,
     loader,
-    component: () => <h1>PostsTitle</h1>,
+    head,
+    headers,
+    scripts,
+    component: () => <h1>Posts Title</h1>,
+  })
+
+  const otherRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+    component: () => <h1>Other Title</h1>,
   })
 
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute, otherRoute]),
     defaultPendingMs,
     defaultPendingMinMs,
     defaultPendingComponent: () => <p>Loading...</p>,
   })
 
-  return render(<RouterProvider router={router} />)
+  render(<RouterProvider router={router} />)
+
+  return { select, router }
+}
+
+async function run({ select }: ReturnType<typeof setup>, opts?: {}) {
+  // navigate to /posts
+  const link = await waitFor(() => screen.getByRole('link', { name: 'Posts' }))
+  const before = select.mock.calls.length
+  act(() => link.click())
+  const title = await waitFor(() =>
+    screen.getByRole('heading', { name: /Title$/ }),
+  ) // matches /posts and /other
+  expect(title).toBeInTheDocument()
+  const after = select.mock.calls.length
+
+  return after - before
 }
 
 describe("Store doesn't update *too many* times during navigation", () => {
-  test('everything (async loader, async beforeLoad, pendingMs)', async () => {
-    const select = vi.fn()
-
-    setup({
-      RootComponent: () => {
-        useRouterState({ select })
-        return <Outlet />
-      },
+  test('async loader, async beforeLoad, pendingMs', async () => {
+    const params = setup({
       beforeLoad: () =>
         new Promise<void>((resolve) => setTimeout(resolve, 100)),
       loader: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
@@ -77,49 +105,29 @@ describe("Store doesn't update *too many* times during navigation", () => {
       defaultPendingMinMs: 300,
     })
 
-    // navigate to /posts
-    const link = await waitFor(() =>
-      screen.getByRole('link', { name: 'Posts' }),
-    )
-    const before = select.mock.calls.length
-    act(() => link.click())
-    const title = await waitFor(() => screen.getByText('PostsTitle'))
-    expect(title).toBeInTheDocument()
-    const after = select.mock.calls.length
+    const updates = await run(params)
 
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(after - before).toBe(16)
+    expect(updates).toBe(17)
   })
 
-  test('sync beforeLoad', async () => {
-    const select = vi.fn()
-
-    setup({
-      RootComponent: () => {
-        useRouterState({ select })
-        return <Outlet />
+  test('redirection in preload', async () => {
+    const { select, router } = setup({
+      loader: () => {
+        throw redirect({ to: '/other' })
       },
-      beforeLoad: () => {},
-      loader: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
-      defaultPendingMs: 100,
-      defaultPendingMinMs: 300,
     })
 
-    // navigate to /posts
-    const link = await waitFor(() =>
-      screen.getByRole('link', { name: 'Posts' }),
-    )
     const before = select.mock.calls.length
-    act(() => link.click())
-    const title = await waitFor(() => screen.getByText('PostsTitle'))
-    expect(title).toBeInTheDocument()
+    await router.preloadRoute({ to: '/posts' })
     const after = select.mock.calls.length
+    const updates = after - before
 
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(after - before).toBe(15)
+    expect(updates).toBe(8)
   })
 })

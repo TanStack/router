@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router-devtools",
-  "version": "1.131.5",
+  "version": "1.131.16",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
