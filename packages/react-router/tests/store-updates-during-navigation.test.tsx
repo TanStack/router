@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import {
   Link,
@@ -7,25 +7,46 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
   useRouterState,
 } from '../src'
-import type { RouteComponent } from '../src'
 
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
   cleanup()
 })
 
-function setup({ RootComponent }: { RootComponent: RouteComponent }) {
+async function setupAndRun({
+  beforeLoad,
+  loader,
+  head,
+  headers,
+  scripts,
+  defaultPendingMs,
+  defaultPendingMinMs,
+}: {
+  beforeLoad?: () => any
+  loader?: () => any
+  head?: () => any
+  headers?: () => any
+  scripts?: () => any
+  defaultPendingMs?: number
+  defaultPendingMinMs?: number
+}) {
+  const select = vi.fn()
+
   const rootRoute = createRootRoute({
-    component: RootComponent,
+    component: function RootComponent() {
+      useRouterState({ select })
+      return <Outlet />
+    },
   })
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
     component: () => (
       <>
-        <h1>IndexTitle</h1>
+        <h1>Index</h1>
         <Link to="/posts">Posts</Link>
       </>
     ),
@@ -34,45 +55,66 @@ function setup({ RootComponent }: { RootComponent: RouteComponent }) {
   const postsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/posts',
-    beforeLoad: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
-    loader: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
-    component: () => <h1>PostsTitle</h1>,
+    beforeLoad,
+    loader,
+    head,
+    headers,
+    scripts,
+    component: () => <h1>Posts Title</h1>,
+  })
+
+  const otherRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+    component: () => <h1>Other Title</h1>,
   })
 
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
-    defaultPendingMs: 100,
-    defaultPendingMinMs: 300,
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute, otherRoute]),
+    defaultPendingMs,
+    defaultPendingMinMs,
     defaultPendingComponent: () => <p>Loading...</p>,
   })
 
-  return render(<RouterProvider router={router} />)
+  render(<RouterProvider router={router} />)
+
+  // navigate to /posts
+  const link = await waitFor(() =>
+    screen.getByRole('link', { name: 'Posts' }),
+  )
+  const before = select.mock.calls.length
+  act(() => link.click())
+  const title = await waitFor(() => screen.getByRole('heading', { name: /Title$/ })) // matches /posts and /other
+  expect(title).toBeInTheDocument()
+  const after = select.mock.calls.length
+
+  return after - before
 }
 
-describe('Store updates during navigation', () => {
-  it("isn't called *too many* times", async () => {
-    const select = vi.fn()
-
-    setup({
-      RootComponent: () => {
-        useRouterState({ select })
-        return <Outlet />
-      },
+describe("Store doesn't update *too many* times during navigation", () => {
+  test('async loader, async beforeLoad, pendingMs', async () => {
+    const updates = await setupAndRun({
+      beforeLoad: () =>
+        new Promise<void>((resolve) => setTimeout(resolve, 100)),
+      loader: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
+      defaultPendingMs: 100,
+      defaultPendingMinMs: 300,
     })
-
-    // navigate to /posts
-    const link = await waitFor(() =>
-      screen.getByRole('link', { name: 'Posts' }),
-    )
-    const before = select.mock.calls.length
-    act(() => link.click())
-    const title = await waitFor(() => screen.getByText('PostsTitle'))
-    expect(title).toBeInTheDocument()
-    const after = select.mock.calls.length
 
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(after - before).toBe(19)
+    expect(updates).toBe(19)
+  })
+
+  test('redirection', async () => {
+    const updates = await setupAndRun({
+      beforeLoad: () => { throw redirect({ to: '/other' }) }
+    })
+
+    // This number should be as small as possible to minimize the amount of work
+    // that needs to be done during a navigation.
+    // Any change that increases this number should be investigated.
+    expect(updates).toBe(26)
   })
 })
