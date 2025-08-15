@@ -58,8 +58,8 @@ type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
     }
 
 type ShouldBlockFnArgs<TRouter extends AnyRouter = RegisteredRouter> = {
-  current: MakeShouldBlockFnLocationUnion<TRouter>
-  next: MakeShouldBlockFnLocationUnion<TRouter>
+  current: MakeShouldBlockFnLocationUnion<TRouter> | null
+  next: MakeShouldBlockFnLocationUnion<TRouter> | null
   action: HistoryAction
 }
 
@@ -74,6 +74,7 @@ export type UseBlockerOpts<
   enableBeforeUnload?: boolean | (() => boolean)
   disabled?: boolean
   withResolver?: TWithResolver
+  throwOnUnknownRoute?: boolean
 }
 
 type LegacyBlockerFn = () => Promise<any> | any
@@ -165,6 +166,7 @@ export function useBlocker(
       enableBeforeUnload: true,
       disabled: false,
       withResolver: false,
+      throwOnUnknownRoute: true,
     },
     _resolveBlockerOpts(opts, condition),
   )
@@ -184,14 +186,14 @@ export function useBlocker(
     const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
       function getLocation(
         location: HistoryLocation,
-      ): AnyShouldBlockFnLocation {
+      ): AnyShouldBlockFnLocation | null {
         const parsedLocation = router.parseLocation(undefined, location)
         const matchedRoutes = router.getMatchedRoutes(
           parsedLocation.pathname,
           undefined,
         )
         if (matchedRoutes.foundRoute === undefined) {
-          throw new Error(`No route found for location ${location.href}`)
+          return null
         }
         return {
           routeId: matchedRoutes.foundRoute.id,
@@ -203,7 +205,18 @@ export function useBlocker(
       }
 
       const current = getLocation(blockerFnArgs.currentLocation)
+      if (!current) {
+        throw new Error(
+          `No route found for location ${blockerFnArgs.currentLocation.href}`,
+        )
+      }
+
       const next = getLocation(blockerFnArgs.nextLocation)
+      if (!next && props.throwOnUnknownRoute) {
+        throw new Error(
+          `No route found for location ${blockerFnArgs.nextLocation.href}`,
+        )
+      }
 
       const shouldBlock = await props.shouldBlockFn({
         action: blockerFnArgs.action,
