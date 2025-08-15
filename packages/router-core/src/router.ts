@@ -763,6 +763,18 @@ export type CreateRouterFn = <
   TDehydrated
 >
 
+type InnerLoadContext = {
+  location: ParsedLocation
+  firstBadMatchIndex?: number
+  rendered?: boolean
+  updateMatch: UpdateMatchFn
+  matches: Array<AnyRouteMatch>
+  preload?: boolean
+  onReady?: () => Promise<void>
+  sync?: boolean
+  matchPromises: Array<Promise<AnyRouteMatch>>
+}
+
 export class RouterCore<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
@@ -2083,719 +2095,838 @@ export class RouterCore<
     )
   }
 
-  loadMatches = async ({
-    location,
-    matches,
-    preload: allPreload,
-    onReady,
-    updateMatch = this.updateMatch,
-    sync,
-  }: {
+  private triggerOnReady = (
+    innerLoadContext: InnerLoadContext,
+  ): void | Promise<void> => {
+    if (!innerLoadContext.rendered) {
+      innerLoadContext.rendered = true
+      return innerLoadContext.onReady?.()
+    }
+  }
+
+  private resolvePreload = (
+    innerLoadContext: InnerLoadContext,
+    matchId: string,
+  ): boolean => {
+    return !!(
+      innerLoadContext.preload &&
+      !this.state.matches.some((d) => d.id === matchId)
+    )
+  }
+
+  private handleRedirectAndNotFound = (
+    innerLoadContext: InnerLoadContext,
+    match: AnyRouteMatch | undefined,
+    err: unknown,
+  ): void => {
+    if (!isRedirect(err) && !isNotFound(err)) return
+
+    if (isRedirect(err) && err.redirectHandled && !err.options.reloadDocument) {
+      throw err
+    }
+
+    // in case of a redirecting match during preload, the match does not exist
+    if (match) {
+      match._nonReactive.beforeLoadPromise?.resolve()
+      match._nonReactive.loaderPromise?.resolve()
+      match._nonReactive.beforeLoadPromise = undefined
+      match._nonReactive.loaderPromise = undefined
+
+      const status = isRedirect(err) ? 'redirected' : 'notFound'
+
+      innerLoadContext.updateMatch(match.id, (prev) => ({
+        ...prev,
+        status,
+        isFetching: false,
+        error: err,
+      }))
+
+      if (isNotFound(err) && !err.routeId) {
+        err.routeId = match.routeId
+      }
+
+      match._nonReactive.loadPromise?.resolve()
+    }
+
+    if (isRedirect(err)) {
+      innerLoadContext.rendered = true
+      err.options._fromLocation = innerLoadContext.location
+      err.redirectHandled = true
+      err = this.resolveRedirect(err)
+      throw err
+    } else {
+      this._handleNotFound(innerLoadContext, err)
+      throw err
+    }
+  }
+
+  private shouldSkipLoader = (matchId: string): boolean => {
+    const match = this.getMatch(matchId)!
+    // upon hydration, we skip the loader if the match has been dehydrated on the server
+    if (!this.isServer && match._nonReactive.dehydrated) {
+      return true
+    }
+
+    if (this.isServer) {
+      if (match.ssr === false) {
+        return true
+      }
+    }
+    return false
+  }
+
+  private handleSerialError = (
+    innerLoadContext: InnerLoadContext,
+    index: number,
+    err: any,
+    routerCode: string,
+  ): void => {
+    const { id: matchId, routeId } = innerLoadContext.matches[index]!
+    const route = this.looseRoutesById[routeId]!
+
+    // Much like suspense, we use a promise here to know if
+    // we've been outdated by a new loadMatches call and
+    // should abort the current async operation
+    if (err instanceof Promise) {
+      throw err
+    }
+
+    err.routerCode = routerCode
+    innerLoadContext.firstBadMatchIndex ??= index
+    this.handleRedirectAndNotFound(
+      innerLoadContext,
+      this.getMatch(matchId),
+      err,
+    )
+
+    try {
+      route.options.onError?.(err)
+    } catch (errorHandlerErr) {
+      err = errorHandlerErr
+      this.handleRedirectAndNotFound(
+        innerLoadContext,
+        this.getMatch(matchId),
+        err,
+      )
+    }
+
+    innerLoadContext.updateMatch(matchId, (prev) => {
+      prev._nonReactive.beforeLoadPromise?.resolve()
+      prev._nonReactive.beforeLoadPromise = undefined
+      prev._nonReactive.loadPromise?.resolve()
+
+      return {
+        ...prev,
+        error: err,
+        status: 'error',
+        isFetching: false,
+        updatedAt: Date.now(),
+        abortController: new AbortController(),
+      }
+    })
+  }
+
+  private isBeforeLoadSsr = (
+    innerLoadContext: InnerLoadContext,
+    matchId: string,
+    index: number,
+    route: AnyRoute,
+  ): void | Promise<void> => {
+    const existingMatch = this.getMatch(matchId)!
+    const parentMatchId = innerLoadContext.matches[index - 1]?.id
+    const parentMatch = parentMatchId
+      ? this.getMatch(parentMatchId)!
+      : undefined
+
+    // in SPA mode, only SSR the root route
+    if (this.isShell()) {
+      existingMatch.ssr = matchId === rootRouteId
+      return
+    }
+
+    if (parentMatch?.ssr === false) {
+      existingMatch.ssr = false
+      return
+    }
+
+    const parentOverride = (tempSsr: boolean | 'data-only') => {
+      if (tempSsr === true && parentMatch?.ssr === 'data-only') {
+        return 'data-only'
+      }
+      return tempSsr
+    }
+
+    const defaultSsr = this.options.defaultSsr ?? true
+
+    if (route.options.ssr === undefined) {
+      existingMatch.ssr = parentOverride(defaultSsr)
+      return
+    }
+
+    if (typeof route.options.ssr !== 'function') {
+      existingMatch.ssr = parentOverride(route.options.ssr)
+      return
+    }
+    const { search, params } = this.getMatch(matchId)!
+
+    const ssrFnContext: SsrContextOptions<any, any, any> = {
+      search: makeMaybe(search, existingMatch.searchError),
+      params: makeMaybe(params, existingMatch.paramsError),
+      location: innerLoadContext.location,
+      matches: innerLoadContext.matches.map((match) => ({
+        index: match.index,
+        pathname: match.pathname,
+        fullPath: match.fullPath,
+        staticData: match.staticData,
+        id: match.id,
+        routeId: match.routeId,
+        search: makeMaybe(match.search, match.searchError),
+        params: makeMaybe(match.params, match.paramsError),
+        ssr: match.ssr,
+      })),
+    }
+
+    const tempSsr = route.options.ssr(ssrFnContext)
+    if (isPromise(tempSsr)) {
+      return tempSsr.then((ssr) => {
+        existingMatch.ssr = parentOverride(ssr ?? defaultSsr)
+      })
+    }
+
+    existingMatch.ssr = parentOverride(tempSsr ?? defaultSsr)
+    return
+  }
+
+  private setupPendingTimeout = (
+    innerLoadContext: InnerLoadContext,
+    matchId: string,
+    route: AnyRoute,
+  ): void => {
+    const pendingMs = route.options.pendingMs ?? this.options.defaultPendingMs
+    const shouldPending = !!(
+      innerLoadContext.onReady &&
+      !this.isServer &&
+      !this.resolvePreload(innerLoadContext, matchId) &&
+      (route.options.loader ||
+        route.options.beforeLoad ||
+        routeNeedsPreload(route)) &&
+      typeof pendingMs === 'number' &&
+      pendingMs !== Infinity &&
+      (route.options.pendingComponent ??
+        (this.options as any)?.defaultPendingComponent)
+    )
+    const match = this.getMatch(matchId)!
+    if (shouldPending && match._nonReactive.pendingTimeout === undefined) {
+      const pendingTimeout = setTimeout(() => {
+        try {
+          // Update the match and prematurely resolve the loadMatches promise so that
+          // the pending component can start rendering
+          this.triggerOnReady(innerLoadContext)
+        } catch {}
+      }, pendingMs)
+      match._nonReactive.pendingTimeout = pendingTimeout
+    }
+  }
+
+  private shouldExecuteBeforeLoad = (
+    innerLoadContext: InnerLoadContext,
+    matchId: string,
+    route: AnyRoute,
+  ): boolean | Promise<boolean> => {
+    const existingMatch = this.getMatch(matchId)!
+
+    // If we are in the middle of a load, either of these will be present
+    // (not to be confused with `loadPromise`, which is always defined)
+    if (
+      !existingMatch._nonReactive.beforeLoadPromise &&
+      !existingMatch._nonReactive.loaderPromise
+    )
+      return true
+
+    this.setupPendingTimeout(innerLoadContext, matchId, route)
+
+    const then = () => {
+      let shouldExecuteBeforeLoad = true
+      const match = this.getMatch(matchId)!
+      if (match.status === 'error') {
+        shouldExecuteBeforeLoad = true
+      } else if (
+        match.preload &&
+        (match.status === 'redirected' || match.status === 'notFound')
+      ) {
+        this.handleRedirectAndNotFound(innerLoadContext, match, match.error)
+      }
+      return shouldExecuteBeforeLoad
+    }
+
+    // Wait for the beforeLoad to resolve before we continue
+    return existingMatch._nonReactive.beforeLoadPromise
+      ? existingMatch._nonReactive.beforeLoadPromise.then(then)
+      : then()
+  }
+
+  private executeBeforeLoad = (
+    innerLoadContext: InnerLoadContext,
+    matchId: string,
+    index: number,
+    route: AnyRoute,
+  ): void | Promise<void> => {
+    const resolve = () => {
+      innerLoadContext.updateMatch(matchId, (prev) => {
+        prev._nonReactive.beforeLoadPromise?.resolve()
+        prev._nonReactive.beforeLoadPromise = undefined
+
+        return {
+          ...prev,
+          isFetching: false,
+        }
+      })
+    }
+
+    try {
+      const match = this.getMatch(matchId)!
+      match._nonReactive.beforeLoadPromise = createControlledPromise<void>()
+      // explicitly capture the previous loadPromise
+      const prevLoadPromise = match._nonReactive.loadPromise
+      match._nonReactive.loadPromise = createControlledPromise<void>(() => {
+        prevLoadPromise?.resolve()
+      })
+
+      const { paramsError, searchError } = this.getMatch(matchId)!
+
+      if (paramsError) {
+        this.handleSerialError(
+          innerLoadContext,
+          index,
+          paramsError,
+          'PARSE_PARAMS',
+        )
+      }
+
+      if (searchError) {
+        this.handleSerialError(
+          innerLoadContext,
+          index,
+          searchError,
+          'VALIDATE_SEARCH',
+        )
+      }
+
+      this.setupPendingTimeout(innerLoadContext, matchId, route)
+
+      const abortController = new AbortController()
+
+      const parentMatchId = innerLoadContext.matches[index - 1]?.id
+      const parentMatch = parentMatchId
+        ? this.getMatch(parentMatchId)!
+        : undefined
+      const parentMatchContext =
+        parentMatch?.context ?? this.options.context ?? undefined
+
+      innerLoadContext.updateMatch(matchId, (prev) => ({
+        ...prev,
+        isFetching: 'beforeLoad',
+        fetchCount: prev.fetchCount + 1,
+        abortController,
+        context: {
+          ...parentMatchContext,
+          ...prev.__routeContext,
+        },
+      }))
+
+      const { search, params, context, cause } = this.getMatch(matchId)!
+
+      const preload = this.resolvePreload(innerLoadContext, matchId)
+
+      const beforeLoadFnContext: BeforeLoadContextOptions<
+        any,
+        any,
+        any,
+        any,
+        any
+      > = {
+        search,
+        abortController,
+        params,
+        preload,
+        context,
+        location: innerLoadContext.location,
+        navigate: (opts: any) =>
+          this.navigate({ ...opts, _fromLocation: innerLoadContext.location }),
+        buildLocation: this.buildLocation,
+        cause: preload ? 'preload' : cause,
+        matches: innerLoadContext.matches,
+      }
+
+      const updateContext = (beforeLoadContext: any) => {
+        if (isRedirect(beforeLoadContext) || isNotFound(beforeLoadContext)) {
+          this.handleSerialError(
+            innerLoadContext,
+            index,
+            beforeLoadContext,
+            'BEFORE_LOAD',
+          )
+        }
+
+        innerLoadContext.updateMatch(matchId, (prev) => ({
+          ...prev,
+          __beforeLoadContext: beforeLoadContext,
+          context: {
+            ...parentMatchContext,
+            ...prev.__routeContext,
+            ...beforeLoadContext,
+          },
+          abortController,
+        }))
+      }
+
+      const beforeLoadContext = route.options.beforeLoad?.(beforeLoadFnContext)
+      if (isPromise(beforeLoadContext)) {
+        return beforeLoadContext
+          .then(updateContext)
+          .catch((err) => {
+            this.handleSerialError(innerLoadContext, index, err, 'BEFORE_LOAD')
+          })
+          .then(resolve)
+      } else {
+        updateContext(beforeLoadContext)
+      }
+    } catch (err) {
+      this.handleSerialError(innerLoadContext, index, err, 'BEFORE_LOAD')
+    }
+
+    resolve()
+    return
+  }
+
+  private handleBeforeLoad = (
+    innerLoadContext: InnerLoadContext,
+    index: number,
+  ): void | Promise<void> => {
+    const { id: matchId, routeId } = innerLoadContext.matches[index]!
+    const route = this.looseRoutesById[routeId]!
+
+    const serverSsr = () => {
+      // on the server, determine whether SSR the current match or not
+      if (this.isServer) {
+        const maybePromise = this.isBeforeLoadSsr(
+          innerLoadContext,
+          matchId,
+          index,
+          route,
+        )
+        if (isPromise(maybePromise)) return maybePromise.then(queueExecution)
+      }
+      return queueExecution()
+    }
+
+    const queueExecution = () => {
+      if (this.shouldSkipLoader(matchId)) return
+      const shouldExecuteBeforeLoadResult = this.shouldExecuteBeforeLoad(
+        innerLoadContext,
+        matchId,
+        route,
+      )
+      return isPromise(shouldExecuteBeforeLoadResult)
+        ? shouldExecuteBeforeLoadResult.then(execute)
+        : execute(shouldExecuteBeforeLoadResult)
+    }
+
+    const execute = (shouldExecuteBeforeLoad: boolean) => {
+      if (shouldExecuteBeforeLoad) {
+        // If we are not in the middle of a load OR the previous load failed, start it
+        return this.executeBeforeLoad(innerLoadContext, matchId, index, route)
+      }
+      return
+    }
+
+    return serverSsr()
+  }
+
+  private executeHead = (
+    innerLoadContext: InnerLoadContext,
+    matchId: string,
+    route: AnyRoute,
+  ): void | Promise<
+    Pick<
+      AnyRouteMatch,
+      'meta' | 'links' | 'headScripts' | 'headers' | 'scripts' | 'styles'
+    >
+  > => {
+    const match = this.getMatch(matchId)
+    // in case of a redirecting match during preload, the match does not exist
+    if (!match) {
+      return
+    }
+    if (
+      !route.options.head &&
+      !route.options.scripts &&
+      !route.options.headers
+    ) {
+      return
+    }
+    const assetContext = {
+      matches: innerLoadContext.matches,
+      match,
+      params: match.params,
+      loaderData: match.loaderData,
+    }
+
+    return Promise.all([
+      route.options.head?.(assetContext),
+      route.options.scripts?.(assetContext),
+      route.options.headers?.(assetContext),
+    ]).then(([headFnContent, scripts, headers]) => {
+      const meta = headFnContent?.meta
+      const links = headFnContent?.links
+      const headScripts = headFnContent?.scripts
+      const styles = headFnContent?.styles
+
+      return {
+        meta,
+        links,
+        headScripts,
+        headers,
+        scripts,
+        styles,
+      }
+    })
+  }
+
+  private potentialPendingMinPromise = (
+    matchId: string,
+  ): void | ControlledPromise<void> => {
+    const latestMatch = this.getMatch(matchId)!
+    return latestMatch._nonReactive.minPendingPromise
+  }
+
+  private getLoaderContext = (
+    innerLoadContext: InnerLoadContext,
+    matchId: string,
+    index: number,
+    route: AnyRoute,
+  ): LoaderFnContext => {
+    const parentMatchPromise = innerLoadContext.matchPromises[index - 1] as any
+    const { params, loaderDeps, abortController, context, cause } =
+      this.getMatch(matchId)!
+
+    const preload = this.resolvePreload(innerLoadContext, matchId)
+
+    return {
+      params,
+      deps: loaderDeps,
+      preload: !!preload,
+      parentMatchPromise,
+      abortController: abortController,
+      context,
+      location: innerLoadContext.location,
+      navigate: (opts) =>
+        this.navigate({ ...opts, _fromLocation: innerLoadContext.location }),
+      cause: preload ? 'preload' : cause,
+      route,
+    }
+  }
+
+  private runLoader = async (
+    innerLoadContext: InnerLoadContext,
+    matchId: string,
+    index: number,
+    route: AnyRoute,
+  ): Promise<void> => {
+    try {
+      // If the Matches component rendered
+      // the pending component and needs to show it for
+      // a minimum duration, we''ll wait for it to resolve
+      // before committing to the match and resolving
+      // the loadPromise
+
+      // Actually run the loader and handle the result
+      try {
+        if (!this.isServer || this.getMatch(matchId)!.ssr === true) {
+          this.loadRouteChunk(route)
+        }
+
+        // Kick off the loader!
+        const loaderResult = route.options.loader?.(
+          this.getLoaderContext(innerLoadContext, matchId, index, route),
+        )
+        const loaderResultIsPromise =
+          route.options.loader && isPromise(loaderResult)
+
+        const willLoadSomething = !!(
+          loaderResultIsPromise ||
+          route._lazyPromise ||
+          route._componentsPromise ||
+          route.options.head ||
+          route.options.scripts ||
+          route.options.headers ||
+          this.getMatch(matchId)!._nonReactive.minPendingPromise
+        )
+
+        if (willLoadSomething) {
+          innerLoadContext.updateMatch(matchId, (prev) => ({
+            ...prev,
+            isFetching: 'loader',
+          }))
+        }
+
+        if (route.options.loader) {
+          const loaderData = loaderResultIsPromise
+            ? await loaderResult
+            : loaderResult
+
+          this.handleRedirectAndNotFound(
+            innerLoadContext,
+            this.getMatch(matchId),
+            loaderData,
+          )
+          innerLoadContext.updateMatch(matchId, (prev) => ({
+            ...prev,
+            loaderData,
+          }))
+        }
+
+        // Lazy option can modify the route options,
+        // so we need to wait for it to resolve before
+        // we can use the options
+        if (route._lazyPromise) await route._lazyPromise
+        const headResult = this.executeHead(innerLoadContext, matchId, route)
+        const head = headResult ? await headResult : undefined
+        const pendingPromise = this.potentialPendingMinPromise(matchId)
+        if (pendingPromise) await pendingPromise
+
+        // Last but not least, wait for the the components
+        // to be preloaded before we resolve the match
+        if (route._componentsPromise) await route._componentsPromise
+        innerLoadContext.updateMatch(matchId, (prev) => ({
+          ...prev,
+          error: undefined,
+          status: 'success',
+          isFetching: false,
+          updatedAt: Date.now(),
+          ...head,
+        }))
+      } catch (e) {
+        let error = e
+
+        await this.potentialPendingMinPromise(matchId)
+
+        this.handleRedirectAndNotFound(
+          innerLoadContext,
+          this.getMatch(matchId),
+          e,
+        )
+
+        try {
+          route.options.onError?.(e)
+        } catch (onErrorError) {
+          error = onErrorError
+          this.handleRedirectAndNotFound(
+            innerLoadContext,
+            this.getMatch(matchId),
+            onErrorError,
+          )
+        }
+        const headResult = this.executeHead(innerLoadContext, matchId, route)
+        const head = headResult ? await headResult : undefined
+        innerLoadContext.updateMatch(matchId, (prev) => ({
+          ...prev,
+          error,
+          status: 'error',
+          isFetching: false,
+          ...head,
+        }))
+      }
+    } catch (err) {
+      const match = this.getMatch(matchId)
+      // in case of a redirecting match during preload, the match does not exist
+      if (match) {
+        const headResult = this.executeHead(innerLoadContext, matchId, route)
+        if (headResult) {
+          const head = await headResult
+          innerLoadContext.updateMatch(matchId, (prev) => ({
+            ...prev,
+            ...head,
+          }))
+        }
+        match._nonReactive.loaderPromise = undefined
+      }
+      this.handleRedirectAndNotFound(innerLoadContext, match, err)
+    }
+  }
+
+  private loadRouteMatch = async (
+    innerLoadContext: InnerLoadContext,
+    index: number,
+  ): Promise<AnyRouteMatch> => {
+    const { id: matchId, routeId } = innerLoadContext.matches[index]!
+    let loaderShouldRunAsync = false
+    let loaderIsRunningAsync = false
+    const route = this.looseRoutesById[routeId]!
+
+    const prevMatch = this.getMatch(matchId)!
+    if (this.shouldSkipLoader(matchId)) {
+      if (this.isServer) {
+        const headResult = this.executeHead(innerLoadContext, matchId, route)
+        if (headResult) {
+          const head = await headResult
+          innerLoadContext.updateMatch(matchId, (prev) => ({
+            ...prev,
+            ...head,
+          }))
+        }
+        return this.getMatch(matchId)!
+      }
+    }
+    // there is a loaderPromise, so we are in the middle of a load
+    else if (prevMatch._nonReactive.loaderPromise) {
+      // do not block if we already have stale data we can show
+      // but only if the ongoing load is not a preload since error handling is different for preloads
+      // and we don't want to swallow errors
+      if (
+        prevMatch.status === 'success' &&
+        !innerLoadContext.sync &&
+        !prevMatch.preload
+      ) {
+        return this.getMatch(matchId)!
+      }
+      await prevMatch._nonReactive.loaderPromise
+      const match = this.getMatch(matchId)!
+      if (match.error) {
+        this.handleRedirectAndNotFound(innerLoadContext, match, match.error)
+      }
+    } else {
+      // This is where all of the stale-while-revalidate magic happens
+      const age = Date.now() - this.getMatch(matchId)!.updatedAt
+
+      const preload = this.resolvePreload(innerLoadContext, matchId)
+
+      const staleAge = preload
+        ? (route.options.preloadStaleTime ??
+          this.options.defaultPreloadStaleTime ??
+          30_000) // 30 seconds for preloads by default
+        : (route.options.staleTime ?? this.options.defaultStaleTime ?? 0)
+
+      const shouldReloadOption = route.options.shouldReload
+
+      // Default to reloading the route all the time
+      // Allow shouldReload to get the last say,
+      // if provided.
+      const shouldReload =
+        typeof shouldReloadOption === 'function'
+          ? shouldReloadOption(
+              this.getLoaderContext(innerLoadContext, matchId, index, route),
+            )
+          : shouldReloadOption
+
+      innerLoadContext.updateMatch(matchId, (prev) => {
+        prev._nonReactive.loaderPromise = createControlledPromise<void>()
+        return {
+          ...prev,
+          preload:
+            !!preload && !this.state.matches.some((d) => d.id === matchId),
+        }
+      })
+
+      // If the route is successful and still fresh, just resolve
+      const { status, invalid } = this.getMatch(matchId)!
+      loaderShouldRunAsync =
+        status === 'success' && (invalid || (shouldReload ?? age > staleAge))
+      if (preload && route.options.preload === false) {
+        // Do nothing
+      } else if (loaderShouldRunAsync && !innerLoadContext.sync) {
+        loaderIsRunningAsync = true
+        ;(async () => {
+          try {
+            await this.runLoader(innerLoadContext, matchId, index, route)
+            const match = this.getMatch(matchId)!
+            match._nonReactive.loaderPromise?.resolve()
+            match._nonReactive.loadPromise?.resolve()
+            match._nonReactive.loaderPromise = undefined
+          } catch (err) {
+            if (isRedirect(err)) {
+              await this.navigate(err.options)
+            }
+          }
+        })()
+      } else if (
+        status !== 'success' ||
+        (loaderShouldRunAsync && innerLoadContext.sync)
+      ) {
+        await this.runLoader(innerLoadContext, matchId, index, route)
+      } else {
+        // if the loader did not run, still update head.
+        // reason: parent's beforeLoad may have changed the route context
+        // and only now do we know the route context (and that the loader would not run)
+        const headResult = this.executeHead(innerLoadContext, matchId, route)
+        if (headResult) {
+          const head = await headResult
+          innerLoadContext.updateMatch(matchId, (prev) => ({
+            ...prev,
+            ...head,
+          }))
+        }
+      }
+    }
+    if (!loaderIsRunningAsync) {
+      const match = this.getMatch(matchId)!
+      match._nonReactive.loaderPromise?.resolve()
+      match._nonReactive.loadPromise?.resolve()
+    }
+
+    innerLoadContext.updateMatch(matchId, (prev) => {
+      clearTimeout(prev._nonReactive.pendingTimeout)
+      prev._nonReactive.pendingTimeout = undefined
+      if (!loaderIsRunningAsync) prev._nonReactive.loaderPromise = undefined
+      prev._nonReactive.dehydrated = undefined
+      return {
+        ...prev,
+        isFetching: loaderIsRunningAsync ? prev.isFetching : false,
+        invalid: false,
+      }
+    })
+    return this.getMatch(matchId)!
+  }
+
+  loadMatches = async (baseContext: {
     location: ParsedLocation
     matches: Array<AnyRouteMatch>
     preload?: boolean
     onReady?: () => Promise<void>
-    updateMatch?: (
-      id: string,
-      updater: (match: AnyRouteMatch) => AnyRouteMatch,
-    ) => void
-    getMatch?: (matchId: string) => AnyRouteMatch | undefined
+    updateMatch?: UpdateMatchFn
     sync?: boolean
   }): Promise<Array<MakeRouteMatch>> => {
-    let firstBadMatchIndex: number | undefined
-    let rendered = false
-
-    const triggerOnReady = async () => {
-      if (!rendered) {
-        rendered = true
-        await onReady?.()
-      }
-    }
-
-    const resolvePreload = (matchId: string) => {
-      return !!(allPreload && !this.state.matches.some((d) => d.id === matchId))
-    }
+    const innerLoadContext = baseContext as InnerLoadContext
+    innerLoadContext.updateMatch ??= this.updateMatch
+    innerLoadContext.matchPromises = []
 
     // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
     // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
     if (!this.isServer && this.state.matches.some((d) => d._forcePending)) {
-      triggerOnReady()
-    }
-
-    const handleRedirectAndNotFound = (
-      match: AnyRouteMatch | undefined,
-      err: unknown,
-    ) => {
-      if (!isRedirect(err) && !isNotFound(err)) return
-
-      if (
-        isRedirect(err) &&
-        err.redirectHandled &&
-        !err.options.reloadDocument
-      ) {
-        throw err
-      }
-
-      // in case of a redirecting match during preload, the match does not exist
-      if (match) {
-        match._nonReactive.beforeLoadPromise?.resolve()
-        match._nonReactive.loaderPromise?.resolve()
-        match._nonReactive.beforeLoadPromise = undefined
-        match._nonReactive.loaderPromise = undefined
-
-        const status = isRedirect(err) ? 'redirected' : 'notFound'
-
-        updateMatch(match.id, (prev) => ({
-          ...prev,
-          status,
-          isFetching: false,
-          error: err,
-        }))
-
-        if (isNotFound(err) && !err.routeId) {
-          err.routeId = match.routeId
-        }
-
-        match._nonReactive.loadPromise?.resolve()
-      }
-
-      if (isRedirect(err)) {
-        rendered = true
-        err.options._fromLocation = location
-        err.redirectHandled = true
-        err = this.resolveRedirect(err)
-        throw err
-      } else {
-        this._handleNotFound(matches, err, updateMatch)
-        throw err
-      }
-    }
-
-    const shouldSkipLoader = (matchId: string) => {
-      const match = this.getMatch(matchId)!
-      // upon hydration, we skip the loader if the match has been dehydrated on the server
-      if (!this.isServer && match._nonReactive.dehydrated) {
-        return true
-      }
-
-      if (this.isServer) {
-        if (match.ssr === false) {
-          return true
-        }
-      }
-      return false
+      this.triggerOnReady(innerLoadContext)
     }
 
     try {
       await new Promise<void>((resolveAll, rejectAll) => {
         ;(async () => {
           try {
-            const handleSerialError = (
-              index: number,
-              err: any,
-              routerCode: string,
-            ) => {
-              const { id: matchId, routeId } = matches[index]!
-              const route = this.looseRoutesById[routeId]!
-
-              // Much like suspense, we use a promise here to know if
-              // we've been outdated by a new loadMatches call and
-              // should abort the current async operation
-              if (err instanceof Promise) {
-                throw err
-              }
-
-              err.routerCode = routerCode
-              firstBadMatchIndex = firstBadMatchIndex ?? index
-              handleRedirectAndNotFound(this.getMatch(matchId), err)
-
-              try {
-                route.options.onError?.(err)
-              } catch (errorHandlerErr) {
-                err = errorHandlerErr
-                handleRedirectAndNotFound(this.getMatch(matchId), err)
-              }
-
-              updateMatch(matchId, (prev) => {
-                prev._nonReactive.beforeLoadPromise?.resolve()
-                prev._nonReactive.beforeLoadPromise = undefined
-                prev._nonReactive.loadPromise?.resolve()
-
-                return {
-                  ...prev,
-                  error: err,
-                  status: 'error',
-                  isFetching: false,
-                  updatedAt: Date.now(),
-                  abortController: new AbortController(),
-                }
-              })
+            // Execute all beforeLoads one by one
+            for (let i = 0; i < innerLoadContext.matches.length; i++) {
+              const beforeLoad = this.handleBeforeLoad(innerLoadContext, i)
+              if (isPromise(beforeLoad)) await beforeLoad
             }
 
-            for (const [index, { id: matchId, routeId }] of matches.entries()) {
-              const existingMatch = this.getMatch(matchId)!
-              const parentMatchId = matches[index - 1]?.id
-              const parentMatch = parentMatchId
-                ? this.getMatch(parentMatchId)!
-                : undefined
-
-              const route = this.looseRoutesById[routeId]!
-
-              const pendingMs =
-                route.options.pendingMs ?? this.options.defaultPendingMs
-
-              // on the server, determine whether SSR the current match or not
-              if (this.isServer) {
-                let ssr: boolean | 'data-only'
-                // in SPA mode, only SSR the root route
-                if (this.isShell()) {
-                  ssr = matchId === rootRouteId
-                } else {
-                  const defaultSsr = this.options.defaultSsr ?? true
-                  if (parentMatch?.ssr === false) {
-                    ssr = false
-                  } else {
-                    let tempSsr: boolean | 'data-only'
-                    if (route.options.ssr === undefined) {
-                      tempSsr = defaultSsr
-                    } else if (typeof route.options.ssr === 'function') {
-                      const { search, params } = this.getMatch(matchId)!
-
-                      function makeMaybe(value: any, error: any) {
-                        if (error) {
-                          return { status: 'error' as const, error }
-                        }
-                        return { status: 'success' as const, value }
-                      }
-
-                      const ssrFnContext: SsrContextOptions<any, any, any> = {
-                        search: makeMaybe(search, existingMatch.searchError),
-                        params: makeMaybe(params, existingMatch.paramsError),
-                        location,
-                        matches: matches.map((match) => ({
-                          index: match.index,
-                          pathname: match.pathname,
-                          fullPath: match.fullPath,
-                          staticData: match.staticData,
-                          id: match.id,
-                          routeId: match.routeId,
-                          search: makeMaybe(match.search, match.searchError),
-                          params: makeMaybe(match.params, match.paramsError),
-                          ssr: match.ssr,
-                        })),
-                      }
-                      tempSsr =
-                        (await route.options.ssr(ssrFnContext)) ?? defaultSsr
-                    } else {
-                      tempSsr = route.options.ssr
-                    }
-
-                    if (tempSsr === true && parentMatch?.ssr === 'data-only') {
-                      ssr = 'data-only'
-                    } else {
-                      ssr = tempSsr
-                    }
-                  }
-                }
-                existingMatch.ssr = ssr
-              }
-
-              if (shouldSkipLoader(matchId)) {
-                continue
-              }
-
-              const shouldPending = !!(
-                onReady &&
-                !this.isServer &&
-                !resolvePreload(matchId) &&
-                (route.options.loader ||
-                  route.options.beforeLoad ||
-                  routeNeedsPreload(route)) &&
-                typeof pendingMs === 'number' &&
-                pendingMs !== Infinity &&
-                (route.options.pendingComponent ??
-                  (this.options as any)?.defaultPendingComponent)
+            // Execute all loaders in parallel
+            const max =
+              innerLoadContext.firstBadMatchIndex ??
+              innerLoadContext.matches.length
+            for (let i = 0; i < max; i++) {
+              innerLoadContext.matchPromises.push(
+                this.loadRouteMatch(innerLoadContext, i),
               )
-
-              let executeBeforeLoad = true
-              const setupPendingTimeout = () => {
-                const match = this.getMatch(matchId)!
-                if (
-                  shouldPending &&
-                  match._nonReactive.pendingTimeout === undefined
-                ) {
-                  const pendingTimeout = setTimeout(() => {
-                    try {
-                      // Update the match and prematurely resolve the loadMatches promise so that
-                      // the pending component can start rendering
-                      triggerOnReady()
-                    } catch {}
-                  }, pendingMs)
-                  match._nonReactive.pendingTimeout = pendingTimeout
-                }
-              }
-              if (
-                // If we are in the middle of a load, either of these will be present
-                // (not to be confused with `loadPromise`, which is always defined)
-                existingMatch._nonReactive.beforeLoadPromise ||
-                existingMatch._nonReactive.loaderPromise
-              ) {
-                setupPendingTimeout()
-
-                // Wait for the beforeLoad to resolve before we continue
-                await existingMatch._nonReactive.beforeLoadPromise
-                const match = this.getMatch(matchId)!
-                if (match.status === 'error') {
-                  executeBeforeLoad = true
-                } else if (
-                  match.preload &&
-                  (match.status === 'redirected' || match.status === 'notFound')
-                ) {
-                  handleRedirectAndNotFound(match, match.error)
-                }
-              }
-              if (executeBeforeLoad) {
-                // If we are not in the middle of a load OR the previous load failed, start it
-                try {
-                  const match = this.getMatch(matchId)!
-                  match._nonReactive.beforeLoadPromise =
-                    createControlledPromise<void>()
-                  // explicitly capture the previous loadPromise
-                  const prevLoadPromise = match._nonReactive.loadPromise
-                  match._nonReactive.loadPromise =
-                    createControlledPromise<void>(() => {
-                      prevLoadPromise?.resolve()
-                    })
-
-                  const { paramsError, searchError } = this.getMatch(matchId)!
-
-                  if (paramsError) {
-                    handleSerialError(index, paramsError, 'PARSE_PARAMS')
-                  }
-
-                  if (searchError) {
-                    handleSerialError(index, searchError, 'VALIDATE_SEARCH')
-                  }
-
-                  setupPendingTimeout()
-
-                  const abortController = new AbortController()
-
-                  const parentMatchContext =
-                    parentMatch?.context ?? this.options.context ?? undefined
-
-                  updateMatch(matchId, (prev) => ({
-                    ...prev,
-                    isFetching: 'beforeLoad',
-                    fetchCount: prev.fetchCount + 1,
-                    abortController,
-                    context: {
-                      ...parentMatchContext,
-                      ...prev.__routeContext,
-                    },
-                  }))
-
-                  const { search, params, context, cause } =
-                    this.getMatch(matchId)!
-
-                  const preload = resolvePreload(matchId)
-
-                  const beforeLoadFnContext: BeforeLoadContextOptions<
-                    any,
-                    any,
-                    any,
-                    any,
-                    any
-                  > = {
-                    search,
-                    abortController,
-                    params,
-                    preload,
-                    context,
-                    location,
-                    navigate: (opts: any) =>
-                      this.navigate({ ...opts, _fromLocation: location }),
-                    buildLocation: this.buildLocation,
-                    cause: preload ? 'preload' : cause,
-                    matches,
-                  }
-
-                  const beforeLoadContext =
-                    await route.options.beforeLoad?.(beforeLoadFnContext)
-
-                  if (
-                    isRedirect(beforeLoadContext) ||
-                    isNotFound(beforeLoadContext)
-                  ) {
-                    handleSerialError(index, beforeLoadContext, 'BEFORE_LOAD')
-                  }
-
-                  updateMatch(matchId, (prev) => {
-                    return {
-                      ...prev,
-                      __beforeLoadContext: beforeLoadContext,
-                      context: {
-                        ...parentMatchContext,
-                        ...prev.__routeContext,
-                        ...beforeLoadContext,
-                      },
-                      abortController,
-                    }
-                  })
-                } catch (err) {
-                  handleSerialError(index, err, 'BEFORE_LOAD')
-                }
-
-                updateMatch(matchId, (prev) => {
-                  prev._nonReactive.beforeLoadPromise?.resolve()
-                  prev._nonReactive.beforeLoadPromise = undefined
-
-                  return {
-                    ...prev,
-                    isFetching: false,
-                  }
-                })
-              }
             }
 
-            const validResolvedMatches = matches.slice(0, firstBadMatchIndex)
-            const matchPromises: Array<Promise<AnyRouteMatch>> = []
-
-            validResolvedMatches.forEach(({ id: matchId, routeId }, index) => {
-              matchPromises.push(
-                (async () => {
-                  let loaderShouldRunAsync = false
-                  let loaderIsRunningAsync = false
-                  const route = this.looseRoutesById[routeId]!
-
-                  const executeHead = () => {
-                    const match = this.getMatch(matchId)
-                    // in case of a redirecting match during preload, the match does not exist
-                    if (!match) {
-                      return
-                    }
-                    if (
-                      !route.options.head &&
-                      !route.options.scripts &&
-                      !route.options.headers
-                    ) {
-                      return
-                    }
-                    const assetContext = {
-                      matches,
-                      match,
-                      params: match.params,
-                      loaderData: match.loaderData,
-                    }
-
-                    return Promise.all([
-                      route.options.head?.(assetContext),
-                      route.options.scripts?.(assetContext),
-                      route.options.headers?.(assetContext),
-                    ]).then(([headFnContent, scripts, headers]) => {
-                      const meta = headFnContent?.meta
-                      const links = headFnContent?.links
-                      const headScripts = headFnContent?.scripts
-                      const styles = headFnContent?.styles
-
-                      return {
-                        meta,
-                        links,
-                        headScripts,
-                        headers,
-                        scripts,
-                        styles,
-                      }
-                    })
-                  }
-
-                  const potentialPendingMinPromise = () => {
-                    const latestMatch = this.getMatch(matchId)!
-                    return latestMatch._nonReactive.minPendingPromise
-                  }
-
-                  const prevMatch = this.getMatch(matchId)!
-                  if (shouldSkipLoader(matchId)) {
-                    if (this.isServer) {
-                      const headResult = executeHead()
-                      if (headResult) {
-                        const head = await headResult
-                        updateMatch(matchId, (prev) => ({
-                          ...prev,
-                          ...head,
-                        }))
-                      }
-                      return this.getMatch(matchId)!
-                    }
-                  }
-                  // there is a loaderPromise, so we are in the middle of a load
-                  else if (prevMatch._nonReactive.loaderPromise) {
-                    // do not block if we already have stale data we can show
-                    // but only if the ongoing load is not a preload since error handling is different for preloads
-                    // and we don't want to swallow errors
-                    if (
-                      prevMatch.status === 'success' &&
-                      !sync &&
-                      !prevMatch.preload
-                    ) {
-                      return this.getMatch(matchId)!
-                    }
-                    await prevMatch._nonReactive.loaderPromise
-                    const match = this.getMatch(matchId)!
-                    if (match.error) {
-                      handleRedirectAndNotFound(match, match.error)
-                    }
-                  } else {
-                    const parentMatchPromise = matchPromises[index - 1] as any
-
-                    const getLoaderContext = (): LoaderFnContext => {
-                      const {
-                        params,
-                        loaderDeps,
-                        abortController,
-                        context,
-                        cause,
-                      } = this.getMatch(matchId)!
-
-                      const preload = resolvePreload(matchId)
-
-                      return {
-                        params,
-                        deps: loaderDeps,
-                        preload: !!preload,
-                        parentMatchPromise,
-                        abortController: abortController,
-                        context,
-                        location,
-                        navigate: (opts) =>
-                          this.navigate({ ...opts, _fromLocation: location }),
-                        cause: preload ? 'preload' : cause,
-                        route,
-                      }
-                    }
-
-                    // This is where all of the stale-while-revalidate magic happens
-                    const age = Date.now() - this.getMatch(matchId)!.updatedAt
-
-                    const preload = resolvePreload(matchId)
-
-                    const staleAge = preload
-                      ? (route.options.preloadStaleTime ??
-                        this.options.defaultPreloadStaleTime ??
-                        30_000) // 30 seconds for preloads by default
-                      : (route.options.staleTime ??
-                        this.options.defaultStaleTime ??
-                        0)
-
-                    const shouldReloadOption = route.options.shouldReload
-
-                    // Default to reloading the route all the time
-                    // Allow shouldReload to get the last say,
-                    // if provided.
-                    const shouldReload =
-                      typeof shouldReloadOption === 'function'
-                        ? shouldReloadOption(getLoaderContext())
-                        : shouldReloadOption
-
-                    updateMatch(matchId, (prev) => {
-                      prev._nonReactive.loaderPromise =
-                        createControlledPromise<void>()
-                      return {
-                        ...prev,
-                        preload:
-                          !!preload &&
-                          !this.state.matches.some((d) => d.id === matchId),
-                      }
-                    })
-
-                    const runLoader = async () => {
-                      try {
-                        // If the Matches component rendered
-                        // the pending component and needs to show it for
-                        // a minimum duration, we''ll wait for it to resolve
-                        // before committing to the match and resolving
-                        // the loadPromise
-
-                        // Actually run the loader and handle the result
-                        try {
-                          if (
-                            !this.isServer ||
-                            this.getMatch(matchId)!.ssr === true
-                          ) {
-                            this.loadRouteChunk(route)
-                          }
-
-                          // Kick off the loader!
-                          const loaderResult =
-                            route.options.loader?.(getLoaderContext())
-                          const loaderResultIsPromise =
-                            route.options.loader && isPromise(loaderResult)
-
-                          const willLoadSomething = !!(
-                            loaderResultIsPromise ||
-                            route._lazyPromise ||
-                            route._componentsPromise ||
-                            route.options.head ||
-                            route.options.scripts ||
-                            route.options.headers ||
-                            this.getMatch(matchId)!._nonReactive
-                              .minPendingPromise
-                          )
-
-                          if (willLoadSomething) {
-                            updateMatch(matchId, (prev) => ({
-                              ...prev,
-                              isFetching: 'loader',
-                            }))
-                          }
-
-                          if (route.options.loader) {
-                            const loaderData = loaderResultIsPromise
-                              ? await loaderResult
-                              : loaderResult
-
-                            handleRedirectAndNotFound(
-                              this.getMatch(matchId),
-                              loaderData,
-                            )
-                            updateMatch(matchId, (prev) => ({
-                              ...prev,
-                              loaderData,
-                            }))
-                          }
-
-                          // Lazy option can modify the route options,
-                          // so we need to wait for it to resolve before
-                          // we can use the options
-                          if (route._lazyPromise) await route._lazyPromise
-                          const headResult = executeHead()
-                          const head = headResult ? await headResult : undefined
-                          const pendingPromise = potentialPendingMinPromise()
-                          if (pendingPromise) await pendingPromise
-
-                          // Last but not least, wait for the the components
-                          // to be preloaded before we resolve the match
-                          if (route._componentsPromise)
-                            await route._componentsPromise
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            error: undefined,
-                            status: 'success',
-                            isFetching: false,
-                            updatedAt: Date.now(),
-                            ...head,
-                          }))
-                        } catch (e) {
-                          let error = e
-
-                          await potentialPendingMinPromise()
-
-                          handleRedirectAndNotFound(this.getMatch(matchId), e)
-
-                          try {
-                            route.options.onError?.(e)
-                          } catch (onErrorError) {
-                            error = onErrorError
-                            handleRedirectAndNotFound(
-                              this.getMatch(matchId),
-                              onErrorError,
-                            )
-                          }
-                          const headResult = executeHead()
-                          const head = headResult ? await headResult : undefined
-                          updateMatch(matchId, (prev) => ({
-                            ...prev,
-                            error,
-                            status: 'error',
-                            isFetching: false,
-                            ...head,
-                          }))
-                        }
-                      } catch (err) {
-                        const match = this.getMatch(matchId)
-                        // in case of a redirecting match during preload, the match does not exist
-                        if (match) {
-                          const headResult = executeHead()
-                          if (headResult) {
-                            const head = await headResult
-                            updateMatch(matchId, (prev) => ({
-                              ...prev,
-                              ...head,
-                            }))
-                          }
-                          match._nonReactive.loaderPromise = undefined
-                        }
-                        handleRedirectAndNotFound(match, err)
-                      }
-                    }
-
-                    // If the route is successful and still fresh, just resolve
-                    const { status, invalid } = this.getMatch(matchId)!
-                    loaderShouldRunAsync =
-                      status === 'success' &&
-                      (invalid || (shouldReload ?? age > staleAge))
-                    if (preload && route.options.preload === false) {
-                      // Do nothing
-                    } else if (loaderShouldRunAsync && !sync) {
-                      loaderIsRunningAsync = true
-                      ;(async () => {
-                        try {
-                          await runLoader()
-                          const match = this.getMatch(matchId)!
-                          match._nonReactive.loaderPromise?.resolve()
-                          match._nonReactive.loadPromise?.resolve()
-                          match._nonReactive.loaderPromise = undefined
-                        } catch (err) {
-                          if (isRedirect(err)) {
-                            await this.navigate(err.options)
-                          }
-                        }
-                      })()
-                    } else if (
-                      status !== 'success' ||
-                      (loaderShouldRunAsync && sync)
-                    ) {
-                      await runLoader()
-                    } else {
-                      // if the loader did not run, still update head.
-                      // reason: parent's beforeLoad may have changed the route context
-                      // and only now do we know the route context (and that the loader would not run)
-                      const headResult = executeHead()
-                      if (headResult) {
-                        const head = await headResult
-                        updateMatch(matchId, (prev) => ({
-                          ...prev,
-                          ...head,
-                        }))
-                      }
-                    }
-                  }
-                  if (!loaderIsRunningAsync) {
-                    const match = this.getMatch(matchId)!
-                    match._nonReactive.loaderPromise?.resolve()
-                    match._nonReactive.loadPromise?.resolve()
-                  }
-
-                  updateMatch(matchId, (prev) => {
-                    clearTimeout(prev._nonReactive.pendingTimeout)
-                    prev._nonReactive.pendingTimeout = undefined
-                    if (!loaderIsRunningAsync)
-                      prev._nonReactive.loaderPromise = undefined
-                    prev._nonReactive.dehydrated = undefined
-                    return {
-                      ...prev,
-                      isFetching: loaderIsRunningAsync
-                        ? prev.isFetching
-                        : false,
-                      invalid: false,
-                    }
-                  })
-                  return this.getMatch(matchId)!
-                })(),
-              )
-            })
-
-            await Promise.all(matchPromises)
+            await Promise.all(innerLoadContext.matchPromises)
 
             resolveAll()
           } catch (err) {
@@ -2803,18 +2934,20 @@ export class RouterCore<
           }
         })()
       })
-      await triggerOnReady()
+      const readyPromise = this.triggerOnReady(innerLoadContext)
+      if (isPromise(readyPromise)) await readyPromise
     } catch (err) {
-      if (isRedirect(err) || isNotFound(err)) {
-        if (isNotFound(err) && !allPreload) {
-          await triggerOnReady()
-        }
-
+      if (isNotFound(err) && !innerLoadContext.preload) {
+        const readyPromise = this.triggerOnReady(innerLoadContext)
+        if (isPromise(readyPromise)) await readyPromise
+        throw err
+      }
+      if (isRedirect(err)) {
         throw err
       }
     }
 
-    return matches
+    return innerLoadContext.matches
   }
 
   invalidate: InvalidateFn<
@@ -3088,13 +3221,9 @@ export class RouterCore<
 
   serverSsr?: ServerSsr
 
-  _handleNotFound = (
-    matches: Array<AnyRouteMatch>,
+  private _handleNotFound = (
+    innerLoadContext: InnerLoadContext,
     err: NotFoundError,
-    updateMatch: (
-      id: string,
-      updater: (match: AnyRouteMatch) => AnyRouteMatch,
-    ) => void = this.updateMatch,
   ) => {
     // Find the route that should handle the not found error
     // First check if a specific route is requested to show the error
@@ -3102,7 +3231,7 @@ export class RouterCore<
     const matchesByRouteId: Record<string, AnyRouteMatch> = {}
 
     // Setup routesByRouteId object for quick access
-    for (const match of matches) {
+    for (const match of innerLoadContext.matches) {
       matchesByRouteId[match.routeId] = match
     }
 
@@ -3131,7 +3260,7 @@ export class RouterCore<
     )
 
     // Assign the error to the match - using non-null assertion since we've checked with invariant
-    updateMatch(matchForRoute.id, (prev) => ({
+    innerLoadContext.updateMatch(matchForRoute.id, (prev) => ({
       ...prev,
       status: 'notFound',
       error: err,
@@ -3140,7 +3269,7 @@ export class RouterCore<
 
     if ((err as any).routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute) {
       err.routeId = routeCursor.parentRoute.id
-      this._handleNotFound(matches, err, updateMatch)
+      this._handleNotFound(innerLoadContext, err)
     }
   }
 
@@ -3154,6 +3283,16 @@ export class RouterCore<
 export class SearchParamError extends Error {}
 
 export class PathParamError extends Error {}
+
+function makeMaybe<TValue, TError>(
+  value: TValue,
+  error: TError,
+): { status: 'success'; value: TValue } | { status: 'error'; error: TError } {
+  if (error) {
+    return { status: 'error' as const, error }
+  }
+  return { status: 'success' as const, value }
+}
 
 const normalize = (str: string) =>
   str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
