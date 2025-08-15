@@ -2095,17 +2095,19 @@ export class RouterCore<
     )
   }
 
-  private triggerOnReady = async (innerLoadContext: InnerLoadContext) => {
+  private triggerOnReady = (
+    innerLoadContext: InnerLoadContext,
+  ): void | Promise<void> => {
     if (!innerLoadContext.rendered) {
       innerLoadContext.rendered = true
-      await innerLoadContext.onReady?.()
+      return innerLoadContext.onReady?.()
     }
   }
 
   private resolvePreload = (
     innerLoadContext: InnerLoadContext,
     matchId: string,
-  ) => {
+  ): boolean => {
     return !!(
       innerLoadContext.preload &&
       !this.state.matches.some((d) => d.id === matchId)
@@ -2116,7 +2118,7 @@ export class RouterCore<
     innerLoadContext: InnerLoadContext,
     match: AnyRouteMatch | undefined,
     err: unknown,
-  ) => {
+  ): void => {
     if (!isRedirect(err) && !isNotFound(err)) return
 
     if (isRedirect(err) && err.redirectHandled && !err.options.reloadDocument) {
@@ -2158,7 +2160,7 @@ export class RouterCore<
     }
   }
 
-  private shouldSkipLoader = (matchId: string) => {
+  private shouldSkipLoader = (matchId: string): boolean => {
     const match = this.getMatch(matchId)!
     // upon hydration, we skip the loader if the match has been dehydrated on the server
     if (!this.isServer && match._nonReactive.dehydrated) {
@@ -2178,7 +2180,7 @@ export class RouterCore<
     index: number,
     err: any,
     routerCode: string,
-  ) => {
+  ): void => {
     const { id: matchId, routeId } = innerLoadContext.matches[index]!
     const route = this.looseRoutesById[routeId]!
 
@@ -2224,12 +2226,12 @@ export class RouterCore<
     })
   }
 
-  private isBeforeLoadSsr = async (
+  private isBeforeLoadSsr = (
     innerLoadContext: InnerLoadContext,
     matchId: string,
     index: number,
     route: AnyRoute,
-  ) => {
+  ): void | Promise<void> => {
     const existingMatch = this.getMatch(matchId)!
     const parentMatchId = innerLoadContext.matches[index - 1]?.id
     const parentMatch = parentMatchId
@@ -2299,7 +2301,7 @@ export class RouterCore<
     innerLoadContext: InnerLoadContext,
     matchId: string,
     route: AnyRoute,
-  ) => {
+  ): void => {
     const pendingMs = route.options.pendingMs ?? this.options.defaultPendingMs
     const shouldPending = !!(
       innerLoadContext.onReady &&
@@ -2330,7 +2332,7 @@ export class RouterCore<
     innerLoadContext: InnerLoadContext,
     matchId: string,
     route: AnyRoute,
-  ) => {
+  ): boolean | Promise<boolean> => {
     const existingMatch = this.getMatch(matchId)!
 
     // If we are in the middle of a load, either of these will be present
@@ -2368,7 +2370,7 @@ export class RouterCore<
     matchId: string,
     index: number,
     route: AnyRoute,
-  ) => {
+  ): void | Promise<void> => {
     const resolve = () => {
       innerLoadContext.updateMatch(matchId, (prev) => {
         prev._nonReactive.beforeLoadPromise?.resolve()
@@ -2500,7 +2502,7 @@ export class RouterCore<
   private handleBeforeLoad = (
     innerLoadContext: InnerLoadContext,
     index: number,
-  ) => {
+  ): void | Promise<void> => {
     const { id: matchId, routeId } = innerLoadContext.matches[index]!
     const route = this.looseRoutesById[routeId]!
 
@@ -2545,7 +2547,12 @@ export class RouterCore<
     innerLoadContext: InnerLoadContext,
     matchId: string,
     route: AnyRoute,
-  ) => {
+  ): void | Promise<
+    Pick<
+      AnyRouteMatch,
+      'meta' | 'links' | 'headScripts' | 'headers' | 'scripts' | 'styles'
+    >
+  > => {
     const match = this.getMatch(matchId)
     // in case of a redirecting match during preload, the match does not exist
     if (!match) {
@@ -2586,7 +2593,9 @@ export class RouterCore<
     })
   }
 
-  private potentialPendingMinPromise = (matchId: string) => {
+  private potentialPendingMinPromise = (
+    matchId: string,
+  ): void | ControlledPromise<void> => {
     const latestMatch = this.getMatch(matchId)!
     return latestMatch._nonReactive.minPendingPromise
   }
@@ -2623,7 +2632,7 @@ export class RouterCore<
     matchId: string,
     index: number,
     route: AnyRoute,
-  ) => {
+  ): Promise<void> => {
     try {
       // If the Matches component rendered
       // the pending component and needs to show it for
@@ -2749,7 +2758,7 @@ export class RouterCore<
   private loadRouteMatch = async (
     innerLoadContext: InnerLoadContext,
     index: number,
-  ) => {
+  ): Promise<AnyRouteMatch> => {
     const { id: matchId, routeId } = innerLoadContext.matches[index]!
     let loaderShouldRunAsync = false
     let loaderIsRunningAsync = false
@@ -2925,10 +2934,12 @@ export class RouterCore<
           }
         })()
       })
-      await this.triggerOnReady(innerLoadContext)
+      const readyPromise = this.triggerOnReady(innerLoadContext)
+      if (isPromise(readyPromise)) await readyPromise
     } catch (err) {
       if (isNotFound(err) && !innerLoadContext.preload) {
-        await this.triggerOnReady(innerLoadContext)
+        const readyPromise = this.triggerOnReady(innerLoadContext)
+        if (isPromise(readyPromise)) await readyPromise
         throw err
       }
       if (isRedirect(err)) {
@@ -3273,7 +3284,10 @@ export class SearchParamError extends Error {}
 
 export class PathParamError extends Error {}
 
-function makeMaybe(value: any, error: any) {
+function makeMaybe<TValue, TError>(
+  value: TValue,
+  error: TError,
+): { status: 'success'; value: TValue } | { status: 'error'; error: TError } {
   if (error) {
     return { status: 'error' as const, error }
   }
