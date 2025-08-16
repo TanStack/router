@@ -432,3 +432,13 @@ export function isModuleNotFoundError(error: any): boolean {
     error.message.startsWith('Importing a module script failed')
   )
 }
+
+export function isPromise<T>(
+  value: Promise<Awaited<T>> | T,
+): value is Promise<Awaited<T>> {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      typeof (value as Promise<T>).then === 'function',
+  )
+}
