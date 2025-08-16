@@ -888,7 +888,7 @@ export async function loadMatches(arg: {
     }
     await Promise.all(inner.matchPromises)
 
-     const readyPromise = triggerOnReady(inner)
+    const readyPromise = triggerOnReady(inner)
     if (isPromise(readyPromise)) await readyPromise
   } catch (err) {
     if (isNotFound(err) && !inner.preload) {
