@@ -115,7 +115,7 @@ To do this, you must:
 
 ```tsx
 export const Route = createRootRoute({
-  scripts: [
+  scripts: () => [
     {
       children: 'console.log("Hello, world!")',
     },

@@ -20,17 +20,16 @@ export interface TsrSsrGlobal {
 }
 
 function hydrateMatch(
+  match: AnyRouteMatch,
   deyhydratedMatch: DehydratedMatch,
-): Partial<MakeRouteMatch> {
-  return {
-    id: deyhydratedMatch.i,
-    __beforeLoadContext: deyhydratedMatch.b,
-    loaderData: deyhydratedMatch.l,
-    status: deyhydratedMatch.s,
-    ssr: deyhydratedMatch.ssr,
-    updatedAt: deyhydratedMatch.u,
-    error: deyhydratedMatch.e,
-  }
+): void {
+  match.id = deyhydratedMatch.i
+  match.__beforeLoadContext = deyhydratedMatch.b
+  match.loaderData = deyhydratedMatch.l
+  match.status = deyhydratedMatch.s
+  match.ssr = deyhydratedMatch.ssr
+  match.updatedAt = deyhydratedMatch.u
+  match.error = deyhydratedMatch.e
 }
 export interface DehydratedMatch {
   i: MakeRouteMatch['id']
@@ -80,17 +79,19 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       route.options.pendingMinMs ?? router.options.defaultPendingMinMs
     if (pendingMinMs) {
       const minPendingPromise = createControlledPromise<void>()
-      match.minPendingPromise = minPendingPromise
+      match._nonReactive.minPendingPromise = minPendingPromise
       match._forcePending = true
 
       setTimeout(() => {
         minPendingPromise.resolve()
         // We've handled the minPendingPromise, so we can delete it
-        router.updateMatch(match.id, (prev) => ({
-          ...prev,
-          minPendingPromise: undefined,
-          _forcePending: undefined,
-        }))
+        router.updateMatch(match.id, (prev) => {
+          prev._nonReactive.minPendingPromise = undefined
+          return {
+            ...prev,
+            _forcePending: undefined,
+          }
+        })
       }, pendingMinMs)
     }
   }
@@ -103,17 +104,14 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       (d) => d.i === match.id,
     )
     if (!dehydratedMatch) {
-      Object.assign(match, { dehydrated: false, ssr: false })
+      match._nonReactive.dehydrated = false
+      match.ssr = false
       return
     }
 
-    Object.assign(match, hydrateMatch(dehydratedMatch))
+    hydrateMatch(match, dehydratedMatch)
 
-    if (match.ssr === false) {
-      match._dehydrated = false
-    } else {
-      match._dehydrated = true
-    }
+    match._nonReactive.dehydrated = match.ssr !== false
 
     if (match.ssr === 'data-only' || match.ssr === false) {
       if (firstNonSsrMatchIndex === undefined) {
@@ -141,24 +139,27 @@ export async function hydrate(router: AnyRouter): Promise<any> {
       const route = router.looseRoutesById[match.routeId]!
 
       const parentMatch = router.state.matches[match.index - 1]
-      const parentContext = parentMatch?.context ?? router.options.context ?? {}
+      const parentContext = parentMatch?.context ?? router.options.context
 
       // `context()` was already executed by `matchRoutes`, however route context was not yet fully reconstructed
       // so run it again and merge route context
-      const contextFnContext: RouteContextOptions<any, any, any, any> = {
-        deps: match.loaderDeps,
-        params: match.params,
-        context: parentContext,
-        location: router.state.location,
-        navigate: (opts: any) =>
-          router.navigate({ ...opts, _fromLocation: router.state.location }),
-        buildLocation: router.buildLocation,
-        cause: match.cause,
-        abortController: match.abortController,
-        preload: false,
-        matches,
+      if (route.options.context) {
+        const contextFnContext: RouteContextOptions<any, any, any, any> = {
+          deps: match.loaderDeps,
+          params: match.params,
+          context: parentContext ?? {},
+          location: router.state.location,
+          navigate: (opts: any) =>
+            router.navigate({ ...opts, _fromLocation: router.state.location }),
+          buildLocation: router.buildLocation,
+          cause: match.cause,
+          abortController: match.abortController,
+          preload: false,
+          matches,
+        }
+        match.__routeContext =
+          route.options.context(contextFnContext) ?? undefined
       }
-      match.__routeContext = route.options.context?.(contextFnContext) ?? {}
 
       match.context = {
         ...parentContext,
@@ -186,11 +187,11 @@ export async function hydrate(router: AnyRouter): Promise<any> {
 
   const isSpaMode = matches[matches.length - 1]!.id !== lastMatchId
   const hasSsrFalseMatches = matches.some((m) => m.ssr === false)
-  // all matches have data from the server   and we are not in SPA mode so we don't need to kick of router.load()
+  // all matches have data from the server and we are not in SPA mode so we don't need to kick of router.load()
   if (!hasSsrFalseMatches && !isSpaMode) {
     matches.forEach((match) => {
-      // remove the _dehydrate flag since we won't run router.load() which would remove it
-      match._dehydrated = undefined
+      // remove the dehydrated flag since we won't run router.load() which would remove it
+      match._nonReactive.dehydrated = undefined
     })
     return routeChunkPromise
   }
@@ -213,7 +214,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     setMatchForcePending(match)
 
     match._displayPending = true
-    match.displayPendingPromise = loadPromise
+    match._nonReactive.displayPendingPromise = loadPromise
 
     loadPromise.then(() => {
       batch(() => {

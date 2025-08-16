@@ -199,6 +199,30 @@ const link = (
 
 As seen above, it's common to provide the `route.fullPath` as the `from` route path. This is because the `route.fullPath` is a reference that will update if you refactor your application. However, sometimes it's not possible to import the route directly, in which case it's fine to provide the route path directly as a string. It will still get type-checked as per usual!
 
+### Special relative paths: `"."` and `".."`
+
+Quite often you might want to reload the current location, for example, to rerun the loaders on the current and/or parent routes, or maybe there was a change in search parameters. This can be achieved by specifying a `to` route path of `"."` which will reload the current location. This is only applicable to the current location, and hence any `from` route path specified is ignored.
+
+Another common need is to navigate one route back relative to the current location or some other matched route in the current tree. By specifying a `to` route path of `".."` navigation will be resolved to either the first parent route preceding the current location or, if specified, preceding the `"from"` route path.
+
+```tsx
+export const Route = createFileRoute('/posts/$postId')({
+  component: PostComponent,
+})
+
+function PostComponent() {
+  return (
+    <div>
+      <Link to=".">Reload the current route of /posts/$postId</Link>
+      <Link to="..">Navigate to /posts</Link>
+      <Link from="/posts" to="..">
+        Navigate to root
+      </Link>
+    </div>
+  )
+}
+```
+
 ### Search Param Links
 
 Search params are a great way to provide additional context to a route. For example, you might want to provide a search query to a search page:

@@ -12,6 +12,23 @@ export type {
   WithReactPlugin,
 } from './schema'
 
+function hasRootExport(
+  exportsField?: Record<string, unknown> | string,
+): boolean {
+  if (!exportsField) return false
+
+  if (typeof exportsField === 'string') {
+    // shorthand form: "exports": "./index.js"
+    return true
+  }
+
+  if (typeof exportsField === 'object') {
+    return '.' in exportsField
+  }
+
+  return false
+}
+
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithReactPlugin,
 ): Array<PluginOption> {
@@ -104,7 +121,7 @@ export default createStartHandler({
           if (opts.name === '@tanstack/react-router-devtools') {
             return 'exclude'
           }
-          if ('react' in opts.peerDependencies) {
+          if (hasRootExport(opts.exports) && 'react' in opts.peerDependencies) {
             return 'include'
           }
           return undefined
