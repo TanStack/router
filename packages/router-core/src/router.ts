@@ -1893,7 +1893,8 @@ export class RouterCore<
             matches: this.state.pendingMatches as Array<AnyRouteMatch>,
             location: next,
             updateMatch: this.updateMatch,
-            onReady: () => {
+            // eslint-disable-next-line @typescript-eslint/require-await
+            onReady: async () => {
               // eslint-disable-next-line @typescript-eslint/require-await
               this.startViewTransition(async () => {
                 // this.viewTransitionPromise = createControlledPromise<true>()

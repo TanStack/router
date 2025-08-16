@@ -31,13 +31,13 @@ type InnerLoadContext = {
   updateMatch: UpdateMatchFn
   matches: Array<AnyRouteMatch>
   preload?: boolean
-  onReady?: () => void
+  onReady?: () => Promise<void>
   sync?: boolean
   /** mutable state, scoped to a `loadMatches` call */
   matchPromises: Array<Promise<AnyRouteMatch>>
 }
 
-const triggerOnReady = (inner: InnerLoadContext): void => {
+const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
   if (!inner.rendered) {
     inner.rendered = true
     return inner.onReady?.()
@@ -857,7 +857,7 @@ export async function loadMatches(arg: {
   location: ParsedLocation
   matches: Array<AnyRouteMatch>
   preload?: boolean
-  onReady?: () => void
+  onReady?: () => Promise<void>
   updateMatch: UpdateMatchFn
   sync?: boolean
 }): Promise<Array<MakeRouteMatch>> {
@@ -888,10 +888,12 @@ export async function loadMatches(arg: {
     }
     await Promise.all(inner.matchPromises)
 
-    triggerOnReady(inner)
+     const readyPromise = triggerOnReady(inner)
+    if (isPromise(readyPromise)) await readyPromise
   } catch (err) {
     if (isNotFound(err) && !inner.preload) {
-      triggerOnReady(inner)
+      const readyPromise = triggerOnReady(inner)
+      if (isPromise(readyPromise)) await readyPromise
       throw err
     }
     if (isRedirect(err)) {
