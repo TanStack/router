@@ -19,6 +19,11 @@ function RouteComponent() {
             Client Middleware has access to router instance
           </Route.Link>
         </li>
+        <li>
+          <Route.Link to="./send-serverFn" data-testid="send-serverFn-link">
+            Client Middleware can send server function reference in context
+          </Route.Link>
+        </li>
       </ul>
     </div>
   )

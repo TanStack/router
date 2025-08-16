@@ -18,7 +18,6 @@ interface RouteMatch {
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  loadPromise?: Promise<void>
   loaderData?: Route['loaderData']
   context: Route['allContext']
   search: Route['fullSearchSchema']

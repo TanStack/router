@@ -209,12 +209,14 @@ export function compileCodeSplitReferenceRoute(
                         return
                       }
 
-                      // Exit early if the value is undefined
-                      // Since we don't need to run an import just to get the value of `undefined`
-                      // This is useful for cases like: `createFileRoute('/')({ component: undefined })`
+                      // Exit early if the value is a boolean, null, or undefined.
+                      // These values mean "don't use this component, fallback to parent"
+                      // No code splitting needed to preserve fallback behavior
                       if (
-                        t.isIdentifier(prop.value) &&
-                        prop.value.name === 'undefined'
+                        t.isBooleanLiteral(prop.value) ||
+                        t.isNullLiteral(prop.value) ||
+                        (t.isIdentifier(prop.value) &&
+                          prop.value.name === 'undefined')
                       ) {
                         return
                       }
@@ -535,7 +537,7 @@ export function compileCodeSplitVirtualRoute(
           }
 
           let splitNode = splitKey.node
-          const splitMeta = splitKey.meta
+          const splitMeta = { ...splitKey.meta, shouldRemoveNode: true }
 
           while (t.isIdentifier(splitNode)) {
             const binding = programPath.scope.getBinding(splitNode.name)
@@ -545,21 +547,15 @@ export function compileCodeSplitVirtualRoute(
           // Add the node to the program
           if (splitNode) {
             if (t.isFunctionDeclaration(splitNode)) {
-              programPath.pushContainer(
-                'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitMeta.localExporterIdent),
-                    t.functionExpression(
-                      splitNode.id || null, // Anonymize the function expression
-                      splitNode.params,
-                      splitNode.body,
-                      splitNode.generator,
-                      splitNode.async,
-                    ),
-                  ),
-                ]),
-              )
+              // an anonymous function declaration should only happen for `export default function() {...}`
+              // so we should never get here
+              if (!splitNode.id) {
+                throw new Error(
+                  `Function declaration for "${SPLIT_TYPE}" must have an identifier.`,
+                )
+              }
+              splitMeta.shouldRemoveNode = false
+              splitMeta.localExporterIdent = splitNode.id.name
             } else if (
               t.isFunctionExpression(splitNode) ||
               t.isArrowFunctionExpression(splitNode)
@@ -587,15 +583,14 @@ export function compileCodeSplitVirtualRoute(
                 ]),
               )
             } else if (t.isVariableDeclarator(splitNode)) {
-              programPath.pushContainer(
-                'body',
-                t.variableDeclaration('const', [
-                  t.variableDeclarator(
-                    t.identifier(splitMeta.localExporterIdent),
-                    splitNode.init,
-                  ),
-                ]),
-              )
+              if (t.isIdentifier(splitNode.id)) {
+                splitMeta.localExporterIdent = splitNode.id.name
+                splitMeta.shouldRemoveNode = false
+              } else {
+                throw new Error(
+                  `Unexpected splitNode type ☝️: ${splitNode.type}`,
+                )
+              }
             } else if (t.isCallExpression(splitNode)) {
               const outputSplitNodeCode = generateFromAst(splitNode).code
               const splitNodeAst = babel.parse(outputSplitNodeCode)
@@ -652,17 +647,27 @@ export function compileCodeSplitVirtualRoute(
                   ),
                 ]),
               )
+            } else if (t.isBooleanLiteral(splitNode)) {
+              // Handle boolean literals
+              // This exits early here, since this value will be kept in the reference file
+              return
+            } else if (t.isNullLiteral(splitNode)) {
+              // Handle null literals
+              // This exits early here, since this value will be kept in the reference file
+              return
             } else {
               console.info('Unexpected splitNode type:', splitNode)
               throw new Error(`Unexpected splitNode type ☝️: ${splitNode.type}`)
             }
           }
 
-          // If the splitNode exists at the top of the program
-          // then we need to remove that copy
-          programPath.node.body = programPath.node.body.filter((node) => {
-            return node !== splitNode
-          })
+          if (splitMeta.shouldRemoveNode) {
+            // If the splitNode exists at the top of the program
+            // then we need to remove that copy
+            programPath.node.body = programPath.node.body.filter((node) => {
+              return node !== splitNode
+            })
+          }
 
           // Export the node
           programPath.pushContainer('body', [

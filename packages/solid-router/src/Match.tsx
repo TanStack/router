@@ -6,7 +6,6 @@ import {
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
-  pick,
   rootRouteId,
 } from '@tanstack/router-core'
 import { Dynamic } from 'solid-js/web'
@@ -30,7 +29,11 @@ export const Match = (props: { matchId: string }) => {
         match,
         `Could not find match for matchId "${props.matchId}". Please file an issue!`,
       )
-      return pick(match, ['routeId', 'ssr', '_displayPending'])
+      return {
+        routeId: match.routeId,
+        ssr: match.ssr,
+        _displayPending: match._displayPending,
+      }
     },
   })
 
@@ -182,8 +185,7 @@ export const MatchInner = (props: { matchId: string }): any => {
 
   const matchState = useRouterState({
     select: (s) => {
-      const matchIndex = s.matches.findIndex((d) => d.id === props.matchId)
-      const match = s.matches[matchIndex]!
+      const match = s.matches.find((d) => d.id === props.matchId)!
       const routeId = match.routeId as string
 
       const remountFn =
@@ -200,13 +202,13 @@ export const MatchInner = (props: { matchId: string }): any => {
       return {
         key,
         routeId,
-        match: pick(match, [
-          'id',
-          'status',
-          'error',
-          '_forcePending',
-          '_displayPending',
-        ]),
+        match: {
+          id: match.id,
+          status: match.status,
+          error: match.error,
+          _forcePending: match._forcePending,
+          _displayPending: match._displayPending,
+        },
       }
     },
   })
@@ -218,8 +220,9 @@ export const MatchInner = (props: { matchId: string }): any => {
   const out = () => {
     const Comp = route().options.component ?? router.options.defaultComponent
     if (Comp) {
+      const key = matchState().key ?? matchState().match.id
       return (
-        <Solid.Show when={matchState().match.id} keyed>
+        <Solid.Show when={key} keyed>
           <Comp />
         </Solid.Show>
       )
@@ -232,7 +235,8 @@ export const MatchInner = (props: { matchId: string }): any => {
       <Solid.Match when={match()._displayPending}>
         {(_) => {
           const [displayPendingResult] = Solid.createResource(
-            () => router.getMatch(match().id)?.displayPendingPromise,
+            () =>
+              router.getMatch(match().id)?._nonReactive.displayPendingPromise,
           )
 
           return <>{displayPendingResult()}</>
@@ -241,7 +245,7 @@ export const MatchInner = (props: { matchId: string }): any => {
       <Solid.Match when={match()._forcePending}>
         {(_) => {
           const [minPendingResult] = Solid.createResource(
-            () => router.getMatch(match().id)?.minPendingPromise,
+            () => router.getMatch(match().id)?._nonReactive.minPendingPromise,
           )
 
           return <>{minPendingResult()}</>
@@ -252,33 +256,27 @@ export const MatchInner = (props: { matchId: string }): any => {
           const pendingMinMs =
             route().options.pendingMinMs ?? router.options.defaultPendingMinMs
 
-          if (pendingMinMs && !router.getMatch(match().id)?.minPendingPromise) {
-            // Create a promise that will resolve after the minPendingMs
-            if (!router.isServer) {
-              const minPendingPromise = createControlledPromise<void>()
+          if (pendingMinMs) {
+            const routerMatch = router.getMatch(match().id)
+            if (routerMatch && !routerMatch._nonReactive.minPendingPromise) {
+              // Create a promise that will resolve after the minPendingMs
+              if (!router.isServer) {
+                const minPendingPromise = createControlledPromise<void>()
 
-              Promise.resolve().then(() => {
-                router.updateMatch(match().id, (prev) => ({
-                  ...prev,
-                  minPendingPromise,
-                }))
-              })
+                routerMatch._nonReactive.minPendingPromise = minPendingPromise
 
-              setTimeout(() => {
-                minPendingPromise.resolve()
-
-                // We've handled the minPendingPromise, so we can delete it
-                router.updateMatch(match().id, (prev) => ({
-                  ...prev,
-                  minPendingPromise: undefined,
-                }))
-              }, pendingMinMs)
+                setTimeout(() => {
+                  minPendingPromise.resolve()
+                  // We've handled the minPendingPromise, so we can delete it
+                  routerMatch._nonReactive.minPendingPromise = undefined
+                }, pendingMinMs)
+              }
             }
           }
 
           const [loaderResult] = Solid.createResource(async () => {
             await new Promise((r) => setTimeout(r, 0))
-            return router.getMatch(match().id)?.loadPromise
+            return router.getMatch(match().id)?._nonReactive.loadPromise
           })
 
           return <>{loaderResult()}</>
@@ -297,7 +295,7 @@ export const MatchInner = (props: { matchId: string }): any => {
 
           const [loaderResult] = Solid.createResource(async () => {
             await new Promise((r) => setTimeout(r, 0))
-            return router.getMatch(match().id)?.loadPromise
+            return router.getMatch(match().id)?._nonReactive.loadPromise
           })
 
           return <>{loaderResult()}</>

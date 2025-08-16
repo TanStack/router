@@ -1,5 +1,11 @@
 import * as React from 'react';
 import { Route } from "chinese.tsx";
+function HomeComponent() {
+  return <div className="p-2">
+      <Demo title="标题很好看，谁说不是呢？" />
+      <Demo title="The title looks great, who can deny that?" />
+    </div>;
+}
 interface DemoProps {
   title: string;
 }
@@ -15,10 +21,4 @@ function Demo({
       {title}
     </h1>;
 }
-const SplitComponent = function HomeComponent() {
-  return <div className="p-2">
-      <Demo title="标题很好看，谁说不是呢？" />
-      <Demo title="The title looks great, who can deny that?" />
-    </div>;
-};
-export { SplitComponent as component };
+export { HomeComponent as component };

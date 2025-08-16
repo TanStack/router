@@ -15,6 +15,72 @@ function sanitizeBase(base: string | undefined) {
   return base.replace(/^\/|\/$/g, '')
 }
 
+async function revive(root: any, reviver?: (key: string, value: any) => any) {
+  async function reviveNode(holder: any, key: string) {
+    const value = holder[key]
+
+    if (value && typeof value === 'object') {
+      await Promise.all(Object.keys(value).map((k) => reviveNode(value, k)))
+    }
+
+    if (reviver) {
+      holder[key] = await reviver(key, holder[key])
+    }
+  }
+
+  const holder = { '': root }
+  await reviveNode(holder, '')
+  return holder['']
+}
+
+async function reviveServerFns(key: string, value: any) {
+  if (value && value.__serverFn === true && value.functionId) {
+    const serverFn = await getServerFnById(value.functionId)
+    return async (opts: any, signal: any): Promise<any> => {
+      const result = await serverFn(opts ?? {}, signal)
+      return result.result
+    }
+  }
+  return value
+}
+
+async function getServerFnById(serverFnId: string) {
+  const { default: serverFnManifest } = await loadVirtualModule(
+    VIRTUAL_MODULES.serverFnManifest,
+  )
+
+  const serverFnInfo = serverFnManifest[serverFnId]
+
+  if (!serverFnInfo) {
+    console.info('serverFnManifest', serverFnManifest)
+    throw new Error('Server function info not found for ' + serverFnId)
+  }
+
+  const fnModule = await serverFnInfo.importer()
+
+  if (!fnModule) {
+    console.info('serverFnInfo', serverFnInfo)
+    throw new Error('Server function module not resolved for ' + serverFnId)
+  }
+
+  const action = fnModule[serverFnInfo.functionName]
+
+  if (!action) {
+    console.info('serverFnInfo', serverFnInfo)
+    console.info('fnModule', fnModule)
+    throw new Error(
+      `Server function module export not resolved for serverFn ID: ${serverFnId}`,
+    )
+  }
+  return action
+}
+
+async function parsePayload(payload: any) {
+  const parsedPayload = startSerializer.parse(payload)
+  await revive(parsedPayload, reviveServerFns)
+  return parsedPayload
+}
+
 export const handleServerAction = async ({ request }: { request: Request }) => {
   const controller = new AbortController()
   const signal = controller.signal
@@ -44,33 +110,7 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
   }
 
-  const { default: serverFnManifest } = await loadVirtualModule(
-    VIRTUAL_MODULES.serverFnManifest,
-  )
-
-  const serverFnInfo = serverFnManifest[serverFnId]
-
-  if (!serverFnInfo) {
-    console.info('serverFnManifest', serverFnManifest)
-    throw new Error('Server function info not found for ' + serverFnId)
-  }
-
-  const fnModule = await serverFnInfo.importer()
-
-  if (!fnModule) {
-    console.info('serverFnInfo', serverFnInfo)
-    throw new Error('Server function module not resolved for ' + serverFnId)
-  }
-
-  const action = fnModule[serverFnInfo.functionName]
-
-  if (!action) {
-    console.info('serverFnInfo', serverFnInfo)
-    console.info('fnModule', fnModule)
-    throw new Error(
-      `Server function module export not resolved for serverFn ID: ${serverFnId}`,
-    )
-  }
+  const action = await getServerFnById(serverFnId)
 
   // Known FormData 'Content-Type' header values
   const formDataContentTypes = [
@@ -109,7 +149,7 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
           }
 
           // If there's a payload, we should try to parse it
-          payload = payload ? startSerializer.parse(payload) : payload
+          payload = payload ? await parsePayload(payload) : payload
 
           // Send it through!
           return await action(payload, signal)
@@ -120,7 +160,7 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
 
         // We should probably try to deserialize the payload
         // as JSON, but we'll just pass it through for now.
-        const payload = startSerializer.parse(jsonPayloadAsString)
+        const payload = await parsePayload(jsonPayloadAsString)
 
         // If this POST request was created by createServerFn,
         // it's payload will be the only argument

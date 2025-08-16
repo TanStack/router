@@ -272,3 +272,27 @@ test('Should change post navigating back and forth', async ({ page }) => {
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByTestId('post-title')).toContainText('sunt aut facere')
 })
+
+test('Should not remount deps when remountDeps does not change ', async ({
+  page,
+}) => {
+  await page.goto('/notRemountDeps')
+  await expect(page.getByTestId('component-mounts')).toContainText(
+    'Page component mounts: 1',
+  )
+  await page.getByRole('button', { name: 'Regenerate search param' }).click()
+  await expect(page.getByTestId('component-mounts')).toContainText(
+    'Page component mounts: 1',
+  )
+})
+
+test('Should remount deps when remountDeps does change ', async ({ page }) => {
+  await page.goto('/remountDeps')
+  await expect(page.getByTestId('component-mounts')).toContainText(
+    'Page component mounts: 1',
+  )
+  await page.getByRole('button', { name: 'Regenerate search param' }).click()
+  await expect(page.getByTestId('component-mounts')).toContainText(
+    'Page component mounts: 2',
+  )
+})
