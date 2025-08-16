@@ -2938,8 +2938,7 @@ export class RouterCore<
 
       // Execute all loaders in parallel
       const max =
-        innerLoadContext.firstBadMatchIndex ??
-        innerLoadContext.matches.length
+        innerLoadContext.firstBadMatchIndex ?? innerLoadContext.matches.length
       for (let i = 0; i < max; i++) {
         innerLoadContext.matchPromises.push(
           this.loadRouteMatch(innerLoadContext, i),
