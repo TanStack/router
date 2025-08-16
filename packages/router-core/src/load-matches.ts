@@ -862,24 +862,25 @@ const loadRouteMatch = async (
   return inner.router.getMatch(matchId)!
 }
 
-export async function loadMatches(
-    arg: {
-router: AnyRouter,
-    location: ParsedLocation
-    matches: Array<AnyRouteMatch>
-    preload?: boolean
-    onReady?: () => Promise<void>
-    updateMatch: UpdateMatchFn
-    sync?: boolean
-  },
-): Promise<Array<MakeRouteMatch>> {
+export async function loadMatches(arg: {
+  router: AnyRouter
+  location: ParsedLocation
+  matches: Array<AnyRouteMatch>
+  preload?: boolean
+  onReady?: () => Promise<void>
+  updateMatch: UpdateMatchFn
+  sync?: boolean
+}): Promise<Array<MakeRouteMatch>> {
   const inner: InnerLoadContext = Object.assign(arg, {
     matchPromises: [],
-      })
+  })
 
   // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
   // the pending component was already rendered on the server and we want to keep it shown on the client until minPendingMs is reached
-  if (!inner.router.isServer && inner.router.state.matches.some((d) => d._forcePending)) {
+  if (
+    !inner.router.isServer &&
+    inner.router.state.matches.some((d) => d._forcePending)
+  ) {
     triggerOnReady(inner)
   }
 
