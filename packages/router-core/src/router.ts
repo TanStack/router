@@ -2930,33 +2930,23 @@ export class RouterCore<
     }
 
     try {
-      await new Promise<void>((resolveAll, rejectAll) => {
-        ;(async () => {
-          try {
-            // Execute all beforeLoads one by one
-            for (let i = 0; i < innerLoadContext.matches.length; i++) {
-              const beforeLoad = this.handleBeforeLoad(innerLoadContext, i)
-              if (isPromise(beforeLoad)) await beforeLoad
-            }
+      // Execute all beforeLoads one by one
+      for (let i = 0; i < innerLoadContext.matches.length; i++) {
+        const beforeLoad = this.handleBeforeLoad(innerLoadContext, i)
+        if (isPromise(beforeLoad)) await beforeLoad
+      }
 
-            // Execute all loaders in parallel
-            const max =
-              innerLoadContext.firstBadMatchIndex ??
-              innerLoadContext.matches.length
-            for (let i = 0; i < max; i++) {
-              innerLoadContext.matchPromises.push(
-                this.loadRouteMatch(innerLoadContext, i),
-              )
-            }
+      // Execute all loaders in parallel
+      const max =
+        innerLoadContext.firstBadMatchIndex ??
+        innerLoadContext.matches.length
+      for (let i = 0; i < max; i++) {
+        innerLoadContext.matchPromises.push(
+          this.loadRouteMatch(innerLoadContext, i),
+        )
+      }
+      await Promise.all(innerLoadContext.matchPromises)
 
-            await Promise.all(innerLoadContext.matchPromises)
-
-            resolveAll()
-          } catch (err) {
-            rejectAll(err)
-          }
-        })()
-      })
       const readyPromise = this.triggerOnReady(innerLoadContext)
       if (isPromise(readyPromise)) await readyPromise
     } catch (err) {
