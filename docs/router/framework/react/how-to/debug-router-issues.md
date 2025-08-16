@@ -753,8 +753,8 @@ const route = createRoute({
 
 After debugging router issues, you might want to:
 
-- [How to Set Up Testing](./setup-testing.md) - Add tests to prevent regressions
-- [How to Deploy to Production](./deploy-to-production.md) - Ensure issues don't occur in production
+- [How to Set Up Testing](../setup-testing.md) - Add tests to prevent regressions
+- [How to Deploy to Production](../deploy-to-production.md) - Ensure issues don't occur in production
 
 <!-- TODO: Uncomment as guides are created
 - [How to Optimize Performance](./optimize-performance.md)

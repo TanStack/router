@@ -470,8 +470,8 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
 
 After setting up basic authentication, you might want to:
 
-- [How to Integrate Authentication Providers](./setup-auth-providers.md) - Use Auth0, Clerk, or Supabase
-- [How to Set Up Role-Based Access Control](./setup-rbac.md) - Add permission-based routing
+- [How to Integrate Authentication Providers](../setup-auth-providers.md) - Use Auth0, Clerk, or Supabase
+- [How to Set Up Role-Based Access Control](../setup-rbac.md) - Add permission-based routing
 
 <!-- TODO: Uncomment as how-to guides are created
 - [How to Handle User Sessions](./handle-user-sessions.md)
@@ -480,6 +480,6 @@ After setting up basic authentication, you might want to:
 
 ## Related Resources
 
-- [Authenticated Routes Guide](../guide/authenticated-routes.md) - Detailed conceptual guide
-- [Router Context Guide](../guide/router-context.md) - Understanding context in TanStack Router
+- [Authenticated Routes Guide](../../guide/authenticated-routes.md) - Detailed conceptual guide
+- [Router Context Guide](../../guide/router-context.md) - Understanding context in TanStack Router
 - [Authentication Examples](https://github.com/TanStack/router/tree/main/examples/react/authenticated-routes) - Complete working examples

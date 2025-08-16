@@ -177,7 +177,7 @@ export function useBlocker(
     const blockerFnComposed = async (blockerFnArgs: BlockerFnArgs) => {
       function getLocation(
         location: HistoryLocation,
-      ): AnyShouldBlockFnLocation|undefined {
+      ): AnyShouldBlockFnLocation | undefined {
         const parsedLocation = router.parseLocation(location)
         const matchedRoutes = router.getMatchedRoutes(
           parsedLocation.pathname,

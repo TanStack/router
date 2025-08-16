@@ -434,9 +434,9 @@ Before deploying, ensure you have:
 
 After deployment, you might want to:
 
-- [How to Set Up Basic Authentication](./setup-authentication.md) - Secure your application with auth
-- [Migrate from React Router v7](./migrate-from-react-router.md) - Complete migration guide if you're coming from React Router
-- [How to Set Up Server-Side Rendering (SSR)](./setup-ssr.md)
+- [How to Set Up Basic Authentication](../setup-authentication.md) - Secure your application with auth
+- [Migrate from React Router v7](../migrate-from-react-router.md) - Complete migration guide if you're coming from React Router
+- [How to Set Up Server-Side Rendering (SSR)](../setup-ssr.md)
 
 <!-- TODO: Uncomment as how-to guides are created
 - [How to Optimize Performance](./optimize-performance.md)
