@@ -122,6 +122,9 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   })
 
   router.__store.setState((s) => {
+    for (const m of matches) {
+      router.__storedMatches.set(m.id, m)
+    }
     return {
       ...s,
       matches,

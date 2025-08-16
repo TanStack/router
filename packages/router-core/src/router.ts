@@ -433,6 +433,7 @@ export interface RouterState<
   isTransitioning: boolean
   matches: Array<TRouteMatch>
   pendingMatches?: Array<TRouteMatch>
+  /** @internal */
   cachedMatches: Array<TRouteMatch>
   location: ParsedLocation<FullSearchSchema<TRouteTree>>
   resolvedLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
@@ -775,7 +776,7 @@ export class RouterCore<
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
-  viewTransitionPromise?: ControlledPromise<true>
+  // viewTransitionPromise?: ControlledPromise<true>
   isScrollRestoring = false
   isScrollRestorationSetup = false
 
@@ -800,6 +801,8 @@ export class RouterCore<
   flatRoutes!: Array<AnyRoute>
   isServer!: boolean
   pathParamsDecodeCharMap?: Map<string, string>
+  /** @internal */
+  __storedMatches!: Map<string, AnyRouteMatch>
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -910,15 +913,19 @@ export class RouterCore<
     if (!this.__store) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
+          if (!this.state.cachedMatches.some((d) => d.status === 'redirected'))
+            return
           this.__store.state = {
             ...this.state,
-            cachedMatches: this.state.cachedMatches.filter(
-              (d) => !['redirected'].includes(d.status),
-            ),
+            cachedMatches: this.state.cachedMatches.filter((d) => {
+              const keep = d.status !== 'redirected'
+              if (!keep) this.__storedMatches.delete(d.id)
+              return keep
+            }),
           }
         },
       })
-
+      this.__storedMatches = new Map()
       setupScrollRestoration(this)
     }
 
@@ -928,7 +935,7 @@ export class RouterCore<
       typeof window.CSS?.supports === 'function'
     ) {
       this.isViewTransitionTypesSupported = window.CSS.supports(
-        'selector(:active-view-transition-type(a)',
+        'selector(:active-view-transition-type(a))',
       )
     }
   }
@@ -1842,6 +1849,14 @@ export class RouterCore<
     const pendingMatches = this.matchRoutes(this.latestLocation)
 
     // Ingest the new matches
+    if (this.state.pendingMatches) {
+      for (const { id } of this.state.pendingMatches) {
+        this.__storedMatches.delete(id)
+      }
+    }
+    for (const m of pendingMatches) {
+      this.__storedMatches.set(m.id, m)
+    }
     this.__store.setState((s) => ({
       ...s,
       status: 'pending',
@@ -1921,6 +1936,14 @@ export class RouterCore<
                       newMatches.some((d) => d.id === match.id),
                     )
 
+                    const additionalCachedMatches = exitingMatches.filter(
+                      (d) => {
+                        const keep = d.status !== 'error'
+                        if (!keep) this.__storedMatches.delete(d.id)
+                        return keep
+                      },
+                    )
+
                     return {
                       ...s,
                       isLoading: false,
@@ -1929,25 +1952,22 @@ export class RouterCore<
                       pendingMatches: undefined,
                       cachedMatches: [
                         ...s.cachedMatches,
-                        ...exitingMatches.filter((d) => d.status !== 'error'),
+                        ...additionalCachedMatches,
                       ],
                     }
                   })
                   this.clearExpiredCache()
                 })
 
-                //
-                ;(
-                  [
-                    [exitingMatches, 'onLeave'],
-                    [enteringMatches, 'onEnter'],
-                    [stayingMatches, 'onStay'],
-                  ] as const
-                ).forEach(([matches, hook]) => {
+                for (const [matches, hook] of [
+                  [exitingMatches, 'onLeave'],
+                  [enteringMatches, 'onEnter'],
+                  [stayingMatches, 'onStay'],
+                ] as const) {
                   matches.forEach((match) => {
                     this.looseRoutesById[match.routeId]!.options[hook]?.(match)
                   })
-                })
+                }
               })
             },
           })
@@ -2057,29 +2077,42 @@ export class RouterCore<
   }
 
   updateMatch: UpdateMatchFn = (id, updater) => {
-    const matchesKey = this.state.pendingMatches?.some((d) => d.id === id)
-      ? 'pendingMatches'
-      : this.state.matches.some((d) => d.id === id)
-        ? 'matches'
-        : this.state.cachedMatches.some((d) => d.id === id)
-          ? 'cachedMatches'
-          : ''
-
-    if (matchesKey) {
-      this.__store.setState((s) => ({
-        ...s,
-        [matchesKey]: s[matchesKey]?.map((d) => (d.id === id ? updater(d) : d)),
-      }))
+    if (!this.__storedMatches.has(id)) return
+    let matchesKey!: 'pendingMatches' | 'matches' | 'cachedMatches'
+    let matchesIndex = -1
+    if (this.state.pendingMatches) {
+      matchesIndex = this.state.pendingMatches.findIndex((d) => d.id === id)
+      if (matchesIndex !== -1) matchesKey = 'pendingMatches'
     }
+    if (matchesIndex === -1) {
+      matchesIndex = this.state.matches.findIndex((d) => d.id === id)
+      if (matchesIndex !== -1) matchesKey = 'matches'
+    }
+    if (matchesIndex === -1) {
+      matchesIndex = this.state.cachedMatches.findIndex((d) => d.id === id)
+      matchesKey = 'cachedMatches'
+    }
+
+    // DEBUG
+    if (matchesIndex === -1) {
+      throw new Error(`DEBUG: Match with id ${id} not found`)
+    }
+
+    this.__store.setState((s) => {
+      const array = s[matchesKey]!
+      const nextValue = updater(array[matchesIndex]!)
+      const nextArray = [...array]
+      nextArray[matchesIndex] = nextValue
+      this.__storedMatches.set(nextValue.id, nextValue)
+      return {
+        ...s,
+        [matchesKey]: nextArray,
+      }
+    })
   }
 
   getMatch: GetMatchFn = (matchId: string) => {
-    const findFn = (d: { id: string }) => d.id === matchId
-    return (
-      this.state.cachedMatches.find(findFn) ??
-      this.state.pendingMatches?.find(findFn) ??
-      this.state.matches.find(findFn)
-    )
+    return this.__storedMatches.get(matchId)
   }
 
   invalidate: InvalidateFn<
@@ -2093,13 +2126,15 @@ export class RouterCore<
   > = (opts) => {
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
       if (opts?.filter?.(d as MakeRouteMatchUnion<this>) ?? true) {
-        return {
+        const next = {
           ...d,
           invalid: true,
           ...(opts?.forcePending || d.status === 'error'
             ? ({ status: 'pending', error: undefined } as const)
             : undefined),
         }
+        this.__storedMatches.set(next.id, next)
+        return next
       }
       return d
     }
@@ -2132,15 +2167,21 @@ export class RouterCore<
     const filter = opts?.filter
     if (filter !== undefined) {
       this.__store.setState((s) => {
+        const cachedMatches = s.cachedMatches.filter((m) => {
+          const keep = !filter(m as MakeRouteMatchUnion<this>)
+          if (!keep) this.__storedMatches.delete(m.id)
+          return keep
+        })
         return {
           ...s,
-          cachedMatches: s.cachedMatches.filter(
-            (m) => !filter(m as MakeRouteMatchUnion<this>),
-          ),
+          cachedMatches,
         }
       })
     } else {
       this.__store.setState((s) => {
+        for (const { id } of s.cachedMatches) {
+          this.__storedMatches.delete(id)
+        }
         return {
           ...s,
           cachedMatches: [],
@@ -2206,6 +2247,7 @@ export class RouterCore<
     batch(() => {
       matches.forEach((match) => {
         if (!loadedMatchIds.has(match.id)) {
+          this.__storedMatches.set(match.id, match)
           this.__store.setState((s) => ({
             ...s,
             cachedMatches: [...(s.cachedMatches as any), match],
