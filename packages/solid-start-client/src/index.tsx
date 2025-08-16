@@ -3,8 +3,6 @@ export {
   createIsomorphicFn,
   createServerFn,
   createMiddleware,
-  registerGlobalMiddleware,
-  globalMiddleware,
   createServerOnlyFn,
   createClientOnlyFn,
   json,

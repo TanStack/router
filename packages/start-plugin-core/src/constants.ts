@@ -14,6 +14,6 @@ export type ViteEnvironmentNames =
 export const ENTRY_POINTS = {
   client: 'virtual:tanstack-start-client-entry',
   server: 'virtual:tanstack-start-server-request-entry',
-  // the router entry point must always be provided by the user
-  router: '#tanstack-start-router-entry',
+  // the createStart entry point must always be provided by the user
+  createStart: '#tanstack-start-createStart-entry',
 } as const

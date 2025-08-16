@@ -3,6 +3,12 @@ import type { AnyRouter } from '@tanstack/router-core'
 
 export interface StartStorageContext {
   router: AnyRouter
+  middlewares?: {
+    // TODO fix circular depedency by moving types to a separate package?
+    request?: Array</*AnyRequestMiddleware*/ any>
+    // TODO fix circular depedency by moving types to a separate package?
+    function?: Array</*AnyFunctionMiddleware*/ any>
+  }
 }
 
 const startStorage = new AsyncLocalStorage<StartStorageContext>()

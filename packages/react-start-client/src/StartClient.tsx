@@ -1,21 +1,18 @@
 import { Await, RouterProvider } from '@tanstack/react-router'
-import { hydrate } from '@tanstack/start-client-core'
+import { hydrateStart } from '@tanstack/start-client-core'
+import type { CreateStart } from '@tanstack/start-client-core'
 import type { AnyRouter } from '@tanstack/router-core'
 
-let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
+let hydrationPromise: Promise<AnyRouter> | undefined
 
-export function StartClient(props: { router: AnyRouter }) {
+export function StartClient({ createStart }: { createStart: CreateStart }) {
   if (!hydrationPromise) {
-    if (!props.router.state.matches.length) {
-      hydrationPromise = hydrate(props.router)
-    } else {
-      hydrationPromise = Promise.resolve()
-    }
+    hydrationPromise = hydrateStart(createStart)
   }
   return (
     <Await
       promise={hydrationPromise}
-      children={() => <RouterProvider router={props.router} />}
+      children={(router) => <RouterProvider router={router} />}
     />
   )
 }

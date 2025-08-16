@@ -18,15 +18,11 @@ import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
 
 import { HEADERS } from './constants'
+import type { AnyStartConfig, CreateStart } from '@tanstack/start-client-core'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
 import type { RouteMethod, RouteMethodHandlerFn } from './serverRoute'
 import type { RequestHandler } from './request-response'
-import type {
-  AnyRoute,
-  AnyRouter,
-  Awaitable,
-  Manifest,
-} from '@tanstack/router-core'
+import type { AnyRoute, AnyRouter, Manifest } from '@tanstack/router-core'
 import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 import './serverRoute'
 
@@ -49,11 +45,11 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
   return headers
 }
 
-export function createStartHandler<TRouter extends AnyRouter>({
-  createRouter,
+export function createStartHandler<TStartConfig extends AnyStartConfig>({
+  createStart,
 }: {
-  createRouter: () => Awaitable<TRouter>
-}): CustomizeStartHandler<TRouter> {
+  createStart: CreateStart
+}): CustomizeStartHandler<TStartConfig['~types']['router']> {
   let startRoutesManifest: Manifest | null = null
 
   return (cb) => {
@@ -108,7 +104,8 @@ export function createStartHandler<TRouter extends AnyRouter>({
       const APP_BASE = process.env.TSS_APP_BASE || '/'
 
       // TODO how does this work with base path? does the router need to be configured the same as APP_BASE?
-      const router = await createRouter()
+      const start = await createStart()
+      const router = start.router
 
       // Update the client-side router with the history
       const isPrerendering = process.env.TSS_PRERENDERING === 'true'

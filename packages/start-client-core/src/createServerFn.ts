@@ -1,6 +1,5 @@
 import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
-import { globalMiddleware } from './registerGlobalMiddleware'
 
 import { getRouterInstance } from './getRouterInstance'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
@@ -27,8 +26,23 @@ import type {
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
 } from './createMiddleware'
+import { createIsomorphicFn } from './createIsomorphicFn'
+import { getStartContext } from '@tanstack/start-storage-context'
 
 type TODO = any
+
+const getGlobalServerFunctionMiddlewares = createIsomorphicFn()
+  .client((_: 'client' | 'server') => window.__TSS_GLOBAL_MIDDLEWARES__ || [])
+  .server((env) => {
+    const start = getStartContext()
+    const functionMiddlewares = start.middlewares?.function || []
+    // TODO this is probably wrong for SSR.
+    // we don't want the request middlewares to run there inside of the server function middlwares
+    if (env === 'server') {
+      return [...(start.middlewares?.request || []), ...functionMiddlewares]
+    }
+    return functionMiddlewares
+  })
 
 export function createServerFn<
   TRegister extends Register,
@@ -180,8 +194,9 @@ export async function executeMiddleware(
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
+  const globalMiddlewares = getGlobalServerFunctionMiddlewares(env)
   const flattenedMiddlewares = flattenMiddlewares([
-    ...globalMiddleware,
+    ...globalMiddlewares,
     ...middlewares,
   ])
 

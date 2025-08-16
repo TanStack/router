@@ -1,7 +1,5 @@
 import { hydrate } from 'solid-js/web'
 import { StartClient } from '@tanstack/solid-start'
-import { createRouter } from '#tanstack-start-router-entry'
+import { createStart } from '#tanstack-start-createStart-entry'
 
-const router = createRouter()
-
-hydrate(() => <StartClient router={router} />, document.body)
+hydrate(() => <StartClient createStart={createStart} />, document.body)
