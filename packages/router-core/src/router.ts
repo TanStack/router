@@ -2844,12 +2844,10 @@ export class RouterCore<
       const match = this.getMatch(matchId)!
       match._nonReactive.loaderPromise = createControlledPromise<void>()
       if (nextPreload !== match.preload) {
-        innerLoadContext.updateMatch(matchId, (prev) => {
-          return {
-            ...prev,
-            preload: nextPreload,
-          }
-        })
+        innerLoadContext.updateMatch(matchId, (prev) => ({
+          ...prev,
+          preload: nextPreload,
+        }))
       }
 
       // If the route is successful and still fresh, just resolve
