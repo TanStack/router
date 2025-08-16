@@ -1887,7 +1887,8 @@ export class RouterCore<
             }),
           })
 
-          await this.loadMatches({
+          await loadMatches({
+            router: this,
             sync: opts?.sync,
             matches: this.state.pendingMatches as Array<AnyRouteMatch>,
             location: next,
@@ -2081,8 +2082,6 @@ export class RouterCore<
     )
   }
 
-  loadMatches = loadMatches.bind(this)
-
   invalidate: InvalidateFn<
     RouterCore<
       TRouteTree,
@@ -2216,7 +2215,8 @@ export class RouterCore<
     })
 
     try {
-      matches = await this.loadMatches({
+      matches = await loadMatches({
+        router: this,
         matches,
         location: next,
         preload: true,
