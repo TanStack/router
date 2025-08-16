@@ -22,15 +22,19 @@ import type { AnyRouter, UpdateMatchFn } from './router'
  * to work. (It's basically the function's argument, plus a few mutable states)
  */
 type InnerLoadContext = {
+  /** the calling router instance */
   router: AnyRouter
   location: ParsedLocation
+  /** mutable state, scoped to a `loadMatches` call */
   firstBadMatchIndex?: number
+  /** mutable state, scoped to a `loadMatches` call */
   rendered?: boolean
   updateMatch: UpdateMatchFn
   matches: Array<AnyRouteMatch>
   preload?: boolean
   onReady?: () => Promise<void>
   sync?: boolean
+  /** mutable state, scoped to a `loadMatches` call */
   matchPromises: Array<Promise<AnyRouteMatch>>
 }
 
@@ -277,6 +281,9 @@ const setupPendingTimeout = (
   matchId: string,
   route: AnyRoute,
 ): void => {
+  const match = inner.router.getMatch(matchId)!
+  if (match._nonReactive.pendingTimeout !== undefined) return
+
   const pendingMs =
     route.options.pendingMs ?? inner.router.options.defaultPendingMs
   const shouldPending = !!(
@@ -291,8 +298,8 @@ const setupPendingTimeout = (
     (route.options.pendingComponent ??
       (inner.router.options as any)?.defaultPendingComponent)
   )
-  const match = inner.router.getMatch(matchId)!
-  if (shouldPending && match._nonReactive.pendingTimeout === undefined) {
+
+  if (shouldPending) {
     const pendingTimeout = setTimeout(() => {
       // Update the match and prematurely resolve the loadMatches promise so that
       // the pending component can start rendering
