@@ -2697,10 +2697,12 @@ export class RouterCore<
             this.getMatch(matchId),
             loaderData,
           )
-          innerLoadContext.updateMatch(matchId, (prev) => ({
-            ...prev,
-            loaderData,
-          }))
+          if (loaderData !== undefined) {
+            innerLoadContext.updateMatch(matchId, (prev) => ({
+              ...prev,
+              loaderData,
+            }))
+          }
         }
 
         // Lazy option can modify the route options,
@@ -2837,14 +2839,18 @@ export class RouterCore<
             )
           : shouldReloadOption
 
-      innerLoadContext.updateMatch(matchId, (prev) => {
-        prev._nonReactive.loaderPromise = createControlledPromise<void>()
-        return {
-          ...prev,
-          preload:
-            !!preload && !this.state.matches.some((d) => d.id === matchId),
-        }
-      })
+      const nextPreload =
+        !!preload && !this.state.matches.some((d) => d.id === matchId)
+      const match = this.getMatch(matchId)!
+      match._nonReactive.loaderPromise = createControlledPromise<void>()
+      if (nextPreload !== match.preload) {
+        innerLoadContext.updateMatch(matchId, (prev) => {
+          return {
+            ...prev,
+            preload: nextPreload,
+          }
+        })
+      }
 
       // If the route is successful and still fresh, just resolve
       const { status, invalid } = this.getMatch(matchId)!
@@ -2886,23 +2892,26 @@ export class RouterCore<
         }
       }
     }
+    const match = this.getMatch(matchId)!
     if (!loaderIsRunningAsync) {
-      const match = this.getMatch(matchId)!
       match._nonReactive.loaderPromise?.resolve()
       match._nonReactive.loadPromise?.resolve()
     }
 
-    innerLoadContext.updateMatch(matchId, (prev) => {
-      clearTimeout(prev._nonReactive.pendingTimeout)
-      prev._nonReactive.pendingTimeout = undefined
-      if (!loaderIsRunningAsync) prev._nonReactive.loaderPromise = undefined
-      prev._nonReactive.dehydrated = undefined
-      return {
-        ...prev,
-        isFetching: loaderIsRunningAsync ? prev.isFetching : false,
-        invalid: false,
-      }
-    })
+    clearTimeout(match._nonReactive.pendingTimeout)
+    match._nonReactive.pendingTimeout = undefined
+    if (!loaderIsRunningAsync) match._nonReactive.loaderPromise = undefined
+    match._nonReactive.dehydrated = undefined
+    const nextIsFetching = loaderIsRunningAsync ? match.isFetching : false
+    if (nextIsFetching !== match.isFetching || match.invalid !== false) {
+      innerLoadContext.updateMatch(matchId, (prev) => {
+        return {
+          ...prev,
+          isFetching: nextIsFetching,
+          invalid: false,
+        }
+      })
+    }
     return this.getMatch(matchId)!
   }
 
