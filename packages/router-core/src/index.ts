@@ -39,6 +39,8 @@ export type {
   RequiredToOptions,
 } from './link'
 
+export { componentTypes } from './load-matches'
+
 export type {
   RouteToPath,
   TrailingSlashOptionByRouter,
@@ -197,7 +199,6 @@ export {
   defaultSerializeError,
   getLocationChangeInfo,
   RouterCore,
-  componentTypes,
   lazyFn,
   SearchParamError,
   PathParamError,
