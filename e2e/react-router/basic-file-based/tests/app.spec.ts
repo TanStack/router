@@ -308,3 +308,37 @@ test('Should remount deps when remountDeps does change ', async ({ page }) => {
     'Page component mounts: 2',
   )
 })
+
+test('Should match notFoundComponent when navigating to a route with a virtualLayout', async ({
+  page,
+}) => {
+  await page.goto('/foo')
+  await expect(page.getByRole('paragraph')).toContainText(
+    'This is the notFoundComponent configured on root route',
+  )
+
+  await page.goto('/bar')
+  await expect(page.locator('#app')).toContainText(
+    'Hello "/(virtualLayout)/bar"!',
+  )
+
+  await page.goto('/baz/')
+  await expect(page.locator('#app')).toContainText(
+    'Hello "/(virtualLayout)/baz/"!',
+  )
+
+  await page.goto('/qux')
+  await expect(page.locator('#app')).toContainText(
+    'Hello "/(virtualLayout)/qux"!',
+  )
+
+  await page.goto('/quux')
+  await expect(page.getByRole('paragraph')).toContainText(
+    'This is the notFoundComponent configured on root route',
+  )
+
+  await page.goto('/quux/hello')
+  await expect(page.locator('#app')).toContainText(
+    'Hello "/(virtualLayout)/quux/_quuxLayout/hello"!',
+  )
+})
