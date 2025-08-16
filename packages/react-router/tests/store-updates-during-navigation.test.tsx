@@ -104,12 +104,15 @@ async function run({ select }: ReturnType<typeof setup>) {
   return after - before
 }
 
+function resolveAfter(ms: number, value: any) {
+  return new Promise<void>((resolve) => setTimeout(() => resolve(value), ms))
+}
+
 describe("Store doesn't update *too many* times during navigation", () => {
   test('async loader, async beforeLoad, pendingMs', async () => {
     const params = setup({
-      beforeLoad: () =>
-        new Promise<void>((resolve) => setTimeout(resolve, 100)),
-      loader: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
+      beforeLoad: () => resolveAfter(100, { foo: 'bar' }),
+      loader: () => resolveAfter(100, { hello: 'world' }),
       defaultPendingMs: 100,
       defaultPendingMinMs: 300,
     })
@@ -119,7 +122,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(14)
+    expect(updates).toBe(10)
   })
 
   test('redirection in preload', async () => {
@@ -137,13 +140,13 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(6)
+    expect(updates).toBe(5)
   })
 
   test('sync beforeLoad', async () => {
     const params = setup({
       beforeLoad: () => ({ foo: 'bar' }),
-      loader: () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
+      loader: () => resolveAfter(100, { hello: 'world' }),
       defaultPendingMs: 100,
       defaultPendingMinMs: 300,
     })
@@ -153,7 +156,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(13)
+    expect(updates).toBe(9)
   })
 
   test('nothing', async () => {
@@ -164,8 +167,8 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBeGreaterThanOrEqual(10) // WARN: this is flaky, and sometimes (rarely) is 11
-    expect(updates).toBeLessThanOrEqual(11)
+    expect(updates).toBeGreaterThanOrEqual(6) // WARN: this is flaky, and sometimes (rarely) is 7
+    expect(updates).toBeLessThanOrEqual(7)
   })
 
   test('not found in beforeLoad', async () => {
@@ -205,6 +208,6 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(19)
+    expect(updates).toBe(15)
   })
 })
