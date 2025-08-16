@@ -2904,13 +2904,11 @@ export class RouterCore<
     match._nonReactive.dehydrated = undefined
     const nextIsFetching = loaderIsRunningAsync ? match.isFetching : false
     if (nextIsFetching !== match.isFetching || match.invalid !== false) {
-      innerLoadContext.updateMatch(matchId, (prev) => {
-        return {
-          ...prev,
-          isFetching: nextIsFetching,
-          invalid: false,
-        }
-      })
+      innerLoadContext.updateMatch(matchId, (prev) => ({
+        ...prev,
+        isFetching: nextIsFetching,
+        invalid: false,
+      }))
     }
     return this.getMatch(matchId)!
   }
