@@ -106,6 +106,7 @@ test('shouldBlockFn has corrent action', () => {
     .toHaveProperty('shouldBlockFn')
     .parameter(0)
     .toHaveProperty('current')
+    .exclude(undefined)
     .toHaveProperty('routeId')
     .toEqualTypeOf<'__root__' | '/' | '/invoices' | '/invoices/'>()
 

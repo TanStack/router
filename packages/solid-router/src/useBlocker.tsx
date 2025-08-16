@@ -42,7 +42,7 @@ type MakeShouldBlockFnLocationUnion<
 type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
   | {
       status: 'blocked'
-      current: MakeShouldBlockFnLocationUnion<TRouter>
+      current: MakeShouldBlockFnLocationUnion<TRouter> | undefined
       next: MakeShouldBlockFnLocationUnion<TRouter> | undefined
       action: HistoryAction
       proceed: () => void
@@ -58,7 +58,7 @@ type BlockerResolver<TRouter extends AnyRouter = RegisteredRouter> =
     }
 
 type ShouldBlockFnArgs<TRouter extends AnyRouter = RegisteredRouter> = {
-  current: MakeShouldBlockFnLocationUnion<TRouter>
+  current: MakeShouldBlockFnLocationUnion<TRouter> | undefined
   next: MakeShouldBlockFnLocationUnion<TRouter> | undefined
   action: HistoryAction
 }
@@ -205,7 +205,7 @@ export function useBlocker(
       }
 
       const current = getLocation(blockerFnArgs.currentLocation)
-      if (!current) {
+      if (!current && props.throwOnUnknownRoute) {
         throw new Error(
           `No route found for location ${blockerFnArgs.currentLocation.href}`,
         )
