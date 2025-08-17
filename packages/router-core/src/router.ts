@@ -1428,7 +1428,7 @@ export class RouterCore<
         ).matchedRoutes
 
           const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
-            return comparePaths(d.fullPath, fromPath)
+            return comparePaths(d.fullPath, dest.from!)
           })
 
           const matchedCurrent = findLast(allFromMatches, (d) => {
