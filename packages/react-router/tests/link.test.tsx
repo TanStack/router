@@ -5411,7 +5411,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
 describe('relative links to current route', () => {
   test.each([true, false])(
-    'should navigate to current route when using "." in nested route structure from Index Route',
+    'should navigate to current route when using "." in nested route structure from Index Route with trailingSlash: %s',
     async (trailingSlash: boolean) => {
       const tail = trailingSlash ? '/' : ''
 
@@ -5493,7 +5493,7 @@ describe('relative links to current route', () => {
   )
 
   test.each([true, false])(
-    'should navigate to current route with search params when using "." in nested route structure from Index Route',
+    'should navigate to current route with search params when using "." in nested route structure from Index Route with trailingSlash: %s',
     async (trailingSlash: boolean) => {
       const tail = trailingSlash ? '/' : ''
 
@@ -5573,7 +5573,7 @@ describe('relative links to current route', () => {
   )
 
   test.each([true, false])(
-    'should navigate to current route with changing path params when using "." in nested route structure',
+    'should navigate to current route with changing path params when using "." in nested route structure with trailingSlash: %s',
     async (trailingSlash) => {
       const tail = trailingSlash ? '/' : ''
       const rootRoute = createRootRoute()
@@ -5693,7 +5693,7 @@ describe('relative links to current route', () => {
 
 describe('relative links to from route', () => {
   test.each([true, false])(
-    'should navigate to from route when using "." in nested route structure from Index Route',
+    'should navigate to from route when using "." in nested route structure from Index Route with trailingSlash: %s',
     async (trailingSlash: boolean) => {
       const tail = trailingSlash ? '/' : ''
 
@@ -5773,7 +5773,7 @@ describe('relative links to from route', () => {
   )
 
   test.each([true, false])(
-    'should navigate to from route with path params when using "." in nested route structure',
+    'should navigate to from route with path params when using "." in nested route structure with trailingSlash: %s',
     async (trailingSlash) => {
       const tail = trailingSlash ? '/' : ''
       const rootRoute = createRootRoute()
