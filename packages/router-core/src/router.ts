@@ -1477,7 +1477,10 @@ export class RouterCore<
           ? {}
           : (dest.params ?? true) === true
             ? fromParams
-            : Object.assign(fromParams, functionalUpdate(dest.params as any, fromParams))
+            : Object.assign(
+                fromParams,
+                functionalUpdate(dest.params as any, fromParams),
+              )
 
       // Interpolate the path first to get the actual resolved path, then match against that
       const interpolatedNextTo = interpolatePath({
@@ -1493,7 +1496,8 @@ export class RouterCore<
       // If there are any params, we need to stringify them
       if (Object.keys(nextParams).length > 0) {
         for (const route of destRoutes) {
-          const fn = route.options.params?.stringify ?? route.options.stringifyParams
+          const fn =
+            route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
             Object.assign(nextParams, fn(nextParams))
           }
@@ -1518,10 +1522,13 @@ export class RouterCore<
         destRoutes.forEach((route) => {
           if (route.options.validateSearch) {
             try {
-              Object.assign(validatedSearch, validateSearch(route.options.validateSearch, {
-                ...validatedSearch,
-                ...nextSearch,
-              }))
+              Object.assign(
+                validatedSearch,
+                validateSearch(route.options.validateSearch, {
+                  ...validatedSearch,
+                  ...nextSearch,
+                }),
+              )
             } catch {
               // ignore errors here because they are already handled in matchRoutes
             }
