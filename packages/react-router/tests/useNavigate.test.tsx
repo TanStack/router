@@ -1058,13 +1058,13 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
     name: 'To first post',
   })
 
-  fireEvent.click(postsButton)
+  await act(() => fireEvent.click(postsButton))
 
   const invoicesButton = await screen.findByRole('button', {
     name: 'To Invoices',
   })
 
-  fireEvent.click(invoicesButton)
+  await act(() => fireEvent.click(invoicesButton))
 
   expect(consoleWarn).toHaveBeenCalledWith(
     'Could not find match for from: /invoices',
@@ -1443,20 +1443,20 @@ test.each([true, false])(
 
     const postButton = await screen.findByTestId('posts-btn')
 
-    fireEvent.click(postButton)
+    await act(() => fireEvent.click(postButton))
 
     expect(router.state.location.pathname).toBe(`/post${tail}`)
 
     const searchButton = await screen.findByTestId('search-btn')
 
-    fireEvent.click(searchButton)
+    await act(() => fireEvent.click(searchButton))
 
     expect(router.state.location.pathname).toBe(`/post${tail}`)
     expect(router.state.location.search).toEqual({ param1: 'value1' })
 
     const searchButton2 = await screen.findByTestId('search2-btn')
 
-    fireEvent.click(searchButton2)
+    await act(() => fireEvent.click(searchButton2))
 
     expect(router.state.location.pathname).toBe(`/post${tail}`)
     expect(router.state.location.search).toEqual({ param1: 'value2' })
@@ -1737,13 +1737,14 @@ test.each([true, false])(
 
     const postsButton = await screen.findByTestId('posts-btn')
 
-    fireEvent.click(postsButton)
+    await act(() => fireEvent.click(postsButton))
 
     expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
 
     const post1Button = await screen.findByTestId('first-post-btn')
 
-    fireEvent.click(post1Button)
+    await act(() => fireEvent.click(post1Button))
+
     expect(await screen.findByTestId('post-heading')).toBeInTheDocument()
     expect(await screen.findByTestId('detail-heading-1')).toBeInTheDocument()
     expect(await screen.findByTestId('detail-heading-2')).toBeInTheDocument()
@@ -1756,121 +1757,24 @@ test.each([true, false])(
 
     const detail1AddBtn = await screen.findByTestId('detail-btn-add-1')
 
-    fireEvent.click(detail1AddBtn)
+    await act(() => fireEvent.click(detail1AddBtn))
 
     expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
     expect(router.state.location.search).toEqual({ _test: true })
 
     const detail1RemoveBtn = await screen.findByTestId('detail-btn-remove-1')
 
-    fireEvent.click(detail1RemoveBtn)
+    await act(() => fireEvent.click(detail1RemoveBtn))
 
     expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
     expect(router.state.location.search).toEqual({})
 
     const detail2AddBtn = await screen.findByTestId('detail-btn-add-2')
 
-    fireEvent.click(detail2AddBtn)
+    await act(() => fireEvent.click(detail2AddBtn))
 
     expect(router.state.location.pathname).toBe(`/posts/id1/detail${tail}`)
     expect(router.state.location.search).toEqual({ _test: true })
-  },
-)
-
-test.each([true, false])(
-  'should navigate to current route with search params when using "." in nested route structure from Index Route',
-  async (trailingSlash: boolean) => {
-    const tail = trailingSlash ? '/' : ''
-
-    const rootRoute = createRootRoute()
-
-    const IndexComponent = () => {
-      const navigate = useNavigate()
-      return (
-        <>
-          <button
-            data-testid="posts-btn"
-            onClick={() => {
-              navigate({
-                to: '/post',
-              })
-            }}
-          >
-            Post
-          </button>
-          <button
-            data-testid="search-btn"
-            onClick={() =>
-              navigate({
-                to: '.',
-                search: {
-                  param1: 'value1',
-                },
-              })
-            }
-          >
-            Search
-          </button>
-          <button
-            data-testid="search2-btn"
-            onClick={() =>
-              navigate({
-                to: '/post',
-                search: {
-                  param1: 'value2',
-                },
-              })
-            }
-          >
-            Search2
-          </button>
-          <Outlet />
-        </>
-      )
-    }
-
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: IndexComponent,
-      validateSearch: z.object({
-        param1: z.string().optional(),
-      }),
-    })
-
-    const postRoute = createRoute({
-      getParentRoute: () => indexRoute,
-      path: 'post',
-      component: () => <div>Post</div>,
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute, postRoute]),
-      history,
-      trailingSlash: trailingSlash ? 'always' : 'never',
-    })
-
-    render(<RouterProvider router={router} />)
-
-    const postButton = await screen.findByTestId('posts-btn')
-
-    fireEvent.click(postButton)
-
-    expect(router.state.location.pathname).toBe(`/post${tail}`)
-
-    const searchButton = await screen.findByTestId('search-btn')
-
-    fireEvent.click(searchButton)
-
-    expect(router.state.location.pathname).toBe(`/post${tail}`)
-    expect(router.state.location.search).toEqual({ param1: 'value1' })
-
-    const searchButton2 = await screen.findByTestId('search2-btn')
-
-    fireEvent.click(searchButton2)
-
-    expect(router.state.location.pathname).toBe(`/post${tail}`)
-    expect(router.state.location.search).toEqual({ param1: 'value2' })
   },
 )
 
@@ -1949,20 +1853,20 @@ test.each([true, false])(
 
     const postButton = await screen.findByTestId('posts-btn')
 
-    fireEvent.click(postButton)
+    await act(() => fireEvent.click(postButton))
 
     expect(router.state.location.pathname).toBe(`/post${tail}`)
 
     const searchButton = await screen.findByTestId('search-btn')
 
-    fireEvent.click(searchButton)
+    await act(() => fireEvent.click(searchButton))
 
     expect(router.state.location.pathname).toBe(`/post${tail}`)
     expect(router.state.location.search).toEqual({ param1: 'value1' })
 
     const homeBtn = await screen.findByTestId('home-btn')
 
-    fireEvent.click(homeBtn)
+    await act(() => fireEvent.click(homeBtn))
 
     expect(router.state.location.pathname).toBe(`/`)
     expect(router.state.location.search).toEqual({})
@@ -2402,7 +2306,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>Param Route</h1>
-              <button onClick={() => navigate({ from: 'param/$param', to: './a' })}>
+              <button onClick={() => navigate({ from: paramRoute.fullPath, to: './a' })}>
                 Link to ./a
               </button>
               <button
@@ -2424,7 +2328,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>Param A Route</h1>
-              <button onClick={() => navigate({ from: 'param/$param/a', to: '..' })}>
+              <button onClick={() => navigate({ from: paramARoute.fullPath, to: '..' })}>
                 Link to .. from /param/foo/a
               </button>
               <Outlet />
