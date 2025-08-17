@@ -245,19 +245,6 @@ export function useLinkProps<
     }
   }, [disabled, doPreload, preload])
 
-  const navigate = React.useCallback(() => {
-    router.navigate({
-      ...options,
-      from: getFrom(),
-      replace,
-      resetScroll,
-      hashScrollIntoView,
-      startTransition,
-      viewTransition,
-      ignoreBlocker,
-    })
-  }, [router, options, getFrom, replace, resetScroll, hashScrollIntoView, startTransition, viewTransition, ignoreBlocker])
-
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
     if (
@@ -280,7 +267,16 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      navigate()
+      router.navigate({
+        ...options,
+        from: getFrom(),
+        replace,
+        resetScroll,
+        hashScrollIntoView,
+        startTransition,
+        viewTransition,
+        ignoreBlocker,
+      })
     }
   }
 
