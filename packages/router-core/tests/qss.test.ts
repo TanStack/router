@@ -8,12 +8,6 @@ describe('encode function', () => {
     expect(queryString).toEqual('token=foo&key=value')
   })
 
-  it('should encode an object into a query string with a prefix', () => {
-    const obj = { token: 'foo', key: 'value' }
-    const queryString = encode(obj, 'prefix_/*&?')
-    expect(queryString).toEqual('prefix_/*&?token=foo&key=value')
-  })
-
   it('should handle encoding an object with empty values and trailing equal signs', () => {
     const obj = { token: '', key: 'value=' }
     const queryString = encode(obj)
@@ -23,7 +17,7 @@ describe('encode function', () => {
   it('should handle encoding an object with array values', () => {
     const obj = { token: ['foo', 'bar'], key: 'value' }
     const queryString = encode(obj)
-    expect(queryString).toEqual('token=foo&token=bar&key=value')
+    expect(queryString).toEqual('token=foo%2Cbar&key=value')
   })
 
   it('should handle encoding an object with special characters', () => {
@@ -43,12 +37,6 @@ describe('decode function', () => {
   it('should decode a query string without a prefix', () => {
     const queryString = 'token=foo&key=value'
     const decodedObj = decode(queryString)
-    expect(decodedObj).toEqual({ token: 'foo', key: 'value' })
-  })
-
-  it('should decode a query string with a prefix', () => {
-    const queryString = 'prefix_/*&?token=foo&key=value'
-    const decodedObj = decode(queryString, 'prefix_/*&?')
     expect(decodedObj).toEqual({ token: 'foo', key: 'value' })
   })
 
