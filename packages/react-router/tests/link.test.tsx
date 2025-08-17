@@ -5955,9 +5955,7 @@ describe('relative links to from route', () => {
       expect(
         await screen.findByTestId('posts-index-heading'),
       ).toBeInTheDocument()
-      expect(
-        screen.queryByTestId('post-notes-heading'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByTestId('post-notes-heading')).not.toBeInTheDocument()
       expect(
         screen.queryByTestId('post-detail-index-heading'),
       ).not.toBeInTheDocument()

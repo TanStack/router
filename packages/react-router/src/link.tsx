@@ -221,7 +221,7 @@ export function useLinkProps<
       options.replace,
       options.resetScroll,
       options.viewTransition,
-      getFrom
+      getFrom,
     ],
   )
 
