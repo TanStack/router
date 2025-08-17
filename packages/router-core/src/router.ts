@@ -11,7 +11,6 @@ import {
   findLast,
   functionalUpdate,
   last,
-  pick,
   replaceEqualDeep,
 } from './utils'
 import {
@@ -1612,7 +1611,7 @@ export class RouterCore<
         if (foundMask) {
           const { from: _from, ...maskProps } = foundMask
           maskedDest = {
-            ...pick(opts, ['from']),
+            from: opts.from,
             ...maskProps,
             params,
           }
@@ -1630,7 +1629,7 @@ export class RouterCore<
 
     if (opts.mask) {
       return buildWithMatches(opts, {
-        ...pick(opts, ['from']),
+        from: opts.from,
         ...opts.mask,
       })
     }
