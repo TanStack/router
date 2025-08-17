@@ -23,7 +23,7 @@ export function useNavigate<
   })
 
   return ((options: NavigateOptions) => {
-    const currentRouteMatches= router.matchRoutes(router.latestLocation, {
+    const currentRouteMatches = router.matchRoutes(router.latestLocation, {
       _buildLocation: false,
     })
 
@@ -33,7 +33,7 @@ export function useNavigate<
         options.from ??
         _defaultOpts?.from ??
         currentRouteMatches.slice(-1)[0]?.fullPath ??
-        router.state.matches[matchIndex()]!.fullPath
+        router.state.matches[matchIndex()]!.fullPath,
     })
   }) as UseNavigateResult<TDefaultFrom>
 }

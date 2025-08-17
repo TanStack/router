@@ -104,14 +104,16 @@ export function useLinkProps<
     select: (match) => match.index,
   })
 
-  const getFrom = React.useCallback( () => {
-    const currentRouteMatches= router.matchRoutes(router.latestLocation, {
+  const getFrom = React.useCallback(() => {
+    const currentRouteMatches = router.matchRoutes(router.latestLocation, {
       _buildLocation: false,
     })
 
-    return options.from ??
+    return (
+      options.from ??
       currentRouteMatches.slice(-1)[0]?.fullPath ??
       router.state.matches[matchIndex]!.fullPath
+    )
   }, [router, options.from, matchIndex])
 
   const next = React.useMemo(
@@ -192,10 +194,12 @@ export function useLinkProps<
 
   const doPreload = React.useCallback(
     () => {
-      router.preloadRoute({ ...options, from: getFrom() } as any).catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+      router
+        .preloadRoute({ ...options, from: getFrom() } as any)
+        .catch((err) => {
+          console.warn(err)
+          console.warn(preloadWarning)
+        })
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [

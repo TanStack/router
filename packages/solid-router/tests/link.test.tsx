@@ -4602,23 +4602,20 @@ describe('relative links to current route', () => {
       const IndexComponent = () => {
         return (
           <>
-            <Link
-              data-testid="posts-link"
-              to='/post'
-            >
+            <Link data-testid="posts-link" to="/post">
               Post
             </Link>
             <Link
               data-testid="search-link"
-              to='.'
-              search={{param1: 'value1'}}
+              to="."
+              search={{ param1: 'value1' }}
             >
               Search
             </Link>
             <Link
               data-testid="search2-link"
-              to='.'
-              search={{param1: 'value2'}}
+              to="."
+              search={{ param1: 'value2' }}
             >
               Search2
             </Link>
@@ -4690,23 +4687,20 @@ describe('relative links to current route', () => {
       const IndexComponent = () => {
         return (
           <>
-            <Link
-              data-testid="posts-link"
-              to='/post'
-            >
+            <Link data-testid="posts-link" to="/post">
               Post
             </Link>
             <Link
               data-testid="search-link"
-              to='.'
-              search={{param1: 'value1'}}
+              to="."
+              search={{ param1: 'value1' }}
             >
               Search
             </Link>
             <Link
               data-testid="search2-link"
-              to='/post'
-              search={{param1: 'value2'}}
+              to="/post"
+              search={{ param1: 'value2' }}
             >
               Search2
             </Link>
@@ -4776,10 +4770,7 @@ describe('relative links to current route', () => {
         return (
           <>
             <h1 data-testid="index-heading">Index</h1>
-            <Link
-              data-testid="posts-link"
-              to='/posts'
-            >
+            <Link data-testid="posts-link" to="/posts">
               Posts
             </Link>
           </>
@@ -4811,14 +4802,14 @@ describe('relative links to current route', () => {
             <h1 data-testid="posts-index-heading">Posts</h1>
             <Link
               data-testid="first-post-link"
-              to='$postId'
+              to="$postId"
               params={{ postId: 'id1' }}
             >
               To first post
             </Link>
             <Link
               data-testid="second-post-link"
-              to='.'
+              to="."
               params={{ postId: 'id2' }}
             >
               To second post
@@ -4899,24 +4890,17 @@ describe('relative links to from route', () => {
       const IndexComponent = () => {
         return (
           <>
-            <Link
-              data-testid="posts-link"
-              to='/post'
-            >
+            <Link data-testid="posts-link" to="/post">
               Post
             </Link>
             <Link
               data-testid="search-link"
-              to='.'
-              search={{param1: 'value1'}}
+              to="."
+              search={{ param1: 'value1' }}
             >
               Search
             </Link>
-            <Link
-              data-testid="home-link"
-              from='/'
-              to='.'
-            >
+            <Link data-testid="home-link" from="/" to=".">
               Go To Home
             </Link>
             <Outlet />
@@ -4985,10 +4969,7 @@ describe('relative links to from route', () => {
         return (
           <>
             <h1 data-testid="index-heading">Index</h1>
-            <Link
-              data-testid="posts-link"
-              to='/posts'
-            >
+            <Link data-testid="posts-link" to="/posts">
               Posts
             </Link>
           </>
@@ -5020,23 +5001,19 @@ describe('relative links to from route', () => {
             <h1 data-testid="posts-index-heading">Posts</h1>
             <Link
               data-testid="first-post-link"
-              to='$postId'
+              to="$postId"
               params={{ postId: '1' }}
             >
               To first post
             </Link>
             <Link
               data-testid="second-post-link"
-              to='$postId'
+              to="$postId"
               params={{ postId: '2' }}
             >
               To second post
             </Link>
-            <Link
-              data-testid="to-posts-index-link"
-              from='/posts'
-              to='.'
-            >
+            <Link data-testid="to-posts-index-link" from="/posts" to=".">
               To posts list
             </Link>
             <Outlet />
@@ -5048,22 +5025,16 @@ describe('relative links to from route', () => {
         return (
           <>
             <h1 data-testid="post-detail-index-heading">Post Detail</h1>
-            <Link
-              data-testid="post-info-link"
-              to='info'
-            >
+            <Link data-testid="post-info-link" to="info">
               To post info
             </Link>
-            <Link
-              data-testid="post-notes-link"
-              to='notes'
-            >
+            <Link data-testid="post-notes-link" to="notes">
               To post notes
             </Link>
             <Link
               data-testid="to-post-detail-index-link"
-              from='/posts/$postId'
-              to='.'
+              from="/posts/$postId"
+              to="."
             >
               To index detail options
             </Link>
@@ -5115,7 +5086,11 @@ describe('relative links to from route', () => {
       const router = createRouter({
         routeTree: rootRoute.addChildren([
           indexRoute,
-          layoutRoute.addChildren([postsRoute.addChildren([postDetailRoute.addChildren([postInfoRoute, postNotesRoute])])]),
+          layoutRoute.addChildren([
+            postsRoute.addChildren([
+              postDetailRoute.addChildren([postInfoRoute, postNotesRoute]),
+            ]),
+          ]),
         ]),
         trailingSlash: trailingSlash ? 'always' : 'never',
       })
@@ -5136,7 +5111,9 @@ describe('relative links to from route', () => {
       fireEvent.click(firstPostButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('post-detail-index-heading')).toBeInTheDocument()
+        expect(
+          screen.queryByTestId('post-detail-index-heading'),
+        ).toBeInTheDocument()
         expect(window.location.pathname).toEqual(`/posts/1${tail}`)
       })
 
@@ -5149,12 +5126,16 @@ describe('relative links to from route', () => {
         expect(window.location.pathname).toEqual(`/posts/1/info${tail}`)
       })
 
-      const toPostDetailIndexButton = await screen.findByTestId('to-post-detail-index-link')
+      const toPostDetailIndexButton = await screen.findByTestId(
+        'to-post-detail-index-link',
+      )
 
       fireEvent.click(toPostDetailIndexButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('post-detail-index-heading')).toBeInTheDocument()
+        expect(
+          screen.queryByTestId('post-detail-index-heading'),
+        ).toBeInTheDocument()
         expect(
           screen.queryByTestId("'post-info-heading"),
         ).not.toBeInTheDocument()
@@ -5170,7 +5151,9 @@ describe('relative links to from route', () => {
         expect(window.location.pathname).toEqual(`/posts/1/notes${tail}`)
       })
 
-      const toPostsIndexButton = await screen.findByTestId('to-posts-index-link')
+      const toPostsIndexButton = await screen.findByTestId(
+        'to-posts-index-link',
+      )
 
       fireEvent.click(toPostsIndexButton)
 
@@ -5190,7 +5173,9 @@ describe('relative links to from route', () => {
       fireEvent.click(secondPostButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('post-detail-index-heading')).toBeInTheDocument()
+        expect(
+          screen.queryByTestId('post-detail-index-heading'),
+        ).toBeInTheDocument()
         expect(window.location.pathname).toEqual(`/posts/2${tail}`)
       })
     },
@@ -5242,7 +5227,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>Param Route</h1>
-              <Link from={paramRoute.fullPath} to="./a">Link to ./a</Link>
+              <Link from={paramRoute.fullPath} to="./a">
+                Link to ./a
+              </Link>
               <Link to="c" unsafeRelative="path">
                 Link to c
               </Link>
@@ -5262,7 +5249,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>Param A Route</h1>
-              <Link from={paramARoute.fullPath} to="..">Link to .. from /param/foo/a</Link>
+              <Link from={paramARoute.fullPath} to="..">
+                Link to .. from /param/foo/a
+              </Link>
               <Outlet />
             </>
           )

@@ -26,7 +26,7 @@ export function useNavigate<
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      const currentRouteMatches= router.matchRoutes(router.latestLocation, {
+      const currentRouteMatches = router.matchRoutes(router.latestLocation, {
         _buildLocation: false,
       })
 

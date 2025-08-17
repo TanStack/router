@@ -1416,7 +1416,11 @@ export class RouterCore<
 
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
-      if (dest.from && process.env.NODE_ENV !== 'production' && dest._isNavigate) {
+      if (
+        dest.from &&
+        process.env.NODE_ENV !== 'production' &&
+        dest._isNavigate
+      ) {
         const allFromMatches = this.getMatchedRoutes(
           dest.from,
           undefined,
@@ -1443,7 +1447,10 @@ export class RouterCore<
       // This should default to the current location if no from is provided
       const lastMatch = last(allCurrentLocationMatches)!
 
-      const defaultedFromPath = dest.unsafeRelative === 'path' ? currentLocation.pathname : dest.from ?? lastMatch.fullPath
+      const defaultedFromPath =
+        dest.unsafeRelative === 'path'
+          ? currentLocation.pathname
+          : (dest.from ?? lastMatch.fullPath)
 
       // ensure this includes the basePath if set
       const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')

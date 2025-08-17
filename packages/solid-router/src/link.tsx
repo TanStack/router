@@ -146,18 +146,19 @@ export function useLinkProps<
   })
 
   const _options = () => {
-    const currentRouteMatches= router.matchRoutes(router.latestLocation, {
+    const currentRouteMatches = router.matchRoutes(router.latestLocation, {
       _buildLocation: false,
     })
 
-    const from = options.from ??
+    const from =
+      options.from ??
       currentRouteMatches.slice(-1)[0]?.fullPath ??
       router.state.matches[matchIndex()]!.fullPath
 
-    return ({
+    return {
       ...options,
-      from
-    })
+      from,
+    }
   }
 
   const next = Solid.createMemo(() => {

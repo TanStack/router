@@ -1574,7 +1574,9 @@ describe('relative navigate to current route', () => {
 
       fireEvent.click(postsButton)
 
-      expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
+      expect(
+        await screen.findByTestId('posts-index-heading'),
+      ).toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts${tail}`)
 
       const firstPostButton = await screen.findByTestId('first-post-btn')
@@ -1740,7 +1742,9 @@ describe('relative navigate to current route', () => {
 
       await act(() => fireEvent.click(postsButton))
 
-      expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
+      expect(
+        await screen.findByTestId('posts-index-heading'),
+      ).toBeInTheDocument()
 
       const post1Button = await screen.findByTestId('first-post-btn')
 
@@ -1820,7 +1824,7 @@ describe('relative navigate to from route', () => {
               onClick={() =>
                 navigate({
                   from: '/',
-                  to: '.'
+                  to: '.',
                 })
               }
             >
@@ -1948,7 +1952,7 @@ describe('relative navigate to from route', () => {
               onClick={() =>
                 navigate({
                   from: '/posts',
-                  to: '.'
+                  to: '.',
                 })
               }
             >
@@ -1989,7 +1993,7 @@ describe('relative navigate to from route', () => {
               onClick={() =>
                 navigate({
                   from: '/posts/$postId',
-                  to: '.'
+                  to: '.',
                 })
               }
             >
@@ -2043,7 +2047,11 @@ describe('relative navigate to from route', () => {
       const router = createRouter({
         routeTree: rootRoute.addChildren([
           indexRoute,
-          layoutRoute.addChildren([postsRoute.addChildren([postDetailRoute.addChildren([postInfoRoute, postNotesRoute])])]),
+          layoutRoute.addChildren([
+            postsRoute.addChildren([
+              postDetailRoute.addChildren([postInfoRoute, postNotesRoute]),
+            ]),
+          ]),
         ]),
         trailingSlash: trailingSlash ? 'always' : 'never',
       })
@@ -2054,14 +2062,18 @@ describe('relative navigate to from route', () => {
 
       fireEvent.click(postsButton)
 
-      expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
+      expect(
+        await screen.findByTestId('posts-index-heading'),
+      ).toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts${tail}`)
 
       const firstPostButton = await screen.findByTestId('first-post-btn')
 
       fireEvent.click(firstPostButton)
 
-      expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
+      expect(
+        await screen.findByTestId('post-detail-index-heading'),
+      ).toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts/1${tail}`)
 
       const postInfoButton = await screen.findByTestId('post-info-btn')
@@ -2071,28 +2083,34 @@ describe('relative navigate to from route', () => {
       expect(await screen.findByTestId('post-info-heading')).toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts/1/info${tail}`)
 
-      const toPostDetailIndexButton = await screen.findByTestId('to-post-detail-index-btn')
+      const toPostDetailIndexButton = await screen.findByTestId(
+        'to-post-detail-index-btn',
+      )
 
       fireEvent.click(toPostDetailIndexButton)
 
-      expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
       expect(
-        screen.queryByTestId("'post-info-heading"),
-      ).not.toBeInTheDocument()
+        await screen.findByTestId('post-detail-index-heading'),
+      ).toBeInTheDocument()
+      expect(screen.queryByTestId("'post-info-heading")).not.toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts/1${tail}`)
 
       const postNotesButton = await screen.findByTestId('post-notes-btn')
 
       fireEvent.click(postNotesButton)
 
-      expect(await screen.findByTestId('post-notes-heading')).toBeInTheDocument()
+      expect(
+        await screen.findByTestId('post-notes-heading'),
+      ).toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts/1/notes${tail}`)
 
       const toPostsIndexButton = await screen.findByTestId('to-posts-index-btn')
 
       fireEvent.click(toPostsIndexButton)
 
-      expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
+      expect(
+        await screen.findByTestId('posts-index-heading'),
+      ).toBeInTheDocument()
       expect(
         screen.queryByTestId("'post-notes-heading"),
       ).not.toBeInTheDocument()
@@ -2105,7 +2123,9 @@ describe('relative navigate to from route', () => {
 
       fireEvent.click(secondPostButton)
 
-      expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
+      expect(
+        await screen.findByTestId('post-detail-index-heading'),
+      ).toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts/2${tail}`)
     },
   )
@@ -2310,7 +2330,11 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>Param Route</h1>
-              <button onClick={() => navigate({ from: paramRoute.fullPath, to: './a' })}>
+              <button
+                onClick={() =>
+                  navigate({ from: paramRoute.fullPath, to: './a' })
+                }
+              >
                 Link to ./a
               </button>
               <button
@@ -2332,7 +2356,11 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>Param A Route</h1>
-              <button onClick={() => navigate({ from: paramARoute.fullPath, to: '..' })}>
+              <button
+                onClick={() =>
+                  navigate({ from: paramARoute.fullPath, to: '..' })
+                }
+              >
                 Link to .. from /param/foo/a
               </button>
               <Outlet />
