@@ -1471,20 +1471,20 @@ export class RouterCore<
         : this.resolvePathWithBase(fromPath, '.')
 
       // Resolve the next params
-      let nextParams =
+      const nextParams =
         dest.params === false || dest.params === null
           ? {}
           : (dest.params ?? true) === true
             ? fromParams
-            : {
-                ...fromParams,
-                ...functionalUpdate(dest.params as any, fromParams),
-              }
+            : Object.assign(
+                fromParams,
+                functionalUpdate(dest.params as any, fromParams),
+              )
 
       // Interpolate the path first to get the actual resolved path, then match against that
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
-        params: nextParams ?? {},
+        params: nextParams,
         parseCache: this.parsePathnameCache,
       }).interpolatedPath
 
@@ -1494,23 +1494,20 @@ export class RouterCore<
 
       // If there are any params, we need to stringify them
       if (Object.keys(nextParams).length > 0) {
-        destRoutes
-          .map((route) => {
-            return (
-              route.options.params?.stringify ?? route.options.stringifyParams
-            )
-          })
-          .filter(Boolean)
-          .forEach((fn) => {
-            nextParams = { ...nextParams!, ...fn!(nextParams) }
-          })
+        for (const route of destRoutes) {
+          const fn =
+            route.options.params?.stringify ?? route.options.stringifyParams
+          if (fn) {
+            Object.assign(nextParams, fn(nextParams))
+          }
+        }
       }
 
       const nextPathname = interpolatePath({
         // Use the original template path for interpolation
         // This preserves the original parameter syntax including optional parameters
         path: nextTo,
-        params: nextParams ?? {},
+        params: nextParams,
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
@@ -1520,20 +1517,20 @@ export class RouterCore<
       // Resolve the next search
       let nextSearch = fromSearch
       if (opts._includeValidateSearch && this.options.search?.strict) {
-        let validatedSearch = {}
+        const validatedSearch = {}
         destRoutes.forEach((route) => {
-          try {
-            if (route.options.validateSearch) {
-              validatedSearch = {
-                ...validatedSearch,
-                ...(validateSearch(route.options.validateSearch, {
+          if (route.options.validateSearch) {
+            try {
+              Object.assign(
+                validatedSearch,
+                validateSearch(route.options.validateSearch, {
                   ...validatedSearch,
                   ...nextSearch,
-                }) ?? {}),
-              }
+                }),
+              )
+            } catch {
+              // ignore errors here because they are already handled in matchRoutes
             }
-          } catch {
-            // ignore errors here because they are already handled in matchRoutes
           }
         })
         nextSearch = validatedSearch
