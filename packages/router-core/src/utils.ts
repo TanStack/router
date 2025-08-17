@@ -485,13 +485,12 @@ export function isPromise<T>(
 }
 
 export function findLast<T>(
-  array: Array<T>,
+  array: ReadonlyArray<T>,
   predicate: (item: T) => boolean,
 ): T | undefined {
   for (let i = array.length - 1; i >= 0; i--) {
-    if (predicate(array[i]!)) {
-      return array[i]!
-    }
+    const item = array[i]!
+    if (predicate(item)) return item
   }
   return undefined
 }
