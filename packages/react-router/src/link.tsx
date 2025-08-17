@@ -107,20 +107,22 @@ export function useLinkProps<
 
   // Track the active location to ensure recomputation on path changes
   const activeLocation = useRouterState({
-      select: (s) => s.location,
-      structuralSharing: true as any,
+    select: (s) => s.location,
+    structuralSharing: true as any,
   })
 
-  const _options = React.useMemo(() => {
+  const _options = React.useMemo(
+    () => {
       const currentRouteMatches = router.matchRoutes(activeLocation, {
         _buildLocation: false,
       })
 
-      const from = options.from ??
+      const from =
+        options.from ??
         last(currentRouteMatches)?.fullPath ??
         router.state.matches[matchIndex]!.fullPath
 
-      return {...options, from}
+      return { ...options, from }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -136,12 +138,12 @@ export function useLinkProps<
       options.state,
       options.mask,
       options.unsafeRelative,
-    ]
+    ],
   )
 
   const next = React.useMemo(
     () => router.buildLocation({ ..._options } as any),
-    [router, _options]
+    [router, _options],
   )
 
   const isExternal = type === 'external'
@@ -202,17 +204,12 @@ export function useLinkProps<
     },
   })
 
-  const doPreload = React.useCallback(
-    () => {
-      router
-        .preloadRoute({ ... _options } as any)
-        .catch((err) => {
-          console.warn(err)
-          console.warn(preloadWarning)
-        })
-    },
-    [router, _options]
-  )
+  const doPreload = React.useCallback(() => {
+    router.preloadRoute({ ..._options } as any).catch((err) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
+  }, [router, _options])
 
   const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
