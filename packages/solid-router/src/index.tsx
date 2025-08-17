@@ -30,6 +30,7 @@ export {
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
+  createTransformer,
 } from '@tanstack/router-core'
 
 export type {
@@ -192,6 +193,8 @@ export type {
   InjectedHtmlEntry,
   CreateFileRoute,
   CreateLazyFileRoute,
+  Transformer,
+  AnyTransformer,
 } from '@tanstack/router-core'
 
 export {

@@ -117,6 +117,7 @@ export interface RouterOptions<
   TDefaultStructuralSharingOption extends boolean = false,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
+  TTransformerConfig = any,
 > extends RouterOptionsExtensions {
   /**
    * The history object that will be used to manage the browser history.
@@ -421,6 +422,8 @@ export interface RouterOptions<
    * @default false
    */
   disableGlobalCatchBoundary?: boolean
+
+  transformers?: TTransformerConfig
 }
 
 export interface RouterState<
@@ -529,13 +532,15 @@ export type RouterConstructorOptions<
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
+  TTransformerConfig,
 > = Omit<
   RouterOptions<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory,
-    TDehydrated
+    TDehydrated,
+    TTransformerConfig
   >,
   'context'
 > &
@@ -595,13 +600,15 @@ export type UpdateFn<
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
+  TTransformerConfig extends any,
 > = (
   newOptions: RouterConstructorOptions<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory,
-    TDehydrated
+    TDehydrated,
+    TTransformerConfig
   >,
 ) => void
 
@@ -686,10 +693,11 @@ export type AnyRouterWithContext<TContext> = RouterCore<
   any,
   any,
   any,
+  any,
   any
 >
 
-export type AnyRouter = RouterCore<any, any, any, any, any>
+export type AnyRouter = RouterCore<any, any, any, any, any, any>
 
 export interface ViewTransitionOptions {
   types:
@@ -703,6 +711,7 @@ export interface ViewTransitionOptions {
       }) => Array<string>)
 }
 
+// TODO where is this used? can we remove this?
 export function defaultSerializeError(err: unknown) {
   if (err instanceof Error) {
     const obj = {
@@ -742,6 +751,7 @@ export type CreateRouterFn = <
   TDefaultStructuralSharingOption extends boolean = false,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
+  TTransformerConfig = any,
 >(
   options: undefined extends number
     ? 'strictNullChecks must be enabled in tsconfig.json'
@@ -750,14 +760,16 @@ export type CreateRouterFn = <
         TTrailingSlashOption,
         TDefaultStructuralSharingOption,
         TRouterHistory,
-        TDehydrated
+        TDehydrated,
+        TTransformerConfig
       >,
 ) => RouterCore<
   TRouteTree,
   TTrailingSlashOption,
   TDefaultStructuralSharingOption,
   TRouterHistory,
-  TDehydrated
+  TDehydrated,
+  TTransformerConfig
 >
 
 export class RouterCore<
@@ -766,6 +778,7 @@ export class RouterCore<
   in out TDefaultStructuralSharingOption extends boolean,
   in out TRouterHistory extends RouterHistory = RouterHistory,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
+  in out TTransformerConfig = any,
 > {
   // Option-independent properties
   tempLocationKey: string | undefined = `${Math.round(
@@ -787,7 +800,8 @@ export class RouterCore<
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
       TRouterHistory,
-      TDehydrated
+      TDehydrated,
+      TTransformerConfig
     >,
     'stringifySearch' | 'parseSearch' | 'context'
   >
@@ -810,7 +824,8 @@ export class RouterCore<
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
       TRouterHistory,
-      TDehydrated
+      TDehydrated,
+      TTransformerConfig
     >,
   ) {
     this.update({
@@ -848,7 +863,8 @@ export class RouterCore<
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory,
-    TDehydrated
+    TDehydrated,
+    TTransformerConfig
   > = (newOptions) => {
     if (newOptions.notFoundRoute) {
       console.warn(

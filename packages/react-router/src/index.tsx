@@ -30,6 +30,7 @@ export {
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
+  createTransformer,
 } from '@tanstack/router-core'
 
 export type {
@@ -110,6 +111,8 @@ export type {
   RouteById,
   RootRouteOptions,
   CreateFileRoute,
+  Transformer,
+  AnyTransformer,
 } from '@tanstack/router-core'
 
 export {

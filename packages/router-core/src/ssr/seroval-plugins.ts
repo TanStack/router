@@ -13,7 +13,7 @@ export const ShallowErrorPlugin = /* @__PURE__ */ createPlugin<
   Error,
   ErrorNode
 >({
-  tag: 'tanstack-start:seroval-plugins/Error',
+  tag: 'tanstack-router:seroval-plugins/Error',
   test(value) {
     return value instanceof Error
   },

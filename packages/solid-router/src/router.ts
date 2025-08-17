@@ -83,12 +83,14 @@ export class Router<
   in out TDefaultStructuralSharingOption extends boolean = false,
   in out TRouterHistory extends RouterHistory = RouterHistory,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
+  in out TTransformerConfig = any,
 > extends RouterCore<
   TRouteTree,
   TTrailingSlashOption,
   TDefaultStructuralSharingOption,
   TRouterHistory,
-  TDehydrated
+  TDehydrated,
+  TTransformerConfig
 > {
   constructor(
     options: RouterConstructorOptions<
@@ -96,7 +98,8 @@ export class Router<
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
       TRouterHistory,
-      TDehydrated
+      TDehydrated,
+      TTransformerConfig
     >,
   ) {
     super(options)

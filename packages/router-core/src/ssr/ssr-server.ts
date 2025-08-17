@@ -4,11 +4,13 @@ import invariant from 'tiny-invariant'
 import { createControlledPromise } from '../utils'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { ShallowErrorPlugin } from './seroval-plugins'
+import { GLOBAL_TSR } from './constants'
 import type { AnyRouter } from '../router'
 import type { DehydratedMatch } from './ssr-client'
 import type { DehydratedRouter } from './client'
 import type { AnyRouteMatch } from '../Matches'
 import type { Manifest } from '../manifest'
+import type { AnyTransformer } from './transformer'
 
 declare module '../router' {
   interface ServerSsr {
@@ -22,7 +24,6 @@ declare module '../router' {
   }
 }
 
-export const GLOBAL_TSR = '$_TSR'
 const SCOPE_ID = 'tsr'
 
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
@@ -106,12 +107,19 @@ export function attachRouterServerSsrUtils(
       _dehydrated = true
 
       const p = createControlledPromise<string>()
+      const trackPlugins = { didRun: false }
+      const plugins =
+        (router.options.transformers as Array<AnyTransformer> | undefined)?.map(
+          (t) => t.makePlugin(trackPlugins),
+        ) ?? []
       crossSerializeStream(dehydratedRouter, {
         refs: serializationRefs,
-        // TODO make plugins configurable
-        plugins: [ReadableStreamPlugin, ShallowErrorPlugin],
+        plugins: [...plugins, ReadableStreamPlugin, ShallowErrorPlugin],
         onSerialize: (data, initial) => {
-          const serialized = initial ? `${GLOBAL_TSR}["router"]=` + data : data
+          let serialized = initial ? GLOBAL_TSR + '.router=' + data : data
+          if (trackPlugins.didRun) {
+            serialized = GLOBAL_TSR + '.p(()=>' + serialized + ')'
+          }
           router.serverSsr!.injectScript(() => serialized)
         },
         scopeId: SCOPE_ID,
