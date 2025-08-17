@@ -135,15 +135,30 @@ export function useLinkProps<
 
   // when `from` is not supplied, use the route of the current match as the `from` location
   // so relative routing works as expected
-  const from = useMatch({
+  // const from = useMatch({
+  //   strict: false,
+  //   select: (match) => options.from ?? match.fullPath,
+  // })
+
+  const matchIndex = useMatch({
     strict: false,
-    select: (match) => options.from ?? match.fullPath,
+    select: (match) => match.index,
   })
 
-  const _options = () => ({
-    ...options,
-    from: from(),
-  })
+  const _options = () => {
+    const currentRouteMatches= router.matchRoutes(router.latestLocation, {
+      _buildLocation: false,
+    })
+
+    const from = options.from ??
+      currentRouteMatches.slice(-1)[0]?.fullPath ??
+      router.state.matches[matchIndex()]!.fullPath
+
+    return ({
+      ...options,
+      from
+    })
+  }
 
   const next = Solid.createMemo(() => {
     currentSearch()
