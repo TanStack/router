@@ -82,7 +82,7 @@ export function attachRouterServerSsrUtils(
     injectScript: (getScript) => {
       return router.serverSsr!.injectHtml(async () => {
         const script = await getScript()
-        return `<script class='$tsr'>${getInitialScript()}${script};if (typeof $_TSR !== 'undefined') $_TSR.c()</script>`
+        return `<script class='$tsr'>${getInitialScript()}${script};$_TSR.c()</script>`
       })
     },
     dehydrate: async () => {
