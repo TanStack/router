@@ -18,9 +18,12 @@ export const useTags = () => {
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
-    ;[...routeMeta()].reverse().forEach((metas) => {
-      ;[...metas].reverse().forEach((m) => {
-        if (!m) return
+    const routeMetasArray = routeMeta()
+    for (let i = routeMetasArray.length - 1; i >= 0; i--) {
+      const metas = routeMetasArray[i]!
+      for (let j = metas.length - 1; j >= 0; j--) {
+        const m = metas[j]
+        if (!m) continue
 
         if (m.title) {
           if (!title) {
@@ -33,7 +36,7 @@ export const useTags = () => {
           const attribute = m.name ?? m.property
           if (attribute) {
             if (metaByAttribute[attribute]) {
-              return
+              continue
             } else {
               metaByAttribute[attribute] = true
             }
@@ -46,8 +49,8 @@ export const useTags = () => {
             },
           })
         }
-      })
-    })
+      }
+    }
 
     if (title) {
       resultMeta.push(title)

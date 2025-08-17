@@ -4025,8 +4025,8 @@ describe('Link', () => {
       ),
     })
 
-    const parseParams = vi.fn()
-    const stringifyParams = vi.fn()
+    let parseParams: any
+    let stringifyParams: any
 
     const PostComponent = () => {
       const params = useParams({ strict: false })
@@ -4037,14 +4037,14 @@ describe('Link', () => {
       getParentRoute: () => rootRoute,
       path: '$postId',
       parseParams: (params) => {
-        parseParams(params)
+        parseParams = structuredClone(params) // clone object, because source will get mutated
         return {
           status: 'parsed',
           postId: params.postId,
         }
       },
       stringifyParams: (params) => {
-        stringifyParams(params)
+        stringifyParams = structuredClone(params) // clone object, because source will get mutated
         return {
           status: 'stringified',
           postId: params.postId,
@@ -4062,7 +4062,7 @@ describe('Link', () => {
       name: 'Go to post',
     })
 
-    expect(stringifyParams).toHaveBeenCalledWith({ postId: 2 })
+    expect(stringifyParams).toEqual({ postId: 2 })
 
     expect(postLink).toHaveAttribute('href', '/2')
 
@@ -4071,7 +4071,7 @@ describe('Link', () => {
     const posts2Text = await screen.findByText('Post: 2')
     expect(posts2Text).toBeInTheDocument()
 
-    expect(parseParams).toHaveBeenCalledWith({ status: 'parsed', postId: '2' })
+    expect(parseParams).toEqual({ postId: '2' })
   })
 
   test('when navigating to /$postId with params.parse and params.stringify', async () => {
@@ -4087,8 +4087,8 @@ describe('Link', () => {
       ),
     })
 
-    const parseParams = vi.fn()
-    const stringifyParams = vi.fn()
+    let parseParams: any
+    let stringifyParams: any
 
     const PostComponent = () => {
       const params = useParams({ strict: false })
@@ -4100,14 +4100,14 @@ describe('Link', () => {
       path: '$postId',
       params: {
         parse: (params) => {
-          parseParams(params)
+          parseParams = structuredClone(params) // clone object, because source will get mutated
           return {
             status: 'parsed',
             postId: params.postId,
           }
         },
         stringify: (params) => {
-          stringifyParams(params)
+          stringifyParams = structuredClone(params) // clone object, because source will get mutated
           return {
             status: 'stringified',
             postId: params.postId,
@@ -4126,7 +4126,7 @@ describe('Link', () => {
       name: 'Go to post',
     })
 
-    expect(stringifyParams).toHaveBeenCalledWith({ postId: 2 })
+    expect(stringifyParams).toEqual({ postId: 2 })
 
     expect(postLink).toHaveAttribute('href', '/2')
 
@@ -4135,7 +4135,7 @@ describe('Link', () => {
     const posts2Text = await screen.findByText('Post: 2')
     expect(posts2Text).toBeInTheDocument()
 
-    expect(parseParams).toHaveBeenCalledWith({ status: 'parsed', postId: '2' })
+    expect(parseParams).toEqual({ postId: '2' })
   })
 
   test('when navigating to /$postId with params.parse and params.stringify handles falsey inputs', async () => {
