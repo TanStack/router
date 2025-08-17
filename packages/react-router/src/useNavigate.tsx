@@ -15,7 +15,7 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const { navigate, state } = useRouter()
+  const router = useRouter()
 
   // Just get the index of the current match to avoid rerenders
   // as much as possible
@@ -26,18 +26,23 @@ export function useNavigate<
 
   return React.useCallback(
     (options: NavigateOptions) => {
+      const currentRouteMatches= router.matchRoutes(router.latestLocation, {
+        _buildLocation: false,
+      })
+
       const from =
         options.from ??
         _defaultOpts?.from ??
-        state.matches[matchIndex]!.fullPath
+        currentRouteMatches.slice(-1)[0]?.fullPath ??
+        router.state.matches[matchIndex]!.fullPath
 
-      return navigate({
+      return router.navigate({
         ...options,
         from,
       })
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [_defaultOpts?.from, navigate],
+    [_defaultOpts?.from, router.navigate, router.latestLocation],
   ) as UseNavigateResult<TDefaultFrom>
 }
 

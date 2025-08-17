@@ -99,19 +99,29 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  const from = useMatch({
+  const matchIndex = useMatch({
     strict: false,
-    select: (match) => options.from ?? match.fullPath,
+    select: (match) => match.index,
   })
 
+  const getFrom = React.useCallback( () => {
+    const currentRouteMatches= router.matchRoutes(router.latestLocation, {
+      _buildLocation: false,
+    })
+
+    return options.from ??
+      currentRouteMatches.slice(-1)[0]?.fullPath ??
+      router.state.matches[matchIndex]!.fullPath
+  }, [router, options.from, matchIndex])
+
   const next = React.useMemo(
-    () => router.buildLocation({ ...options, from } as any),
+    () => router.buildLocation({ ...options, from: getFrom() } as any),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
       currentSearch,
       options._fromLocation,
-      from,
+      options.from,
       options.hash,
       options.to,
       options.search,
@@ -182,7 +192,7 @@ export function useLinkProps<
 
   const doPreload = React.useCallback(
     () => {
-      router.preloadRoute({ ...options, from } as any).catch((err) => {
+      router.preloadRoute({ ...options, from: getFrom() } as any).catch((err) => {
         console.warn(err)
         console.warn(preloadWarning)
       })
@@ -192,7 +202,7 @@ export function useLinkProps<
       router,
       options.to,
       options._fromLocation,
-      from,
+      options.from,
       options.search,
       options.hash,
       options.params,
@@ -235,24 +245,18 @@ export function useLinkProps<
     }
   }, [disabled, doPreload, preload])
 
-  if (isExternal) {
-    return {
-      ...propsSafeToSpread,
-      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      type,
-      href: to,
-      ...(children && { children }),
-      ...(target && { target }),
-      ...(disabled && { disabled }),
-      ...(style && { style }),
-      ...(className && { className }),
-      ...(onClick && { onClick }),
-      ...(onFocus && { onFocus }),
-      ...(onMouseEnter && { onMouseEnter }),
-      ...(onMouseLeave && { onMouseLeave }),
-      ...(onTouchStart && { onTouchStart }),
-    }
-  }
+  const navigate = React.useCallback(() => {
+    router.navigate({
+      ...options,
+      from: getFrom(),
+      replace,
+      resetScroll,
+      hashScrollIntoView,
+      startTransition,
+      viewTransition,
+      ignoreBlocker,
+    })
+  }, [router, options, getFrom, replace, resetScroll, hashScrollIntoView, startTransition, viewTransition, ignoreBlocker])
 
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
@@ -276,16 +280,26 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.navigate({
-        ...options,
-        from,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
-      })
+      navigate()
+    }
+  }
+
+  if (isExternal) {
+    return {
+      ...propsSafeToSpread,
+      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+      type,
+      href: to,
+      ...(children && { children }),
+      ...(target && { target }),
+      ...(disabled && { disabled }),
+      ...(style && { style }),
+      ...(className && { className }),
+      ...(onClick && { onClick }),
+      ...(onFocus && { onFocus }),
+      ...(onMouseEnter && { onMouseEnter }),
+      ...(onMouseLeave && { onMouseLeave }),
+      ...(onTouchStart && { onTouchStart }),
     }
   }
 
