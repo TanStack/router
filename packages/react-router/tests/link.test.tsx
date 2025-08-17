@@ -24,6 +24,7 @@ import {
   createRoute,
   createRouteMask,
   createRouter,
+  getRouteApi,
   redirect,
   retainSearchParams,
   stripSearchParams,
@@ -33,7 +34,6 @@ import {
   useRouteContext,
   useRouterState,
   useSearch,
-  getRouteApi,
 } from '../src'
 import {
   getIntersectionObserverMock,
@@ -5409,573 +5409,576 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
   },
 )
 
-test.each([true, false])(
-  'should navigate to current route when using "." in nested route structure from Index Route',
-  async (trailingSlash: boolean) => {
-    const tail = trailingSlash ? '/' : ''
+describe('relative links to current route', () => {
+  test.each([true, false])(
+    'should navigate to current route when using "." in nested route structure from Index Route',
+    async (trailingSlash: boolean) => {
+      const tail = trailingSlash ? '/' : ''
 
-    const rootRoute = createRootRoute()
+      const rootRoute = createRootRoute()
 
-    const IndexComponent = () => {
-      return (
-        <>
-          <Link
-            data-testid="posts-link"
-            to='/post'
-          >
-            Post
-          </Link>
-          <Link
-            data-testid="search-link"
-            to='.'
-            search={{param1: 'value1'}}
-          >
-            Search
-          </Link>
-          <Link
-            data-testid="search2-link"
-            to='.'
-            search={{param1: 'value2'}}
-          >
-            Search2
-          </Link>
-          <Outlet />
-        </>
-      )
-    }
-
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: IndexComponent,
-      validateSearch: z.object({
-        param1: z.string().optional(),
-      }),
-    })
-
-    const postRoute = createRoute({
-      getParentRoute: () => indexRoute,
-      path: 'post',
-      component: () => (
-        <>
-          <div>Post</div>
-        </>
-      ),
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute, postRoute]),
-      history,
-      trailingSlash: trailingSlash ? 'always' : 'never',
-    })
-
-    render(<RouterProvider router={router} />)
-
-    const postButton = await screen.findByTestId('posts-link')
-    const searchButton = await screen.findByTestId('search-link')
-    const searchButton2 = await screen.findByTestId('search2-link')
-
-    await act(() => fireEvent.click(postButton))
-
-    expect(window.location.pathname).toBe(`/post${tail}`)
-
-    await act(() => fireEvent.click(searchButton))
-
-    expect(router.state.location.pathname).toBe(`/post${tail}`)
-    expect(router.state.location.search).toEqual({ param1: 'value1' })
-
-    await act(() => fireEvent.click(searchButton2))
-
-    expect(router.state.location.pathname).toBe(`/post${tail}`)
-    expect(router.state.location.search).toEqual({ param1: 'value2' })
-  },
-)
-
-test.each([true, false])(
-  'should navigate to current route with changing path params when using "." in nested route structure',
-  async (trailingSlash) => {
-    const tail = trailingSlash ? '/' : ''
-    const rootRoute = createRootRoute()
-
-    const IndexComponent = () => {
-      return (
-        <>
-          <h1 data-testid="index-heading">Index</h1>
-          <Link
-            data-testid="posts-link"
-            to='/posts'
-          >
-            Posts
-          </Link>
-        </>
-      )
-    }
-
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: IndexComponent,
-    })
-
-    const layoutRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      id: '_layout',
-      component: () => {
+      const IndexComponent = () => {
         return (
           <>
-            <h1>Layout</h1>
+            <Link
+              data-testid="posts-link"
+              to='/post'
+            >
+              Post
+            </Link>
+            <Link
+              data-testid="search-link"
+              to='.'
+              search={{param1: 'value1'}}
+            >
+              Search
+            </Link>
+            <Link
+              data-testid="search2-link"
+              to='.'
+              search={{param1: 'value2'}}
+            >
+              Search2
+            </Link>
             <Outlet />
           </>
         )
-      },
-    })
+      }
 
-    const PostsComponent = () => {
-      return (
-        <>
-          <h1 data-testid="posts-index-heading">Posts</h1>
-          <Link
-            data-testid="first-post-link"
-            to='$postId'
-            params={{ postId: 'id1' }}
-          >
-            To first post
-          </Link>
-          <Link
-            data-testid="second-post-link"
-            to='.'
-            params={{ postId: 'id2' }}
-          >
-            To second post
-          </Link>
-          <Outlet />
-        </>
-      )
-    }
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: IndexComponent,
+        validateSearch: z.object({
+          param1: z.string().optional(),
+        }),
+      })
 
-    const postsRoute = createRoute({
-      getParentRoute: () => layoutRoute,
-      path: 'posts',
-      component: PostsComponent,
-    })
+      const postRoute = createRoute({
+        getParentRoute: () => indexRoute,
+        path: 'post',
+        component: () => (
+          <>
+            <div>Post</div>
+          </>
+        ),
+      })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span data-testid={`post-${params.postId}`}>
-            Params: {params.postId}
-          </span>
-        </>
-      )
-    }
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, postRoute]),
+        history,
+        trailingSlash: trailingSlash ? 'always' : 'never',
+      })
 
-    const postRoute = createRoute({
-      getParentRoute: () => postsRoute,
-      path: '$postId',
-      component: PostComponent,
-    })
+      render(<RouterProvider router={router} />)
 
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([
-        indexRoute,
-        layoutRoute.addChildren([postsRoute.addChildren([postRoute])]),
-      ]),
-      trailingSlash: trailingSlash ? 'always' : 'never',
-    })
+      const postButton = await screen.findByTestId('posts-link')
+      const searchButton = await screen.findByTestId('search-link')
+      const searchButton2 = await screen.findByTestId('search2-link')
 
-    render(<RouterProvider router={router} />)
+      await act(() => fireEvent.click(postButton))
 
-    const postsButton = await screen.findByTestId('posts-link')
+      expect(window.location.pathname).toBe(`/post${tail}`)
 
-    await act(() => fireEvent.click(postsButton))
+      await act(() => fireEvent.click(searchButton))
 
-    expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
-    expect(window.location.pathname).toEqual(`/posts${tail}`)
+      expect(router.state.location.pathname).toBe(`/post${tail}`)
+      expect(router.state.location.search).toEqual({ param1: 'value1' })
 
-    const firstPostButton = await screen.findByTestId('first-post-link')
+      await act(() => fireEvent.click(searchButton2))
 
-    await act(() => fireEvent.click(firstPostButton))
+      expect(router.state.location.pathname).toBe(`/post${tail}`)
+      expect(router.state.location.search).toEqual({ param1: 'value2' })
+    },
+  )
 
-    expect(await screen.findByTestId('post-id1')).toBeInTheDocument()
-    expect(window.location.pathname).toEqual(`/posts/id1${tail}`)
+  test.each([true, false])(
+    'should navigate to current route with search params when using "." in nested route structure from Index Route',
+    async (trailingSlash: boolean) => {
+      const tail = trailingSlash ? '/' : ''
 
-    const secondPostButton = await screen.findByTestId('second-post-link')
+      const rootRoute = createRootRoute()
 
-    await act(() => fireEvent.click(secondPostButton))
-
-    // expect(await screen.findByTestId('post-id2')).toBeInTheDocument()
-    expect(window.location.pathname).toEqual(`/posts/id2${tail}`)
-  },
-)
-
-test.each([true, false])(
-  'should navigate to current route with search params when using "." in nested route structure from Index Route',
-  async (trailingSlash: boolean) => {
-    const tail = trailingSlash ? '/' : ''
-
-    const rootRoute = createRootRoute()
-
-    const IndexComponent = () => {
-      return (
-        <>
-          <Link
-            data-testid="posts-link"
-            to='/post'
-          >
-            Post
-          </Link>
-          <Link
-            data-testid="search-link"
-            to='.'
-            search={{param1: 'value1'}}
-          >
-            Search
-          </Link>
-          <Link
-            data-testid="search2-link"
-            to='/post'
-            search={{param1: 'value2'}}
-          >
-            Search2
-          </Link>
-          <Outlet />
-        </>
-      )
-    }
-
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: IndexComponent,
-      validateSearch: z.object({
-        param1: z.string().optional(),
-      }),
-    })
-
-    const postRoute = createRoute({
-      getParentRoute: () => indexRoute,
-      path: 'post',
-      component: () => <div>Post</div>,
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute, postRoute]),
-      history,
-      trailingSlash: trailingSlash ? 'always' : 'never',
-    })
-
-    render(<RouterProvider router={router} />)
-
-    const postButton = await screen.findByTestId('posts-link')
-
-    await act(() => fireEvent.click(postButton))
-
-    expect(window.location.pathname).toBe(`/post${tail}`)
-
-    const searchButton = await screen.findByTestId('search-link')
-
-    await act(() => fireEvent.click(searchButton))
-
-    expect(router.state.location.pathname).toBe(`/post${tail}`)
-    expect(router.state.location.search).toEqual({ param1: 'value1' })
-
-    const searchButton2 = await screen.findByTestId('search2-link')
-
-    await act(() => fireEvent.click(searchButton2))
-
-    expect(router.state.location.pathname).toBe(`/post${tail}`)
-    expect(router.state.location.search).toEqual({ param1: 'value2' })
-  },
-)
-
-test.each([true, false])(
-  'should navigate to from route when using "." in nested route structure from Index Route',
-  async (trailingSlash: boolean) => {
-    const tail = trailingSlash ? '/' : ''
-
-    const rootRoute = createRootRoute()
-
-    const IndexComponent = () => {
-      return (
-        <>
-          <Link
-            data-testid="posts-link"
-            to='/post'
-          >
-            Post
-          </Link>
-          <Link
-            data-testid="search-link"
-            to='.'
-            search={{param1: 'value1'}}
-          >
-            Search
-          </Link>
-          <Link
-            data-testid="home-link"
-            from='/'
-            to='.'
-          >
-            Go To Home
-          </Link>
-          <Outlet />
-        </>
-      )
-    }
-
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: IndexComponent,
-      validateSearch: z.object({
-        param1: z.string().optional(),
-      }),
-    })
-
-    const postRoute = createRoute({
-      getParentRoute: () => indexRoute,
-      path: 'post',
-      component: () => <div>Post</div>,
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute, postRoute]),
-      history,
-      trailingSlash: trailingSlash ? 'always' : 'never',
-    })
-
-    render(<RouterProvider router={router} />)
-
-    const postButton = await screen.findByTestId('posts-link')
-
-    fireEvent.click(postButton)
-
-    expect(router.state.location.pathname).toBe(`/post${tail}`)
-
-    const searchButton = await screen.findByTestId('search-link')
-
-    fireEvent.click(searchButton)
-
-    expect(router.state.location.pathname).toBe(`/post${tail}`)
-    expect(router.state.location.search).toEqual({ param1: 'value1' })
-
-    const homeBtn = await screen.findByTestId('home-link')
-
-    fireEvent.click(homeBtn)
-
-    expect(router.state.location.pathname).toBe(`/`)
-    expect(router.state.location.search).toEqual({})
-  },
-)
-
-test.each([true, false])(
-  'should navigate to from route with path params when using "." in nested route structure',
-  async (trailingSlash) => {
-    const tail = trailingSlash ? '/' : ''
-    const rootRoute = createRootRoute()
-
-    const IndexComponent = () => {
-      return (
-        <>
-          <h1 data-testid="index-heading">Index</h1>
-          <Link
-            data-testid="posts-link"
-            to='/posts'
-          >
-            Posts
-          </Link>
-        </>
-      )
-    }
-
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: IndexComponent,
-    })
-
-    const layoutRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      id: '_layout',
-      component: () => {
+      const IndexComponent = () => {
         return (
           <>
-            <h1>Layout</h1>
+            <Link
+              data-testid="posts-link"
+              to='/post'
+            >
+              Post
+            </Link>
+            <Link
+              data-testid="search-link"
+              to='.'
+              search={{param1: 'value1'}}
+            >
+              Search
+            </Link>
+            <Link
+              data-testid="search2-link"
+              to='/post'
+              search={{param1: 'value2'}}
+            >
+              Search2
+            </Link>
             <Outlet />
           </>
         )
-      },
-    })
+      }
 
-    const PostsComponent = () => {
-      return (
-        <>
-          <h1 data-testid="posts-index-heading">Posts</h1>
-          <Link
-            data-testid="first-post-link"
-            to='$postId'
-            params={{ postId: '1' }}
-          >
-            To first post
-          </Link>
-          <Link
-            data-testid="second-post-link"
-            to='$postId'
-            params={{ postId: '2' }}
-          >
-            To second post
-          </Link>
-          <Link
-            data-testid="to-posts-index-link"
-            from='/posts'
-            to='.'
-          >
-            To posts list
-          </Link>
-          <Outlet />
-        </>
-      )
-    }
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: IndexComponent,
+        validateSearch: z.object({
+          param1: z.string().optional(),
+        }),
+      })
 
-    const PostDetailComponent = () => {
-      const navigate = postDetailRoute.useNavigate()
-      return (
-        <>
-          <h1 data-testid="post-detail-index-heading">Post Detail</h1>
-          <Link
-            data-testid="post-info-link"
-            to='info'
-          >
-            To post info
-          </Link>
-          <Link
-            data-testid="post-notes-link"
-            to='notes'
-          >
-            To post notes
-          </Link>
-          <Link
-            data-testid="to-post-detail-index-link"
-            from='/posts/$postId'
-            to='.'
-          >
-            To index detail options
-          </Link>
-          <Outlet />
-        </>
-      )
-    }
+      const postRoute = createRoute({
+        getParentRoute: () => indexRoute,
+        path: 'post',
+        component: () => <div>Post</div>,
+      })
 
-    const PostInfoComponent = () => {
-      return (
-        <>
-          <h1 data-testid="post-info-heading">Post Info</h1>
-        </>
-      )
-    }
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, postRoute]),
+        history,
+        trailingSlash: trailingSlash ? 'always' : 'never',
+      })
 
-    const PostNotesComponent = () => {
-      return (
-        <>
-          <h1 data-testid="post-notes-heading">Post Notes</h1>
-        </>
-      )
-    }
+      render(<RouterProvider router={router} />)
 
-    const postsRoute = createRoute({
-      getParentRoute: () => layoutRoute,
-      path: 'posts',
-      component: PostsComponent,
-    })
+      const postButton = await screen.findByTestId('posts-link')
 
-    const postDetailRoute = createRoute({
-      getParentRoute: () => postsRoute,
-      path: '$postId',
-      component: PostDetailComponent,
-    })
+      await act(() => fireEvent.click(postButton))
 
-    const postInfoRoute = createRoute({
-      getParentRoute: () => postDetailRoute,
-      path: 'info',
-      component: PostInfoComponent,
-    })
+      expect(window.location.pathname).toBe(`/post${tail}`)
 
-    const postNotesRoute = createRoute({
-      getParentRoute: () => postDetailRoute,
-      path: 'notes',
-      component: PostNotesComponent,
-    })
+      const searchButton = await screen.findByTestId('search-link')
 
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([
-        indexRoute,
-        layoutRoute.addChildren([postsRoute.addChildren([postDetailRoute.addChildren([postInfoRoute, postNotesRoute])])]),
-      ]),
-      trailingSlash: trailingSlash ? 'always' : 'never',
-    })
+      await act(() => fireEvent.click(searchButton))
 
-    render(<RouterProvider router={router} />)
+      expect(router.state.location.pathname).toBe(`/post${tail}`)
+      expect(router.state.location.search).toEqual({ param1: 'value1' })
 
-    const postsButton = await screen.findByTestId('posts-link')
+      const searchButton2 = await screen.findByTestId('search2-link')
 
-    fireEvent.click(postsButton)
+      await act(() => fireEvent.click(searchButton2))
 
-    expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
-    expect(window.location.pathname).toEqual(`/posts${tail}`)
+      expect(router.state.location.pathname).toBe(`/post${tail}`)
+      expect(router.state.location.search).toEqual({ param1: 'value2' })
+    },
+  )
 
-    const firstPostButton = await screen.findByTestId('first-post-link')
+  test.each([true, false])(
+    'should navigate to current route with changing path params when using "." in nested route structure',
+    async (trailingSlash) => {
+      const tail = trailingSlash ? '/' : ''
+      const rootRoute = createRootRoute()
 
-    fireEvent.click(firstPostButton)
+      const IndexComponent = () => {
+        return (
+          <>
+            <h1 data-testid="index-heading">Index</h1>
+            <Link
+              data-testid="posts-link"
+              to='/posts'
+            >
+              Posts
+            </Link>
+          </>
+        )
+      }
 
-    expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
-    expect(window.location.pathname).toEqual(`/posts/1${tail}`)
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: IndexComponent,
+      })
 
-    const postInfoButton = await screen.findByTestId('post-info-link')
+      const layoutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        id: '_layout',
+        component: () => {
+          return (
+            <>
+              <h1>Layout</h1>
+              <Outlet />
+            </>
+          )
+        },
+      })
 
-    fireEvent.click(postInfoButton)
+      const PostsComponent = () => {
+        return (
+          <>
+            <h1 data-testid="posts-index-heading">Posts</h1>
+            <Link
+              data-testid="first-post-link"
+              to='$postId'
+              params={{ postId: 'id1' }}
+            >
+              To first post
+            </Link>
+            <Link
+              data-testid="second-post-link"
+              to='.'
+              params={{ postId: 'id2' }}
+            >
+              To second post
+            </Link>
+            <Outlet />
+          </>
+        )
+      }
 
-    expect(await screen.findByTestId('post-info-heading')).toBeInTheDocument()
-    expect(window.location.pathname).toEqual(`/posts/1/info${tail}`)
+      const postsRoute = createRoute({
+        getParentRoute: () => layoutRoute,
+        path: 'posts',
+        component: PostsComponent,
+      })
 
-    const toPostDetailIndexButton = await screen.findByTestId('to-post-detail-index-link')
+      const PostComponent = () => {
+        const params = useParams({ strict: false })
+        return (
+          <>
+            <span data-testid={`post-${params.postId}`}>
+              Params: {params.postId}
+            </span>
+          </>
+        )
+      }
 
-    fireEvent.click(toPostDetailIndexButton)
+      const postRoute = createRoute({
+        getParentRoute: () => postsRoute,
+        path: '$postId',
+        component: PostComponent,
+      })
 
-    expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
-    expect(
-      screen.queryByTestId("'post-info-heading"),
-    ).not.toBeInTheDocument()
-    expect(window.location.pathname).toEqual(`/posts/1${tail}`)
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([
+          indexRoute,
+          layoutRoute.addChildren([postsRoute.addChildren([postRoute])]),
+        ]),
+        trailingSlash: trailingSlash ? 'always' : 'never',
+      })
 
-    const postNotesButton = await screen.findByTestId('post-notes-link')
+      render(<RouterProvider router={router} />)
 
-    fireEvent.click(postNotesButton)
+      const postsButton = await screen.findByTestId('posts-link')
 
-    expect(await screen.findByTestId('post-notes-heading')).toBeInTheDocument()
-    expect(window.location.pathname).toEqual(`/posts/1/notes${tail}`)
+      await act(() => fireEvent.click(postsButton))
 
-    const toPostsIndexButton = await screen.findByTestId('to-posts-index-link')
+      expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
+      expect(window.location.pathname).toEqual(`/posts${tail}`)
 
-    fireEvent.click(toPostsIndexButton)
+      const firstPostButton = await screen.findByTestId('first-post-link')
 
-    expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
-    expect(
-      screen.queryByTestId("'post-notes-heading"),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByTestId("'post-detail-index-heading"),
-    ).not.toBeInTheDocument()
-    expect(window.location.pathname).toEqual(`/posts${tail}`)
+      await act(() => fireEvent.click(firstPostButton))
 
-    const secondPostButton = await screen.findByTestId('second-post-link')
+      expect(await screen.findByTestId('post-id1')).toBeInTheDocument()
+      expect(window.location.pathname).toEqual(`/posts/id1${tail}`)
 
-    fireEvent.click(secondPostButton)
+      const secondPostButton = await screen.findByTestId('second-post-link')
 
-    expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
-    expect(window.location.pathname).toEqual(`/posts/2${tail}`)
-  },
-)
+      await act(() => fireEvent.click(secondPostButton))
+
+      // expect(await screen.findByTestId('post-id2')).toBeInTheDocument()
+      expect(window.location.pathname).toEqual(`/posts/id2${tail}`)
+    },
+  )
+})
+
+describe('relative links to from route', () => {
+  test.each([true, false])(
+    'should navigate to from route when using "." in nested route structure from Index Route',
+    async (trailingSlash: boolean) => {
+      const tail = trailingSlash ? '/' : ''
+
+      const rootRoute = createRootRoute()
+
+      const IndexComponent = () => {
+        return (
+          <>
+            <Link
+              data-testid="posts-link"
+              to='/post'
+            >
+              Post
+            </Link>
+            <Link
+              data-testid="search-link"
+              to='.'
+              search={{param1: 'value1'}}
+            >
+              Search
+            </Link>
+            <Link
+              data-testid="home-link"
+              from='/'
+              to='.'
+            >
+              Go To Home
+            </Link>
+            <Outlet />
+          </>
+        )
+      }
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: IndexComponent,
+        validateSearch: z.object({
+          param1: z.string().optional(),
+        }),
+      })
+
+      const postRoute = createRoute({
+        getParentRoute: () => indexRoute,
+        path: 'post',
+        component: () => <div>Post</div>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, postRoute]),
+        history,
+        trailingSlash: trailingSlash ? 'always' : 'never',
+      })
+
+      render(<RouterProvider router={router} />)
+
+      const postButton = await screen.findByTestId('posts-link')
+
+      await act(() => fireEvent.click(postButton))
+
+      expect(router.state.location.pathname).toBe(`/post${tail}`)
+
+      const searchButton = await screen.findByTestId('search-link')
+
+      await act(() => fireEvent.click(searchButton))
+
+      expect(router.state.location.pathname).toBe(`/post${tail}`)
+      expect(router.state.location.search).toEqual({ param1: 'value1' })
+
+      const homeBtn = await screen.findByTestId('home-link')
+
+      await act(() => fireEvent.click(homeBtn))
+
+      expect(router.state.location.pathname).toBe(`/`)
+      expect(router.state.location.search).toEqual({})
+    },
+  )
+
+  test.each([true, false])(
+    'should navigate to from route with path params when using "." in nested route structure',
+    async (trailingSlash) => {
+      const tail = trailingSlash ? '/' : ''
+      const rootRoute = createRootRoute()
+
+      const IndexComponent = () => {
+        return (
+          <>
+            <h1 data-testid="index-heading">Index</h1>
+            <Link
+              data-testid="posts-link"
+              to='/posts'
+            >
+              Posts
+            </Link>
+          </>
+        )
+      }
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: IndexComponent,
+      })
+
+      const layoutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        id: '_layout',
+        component: () => {
+          return (
+            <>
+              <h1>Layout</h1>
+              <Outlet />
+            </>
+          )
+        },
+      })
+
+      const PostsComponent = () => {
+        return (
+          <>
+            <h1 data-testid="posts-index-heading">Posts</h1>
+            <Link
+              data-testid="first-post-link"
+              to='$postId'
+              params={{ postId: '1' }}
+            >
+              To first post
+            </Link>
+            <Link
+              data-testid="second-post-link"
+              to='$postId'
+              params={{ postId: '2' }}
+            >
+              To second post
+            </Link>
+            <Link
+              data-testid="to-posts-index-link"
+              from='/posts'
+              to='.'
+            >
+              To posts list
+            </Link>
+            <Outlet />
+          </>
+        )
+      }
+
+      const PostDetailComponent = () => {
+        return (
+          <>
+            <h1 data-testid="post-detail-index-heading">Post Detail</h1>
+            <Link
+              data-testid="post-info-link"
+              to='info'
+            >
+              To post info
+            </Link>
+            <Link
+              data-testid="post-notes-link"
+              to='notes'
+            >
+              To post notes
+            </Link>
+            <Link
+              data-testid="to-post-detail-index-link"
+              from='/posts/$postId'
+              to='.'
+            >
+              To index detail options
+            </Link>
+            <Outlet />
+          </>
+        )
+      }
+
+      const PostInfoComponent = () => {
+        return (
+          <>
+            <h1 data-testid="post-info-heading">Post Info</h1>
+          </>
+        )
+      }
+
+      const PostNotesComponent = () => {
+        return (
+          <>
+            <h1 data-testid="post-notes-heading">Post Notes</h1>
+          </>
+        )
+      }
+
+      const postsRoute = createRoute({
+        getParentRoute: () => layoutRoute,
+        path: 'posts',
+        component: PostsComponent,
+      })
+
+      const postDetailRoute = createRoute({
+        getParentRoute: () => postsRoute,
+        path: '$postId',
+        component: PostDetailComponent,
+      })
+
+      const postInfoRoute = createRoute({
+        getParentRoute: () => postDetailRoute,
+        path: 'info',
+        component: PostInfoComponent,
+      })
+
+      const postNotesRoute = createRoute({
+        getParentRoute: () => postDetailRoute,
+        path: 'notes',
+        component: PostNotesComponent,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([
+          indexRoute,
+          layoutRoute.addChildren([postsRoute.addChildren([postDetailRoute.addChildren([postInfoRoute, postNotesRoute])])]),
+        ]),
+        trailingSlash: trailingSlash ? 'always' : 'never',
+      })
+
+      render(<RouterProvider router={router} />)
+
+      const postsButton = await screen.findByTestId('posts-link')
+
+      fireEvent.click(postsButton)
+
+      expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
+      expect(window.location.pathname).toEqual(`/posts${tail}`)
+
+      const firstPostButton = await screen.findByTestId('first-post-link')
+
+      fireEvent.click(firstPostButton)
+
+      expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
+      expect(window.location.pathname).toEqual(`/posts/1${tail}`)
+
+      const postInfoButton = await screen.findByTestId('post-info-link')
+
+      fireEvent.click(postInfoButton)
+
+      expect(await screen.findByTestId('post-info-heading')).toBeInTheDocument()
+      expect(window.location.pathname).toEqual(`/posts/1/info${tail}`)
+
+      const toPostDetailIndexButton = await screen.findByTestId('to-post-detail-index-link')
+
+      fireEvent.click(toPostDetailIndexButton)
+
+      expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
+      expect(
+        screen.queryByTestId("'post-info-heading"),
+      ).not.toBeInTheDocument()
+      expect(window.location.pathname).toEqual(`/posts/1${tail}`)
+
+      const postNotesButton = await screen.findByTestId('post-notes-link')
+
+      fireEvent.click(postNotesButton)
+
+      expect(await screen.findByTestId('post-notes-heading')).toBeInTheDocument()
+      expect(window.location.pathname).toEqual(`/posts/1/notes${tail}`)
+
+      const toPostsIndexButton = await screen.findByTestId('to-posts-index-link')
+
+      fireEvent.click(toPostsIndexButton)
+
+      expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
+      expect(
+        screen.queryByTestId("'post-notes-heading"),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByTestId("'post-detail-index-heading"),
+      ).not.toBeInTheDocument()
+      expect(window.location.pathname).toEqual(`/posts${tail}`)
+
+      const secondPostButton = await screen.findByTestId('second-post-link')
+
+      fireEvent.click(secondPostButton)
+
+      expect(await screen.findByTestId('post-detail-index-heading')).toBeInTheDocument()
+      expect(window.location.pathname).toEqual(`/posts/2${tail}`)
+    },
+  )
+})
 
 describe('when on /posts/$postId and navigating to ../ with default `from` /posts', () => {
   async function runTest(navigateVia: 'Route' | 'RouteApi') {
