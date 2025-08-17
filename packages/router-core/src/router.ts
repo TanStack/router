@@ -1493,14 +1493,24 @@ export class RouterCore<
       // First let's find the starting pathname
       // By default, start with the current location
       let fromPath = this.resolvePathWithBase(lastMatch.fullPath, '.')
-      const toPath = dest.to
-        ? this.resolvePathWithBase(fromPath, `${dest.to}`)
-        : this.resolvePathWithBase(fromPath, '.')
+      const destFromPath = dest.from && this.resolvePathWithBase(dest.from, '.')
+
+      const toPath = destFromPath
+          ? this.resolvePathWithBase(destFromPath, `${dest.to ?? "."}`)
+          : this.resolvePathWithBase(fromPath, `${dest.to ?? "."}`)
 
       const routeIsChanging =
         !!dest.to &&
-        !comparePaths(dest.to.toString(), fromPath) &&
-        !comparePaths(toPath, fromPath)
+        (
+          comparePaths(destFromPath ?? fromPath, fromPath) ?
+          (
+            !comparePaths(toPath, fromPath)
+          ) :
+          (
+            !comparePaths(toPath, destFromPath!) ||
+            !comparePaths(toPath, fromPath)
+          )
+        )
 
       // If the route is changing we need to find the relative fromPath
       if (dest.unsafeRelative === 'path') {
