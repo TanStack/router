@@ -4,6 +4,7 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
+  last,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
@@ -104,24 +105,28 @@ export function useLinkProps<
     select: (match) => match.index,
   })
 
-  const getFrom = React.useCallback(() => {
-    const currentRouteMatches = router.matchRoutes(router.latestLocation, {
-      _buildLocation: false,
-    })
+  // Track the active location to ensure recomputation on path changes
+  const activeLocation = useRouterState({
+      select: (s) => s.location,
+      structuralSharing: true as any,
+  })
 
-    return (
-      options.from ??
-      currentRouteMatches.slice(-1)[0]?.fullPath ??
-      router.state.matches[matchIndex]!.fullPath
-    )
-  }, [router, options.from, matchIndex])
+  const _options = React.useMemo(() => {
+      const currentRouteMatches = router.matchRoutes(activeLocation, {
+        _buildLocation: false,
+      })
 
-  const next = React.useMemo(
-    () => router.buildLocation({ ...options, from: getFrom() } as any),
+      const from = options.from ??
+        last(currentRouteMatches)?.fullPath ??
+        router.state.matches[matchIndex]!.fullPath
+
+      return {...options, from}
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
       currentSearch,
+      activeLocation,
       options._fromLocation,
       options.from,
       options.hash,
@@ -131,8 +136,12 @@ export function useLinkProps<
       options.state,
       options.mask,
       options.unsafeRelative,
-      getFrom,
-    ],
+    ]
+  )
+
+  const next = React.useMemo(
+    () => router.buildLocation({ ..._options } as any),
+    [router, _options]
   )
 
   const isExternal = type === 'external'
@@ -196,33 +205,13 @@ export function useLinkProps<
   const doPreload = React.useCallback(
     () => {
       router
-        .preloadRoute({ ...options, from: getFrom() } as any)
+        .preloadRoute({ ... _options } as any)
         .catch((err) => {
           console.warn(err)
           console.warn(preloadWarning)
         })
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      router,
-      options.to,
-      options._fromLocation,
-      options.from,
-      options.search,
-      options.hash,
-      options.params,
-      options.state,
-      options.mask,
-      options.unsafeRelative,
-      options.hashScrollIntoView,
-      options.href,
-      options.ignoreBlocker,
-      options.reloadDocument,
-      options.replace,
-      options.resetScroll,
-      options.viewTransition,
-      getFrom,
-    ],
+    [router, _options]
   )
 
   const preloadViewportIoCallback = React.useCallback(
@@ -274,8 +263,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
-        ...options,
-        from: getFrom(),
+        ..._options,
         replace,
         resetScroll,
         hashScrollIntoView,
