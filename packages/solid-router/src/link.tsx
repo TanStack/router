@@ -153,9 +153,11 @@ export function useLinkProps<
       _buildLocation: false,
     })
 
-    return options.from ??
+    return (
+      options.from ??
       last(currentRouteMatches)?.fullPath ??
       router.state.matches[matchIndex()]!.fullPath
+    )
   })
 
   const _options = () => {
