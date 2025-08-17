@@ -483,3 +483,12 @@ export function isPromise<T>(
       typeof (value as Promise<T>).then === 'function',
   )
 }
+
+export function findLast<T>(array: Array<T>, predicate: (item: T) => boolean): T | undefined {
+  for (let i = array.length - 1; i >= 0; i--) {
+    if (predicate(array[i]!)) {
+      return array[i]!;
+    }
+  }
+  return undefined;
+}

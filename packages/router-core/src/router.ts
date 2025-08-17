@@ -8,6 +8,7 @@ import invariant from 'tiny-invariant'
 import {
   createControlledPromise,
   deepEqual,
+  findLast,
   functionalUpdate,
   last,
   pick,
@@ -1441,13 +1442,11 @@ export class RouterCore<
             undefined,
           ).matchedRoutes
 
-          const matchedFrom = [...allCurrentLocationMatches]
-            .reverse()
-            .find((d) => {
-              return comparePaths(d.fullPath, fromPath)
-            })
+          const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
+            return comparePaths(d.fullPath, fromPath)
+          })
 
-          const matchedCurrent = [...allFromMatches].reverse().find((d) => {
+          const matchedCurrent = findLast(allFromMatches, (d) => {
             return comparePaths(d.fullPath, currentLocation.pathname)
           })
 
