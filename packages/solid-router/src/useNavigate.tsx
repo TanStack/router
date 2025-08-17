@@ -15,7 +15,7 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const { navigate, state } = useRouter()
+  const router = useRouter()
 
   const matchIndex = useMatch({
     strict: false,
@@ -23,12 +23,17 @@ export function useNavigate<
   })
 
   return ((options: NavigateOptions) => {
-    return navigate({
+    const currentRouteMatches= router.matchRoutes(router.latestLocation, {
+      _buildLocation: false,
+    })
+
+    return router.navigate({
       ...options,
       from:
         options.from ??
         _defaultOpts?.from ??
-        state.matches[matchIndex()]!.fullPath,
+        currentRouteMatches.slice(-1)[0]?.fullPath ??
+        router.state.matches[matchIndex()]!.fullPath
     })
   }) as UseNavigateResult<TDefaultFrom>
 }
