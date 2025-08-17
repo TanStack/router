@@ -1499,11 +1499,9 @@ export class RouterCore<
           undefined,
         ).matchedRoutes
 
-        const matchedFrom = [...allCurrentLocationMatches]
-          .reverse()
-          .find((d) => {
-            return comparePaths(d.fullPath, dest.from!)
-          })
+        const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
+          return comparePaths(d.fullPath, dest.from!)
+        })
 
         const matchedCurrent = [...allFromMatches].reverse().find((d) => {
           return comparePaths(d.fullPath, currentLocation.pathname)
