@@ -107,6 +107,7 @@ export {
   matchByPath,
 } from './path'
 export type { Segment } from './path'
+export { encode, decode } from './qss'
 export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
 
