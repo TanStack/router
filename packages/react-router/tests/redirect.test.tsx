@@ -229,7 +229,11 @@ describe('redirect', () => {
         protectedRoute,
         indexRoute,
       ])
-      const router = createRouter({ routeTree, history, defaultPreload: 'intent' })
+      const router = createRouter({
+        routeTree,
+        history,
+        defaultPreload: 'intent',
+      })
 
       render(<RouterProvider router={router} />)
 
