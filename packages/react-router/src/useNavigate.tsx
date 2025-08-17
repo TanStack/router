@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { last } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import { useMatch } from './useMatch'
 import type {
@@ -33,7 +34,7 @@ export function useNavigate<
       const from =
         options.from ??
         _defaultOpts?.from ??
-        currentRouteMatches.slice(-1)[0]?.fullPath ??
+        last(currentRouteMatches)?.fullPath ??
         router.state.matches[matchIndex]!.fullPath
 
       return router.navigate({
