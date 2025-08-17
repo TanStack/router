@@ -1430,13 +1430,13 @@ export class RouterCore<
           undefined,
         ).matchedRoutes
 
-          const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
-            return comparePaths(d.fullPath, dest.from!)
-          })
+        const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
+          return comparePaths(d.fullPath, dest.from!)
+        })
 
-          const matchedCurrent = findLast(allFromMatches, (d) => {
-            return comparePaths(d.fullPath, lastMatch.fullPath)
-          })
+        const matchedCurrent = findLast(allFromMatches, (d) => {
+          return comparePaths(d.fullPath, lastMatch.fullPath)
+        })
 
         // for from to be invalid it shouldn't just be unmatched to currentLocation
         // but the currentLocation should also be unmatched to from
