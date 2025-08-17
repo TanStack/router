@@ -6,7 +6,7 @@
  * This reimplementation uses modern browser APIs
  * (namely URLSearchParams) and TypeScript while still
  * maintaining the original functionality and interface.
- * 
+ *
  * Update: this implementation has also been mangled to
  * fit exactly our use-case (single value per key in encoding).
  */
@@ -22,7 +22,10 @@
  * // Expected output: "token=foo&key=value"
  * ```
  */
-export function encode(obj: Record<string, any>, stringify: (value: any) => string = String): string {
+export function encode(
+  obj: Record<string, any>,
+  stringify: (value: any) => string = String,
+): string {
   const result = new URLSearchParams()
 
   for (const key in obj) {
