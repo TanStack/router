@@ -484,11 +484,14 @@ export function isPromise<T>(
   )
 }
 
-export function findLast<T>(array: Array<T>, predicate: (item: T) => boolean): T | undefined {
+export function findLast<T>(
+  array: Array<T>,
+  predicate: (item: T) => boolean,
+): T | undefined {
   for (let i = array.length - 1; i >= 0; i--) {
     if (predicate(array[i]!)) {
-      return array[i]!;
+      return array[i]!
     }
   }
-  return undefined;
+  return undefined
 }
