@@ -183,7 +183,7 @@ Keep in mind that normally dynamic segment params are `string` values, but they 
 
 By default, all links are absolute unless a `from` route path is provided. This means that the above link will always navigate to the `/about` route regardless of what route you are currently on.
 
-Relative links will always apply to the current location. To make it relative to another route, you can provide a `from` route path:
+Relative links can be combined with a `from` route path. If a from route path isn't provided, relative paths default to the current active location.
 
 ```tsx
 const postIdRoute = createRoute({
