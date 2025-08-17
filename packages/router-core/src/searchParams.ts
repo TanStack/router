@@ -21,8 +21,8 @@ export function parseSearchWith(parser: (str: string) => any) {
       if (typeof value === 'string') {
         try {
           query[key] = parser(value)
-        } catch (err) {
-          //
+        } catch {
+          // silent
         }
       }
     }
@@ -40,7 +40,7 @@ export function stringifySearchWith(
     if (typeof val === 'object' && val !== null) {
       try {
         return stringify(val)
-      } catch (err) {
+      } catch {
         // silent
       }
     } else if (hasParser && typeof val === 'string') {
@@ -49,7 +49,7 @@ export function stringifySearchWith(
         // If it is, then stringify it again.
         parser(val)
         return stringify(val)
-      } catch (err) {
+      } catch {
         // silent
       }
     }
