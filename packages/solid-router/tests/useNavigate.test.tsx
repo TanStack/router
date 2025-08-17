@@ -1319,7 +1319,6 @@ test('when setting search params with 2 parallel navigate calls', async () => {
   expect(search.get('param2')).toEqual('bar')
 })
 
-
 describe('relative navigate to current route', () => {
   test.each([true, false])(
     'should navigate to current route with search params when using "." in nested route structure from Index Route with trailingSlash: %s',
@@ -1793,7 +1792,7 @@ describe('relative navigate to from route', () => {
               onClick={() =>
                 navigate({
                   from: '/',
-                  to: '.'
+                  to: '.',
                 })
               }
             >
@@ -1927,7 +1926,7 @@ describe('relative navigate to from route', () => {
               onClick={() =>
                 navigate({
                   from: '/posts',
-                  to: '.'
+                  to: '.',
                 })
               }
             >
@@ -1968,7 +1967,7 @@ describe('relative navigate to from route', () => {
               onClick={() =>
                 navigate({
                   from: '/posts/$postId',
-                  to: '.'
+                  to: '.',
                 })
               }
             >
@@ -2022,7 +2021,11 @@ describe('relative navigate to from route', () => {
       const router = createRouter({
         routeTree: rootRoute.addChildren([
           indexRoute,
-          layoutRoute.addChildren([postsRoute.addChildren([postDetailRoute.addChildren([postInfoRoute, postNotesRoute])])]),
+          layoutRoute.addChildren([
+            postsRoute.addChildren([
+              postDetailRoute.addChildren([postInfoRoute, postNotesRoute]),
+            ]),
+          ]),
         ]),
         trailingSlash: trailingSlash ? 'always' : 'never',
       })
@@ -2043,7 +2046,9 @@ describe('relative navigate to from route', () => {
       fireEvent.click(firstPostButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('post-detail-index-heading')).toBeInTheDocument()
+        expect(
+          screen.queryByTestId('post-detail-index-heading'),
+        ).toBeInTheDocument()
         expect(window.location.pathname).toEqual(`/posts/1${tail}`)
       })
 
@@ -2056,12 +2061,16 @@ describe('relative navigate to from route', () => {
         expect(window.location.pathname).toEqual(`/posts/1/info${tail}`)
       })
 
-      const toPostDetailIndexButton = await screen.findByTestId('to-post-detail-index-btn')
+      const toPostDetailIndexButton = await screen.findByTestId(
+        'to-post-detail-index-btn',
+      )
 
       fireEvent.click(toPostDetailIndexButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('post-detail-index-heading')).toBeInTheDocument()
+        expect(
+          screen.queryByTestId('post-detail-index-heading'),
+        ).toBeInTheDocument()
         expect(
           screen.queryByTestId("'post-info-heading"),
         ).not.toBeInTheDocument()
@@ -2097,7 +2106,9 @@ describe('relative navigate to from route', () => {
       fireEvent.click(secondPostButton)
 
       await waitFor(() => {
-        expect(screen.queryByTestId('post-detail-index-heading')).toBeInTheDocument()
+        expect(
+          screen.queryByTestId('post-detail-index-heading'),
+        ).toBeInTheDocument()
         expect(window.location.pathname).toEqual(`/posts/2${tail}`)
       })
     },
@@ -2254,7 +2265,6 @@ describe('relative navigate to from route', () => {
   })
 })
 
-
 describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
   'relative useNavigate with %s',
   ({ basepath }) => {
@@ -2304,7 +2314,11 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>Param Route</h1>
-              <button onClick={() => navigate({ from: paramRoute.fullPath ,to: './a' })}>
+              <button
+                onClick={() =>
+                  navigate({ from: paramRoute.fullPath, to: './a' })
+                }
+              >
                 Link to ./a
               </button>
               <button
@@ -2326,7 +2340,11 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
           return (
             <>
               <h1>Param A Route</h1>
-              <button onClick={() => navigate({ from: paramARoute.fullPath, to: '..' })}>
+              <button
+                onClick={() =>
+                  navigate({ from: paramARoute.fullPath, to: '..' })
+                }
+              >
                 Link to .. from /param/foo/a
               </button>
               <Outlet />
