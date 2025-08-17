@@ -25,7 +25,6 @@ export {
   parseSearchWith,
   stringifySearchWith,
   escapeJSON, // SSR
-  pick,
   functionalUpdate,
   replaceEqualDeep,
   isPlainObject,
