@@ -1623,7 +1623,7 @@ describe('relative navigate to current route', () => {
       })
 
       const PostsComponent = () => {
-        const navigate = postsRoute.useNavigate()
+        const navigate = useNavigate()
         return (
           <>
             <h1 data-testid="posts-index-heading">Posts</h1>
@@ -2092,7 +2092,7 @@ describe('relative navigate to from route', () => {
       expect(
         await screen.findByTestId('post-detail-index-heading'),
       ).toBeInTheDocument()
-      expect(screen.queryByTestId("'post-info-heading")).not.toBeInTheDocument()
+      expect(screen.queryByTestId('post-info-heading')).not.toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts/1${tail}`)
 
       const postNotesButton = await screen.findByTestId('post-notes-btn')
@@ -2112,10 +2112,10 @@ describe('relative navigate to from route', () => {
         await screen.findByTestId('posts-index-heading'),
       ).toBeInTheDocument()
       expect(
-        screen.queryByTestId("'post-notes-heading"),
+        screen.queryByTestId('post-notes-heading'),
       ).not.toBeInTheDocument()
       expect(
-        screen.queryByTestId("'post-detail-index-heading"),
+        screen.queryByTestId('post-detail-index-heading'),
       ).not.toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts${tail}`)
 

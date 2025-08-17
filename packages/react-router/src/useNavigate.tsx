@@ -42,7 +42,7 @@ export function useNavigate<
       })
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [_defaultOpts?.from, router.navigate, router.latestLocation],
+    [_defaultOpts?.from, router.navigate, router.latestLocation, matchIndex],
   ) as UseNavigateResult<TDefaultFrom>
 }
 

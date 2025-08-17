@@ -145,8 +145,10 @@ export function useLinkProps<
     select: (match) => match.index,
   })
 
+  const activeLocation = useRouterState({ select: (s) => s.location })
+
   const _options = () => {
-    const currentRouteMatches = router.matchRoutes(router.latestLocation, {
+    const currentRouteMatches = router.matchRoutes(activeLocation(), {
       _buildLocation: false,
     })
 
@@ -163,6 +165,8 @@ export function useLinkProps<
 
   const next = Solid.createMemo(() => {
     currentSearch()
+    // Access activeLocation to make this memo re-run on route changes
+    activeLocation()
     return router.buildLocation(_options() as any)
   })
 

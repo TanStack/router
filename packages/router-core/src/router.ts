@@ -1415,6 +1415,10 @@ export class RouterCore<
         _buildLocation: true,
       })
 
+      // Now let's find the starting pathname
+      // This should default to the current location if no from is provided
+      const lastMatch = last(allCurrentLocationMatches)!
+
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
       if (
@@ -1432,7 +1436,7 @@ export class RouterCore<
           })
 
           const matchedCurrent = findLast(allFromMatches, (d) => {
-            return comparePaths(d.fullPath, currentLocation.pathname)
+            return comparePaths(d.fullPath, lastMatch.fullPath)
           })
 
         // for from to be invalid it shouldn't just be unmatched to currentLocation
@@ -1441,10 +1445,6 @@ export class RouterCore<
           console.warn(`Could not find match for from: ${dest.from}`)
         }
       }
-
-      // Now let's find the starting pathname
-      // This should default to the current location if no from is provided
-      const lastMatch = last(allCurrentLocationMatches)!
 
       const defaultedFromPath =
         dest.unsafeRelative === 'path'
