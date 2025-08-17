@@ -16,8 +16,6 @@ export {
   matchPathname,
   removeBasepath,
   matchByPath,
-  encode,
-  decode,
   rootRouteId,
   defaultSerializeError,
   defaultParseSearch,
