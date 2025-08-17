@@ -32,6 +32,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  history.destroy()
   window.history.replaceState(null, 'root', '/')
   cleanup()
 })
@@ -2072,7 +2073,7 @@ describe('relative navigate to from route', () => {
           screen.queryByTestId('post-detail-index-heading'),
         ).toBeInTheDocument()
         expect(
-          screen.queryByTestId("'post-info-heading"),
+          screen.queryByTestId('post-info-heading'),
         ).not.toBeInTheDocument()
         expect(window.location.pathname).toEqual(`/posts/1${tail}`)
       })
@@ -2093,10 +2094,10 @@ describe('relative navigate to from route', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('posts-index-heading')).toBeInTheDocument()
         expect(
-          screen.queryByTestId("'post-notes-heading"),
+          screen.queryByTestId('post-notes-heading'),
         ).not.toBeInTheDocument()
         expect(
-          screen.queryByTestId("'post-detail-index-heading"),
+          screen.queryByTestId('post-detail-index-heading'),
         ).not.toBeInTheDocument()
         expect(window.location.pathname).toEqual(`/posts${tail}`)
       })

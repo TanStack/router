@@ -5682,7 +5682,7 @@ describe('relative links to current route', () => {
 
       await act(() => fireEvent.click(secondPostButton))
 
-      // expect(await screen.findByTestId('post-id2')).toBeInTheDocument()
+      expect(await screen.findByTestId('post-id2')).toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts/id2${tail}`)
     },
   )
@@ -5934,7 +5934,7 @@ describe('relative links to from route', () => {
       expect(
         await screen.findByTestId('post-detail-index-heading'),
       ).toBeInTheDocument()
-      expect(screen.queryByTestId("'post-info-heading")).not.toBeInTheDocument()
+      expect(screen.queryByTestId('post-info-heading')).not.toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts/1${tail}`)
 
       const postNotesButton = await screen.findByTestId('post-notes-link')
@@ -5956,10 +5956,10 @@ describe('relative links to from route', () => {
         await screen.findByTestId('posts-index-heading'),
       ).toBeInTheDocument()
       expect(
-        screen.queryByTestId("'post-notes-heading"),
+        screen.queryByTestId('post-notes-heading'),
       ).not.toBeInTheDocument()
       expect(
-        screen.queryByTestId("'post-detail-index-heading"),
+        screen.queryByTestId('post-detail-index-heading'),
       ).not.toBeInTheDocument()
       expect(window.location.pathname).toEqual(`/posts${tail}`)
 

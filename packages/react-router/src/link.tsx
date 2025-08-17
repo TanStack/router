@@ -131,6 +131,7 @@ export function useLinkProps<
       options.state,
       options.mask,
       options.unsafeRelative,
+      getFrom,
     ],
   )
 
@@ -220,6 +221,7 @@ export function useLinkProps<
       options.replace,
       options.resetScroll,
       options.viewTransition,
+      getFrom
     ],
   )
 
