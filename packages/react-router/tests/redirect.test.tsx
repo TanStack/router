@@ -191,6 +191,69 @@ describe('redirect', () => {
       expect(nestedFooLoaderMock).toHaveBeenCalled()
     })
 
+    test('when `redirect` is thrown during preload', async () => {
+      let signedIn = false // Simulate user authentication state
+      const beforeRedirectMock = vi.fn()
+      const afterRedirectMock = vi.fn()
+
+      const rootRoute = createRootRoute({})
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <div>
+              <h1>Index page</h1>
+              <Link to="/protected">link to protected</Link>
+            </div>
+          )
+        },
+      })
+      const protectedRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/protected',
+        beforeLoad: () => {
+          beforeRedirectMock()
+          if (!signedIn) throw redirect({ to: '/login' })
+          afterRedirectMock()
+        },
+        component: () => <div>Protected page</div>,
+      })
+      const signInRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/login',
+        component: () => <div>Sign In page</div>,
+      })
+      const routeTree = rootRoute.addChildren([
+        signInRoute,
+        protectedRoute,
+        indexRoute,
+      ])
+      const router = createRouter({ routeTree, history, defaultPreload: 'intent' })
+
+      render(<RouterProvider router={router} />)
+
+      const linkToProtected = await screen.findByText('link to protected')
+      expect(linkToProtected).toBeInTheDocument()
+
+      // preload
+      fireEvent.focus(linkToProtected)
+      await sleep(WAIT_TIME)
+
+      // sign-in
+      signedIn = true
+
+      // navigate
+      fireEvent.click(linkToProtected)
+
+      const protectedElement = await screen.findByText('Protected page')
+      expect(protectedElement).toBeInTheDocument()
+      expect(router.state.location.href).toBe('/protected')
+      expect(window.location.pathname).toBe('/protected')
+      expect(beforeRedirectMock).toHaveBeenCalledTimes(2)
+      expect(afterRedirectMock).toHaveBeenCalledTimes(1)
+    })
+
     test('when `redirect` is thrown in `loader` after `router.invalidate()`', async () => {
       let shouldRedirect = false
 
