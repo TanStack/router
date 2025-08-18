@@ -87,7 +87,9 @@ export function getCssSelector(el: any): string {
   const path = []
   let parent: HTMLElement
   while ((parent = el.parentNode)) {
-    path.push(`${el.tagName}:nth-child(${Array.prototype.indexOf.call(parent.children, el) + 1})`)
+    path.push(
+      `${el.tagName}:nth-child(${Array.prototype.indexOf.call(parent.children, el) + 1})`,
+    )
     el = parent
   }
   return `${path.reverse().join(' > ')}`.toLowerCase()
