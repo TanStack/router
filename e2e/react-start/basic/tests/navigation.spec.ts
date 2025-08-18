@@ -1,4 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+
+import { test } from '@tanstack/router-e2e-utils'
 
 test('Navigating to post', async ({ page }) => {
   await page.goto('/')
