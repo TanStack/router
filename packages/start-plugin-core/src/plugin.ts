@@ -307,15 +307,13 @@ export function TanStackStartVitePluginCore(
       client: {
         getRuntimeCode: () =>
           `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/server-functions-client'`,
-        replacer: (d) =>
-          `createClientRpc('${d.functionId}', '${startConfig.serverFns.base}')`,
+        replacer: (d) => `createClientRpc('${d.functionId}')`,
         envName: VITE_ENVIRONMENT_NAMES.client,
       },
       server: {
         getRuntimeCode: () =>
           `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server-functions-server'`,
-        replacer: (d) =>
-          `createServerRpc('${d.functionId}', '${startConfig.serverFns.base}', ${d.fn})`,
+        replacer: (d) => `createServerRpc('${d.functionId}', ${d.fn})`,
         envName: VITE_ENVIRONMENT_NAMES.server,
       },
     }),

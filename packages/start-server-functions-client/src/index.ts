@@ -5,11 +5,12 @@ function sanitizeBase(base: string) {
   return base.replace(/^\/|\/$/g, '')
 }
 
-export const createClientRpc: CreateRpcFn = (functionId, serverBase) => {
-  const sanitizedAppBase = sanitizeBase(process.env.TSS_APP_BASE || '/')
-  const sanitizedServerBase = sanitizeBase(serverBase)
+const sanitizedAppBase = sanitizeBase(process.env.TSS_APP_BASE || '/')
+const sanitizedServerBase = sanitizeBase(process.env.TSS_SERVER_FN_BASE!)
+const baseUrl = `${sanitizedAppBase ? `/${sanitizedAppBase}` : ''}/${sanitizedServerBase}/`
 
-  const url = `${sanitizedAppBase ? `/${sanitizedAppBase}` : ``}/${sanitizedServerBase}/${functionId}`
+export const createClientRpc: CreateRpcFn = (functionId) => {
+  const url = baseUrl + functionId
 
   const clientFn = (...args: Array<any>) => {
     return serverFnFetcher(url, args, fetch)

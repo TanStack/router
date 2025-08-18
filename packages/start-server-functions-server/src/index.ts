@@ -5,20 +5,17 @@ function sanitizeBase(base: string) {
   return base.replace(/^\/|\/$/g, '')
 }
 
-export const createServerRpc: CreateRpcFn = (
-  functionId,
-  serverBase,
-  splitImportFn,
-) => {
+const sanitizedAppBase = sanitizeBase(process.env.TSS_APP_BASE || '/')
+const sanitizedServerBase = sanitizeBase(process.env.TSS_SERVER_FN_BASE!)
+const baseUrl = `${sanitizedAppBase ? `/${sanitizedAppBase}` : ''}/${sanitizedServerBase}/`
+
+export const createServerRpc: CreateRpcFn = (functionId, splitImportFn) => {
   invariant(
     splitImportFn,
     '🚨splitImportFn required for the server functions server runtime, but was not provided.',
   )
 
-  const sanitizedAppBase = sanitizeBase(process.env.TSS_APP_BASE || '/')
-  const sanitizedServerBase = sanitizeBase(serverBase)
-
-  const url = `${sanitizedAppBase ? `/${sanitizedAppBase}` : ``}/${sanitizedServerBase}/${functionId}`
+  const url = baseUrl + functionId
 
   return Object.assign(splitImportFn, {
     url,
