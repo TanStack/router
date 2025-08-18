@@ -1,6 +1,6 @@
 import {
+  createSerializationAdapter,
   createRouter as createTanStackRouter,
-  createTransformer,
 } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
@@ -14,13 +14,13 @@ export function createRouter() {
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,
     scrollRestoration: true,
-    transformers: [
-      createTransformer({
+    serializationAdapters: [
+      createSerializationAdapter({
         key: 'foo',
-        test: (value): value is Foo => value instanceof Foo,
+        test: (value) => value instanceof Foo,
         // order of properties matters for typescript inference
-        toValue: (value) => value.bar,
-        fromValue: (value) => new Foo(value),
+        toSerializable: (value) => value.bar,
+        fromSerializable: (value) => new Foo(value),
       }),
     ],
   })

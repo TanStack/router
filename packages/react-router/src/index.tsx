@@ -30,7 +30,7 @@ export {
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
-  createTransformer,
+  createSerializationAdapter,
 } from '@tanstack/router-core'
 
 export type {

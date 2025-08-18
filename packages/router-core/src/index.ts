@@ -414,4 +414,4 @@ export type {
 
 export type { AnyTransformer, Transformer } from './ssr/transformer'
 
-export { createTransformer } from './ssr/transformer'
+export { createSerializationAdapter } from './ssr/transformer'

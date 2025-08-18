@@ -62,15 +62,16 @@ export async function hydrate(router: AnyRouter): Promise<any> {
     'Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
   )
 
-  const transformers = router.options.transformers as
+  const serializationAdapters = router.options.serializationAdapters as
     | Array<AnyTransformer>
     | undefined
 
-  if (transformers?.length) {
-    window.$_TSR.t = new Map()
-    transformers.forEach((transformer) => {
-      window.$_TSR!.t!.set(transformer.key, transformer.fromValue)
+  if (serializationAdapters?.length) {
+    const fromSerializableMap = new Map()
+    serializationAdapters.forEach((adapter) => {
+      fromSerializableMap.set(adapter.key, adapter.fromSerializable)
     })
+    window.$_TSR.t = fromSerializableMap
     window.$_TSR.buffer.forEach((script) => script())
   }
   window.$_TSR.initialized = true

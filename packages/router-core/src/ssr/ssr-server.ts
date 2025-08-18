@@ -109,9 +109,11 @@ export function attachRouterServerSsrUtils(
       const p = createControlledPromise<string>()
       const trackPlugins = { didRun: false }
       const plugins =
-        (router.options.transformers as Array<AnyTransformer> | undefined)?.map(
-          (t) => t.makePlugin(trackPlugins),
-        ) ?? []
+        (
+          router.options.serializationAdapters as
+            | Array<AnyTransformer>
+            | undefined
+        )?.map((t) => t.makePlugin(trackPlugins)) ?? []
       crossSerializeStream(dehydratedRouter, {
         refs: serializationRefs,
         plugins: [...plugins, ReadableStreamPlugin, ShallowErrorPlugin],

@@ -423,7 +423,7 @@ export interface RouterOptions<
    */
   disableGlobalCatchBoundary?: boolean
 
-  transformers?: TTransformerConfig
+  serializationAdapters?: TTransformerConfig
 }
 
 export interface RouterState<
