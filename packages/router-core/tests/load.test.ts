@@ -43,9 +43,25 @@ describe('beforeLoad skip or exec', () => {
   })
 
   test('exec on regular nav', async () => {
-    const beforeLoad = vi.fn()
+    const beforeLoad = vi.fn(() => Promise.resolve({ hello: 'world' }))
     const router = setup({ beforeLoad })
-    await router.navigate({ to: '/foo' })
+    const navigation = router.navigate({ to: '/foo' })
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(router.state.pendingMatches).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+    )
+    await navigation
+    expect(router.state.location.pathname).toBe('/foo')
+    expect(router.state.matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: '/foo',
+          context: {
+            hello: 'world',
+          },
+        }),
+      ]),
+    )
     expect(beforeLoad).toHaveBeenCalledTimes(1)
   })
 
@@ -56,15 +72,21 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
+    expect(router.state.cachedMatches).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+    )
     await router.navigate({ to: '/foo' })
 
     expect(beforeLoad).toHaveBeenCalledTimes(1)
   })
 
   test('skip if preload resolved successfully', async () => {
-    const beforeLoad = vi.fn(() => Promise.resolve())
+    const beforeLoad = vi.fn()
     const router = setup({ beforeLoad })
     await router.preloadRoute({ to: '/foo' })
+    expect(router.state.cachedMatches).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+    )
     await router.navigate({ to: '/foo' })
 
     expect(beforeLoad).toHaveBeenCalledTimes(1)
