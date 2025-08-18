@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
+import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
   BaseRoute,
@@ -30,12 +31,13 @@ describe('beforeLoad skip or exec', () => {
 
     const router = new RouterCore({
       routeTree,
+      history: createMemoryHistory(),
     })
 
     return router
   }
 
-  test('nothing happens if nothing happens', async () => {
+  test('baseline', async () => {
     const beforeLoad = vi.fn()
     const router = setup({ beforeLoad })
     await router.load()
@@ -65,7 +67,19 @@ describe('beforeLoad skip or exec', () => {
     expect(beforeLoad).toHaveBeenCalledTimes(1)
   })
 
-  test('skip if preload is ongoing', async () => {
+  test('skip if resolved preload (success)', async () => {
+    const beforeLoad = vi.fn()
+    const router = setup({ beforeLoad })
+    await router.preloadRoute({ to: '/foo' })
+    expect(router.state.cachedMatches).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+    )
+    await router.navigate({ to: '/foo' })
+
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+  })
+
+  test('skip if pending preload (success)', async () => {
     const beforeLoad = vi.fn(
       () => new Promise((resolve) => setTimeout(resolve, 100)),
     )
@@ -80,19 +94,7 @@ describe('beforeLoad skip or exec', () => {
     expect(beforeLoad).toHaveBeenCalledTimes(1)
   })
 
-  test('skip if preload resolved successfully', async () => {
-    const beforeLoad = vi.fn()
-    const router = setup({ beforeLoad })
-    await router.preloadRoute({ to: '/foo' })
-    expect(router.state.cachedMatches).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
-    )
-    await router.navigate({ to: '/foo' })
-
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
-  })
-
-  test('exec if preload has rejected w/ notFound', async () => {
+  test('exec if rejected preload (notFound)', async () => {
     const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
       if (preload) throw notFound()
       await Promise.resolve()
@@ -106,7 +108,7 @@ describe('beforeLoad skip or exec', () => {
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
-  test('exec if preload is pending, but will reject w/ notFound', async () => {
+  test('exec if pending preload (notFound)', async () => {
     const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
       await new Promise((resolve) => setTimeout(resolve, 100))
       if (preload) throw notFound()
@@ -121,7 +123,7 @@ describe('beforeLoad skip or exec', () => {
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
-  test('exec if preload has rejected w/ redirect', async () => {
+  test('exec if rejected preload (redirect)', async () => {
     const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
       if (preload) throw redirect({ to: '/bar' })
       await Promise.resolve()
@@ -136,7 +138,7 @@ describe('beforeLoad skip or exec', () => {
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
-  test('exec if preload is pending, but will reject w/ redirect', async () => {
+  test('exec if pending preload (redirect)', async () => {
     const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
       await new Promise((resolve) => setTimeout(resolve, 100))
       if (preload) throw redirect({ to: '/bar' })
@@ -152,7 +154,7 @@ describe('beforeLoad skip or exec', () => {
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
-  test('exec if preload has rejected w/ regular Error', async () => {
+  test('exec if rejected preload (error)', async () => {
     const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
       if (preload) throw new Error('error')
       await Promise.resolve()
@@ -166,7 +168,7 @@ describe('beforeLoad skip or exec', () => {
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
-  test('exec if preload is pending, but will reject w/ regular Error', async () => {
+  test('exec if pending preload (error)', async () => {
     const beforeLoad = vi.fn<BeforeLoad>(async ({ preload }) => {
       await new Promise((resolve) => setTimeout(resolve, 100))
       if (preload) throw new Error('error')
