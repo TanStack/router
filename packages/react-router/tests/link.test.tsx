@@ -5099,6 +5099,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
               <Link from={paramARoute.fullPath} to="..">
                 Link to .. from /param/foo/a
               </Link>
+              <Link to=".." data-testid={'link-to-previous'}>
+                Link to .. from current active route
+              </Link>
               <Outlet />
             </>
           )
@@ -5283,6 +5286,27 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       })
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo`)
+    })
+
+    test('should navigate to a parent link based on active location', async () => {
+      const router = setupRouter()
+
+      render(<RouterProvider router={router} />)
+
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
+
+      const relativeLink = await screen.findByTestId('link-to-previous')
+
+      expect(relativeLink.getAttribute('href')).toBe(`${basepath}/param/foo/a`)
+
+      // Click the link and ensure the new location
+      await act(async () => {
+        fireEvent.click(relativeLink)
+      })
+
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
 
     test('should navigate to a child link based on pathname', async () => {
@@ -6015,21 +6039,14 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
     })
 
     const PostsComponent = () => {
-      const linkVia = () => {
-        if (navigateVia === 'Route') {
-          return (
-            <Link
-              from={postsRoute.fullPath}
-              to="../"
-              data-testid="link-to-home"
-            >
-              To Home
-            </Link>
-          )
-        }
+      const LinkViaRoute = () => (
+        <Link from={postsRoute.fullPath} to="../" data-testid="link-to-home">
+          To Home
+        </Link>
+      )
 
+      const LinkViaRouteApi = () => {
         const RouteApiLink = getRouteApi('/_layout/posts').Link
-
         return (
           <RouteApiLink to="../" data-testid="link-to-home">
             To Home
@@ -6040,7 +6057,11 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
       return (
         <>
           <h1>Posts</h1>
-          {linkVia()}
+          {
+            navigateVia === 'Route'
+              ? <LinkViaRoute />
+              : <LinkViaRouteApi />
+          }
           <Outlet />
         </>
       )
