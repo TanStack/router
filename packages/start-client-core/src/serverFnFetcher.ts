@@ -5,8 +5,8 @@ import {
   isRedirect,
   parseRedirect,
 } from '@tanstack/router-core'
-import { startSerializer } from '@tanstack/start-client-core'
-import type { FunctionMiddlewareClientFnOptions } from '@tanstack/start-client-core'
+import { startSerializer } from './serializer'
+import type { FunctionMiddlewareClientFnOptions } from './createMiddleware'
 
 export async function serverFnFetcher(
   url: string,

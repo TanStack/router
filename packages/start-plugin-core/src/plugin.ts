@@ -306,7 +306,7 @@ export function TanStackStartVitePluginCore(
       manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
       client: {
         getRuntimeCode: () =>
-          `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/server-functions-client'`,
+          `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/client'`,
         replacer: (d) => `createClientRpc('${d.functionId}')`,
         envName: VITE_ENVIRONMENT_NAMES.client,
       },

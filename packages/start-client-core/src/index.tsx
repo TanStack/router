@@ -87,3 +87,5 @@ export {
   flattenMiddlewares,
   executeMiddleware,
 } from './createServerFn'
+
+export { createClientRpc } from './createClientRpc'
