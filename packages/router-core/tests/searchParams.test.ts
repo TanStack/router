@@ -17,7 +17,6 @@ describe('Search Params serialization and deserialization', () => {
     [{ foo: 'true' }, '?foo=%22true%22'],
     [{ foo: null }, '?foo=null'],
     [{ foo: 'null' }, '?foo=%22null%22'],
-    [{ foo: undefined }, ''],
     [{ foo: 'undefined' }, '?foo=undefined'],
     [{ foo: {} }, '?foo=%7B%7D'],
     [{ foo: '{}' }, '?foo=%22%7B%7D%22'],
@@ -40,6 +39,12 @@ describe('Search Params serialization and deserialization', () => {
     const str = defaultStringifySearch(input)
     expect(str).toEqual(expected)
     expect(defaultParseSearch(str)).toEqual(input)
+  })
+
+  test('undefined values are removed during stringification', () => {
+    const str = defaultStringifySearch({ foo: 'bar', bar: undefined })
+    expect(str).toEqual('?foo=bar')
+    expect(defaultParseSearch(str)).toEqual({ foo: 'bar' })
   })
 
   test('[edge case] self-reference serializes to "object Object"', () => {
@@ -87,10 +92,10 @@ describe('Search Params serialization and deserialization', () => {
       '?foo=%7B%7D',
     )
     expect(defaultStringifySearch([1])).toEqual('?0=1')
-    const date = new Date()
+    const date = new Date('2024-11-18')
     expect(defaultStringifySearch(date)).toEqual('')
     expect(defaultStringifySearch({ foo: date })).toEqual(
-      `?foo=%22${encodeURIComponent(date.toISOString())}%22`,
+      '?foo=%222024-11-18T00%3A00%3A00.000Z%22',
     )
   })
 })
