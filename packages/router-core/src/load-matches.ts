@@ -147,11 +147,10 @@ const shouldSkipLoader = (
     return true
   }
 
-  if (inner.router.isServer) {
-    if (match.ssr === false) {
-      return true
-    }
+  if (inner.router.isServer && match.ssr === false) {
+    return true
   }
+
   return false
 }
 
@@ -302,11 +301,11 @@ const setupPendingTimeout = (
   }
 }
 
-const shouldExecuteBeforeLoad = (
+const preBeforeLoadSetup = (
   inner: InnerLoadContext,
   matchId: string,
   route: AnyRoute,
-): boolean | Promise<boolean> => {
+): void | Promise<void> => {
   const existingMatch = inner.router.getMatch(matchId)!
 
   // If we are in the middle of a load, either of these will be present
@@ -315,25 +314,21 @@ const shouldExecuteBeforeLoad = (
     !existingMatch._nonReactive.beforeLoadPromise &&
     !existingMatch._nonReactive.loaderPromise
   )
-    return true
+    return
 
   setupPendingTimeout(inner, matchId, route, existingMatch)
 
   const then = () => {
-    let result = true
     const match = inner.router.getMatch(matchId)!
-    if (match.status === 'error') {
-      result = true
-    } else if (
+    if (
       match.preload &&
       (match.status === 'redirected' || match.status === 'notFound')
     ) {
       handleRedirectAndNotFound(inner, match, match.error)
     }
-    return result
   }
 
-  // Wait for the beforeLoad to resolve before we continue
+  // Wait for the previous beforeLoad to resolve before we continue
   return existingMatch._nonReactive.beforeLoadPromise
     ? existingMatch._nonReactive.beforeLoadPromise.then(then)
     : then()
@@ -494,23 +489,17 @@ const handleBeforeLoad = (
 
   const queueExecution = () => {
     if (shouldSkipLoader(inner, matchId)) return
-    const shouldExecuteBeforeLoadResult = shouldExecuteBeforeLoad(
+    const result = preBeforeLoadSetup(
       inner,
       matchId,
       route,
     )
-    return isPromise(shouldExecuteBeforeLoadResult)
-      ? shouldExecuteBeforeLoadResult.then(execute)
-      : execute(shouldExecuteBeforeLoadResult)
+    return isPromise(result)
+      ? result.then(execute)
+      : execute()
   }
 
-  const execute = (shouldExec: boolean) => {
-    if (shouldExec) {
-      // If we are not in the middle of a load OR the previous load failed, start it
-      return executeBeforeLoad(inner, matchId, index, route)
-    }
-    return
-  }
+  const execute = () => executeBeforeLoad(inner, matchId, index, route)
 
   return serverSsr()
 }
