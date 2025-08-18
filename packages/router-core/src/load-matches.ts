@@ -489,14 +489,8 @@ const handleBeforeLoad = (
 
   const queueExecution = () => {
     if (shouldSkipLoader(inner, matchId)) return
-    const result = preBeforeLoadSetup(
-      inner,
-      matchId,
-      route,
-    )
-    return isPromise(result)
-      ? result.then(execute)
-      : execute()
+    const result = preBeforeLoadSetup(inner, matchId, route)
+    return isPromise(result) ? result.then(execute) : execute()
   }
 
   const execute = () => executeBeforeLoad(inner, matchId, index, route)
