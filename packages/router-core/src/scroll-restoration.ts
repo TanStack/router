@@ -83,22 +83,11 @@ export const defaultGetScrollRestorationKey = (location: ParsedLocation) => {
   return location.state.__TSR_key! || location.href
 }
 
-function indexOfElement(parent: Element, el: Element): number {
-  let i = 0
-  let child = parent.firstElementChild
-  while (child) {
-    if (child === el) return i
-    child = child.nextElementSibling
-    i++
-  }
-  return -1
-}
-
 export function getCssSelector(el: any): string {
   const path = []
   let parent: HTMLElement
   while ((parent = el.parentNode)) {
-    path.push(`${el.tagName}:nth-child(${indexOfElement(parent, el) + 1})`)
+    path.push(`${el.tagName}:nth-child(${Array.prototype.indexOf.call(parent.children, el) + 1})`)
     el = parent
   }
   return `${path.reverse().join(' > ')}`.toLowerCase()
