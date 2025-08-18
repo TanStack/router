@@ -1,5 +1,11 @@
 import { describe, expect, test, vi } from 'vitest'
-import { BaseRootRoute, BaseRoute, RouterCore, notFound, redirect, } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  RouterCore,
+  notFound,
+  redirect,
+} from '../src'
 import type { RouteOptions } from '../src'
 
 type AnyRouteOptions = RouteOptions<any>
@@ -70,7 +76,7 @@ describe('beforeLoad skip or exec', () => {
       await Promise.resolve()
     })
     const router = setup({
-      beforeLoad
+      beforeLoad,
     })
     await router.preloadRoute({ to: '/foo' })
     await router.navigate({ to: '/foo' })
@@ -84,7 +90,7 @@ describe('beforeLoad skip or exec', () => {
       if (preload) throw notFound()
     })
     const router = setup({
-      beforeLoad
+      beforeLoad,
     })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
@@ -99,7 +105,7 @@ describe('beforeLoad skip or exec', () => {
       await Promise.resolve()
     })
     const router = setup({
-      beforeLoad
+      beforeLoad,
     })
     await router.preloadRoute({ to: '/foo' })
     await router.navigate({ to: '/foo' })
@@ -114,7 +120,7 @@ describe('beforeLoad skip or exec', () => {
       if (preload) throw redirect({ to: '/bar' })
     })
     const router = setup({
-      beforeLoad
+      beforeLoad,
     })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
@@ -130,7 +136,7 @@ describe('beforeLoad skip or exec', () => {
       await Promise.resolve()
     })
     const router = setup({
-      beforeLoad
+      beforeLoad,
     })
     await router.preloadRoute({ to: '/foo' })
     await router.navigate({ to: '/foo' })
@@ -144,7 +150,7 @@ describe('beforeLoad skip or exec', () => {
       if (preload) throw new Error('error')
     })
     const router = setup({
-      beforeLoad
+      beforeLoad,
     })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
