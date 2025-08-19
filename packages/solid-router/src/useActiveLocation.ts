@@ -3,8 +3,8 @@ import { createEffect, createSignal } from 'solid-js'
 import * as Solid from 'solid-js'
 import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
-import type { ParsedLocation } from '@tanstack/router-core'
 import { useRouterState } from './useRouterState'
+import type { ParsedLocation } from '@tanstack/router-core'
 
 export function useActiveLocation(location?: ParsedLocation) {
   const router = useRouter()
