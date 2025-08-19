@@ -1,7 +1,6 @@
 import * as React from 'react'
-import { last } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { useMatch } from './useMatch'
+import { useActiveLocation } from './useActiveLocation'
 import type {
   AnyRouter,
   FromPathOption,
@@ -18,24 +17,11 @@ export function useNavigate<
 }): UseNavigateResult<TDefaultFrom> {
   const router = useRouter()
 
-  // Just get the index of the current match to avoid rerenders
-  // as much as possible
-  const matchIndex = useMatch({
-    strict: false,
-    select: (match) => match.index,
-  })
+  const { getFromPath, activeLocationMatch } = useActiveLocation()
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      const currentRouteMatches = router.matchRoutes(router.latestLocation, {
-        _buildLocation: false,
-      })
-
-      const from =
-        options.from ??
-        _defaultOpts?.from ??
-        last(currentRouteMatches)?.fullPath ??
-        router.state.matches[matchIndex]!.fullPath
+      const from  = getFromPath(options.from ?? _defaultOpts?.from)
 
       return router.navigate({
         ...options,
@@ -43,7 +29,7 @@ export function useNavigate<
       })
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [_defaultOpts?.from, router.navigate, router.latestLocation, matchIndex],
+    [_defaultOpts?.from, router, activeLocationMatch],
   ) as UseNavigateResult<TDefaultFrom>
 }
 

@@ -4,16 +4,18 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
-  last,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
+import { useActiveLocation } from './useActiveLocation'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
-import { useForwardedRef, useIntersectionObserver } from './utils'
+import {
+  useForwardedRef,
+  useIntersectionObserver,
+} from './utils'
 
-import { useMatch } from './useMatch'
 import type {
   AnyRouter,
   Constrain,
@@ -100,37 +102,20 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  const matchIndex = useMatch({
-    strict: false,
-    select: (match) => match.index,
-  })
+  const {getFromPath} = useActiveLocation()
 
-  // Track the active location to ensure recomputation on path changes
-  const activeLocation = useRouterState({
-    select: (s) => s.location,
-    structuralSharing: true as any,
-  })
+  const from = getFromPath(options.from)
 
   const _options = React.useMemo(
     () => {
-      const currentRouteMatches = router.matchRoutes(activeLocation, {
-        _buildLocation: false,
-      })
-
-      const from =
-        options.from ??
-        last(currentRouteMatches)?.fullPath ??
-        router.state.matches[matchIndex]!.fullPath
-
-      return { ...options, from }
+       return { ...options, from }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
       currentSearch,
-      activeLocation,
+      from,
       options._fromLocation,
-      options.from,
       options.hash,
       options.to,
       options.search,

@@ -6,17 +6,16 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
-  last,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { Dynamic } from 'solid-js/web'
+import { useActiveLocation } from './useActiveLocation'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
-import { useMatch } from './useMatch'
 import type {
   AnyRouter,
   Constrain,
@@ -141,24 +140,8 @@ export function useLinkProps<
   //   select: (match) => options.from ?? match.fullPath,
   // })
 
-  const matchIndex = useMatch({
-    strict: false,
-    select: (match) => match.index,
-  })
-
-  const activeLocation = useRouterState({ select: (s) => s.location })
-
-  const from = Solid.createMemo(() => {
-    const currentRouteMatches = router.matchRoutes(activeLocation(), {
-      _buildLocation: false,
-    })
-
-    return (
-      options.from ??
-      last(currentRouteMatches)?.fullPath ??
-      router.state.matches[matchIndex()]!.fullPath
-    )
-  })
+  const { getFromPath } = useActiveLocation()
+  const from = getFromPath(options.from);
 
   const _options = () => {
     return {
@@ -169,8 +152,7 @@ export function useLinkProps<
 
   const next = Solid.createMemo(() => {
     currentSearch()
-    // Access activeLocation to make this memo re-run on route changes
-    activeLocation()
+    from()
     return router.buildLocation(_options() as any)
   })
 

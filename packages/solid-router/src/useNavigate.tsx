@@ -1,7 +1,6 @@
 import * as Solid from 'solid-js'
-import { last } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
-import { useMatch } from './useMatch'
+import { useActiveLocation } from './useActiveLocation'
 import type {
   AnyRouter,
   FromPathOption,
@@ -18,23 +17,13 @@ export function useNavigate<
 }): UseNavigateResult<TDefaultFrom> {
   const router = useRouter()
 
-  const matchIndex = useMatch({
-    strict: false,
-    select: (match) => match.index,
-  })
-
+  const {getFromPath} = useActiveLocation()
   return ((options: NavigateOptions) => {
-    const currentRouteMatches = router.matchRoutes(router.latestLocation, {
-      _buildLocation: false,
-    })
+    const from  = getFromPath(options.from ?? _defaultOpts?.from)
 
     return router.navigate({
       ...options,
-      from:
-        options.from ??
-        _defaultOpts?.from ??
-        last(currentRouteMatches)?.fullPath ??
-        router.state.matches[matchIndex()]!.fullPath,
+      from: from()
     })
   }) as UseNavigateResult<TDefaultFrom>
 }
