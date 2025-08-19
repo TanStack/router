@@ -101,11 +101,11 @@ export function useLinkProps<
 
   const { getFromPath, activeLocation } = useActiveLocation()
 
-  const from = getFromPath(options.from);
+  const from = getFromPath(options.from)
 
   const _options = React.useMemo(
     () => {
-       return { ...options, from }
+      return { ...options, from }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [

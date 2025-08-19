@@ -130,10 +130,10 @@ export function useLinkProps<
   }
 
   const currentSearch = useRouterState({
-    select: (s) => s.location.searchStr
+    select: (s) => s.location.searchStr,
   })
 
-  const {getFromPath, activeLocation} = useActiveLocation()
+  const { getFromPath, activeLocation } = useActiveLocation()
 
   const from = getFromPath(options.from)
 

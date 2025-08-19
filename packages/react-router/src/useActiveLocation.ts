@@ -10,10 +10,14 @@ export type UseLocationResult = {
 }
 
 export const useActiveLocation = (location?: ParsedLocation) => {
-  const {matchRoutes, state} = useRouter()
-  const [activeLocation, setActiveLocation] = useState<ParsedLocation>(location ?? state.location)
-  const [customActiveLocation, _setCustomActiveLocation] = useState<ParsedLocation>(location ?? state.location)
-  const [useCustomActiveLocation, setUseCustomActiveLocation] = useState(!!location)
+  const { matchRoutes, state } = useRouter()
+  const [activeLocation, setActiveLocation] = useState<ParsedLocation>(
+    location ?? state.location,
+  )
+  const [customActiveLocation, _setCustomActiveLocation] =
+    useState<ParsedLocation>(location ?? state.location)
+  const [useCustomActiveLocation, setUseCustomActiveLocation] =
+    useState(!!location)
 
   useEffect(() => {
     if (!useCustomActiveLocation) {
@@ -24,8 +28,8 @@ export const useActiveLocation = (location?: ParsedLocation) => {
   }, [state.location, useCustomActiveLocation, customActiveLocation])
 
   const setCustomActiveLocation = (location: ParsedLocation) => {
-    _setCustomActiveLocation(location);
-    setUseCustomActiveLocation(true);
+    _setCustomActiveLocation(location)
+    setUseCustomActiveLocation(true)
   }
 
   const currentRouteMatch = useMatch({
@@ -33,15 +37,22 @@ export const useActiveLocation = (location?: ParsedLocation) => {
     select: (match) => match,
   })
 
-  const getFromPath = useCallback((from?: string) => {
-    const activeLocationMatches = matchRoutes(activeLocation, {
+  const getFromPath = useCallback(
+    (from?: string) => {
+      const activeLocationMatches = matchRoutes(activeLocation, {
         _buildLocation: false,
       })
 
-    const activeLocationMatch = last(activeLocationMatches)
+      const activeLocationMatch = last(activeLocationMatches)
 
-    return from ?? activeLocationMatch?.fullPath ?? currentRouteMatch.fullPath
-  }, [activeLocation, currentRouteMatch.fullPath, matchRoutes])
+      return from ?? activeLocationMatch?.fullPath ?? currentRouteMatch.fullPath
+    },
+    [activeLocation, currentRouteMatch.fullPath, matchRoutes],
+  )
 
-  return { activeLocation, getFromPath, setActiveLocation: setCustomActiveLocation }
+  return {
+    activeLocation,
+    getFromPath,
+    setActiveLocation: setCustomActiveLocation,
+  }
 }
