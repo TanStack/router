@@ -1553,9 +1553,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
                 Link to .. from /param/foo/a
               </button>
               <button
-                onClick={() =>
-                  navigate({ to: '..' })
-                }
+                onClick={() => navigate({ to: '..' })}
                 data-testid={'link-to-previous'}
               >
                 Link to .. from current active route

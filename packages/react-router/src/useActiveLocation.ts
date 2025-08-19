@@ -4,7 +4,10 @@ import { useMatch } from './useMatch'
 import { useRouterState } from './useRouterState'
 import type { AnyRouteMatch } from '@tanstack/router-core'
 
-export type UseLocationResult = {activeLocationMatch: AnyRouteMatch | undefined, getFromPath: (from?: string) => string}
+export type UseLocationResult = {
+  activeLocationMatch: AnyRouteMatch | undefined
+  getFromPath: (from?: string) => string
+}
 
 export const useActiveLocation = (): UseLocationResult => {
   const router = useRouter()

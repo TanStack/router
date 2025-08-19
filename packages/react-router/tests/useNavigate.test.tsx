@@ -1573,9 +1573,7 @@ test.each([true, false])(
 
     fireEvent.click(postsButton)
 
-    expect(
-      await screen.findByTestId('posts-index-heading'),
-    ).toBeInTheDocument()
+    expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
     expect(window.location.pathname).toEqual(`/posts${tail}`)
 
     const firstPostButton = await screen.findByTestId('first-post-btn')
@@ -1741,9 +1739,7 @@ test.each([true, false])(
 
     fireEvent.click(postsButton)
 
-    expect(
-      await screen.findByTestId('posts-index-heading'),
-    ).toBeInTheDocument()
+    expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
 
     const post1Button = await screen.findByTestId('first-post-btn')
 
@@ -1873,7 +1869,7 @@ test.each([true, false])(
 
     expect(router.state.location.pathname).toBe(`/`)
     expect(router.state.location.search).toEqual({})
-  }
+  },
 )
 
 test.each([true, false])(
@@ -2058,9 +2054,7 @@ test.each([true, false])(
 
     fireEvent.click(postsButton)
 
-    expect(
-      await screen.findByTestId('posts-index-heading'),
-    ).toBeInTheDocument()
+    expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
     expect(window.location.pathname).toEqual(`/posts${tail}`)
 
     const firstPostButton = await screen.findByTestId('first-post-btn')
@@ -2095,18 +2089,14 @@ test.each([true, false])(
 
     fireEvent.click(postNotesButton)
 
-    expect(
-      await screen.findByTestId('post-notes-heading'),
-    ).toBeInTheDocument()
+    expect(await screen.findByTestId('post-notes-heading')).toBeInTheDocument()
     expect(window.location.pathname).toEqual(`/posts/1/notes${tail}`)
 
     const toPostsIndexButton = await screen.findByTestId('to-posts-index-btn')
 
     fireEvent.click(toPostsIndexButton)
 
-    expect(
-      await screen.findByTestId('posts-index-heading'),
-    ).toBeInTheDocument()
+    expect(await screen.findByTestId('posts-index-heading')).toBeInTheDocument()
     expect(screen.queryByTestId('post-notes-heading')).not.toBeInTheDocument()
     expect(
       screen.queryByTestId('post-detail-index-heading'),
@@ -2357,9 +2347,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
                 Link to .. from /param/foo/a
               </button>
               <button
-                onClick={() =>
-                  navigate({ to: '..' })
-                }
+                onClick={() => navigate({ to: '..' })}
                 data-testid={'link-to-previous'}
               >
                 Link to .. from current active route
@@ -2532,7 +2520,6 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
-
 
     test('should navigate to same route with different params', async () => {
       const router = setupRouter()

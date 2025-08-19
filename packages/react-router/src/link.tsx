@@ -11,10 +11,7 @@ import { useActiveLocation } from './useActiveLocation'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
-import {
-  useForwardedRef,
-  useIntersectionObserver,
-} from './utils'
+import { useForwardedRef, useIntersectionObserver } from './utils'
 
 import type {
   AnyRouter,
@@ -102,13 +99,13 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  const {getFromPath} = useActiveLocation()
+  const { getFromPath } = useActiveLocation()
 
   const from = getFromPath(options.from)
 
   const _options = React.useMemo(
     () => {
-       return { ...options, from }
+      return { ...options, from }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [

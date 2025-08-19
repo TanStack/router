@@ -141,7 +141,7 @@ export function useLinkProps<
   // })
 
   const { getFromPath } = useActiveLocation()
-  const from = getFromPath(options.from);
+  const from = getFromPath(options.from)
 
   const _options = () => {
     return {
