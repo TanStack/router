@@ -99,7 +99,13 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  const { getFromPath, activeLocation } = useActiveLocation()
+  // subscribe to location here to re-build fromPath if it changes
+  const routerLocation = useRouterState({
+    select: (s) => s.location,
+    structuralSharing: true as any,
+  })
+
+  const { getFromPath } = useActiveLocation()
 
   const from = getFromPath(options.from)
 
@@ -110,7 +116,7 @@ export function useLinkProps<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      activeLocation,
+      routerLocation,
       currentSearch,
       from,
       options._fromLocation,

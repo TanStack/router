@@ -2,35 +2,25 @@ import { last } from '@tanstack/router-core'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from './useRouter'
 import { useMatch } from './useMatch'
-import type { AnyRouteMatch, ParsedLocation } from '@tanstack/router-core'
+import { useRouterState } from './useRouterState'
+import type { ParsedLocation } from '@tanstack/router-core'
 
-export type UseLocationResult = {
-  activeLocationMatch: AnyRouteMatch | undefined
+export type UseActiveLocationResult = {
+  activeLocation: ParsedLocation
   getFromPath: (from?: string) => string
+  setActiveLocation: (location?: ParsedLocation) => void
 }
 
-export const useActiveLocation = (location?: ParsedLocation) => {
-  const { matchRoutes, state } = useRouter()
-  const [activeLocation, setActiveLocation] = useState<ParsedLocation>(
-    location ?? state.location,
-  )
-  const [customActiveLocation, _setCustomActiveLocation] =
-    useState<ParsedLocation>(location ?? state.location)
-  const [useCustomActiveLocation, setUseCustomActiveLocation] =
-    useState(!!location)
+export const useActiveLocation = (location?: ParsedLocation): UseActiveLocationResult => {
+  const router = useRouter()
+  const routerLocation = useRouterState({select: (state) => state.location})
+  const [activeLocation, setActiveLocation] = useState<ParsedLocation>(location ?? routerLocation)
+  const [customActiveLocation, setCustomActiveLocation] = useState<ParsedLocation | undefined>(location)
 
   useEffect(() => {
-    if (!useCustomActiveLocation) {
-      setActiveLocation(state.location)
-    } else {
-      setActiveLocation(customActiveLocation)
-    }
-  }, [state.location, useCustomActiveLocation, customActiveLocation])
+    setActiveLocation(customActiveLocation ?? routerLocation)
+  }, [routerLocation, customActiveLocation])
 
-  const setCustomActiveLocation = (location: ParsedLocation) => {
-    _setCustomActiveLocation(location)
-    setUseCustomActiveLocation(true)
-  }
 
   const currentRouteMatch = useMatch({
     strict: false,
@@ -39,7 +29,7 @@ export const useActiveLocation = (location?: ParsedLocation) => {
 
   const getFromPath = useCallback(
     (from?: string) => {
-      const activeLocationMatches = matchRoutes(activeLocation, {
+      const activeLocationMatches = router.matchRoutes(activeLocation, {
         _buildLocation: false,
       })
 
@@ -47,7 +37,7 @@ export const useActiveLocation = (location?: ParsedLocation) => {
 
       return from ?? activeLocationMatch?.fullPath ?? currentRouteMatch.fullPath
     },
-    [activeLocation, currentRouteMatch.fullPath, matchRoutes],
+    [activeLocation, currentRouteMatch.fullPath, router],
   )
 
   return {
