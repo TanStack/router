@@ -84,8 +84,8 @@ async function addItemToCache({
   {
     const hash = jsonToFilenameSafeString(data)
     const url = await getStaticCacheUrl({ functionId, hash })
-    const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
-    const filePath = path.join(publicUrl, url)
+    const clientUrl = process.env.TSS_CLIENT_OUTPUT_DIR!
+    const filePath = path.join(clientUrl, url)
 
     // Ensure the directory exists
     await fs.mkdir(path.dirname(filePath), { recursive: true })
