@@ -27,9 +27,9 @@ if (DEVELOPMENT) {
     }
   })
 } else {
-  const { default: handler } = await import('./dist/server.js')
+  const { default: handler } = await import('./dist/server/server.js')
   const nodeHandler = toNodeHandler(handler.fetch)
-  app.use('/custom/basepath', express.static('dist/public'))
+  app.use('/custom/basepath', express.static('dist/client'))
   app.use(async (req, res, next) => {
     try {
       await nodeHandler(req, res)
