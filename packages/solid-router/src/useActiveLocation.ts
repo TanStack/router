@@ -28,9 +28,6 @@ export function useActiveLocation(): UseActiveLocationResult {
     return last(activeLocationMatches)
   })
 
-
-
-
   const getFromPath = (from?: string) => {
     return createMemo(() => from ?? activeLocationMatch()?.fullPath ?? currentRouteMatch().fullPath)
   }
