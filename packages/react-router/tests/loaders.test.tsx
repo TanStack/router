@@ -729,3 +729,72 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(nestedPendingComponentOnMountMock).not.toHaveBeenCalled()
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
 })
+
+
+test.only('reproducer #4998 - beforeLoad is awaited before rendering', async () => {
+  const beforeLoad = vi.fn()
+  const select = vi.fn()
+  let resolved = 0
+  const rootRoute = createRootRoute()
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <Link to="/foo">To foo</Link>,
+  })
+  const fooRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/foo',
+    beforeLoad: async (...args) => {
+      beforeLoad(...args)
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      resolved += 1
+      return { foo: 'bar' }
+    },
+    component: () => {
+      fooRoute.useRouteContext({ select })
+      return <h1>Foo index page</h1>
+    },
+    pendingComponent: () => 'loading',
+  })
+  const routeTree = rootRoute.addChildren([
+    indexRoute,
+    fooRoute
+  ])
+  const router = createRouter({
+    routeTree,
+    history,
+    defaultPreload: 'intent',
+    defaultPendingMs: 0,
+  })
+
+  render(<RouterProvider router={router} />)
+  const linkToFoo = await screen.findByText('To foo')
+
+  fireEvent.focus(linkToFoo)
+  await sleep(100)
+
+  expect(resolved).toBe(1)
+
+  expect(beforeLoad).toHaveBeenCalledTimes(1)
+  expect(beforeLoad).toHaveBeenNthCalledWith(1, expect.objectContaining({
+    cause: 'preload',
+    preload: true,
+  }))
+
+  expect(select).not.toHaveBeenCalled()
+
+  fireEvent.click(linkToFoo)
+  await screen.findByText('Foo index page')
+
+  expect(resolved).toBe(2)
+
+  expect(beforeLoad).toHaveBeenCalledTimes(2)
+  expect(beforeLoad).toHaveBeenNthCalledWith(2, expect.objectContaining({
+    cause: 'enter',
+    preload: false,
+  }))
+
+  expect(select).toHaveBeenNthCalledWith(1, expect.objectContaining({
+    foo: 'bar',
+  }))
+})
