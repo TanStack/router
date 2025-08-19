@@ -99,17 +99,18 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  const { getFromPath } = useActiveLocation()
+  const { getFromPath, activeLocation } = useActiveLocation()
 
-  const from = getFromPath(options.from)
+  const from = getFromPath(options.from);
 
   const _options = React.useMemo(
     () => {
-      return { ...options, from }
+       return { ...options, from }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
+      activeLocation,
       currentSearch,
       from,
       options._fromLocation,
