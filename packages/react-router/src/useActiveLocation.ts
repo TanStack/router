@@ -11,16 +11,21 @@ export type UseActiveLocationResult = {
   setActiveLocation: (location?: ParsedLocation) => void
 }
 
-export const useActiveLocation = (location?: ParsedLocation): UseActiveLocationResult => {
+export const useActiveLocation = (
+  location?: ParsedLocation,
+): UseActiveLocationResult => {
   const router = useRouter()
-  const routerLocation = useRouterState({select: (state) => state.location})
-  const [activeLocation, setActiveLocation] = useState<ParsedLocation>(location ?? routerLocation)
-  const [customActiveLocation, setCustomActiveLocation] = useState<ParsedLocation | undefined>(location)
+  const routerLocation = useRouterState({ select: (state) => state.location })
+  const [activeLocation, setActiveLocation] = useState<ParsedLocation>(
+    location ?? routerLocation,
+  )
+  const [customActiveLocation, setCustomActiveLocation] = useState<
+    ParsedLocation | undefined
+  >(location)
 
   useEffect(() => {
     setActiveLocation(customActiveLocation ?? routerLocation)
   }, [routerLocation, customActiveLocation])
-
 
   const currentRouteMatch = useMatch({
     strict: false,
