@@ -731,7 +731,7 @@ test('clears pendingTimeout when match resolves', async () => {
 })
 
 
-test.only('reproducer #4998 - beforeLoad is awaited before rendering', async () => {
+test('reproducer #4998 - beforeLoad is awaited before rendering', async () => {
   const beforeLoad = vi.fn()
   const select = vi.fn()
   let resolved = 0
