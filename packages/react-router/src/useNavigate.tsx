@@ -21,7 +21,7 @@ export function useNavigate<
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      const from  = getFromPath(options.from ?? _defaultOpts?.from)
+      const from = getFromPath(options.from ?? _defaultOpts?.from)
 
       return router.navigate({
         ...options,

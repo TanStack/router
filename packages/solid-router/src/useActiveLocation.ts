@@ -1,12 +1,15 @@
 import { last } from '@tanstack/router-core'
-import {  createMemo } from 'solid-js'
+import { createMemo } from 'solid-js'
 import { useRouterState } from './useRouterState'
 import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
-import type {Accessor} from 'solid-js';
-import type { AnyRouteMatch} from '@tanstack/router-core'
+import type { Accessor } from 'solid-js'
+import type { AnyRouteMatch } from '@tanstack/router-core'
 
-export type UseActiveLocationResult = { activeLocationMatch: Accessor<AnyRouteMatch | undefined>, getFromPath: (from?: string) => Accessor<string> }
+export type UseActiveLocationResult = {
+  activeLocationMatch: Accessor<AnyRouteMatch | undefined>
+  getFromPath: (from?: string) => Accessor<string>
+}
 
 export function useActiveLocation(): UseActiveLocationResult {
   const router = useRouter()
@@ -17,7 +20,7 @@ export function useActiveLocation(): UseActiveLocationResult {
   })
 
   const activeLocation = useRouterState({
-    select: (s) => s.location
+    select: (s) => s.location,
   })
 
   const activeLocationMatch = createMemo(() => {
@@ -29,7 +32,10 @@ export function useActiveLocation(): UseActiveLocationResult {
   })
 
   const getFromPath = (from?: string) => {
-    return createMemo(() => from ?? activeLocationMatch()?.fullPath ?? currentRouteMatch().fullPath)
+    return createMemo(
+      () =>
+        from ?? activeLocationMatch()?.fullPath ?? currentRouteMatch().fullPath,
+    )
   }
 
   return { activeLocationMatch, getFromPath }

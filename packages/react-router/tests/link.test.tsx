@@ -6057,11 +6057,7 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
       return (
         <>
           <h1>Posts</h1>
-          {
-            navigateVia === 'Route'
-              ? <LinkViaRoute />
-              : <LinkViaRouteApi />
-          }
+          {navigateVia === 'Route' ? <LinkViaRoute /> : <LinkViaRouteApi />}
           <Outlet />
         </>
       )
