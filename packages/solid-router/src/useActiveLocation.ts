@@ -1,9 +1,9 @@
 import { last } from '@tanstack/router-core'
-import {  createEffect, createMemo, createSignal } from 'solid-js'
+import { createEffect, createMemo, createSignal } from 'solid-js'
 import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
-import type {Accessor} from 'solid-js';
+import type { Accessor } from 'solid-js'
 import type { ParsedLocation } from '@tanstack/router-core'
 
 export type UseLocationResult = {
@@ -12,14 +12,22 @@ export type UseLocationResult = {
   setActiveLocation: (location?: ParsedLocation) => void
 }
 
-export function useActiveLocation(location?: ParsedLocation): UseLocationResult {
+export function useActiveLocation(
+  location?: ParsedLocation,
+): UseLocationResult {
   const router = useRouter()
   // we are not using a variable here for router state location since we need to only calculate that if the location is not passed in. It can result in unnecessary history actions if we do that.
-  const [activeLocation, setActiveLocation] = createSignal<ParsedLocation>(location ?? useRouterState({select: s => s.location})())
-  const [customActiveLocation, setCustomActiveLocation] = createSignal<ParsedLocation | undefined>(location)
+  const [activeLocation, setActiveLocation] = createSignal<ParsedLocation>(
+    location ?? useRouterState({ select: (s) => s.location })(),
+  )
+  const [customActiveLocation, setCustomActiveLocation] = createSignal<
+    ParsedLocation | undefined
+  >(location)
 
   createEffect(() => {
-    setActiveLocation(customActiveLocation() ?? useRouterState({select: s => s.location})())
+    setActiveLocation(
+      customActiveLocation() ?? useRouterState({ select: (s) => s.location })(),
+    )
   })
 
   const currentRouteMatch = useMatch({
@@ -29,9 +37,12 @@ export function useActiveLocation(location?: ParsedLocation): UseLocationResult 
 
   const getFromPath = (from?: string) =>
     createMemo(() => {
-      const currentRouteMatches = router.matchRoutes(customActiveLocation() ?? activeLocation(), {
-        _buildLocation: false,
-      })
+      const currentRouteMatches = router.matchRoutes(
+        customActiveLocation() ?? activeLocation(),
+        {
+          _buildLocation: false,
+        },
+      )
 
       return (
         from ??
