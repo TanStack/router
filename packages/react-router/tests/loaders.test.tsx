@@ -786,8 +786,6 @@ test.only('reproducer #4998 - beforeLoad is awaited before rendering', async () 
   fireEvent.click(linkToFoo)
   await screen.findByText('Foo index page')
 
-  expect(resolved).toBe(2)
-
   expect(beforeLoad).toHaveBeenCalledTimes(2)
   expect(beforeLoad).toHaveBeenNthCalledWith(2, expect.objectContaining({
     cause: 'enter',
@@ -797,4 +795,10 @@ test.only('reproducer #4998 - beforeLoad is awaited before rendering', async () 
   expect(select).toHaveBeenNthCalledWith(1, expect.objectContaining({
     foo: 'bar',
   }))
+
+  // I'm not 100% sure this should be 2 here,
+  // maybe we can re-use the cached beforeLoad from preload in some cases
+  // but since we assert a 2nd beforeLoad call above,
+  // then we should have awaited its resolution too
+  expect(resolved).toBe(2)
 })
