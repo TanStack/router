@@ -1,36 +1,47 @@
 import { last } from '@tanstack/router-core'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from './useRouter'
 import { useMatch } from './useMatch'
-import { useRouterState } from './useRouterState'
-import type { AnyRouteMatch } from '@tanstack/router-core'
+import type { AnyRouteMatch, ParsedLocation } from '@tanstack/router-core'
 
 export type UseLocationResult = {
   activeLocationMatch: AnyRouteMatch | undefined
   getFromPath: (from?: string) => string
 }
 
-export const useActiveLocation = (): UseLocationResult => {
-  const router = useRouter()
+export const useActiveLocation = (location?: ParsedLocation) => {
+  const {matchRoutes, state} = useRouter()
+  const [activeLocation, setActiveLocation] = useState<ParsedLocation>(location ?? state.location)
+  const [customActiveLocation, _setCustomActiveLocation] = useState<ParsedLocation>(location ?? state.location)
+  const [useCustomActiveLocation, setUseCustomActiveLocation] = useState(!!location)
+
+  useEffect(() => {
+    if (!useCustomActiveLocation) {
+      setActiveLocation(state.location)
+    } else {
+      setActiveLocation(customActiveLocation)
+    }
+  }, [state.location, useCustomActiveLocation, customActiveLocation])
+
+  const setCustomActiveLocation = (location: ParsedLocation) => {
+    _setCustomActiveLocation(location);
+    setUseCustomActiveLocation(true);
+  }
 
   const currentRouteMatch = useMatch({
     strict: false,
     select: (match) => match,
   })
 
-  const activeLocation = useRouterState({
-    select: (s) => s.location,
-    structuralSharing: true as any,
-  })
+  const getFromPath = useCallback((from?: string) => {
+    const activeLocationMatches = matchRoutes(activeLocation, {
+        _buildLocation: false,
+      })
 
-  const activeLocationMatches = router.matchRoutes(activeLocation, {
-    _buildLocation: false,
-  })
+    const activeLocationMatch = last(activeLocationMatches)
 
-  const activeLocationMatch = last(activeLocationMatches)
-
-  const getFromPath = (from?: string) => {
     return from ?? activeLocationMatch?.fullPath ?? currentRouteMatch.fullPath
-  }
+  }, [activeLocation, currentRouteMatch.fullPath, matchRoutes])
 
-  return { activeLocationMatch, getFromPath }
+  return { activeLocation, getFromPath, setActiveLocation: setCustomActiveLocation }
 }

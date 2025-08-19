@@ -10,12 +10,12 @@ import {
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { Dynamic } from 'solid-js/web'
-import { useActiveLocation } from './useActiveLocation'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
+import { useActiveLocation } from './useActiveLocation'
 import type {
   AnyRouter,
   Constrain,
@@ -130,17 +130,11 @@ export function useLinkProps<
   }
 
   const currentSearch = useRouterState({
-    select: (s) => s.location.searchStr,
+    select: (s) => s.location.searchStr
   })
 
-  // when `from` is not supplied, use the route of the current match as the `from` location
-  // so relative routing works as expected
-  // const from = useMatch({
-  //   strict: false,
-  //   select: (match) => options.from ?? match.fullPath,
-  // })
+  const {getFromPath, activeLocation} = useActiveLocation()
 
-  const { getFromPath } = useActiveLocation()
   const from = getFromPath(options.from)
 
   const _options = () => {
@@ -152,7 +146,7 @@ export function useLinkProps<
 
   const next = Solid.createMemo(() => {
     currentSearch()
-    from()
+    activeLocation()
     return router.buildLocation(_options() as any)
   })
 

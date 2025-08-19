@@ -17,7 +17,7 @@ export function useNavigate<
 }): UseNavigateResult<TDefaultFrom> {
   const router = useRouter()
 
-  const { getFromPath, activeLocationMatch } = useActiveLocation()
+  const { getFromPath, activeLocation } = useActiveLocation()
 
   return React.useCallback(
     (options: NavigateOptions) => {
@@ -29,7 +29,7 @@ export function useNavigate<
       })
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [_defaultOpts?.from, router, activeLocationMatch],
+    [_defaultOpts?.from, router, getFromPath, activeLocation],
   ) as UseNavigateResult<TDefaultFrom>
 }
 
