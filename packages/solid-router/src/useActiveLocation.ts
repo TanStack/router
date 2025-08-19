@@ -1,20 +1,26 @@
 import { last } from '@tanstack/router-core'
-import { createEffect, createSignal, } from 'solid-js'
+import { createEffect, createSignal } from 'solid-js'
 import * as Solid from 'solid-js'
 import { useMatch } from './useMatch'
 import { useRouter } from './useRouter'
-import type { ParsedLocation} from '@tanstack/router-core'
+import type { ParsedLocation } from '@tanstack/router-core'
 import { useRouterState } from './useRouterState'
 
 export function useActiveLocation(location?: ParsedLocation) {
   const router = useRouter()
-  const [activeLocation, setActiveLocation] = createSignal<ParsedLocation>(location ?? useRouterState({select: (state) => state.location})());
-  const [customActiveLocation, _setCustomActiveLocation] = createSignal<ParsedLocation>(location ?? useRouterState({select: (state) => state.location})());
-  const [useCustomActiveLocation, setUseCustomActiveLocation] = createSignal(!!location);
+  const [activeLocation, setActiveLocation] = createSignal<ParsedLocation>(
+    location ?? useRouterState({ select: (state) => state.location })(),
+  )
+  const [customActiveLocation, _setCustomActiveLocation] =
+    createSignal<ParsedLocation>(
+      location ?? useRouterState({ select: (state) => state.location })(),
+    )
+  const [useCustomActiveLocation, setUseCustomActiveLocation] =
+    createSignal(!!location)
 
   createEffect(() => {
     if (!useCustomActiveLocation()) {
-      setActiveLocation(useRouterState({select: (state) => state.location}))
+      setActiveLocation(useRouterState({ select: (state) => state.location }))
     } else {
       setActiveLocation(customActiveLocation())
     }
@@ -30,15 +36,22 @@ export function useActiveLocation(location?: ParsedLocation) {
     select: (match) => match.index,
   })
 
-  const getFromPath = (from?: string) => Solid.createMemo(() => {
-    const currentRouteMatches = router.matchRoutes(activeLocation(), {
-      _buildLocation: false,
+  const getFromPath = (from?: string) =>
+    Solid.createMemo(() => {
+      const currentRouteMatches = router.matchRoutes(activeLocation(), {
+        _buildLocation: false,
+      })
+
+      return (
+        from ??
+        last(currentRouteMatches)?.fullPath ??
+        router.state.matches[matchIndex()]!.fullPath
+      )
     })
 
-    return from ??
-      last(currentRouteMatches)?.fullPath ??
-      router.state.matches[matchIndex()]!.fullPath
-  })
-
-  return { activeLocation, getFromPath, setActiveLocation: setCustomActiveLocation }
+  return {
+    activeLocation,
+    getFromPath,
+    setActiveLocation: setCustomActiveLocation,
+  }
 }

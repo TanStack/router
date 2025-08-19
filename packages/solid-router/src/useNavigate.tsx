@@ -17,7 +17,9 @@ export function useNavigate<
 }): UseNavigateResult<TDefaultFrom> {
   const router = useRouter()
 
-  const {getFromPath, setActiveLocation} = useActiveLocation(router.latestLocation);
+  const { getFromPath, setActiveLocation } = useActiveLocation(
+    router.latestLocation,
+  )
 
   return ((options: NavigateOptions) => {
     setActiveLocation(router.latestLocation)
@@ -25,7 +27,7 @@ export function useNavigate<
 
     return router.navigate({
       ...options,
-      from: from()
+      from: from(),
     })
   }) as UseNavigateResult<TDefaultFrom>
 }
