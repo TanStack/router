@@ -27,9 +27,9 @@ export const useActiveLocation = (
     setActiveLocation(customActiveLocation ?? routerLocation)
   }, [routerLocation, customActiveLocation])
 
-  const currentRouteMatch = useMatch({
+  const matchIndex = useMatch({
     strict: false,
-    select: (match) => match,
+    select: (match) => match.index,
   })
 
   const getFromPath = useCallback(
@@ -40,9 +40,13 @@ export const useActiveLocation = (
 
       const activeLocationMatch = last(activeLocationMatches)
 
-      return from ?? activeLocationMatch?.fullPath ?? currentRouteMatch.fullPath
+      return (
+        from ??
+        activeLocationMatch?.fullPath ??
+        router.state.matches[matchIndex]!.fullPath
+      )
     },
-    [activeLocation, currentRouteMatch.fullPath, router],
+    [activeLocation, matchIndex, router],
   )
 
   return {

@@ -30,24 +30,26 @@ export function useActiveLocation(
     )
   })
 
-  const currentRouteMatch = useMatch({
+  const matchIndex = useMatch({
     strict: false,
-    select: (match) => match,
+    select: (match) => match.index,
   })
 
   const getFromPath = (from?: string) =>
     createMemo(() => {
-      const currentRouteMatches = router.matchRoutes(
+      const activeLocationMatches = router.matchRoutes(
         customActiveLocation() ?? activeLocation(),
         {
           _buildLocation: false,
         },
       )
 
+      const activeLocationMatch = last(activeLocationMatches)
+
       return (
         from ??
-        last(currentRouteMatches)?.fullPath ??
-        currentRouteMatch().fullPath
+        activeLocationMatch?.fullPath ??
+        router.state.matches[matchIndex()]!.fullPath
       )
     })
 
