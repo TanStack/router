@@ -187,9 +187,6 @@ export function TanStackStartVitePluginCore(
             [VITE_ENVIRONMENT_NAMES.client]: {
               consumer: 'client',
               build: {
-                emptyOutDir:
-                  viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.client]
-                    ?.build?.emptyOutDir ?? true,
                 rollupOptions: {
                   input: {
                     main: ENTRY_POINTS.client,
@@ -201,9 +198,6 @@ export function TanStackStartVitePluginCore(
             [VITE_ENVIRONMENT_NAMES.server]: {
               consumer: 'server',
               build: {
-                emptyOutDir:
-                  viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
-                    ?.build?.emptyOutDir ?? false,
                 ssr: true,
                 rollupOptions: {
                   input:
