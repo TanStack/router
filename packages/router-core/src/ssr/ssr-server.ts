@@ -1,16 +1,16 @@
 import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
-import { ReadableStreamPlugin } from 'seroval-plugins/web'
 import invariant from 'tiny-invariant'
 import { createControlledPromise } from '../utils'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
-import { ShallowErrorPlugin } from './seroval-plugins'
 import { GLOBAL_TSR } from './constants'
+import { defaultSerovalPlugins } from './serializer/seroval-plugins'
+import { makeSsrSerovalPlugin } from './serializer/transformer'
 import type { AnyRouter } from '../router'
 import type { DehydratedMatch } from './ssr-client'
 import type { DehydratedRouter } from './client'
 import type { AnyRouteMatch } from '../Matches'
 import type { Manifest } from '../manifest'
-import type { AnyTransformer } from './transformer'
+import type { AnyTransformer } from './serializer/transformer'
 
 declare module '../router' {
   interface ServerSsr {
@@ -55,8 +55,6 @@ export function attachRouterServerSsrUtils(
   router.ssr = {
     manifest,
   }
-  const serializationRefs = new Map<unknown, number>()
-
   let initialScriptSent = false
   const getInitialScript = () => {
     if (initialScriptSent) {
@@ -113,10 +111,10 @@ export function attachRouterServerSsrUtils(
           router.options.serializationAdapters as
             | Array<AnyTransformer>
             | undefined
-        )?.map((t) => t.makePlugin(trackPlugins)) ?? []
+        )?.map((t) => makeSsrSerovalPlugin(t, trackPlugins)) ?? []
       crossSerializeStream(dehydratedRouter, {
-        refs: serializationRefs,
-        plugins: [...plugins, ReadableStreamPlugin, ShallowErrorPlugin],
+        refs: new Map(),
+        plugins: [...plugins, ...defaultSerovalPlugins],
         onSerialize: (data, initial) => {
           let serialized = initial ? GLOBAL_TSR + '.router=' + data : data
           if (trackPlugins.didRun) {

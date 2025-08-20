@@ -5,7 +5,7 @@ import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
 import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
-import type { AnyTransformer } from './transformer'
+import type { AnyTransformer } from './serializer/transformer'
 import type { GLOBAL_TSR } from './constants'
 
 declare global {

@@ -412,6 +412,12 @@ export type {
   ValidateUseParamsResult,
 } from './typePrimitives'
 
-export type { AnyTransformer, Transformer } from './ssr/transformer'
+export type { AnyTransformer, Transformer } from './ssr/serializer/transformer'
 
-export { createSerializationAdapter } from './ssr/transformer'
+export {
+  createSerializationAdapter,
+  makeSerovalPlugin,
+  makeSsrSerovalPlugin,
+} from './ssr/serializer/transformer'
+
+export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'

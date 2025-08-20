@@ -1,7 +1,7 @@
 import { createPlugin } from 'seroval'
 import type { SerovalNode } from 'seroval'
 
-interface ErrorNode {
+export interface ErrorNode {
   message: SerovalNode
 }
 
@@ -13,7 +13,7 @@ export const ShallowErrorPlugin = /* @__PURE__ */ createPlugin<
   Error,
   ErrorNode
 >({
-  tag: 'tanstack-router:seroval-plugins/Error',
+  tag: '$TSR/Error',
   test(value) {
     return value instanceof Error
   },

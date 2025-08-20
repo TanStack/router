@@ -21,6 +21,7 @@ import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
 
 import { HEADERS } from './constants'
+import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
 import type {
   AnyServerRouteWithTypes,
   ServerRouteMethodHandlerFn,
@@ -133,13 +134,18 @@ export function createStartHandler<TRouter extends AnyRouter>({
         // the header is set by the prerender plugin
         isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
       }
+      // insert start specific default serialization adapters
+      const serializationAdapters = router.options.serializationAdapters ?? []
+      // TODO: client side needs to install that plugin in hydrateStart!
+      serializationAdapters.push(ServerFunctionSerializationAdapter)
       router.update({
         history,
         isShell,
         isPrerendering,
+        serializationAdapters,
       })
 
-      const response = await (async () => {
+      const response = await runWithStartContext({ router }, async () => {
         try {
           if (!process.env.TSS_SERVER_FN_BASE) {
             throw new Error(
@@ -179,58 +185,57 @@ export function createStartHandler<TRouter extends AnyRouter>({
             }
           }
 
-          const executeRouter = () =>
-            runWithStartContext({ router }, async () => {
-              const requestAcceptHeader = request.headers.get('Accept') || '*/*'
-              const splitRequestAcceptHeader = requestAcceptHeader.split(',')
+          const executeRouter = async () => {
+            const requestAcceptHeader = request.headers.get('Accept') || '*/*'
+            const splitRequestAcceptHeader = requestAcceptHeader.split(',')
 
-              const supportedMimeTypes = ['*/*', 'text/html']
-              const isRouterAcceptSupported = supportedMimeTypes.some(
-                (mimeType) =>
-                  splitRequestAcceptHeader.some((acceptedMimeType) =>
-                    acceptedMimeType.trim().startsWith(mimeType),
-                  ),
+            const supportedMimeTypes = ['*/*', 'text/html']
+            const isRouterAcceptSupported = supportedMimeTypes.some(
+              (mimeType) =>
+                splitRequestAcceptHeader.some((acceptedMimeType) =>
+                  acceptedMimeType.trim().startsWith(mimeType),
+                ),
+            )
+
+            if (!isRouterAcceptSupported) {
+              return json(
+                {
+                  error: 'Only HTML requests are supported here',
+                },
+                {
+                  status: 500,
+                },
               )
+            }
 
-              if (!isRouterAcceptSupported) {
-                return json(
-                  {
-                    error: 'Only HTML requests are supported here',
-                  },
-                  {
-                    status: 500,
-                  },
-                )
-              }
-
-              // if the startRoutesManifest is not loaded yet, load it once
-              if (startRoutesManifest === null) {
-                startRoutesManifest = await getStartManifest({
-                  basePath: APP_BASE,
-                })
-              }
-
-              // Attach the server-side SSR utils to the client-side router
-              attachRouterServerSsrUtils(router, startRoutesManifest)
-
-              await router.load()
-
-              // If there was a redirect, skip rendering the page at all
-              if (router.state.redirect) {
-                return router.state.redirect
-              }
-
-              await router.serverSsr!.dehydrate()
-
-              const responseHeaders = getStartResponseHeaders({ router })
-              const response = await cb({
-                request,
-                router,
-                responseHeaders,
+            // if the startRoutesManifest is not loaded yet, load it once
+            if (startRoutesManifest === null) {
+              startRoutesManifest = await getStartManifest({
+                basePath: APP_BASE,
               })
+            }
 
-              return response
+            // Attach the server-side SSR utils to the client-side router
+            attachRouterServerSsrUtils(router, startRoutesManifest)
+
+            await router.load()
+
+            // If there was a redirect, skip rendering the page at all
+            if (router.state.redirect) {
+              return router.state.redirect
+            }
+
+            await router.serverSsr!.dehydrate()
+
+            const responseHeaders = getStartResponseHeaders({ router })
+            const response = await cb({
+              request,
+              router,
+              responseHeaders,
             })
+
+            return response
+          }
 
           // If we have a server route tree, then we try matching to see if we have a
           // server route that matches the request.
@@ -256,7 +261,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
           throw err
         }
-      })()
+      })
 
       if (isRedirect(response)) {
         if (isResolvedRedirect(response)) {

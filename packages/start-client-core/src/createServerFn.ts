@@ -1,11 +1,8 @@
 import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
-import { getStartContext } from '@tanstack/start-storage-context'
 import { globalMiddleware } from './registerGlobalMiddleware'
 
-import { startSerializer } from './serializer'
-
-import { createIsomorphicFn } from './createIsomorphicFn'
+import { getRouterInstance } from './getRouterInstance'
 import type {
   SerializerParse,
   SerializerStringify,
@@ -32,10 +29,6 @@ import type {
 } from './createMiddleware'
 
 type TODO = any
-
-const getRouterInstance = createIsomorphicFn()
-  .client(() => window.__TSR_ROUTER__!)
-  .server(() => getStartContext({ throwIfNotFound: false })?.router)
 
 export function createServerFn<
   TMethod extends Method,
@@ -143,10 +136,7 @@ export function createServerFn<
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: async (opts_: any, signal: AbortSignal) => {
-            const opts =
-              opts_ instanceof FormData ? extractFormDataContext(opts_) : opts_
-
+          __executeServer: async (opts: any, signal: AbortSignal) => {
             const ctx = {
               ...extractedFn,
               ...opts,
@@ -519,30 +509,6 @@ export interface ServerFnBuilder<
     undefined,
     undefined
   >
-}
-
-export function extractFormDataContext(formData: FormData) {
-  const serializedContext = formData.get('__TSR_CONTEXT')
-  formData.delete('__TSR_CONTEXT')
-
-  if (typeof serializedContext !== 'string') {
-    return {
-      context: {},
-      data: formData,
-    }
-  }
-
-  try {
-    const context = startSerializer.parse(serializedContext)
-    return {
-      context,
-      data: formData,
-    }
-  } catch {
-    return {
-      data: formData,
-    }
-  }
 }
 
 export function flattenMiddlewares(

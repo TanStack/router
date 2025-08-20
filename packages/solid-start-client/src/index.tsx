@@ -1,6 +1,5 @@
 export {
   mergeHeaders,
-  startSerializer,
   createIsomorphicFn,
   createServerFn,
   createMiddleware,

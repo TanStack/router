@@ -12,15 +12,11 @@ test('invoking a server function with custom response status code', async ({
   await page.waitForLoadState('networkidle')
 
   const requestPromise = new Promise<void>((resolve) => {
-    page.on('response', async (response) => {
+    page.on('response', (response) => {
       expect(response.status()).toBe(225)
       expect(response.statusText()).toBe('hello')
-      expect(response.headers()['content-type']).toBe('application/json')
-      expect(await response.json()).toEqual(
-        expect.objectContaining({
-          result: { hello: 'world' },
-          context: {},
-        }),
+      expect(response.headers()['content-type']).toContain(
+        'application/x-ndjson',
       )
       resolve()
     })

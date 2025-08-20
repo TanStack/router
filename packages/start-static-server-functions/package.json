@@ -59,6 +59,7 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/start-client-core": "workspace:*"
+    "@tanstack/start-client-core": "workspace:*",
+    "seroval": "^1.3.2"
   }
 }

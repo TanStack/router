@@ -2,17 +2,25 @@ import {
   encode,
   isNotFound,
   isPlainObject,
-  isRedirect,
   parseRedirect,
 } from '@tanstack/router-core'
-import { startSerializer } from './serializer'
+import { fromCrossJSON, fromJSON, toJSONAsync } from 'seroval'
+import invariant from 'tiny-invariant'
+import { getClientSerovalPlugins } from './serializer/getClientSerovalPlugins'
+import { TSR_FORMDATA_CONTEXT } from './constants'
 import type { FunctionMiddlewareClientFnOptions } from './createMiddleware'
+import type { Plugin as SerovalPlugin } from 'seroval'
+
+let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
 
 export async function serverFnFetcher(
   url: string,
   args: Array<any>,
   handler: (url: string, requestInit: RequestInit) => Promise<Response>,
 ) {
+  if (!serovalPlugins) {
+    serovalPlugins = getClientSerovalPlugins()
+  }
   const _first = args[0]
 
   // If createServerFn was used to wrap the fetcher,
@@ -34,7 +42,7 @@ export async function serverFnFetcher(
       ...(type === 'payload'
         ? {
             'content-type': 'application/json',
-            accept: 'application/json',
+            accept: 'application/x-ndjson, application/json',
           }
         : {}),
       ...(first.headers instanceof Headers
@@ -44,12 +52,8 @@ export async function serverFnFetcher(
 
     // If the method is GET, we need to move the payload to the query string
     if (first.method === 'GET') {
-      // If the method is GET, we need to move the payload to the query string
       const encodedPayload = encode({
-        payload: startSerializer.stringify({
-          data: first.data,
-          context: first.context,
-        }),
+        payload: await serializePayload(first),
       })
 
       if (encodedPayload) {
@@ -70,12 +74,12 @@ export async function serverFnFetcher(
       url += `&raw`
     }
 
-    return await getResponse(() =>
+    return await getResponse(async () =>
       handler(url, {
         method: first.method,
         headers,
         signal: first.signal,
-        ...getFetcherRequestOptions(first),
+        ...(await getFetcherRequestOptions(first)),
       }),
     )
   }
@@ -91,27 +95,44 @@ export async function serverFnFetcher(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(args),
-      redirect: 'manual',
     }),
   )
 }
 
-function getFetcherRequestOptions(
+async function serializePayload(
+  opts: FunctionMiddlewareClientFnOptions<any, any, any, any>,
+) {
+  const payloadToSerialize: any = {}
+  if (opts.data) {
+    payloadToSerialize['data'] = opts.data
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  if (opts.context && Object.keys(opts.context).length > 0) {
+    payloadToSerialize['context'] = opts.context
+  }
+
+  return serialize(payloadToSerialize)
+}
+
+async function serialize(data: any) {
+  return JSON.stringify(
+    await Promise.resolve(toJSONAsync(data, { plugins: serovalPlugins! })),
+  )
+}
+
+async function getFetcherRequestOptions(
   opts: FunctionMiddlewareClientFnOptions<any, any, any, any>,
 ) {
   if (opts.method === 'POST') {
     if (opts.data instanceof FormData) {
-      opts.data.set('__TSR_CONTEXT', startSerializer.stringify(opts.context))
+      opts.data.set(TSR_FORMDATA_CONTEXT, await serialize(opts.context))
       return {
         body: opts.data,
       }
     }
 
     return {
-      body: startSerializer.stringify({
-        data: opts.data ?? null,
-        context: opts.context,
-      }),
+      body: await serializePayload(opts),
     }
   }
 
@@ -139,37 +160,140 @@ async function getResponse(fn: () => Promise<Response>) {
     }
   })()
 
+  const contentType = response.headers.get('content-type')
+  invariant(contentType, 'expected content-type header to be set')
+  const serializedByStart = !!response.headers.get('x-tss-serialized')
   // If the response is not ok, throw an error
   if (!response.ok) {
-    const contentType = response.headers.get('content-type')
-    const isJson = contentType && contentType.includes('application/json')
-
-    if (isJson) {
-      // If it's JSON, decode it and throw it
-      throw startSerializer.decode(await response.json())
+    if (serializedByStart && contentType.includes('application/json')) {
+      const jsonPayload = await response.json()
+      const result = fromJSON(jsonPayload, { plugins: serovalPlugins! })
+      throw result
     }
 
     throw new Error(await response.text())
   }
 
-  // Check if the response is JSON
-  if (response.headers.get('content-type')?.includes('application/json')) {
-    // Even though the response is JSON, we need to decode it
-    // because the server may have transformed it
-    let json = startSerializer.decode(await response.json())
-
-    const redirect = parseRedirect(json)
-
-    if (redirect) json = redirect
-
-    // If the response is a redirect or not found, throw it
-    // for the router to handle
-    if (isRedirect(json) || isNotFound(json) || json instanceof Error) {
-      throw json
+  if (serializedByStart) {
+    let result
+    if (contentType.includes('application/x-ndjson')) {
+      const refs = new Map()
+      result = await processServerFnResponse({
+        response,
+        onMessage: (msg) =>
+          fromCrossJSON(msg, { refs, plugins: serovalPlugins! }),
+        onError(msg, error) {
+          // TODO how could we notify consumer that an error occured?
+          console.error(msg, error)
+        },
+      })
     }
+    if (contentType.includes('application/json')) {
+      const jsonPayload = await response.json()
+      result = fromJSON(jsonPayload, { plugins: serovalPlugins! })
+    }
+    invariant(result, 'expected result to be resolved')
+    if (result instanceof Error) {
+      throw result
+    }
+    return result
+  }
 
-    return json
+  if (contentType.includes('application/json')) {
+    const jsonPayload = await response.json()
+    const redirect = parseRedirect(jsonPayload)
+    if (redirect) {
+      throw redirect
+    }
+    if (isNotFound(jsonPayload)) {
+      throw jsonPayload
+    }
+    return jsonPayload
   }
 
   return response
+}
+
+async function processServerFnResponse({
+  response,
+  onMessage,
+  onError,
+}: {
+  response: Response
+  onMessage: (msg: any) => any
+  onError?: (msg: string, error?: any) => void
+}) {
+  if (!response.body) {
+    throw new Error('No response body')
+  }
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+
+  let buffer = ''
+  let firstRead = false
+  let firstObject
+
+  while (!firstRead) {
+    const { value, done } = await reader.read()
+    if (value) buffer += value
+
+    if (buffer.length === 0 && done) {
+      throw new Error('Stream ended before first object')
+    }
+
+    // common case: buffer ends with newline
+    if (buffer.endsWith('\n')) {
+      const lines = buffer.split('\n').filter(Boolean)
+      const firstLine = lines[0]
+      if (!firstLine) throw new Error('No JSON line in the first chunk')
+      firstObject = JSON.parse(firstLine)
+      firstRead = true
+      buffer = lines.slice(1).join('\n')
+    } else {
+      // fallback: wait for a newline to parse first object safely
+      const newlineIndex = buffer.indexOf('\n')
+      if (newlineIndex >= 0) {
+        const line = buffer.slice(0, newlineIndex).trim()
+        buffer = buffer.slice(newlineIndex + 1)
+        if (line.length > 0) {
+          firstObject = JSON.parse(line)
+          firstRead = true
+        }
+      }
+    }
+  }
+
+  // process rest of the stream asynchronously
+  ;(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      while (true) {
+        const { value, done } = await reader.read()
+        if (value) buffer += value
+
+        const lastNewline = buffer.lastIndexOf('\n')
+        if (lastNewline >= 0) {
+          const chunk = buffer.slice(0, lastNewline)
+          buffer = buffer.slice(lastNewline + 1)
+          const lines = chunk.split('\n').filter(Boolean)
+
+          for (const line of lines) {
+            try {
+              onMessage(JSON.parse(line))
+            } catch (e) {
+              onError?.(`Invalid JSON line: ${line}`, e)
+            }
+          }
+        }
+
+        if (done) {
+          break
+        }
+      }
+    } catch (err) {
+      onError?.('Stream processing error:', err)
+    }
+  })()
+
+  return onMessage(firstObject)
 }
