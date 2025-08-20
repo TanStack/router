@@ -7,7 +7,7 @@ import {
 import { fromCrossJSON, fromJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
 import { getClientSerovalPlugins } from './serializer/getClientSerovalPlugins'
-import { TSS_FORMDATA_CONTEXT } from './constants'
+import { TSS_FORMDATA_CONTEXT, X_TSS_SERIALIZED } from './constants'
 import type { FunctionMiddlewareClientFnOptions } from './createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
@@ -162,7 +162,7 @@ async function getResponse(fn: () => Promise<Response>) {
 
   const contentType = response.headers.get('content-type')
   invariant(contentType, 'expected content-type header to be set')
-  const serializedByStart = !!response.headers.get('x-tss-serialized')
+  const serializedByStart = !!response.headers.get(X_TSS_SERIALIZED)
   // If the response is not ok, throw an error
   if (!response.ok) {
     if (serializedByStart && contentType.includes('application/json')) {
@@ -183,14 +183,14 @@ async function getResponse(fn: () => Promise<Response>) {
         onMessage: (msg) =>
           fromCrossJSON(msg, { refs, plugins: serovalPlugins! }),
         onError(msg, error) {
-          // TODO how could we notify consumer that an error occured?
+          // TODO how could we notify consumer that an error occurred?
           console.error(msg, error)
         },
       })
     }
     if (contentType.includes('application/json')) {
       const jsonPayload = await response.json()
-      result = fromJSON(jsonPayload, { plugins: serovalPlugins! })
+      result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
     }
     invariant(result, 'expected result to be resolved')
     if (result instanceof Error) {

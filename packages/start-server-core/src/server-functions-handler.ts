@@ -1,6 +1,6 @@
 import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
-import { TSS_FORMDATA_CONTEXT } from '@tanstack/start-client-core'
+import { TSS_FORMDATA_CONTEXT, X_TSS_SERIALIZED } from '@tanstack/start-client-core'
 import { fromJSON, toCrossJSONStream, toJSONAsync } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
@@ -172,38 +172,85 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
       }
 
       const response = getResponse()
+      let nonStreamingBody: any = undefined
 
-      let body = undefined
       if (result !== undefined) {
-        body = new ReadableStream({
+        // first run without the stream in case `result` does not need streaming
+        let done = false
+        const callbacks: {
+          onParse: (value: any) => void
+          onDone: () => void
+          onError: (error: any) => void
+        } = {
+          onParse: (value) => {
+            nonStreamingBody = value
+          },
+          onDone: () => {
+            done = true
+          },
+          onError: (error) => {
+            throw error
+          },
+        }
+        toCrossJSONStream(result, {
+          refs: new Map(),
+          plugins: serovalPlugins,
+          onParse(value) {
+            callbacks.onParse(value)
+          },
+          onDone() {
+            callbacks.onDone()
+          },
+          onError: (error) => {
+            callbacks.onError(error)
+          },
+        })
+        if (done) {
+          return new Response(
+            nonStreamingBody ? JSON.stringify(nonStreamingBody) : undefined,
+            {
+              status: response?.status,
+              statusText: response?.statusText,
+              headers: {
+                'Content-Type': 'application/json',
+                [X_TSS_SERIALIZED]: 'true',
+              },
+            },
+          )
+        }
+
+        // not done yet, we need to stream
+        let stream = new ReadableStream({
           start(controller) {
-            toCrossJSONStream(result, {
-              refs: new Map(),
-              plugins: serovalPlugins,
-              onParse: (value) => {
-                controller.enqueue(JSON.stringify(value) + '\n')
-              },
-              onDone: () => {
-                try {
-                  controller.close()
-                } catch (error) {
-                  controller.error(error)
-                }
-              },
-              onError: (error) => {
+            callbacks.onParse = (value) =>
+              controller.enqueue(JSON.stringify(value) + '\n')
+            callbacks.onDone = () => {
+              try {
+                controller.close()
+              } catch (error) {
                 controller.error(error)
-              },
-            })
+              }
+            }
+            callbacks.onError = (error) => controller.error(error)
+            // stream the initial body
+            if (nonStreamingBody !== undefined) {
+              callbacks.onParse(nonStreamingBody)
+            }
+          },
+        })
+        return new Response(stream, {
+          status: response?.status,
+          statusText: response?.statusText,
+          headers: {
+            'Content-Type': 'application/x-ndjson',
+            [X_TSS_SERIALIZED]: 'true',
           },
         })
       }
-      return new Response(body, {
+
+      return new Response(undefined, {
         status: response?.status,
         statusText: response?.statusText,
-        headers: {
-          'Content-Type': 'application/x-ndjson; charset=utf-8',
-          'x-tss-serialized': 'true',
-        },
       })
     } catch (error: any) {
       if (error instanceof Response) {

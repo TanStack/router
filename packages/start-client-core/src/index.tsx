@@ -88,4 +88,4 @@ export { createClientRpc } from './createClientRpc'
 
 export { getDefaultSerovalPlugins } from './serializer/getDefaultSerovalPlugins'
 
-export { TSS_FORMDATA_CONTEXT, TSS_SERVER_FUNCTION } from './constants'
+export { TSS_FORMDATA_CONTEXT, TSS_SERVER_FUNCTION, X_TSS_SERIALIZED } from './constants'
