@@ -3151,10 +3151,7 @@ describe('useRouteContext in the component', () => {
       },
       pendingComponent: () => 'loading',
     })
-    const routeTree = rootRoute.addChildren([
-      indexRoute,
-      fooRoute
-    ])
+    const routeTree = rootRoute.addChildren([indexRoute, fooRoute])
     const router = createRouter({
       routeTree,
       history,
@@ -3173,10 +3170,13 @@ describe('useRouteContext in the component', () => {
 
     expect(beforeLoad).toHaveBeenCalledTimes(1)
     expect(resolved).toBe(1)
-    expect(beforeLoad).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      cause: 'preload',
-      preload: true,
-    }))
+    expect(beforeLoad).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        cause: 'preload',
+        preload: true,
+      }),
+    )
 
     expect(select).not.toHaveBeenCalled()
 
@@ -3187,13 +3187,19 @@ describe('useRouteContext in the component', () => {
     await screen.findByText('Foo index page')
 
     expect(beforeLoad).toHaveBeenCalledTimes(2)
-    expect(beforeLoad).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      cause: 'enter',
-      preload: false,
-    }))
-    expect(select).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      foo: 1,
-    }))
+    expect(beforeLoad).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        cause: 'enter',
+        preload: false,
+      }),
+    )
+    expect(select).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        foo: 1,
+      }),
+    )
     expect(select).not.toHaveBeenCalledWith({})
 
     await sleep(WAIT_TIME)
@@ -3201,9 +3207,11 @@ describe('useRouteContext in the component', () => {
     expect(resolved).toBe(2)
 
     // ensure the context has been updated once the beforeLoad has resolved
-    expect(select).toHaveBeenLastCalledWith(expect.objectContaining({
-      foo: 2,
-    }))
+    expect(select).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        foo: 2,
+      }),
+    )
 
     // the route component will be rendered multiple times, ensure it always has the context
     expect(select).not.toHaveBeenCalledWith({})

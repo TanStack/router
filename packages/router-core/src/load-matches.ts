@@ -369,7 +369,11 @@ const executeBeforeLoad = (
   const parentMatchContext =
     parentMatch?.context ?? inner.router.options.context ?? undefined
 
-  const context = { ...match.__beforeLoadContext, ...parentMatchContext, ...match.__routeContext }
+  const context = {
+    ...match.__beforeLoadContext,
+    ...parentMatchContext,
+    ...match.__routeContext,
+  }
 
   let isPending = false
   const pending = () => {
