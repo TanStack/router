@@ -74,6 +74,7 @@ export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
 export type SearchMiddlewareContext<TSearchSchema> = {
   search: TSearchSchema
   next: (newSearch: TSearchSchema) => TSearchSchema
+  route: { id: string; fullPath: string }
 }
 
 export type SearchMiddleware<TSearchSchema> = (

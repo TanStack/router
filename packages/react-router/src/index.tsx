@@ -32,7 +32,11 @@ export {
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
+  persistSearchParams,
+  getSearchPersistenceStore,
 } from '@tanstack/router-core'
+
+
 
 export type {
   AnyRoute,
@@ -72,6 +76,7 @@ export type {
   TrimPathRight,
   StringifyParamsFn,
   ParamsOptions,
+
   InferAllParams,
   InferAllContext,
   LooseReturnType,
