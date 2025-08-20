@@ -203,16 +203,6 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   return updater
 }
 
-export function pick<TValue, TKey extends keyof TValue>(
-  parent: TValue,
-  keys: Array<TKey>,
-): Pick<TValue, TKey> {
-  return keys.reduce((obj: any, key: TKey) => {
-    obj[key] = parent[key]
-    return obj
-  }, {} as any)
-}
-
 /**
  * This function returns `prev` if `_next` is deeply equal.
  * If not, it will replace any deeply equal children of `b` with those of `a`.
@@ -441,4 +431,15 @@ export function isPromise<T>(
       typeof value === 'object' &&
       typeof (value as Promise<T>).then === 'function',
   )
+}
+
+export function findLast<T>(
+  array: ReadonlyArray<T>,
+  predicate: (item: T) => boolean,
+): T | undefined {
+  for (let i = array.length - 1; i >= 0; i--) {
+    const item = array[i]!
+    if (predicate(item)) return item
+  }
+  return undefined
 }
