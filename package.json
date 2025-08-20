@@ -103,7 +103,6 @@
       "@tanstack/solid-start": "workspace:*",
       "@tanstack/solid-start-client": "workspace:*",
       "@tanstack/solid-start-server": "workspace:*",
-      "@tanstack/start-server-functions-server": "workspace:*",
       "@tanstack/start-plugin-core": "workspace:*",
       "@tanstack/start-client-core": "workspace:*",
       "@tanstack/start-server-core": "workspace:*",

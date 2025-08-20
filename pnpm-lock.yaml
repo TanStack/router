@@ -37,7 +37,6 @@ overrides:
   '@tanstack/solid-start': workspace:*
   '@tanstack/solid-start-client': workspace:*
   '@tanstack/solid-start-server': workspace:*
-  '@tanstack/start-server-functions-server': workspace:*
   '@tanstack/start-plugin-core': workspace:*
   '@tanstack/start-client-core': workspace:*
   '@tanstack/start-server-core': workspace:*
@@ -6641,9 +6640,6 @@ importers:
       '@tanstack/start-plugin-core':
         specifier: workspace:*
         version: link:../start-plugin-core
-      '@tanstack/start-server-functions-server':
-        specifier: workspace:*
-        version: link:../start-server-functions-server
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
@@ -7100,9 +7096,6 @@ importers:
       '@tanstack/start-plugin-core':
         specifier: workspace:*
         version: link:../start-plugin-core
-      '@tanstack/start-server-functions-server':
-        specifier: workspace:*
-        version: link:../start-server-functions-server
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
@@ -7296,19 +7289,6 @@ importers:
       tiny-invariant:
         specifier: ^1.3.3
         version: 1.3.3
-
-  packages/start-server-functions-server:
-    dependencies:
-      '@tanstack/server-functions-plugin':
-        specifier: workspace:*
-        version: link:../server-functions-plugin
-      tiny-invariant:
-        specifier: ^1.3.3
-        version: 1.3.3
-    devDependencies:
-      typescript:
-        specifier: ^5.7.2
-        version: 5.8.2
 
   packages/start-static-server-functions:
     dependencies:

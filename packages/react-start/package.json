@@ -56,12 +56,6 @@
         "default": "./dist/esm/plugin/vite.js"
       }
     },
-    "./server-functions-server": {
-      "import": {
-        "types": "./dist/esm/server-functions-server.d.ts",
-        "default": "./dist/esm/server-functions-server.js"
-      }
-    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -75,7 +69,6 @@
   "dependencies": {
     "@tanstack/react-start-client": "workspace:*",
     "@tanstack/react-start-server": "workspace:*",
-    "@tanstack/start-server-functions-server": "workspace:*",
     "@tanstack/router-utils": "workspace:^",
     "@tanstack/start-plugin-core": "workspace:*",
     "pathe": "^2.0.3"

@@ -22,16 +22,10 @@ export default mergeConfig(
   config,
   tanstackViteConfig({
     srcDir: './src',
-    entry: [
-      './src/client.tsx',
-      './src/server.tsx',
-      './src/plugin/vite.ts',
-      './src/server-functions-server.tsx',
-    ],
+    entry: ['./src/client.tsx', './src/server.tsx', './src/plugin/vite.ts'],
     externalDeps: [
       '@tanstack/solid-start-client',
       '@tanstack/solid-start-server',
-      '@tanstack/start-server-functions-server',
     ],
     cjs: false,
     exclude: ['./src/plugin/default-entry'],

@@ -58,3 +58,5 @@ export type {
 export * from './virtual-modules'
 
 export { HEADERS } from './constants'
+
+export { createServerRpc } from './createServerRpc'

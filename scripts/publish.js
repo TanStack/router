@@ -129,10 +129,6 @@ await publish({
       packageDir: 'packages/react-start-server',
     },
     {
-      name: '@tanstack/start-server-functions-server',
-      packageDir: 'packages/start-server-functions-server',
-    },
-    {
       name: '@tanstack/start-plugin-core',
       packageDir: 'packages/start-plugin-core',
     },

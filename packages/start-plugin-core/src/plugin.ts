@@ -223,7 +223,7 @@ export function TanStackStartVitePluginCore(
                   ...Object.values(VIRTUAL_MODULES),
                   ...result.optimizeDeps.exclude.sort(),
                   ...additionalOptimizeDeps.exclude,
-                  `@tanstack/${corePluginOpts.framework}-start/server-functions-server`,
+                  `@tanstack/${corePluginOpts.framework}-start/server`,
                 ],
                 include: [
                   ...additionalOptimizeDeps.include,
@@ -312,7 +312,7 @@ export function TanStackStartVitePluginCore(
       },
       server: {
         getRuntimeCode: () =>
-          `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server-functions-server'`,
+          `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server'`,
         replacer: (d) => `createServerRpc('${d.functionId}', ${d.fn})`,
         envName: VITE_ENVIRONMENT_NAMES.server,
       },
