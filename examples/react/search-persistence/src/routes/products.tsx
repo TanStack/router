@@ -19,7 +19,7 @@ export const Route = createFileRoute('/products')({
   validateSearch: productsSearchSchema,
   search: {
     middlewares: [
-      persistSearchParams(['sortBy']), // Exclude 'sortBy' from persistence - fully typed!
+      persistSearchParams(['category', 'minPrice', 'maxPrice'], ['sortBy']),
     ],
   },
   component: ProductsComponent,

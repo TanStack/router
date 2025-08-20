@@ -18,7 +18,7 @@ export type UsersSearchSchema = z.infer<typeof usersSearchSchema>
 export const Route = createFileRoute('/users')({
   validateSearch: usersSearchSchema,
   search: {
-    middlewares: [persistSearchParams()],
+    middlewares: [persistSearchParams(['name', 'status', 'page'])],
   },
   component: UsersComponent,
 })

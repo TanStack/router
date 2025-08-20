@@ -6,9 +6,9 @@ import { setupLocalStorageSync } from './utils/localStorage-sync'
 import './styles.css'
 
 // Setup localStorage sync for search persistence (optional)
-if (typeof window !== 'undefined') {
-  setupLocalStorageSync()
-}
+// if (typeof window !== 'undefined') {
+//   setupLocalStorageSync()
+// }
 
 const router = createRouter({ routeTree })
 

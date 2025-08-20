@@ -131,15 +131,15 @@ export class SearchPersistenceStore {
     )
 
     this.__store.setState((prevState) => {
-      if (Object.keys(cleanedSearch).length === 0) {
-        const { [routeId]: _, ...rest } = prevState
-        return rest
-      }
-
-      return replaceEqualDeep(prevState, {
-        ...prevState,
-        [routeId]: cleanedSearch,
-      })
+      return Object.keys(cleanedSearch).length === 0
+        ? (() => {
+            const { [routeId]: _, ...rest } = prevState
+            return rest
+          })()
+        : replaceEqualDeep(prevState, {
+            ...prevState,
+            [routeId]: cleanedSearch,
+          })
     })
   }
 
@@ -176,7 +176,7 @@ export class SearchPersistenceStore {
 
 const searchPersistenceStore = new SearchPersistenceStore()
 
-// Clean API: Get the properly typed store instance
+// Get the properly typed store instance
 export function getSearchPersistenceStore<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
 >(): {
@@ -230,50 +230,54 @@ export function getSearchPersistenceStore<
 }
 
 export function persistSearchParams<TSearchSchema>(
+  persistedSearchParams: Array<keyof TSearchSchema>,
   exclude?: Array<keyof TSearchSchema>,
 ): SearchMiddleware<TSearchSchema> {
   return ({ search, next, route }) => {
-    // Check if we should restore from store (when search is empty - initial navigation)
+    // Filter input to only explicitly allowed keys for this route
+    const searchRecord = search as Record<string, unknown>
+    const allowedKeysStr = persistedSearchParams.map((key) => String(key))
+    const filteredSearch = Object.fromEntries(
+      Object.entries(searchRecord).filter(([key]) =>
+        allowedKeysStr.includes(key),
+      ),
+    ) as TSearchSchema
+
+    // Restore from store if current search is empty
     const savedSearch = searchPersistenceStore.getSearch(route.id)
-    let searchToProcess = search
+    let searchToProcess = filteredSearch
 
-    // If search is empty and we have saved search, restore it
     if (savedSearch && Object.keys(savedSearch).length > 0) {
-      const currentSearch = search as Record<string, unknown>
-      const shouldRestore =
-        Object.keys(currentSearch).length === 0 ||
-        Object.values(currentSearch).every((value) => {
-          if (value === null || value === undefined || value === '') return true
-          if (Array.isArray(value) && value.length === 0) return true
-          if (
-            typeof value === 'object' &&
-            value !== null &&
-            Object.keys(value).length === 0
-          )
-            return true
-          return false
-        })
+      const currentSearch = filteredSearch as Record<string, unknown>
+      const isEmpty = Object.keys(currentSearch).length === 0
 
-      if (shouldRestore) {
-        searchToProcess = { ...search, ...savedSearch } as TSearchSchema
+      if (isEmpty) {
+        searchToProcess = savedSearch as TSearchSchema
       }
     }
 
-    // Process through validation and other middleware
     const result = next(searchToProcess)
 
-    // Save the result for future restoration (but only if it's not empty)
+    // Save only the allowed parameters for persistence
     const resultRecord = result as Record<string, unknown>
     if (Object.keys(resultRecord).length > 0) {
-      // Filter out excluded keys in middleware before saving
+      const persistedKeysStr = persistedSearchParams.map((key) => String(key))
+      const paramsToSave = Object.fromEntries(
+        Object.entries(resultRecord).filter(([key]) =>
+          persistedKeysStr.includes(key),
+        ),
+      )
+
       const excludeKeys = exclude ? exclude.map((key) => String(key)) : []
       const filteredResult = Object.fromEntries(
-        Object.entries(resultRecord).filter(
+        Object.entries(paramsToSave).filter(
           ([key]) => !excludeKeys.includes(key),
         ),
       )
 
-      searchPersistenceStore.saveSearch(route.id, filteredResult)
+      if (Object.keys(filteredResult).length > 0) {
+        searchPersistenceStore.saveSearch(route.id, filteredResult)
+      }
     }
 
     return result
