@@ -3125,4 +3125,87 @@ describe('useRouteContext in the component', () => {
 
     expect(content).toBeInTheDocument()
   })
+
+  test("reproducer #4998 - on navigate (with preload), route component isn't rendered with undefined context if beforeLoad is pending", async () => {
+    const beforeLoad = vi.fn()
+    const select = vi.fn()
+    let resolved = 0
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link to="/foo">To foo</Link>,
+    })
+    const fooRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      beforeLoad: async (...args) => {
+        beforeLoad(...args)
+        await sleep(WAIT_TIME)
+        resolved += 1
+        return { foo: resolved }
+      },
+      component: () => {
+        fooRoute.useRouteContext({ select })
+        return <h1>Foo index page</h1>
+      },
+      pendingComponent: () => 'loading',
+    })
+    const routeTree = rootRoute.addChildren([
+      indexRoute,
+      fooRoute
+    ])
+    const router = createRouter({
+      routeTree,
+      history,
+      defaultPreload: 'intent',
+      defaultPendingMs: 0,
+    })
+
+    render(<RouterProvider router={router} />)
+    const linkToFoo = await screen.findByText('To foo')
+
+    fireEvent.focus(linkToFoo)
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(resolved).toBe(0)
+
+    await sleep(WAIT_TIME)
+
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(resolved).toBe(1)
+    expect(beforeLoad).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      cause: 'preload',
+      preload: true,
+    }))
+
+    expect(select).not.toHaveBeenCalled()
+
+    fireEvent.click(linkToFoo)
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
+    expect(resolved).toBe(1)
+
+    await screen.findByText('Foo index page')
+
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
+    expect(beforeLoad).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      cause: 'enter',
+      preload: false,
+    }))
+    expect(select).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      foo: 1,
+    }))
+    expect(select).not.toHaveBeenCalledWith({})
+
+    await sleep(WAIT_TIME)
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
+    expect(resolved).toBe(2)
+
+    // ensure the context has been updated once the beforeLoad has resolved
+    expect(select).toHaveBeenLastCalledWith(expect.objectContaining({
+      foo: 2,
+    }))
+
+    // the route component will be rendered multiple times, ensure it always has the context
+    expect(select).not.toHaveBeenCalledWith({})
+  })
 })
