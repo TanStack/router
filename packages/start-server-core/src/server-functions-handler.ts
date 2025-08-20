@@ -1,9 +1,10 @@
 import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
-import { startSerializer } from '@tanstack/start-client-core'
-import { VIRTUAL_MODULES } from './virtual-modules'
-import { loadVirtualModule } from './loadVirtualModule'
+import { TSR_FORMDATA_CONTEXT } from '@tanstack/start-client-core'
+import { fromJSON, toCrossJSONStream, toJSONAsync } from 'seroval'
 import { getResponse } from './request-response'
+import { getServerFnById } from './getServerFnById'
+import { getSerovalPlugins } from './serializer/getSerovalPlugins'
 
 function sanitizeBase(base: string | undefined) {
   if (!base) {
@@ -13,72 +14,6 @@ function sanitizeBase(base: string | undefined) {
   }
 
   return base.replace(/^\/|\/$/g, '')
-}
-
-async function revive(root: any, reviver?: (key: string, value: any) => any) {
-  async function reviveNode(holder: any, key: string) {
-    const value = holder[key]
-
-    if (value && typeof value === 'object') {
-      await Promise.all(Object.keys(value).map((k) => reviveNode(value, k)))
-    }
-
-    if (reviver) {
-      holder[key] = await reviver(key, holder[key])
-    }
-  }
-
-  const holder = { '': root }
-  await reviveNode(holder, '')
-  return holder['']
-}
-
-async function reviveServerFns(key: string, value: any) {
-  if (value && value.__serverFn === true && value.functionId) {
-    const serverFn = await getServerFnById(value.functionId)
-    return async (opts: any, signal: any): Promise<any> => {
-      const result = await serverFn(opts ?? {}, signal)
-      return result.result
-    }
-  }
-  return value
-}
-
-async function getServerFnById(serverFnId: string) {
-  const { default: serverFnManifest } = await loadVirtualModule(
-    VIRTUAL_MODULES.serverFnManifest,
-  )
-
-  const serverFnInfo = serverFnManifest[serverFnId]
-
-  if (!serverFnInfo) {
-    console.info('serverFnManifest', serverFnManifest)
-    throw new Error('Server function info not found for ' + serverFnId)
-  }
-
-  const fnModule = await serverFnInfo.importer()
-
-  if (!fnModule) {
-    console.info('serverFnInfo', serverFnInfo)
-    throw new Error('Server function module not resolved for ' + serverFnId)
-  }
-
-  const action = fnModule[serverFnInfo.functionName]
-
-  if (!action) {
-    console.info('serverFnInfo', serverFnInfo)
-    console.info('fnModule', fnModule)
-    throw new Error(
-      `Server function module export not resolved for serverFn ID: ${serverFnId}`,
-    )
-  }
-  return action
-}
-
-async function parsePayload(payload: any) {
-  const parsedPayload = startSerializer.parse(payload)
-  await revive(parsedPayload, reviveServerFns)
-  return parsedPayload
 }
 
 export const handleServerAction = async ({ request }: { request: Request }) => {
@@ -118,14 +53,21 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
     'application/x-www-form-urlencoded',
   ]
 
+  const contentType = request.headers.get('Content-Type')
+  const serovalPlugins = getSerovalPlugins()
+
+  function parsePayload(payload: any) {
+    const parsedPayload = fromJSON(payload, { plugins: serovalPlugins })
+    return parsedPayload
+  }
+
   const response = await (async () => {
     try {
       let result = await (async () => {
         // FormData
         if (
-          request.headers.get('Content-Type') &&
-          formDataContentTypes.some((type) =>
-            request.headers.get('Content-Type')?.includes(type),
+          formDataContentTypes.some(
+            (type) => contentType && contentType.includes(type),
           )
         ) {
           // We don't support GET requests with FormData payloads... that seems impossible
@@ -133,45 +75,59 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
             method.toLowerCase() !== 'get',
             'GET requests with FormData payloads are not supported',
           )
+          const formData = await request.formData()
+          const serializedContext = formData.get(TSR_FORMDATA_CONTEXT)
+          formData.delete(TSR_FORMDATA_CONTEXT)
 
-          return await action(await request.formData(), signal)
+          const params = {
+            context: {} as any,
+            data: formData,
+          }
+          if (typeof serializedContext === 'string') {
+            try {
+              params.context = parsePayload(JSON.parse(serializedContext))
+            } catch {}
+          }
+
+          return await action(params, signal)
         }
 
         // Get requests use the query string
         if (method.toLowerCase() === 'get') {
+          invariant(
+            isCreateServerFn,
+            'expected GET request to originate from createServerFn',
+          )
           // By default the payload is the search params
-          let payload: any = search
-
-          // If this GET request was created by createServerFn,
-          // then the payload will be on the payload param
-          if (isCreateServerFn) {
-            payload = search.payload
-          }
-
+          let payload: any = search.payload
           // If there's a payload, we should try to parse it
-          payload = payload ? await parsePayload(payload) : payload
+          payload = payload ? await parsePayload(JSON.parse(payload)) : payload
 
           // Send it through!
           return await action(payload, signal)
         }
 
-        // This must be a POST request, likely JSON???
-        const jsonPayloadAsString = await request.text()
+        if (method.toLowerCase() !== 'post') {
+          throw new Error('expected POST method')
+        }
 
-        // We should probably try to deserialize the payload
-        // as JSON, but we'll just pass it through for now.
-        const payload = await parsePayload(jsonPayloadAsString)
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('expected application/json content type')
+        }
+
+        const jsonPayload = await request.json()
 
         // If this POST request was created by createServerFn,
-        // it's payload will be the only argument
+        // its payload will be the only argument
         if (isCreateServerFn) {
+          const payload = await parsePayload(jsonPayload)
           return await action(payload, signal)
         }
 
         // Otherwise, we'll spread the payload. Need to
         // support `use server` functions that take multiple
         // arguments.
-        return await action(...(payload as any), signal)
+        return await action(...jsonPayload)
       })()
 
       // Any time we get a Response back, we should just
@@ -191,18 +147,6 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
           return result
         }
       }
-
-      // if (!search.createServerFn) {
-      //   result = result.result
-      // }
-
-      // else if (
-      //   isPlainObject(result) &&
-      //   'result' in result &&
-      //   result.result instanceof Response
-      // ) {
-      //   return result.result
-      // }
 
       // TODO: RSCs Where are we getting this package?
       // if (isValidElement(result)) {
@@ -228,16 +172,39 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
       }
 
       const response = getResponse()
-      return new Response(
-        result !== undefined ? startSerializer.stringify(result) : undefined,
-        {
-          status: response?.status,
-          statusText: response?.statusText,
-          headers: {
-            'Content-Type': 'application/json',
+
+      let body = undefined
+      if (result !== undefined) {
+        body = new ReadableStream({
+          start(controller) {
+            toCrossJSONStream(result, {
+              refs: new Map(),
+              plugins: serovalPlugins,
+              onParse: (value) => {
+                controller.enqueue(JSON.stringify(value) + '\n')
+              },
+              onDone: () => {
+                try {
+                  controller.close()
+                } catch (error) {
+                  controller.error(error)
+                }
+              },
+              onError: (error) => {
+                controller.error(error)
+              },
+            })
           },
+        })
+      }
+      return new Response(body, {
+        status: response?.status,
+        statusText: response?.statusText,
+        headers: {
+          'Content-Type': 'application/x-ndjson; charset=utf-8',
+          'x-tss-serialized': 'true',
         },
-      )
+      })
     } catch (error: any) {
       if (error instanceof Response) {
         return error
@@ -265,10 +232,14 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
       console.error(error)
       console.info()
 
-      return new Response(startSerializer.stringify(error), {
+      const serializedError = JSON.stringify(
+        await Promise.resolve(toJSONAsync(error)),
+      )
+      return new Response(serializedError, {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
+          'x-tss-serialized': 'true',
         },
       })
     }

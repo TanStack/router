@@ -5,10 +5,7 @@ export type {
 
 export { hydrate, json, mergeHeaders } from '@tanstack/router-core/ssr/client'
 
-export { startSerializer } from './serializer'
-
 export type {
-  StartSerializer,
   Serializable,
   SerializerParse,
   SerializerParseBy,
@@ -83,7 +80,12 @@ export {
   applyMiddleware,
   execValidator,
   serverFnBaseToMiddleware,
-  extractFormDataContext,
   flattenMiddlewares,
   executeMiddleware,
 } from './createServerFn'
+
+export { createClientRpc } from './createClientRpc'
+
+export { getDefaultSerovalPlugins } from './serializer/getDefaultSerovalPlugins'
+
+export { TSR_FORMDATA_CONTEXT } from './constants'

@@ -1,6 +1,5 @@
 export {
   mergeHeaders,
-  startSerializer,
   createIsomorphicFn,
   createServerFn,
   createMiddleware,
@@ -9,6 +8,7 @@ export {
   serverOnly,
   clientOnly,
   json,
+  createClientRpc,
 } from '@tanstack/start-client-core'
 export {
   type DehydratedRouter,

@@ -223,7 +223,7 @@ export function TanStackStartVitePluginCore(
                   ...Object.values(VIRTUAL_MODULES),
                   ...result.optimizeDeps.exclude.sort(),
                   ...additionalOptimizeDeps.exclude,
-                  `@tanstack/${corePluginOpts.framework}-start/server-functions-server`,
+                  `@tanstack/${corePluginOpts.framework}-start/server`,
                 ],
                 include: [
                   ...additionalOptimizeDeps.include,
@@ -306,16 +306,14 @@ export function TanStackStartVitePluginCore(
       manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
       client: {
         getRuntimeCode: () =>
-          `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/server-functions-client'`,
-        replacer: (d) =>
-          `createClientRpc('${d.functionId}', '${startConfig.serverFns.base}')`,
+          `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/client'`,
+        replacer: (d) => `createClientRpc('${d.functionId}')`,
         envName: VITE_ENVIRONMENT_NAMES.client,
       },
       server: {
         getRuntimeCode: () =>
-          `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server-functions-server'`,
-        replacer: (d) =>
-          `createServerRpc('${d.functionId}', '${startConfig.serverFns.base}', ${d.fn})`,
+          `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server'`,
+        replacer: (d) => `createServerRpc('${d.functionId}', ${d.fn})`,
         envName: VITE_ENVIRONMENT_NAMES.server,
       },
     }),

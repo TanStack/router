@@ -129,18 +129,6 @@ await publish({
       packageDir: 'packages/react-start-server',
     },
     {
-      name: '@tanstack/start-server-functions-fetcher',
-      packageDir: 'packages/start-server-functions-fetcher',
-    },
-    {
-      name: '@tanstack/start-server-functions-client',
-      packageDir: 'packages/start-server-functions-client',
-    },
-    {
-      name: '@tanstack/start-server-functions-server',
-      packageDir: 'packages/start-server-functions-server',
-    },
-    {
       name: '@tanstack/start-plugin-core',
       packageDir: 'packages/start-plugin-core',
     },

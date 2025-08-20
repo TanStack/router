@@ -13,15 +13,12 @@ export {
   matchPathname,
   removeBasepath,
   matchByPath,
-  encode,
-  decode,
   rootRouteId,
   defaultSerializeError,
   defaultParseSearch,
   defaultStringifySearch,
   parseSearchWith,
   stringifySearchWith,
-  pick,
   functionalUpdate,
   replaceEqualDeep,
   isPlainObject,
@@ -30,6 +27,7 @@ export {
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
+  createSerializationAdapter,
 } from '@tanstack/router-core'
 
 export type {
@@ -192,6 +190,8 @@ export type {
   InjectedHtmlEntry,
   CreateFileRoute,
   CreateLazyFileRoute,
+  Transformer,
+  AnyTransformer,
 } from '@tanstack/router-core'
 
 export {

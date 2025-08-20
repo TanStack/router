@@ -1,20 +1,14 @@
-import { createMiddleware, startSerializer } from '@tanstack/start-client-core'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import {
+  createMiddleware,
+  getDefaultSerovalPlugins,
+} from '@tanstack/start-client-core'
+import { fromJSON, toJSONAsync } from 'seroval'
 
 type StaticCachedResult = {
   result: any
   context: any
-}
-
-type ServerFnStaticCache = {
-  getItem: (opts: {
-    functionId: string
-    data: any
-  }) => StaticCachedResult | Promise<StaticCachedResult | undefined>
-  setItem: (opts: {
-    functionId: string
-    data: any
-    response: StaticCachedResult
-  }) => Promise<void>
 }
 
 /**
@@ -78,36 +72,16 @@ const jsonToFilenameSafeString = (json: any) => {
 const staticClientCache =
   typeof document !== 'undefined' ? new Map<string, any>() : null
 
-const serverFnStaticCache: ServerFnStaticCache = {
-  getItem: async (ctx) => {
-    if (typeof document === 'undefined') {
-      const hash = jsonToFilenameSafeString(ctx.data)
-      const url = await getStaticCacheUrl({ functionId: ctx.functionId, hash })
-      const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
-
-      // Use fs instead of fetch to read from filesystem
-      const { promises: fs } = await import('node:fs')
-      const path = await import('node:path')
-      const filePath = path.join(publicUrl, url)
-
-      const [cachedResult, readError] = await fs
-        .readFile(filePath, 'utf-8')
-        .then((c) => [startSerializer.parse(c), null])
-        .catch((e) => [null, e])
-
-      if (readError && readError.code !== 'ENOENT') {
-        throw readError
-      }
-
-      return cachedResult as StaticCachedResult
-    }
-
-    return undefined
-  },
-  setItem: async ({ data, functionId, response }) => {
-    const { promises: fs } = await import('node:fs')
-    const path = await import('node:path')
-
+async function addItemToCache({
+  functionId,
+  data,
+  response,
+}: {
+  functionId: string
+  data: any
+  response: StaticCachedResult
+}): Promise<void> {
+  {
     const hash = jsonToFilenameSafeString(data)
     const url = await getStaticCacheUrl({ functionId, hash })
     const publicUrl = process.env.TSS_OUTPUT_PUBLIC_DIR!
@@ -117,15 +91,17 @@ const serverFnStaticCache: ServerFnStaticCache = {
     await fs.mkdir(path.dirname(filePath), { recursive: true })
 
     // Store the result with fs
-    await fs.writeFile(
-      filePath,
-      startSerializer.stringify({
-        result: response.result,
-        context: response.context.sendContext,
-      }),
-      'utf-8',
+    const stringifiedResult = JSON.stringify(
+      await toJSONAsync(
+        {
+          result: response.result,
+          context: response.context.sendContext,
+        },
+        { plugins: getDefaultSerovalPlugins() },
+      ),
     )
-  },
+    await fs.writeFile(filePath, stringifiedResult, 'utf-8')
+  }
 }
 
 const fetchItem = async ({
@@ -143,8 +119,8 @@ const fetchItem = async ({
   result = await fetch(url, {
     method: 'GET',
   })
-    .then((r) => r.text())
-    .then((d) => startSerializer.parse(d))
+    .then((r) => r.json())
+    .then((d) => fromJSON(d, { plugins: getDefaultSerovalPlugins() }))
 
   return result
 }
@@ -172,9 +148,8 @@ export const staticFunctionMiddleware = createMiddleware({ type: 'function' })
   })
   .server(async (ctx) => {
     const response = await ctx.next()
-
     if (process.env.NODE_ENV === 'production') {
-      await serverFnStaticCache.setItem({
+      await addItemToCache({
         functionId: ctx.functionId,
         response: { result: (response as any).result, context: ctx },
         data: ctx.data,
