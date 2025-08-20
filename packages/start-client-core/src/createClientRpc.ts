@@ -1,3 +1,4 @@
+import { TSS_SERVER_FUNCTION } from './constants'
 import { serverFnFetcher } from './serverFnFetcher'
 
 let baseUrl: string
@@ -20,5 +21,6 @@ export const createClientRpc = (functionId: string) => {
   return Object.assign(clientFn, {
     url,
     functionId,
+    [TSS_SERVER_FUNCTION]: true,
   })
 }

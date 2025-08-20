@@ -1,6 +1,6 @@
 import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
-import { TSR_FORMDATA_CONTEXT } from '@tanstack/start-client-core'
+import { TSS_FORMDATA_CONTEXT } from '@tanstack/start-client-core'
 import { fromJSON, toCrossJSONStream, toJSONAsync } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
@@ -76,8 +76,8 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
             'GET requests with FormData payloads are not supported',
           )
           const formData = await request.formData()
-          const serializedContext = formData.get(TSR_FORMDATA_CONTEXT)
-          formData.delete(TSR_FORMDATA_CONTEXT)
+          const serializedContext = formData.get(TSS_FORMDATA_CONTEXT)
+          formData.delete(TSS_FORMDATA_CONTEXT)
 
           const params = {
             context: {} as any,

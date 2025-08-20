@@ -7,7 +7,7 @@ import {
 import { fromCrossJSON, fromJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
 import { getClientSerovalPlugins } from './serializer/getClientSerovalPlugins'
-import { TSR_FORMDATA_CONTEXT } from './constants'
+import { TSS_FORMDATA_CONTEXT } from './constants'
 import type { FunctionMiddlewareClientFnOptions } from './createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
@@ -125,7 +125,7 @@ async function getFetcherRequestOptions(
 ) {
   if (opts.method === 'POST') {
     if (opts.data instanceof FormData) {
-      opts.data.set(TSR_FORMDATA_CONTEXT, await serialize(opts.context))
+      opts.data.set(TSS_FORMDATA_CONTEXT, await serialize(opts.context))
       return {
         body: opts.data,
       }

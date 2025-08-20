@@ -1,3 +1,4 @@
+import { TSS_SERVER_FUNCTION } from '@tanstack/start-client-core'
 import invariant from 'tiny-invariant'
 
 let baseUrl: string
@@ -24,5 +25,6 @@ export const createServerRpc = (
   return Object.assign(splitImportFn, {
     url,
     functionId,
+    [TSS_SERVER_FUNCTION]: true,
   })
 }
