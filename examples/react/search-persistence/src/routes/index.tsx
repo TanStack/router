@@ -8,11 +8,14 @@ function HomeComponent() {
   return (
     <div className="p-2">
       <h3>Search Persistence Middleware Demo</h3>
-      <p>Navigate to Users or Products and filter some data, then navigate back to see persistence in action!</p>
-      
+      <p>
+        Navigate to Users or Products and filter some data, then navigate back
+        to see persistence in action!
+      </p>
+
       <div className="mt-4 p-4 border rounded bg-yellow-50">
         <h4 className="font-bold mb-2">🧪 Restoration Patterns</h4>
-        
+
         <p className="text-sm mb-2">Full restoration:</p>
         <div className="space-x-2 mb-3">
           <Link
@@ -30,7 +33,7 @@ function HomeComponent() {
             Products (restore all)
           </Link>
         </div>
-        
+
         <p className="text-sm mb-2">Partial override:</p>
         <div className="space-x-2 mb-3">
           <Link
@@ -48,7 +51,7 @@ function HomeComponent() {
             Products (Books)
           </Link>
         </div>
-        
+
         <p className="text-sm mb-2">Clean navigation (no restoration):</p>
         <div className="space-x-2">
           <Link

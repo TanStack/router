@@ -1,4 +1,8 @@
-import { createFileRoute, useNavigate, persistSearchParams, } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  useNavigate,
+  persistSearchParams,
+} from '@tanstack/react-router'
 import { z } from 'zod'
 import React from 'react'
 
@@ -38,11 +42,15 @@ function ProductsComponent() {
     let products = [...mockProducts]
 
     if (search.category) {
-      products = products.filter(product => product.category === search.category)
+      products = products.filter(
+        (product) => product.category === search.category,
+      )
     }
 
-    products = products.filter(product => 
-      product.price >= (search.minPrice ?? 0) && product.price <= (search.maxPrice ?? 1000)
+    products = products.filter(
+      (product) =>
+        product.price >= (search.minPrice ?? 0) &&
+        product.price <= (search.maxPrice ?? 1000),
     )
 
     products = products.sort((a, b) => {
@@ -65,7 +73,7 @@ function ProductsComponent() {
     <div className="p-2">
       <h3>Products</h3>
       <p>Advanced filtering with excluded parameters (sortBy won't persist)</p>
-      
+
       <div className="mt-4 space-y-2">
         <select
           value={search.category || ''}
@@ -76,7 +84,7 @@ function ProductsComponent() {
           <option value="Electronics">Electronics</option>
           <option value="Home">Home</option>
         </select>
-        
+
         <div className="flex gap-2">
           <input
             type="range"
@@ -88,7 +96,7 @@ function ProductsComponent() {
           />
           <span>Min: ${search.minPrice ?? 0}</span>
         </div>
-        
+
         <div className="flex gap-2">
           <input
             type="range"
@@ -100,7 +108,7 @@ function ProductsComponent() {
           />
           <span>Max: ${search.maxPrice ?? 1000}</span>
         </div>
-        
+
         <select
           value={search.sortBy || 'name'}
           onChange={(e) => updateSearch({ sortBy: e.target.value as any })}
@@ -110,7 +118,7 @@ function ProductsComponent() {
           <option value="price">Sort by Price</option>
           <option value="rating">Sort by Rating</option>
         </select>
-        
+
         <button
           type="button"
           onClick={() => navigate({ search: {} } as any)}
@@ -125,7 +133,9 @@ function ProductsComponent() {
           <div key={product.id} className="border p-2 rounded">
             <div className="font-bold">{product.name}</div>
             <div className="text-sm text-gray-600">{product.category}</div>
-            <div className="text-sm">${product.price} - ⭐ {product.rating}</div>
+            <div className="text-sm">
+              ${product.price} - ⭐ {product.rating}
+            </div>
           </div>
         ))}
       </div>

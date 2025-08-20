@@ -9,7 +9,7 @@ The `persistSearchParams` middleware provides seamless search parameter persiste
 ## Key Features
 
 - **Automatic Persistence**: Search parameters are saved/restored automatically
-- **Selective Exclusion**: Choose which parameters to exclude from persistence  
+- **Selective Exclusion**: Choose which parameters to exclude from persistence
 - **Type Safety**: Full TypeScript support with automatic type inference
 - **Manual Control**: Direct store access for advanced use cases
 
@@ -40,6 +40,7 @@ export const Route = createFileRoute('/products')({
 ⚠️ **Important**: The middleware only runs when search parameters are being processed. Always be explicit about your restoration intent.
 
 ### Automatic Restoration
+
 ```tsx
 import { Link } from '@tanstack/react-router'
 
@@ -48,7 +49,7 @@ import { Link } from '@tanstack/react-router'
   Users (restore all)
 </Link>
 
-// Partial override - restore but override specific parameters  
+// Partial override - restore but override specific parameters
 <Link to="/products" search={(prev) => ({ ...prev, category: 'Electronics' })}>
   Electronics Products
 </Link>
@@ -59,7 +60,8 @@ import { Link } from '@tanstack/react-router'
 </Link>
 ```
 
-### Manual Restoration  
+### Manual Restoration
+
 Access the store directly for full control:
 
 ```tsx
@@ -82,7 +84,7 @@ If you use the persistence middleware but navigate without the `search` prop, re
 ## Try It
 
 1. Navigate to `/users` and search for a name
-2. Navigate to `/products` and set some filters  
+2. Navigate to `/products` and set some filters
 3. Use the test links on the homepage to see both restoration patterns!
 
 ## Running the Example

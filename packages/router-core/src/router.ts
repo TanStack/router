@@ -1337,20 +1337,20 @@ export class RouterCore<
         // Update the match's context
 
         if (route.options.context) {
-        const contextFnContext: RouteContextOptions<any, any, any, any> = {
-          deps: match.loaderDeps,
-          params: match.params,
+          const contextFnContext: RouteContextOptions<any, any, any, any> = {
+            deps: match.loaderDeps,
+            params: match.params,
             context: parentContext ?? {},
-          location: next,
-          navigate: (opts: any) =>
-            this.navigate({ ...opts, _fromLocation: next }),
-          buildLocation: this.buildLocation,
-          cause: match.cause,
-          abortController: match.abortController,
-          preload: !!match.preload,
-          matches,
-        }
-        // Get the route context
+            location: next,
+            navigate: (opts: any) =>
+              this.navigate({ ...opts, _fromLocation: next }),
+            buildLocation: this.buildLocation,
+            cause: match.cause,
+            abortController: match.abortController,
+            preload: !!match.preload,
+            matches,
+          }
+          // Get the route context
           match.__routeContext =
             route.options.context(contextFnContext) ?? undefined
         }
@@ -1452,7 +1452,7 @@ export class RouterCore<
           // for from to be invalid it shouldn't just be unmatched to currentLocation
           // but the currentLocation should also be unmatched to from
           if (!matchedFrom && !matchedCurrent) {
-          console.warn(`Could not find match for from: ${fromPath}`)
+            console.warn(`Could not find match for from: ${fromPath}`)
           }
         }
       }
@@ -1474,7 +1474,7 @@ export class RouterCore<
         dest.params === false || dest.params === null
           ? {}
           : (dest.params ?? true) === true
-          ? fromParams
+            ? fromParams
             : Object.assign(
                 fromParams,
                 functionalUpdate(dest.params as any, fromParams),
@@ -1488,14 +1488,14 @@ export class RouterCore<
       }).interpolatedPath
 
       const destRoutes = this.matchRoutes(interpolatedNextTo, undefined, {
-          _buildLocation: true,
+        _buildLocation: true,
       }).map((d) => this.looseRoutesById[d.routeId]!)
 
       // If there are any params, we need to stringify them
       if (Object.keys(nextParams).length > 0) {
         for (const route of destRoutes) {
           const fn =
-              route.options.params?.stringify ?? route.options.stringifyParams
+            route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
             Object.assign(nextParams, fn(nextParams))
           }
@@ -1518,7 +1518,7 @@ export class RouterCore<
       if (opts._includeValidateSearch && this.options.search?.strict) {
         const validatedSearch = {}
         destRoutes.forEach((route) => {
-            if (route.options.validateSearch) {
+          if (route.options.validateSearch) {
             try {
               Object.assign(
                 validatedSearch,
@@ -1527,8 +1527,8 @@ export class RouterCore<
                   ...nextSearch,
                 }),
               )
-          } catch {
-            // ignore errors here because they are already handled in matchRoutes
+            } catch {
+              // ignore errors here because they are already handled in matchRoutes
             }
           }
         })
@@ -1598,9 +1598,9 @@ export class RouterCore<
             this.basepath,
             next.pathname,
             {
-            to: d.from,
-            caseSensitive: false,
-            fuzzy: false,
+              to: d.from,
+              caseSensitive: false,
+              fuzzy: false,
             },
             this.parsePathnameCache,
           )
@@ -2279,8 +2279,8 @@ export class RouterCore<
       this.basepath,
       baseLocation.pathname,
       {
-      ...opts,
-      to: next.pathname,
+        ...opts,
+        to: next.pathname,
       },
       this.parsePathnameCache,
     ) as any
@@ -2635,10 +2635,10 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
       basepath,
       trimmedPath,
       {
-      to: route.fullPath,
-      caseSensitive: route.options?.caseSensitive ?? caseSensitive,
+        to: route.fullPath,
+        caseSensitive: route.options?.caseSensitive ?? caseSensitive,
         // we need fuzzy matching for `notFoundMode: 'fuzzy'`
-      fuzzy: true,
+        fuzzy: true,
       },
       parseCache,
     )
@@ -2668,7 +2668,7 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
           }
         } else {
           foundRoute = route
-        routeParams = matchedParams
+          routeParams = matchedParams
           break
         }
       }
@@ -2709,76 +2709,76 @@ function applySearchMiddleware({
     route: { id: string; fullPath: string }
   }> =
     destRoutes.reduce(
-    (acc, route) => {
-      const middlewares: Array<SearchMiddleware<any>> = []
+      (acc, route) => {
+        const middlewares: Array<SearchMiddleware<any>> = []
 
-      if ('search' in route.options) {
-        if (route.options.search?.middlewares) {
-          middlewares.push(...route.options.search.middlewares)
-        }
-      }
-      // TODO remove preSearchFilters and postSearchFilters in v2
-      else if (
-        route.options.preSearchFilters ||
-        route.options.postSearchFilters
-      ) {
-        const legacyMiddleware: SearchMiddleware<any> = ({
-          search,
-          next,
-        }) => {
-          let nextSearch = search
-
-          if (
-            'preSearchFilters' in route.options &&
-            route.options.preSearchFilters
-          ) {
-            nextSearch = route.options.preSearchFilters.reduce(
-              (prev, next) => next(prev),
-              search,
-            )
+        if ('search' in route.options) {
+          if (route.options.search?.middlewares) {
+            middlewares.push(...route.options.search.middlewares)
           }
-
-          const result = next(nextSearch)
-
-          if (
-            'postSearchFilters' in route.options &&
-            route.options.postSearchFilters
-          ) {
-            return route.options.postSearchFilters.reduce(
-              (prev, next) => next(prev),
-              result,
-            )
-          }
-
-          return result
         }
-        middlewares.push(legacyMiddleware)
-      }
+        // TODO remove preSearchFilters and postSearchFilters in v2
+        else if (
+          route.options.preSearchFilters ||
+          route.options.postSearchFilters
+        ) {
+          const legacyMiddleware: SearchMiddleware<any> = ({
+            search,
+            next,
+          }) => {
+            let nextSearch = search
 
-      if (_includeValidateSearch && route.options.validateSearch) {
-        const validate: SearchMiddleware<any> = ({ search, next }) => {
-          const result = next(search)
-          try {
-            const validatedSearch = {
-              ...result,
-                ...(validateSearch(route.options.validateSearch, result) ??
-                  undefined),
+            if (
+              'preSearchFilters' in route.options &&
+              route.options.preSearchFilters
+            ) {
+              nextSearch = route.options.preSearchFilters.reduce(
+                (prev, next) => next(prev),
+                search,
+              )
             }
-            return validatedSearch
-          } catch {
-            // ignore errors here because they are already handled in matchRoutes
+
+            const result = next(nextSearch)
+
+            if (
+              'postSearchFilters' in route.options &&
+              route.options.postSearchFilters
+            ) {
+              return route.options.postSearchFilters.reduce(
+                (prev, next) => next(prev),
+                result,
+              )
+            }
+
             return result
           }
+          middlewares.push(legacyMiddleware)
         }
 
-        middlewares.push(validate)
-      }
+        if (_includeValidateSearch && route.options.validateSearch) {
+          const validate: SearchMiddleware<any> = ({ search, next }) => {
+            const result = next(search)
+            try {
+              const validatedSearch = {
+                ...result,
+                ...(validateSearch(route.options.validateSearch, result) ??
+                  undefined),
+              }
+              return validatedSearch
+            } catch {
+              // ignore errors here because they are already handled in matchRoutes
+              return result
+            }
+          }
 
-      return acc.concat(
+          middlewares.push(validate)
+        }
+
+        return acc.concat(
           middlewares.map((middleware) => ({
             middleware,
             route: { id: route.id, fullPath: route.fullPath },
-          }))
+          })),
         )
       },
       [] as Array<{
@@ -2818,7 +2818,7 @@ function applySearchMiddleware({
     return middleware({
       search: currentSearch,
       next,
-      route: { id: route.id, fullPath: route.fullPath }
+      route: { id: route.id, fullPath: route.fullPath },
     })
   }
 

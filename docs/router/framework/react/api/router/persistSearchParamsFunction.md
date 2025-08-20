@@ -108,16 +108,17 @@ function Navigation() {
       <Link to="/users" search={(prev) => prev}>
         Users
       </Link>
-      
+
       {/* Partial override - restore saved params but override specific ones */}
-      <Link to="/products" search={(prev) => ({ ...prev, category: 'Electronics' })}>
+      <Link
+        to="/products"
+        search={(prev) => ({ ...prev, category: 'Electronics' })}
+      >
         Electronics Products
       </Link>
-      
+
       {/* Clean navigation - no restoration */}
-      <Link to="/users">
-        Users (clean slate)
-      </Link>
+      <Link to="/users">Users (clean slate)</Link>
     </div>
   )
 }
@@ -128,18 +129,23 @@ function Navigation() {
 You have two ways to exclude parameters from persistence:
 
 **1. Middleware-level exclusion** (permanent):
+
 ```tsx
 // These parameters are never saved
 middlewares: [persistSearchParams(['tempFilter', 'sortBy'])]
 ```
 
 **2. Link-level exclusion** (per navigation):
+
 ```tsx
 // Restore saved params but exclude specific ones
-<Link to="/products" search={(prev) => {
-  const { tempFilter, ...rest } = prev || {}
-  return rest
-}}>
+<Link
+  to="/products"
+  search={(prev) => {
+    const { tempFilter, ...rest } = prev || {}
+    return rest
+  }}
+>
   Products (excluding temp filter)
 </Link>
 ```
@@ -154,7 +160,7 @@ import { getSearchPersistenceStore, Link } from '@tanstack/react-router'
 function CustomNavigation() {
   const store = getSearchPersistenceStore()
   const savedUsersSearch = store.getSearch('/users')
-  
+
   return (
     <Link to="/users" search={savedUsersSearch || {}}>
       Users (with saved search)

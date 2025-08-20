@@ -36,8 +36,6 @@ export {
   getSearchPersistenceStore,
 } from '@tanstack/router-core'
 
-
-
 export type {
   AnyRoute,
   DeferredPromiseState,
@@ -76,7 +74,6 @@ export type {
   TrimPathRight,
   StringifyParamsFn,
   ParamsOptions,
-
   InferAllParams,
   InferAllContext,
   LooseReturnType,

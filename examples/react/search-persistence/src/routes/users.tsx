@@ -1,4 +1,8 @@
-import { createFileRoute, useNavigate, persistSearchParams } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  useNavigate,
+  persistSearchParams,
+} from '@tanstack/react-router'
 import { z } from 'zod'
 import React from 'react'
 
@@ -14,25 +18,53 @@ export type UsersSearchSchema = z.infer<typeof usersSearchSchema>
 export const Route = createFileRoute('/users')({
   validateSearch: usersSearchSchema,
   search: {
-    middlewares: [
-      persistSearchParams(),
-    ],
+    middlewares: [persistSearchParams()],
   },
   component: UsersComponent,
 })
 
 const mockUsers = [
-  { id: 1, name: 'Alice Johnson', email: 'alice@example.com', status: 'active' },
+  {
+    id: 1,
+    name: 'Alice Johnson',
+    email: 'alice@example.com',
+    status: 'active',
+  },
   { id: 2, name: 'Bob Smith', email: 'bob@example.com', status: 'inactive' },
-  { id: 3, name: 'Charlie Brown', email: 'charlie@example.com', status: 'active' },
+  {
+    id: 3,
+    name: 'Charlie Brown',
+    email: 'charlie@example.com',
+    status: 'active',
+  },
   { id: 4, name: 'Diana Ross', email: 'diana@example.com', status: 'active' },
-  { id: 5, name: 'Edward Norton', email: 'edward@example.com', status: 'inactive' },
+  {
+    id: 5,
+    name: 'Edward Norton',
+    email: 'edward@example.com',
+    status: 'inactive',
+  },
   { id: 6, name: 'Fiona Apple', email: 'fiona@example.com', status: 'active' },
-  { id: 7, name: 'George Lucas', email: 'george@example.com', status: 'active' },
+  {
+    id: 7,
+    name: 'George Lucas',
+    email: 'george@example.com',
+    status: 'active',
+  },
   { id: 8, name: 'Helen Hunt', email: 'helen@example.com', status: 'inactive' },
   { id: 9, name: 'Ian McKellen', email: 'ian@example.com', status: 'active' },
-  { id: 10, name: 'Julia Roberts', email: 'julia@example.com', status: 'active' },
-  { id: 11, name: 'Kevin Costner', email: 'kevin@example.com', status: 'inactive' },
+  {
+    id: 10,
+    name: 'Julia Roberts',
+    email: 'julia@example.com',
+    status: 'active',
+  },
+  {
+    id: 11,
+    name: 'Kevin Costner',
+    email: 'kevin@example.com',
+    status: 'inactive',
+  },
   { id: 12, name: 'Lisa Simpson', email: 'lisa@example.com', status: 'active' },
 ]
 
@@ -44,13 +76,13 @@ function UsersComponent() {
     let users = mockUsers
 
     if (search.name) {
-      users = users.filter(user => 
-        user.name.toLowerCase().includes(search.name?.toLowerCase() || '')
+      users = users.filter((user) =>
+        user.name.toLowerCase().includes(search.name?.toLowerCase() || ''),
       )
     }
 
     if (search.status && search.status !== 'all') {
-      users = users.filter(user => user.status === search.status)
+      users = users.filter((user) => user.status === search.status)
     }
 
     return users
@@ -65,8 +97,11 @@ function UsersComponent() {
   return (
     <div className="p-2">
       <h3>Users</h3>
-      <p>Search parameters are automatically persisted when you navigate away and back</p>
-      
+      <p>
+        Search parameters are automatically persisted when you navigate away and
+        back
+      </p>
+
       <div className="mt-4 space-y-2">
         <input
           type="text"
@@ -75,7 +110,7 @@ function UsersComponent() {
           onChange={(e) => updateSearch({ name: e.target.value })}
           className="border p-2 rounded"
         />
-        
+
         <select
           value={search.status || 'all'}
           onChange={(e) => updateSearch({ status: e.target.value as any })}
@@ -85,7 +120,7 @@ function UsersComponent() {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-        
+
         <button
           type="button"
           onClick={() => navigate({ search: {} } as any)}
