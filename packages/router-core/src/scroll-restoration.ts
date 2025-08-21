@@ -47,10 +47,10 @@ const throttle = (fn: (...args: Array<any>) => void, wait: number) => {
   }
 }
 
-function createScrollRestorationCache(): ScrollRestorationCache | undefined {
+function createScrollRestorationCache(): ScrollRestorationCache | null {
   const safeSessionStorage = getSafeSessionStorage()
   if (!safeSessionStorage) {
-    return undefined
+    return null
   }
 
   const persistedState = safeSessionStorage.getItem(storageKey)
@@ -201,7 +201,7 @@ export function restoreScroll({
 }
 
 export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
-  if (scrollRestorationCache === undefined) {
+  if (!scrollRestorationCache && !router.isServer) {
     return
   }
   const shouldScrollRestoration =
@@ -211,7 +211,11 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     router.isScrollRestoring = true
   }
 
-  if (typeof document === 'undefined' || router.isScrollRestorationSetup) {
+  if (
+    router.isServer ||
+    router.isScrollRestorationSetup ||
+    !scrollRestorationCache
+  ) {
     return
   }
 
