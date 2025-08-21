@@ -125,7 +125,7 @@ export function restoreScroll({
     return
   }
 
-  const resolvedKey = key || window.history.state?.key
+  const resolvedKey = key || window.history.state?.__TSR_key
   const elementEntries = byKey[resolvedKey]
 
   //
