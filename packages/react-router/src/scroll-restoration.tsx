@@ -11,6 +11,14 @@ export function ScrollRestoration() {
   if (!router.isScrollRestoring || !router.isServer) {
     return null
   }
+  if (typeof router.options.scrollRestoration === 'function') {
+    const shouldRestore = router.options.scrollRestoration({
+      location: router.latestLocation,
+    })
+    if (!shouldRestore) {
+      return null
+    }
+  }
   const getKey =
     router.options.getScrollRestorationKey || defaultGetScrollRestorationKey
   const userKey = getKey(router.latestLocation)

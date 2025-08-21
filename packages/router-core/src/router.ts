@@ -391,7 +391,9 @@ export interface RouterOptions<
    *
    * @default false
    */
-  scrollRestoration?: boolean
+  scrollRestoration?:
+    | boolean
+    | ((opts: { location: ParsedLocation }) => boolean)
 
   /**
    * A function that will be called to get the key for the scroll restoration cache.
@@ -949,7 +951,7 @@ export class RouterCore<
     }
   }
 
-  get state() {
+  get state(): RouterState<TRouteTree> {
     return this.__store.state
   }
 

@@ -328,6 +328,14 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       router.resetNextScroll = true
       return
     }
+    if (typeof router.options.scrollRestoration === 'function') {
+      const shouldRestore = router.options.scrollRestoration({
+        location: router.latestLocation,
+      })
+      if (!shouldRestore) {
+        return
+      }
+    }
 
     restoreScroll({
       storageKey,
