@@ -13,7 +13,7 @@ export function ScriptOnce({
     <script
       className="$tsr"
       dangerouslySetInnerHTML={{
-        __html: [children].filter(Boolean).join('\n'),
+        __html: [children].filter(Boolean).join('\n') + ';$_TSR.c()',
       }}
     />
   )

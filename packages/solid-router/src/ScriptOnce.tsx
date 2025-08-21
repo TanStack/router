@@ -11,8 +11,8 @@ export function ScriptOnce({
 
   return (
     <script
-      class="tsr-once"
-      innerHTML={[children].filter(Boolean).join('\n')}
+      class="$tsr"
+      innerHTML={[children].filter(Boolean).join('\n') + ';$_TSR.c()'}
     />
   )
 }
