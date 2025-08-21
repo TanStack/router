@@ -6,7 +6,7 @@ import * as vite from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
 import { join } from 'pathe'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
-import { startCompilerPlugin } from './start-compiler-plugin'
+import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
 import { tanStackStartRouter } from './start-router-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
@@ -21,7 +21,7 @@ import { postServerBuild } from './post-server-build'
 import type { ViteEnvironmentNames } from './constants'
 import type { TanStackStartInputConfig } from './schema'
 import type { PluginOption } from 'vite'
-import type { CompileStartFrameworkOptions } from './compilers'
+import type { CompileStartFrameworkOptions } from './start-compiler-plugin/compilers'
 
 export interface TanStackStartVitePluginCoreOptions {
   framework: CompileStartFrameworkOptions

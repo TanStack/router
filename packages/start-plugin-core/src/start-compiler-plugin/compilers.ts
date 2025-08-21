@@ -7,9 +7,63 @@ import {
   findReferencedIdentifiers,
 } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import { transformFuncs } from './constants'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
 export type CompileStartFrameworkOptions = 'react' | 'solid'
+
+type Identifiers = { [K in typeof transformFuncs[number]]: IdentifierConfig }
+const getIdentifiers = (framework: CompileStartFrameworkOptions): Identifiers  => ({
+  createServerRootRoute: {
+    name: 'createServerRootRoute',
+    handleCallExpression: handleCreateServerFileRouteCallExpressionFactory(
+      framework,
+      'createServerRootRoute',
+    ),
+    paths: [],
+  },
+  createServerRoute: {
+    name: 'createServerRoute',
+    handleCallExpression: handleCreateServerFileRouteCallExpressionFactory(
+      framework,
+      'createServerRoute',
+    ),
+    paths: [],
+  },
+  createServerFileRoute: {
+    name: 'createServerFileRoute',
+    handleCallExpression: handleCreateServerFileRouteCallExpressionFactory(
+      framework,
+      'createServerFileRoute',
+    ),
+    paths: [],
+  },
+  createServerFn: {
+    name: 'createServerFn',
+    handleCallExpression: handleCreateServerFnCallExpression,
+    paths: [],
+  },
+  createMiddleware: {
+    name: 'createMiddleware',
+    handleCallExpression: handleCreateMiddlewareCallExpression,
+    paths: [],
+  },
+  serverOnly: {
+    name: 'serverOnly',
+    handleCallExpression: handleServerOnlyCallExpression,
+    paths: [],
+  },
+  clientOnly: {
+    name: 'clientOnly',
+    handleCallExpression: handleClientOnlyCallExpression,
+    paths: [],
+  },
+  createIsomorphicFn: {
+    name: 'createIsomorphicFn',
+    handleCallExpression: handleCreateIsomorphicFnCallExpression,
+    paths: [],
+  },
+})
 
 export function compileStartOutputFactory(
   framework: CompileStartFrameworkOptions,
@@ -24,74 +78,7 @@ export function compileStartOutputFactory(
     babel.traverse(ast, {
       Program: {
         enter(programPath) {
-          const identifiers: {
-            createServerRoute: IdentifierConfig
-            createServerFileRoute: IdentifierConfig
-            createServerFn: IdentifierConfig
-            createMiddleware: IdentifierConfig
-            serverOnly: IdentifierConfig
-            clientOnly: IdentifierConfig
-            createIsomorphicFn: IdentifierConfig
-            createServerRootRoute: IdentifierConfig
-          } = {
-            createServerRootRoute: {
-              name: 'createServerRootRoute',
-              handleCallExpression:
-                handleCreateServerFileRouteCallExpressionFactory(
-                  framework,
-                  'createServerRootRoute',
-                ),
-              paths: [],
-            },
-            createServerRoute: {
-              name: 'createServerRoute',
-              handleCallExpression:
-                handleCreateServerFileRouteCallExpressionFactory(
-                  framework,
-                  'createServerRoute',
-                ),
-              paths: [],
-            },
-            createServerFileRoute: {
-              name: 'createServerFileRoute',
-              handleCallExpression:
-                handleCreateServerFileRouteCallExpressionFactory(
-                  framework,
-                  'createServerFileRoute',
-                ),
-              paths: [],
-            },
-            createServerFn: {
-              name: 'createServerFn',
-              handleCallExpression: handleCreateServerFnCallExpression,
-              paths: [],
-            },
-            createMiddleware: {
-              name: 'createMiddleware',
-              handleCallExpression: handleCreateMiddlewareCallExpression,
-              paths: [],
-            },
-            serverOnly: {
-              name: 'serverOnly',
-              handleCallExpression: handleServerOnlyCallExpression,
-              paths: [],
-            },
-            clientOnly: {
-              name: 'clientOnly',
-              handleCallExpression: handleClientOnlyCallExpression,
-              paths: [],
-            },
-            createIsomorphicFn: {
-              name: 'createIsomorphicFn',
-              handleCallExpression: handleCreateIsomorphicFnCallExpression,
-              paths: [],
-            },
-          }
-
-          const identifierKeys = Object.keys(identifiers) as Array<
-            keyof typeof identifiers
-          >
-
+          const identifiers = getIdentifiers(framework)
           programPath.traverse({
             ImportDeclaration: (path) => {
               if (path.node.source.value !== `@tanstack/${framework}-start`) {
@@ -100,7 +87,7 @@ export function compileStartOutputFactory(
 
               // handle a destructured imports being renamed like "import { createServerFn as myCreateServerFn } from '@tanstack/react-start';"
               path.node.specifiers.forEach((specifier) => {
-                identifierKeys.forEach((identifierKey) => {
+                transformFuncs.forEach((identifierKey) => {
                   const identifier = identifiers[identifierKey]
 
                   if (
@@ -120,7 +107,7 @@ export function compileStartOutputFactory(
               })
             },
             CallExpression: (path) => {
-              identifierKeys.forEach((identifierKey) => {
+              transformFuncs.forEach((identifierKey) => {
                 // Check to see if the call expression is a call to the
                 // identifiers[identifierKey].name
                 if (
@@ -163,7 +150,7 @@ export function compileStartOutputFactory(
             },
           })
 
-          identifierKeys.forEach((identifierKey) => {
+          transformFuncs.forEach((identifierKey) => {
             identifiers[identifierKey].paths.forEach((path) => {
               identifiers[identifierKey].handleCallExpression(
                 path as babel.NodePath<t.CallExpression>,
@@ -188,7 +175,7 @@ export function compileStartOutputFactory(
 }
 
 function handleCreateServerFileRouteCallExpressionFactory(
-  factory: CompileStartFrameworkOptions,
+  framework: CompileStartFrameworkOptions,
   method:
     | 'createServerFileRoute'
     | 'createServerRoute'
@@ -198,7 +185,7 @@ function handleCreateServerFileRouteCallExpressionFactory(
     path: babel.NodePath<t.CallExpression>,
     opts: CompileOptions,
   ) {
-    const PACKAGES = { start: `@tanstack/${factory}-start/server` }
+    const PACKAGES = { start: `@tanstack/${framework}-start/server` }
 
     let highestParent: babel.NodePath<any> = path
 
@@ -210,7 +197,6 @@ function handleCreateServerFileRouteCallExpressionFactory(
 
     // If we're on the client, remove the entire variable
     if (opts.env === 'client') {
-      // console.debug('createServerFileRoute -> manifest:\n', manifest)
       highestParent.remove()
       return
     }

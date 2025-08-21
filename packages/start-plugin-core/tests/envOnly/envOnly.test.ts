@@ -2,7 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
-import { compileStartOutputFactory } from '../../src/compilers'
+import { compileStartOutputFactory } from '../../src/start-compiler-plugin/compilers'
 
 const compileStartOutput = compileStartOutputFactory('react')
 

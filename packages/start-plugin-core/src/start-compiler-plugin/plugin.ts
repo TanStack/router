@@ -3,6 +3,7 @@ import { logDiff } from '@tanstack/router-utils'
 
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { compileStartOutputFactory } from './compilers'
+import { transformFuncs } from './constants'
 import type { Plugin } from 'vite'
 import type { CompileStartFrameworkOptions } from './compilers'
 
@@ -14,15 +15,6 @@ export type TanStackStartViteOptions = {
   globalMiddlewareEntry: string
 }
 
-const transformFuncs = [
-  'createServerFn',
-  'createMiddleware',
-  'serverOnly',
-  'clientOnly',
-  'createIsomorphicFn',
-  'createServerFileRoute',
-  'createServerRootRoute',
-]
 
 const tokenRegex = new RegExp(transformFuncs.join('|'))
 
@@ -49,7 +41,7 @@ export function startCompilerPlugin(
   }
 
   return {
-    name: 'vite-plugin-tanstack-start-create-server-fn',
+    name: 'tanstack-start-core:compiler',
     enforce: 'pre',
     applyToEnvironment(env) {
       return [opts.client.envName, opts.server.envName].includes(env.name)
