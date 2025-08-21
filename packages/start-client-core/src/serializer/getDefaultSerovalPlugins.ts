@@ -20,5 +20,5 @@ export function getDefaultSerovalPlugins() {
   const adapters = router.options.serializationAdapters as
     | Array<AnyTransformer>
     | undefined
-  return [...defaultSerovalPlugins, ...(adapters?.map(makeSerovalPlugin) ?? [])]
+  return [...(adapters?.map(makeSerovalPlugin) ?? []), ...defaultSerovalPlugins]
 }

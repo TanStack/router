@@ -1,7 +1,7 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { RenderData, makeData } from '~/data'
 
-export const Route = createFileRoute('/data-only')({
+export const Route = createFileRoute('/ssr/data-only')({
   ssr: 'data-only',
   beforeLoad: () => {
     return makeData()

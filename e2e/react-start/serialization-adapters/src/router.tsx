@@ -1,12 +1,13 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 import { carAdapter, fooAdapter } from './data'
+import { customErrorAdapter } from './CustomError'
 
 export function createRouter() {
   const router = createTanStackRouter({
     routeTree,
     scrollRestoration: true,
-    serializationAdapters: [fooAdapter, carAdapter],
+    serializationAdapters: [fooAdapter, carAdapter, customErrorAdapter],
   })
 
   return router

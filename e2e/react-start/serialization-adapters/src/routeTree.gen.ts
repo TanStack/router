@@ -9,86 +9,78 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as StreamRouteImport } from './routes/stream'
-import { Route as DataOnlyRouteImport } from './routes/data-only'
-import { Route as SsrRouteImport } from './routes/_ssr'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SsrStreamRouteImport } from './routes/ssr/stream'
+import { Route as SsrDataOnlyRouteImport } from './routes/ssr/data-only'
+import { Route as ServerFunctionCustomErrorRouteImport } from './routes/server-function/custom-error'
 
-const StreamRoute = StreamRouteImport.update({
-  id: '/stream',
-  path: '/stream',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataOnlyRoute = DataOnlyRouteImport.update({
-  id: '/data-only',
-  path: '/data-only',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SsrRoute = SsrRouteImport.update({
-  id: '/_ssr',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SsrStreamRoute = SsrStreamRouteImport.update({
+  id: '/ssr/stream',
+  path: '/ssr/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SsrDataOnlyRoute = SsrDataOnlyRouteImport.update({
+  id: '/ssr/data-only',
+  path: '/ssr/data-only',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServerFunctionCustomErrorRoute =
+  ServerFunctionCustomErrorRouteImport.update({
+    id: '/server-function/custom-error',
+    path: '/server-function/custom-error',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/data-only': typeof DataOnlyRoute
-  '/stream': typeof StreamRoute
+  '/server-function/custom-error': typeof ServerFunctionCustomErrorRoute
+  '/ssr/data-only': typeof SsrDataOnlyRoute
+  '/ssr/stream': typeof SsrStreamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/data-only': typeof DataOnlyRoute
-  '/stream': typeof StreamRoute
+  '/server-function/custom-error': typeof ServerFunctionCustomErrorRoute
+  '/ssr/data-only': typeof SsrDataOnlyRoute
+  '/ssr/stream': typeof SsrStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/_ssr': typeof SsrRoute
-  '/data-only': typeof DataOnlyRoute
-  '/stream': typeof StreamRoute
+  '/server-function/custom-error': typeof ServerFunctionCustomErrorRoute
+  '/ssr/data-only': typeof SsrDataOnlyRoute
+  '/ssr/stream': typeof SsrStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/data-only' | '/stream'
+  fullPaths:
+    | '/'
+    | '/server-function/custom-error'
+    | '/ssr/data-only'
+    | '/ssr/stream'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/data-only' | '/stream'
-  id: '__root__' | '/' | '/_ssr' | '/data-only' | '/stream'
+  to: '/' | '/server-function/custom-error' | '/ssr/data-only' | '/ssr/stream'
+  id:
+    | '__root__'
+    | '/'
+    | '/server-function/custom-error'
+    | '/ssr/data-only'
+    | '/ssr/stream'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  SsrRoute: typeof SsrRoute
-  DataOnlyRoute: typeof DataOnlyRoute
-  StreamRoute: typeof StreamRoute
+  ServerFunctionCustomErrorRoute: typeof ServerFunctionCustomErrorRoute
+  SsrDataOnlyRoute: typeof SsrDataOnlyRoute
+  SsrStreamRoute: typeof SsrStreamRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/stream': {
-      id: '/stream'
-      path: '/stream'
-      fullPath: '/stream'
-      preLoaderRoute: typeof StreamRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-only': {
-      id: '/data-only'
-      path: '/data-only'
-      fullPath: '/data-only'
-      preLoaderRoute: typeof DataOnlyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_ssr': {
-      id: '/_ssr'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof SsrRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -96,14 +88,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ssr/stream': {
+      id: '/ssr/stream'
+      path: '/ssr/stream'
+      fullPath: '/ssr/stream'
+      preLoaderRoute: typeof SsrStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ssr/data-only': {
+      id: '/ssr/data-only'
+      path: '/ssr/data-only'
+      fullPath: '/ssr/data-only'
+      preLoaderRoute: typeof SsrDataOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/server-function/custom-error': {
+      id: '/server-function/custom-error'
+      path: '/server-function/custom-error'
+      fullPath: '/server-function/custom-error'
+      preLoaderRoute: typeof ServerFunctionCustomErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  SsrRoute: SsrRoute,
-  DataOnlyRoute: DataOnlyRoute,
-  StreamRoute: StreamRoute,
+  ServerFunctionCustomErrorRoute: ServerFunctionCustomErrorRoute,
+  SsrDataOnlyRoute: SsrDataOnlyRoute,
+  SsrStreamRoute: SsrStreamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

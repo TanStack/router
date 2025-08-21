@@ -4,7 +4,7 @@ import {
   TSS_FORMDATA_CONTEXT,
   X_TSS_SERIALIZED,
 } from '@tanstack/start-client-core'
-import { fromJSON, toCrossJSONStream, toJSONAsync } from 'seroval'
+import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
 import { getSerovalPlugins } from './serializer/getSerovalPlugins'
@@ -283,10 +283,17 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
       console.info()
 
       const serializedError = JSON.stringify(
-        await Promise.resolve(toJSONAsync(error)),
+        await Promise.resolve(
+          toCrossJSONAsync(error, {
+            refs: new Map(),
+            plugins: serovalPlugins!,
+          }),
+        ),
       )
+      const response = getResponse()
       return new Response(serializedError, {
-        status: 500,
+        status: response?.status ?? 500,
+        statusText: response?.statusText,
         headers: {
           'Content-Type': 'application/json',
           'x-tss-serialized': 'true',

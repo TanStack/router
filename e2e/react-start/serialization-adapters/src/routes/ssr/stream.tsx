@@ -2,7 +2,7 @@ import { Await, createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 import { RenderData, makeData } from '~/data'
 
-export const Route = createFileRoute('/stream')({
+export const Route = createFileRoute('/ssr/stream')({
   loader: () => {
     const dataPromise = new Promise<ReturnType<typeof makeData>>((r) =>
       setTimeout(() => r(makeData()), 1000),

@@ -167,7 +167,7 @@ async function getResponse(fn: () => Promise<Response>) {
   if (!response.ok) {
     if (serializedByStart && contentType.includes('application/json')) {
       const jsonPayload = await response.json()
-      const result = fromJSON(jsonPayload, { plugins: serovalPlugins! })
+      const result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
       throw result
     }
 
