@@ -223,7 +223,7 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
         }
 
         // not done yet, we need to stream
-        let stream = new ReadableStream({
+        const stream = new ReadableStream({
           start(controller) {
             callbacks.onParse = (value) =>
               controller.enqueue(JSON.stringify(value) + '\n')
@@ -286,7 +286,7 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
         await Promise.resolve(
           toCrossJSONAsync(error, {
             refs: new Map(),
-            plugins: serovalPlugins!,
+            plugins: serovalPlugins,
           }),
         ),
       )

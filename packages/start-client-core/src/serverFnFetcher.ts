@@ -4,7 +4,7 @@ import {
   isPlainObject,
   parseRedirect,
 } from '@tanstack/router-core'
-import { fromCrossJSON, fromJSON, toJSONAsync } from 'seroval'
+import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
 import { getClientSerovalPlugins } from './serializer/getClientSerovalPlugins'
 import { TSS_FORMDATA_CONTEXT, X_TSS_SERIALIZED } from './constants'

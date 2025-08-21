@@ -12,8 +12,10 @@ import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
 export type CompileStartFrameworkOptions = 'react' | 'solid'
 
-type Identifiers = { [K in typeof transformFuncs[number]]: IdentifierConfig }
-const getIdentifiers = (framework: CompileStartFrameworkOptions): Identifiers  => ({
+type Identifiers = { [K in (typeof transformFuncs)[number]]: IdentifierConfig }
+const getIdentifiers = (
+  framework: CompileStartFrameworkOptions,
+): Identifiers => ({
   createServerRootRoute: {
     name: 'createServerRootRoute',
     handleCallExpression: handleCreateServerFileRouteCallExpressionFactory(

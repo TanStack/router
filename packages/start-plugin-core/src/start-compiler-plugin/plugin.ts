@@ -15,7 +15,6 @@ export type TanStackStartViteOptions = {
   globalMiddlewareEntry: string
 }
 
-
 const tokenRegex = new RegExp(transformFuncs.join('|'))
 
 export function startCompilerPlugin(
