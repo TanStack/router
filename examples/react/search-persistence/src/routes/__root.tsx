@@ -29,7 +29,7 @@ function RootComponent() {
         </Link>{' '}
         <Link
           to="/products"
-          search={prev => prev}
+          search={(prev) => prev}
           activeProps={{
             className: 'font-bold',
           }}

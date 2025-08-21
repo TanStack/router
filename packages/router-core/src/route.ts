@@ -71,10 +71,17 @@ export type RoutePathOptionsIntersection<TCustomId, TPath> = {
 
 export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
 
+export interface SearchMiddlewareRouter {
+  options: {
+    searchPersistenceStore?: any // Avoid circular dependency, will be typed at usage
+  }
+}
+
 export type SearchMiddlewareContext<TSearchSchema> = {
   search: TSearchSchema
   next: (newSearch: TSearchSchema) => TSearchSchema
   route: { id: string; fullPath: string }
+  router: SearchMiddlewareRouter
 }
 
 export type SearchMiddleware<TSearchSchema> = (

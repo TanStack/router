@@ -120,11 +120,7 @@ export class SearchPersistenceStore {
       Object.entries(searchRecord).filter(([_, value]) => {
         if (value === null || value === undefined || value === '') return false
         if (Array.isArray(value) && value.length === 0) return false
-        if (
-          typeof value === 'object' &&
-          value !== null &&
-          Object.keys(value).length === 0
-        )
+        if (typeof value === 'object' && Object.keys(value).length === 0)
           return false
         return true
       }),
@@ -174,12 +170,17 @@ export class SearchPersistenceStore {
   }
 }
 
-const searchPersistenceStore = new SearchPersistenceStore()
+// Factory function to create a new SearchPersistenceStore instance
+export function createSearchPersistenceStore(): SearchPersistenceStore {
+  return new SearchPersistenceStore()
+}
 
-// Get the properly typed store instance
+// Get a typed interface for an existing SearchPersistenceStore instance
 export function getSearchPersistenceStore<
   TRouteTree extends AnyRoute = RegisteredRouter['routeTree'],
->(): {
+>(
+  store: SearchPersistenceStore,
+): {
   state: {
     [K in keyof RoutesById<TRouteTree>]: RouteById<
       TRouteTree,
@@ -207,25 +208,23 @@ export function getSearchPersistenceStore<
 } {
   return {
     get state() {
-      return searchPersistenceStore.getTypedState<TRouteTree>()
+      return store.getTypedState<TRouteTree>()
     },
     get store() {
-      return searchPersistenceStore.getTypedStore<TRouteTree>()
+      return store.getTypedStore<TRouteTree>()
     },
-    subscribe: (listener: () => void) =>
-      searchPersistenceStore.subscribe(listener),
+    subscribe: (listener: () => void) => store.subscribe(listener),
     getSearch: <TRouteId extends keyof RoutesById<TRouteTree>>(
       routeId: TRouteId,
-    ) => searchPersistenceStore.getSearch<TRouteTree, TRouteId>(routeId),
+    ) => store.getSearch<TRouteTree, TRouteId>(routeId),
     saveSearch: <TRouteId extends keyof RoutesById<TRouteTree>>(
       routeId: TRouteId,
       search: RouteById<TRouteTree, TRouteId>['types']['fullSearchSchema'],
-    ) =>
-      searchPersistenceStore.saveSearch<TRouteTree, TRouteId>(routeId, search),
+    ) => store.saveSearch<TRouteTree, TRouteId>(routeId, search),
     clearSearch: <TRouteId extends keyof RoutesById<TRouteTree>>(
       routeId: TRouteId,
-    ) => searchPersistenceStore.clearSearch<TRouteTree, TRouteId>(routeId),
-    clearAllSearches: () => searchPersistenceStore.clearAllSearches(),
+    ) => store.clearSearch<TRouteTree, TRouteId>(routeId),
+    clearAllSearches: () => store.clearAllSearches(),
   }
 }
 
@@ -233,8 +232,15 @@ export function persistSearchParams<TSearchSchema>(
   persistedSearchParams: Array<keyof TSearchSchema>,
   exclude?: Array<keyof TSearchSchema>,
 ): SearchMiddleware<TSearchSchema> {
-  return ({ search, next, route }) => {
-    // Filter input to only explicitly allowed keys for this route
+  return ({ search, next, route, router }) => {
+    const store = router.options.searchPersistenceStore as
+      | SearchPersistenceStore
+      | undefined
+
+    if (!store) {
+      return next(search)
+    }
+
     const searchRecord = search as Record<string, unknown>
     const allowedKeysStr = persistedSearchParams.map((key) => String(key))
     const filteredSearch = Object.fromEntries(
@@ -243,16 +249,38 @@ export function persistSearchParams<TSearchSchema>(
       ),
     ) as TSearchSchema
 
-    // Restore from store if current search is empty
-    const savedSearch = searchPersistenceStore.getSearch(route.id)
-    let searchToProcess = filteredSearch
+    const savedSearch = store.getSearch(route.id)
+    const searchToProcess = filteredSearch
 
     if (savedSearch && Object.keys(savedSearch).length > 0) {
       const currentSearch = filteredSearch as Record<string, unknown>
       const isEmpty = Object.keys(currentSearch).length === 0
 
       if (isEmpty) {
-        searchToProcess = savedSearch as TSearchSchema
+        // Skip router validation for restored data since we know it's valid
+        // This prevents Zod .catch() defaults from overriding our restored values
+        const result = savedSearch as TSearchSchema
+
+        const resultRecord = result as Record<string, unknown>
+        const persistedKeysStr = persistedSearchParams.map((key) => String(key))
+        const paramsToSave = Object.fromEntries(
+          Object.entries(resultRecord).filter(([key]) =>
+            persistedKeysStr.includes(key),
+          ),
+        )
+
+        const excludeKeys = exclude ? exclude.map((key) => String(key)) : []
+        const filteredResult = Object.fromEntries(
+          Object.entries(paramsToSave).filter(
+            ([key]) => !excludeKeys.includes(key),
+          ),
+        )
+
+        if (Object.keys(filteredResult).length > 0) {
+          store.saveSearch(route.id, filteredResult)
+        }
+
+        return result
       }
     }
 
@@ -260,24 +288,24 @@ export function persistSearchParams<TSearchSchema>(
 
     // Save only the allowed parameters for persistence
     const resultRecord = result as Record<string, unknown>
-    if (Object.keys(resultRecord).length > 0) {
-      const persistedKeysStr = persistedSearchParams.map((key) => String(key))
-      const paramsToSave = Object.fromEntries(
-        Object.entries(resultRecord).filter(([key]) =>
-          persistedKeysStr.includes(key),
-        ),
-      )
+    const persistedKeysStr = persistedSearchParams.map((key) => String(key))
+    const paramsToSave = Object.fromEntries(
+      Object.entries(resultRecord).filter(([key]) =>
+        persistedKeysStr.includes(key),
+      ),
+    )
 
-      const excludeKeys = exclude ? exclude.map((key) => String(key)) : []
-      const filteredResult = Object.fromEntries(
-        Object.entries(paramsToSave).filter(
-          ([key]) => !excludeKeys.includes(key),
-        ),
-      )
+    const excludeKeys = exclude ? exclude.map((key) => String(key)) : []
+    const filteredResult = Object.fromEntries(
+      Object.entries(paramsToSave).filter(
+        ([key]) => !excludeKeys.includes(key),
+      ),
+    )
 
-      if (Object.keys(filteredResult).length > 0) {
-        searchPersistenceStore.saveSearch(route.id, filteredResult)
-      }
+    // Only save if we have actual search params to persist
+    // Don't save empty objects as they overwrite existing data
+    if (Object.keys(filteredResult).length > 0) {
+      store.saveSearch(route.id, filteredResult)
     }
 
     return result

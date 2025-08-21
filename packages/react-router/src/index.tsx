@@ -28,6 +28,7 @@ export {
   isPlainObject,
   isPlainArray,
   deepEqual,
+  SearchPersistenceStore,
   shallow,
   createControlledPromise,
   retainSearchParams,

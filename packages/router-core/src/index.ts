@@ -255,6 +255,8 @@ export type {
 } from './RouterProvider'
 
 export {
+  SearchPersistenceStore,
+  createSearchPersistenceStore,
   retainSearchParams,
   stripSearchParams,
   persistSearchParams,

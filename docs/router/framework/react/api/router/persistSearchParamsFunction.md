@@ -7,10 +7,10 @@ title: Search middleware to persist search params
 
 ## persistSearchParams props
 
-`persistSearchParams` accepts one of the following inputs:
+`persistSearchParams` accepts the following parameters:
 
-- `undefined` (no arguments): persist all search params
-- a list of keys of those search params that shall be excluded from persistence
+- `persistedSearchParams` (required): Array of search param keys to persist
+- `exclude` (optional): Array of search param keys to exclude from persistence
 
 ## How it works
 
@@ -46,8 +46,8 @@ const usersSearchSchema = z.object({
 export const Route = createFileRoute('/users')({
   validateSearch: usersSearchSchema,
   search: {
-    // persist all search params
-    middlewares: [persistSearchParams()],
+    // persist name, status, and page
+    middlewares: [persistSearchParams(['name', 'status', 'page'])],
   },
 })
 ```
@@ -66,8 +66,10 @@ const productsSearchSchema = z.object({
 export const Route = createFileRoute('/products')({
   validateSearch: productsSearchSchema,
   search: {
-    // exclude tempFilter from persistence
-    middlewares: [persistSearchParams(['tempFilter'])],
+    // persist category, minPrice, maxPrice but exclude tempFilter
+    middlewares: [
+      persistSearchParams(['category', 'minPrice', 'maxPrice'], ['tempFilter']),
+    ],
   },
 })
 ```
@@ -86,8 +88,10 @@ const searchSchema = z.object({
 export const Route = createFileRoute('/products')({
   validateSearch: searchSchema,
   search: {
-    // exclude tempFilter and sortBy from persistence
-    middlewares: [persistSearchParams(['tempFilter', 'sortBy'])],
+    // persist category and sortOrder, exclude tempFilter and sortBy
+    middlewares: [
+      persistSearchParams(['category', 'sortOrder'], ['tempFilter', 'sortBy']),
+    ],
   },
 })
 ```
@@ -131,8 +135,10 @@ You have two ways to exclude parameters from persistence:
 **1. Middleware-level exclusion** (permanent):
 
 ```tsx
-// These parameters are never saved
-middlewares: [persistSearchParams(['tempFilter', 'sortBy'])]
+// Persist category and minPrice, exclude tempFilter and sortBy
+middlewares: [
+  persistSearchParams(['category', 'minPrice'], ['tempFilter', 'sortBy']),
+]
 ```
 
 **2. Link-level exclusion** (per navigation):
@@ -168,6 +174,77 @@ function CustomNavigation() {
   )
 }
 ```
+
+## Server-Side Rendering (SSR)
+
+The search persistence middleware is **SSR-safe** and automatically creates isolated store instances per request to prevent state leakage between users.
+
+### Key SSR Features
+
+- **Per-request isolation**: Each SSR request gets its own `SearchPersistenceStore` instance
+- **Automatic hydration**: Client seamlessly takes over from server-rendered state
+- **No global state**: Prevents cross-request contamination in server environments
+- **Custom store injection**: Integrate with your own persistence backend
+
+### Basic SSR Setup
+
+```tsx
+import { createRouter, SearchPersistenceStore } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+
+export function createAppRouter() {
+  // Create isolated store per router instance (per SSR request)
+  const searchPersistenceStore =
+    typeof window !== 'undefined' ? new SearchPersistenceStore() : undefined
+
+  return createRouter({
+    routeTree,
+    searchPersistenceStore, // Inject the store
+    // ... other options
+  })
+}
+```
+
+### Custom Persistence Backend
+
+For production SSR applications, integrate with your own persistence layer:
+
+```tsx
+import { createRouter, SearchPersistenceStore } from '@tanstack/react-router'
+
+export function createAppRouter(userId?: string) {
+  let searchPersistenceStore: SearchPersistenceStore | undefined
+
+  if (typeof window !== 'undefined') {
+    searchPersistenceStore = new SearchPersistenceStore()
+
+    // Load user's saved searches from your backend
+    loadUserSearches(userId).then((savedSearches) => {
+      Object.entries(savedSearches).forEach(([routeId, searchParams]) => {
+        searchPersistenceStore.saveSearch(routeId, searchParams)
+      })
+    })
+
+    // Save changes back to your backend
+    searchPersistenceStore.subscribe(() => {
+      const state = searchPersistenceStore.state
+      saveUserSearches(userId, state)
+    })
+  }
+
+  return createRouter({
+    routeTree,
+    searchPersistenceStore,
+  })
+}
+```
+
+### SSR Considerations
+
+- **Client-only store**: Store is only created on client-side (`typeof window !== 'undefined'`)
+- **Hydration-safe**: No server/client mismatch issues
+- **Performance**: Restored data bypasses validation to prevent SSR timing issues
+- **Memory efficient**: Stores are garbage collected per request
 
 ## Using the search persistence store
 
