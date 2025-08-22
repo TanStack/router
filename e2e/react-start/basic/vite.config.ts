@@ -11,7 +11,7 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    tanstackStart({ tsr: { verboseFileRoutes: false } }),
+    tanstackStart({ router: { verboseFileRoutes: false } }),
     viteReact(),
   ],
 })

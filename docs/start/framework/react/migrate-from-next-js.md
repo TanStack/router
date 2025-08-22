@@ -100,7 +100,7 @@ export default defineConfig({
     // Enables Vite to resolve imports using path aliases.
     tsconfigPaths(),
     tanstackStart({
-      tsr: {
+      router: {
         // Specifies the directory TanStack Router uses for your routes.
         routesDirectory: 'src/app', // Defaults to "src/routes"
       },

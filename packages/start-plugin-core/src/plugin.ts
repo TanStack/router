@@ -56,7 +56,7 @@ export function TanStackStartVitePluginCore(
 
   return [
     tanStackStartRouter({
-      ...startConfig.tsr,
+      ...startConfig.router,
       target: corePluginOpts.framework,
       autoCodeSplitting: true,
     }),
@@ -67,7 +67,7 @@ export function TanStackStartVitePluginCore(
         globalThis.TSS_APP_BASE = viteAppBase
 
         const root = viteConfig.root || process.cwd()
-        const resolvedSrcDirectory = join(root, startConfig.tsr.srcDirectory)
+        const resolvedSrcDirectory = join(root, startConfig.srcDirectory)
 
         const routerFilePath = resolveEntry({
           type: 'router entry',
