@@ -57,6 +57,8 @@ export function startCompilerPlugin(
     },
   }
 
+  const compileStartOutput = compileStartOutputFactory(framework)
+
   return {
     name: 'tanstack-start-core:compiler',
     enforce: 'pre',
@@ -111,43 +113,25 @@ export function startCompilerPlugin(
                   )
                 })()
 
-        return transformCode({
+        const url = pathToFileURL(id)
+        url.searchParams.delete('v')
+        id = fileURLToPath(url).replace(/\\/g, '/')
+
+        if (debug) console.info(`${env} Compiling Start: `, id)
+
+        const compiled = compileStartOutput({
           code,
-          id,
+          filename: id,
           env,
-          framework,
         })
+
+        if (debug) {
+          logDiff(code, compiled.code)
+          console.log('Output:\n', compiled.code + '\n\n')
+        }
+
+        return compiled
       },
     },
   }
-}
-
-function transformCode(opts: {
-  code: string
-  id: string
-  env: 'server' | 'client'
-  framework: CompileStartFrameworkOptions
-}) {
-  const { code, env, framework } = opts
-  let { id } = opts
-
-  const url = pathToFileURL(id)
-  url.searchParams.delete('v')
-  id = fileURLToPath(url).replace(/\\/g, '/')
-
-  if (debug) console.info(`${env} Compiling Start: `, id)
-
-  const compileStartOutput = compileStartOutputFactory(framework)
-  const compiled = compileStartOutput({
-    code,
-    filename: id,
-    env,
-  })
-
-  if (debug) {
-    logDiff(code, compiled.code)
-    console.log('Output:\n', compiled.code + '\n\n')
-  }
-
-  return compiled
 }
