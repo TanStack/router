@@ -15,9 +15,7 @@ test('invoking a server function with custom response status code', async ({
     page.on('response', (response) => {
       expect(response.status()).toBe(225)
       expect(response.statusText()).toBe('hello')
-      expect(response.headers()['content-type']).toContain(
-        'application/x-ndjson',
-      )
+      expect(response.headers()['content-type']).toContain('application/json')
       resolve()
     })
   })

@@ -179,7 +179,7 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
 
       if (result !== undefined) {
         // first run without the stream in case `result` does not need streaming
-        let done = false
+        let done = false as boolean
         const callbacks: {
           onParse: (value: any) => void
           onDone: () => void
