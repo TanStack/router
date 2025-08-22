@@ -12,9 +12,7 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
     tanstackStart({
-      tsr: {
-        srcDirectory: './src/app',
-      },
+      srcDirectory: './src/app',
     }),
     viteSolid({ ssr: true }),
   ],

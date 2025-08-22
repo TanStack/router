@@ -7,9 +7,7 @@ export default defineConfig({
   },
   plugins: [
     tanstackStart({
-      tsr: {
-        srcDirectory: './src/app',
-      },
+      srcDirectory: './src/app',
     }),
   ],
 })

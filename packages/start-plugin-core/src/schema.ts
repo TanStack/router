@@ -2,35 +2,28 @@ import path from 'node:path'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-generator'
 
-const tsrConfig = configSchema
-  .omit({ autoCodeSplitting: true })
-  .partial()
-  .extend({
-    // this is relative to vite root
-    // TODO why is this nested under tsr?
-    srcDirectory: z.string().optional().default('src'),
-  })
+const tsrConfig = configSchema.omit({ autoCodeSplitting: true }).partial()
 
 export function parseStartConfig(
   opts?: z.input<typeof tanstackStartOptionsSchema>,
 ) {
   const options = tanstackStartOptionsSchema.parse(opts)
 
-  const srcDirectory = options.tsr.srcDirectory
+  const srcDirectory = options.srcDirectory
 
   const routesDirectory =
-    options.tsr.routesDirectory ?? path.join(srcDirectory, 'routes')
+    options.router.routesDirectory ?? path.join(srcDirectory, 'routes')
 
   const generatedRouteTree =
-    options.tsr.generatedRouteTree ??
+    options.router.generatedRouteTree ??
     path.join(srcDirectory, 'routeTree.gen.ts')
 
   return {
     ...options,
-    tsr: {
-      ...options.tsr,
+    router: {
+      ...options.router,
       ...getConfig({
-        ...options.tsr,
+        ...options.router,
         routesDirectory,
         generatedRouteTree,
       }),
@@ -121,12 +114,13 @@ const pageSchema = pageBaseSchema.extend({
 
 const tanstackStartOptionsSchema = z
   .object({
-    tsr: tsrConfig.optional().default({}),
+    srcDirectory: z.string().optional().default('src'),
     router: z
       .object({
-        // TODO naming?
+        // TODO this will move to 'start' once we have `createStart`
         entry: z.string().optional(),
       })
+      .and(tsrConfig.optional().default({}))
       .optional()
       .default({}),
     client: z
