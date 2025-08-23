@@ -709,9 +709,10 @@ const loadRouteMatch = (
   index: number,
 ): Awaitable<AnyRouteMatch> => {
   const { id: matchId, routeId } = inner.matches[index]!
-  let loaderShouldRunAsync = false
-  let loaderIsRunningAsync = false
   const route = inner.router.looseRoutesById[routeId]!
+  const prevMatch = inner.router.getMatch(matchId)!
+  let loaderIsRunningAsync = false
+  let nextPreload: undefined | boolean
 
   if (shouldSkipLoader(inner, matchId)) {
     if (inner.router.isServer) {
@@ -725,12 +726,10 @@ const loadRouteMatch = (
           return inner.router.getMatch(matchId)!
         })
       }
-      return inner.router.getMatch(matchId)!
+      return prevMatch
     }
     return settleLoadRouteMatch()
   }
-
-  const prevMatch = inner.router.getMatch(matchId)!
 
   // there is a loaderPromise, so we are in the middle of a load
   if (prevMatch._nonReactive.loaderPromise) {
@@ -770,16 +769,9 @@ const loadRouteMatch = (
       ? shouldReloadOption(getLoaderContext(inner, matchId, index, route))
       : shouldReloadOption
 
-  const nextPreload =
+  nextPreload =
     !!preload && !inner.router.state.matches.some((d) => d.id === matchId)
-  const match = inner.router.getMatch(matchId)!
-  match._nonReactive.loaderPromise = createControlledPromise<void>()
-  if (nextPreload !== match.preload) {
-    inner.updateMatch(matchId, (prev) => ({
-      ...prev,
-      preload: nextPreload,
-    }))
-  }
+  prevMatch._nonReactive.loaderPromise = createControlledPromise<void>()
 
   if (preload && route.options.preload === false) {
     // Do nothing
@@ -787,8 +779,8 @@ const loadRouteMatch = (
   }
 
   // If the route is successful and still fresh, just resolve
-  const { status, invalid } = match
-  loaderShouldRunAsync =
+  const { status, invalid } = prevMatch
+  const loaderShouldRunAsync =
     status === 'success' && (invalid || (shouldReload ?? age > staleAge))
   if (loaderShouldRunAsync && !inner.sync) {
     loaderIsRunningAsync = true
@@ -809,6 +801,7 @@ const loadRouteMatch = (
   }
 
   if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
+    updatePreload()
     return runLoader(inner, matchId, index, route).then(settleLoadRouteMatch)
   }
 
@@ -818,15 +811,31 @@ const loadRouteMatch = (
   const headResult = executeHead(inner, matchId, route)
   if (headResult) {
     return headResult.then((head) => {
-      inner.updateMatch(matchId, (prev) => ({
-        ...prev,
-        ...head,
-      }))
-      return settleLoadRouteMatch()
+      let result: ReturnType<typeof settleLoadRouteMatch>
+      batch(() => {
+        inner.updateMatch(matchId, (prev) => ({
+          ...prev,
+          ...head,
+        }))
+        result = settleLoadRouteMatch()
+      })
+      return result!
     })
   }
 
   return settleLoadRouteMatch()
+
+  function updatePreload() {
+    if (nextPreload === undefined) return
+    if (nextPreload !== prevMatch.preload) {
+      const preload = nextPreload
+      inner.updateMatch(matchId, (prev) => ({
+        ...prev,
+        preload,
+      }))
+    }
+    nextPreload = undefined
+  }
 
   function settleLoadRouteMatch() {
     const match = inner.router.getMatch(matchId)!
@@ -843,15 +852,19 @@ const loadRouteMatch = (
 
     const nextIsFetching = loaderIsRunningAsync ? match.isFetching : false
     if (nextIsFetching !== match.isFetching || match.invalid !== false) {
-      inner.updateMatch(matchId, (prev) => ({
-        ...prev,
-        isFetching: nextIsFetching,
-        invalid: false,
-      }))
-      return inner.router.getMatch(matchId)!
+      batch(() => {
+        updatePreload()
+        inner.updateMatch(matchId, (prev) => ({
+          ...prev,
+          isFetching: nextIsFetching,
+          invalid: false,
+        }))
+      })
+    } else {
+      updatePreload()
     }
 
-    return match
+    return inner.router.getMatch(matchId)!
   }
 }
 
@@ -886,13 +899,10 @@ export async function loadMatches(arg: {
 
     // Execute all loaders in parallel
     const max = inner.firstBadMatchIndex ?? inner.matches.length
-    let hasPromises = false
     for (let i = 0; i < max; i++) {
-      const result = loadRouteMatch(inner, i)
-      inner.matchPromises.push(result)
-      if (!hasPromises && isPromise(result)) hasPromises = true
+      inner.matchPromises.push(loadRouteMatch(inner, i))
     }
-    if (hasPromises) await Promise.all(inner.matchPromises)
+    await Promise.all(inner.matchPromises)
 
     const readyPromise = triggerOnReady(inner)
     if (isPromise(readyPromise)) await readyPromise
