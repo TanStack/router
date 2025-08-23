@@ -47,11 +47,13 @@ function setup({
   const rootRoute = createRootRoute({
     component: function RootComponent() {
       useRouterState({ select })
-      return <>
-        <Link to="/">Back</Link>
-        <Link to="/posts">Posts</Link>
-        <Outlet />
-      </>
+      return (
+        <>
+          <Link to="/">Back</Link>
+          <Link to="/posts">Posts</Link>
+          <Outlet />
+        </>
+      )
     },
   })
   const indexRoute = createRoute({
@@ -96,7 +98,9 @@ function setup({
 async function back() {
   const link = await waitFor(() => screen.getByRole('link', { name: 'Back' }))
   fireEvent.click(link)
-  const title = await waitFor(() => screen.getByRole('heading', { name: /Index/ }))
+  const title = await waitFor(() =>
+    screen.getByRole('heading', { name: /Index/ }),
+  )
   expect(title).toBeInTheDocument()
 }
 
