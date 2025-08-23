@@ -24,6 +24,7 @@ import type {
   Expand,
   IntersectAssign,
   LooseAsyncReturnType,
+  LooseIsReturnPromise,
   LooseReturnType,
   NoInfer,
 } from './utils'
@@ -421,6 +422,11 @@ export interface RouteTypes<
   children: TChildren
   loaderData: ResolveLoaderData<TLoaderFn>
   loaderDeps: TLoaderDeps
+  asyncLoaderFn: unknown extends TLoaderFn
+    ? boolean
+    : LooseIsReturnPromise<TLoaderFn> extends never
+      ? boolean
+      : LooseIsReturnPromise<TLoaderFn>
   fileRouteTypes: TFileRouteTypes
 }
 
@@ -1236,7 +1242,9 @@ export interface LoaderFnContext<
   // root route does not have a parent match
   parentMatchPromise: TId extends RootRouteId
     ? never
-    : Awaitable<MakeRouteMatchFromRoute<TParentRoute>>
+    : TParentRoute['types']['asyncLoaderFn'] extends true
+      ? Promise<MakeRouteMatchFromRoute<TParentRoute>>
+      : MakeRouteMatchFromRoute<TParentRoute>
   cause: 'preload' | 'enter' | 'stay'
   route: AnyRoute
 }

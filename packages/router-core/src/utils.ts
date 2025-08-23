@@ -184,6 +184,14 @@ export type LooseAsyncReturnType<T> = T extends (
     : TReturn
   : never
 
+export type LooseIsReturnPromise<T> = T extends (
+  ...args: Array<any>
+) => infer TReturn
+  ? TReturn extends Promise<any>
+    ? true
+    : false
+  : never
+
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
 }
