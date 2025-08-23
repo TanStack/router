@@ -75,7 +75,7 @@ Let's take a look at a more realistic example using TanStack Query.
 
 ```tsx
 // src/routes/posts.tsx
-const queryClient = new QueryClient();
+const queryClient = new QueryClient()
 
 const postsQueryOptions = queryOptions({
   queryKey: ['posts'],
@@ -84,7 +84,7 @@ const postsQueryOptions = queryOptions({
 
 export const Route = createFileRoute('/posts')({
   // Use the `loader` option to ensure that the data is loaded
-  loader: () => queryClient.ensureQueryData(postsQueryOptions), 
+  loader: () => queryClient.ensureQueryData(postsQueryOptions),
   component: () => {
     // Read the data from the cache and subscribe to updates
     const {
