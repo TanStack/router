@@ -188,7 +188,13 @@ describe('beforeLoad skip or exec', () => {
 })
 
 describe('loader skip or exec', () => {
-  const setup = ({ loader, staleTime }: { loader?: Loader, staleTime?: number }) => {
+  const setup = ({
+    loader,
+    staleTime,
+  }: {
+    loader?: Loader
+    staleTime?: number
+  }) => {
     const rootRoute = new BaseRootRoute({})
 
     const fooRoute = new BaseRoute({
