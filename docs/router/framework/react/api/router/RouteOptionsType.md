@@ -131,9 +131,7 @@ type loader = (
     location: ParsedLocation
     params: TAllParams
     preload: boolean
-    parentMatchPromise:
-      | Promise<MakeRouteMatchFromRoute<TParentRoute>>
-      | MakeRouteMatchFromRoute<TParentRoute>
+    parentMatchPromise: Promise<MakeRouteMatchFromRoute<TParentRoute>>
     navigate: NavigateFn<AnyRoute> // @deprecated
     route: AnyRoute
   },
@@ -146,7 +144,6 @@ type loader = (
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TLoaderData` object, that object will be stored on the route match until the route match is no longer active. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
 - Deps must be returned by your `loaderDeps` function in order to appear.
-- `parentMatchPromise` is a promise _if_ the parent route's `loader` returns a promise as well, otherwise it is the resolved parent match object.
 
 > 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](../redirectFunction.md).
 

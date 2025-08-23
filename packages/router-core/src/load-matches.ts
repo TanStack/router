@@ -551,7 +551,7 @@ const getLoaderContext = (
   index: number,
   route: AnyRoute,
 ): LoaderFnContext => {
-  const parentMatchPromise = inner.matchPromises[index - 1] as any
+  const parentMatchPromise = Promise.resolve(inner.matchPromises[index - 1] as any)
   const { params, loaderDeps, abortController, context, cause } =
     inner.router.getMatch(matchId)!
 
