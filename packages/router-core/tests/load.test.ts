@@ -188,13 +188,15 @@ describe('beforeLoad skip or exec', () => {
 })
 
 describe('loader skip or exec', () => {
-  const setup = ({ loader }: { loader?: Loader }) => {
+  const setup = ({ loader, staleTime }: { loader?: Loader, staleTime?: number }) => {
     const rootRoute = new BaseRootRoute({})
 
     const fooRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/foo',
       loader,
+      staleTime,
+      gcTime: staleTime,
     })
 
     const barRoute = new BaseRoute({
@@ -253,6 +255,19 @@ describe('loader skip or exec', () => {
     await router.navigate({ to: '/foo' })
 
     expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  test('skip if resolved preload (success) within staleTime duration', async () => {
+    const loader = vi.fn()
+    const router = setup({ loader, staleTime: 1000 })
+    await router.preloadRoute({ to: '/foo' })
+    expect(router.state.cachedMatches).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: '/foo' })]),
+    )
+    await sleep(10)
+    await router.navigate({ to: '/foo' })
+
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 
   test('skip if pending preload (success)', async () => {
