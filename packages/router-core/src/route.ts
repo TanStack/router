@@ -1236,7 +1236,7 @@ export interface LoaderFnContext<
   // root route does not have a parent match
   parentMatchPromise: TId extends RootRouteId
     ? never
-    : Promise<MakeRouteMatchFromRoute<TParentRoute>>
+    : Awaitable<MakeRouteMatchFromRoute<TParentRoute>>
   cause: 'preload' | 'enter' | 'stay'
   route: AnyRoute
 }
