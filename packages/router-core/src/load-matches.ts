@@ -712,7 +712,6 @@ const loadRouteMatch = (
   const route = inner.router.looseRoutesById[routeId]!
   const prevMatch = inner.router.getMatch(matchId)!
   let loaderIsRunningAsync = false
-  let nextPreload: undefined | boolean
 
   if (shouldSkipLoader(inner, matchId)) {
     if (inner.router.isServer) {
@@ -769,9 +768,15 @@ const loadRouteMatch = (
       ? shouldReloadOption(getLoaderContext(inner, matchId, index, route))
       : shouldReloadOption
 
-  nextPreload =
+  const nextPreload =
     !!preload && !inner.router.state.matches.some((d) => d.id === matchId)
   prevMatch._nonReactive.loaderPromise = createControlledPromise<void>()
+  if (nextPreload !== prevMatch.preload) {
+    inner.updateMatch(matchId, (prev) => ({
+      ...prev,
+      preload: nextPreload,
+    }))
+  }
 
   if (preload && route.options.preload === false) {
     // Do nothing
@@ -801,7 +806,6 @@ const loadRouteMatch = (
   }
 
   if (status !== 'success' || (loaderShouldRunAsync && inner.sync)) {
-    updatePreload()
     return runLoader(inner, matchId, index, route).then(settleLoadRouteMatch)
   }
 
@@ -825,18 +829,6 @@ const loadRouteMatch = (
 
   return settleLoadRouteMatch()
 
-  function updatePreload() {
-    if (nextPreload === undefined) return
-    if (nextPreload !== prevMatch.preload) {
-      const preload = nextPreload
-      inner.updateMatch(matchId, (prev) => ({
-        ...prev,
-        preload,
-      }))
-    }
-    nextPreload = undefined
-  }
-
   function settleLoadRouteMatch() {
     const match = inner.router.getMatch(matchId)!
 
@@ -852,19 +844,15 @@ const loadRouteMatch = (
 
     const nextIsFetching = loaderIsRunningAsync ? match.isFetching : false
     if (nextIsFetching !== match.isFetching || match.invalid !== false) {
-      batch(() => {
-        updatePreload()
         inner.updateMatch(matchId, (prev) => ({
           ...prev,
           isFetching: nextIsFetching,
           invalid: false,
         }))
-      })
-    } else {
-      updatePreload()
+      return inner.router.getMatch(matchId)!
     }
 
-    return inner.router.getMatch(matchId)!
+    return match
   }
 }
 
