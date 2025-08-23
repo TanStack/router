@@ -35,13 +35,13 @@ export const Route = createFileRoute('/products')({
 
 ### Server-Only APIs
 
-| API                | Use Case                  | Client Behavior           |
-| ------------------ | ------------------------- | ------------------------- |
-| `createServerFn()` | RPC calls, data mutations | Network request to server |
-| `serverOnly(fn)`   | Utility functions         | Throws error              |
+| API                      | Use Case                  | Client Behavior           |
+| ------------------------ | ------------------------- | ------------------------- |
+| `createServerFn()`       | RPC calls, data mutations | Network request to server |
+| `createServerOnlyFn(fn)` | Utility functions         | Throws error              |
 
 ```tsx
-import { createServerFn, serverOnly } from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 
 // RPC: Server execution, callable from client
 const updateUser = createServerFn({ method: 'POST' })
@@ -52,22 +52,22 @@ const updateUser = createServerFn({ method: 'POST' })
   })
 
 // Utility: Server-only, client crashes if called
-const getEnvVar = serverOnly(() => process.env.DATABASE_URL)
+const getEnvVar = createServerOnlyFn(() => process.env.DATABASE_URL)
 ```
 
 ### Client-Only APIs
 
-| API              | Use Case                        | Server Behavior  |
-| ---------------- | ------------------------------- | ---------------- |
-| `clientOnly(fn)` | Browser utilities               | Throws error     |
-| `<ClientOnly>`   | Components needing browser APIs | Renders fallback |
+| API                      | Use Case                        | Server Behavior  |
+| ------------------------ | ------------------------------- | ---------------- |
+| `createClientOnlyFn(fn)` | Browser utilities               | Throws error     |
+| `<ClientOnly>`           | Components needing browser APIs | Renders fallback |
 
 ```tsx
-import { clientOnly } from '@tanstack/react-start'
+import { createClientOnlyFn } from '@tanstack/react-start'
 import { ClientOnly } from '@tanstack/react-router'
 
 // Utility: Client-only, server crashes if called
-const saveToStorage = clientOnly((key: string, value: any) => {
+const saveToStorage = createClientOnlyFn((key: string, value: any) => {
   localStorage.setItem(key, JSON.stringify(value))
 })
 
@@ -96,7 +96,7 @@ const getDeviceInfo = createIsomorphicFn()
 
 ## Key Distinctions
 
-### `createServerFn()` vs `serverOnly()`
+### `createServerFn()` vs `createServerOnlyFn()`
 
 ```tsx
 // createServerFn: RPC pattern - server execution, client callable
@@ -105,8 +105,8 @@ const fetchUser = createServerFn().handler(async () => await db.users.find())
 // Usage from client component:
 const user = await fetchUser() // ✅ Network request
 
-// serverOnly: Crashes if called from client
-const getSecret = serverOnly(() => process.env.SECRET)
+// createServerOnlyFn: Crashes if called from client
+const getSecret = createServerOnlyFn(() => process.env.SECRET)
 
 // Usage from client:
 const secret = getSecret() // ❌ Throws error
@@ -182,7 +182,7 @@ const storage = createIsomorphicFn()
 const apiKey = process.env.SECRET_KEY
 
 // ✅ Server-only access
-const apiKey = serverOnly(() => process.env.SECRET_KEY)
+const apiKey = createServerOnlyFn(() => process.env.SECRET_KEY)
 ```
 
 ### Incorrect Loader Assumptions
@@ -233,7 +233,7 @@ function CurrentTime() {
 ## Production Checklist
 
 - [ ] **Bundle Analysis**: Verify server-only code isn't in client bundle
-- [ ] **Environment Variables**: Ensure secrets use `serverOnly()` or `createServerFn()`
+- [ ] **Environment Variables**: Ensure secrets use `createServerOnlyFn()` or `createServerFn()`
 - [ ] **Loader Logic**: Remember loaders are isomorphic, not server-only
 - [ ] **ClientOnly Fallbacks**: Provide appropriate fallbacks to prevent layout shift
 - [ ] **Error Boundaries**: Handle server/client execution errors gracefully

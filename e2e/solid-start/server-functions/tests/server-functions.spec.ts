@@ -117,11 +117,11 @@ test('env-only functions can only be called on the server or client respectively
     'server got: hello',
   )
   await expect(page.getByTestId('server-on-client')).toContainText(
-    'serverEcho threw an error: serverOnly() functions can only be called on the server!',
+    'serverEcho threw an error: createServerOnlyFn() functions can only be called on the server!',
   )
 
   await expect(page.getByTestId('client-on-server')).toContainText(
-    'clientEcho threw an error: clientOnly() functions can only be called on the client!',
+    'clientEcho threw an error: createClientOnlyFn() functions can only be called on the client!',
   )
   await expect(page.getByTestId('client-on-client')).toContainText(
     'client got: hello',
