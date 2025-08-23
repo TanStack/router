@@ -3,7 +3,12 @@ import type * as babel from '@babel/core'
 
 import type { CompileOptions } from './compilers'
 
-export function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
+function capitalize(str: string) {
+  if (!str) return ''
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
+
+function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
   return function envOnlyCallExpressionHandler(
     path: babel.NodePath<t.CallExpression>,
     opts: CompileOptions,
@@ -37,7 +42,7 @@ export function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
           t.throwStatement(
             t.newExpression(t.identifier('Error'), [
               t.stringLiteral(
-                `${env}Only() functions can only be called on the ${env}!`,
+                `create${capitalize(env)}OnlyFn() functions can only be called on the ${env}!`,
               ),
             ]),
           ),
@@ -46,3 +51,8 @@ export function buildEnvOnlyCallExpressionHandler(env: 'client' | 'server') {
     )
   }
 }
+
+export const handleCreateServerOnlyFnCallExpression =
+  buildEnvOnlyCallExpressionHandler('server')
+export const handleCreateClientOnlyFnCallExpression =
+  buildEnvOnlyCallExpressionHandler('client')

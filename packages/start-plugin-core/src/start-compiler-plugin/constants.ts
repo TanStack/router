@@ -1,8 +1,8 @@
 export const transformFuncs = [
   'createServerFn',
   'createMiddleware',
-  'serverOnly',
-  'clientOnly',
+  'createServerOnlyFn',
+  'createClientOnlyFn',
   'createIsomorphicFn',
   'createServerRoute',
   'createServerFileRoute',

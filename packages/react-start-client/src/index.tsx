@@ -5,8 +5,8 @@ export {
   createMiddleware,
   registerGlobalMiddleware,
   globalMiddleware,
-  serverOnly,
-  clientOnly,
+  createServerOnlyFn,
+  createClientOnlyFn,
   json,
   createClientRpc,
 } from '@tanstack/start-client-core'

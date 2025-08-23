@@ -21,7 +21,7 @@ export {
   type ClientOnlyFn,
   type IsomorphicFnBase,
 } from './createIsomorphicFn'
-export { serverOnly, clientOnly } from './envOnly'
+export { createServerOnlyFn, createClientOnlyFn } from './envOnly'
 export { createServerFn } from './createServerFn'
 export {
   createMiddleware,

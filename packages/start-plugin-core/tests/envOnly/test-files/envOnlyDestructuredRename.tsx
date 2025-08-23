@@ -1,6 +1,6 @@
 import {
-  serverOnly as serverFn,
-  clientOnly as clientFn,
+  createServerOnlyFn as serverFn,
+  createClientOnlyFn as clientFn,
 } from '@tanstack/react-start'
 
 const serverFunc = serverFn(() => 'server')

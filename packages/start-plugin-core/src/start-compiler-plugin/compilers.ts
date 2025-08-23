@@ -9,9 +9,12 @@ import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { transformFuncs } from './constants'
 import { handleCreateServerFileRouteCallExpressionFactory } from './serverFileRoute'
 import { handleCreateIsomorphicFnCallExpression } from './isomorphicFn'
-import { buildEnvOnlyCallExpressionHandler } from './envOnly'
 import { handleCreateMiddlewareCallExpression } from './middleware'
 import { handleCreateServerFnCallExpression } from './serverFn'
+import {
+  handleCreateClientOnlyFnCallExpression,
+  handleCreateServerOnlyFnCallExpression,
+} from './envOnly'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
 export type CompileStartFrameworkOptions = 'react' | 'solid'
@@ -54,14 +57,14 @@ const getIdentifiers = (
     handleCallExpression: handleCreateMiddlewareCallExpression,
     paths: [],
   },
-  serverOnly: {
-    name: 'serverOnly',
-    handleCallExpression: handleServerOnlyCallExpression,
+  createServerOnlyFn: {
+    name: 'createServerOnlyFn',
+    handleCallExpression: handleCreateServerOnlyFnCallExpression,
     paths: [],
   },
-  clientOnly: {
-    name: 'clientOnly',
-    handleCallExpression: handleClientOnlyCallExpression,
+  createClientOnlyFn: {
+    name: 'createClientOnlyFn',
+    handleCallExpression: handleCreateClientOnlyFnCallExpression,
     paths: [],
   },
   createIsomorphicFn: {
@@ -181,12 +184,6 @@ export function compileStartOutputFactory(
     })
   }
 }
-
-// build these once and reuse them
-export const handleServerOnlyCallExpression =
-  buildEnvOnlyCallExpressionHandler('server')
-export const handleClientOnlyCallExpression =
-  buildEnvOnlyCallExpressionHandler('client')
 
 export type CompileOptions = ParseAstOptions & {
   env: 'server' | 'client'

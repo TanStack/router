@@ -40,8 +40,8 @@ describe('envOnly functions compile correctly', async () => {
       compileStartOutput({
         env: 'client',
         code: `
-        import { clientOnly } from '@tanstack/react-start'
-        const fn = clientOnly()`,
+        import { createClientOnlyFn } from '@tanstack/react-start'
+        const fn = createClientOnlyFn()`,
         filename: 'no-fn.ts',
         dce: false,
       })
@@ -50,8 +50,8 @@ describe('envOnly functions compile correctly', async () => {
       compileStartOutput({
         env: 'server',
         code: `
-        import { serverOnly } from '@tanstack/react-start'
-        const fn = serverOnly()`,
+        import { createServerOnlyFn } from '@tanstack/react-start'
+        const fn = createServerOnlyFn()`,
         filename: 'no-fn.ts',
         dce: false,
       })
