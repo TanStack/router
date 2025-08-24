@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -52,11 +53,12 @@ describe('useHistoryState', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/posts',
-      validateState: (input: { testKey?: string; color?: string }) =>
+      validateState: (input: { testKey?: string; color?: string; count?: number }) =>
         z
           .object({
             testKey: z.string().optional(),
-            color: z.enum(['red', 'green', 'blue']).optional(),
+            color: z.enum(['red', 'green', 'blue', 'yellow']).optional(),
+            count: z.number().optional(),
           })
           .parse(input),
       component: () => <h1>PostsTitle</h1>,
@@ -88,7 +90,9 @@ describe('useHistoryState', () => {
     setup({ RootComponent })
 
     const postsLink = await screen.findByText('Posts')
-    fireEvent.click(postsLink)
+    act(() => {
+      fireEvent.click(postsLink)
+    })
 
     await waitFor(() => {
       const stateValue = screen.getByTestId('state-value')
@@ -115,7 +119,9 @@ describe('useHistoryState', () => {
     setup({ RootComponent })
 
     const postsLink = await screen.findByText('Posts')
-    fireEvent.click(postsLink)
+    act(() => {
+      fireEvent.click(postsLink)
+    })
 
     const stateValue = await screen.findByTestId('state-value')
     expect(stateValue).toHaveTextContent('test-value')
@@ -176,7 +182,7 @@ describe('useHistoryState', () => {
         z
           .object({
             testKey: z.string(),
-            color: z.enum(['red', 'green', 'blue']),
+            color: z.enum(['red', 'green', 'blue', 'yellow']),
           })
           .parse(input),
       component: ValidChecker,
@@ -190,7 +196,9 @@ describe('useHistoryState', () => {
 
     // Valid state transition
     const validButton = await screen.findByTestId('valid-state-btn')
-    fireEvent.click(validButton)
+    act(() => {
+      fireEvent.click(validButton)
+    })
 
     const validState = await screen.findByTestId('valid-state')
     expect(validState).toHaveTextContent(
@@ -199,7 +207,9 @@ describe('useHistoryState', () => {
 
     // Invalid state transition
     const invalidButton = await screen.findByTestId('invalid-state-btn')
-    fireEvent.click(invalidButton)
+    act(() => {
+      fireEvent.click(invalidButton)
+    })
 
     await waitFor(async () => {
       const stateElement = await screen.findByTestId('valid-state')
@@ -280,7 +290,9 @@ describe('useHistoryState', () => {
 
     // Initial navigation
     const navigateBtn = await screen.findByTestId('navigate-btn')
-    fireEvent.click(navigateBtn)
+    act(() => {
+      fireEvent.click(navigateBtn)
+    })
 
     // Check initial state
     const stateValue = await screen.findByTestId('state-value')
@@ -288,7 +300,9 @@ describe('useHistoryState', () => {
 
     // Update state
     const updateBtn = await screen.findByTestId('update-btn')
-    fireEvent.click(updateBtn)
+    act(() => {
+      fireEvent.click(updateBtn)
+    })
 
     // Check updated state
     await waitFor(() => {
@@ -297,11 +311,6 @@ describe('useHistoryState', () => {
   })
 
   test('route.useHistoryState hook works properly', async () => {
-    function PostsComponent() {
-      const state = postsRoute.useHistoryState()
-      return <div data-testid="route-state">{state.testValue}</div>
-    }
-
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -331,7 +340,11 @@ describe('useHistoryState', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/posts',
-      component: PostsComponent,
+      validateState: (input: any) => input, // Accept any state without validation
+      component: function PostsComponent() {
+        const state = postsRoute.useHistoryState()
+        return <div data-testid="route-state">{state?.testValue || ''}</div>
+      },
     })
 
     const router = createRouter({
@@ -341,7 +354,9 @@ describe('useHistoryState', () => {
     render(<RouterProvider router={router} />)
 
     const goToPostsBtn = await screen.findByText('Go to Posts')
-    fireEvent.click(goToPostsBtn)
+    act(() => {
+      fireEvent.click(goToPostsBtn)
+    })
 
     const routeState = await screen.findByTestId('route-state')
     expect(routeState).toHaveTextContent('route-state-value')
