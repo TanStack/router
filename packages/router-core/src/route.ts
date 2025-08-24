@@ -167,12 +167,6 @@ export type ResolveSearchSchema<TSearchValidator> =
           ? ResolveSearchSchemaFn<TSearchValidator['parse']>
           : ResolveSearchSchemaFn<TSearchValidator>
 
-export type ParseSplatParams<TPath extends string> = TPath &
-  `${string}$` extends never
-  ? TPath & `${string}$/${string}` extends never
-    ? never
-    : '_splat'
-  : '_splat'
 export type ResolveStateSchemaFn<TStateValidator> = TStateValidator extends (
   ...args: any
 ) => infer TStateSchema
