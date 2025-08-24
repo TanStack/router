@@ -1618,6 +1618,9 @@ export class RouterCore<
       nextState = replaceEqualDeep(currentLocation.state, nextState)
 
       if (opts._includeValidateState) {
+        const sanitizedNextState = nextState
+          ? omitInternalKeys(nextState as any)
+          : {}
         let validatedState = {}
         destRoutes.forEach((route) => {
           try {
@@ -1626,7 +1629,7 @@ export class RouterCore<
                 ...validatedState,
                 ...(validateState(route.options.validateState, {
                   ...validatedState,
-                  ...nextState,
+                  ...sanitizedNextState,
                 }) ?? {}),
               }
             }
@@ -1634,7 +1637,12 @@ export class RouterCore<
             // ignore errors here because they are already handled in matchRoutes
           }
         })
-        nextState = validatedState
+        const internalOnly = Object.fromEntries(
+          Object.entries(nextState as any).filter(
+            ([k]) => k.startsWith('__') || k === 'key',
+          ),
+        )
+        nextState = { ...internalOnly, ...validatedState }
       }
 
       // Return the next location
@@ -1824,6 +1832,7 @@ export class RouterCore<
     const location = this.buildLocation({
       ...(rest as any),
       _includeValidateSearch: true,
+      _includeValidateState: true,
     })
 
     return this.commitLocation({
