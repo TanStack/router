@@ -382,6 +382,76 @@ describe('loader skip or exec', () => {
   })
 })
 
+test('exec on stay (beforeLoad & loader)', async () => {
+  let rootBeforeLoadResolved = false
+  const rootBeforeLoad = vi.fn(async () => {
+    await sleep(100)
+    rootBeforeLoadResolved = true
+  })
+  const rootLoader = vi.fn(() => sleep(10))
+  const rootRoute = new BaseRootRoute({
+    beforeLoad: rootBeforeLoad,
+    loader: rootLoader,
+  })
+
+  let layoutBeforeLoadResolved = false
+  const layoutBeforeLoad = vi.fn(async () => {
+    await sleep(100)
+    layoutBeforeLoadResolved = true
+  })
+  const layoutLoader = vi.fn(() => sleep(10))
+  const layoutRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    beforeLoad: layoutBeforeLoad,
+    loader: layoutLoader,
+    id: '/_layout',
+  })
+
+  const fooRoute = new BaseRoute({
+    getParentRoute: () => layoutRoute,
+    path: '/foo',
+  })
+  const barRoute = new BaseRoute({
+    getParentRoute: () => layoutRoute,
+    path: '/bar',
+  })
+
+  const routeTree = rootRoute.addChildren([layoutRoute.addChildren([fooRoute, barRoute])])
+
+  const router = new RouterCore({
+    routeTree,
+    history: createMemoryHistory(),
+    defaultStaleTime: 1000,
+    defaultGcTime: 1000,
+  })
+
+  await router.navigate({ to: '/foo' })
+  expect(router.state.location.pathname).toBe('/foo')
+
+  rootBeforeLoadResolved = false
+  layoutBeforeLoadResolved = false
+  vi.clearAllMocks()
+
+  /*
+   * When navigating between sibling routes,
+   * do the parent routes get re-executed?
+   */
+
+  await router.navigate({ to: '/bar' })
+
+  // beforeLoad always re-executes
+  expect(rootBeforeLoad).toHaveBeenCalledTimes(1)
+  expect(layoutBeforeLoad).toHaveBeenCalledTimes(1)
+
+  // loader is skipped because of staleTime
+  expect(rootLoader).toHaveBeenCalledTimes(0)
+  expect(layoutLoader).toHaveBeenCalledTimes(0)
+
+  // beforeLoad calls were correctly awaited
+  expect(rootBeforeLoadResolved).toBe(true)
+  expect(layoutBeforeLoadResolved).toBe(true)
+})
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
