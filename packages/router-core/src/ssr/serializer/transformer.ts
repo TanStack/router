@@ -36,17 +36,24 @@ export type ValidateSerializable<T, TSerializable> = T extends TSerializable
     ? 'Function is not serializable'
     : T extends Promise<any>
       ? ValidateSerializablePromise<T, TSerializable>
-      : T extends Set<any>
-        ? ValidateSerializableSet<T, TSerializable>
-        : T extends Map<any, any>
-          ? ValidateSerializableMap<T, TSerializable>
-          : {
-              [K in keyof T]: ValidateSerializable<T[K], TSerializable>
-            }
+      : T extends ReadableStream<any>
+        ? ValidateReadableStream<T, TSerializable>
+        : T extends Set<any>
+          ? ValidateSerializableSet<T, TSerializable>
+          : T extends Map<any, any>
+            ? ValidateSerializableMap<T, TSerializable>
+            : {
+                [K in keyof T]: ValidateSerializable<T[K], TSerializable>
+              }
 
 export type ValidateSerializablePromise<T, TSerializable> =
   T extends Promise<infer TAwaited>
     ? Promise<ValidateSerializable<TAwaited, TSerializable>>
+    : never
+
+export type ValidateReadableStream<T, TSerializable> =
+  T extends ReadableStream<infer TStreamed>
+    ? ReadableStream<ValidateSerializable<TStreamed, TSerializable>>
     : never
 
 export type ValidateSerializableSet<T, TSerializable> =

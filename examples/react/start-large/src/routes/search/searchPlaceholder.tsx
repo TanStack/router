@@ -68,7 +68,6 @@ export const Route = createFileRoute('/search/searchPlaceholder')({
 
     return {
       search,
-      external,
     }
   },
 })
