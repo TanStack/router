@@ -2477,15 +2477,6 @@ export const componentTypes = [
   'notFoundComponent',
 ] as const
 
-function routeNeedsPreload(route: AnyRoute) {
-  for (const componentType of componentTypes) {
-    if ((route.options[componentType] as any)?.preload) {
-      return true
-    }
-  }
-  return false
-}
-
 interface RouteLike {
   id: string
   isRoot?: boolean
