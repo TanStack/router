@@ -254,7 +254,14 @@ export type {
   BuildLocationFn,
 } from './RouterProvider'
 
-export { retainSearchParams, stripSearchParams } from './searchMiddleware'
+export {
+  SearchPersistenceStore,
+  createSearchPersistenceStore,
+  retainSearchParams,
+  stripSearchParams,
+  persistSearchParams,
+  getSearchPersistenceStore,
+} from './searchMiddleware'
 
 export {
   defaultParseSearch,
