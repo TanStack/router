@@ -385,7 +385,7 @@ describe('loader skip or exec', () => {
 test('exec on stay (beforeLoad & loader)', async () => {
   let rootBeforeLoadResolved = false
   const rootBeforeLoad = vi.fn(async () => {
-    await sleep(100)
+    await sleep(10)
     rootBeforeLoadResolved = true
   })
   const rootLoader = vi.fn(() => sleep(10))
@@ -396,7 +396,7 @@ test('exec on stay (beforeLoad & loader)', async () => {
 
   let layoutBeforeLoadResolved = false
   const layoutBeforeLoad = vi.fn(async () => {
-    await sleep(100)
+    await sleep(10)
     layoutBeforeLoadResolved = true
   })
   const layoutLoader = vi.fn(() => sleep(10))
@@ -440,12 +440,18 @@ test('exec on stay (beforeLoad & loader)', async () => {
    */
 
   await router.navigate({ to: '/bar' })
+  expect(router.state.location.pathname).toBe('/bar')
 
-  // beforeLoad always re-executes
+  // beforeLoads always re-execute
   expect(rootBeforeLoad).toHaveBeenCalledTimes(1)
   expect(layoutBeforeLoad).toHaveBeenCalledTimes(1)
 
-  // loader is skipped because of staleTime
+  // beforeLoads are called in order
+  expect(rootBeforeLoad.mock.invocationCallOrder[0]).toBeLessThan(
+    layoutBeforeLoad.mock.invocationCallOrder[0]!,
+  )
+
+  // loaders are skipped because of staleTime
   expect(rootLoader).toHaveBeenCalledTimes(0)
   expect(layoutLoader).toHaveBeenCalledTimes(0)
 
