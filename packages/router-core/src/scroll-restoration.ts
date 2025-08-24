@@ -28,7 +28,7 @@ function getSafeSessionStorage() {
       return window.sessionStorage
     }
   } catch {
-    return undefined
+    // silent
   }
   return undefined
 }
@@ -85,14 +85,14 @@ export const defaultGetScrollRestorationKey = (location: ParsedLocation) => {
 
 export function getCssSelector(el: any): string {
   const path = []
-  let parent
+  let parent: HTMLElement
   while ((parent = el.parentNode)) {
-    path.unshift(
-      `${el.tagName}:nth-child(${([].indexOf as any).call(parent.children, el) + 1})`,
+    path.push(
+      `${el.tagName}:nth-child(${Array.prototype.indexOf.call(parent.children, el) + 1})`,
     )
     el = parent
   }
-  return `${path.join(' > ')}`.toLowerCase()
+  return `${path.reverse().join(' > ')}`.toLowerCase()
 }
 
 let ignoreScroll = false
@@ -120,7 +120,7 @@ export function restoreScroll({
 
   try {
     byKey = JSON.parse(sessionStorage.getItem(storageKey) || '{}')
-  } catch (error: any) {
+  } catch (error) {
     console.error(error)
     return
   }
@@ -132,7 +132,7 @@ export function restoreScroll({
   ignoreScroll = true
 
   //
-  ;(() => {
+  scroll: {
     // If we have a cached entry for this location state,
     // we always need to prefer that over the hash scroll.
     if (
@@ -157,18 +157,18 @@ export function restoreScroll({
         }
       }
 
-      return
+      break scroll
     }
 
     // If we don't have a cached entry for the hash,
     // Which means we've never seen this location before,
     // we need to check if there is a hash in the URL.
     // If there is, we need to scroll it's ID into view.
-    const hash = (location ?? window.location).hash.split('#')[1]
+    const hash = (location ?? window.location).hash.split('#', 2)[1]
 
     if (hash) {
       const hashScrollIntoViewOptions =
-        (window.history.state || {}).__hashScrollIntoViewOptions ?? true
+        window.history.state?.__hashScrollIntoViewOptions ?? true
 
       if (hashScrollIntoViewOptions) {
         const el = document.getElementById(hash)
@@ -177,30 +177,24 @@ export function restoreScroll({
         }
       }
 
-      return
+      break scroll
     }
 
     // If there is no cached entry for the hash and there is no hash in the URL,
     // we need to scroll to the top of the page for every scrollToTop element
-    ;[
-      'window',
-      ...(scrollToTopSelectors?.filter((d) => d !== 'window') ?? []),
-    ].forEach((selector) => {
-      const element =
-        selector === 'window'
-          ? window
-          : typeof selector === 'function'
+    const scrollOptions = { top: 0, left: 0, behavior }
+    window.scrollTo(scrollOptions)
+    if (scrollToTopSelectors) {
+      for (const selector of scrollToTopSelectors) {
+        if (selector === 'window') continue
+        const element =
+          typeof selector === 'function'
             ? selector()
             : document.querySelector(selector)
-      if (element) {
-        element.scrollTo({
-          top: 0,
-          left: 0,
-          behavior,
-        })
+        if (element) element.scrollTo(scrollOptions)
       }
-    })
-  })()
+    }
+  }
 
   //
   ignoreScroll = false
@@ -294,11 +288,10 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     const restoreKey = getKey(router.state.location)
 
     scrollRestorationCache.set((state) => {
-      const keyEntry = (state[restoreKey] =
-        state[restoreKey] || ({} as ScrollRestorationByElement))
+      const keyEntry = (state[restoreKey] ||= {} as ScrollRestorationByElement)
 
-      const elementEntry = (keyEntry[elementSelector] =
-        keyEntry[elementSelector] || ({} as ScrollRestorationEntry))
+      const elementEntry = (keyEntry[elementSelector] ||=
+        {} as ScrollRestorationEntry)
 
       if (elementSelector === 'window') {
         elementEntry.scrollX = window.scrollX || 0
@@ -344,7 +337,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     if (router.isScrollRestoring) {
       // Mark the location as having been seen
       scrollRestorationCache.set((state) => {
-        state[cacheKey] = state[cacheKey] || ({} as ScrollRestorationByElement)
+        state[cacheKey] ||= {} as ScrollRestorationByElement
 
         return state
       })
