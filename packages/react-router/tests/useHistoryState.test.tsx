@@ -53,7 +53,11 @@ describe('useHistoryState', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/posts',
-      validateState: (input: { testKey?: string; color?: string; count?: number }) =>
+      validateState: (input: {
+        testKey?: string
+        color?: string
+        count?: number
+      }) =>
         z
           .object({
             testKey: z.string().optional(),
