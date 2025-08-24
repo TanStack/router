@@ -1208,19 +1208,16 @@ export class RouterCore<
         const filteredState = rawState ? omitInternalKeys(rawState) : {}
 
         try {
-          if (route.options.validateState) {
-            const strictState =
-              validateState(route.options.validateState, filteredState) || {}
-            return [
-              {
-                ...filteredState,
-                ...strictState,
-              },
-              { ...parentStrictState, ...strictState },
-              undefined,
-            ]
-          }
-          return [filteredState, {}, undefined]
+          const strictState =
+            validateState(route.options.validateState, filteredState) || {}
+          return [
+            {
+              ...filteredState,
+              ...strictState,
+            },
+            { ...parentStrictState, ...strictState },
+            undefined,
+          ]
         } catch (err: any) {
           const stateValidationError = err
 
