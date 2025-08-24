@@ -190,8 +190,8 @@ export type {
   InjectedHtmlEntry,
   CreateFileRoute,
   CreateLazyFileRoute,
-  Transformer,
-  AnyTransformer,
+  AnySerializationAdapter,
+  SerializationAdapter,
 } from '@tanstack/router-core'
 
 export {

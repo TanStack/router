@@ -108,8 +108,8 @@ export type {
   RouteById,
   RootRouteOptions,
   CreateFileRoute,
-  Transformer,
-  AnyTransformer,
+  SerializationAdapter,
+  AnySerializationAdapter,
 } from '@tanstack/router-core'
 
 export {
@@ -350,3 +350,4 @@ export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
 export { Scripts } from './Scripts'
+export type * from './ssr/serializer'

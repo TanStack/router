@@ -10,7 +10,7 @@ import type { DehydratedMatch } from './ssr-client'
 import type { DehydratedRouter } from './client'
 import type { AnyRouteMatch } from '../Matches'
 import type { Manifest } from '../manifest'
-import type { AnyTransformer } from './serializer/transformer'
+import type { AnySerializationAdapter } from './serializer/transformer'
 
 declare module '../router' {
   interface ServerSsr {
@@ -109,7 +109,7 @@ export function attachRouterServerSsrUtils(
       const plugins =
         (
           router.options.serializationAdapters as
-            | Array<AnyTransformer>
+            | Array<AnySerializationAdapter>
             | undefined
         )?.map((t) => makeSsrSerovalPlugin(t, trackPlugins)) ?? []
       crossSerializeStream(dehydratedRouter, {

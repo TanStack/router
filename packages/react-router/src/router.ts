@@ -5,6 +5,7 @@ import type {
   AnyRoute,
   CreateRouterFn,
   RouterConstructorOptions,
+  SSROption,
   TrailingSlashOption,
 } from '@tanstack/router-core'
 
@@ -87,14 +88,16 @@ export class Router<
   in out TDefaultStructuralSharingOption extends boolean = false,
   in out TRouterHistory extends RouterHistory = RouterHistory,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
-  in out TTransformerConfig = any,
+  in out TSerializationAdapters = unknown,
+  in out TDefaultSSR extends SSROption = SSROption,
 > extends RouterCore<
   TRouteTree,
   TTrailingSlashOption,
   TDefaultStructuralSharingOption,
   TRouterHistory,
   TDehydrated,
-  TTransformerConfig
+  TSerializationAdapters,
+  TDefaultSSR
 > {
   constructor(
     options: RouterConstructorOptions<
@@ -103,7 +106,8 @@ export class Router<
       TDefaultStructuralSharingOption,
       TRouterHistory,
       TDehydrated,
-      TTransformerConfig
+      TSerializationAdapters,
+      TDefaultSSR
     >,
   ) {
     super(options)

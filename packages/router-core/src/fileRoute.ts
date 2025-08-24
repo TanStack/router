@@ -8,6 +8,7 @@ import type {
   RouteConstraints,
   UpdatableRouteOptions,
 } from './route'
+import type { Register } from './router'
 import type { AnyValidator } from './validators'
 
 export interface FileRouteTypes {
@@ -33,6 +34,7 @@ export interface FileRoutesByPath {
 }
 
 export interface FileRouteOptions<
+  TRegister extends Register,
   TFilePath extends string,
   TParentRoute extends AnyRoute,
   TId extends RouteConstraints['TId'],
@@ -44,7 +46,9 @@ export interface FileRouteOptions<
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
+  TSSR = unknown,
 > extends FileBaseRouteOptions<
+      TRegister,
       TParentRoute,
       TId,
       TPath,
@@ -54,7 +58,9 @@ export interface FileRouteOptions<
       TLoaderFn,
       AnyContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      AnyContext,
+      TSSR
     >,
     UpdatableRouteOptions<
       TParentRoute,
@@ -76,14 +82,17 @@ export type CreateFileRoute<
   TPath extends RouteConstraints['TPath'],
   TFullPath extends RouteConstraints['TFullPath'],
 > = <
+  TRegister extends Register = Register,
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
+  TSSR = unknown,
 >(
   options?: FileRouteOptions<
+    TRegister,
     TFilePath,
     TParentRoute,
     TId,
@@ -94,9 +103,11 @@ export type CreateFileRoute<
     TRouteContextFn,
     TBeforeLoadFn,
     TLoaderDeps,
-    TLoaderFn
+    TLoaderFn,
+    TSSR
   >,
 ) => Route<
+  TRegister,
   TParentRoute,
   TPath,
   TFullPath,
@@ -110,7 +121,8 @@ export type CreateFileRoute<
   TLoaderDeps,
   TLoaderFn,
   unknown,
-  unknown
+  unknown,
+  TSSR
 >
 
 export type LazyRouteOptions = Pick<

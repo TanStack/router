@@ -4,16 +4,16 @@ import { globalMiddleware } from './registerGlobalMiddleware'
 
 import { getRouterInstance } from './getRouterInstance'
 import type {
-  SerializerParse,
-  SerializerStringify,
-  SerializerStringifyBy,
-} from './serializer'
-import type {
   AnyRouter,
   AnyValidator,
   Constrain,
   Expand,
+  Register,
+  RegisteredSerializableInput,
   ResolveValidatorInput,
+  ValidateSerializable,
+  ValidateSerializableInput,
+  ValidateSerializableInputResult,
   Validator,
 } from '@tanstack/router-core'
 import type { JsonResponse } from '@tanstack/router-core/ssr/client'
@@ -31,6 +31,7 @@ import type {
 type TODO = any
 
 export function createServerFn<
+  TRegister extends Register,
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType = 'data',
   TResponse = unknown,
@@ -42,14 +43,16 @@ export function createServerFn<
     response?: TServerFnResponseType
   },
   __opts?: ServerFnBaseOptions<
+    TRegister,
     TMethod,
     TServerFnResponseType,
     TResponse,
     TMiddlewares,
     TValidator
   >,
-): ServerFnBuilder<TMethod, TServerFnResponseType> {
+): ServerFnBuilder<TRegister, TMethod, TServerFnResponseType> {
   const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
+    TRegister,
     TMethod,
     ServerFnResponseType,
     TResponse,
@@ -65,6 +68,7 @@ export function createServerFn<
     options: resolvedOptions as any,
     middleware: (middleware) => {
       return createServerFn<
+        TRegister,
         TMethod,
         ServerFnResponseType,
         TResponse,
@@ -74,6 +78,7 @@ export function createServerFn<
     },
     validator: (validator) => {
       return createServerFn<
+        TRegister,
         TMethod,
         ServerFnResponseType,
         TResponse,
@@ -86,8 +91,9 @@ export function createServerFn<
       // in the babel plugin. We need to cast it to the correct
       // function signature post-transformation
       const [extractedFn, serverFn] = args as unknown as [
-        CompiledFetcherFn<TResponse, TServerFnResponseType>,
+        CompiledFetcherFn<TRegister, TResponse, TServerFnResponseType>,
         ServerFn<
+          TRegister,
           TMethod,
           TServerFnResponseType,
           TMiddlewares,
@@ -230,6 +236,7 @@ export type CompiledFetcherFnOptions = {
 }
 
 export type Fetcher<
+  TRegister extends Register,
   TMiddlewares,
   TValidator,
   TResponse,
@@ -237,12 +244,14 @@ export type Fetcher<
 > =
   undefined extends IntersectAllValidatorInputs<TMiddlewares, TValidator>
     ? OptionalFetcher<
+        TRegister,
         TMiddlewares,
         TValidator,
         TResponse,
         TServerFnResponseType
       >
     : RequiredFetcher<
+        TRegister,
         TMiddlewares,
         TValidator,
         TResponse,
@@ -262,16 +271,18 @@ export interface FetcherBase {
 }
 
 export type FetchResult<
+  TRegister extends Register,
   TMiddlewares,
   TResponse,
   TServerFnResponseType extends ServerFnResponseType,
 > = TServerFnResponseType extends 'raw'
   ? Promise<Response>
   : TServerFnResponseType extends 'full'
-    ? Promise<FullFetcherData<TMiddlewares, TResponse>>
-    : Promise<FetcherData<TResponse>>
+    ? Promise<FullFetcherData<TRegister, TMiddlewares, TResponse>>
+    : Promise<FetcherData<TRegister, TResponse>>
 
 export interface OptionalFetcher<
+  TRegister extends Register,
   TMiddlewares,
   TValidator,
   TResponse,
@@ -279,10 +290,11 @@ export interface OptionalFetcher<
 > extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TValidator>,
-  ): FetchResult<TMiddlewares, TResponse, TServerFnResponseType>
+  ): FetchResult<TRegister, TMiddlewares, TResponse, TServerFnResponseType>
 }
 
 export interface RequiredFetcher<
+  TRegister extends Register,
   TMiddlewares,
   TValidator,
   TResponse,
@@ -290,7 +302,7 @@ export interface RequiredFetcher<
 > extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TValidator>,
-  ): FetchResult<TMiddlewares, TResponse, TServerFnResponseType>
+  ): FetchResult<TRegister, TMiddlewares, TResponse, TServerFnResponseType>
 }
 
 export type FetcherBaseOptions = {
@@ -308,16 +320,20 @@ export interface RequiredFetcherDataOptions<TMiddlewares, TValidator>
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
 }
 
-export interface FullFetcherData<TMiddlewares, TResponse> {
+export interface FullFetcherData<
+  TRegister extends Register,
+  TMiddlewares,
+  TResponse,
+> {
   error: unknown
-  result: FetcherData<TResponse>
+  result: FetcherData<TRegister, TResponse>
   context: AssignAllClientSendContext<TMiddlewares>
 }
 
-export type FetcherData<TResponse> =
+export type FetcherData<TRegister extends Register, TResponse> =
   TResponse extends JsonResponse<any>
-    ? SerializerParse<ReturnType<TResponse['json']>>
-    : SerializerParse<TResponse>
+    ? ValidateSerializableInputResult<TRegister, ReturnType<TResponse['json']>>
+    : ValidateSerializableInputResult<TRegister, TResponse>
 
 export type RscStream<T> = {
   __cacheState: T
@@ -330,13 +346,17 @@ export type ServerFnResponseType = 'data' | 'full' | 'raw'
 export type RawResponse = Response | ReadableStream | Readable | null | string
 
 export type ServerFnReturnType<
+  TRegister extends Register,
   TServerFnResponseType extends ServerFnResponseType,
   TResponse,
 > = TServerFnResponseType extends 'raw'
   ? RawResponse | Promise<RawResponse>
-  : Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
+  :
+      | Promise<ValidateSerializableInput<TRegister, TResponse>>
+      | ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
+  TRegister extends Register,
   TMethod,
   TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
@@ -344,7 +364,7 @@ export type ServerFn<
   TResponse,
 > = (
   ctx: ServerFnCtx<TMethod, TServerFnResponseType, TMiddlewares, TValidator>,
-) => ServerFnReturnType<TServerFnResponseType, TResponse>
+) => ServerFnReturnType<TRegister, TServerFnResponseType, TResponse>
 
 export interface ServerFnCtx<
   TMethod,
@@ -360,17 +380,19 @@ export interface ServerFnCtx<
 }
 
 export type CompiledFetcherFn<
+  TRegister extends Register,
   TResponse,
   TServerFnResponseType extends ServerFnResponseType,
 > = {
   (
     opts: CompiledFetcherFnOptions &
-      ServerFnBaseOptions<Method, TServerFnResponseType>,
+      ServerFnBaseOptions<TRegister, Method, TServerFnResponseType>,
   ): Promise<TResponse>
   url: string
 }
 
 export type ServerFnBaseOptions<
+  TRegister extends Register,
   TMethod extends Method = 'GET',
   TServerFnResponseType extends ServerFnResponseType = 'data',
   TResponse = unknown,
@@ -381,9 +403,10 @@ export type ServerFnBaseOptions<
   response?: TServerFnResponseType
   validateClient?: boolean
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyFunctionMiddleware>>
-  validator?: ConstrainValidator<TInput>
-  extractedFn?: CompiledFetcherFn<TResponse, TServerFnResponseType>
+  validator?: ConstrainValidator<TRegister, TInput>
+  extractedFn?: CompiledFetcherFn<TRegister, TResponse, TServerFnResponseType>
   serverFn?: ServerFn<
+    TRegister,
     TMethod,
     TServerFnResponseType,
     TMiddlewares,
@@ -393,25 +416,32 @@ export type ServerFnBaseOptions<
   functionId: string
 }
 
-export type ValidatorInputStringify<TValidator> = SerializerStringifyBy<
+export type ValidateValidatorInput<
+  TRegister extends Register,
+  TValidator,
+> = ValidateSerializable<
   ResolveValidatorInput<TValidator>,
-  Date | undefined | FormData
+  RegisteredSerializableInput<TRegister> | FormData
 >
 
-export type ValidatorSerializerStringify<TValidator> =
-  ValidatorInputStringify<TValidator> extends infer TInput
+export type ValidateValidator<TRegister extends Register, TValidator> =
+  ValidateValidatorInput<TRegister, TValidator> extends infer TInput
     ? Validator<TInput, any>
     : never
 
-export type ConstrainValidator<TValidator> =
+export type ConstrainValidator<TRegister extends Register, TValidator> =
   | (unknown extends TValidator
       ? TValidator
-      : ResolveValidatorInput<TValidator> extends ValidatorInputStringify<TValidator>
+      : ResolveValidatorInput<TValidator> extends ValidateValidator<
+            TRegister,
+            TValidator
+          >
         ? TValidator
         : never)
-  | ValidatorSerializerStringify<TValidator>
+  | ValidateValidator<TRegister, TValidator>
 
 export interface ServerFnMiddleware<
+  TRegister extends Register,
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType,
   TValidator,
@@ -422,6 +452,7 @@ export interface ServerFnMiddleware<
       ReadonlyArray<AnyFunctionMiddleware>
     >,
   ) => ServerFnAfterMiddleware<
+    TRegister,
     TMethod,
     TServerFnResponseType,
     TNewMiddlewares,
@@ -430,20 +461,34 @@ export interface ServerFnMiddleware<
 }
 
 export interface ServerFnAfterMiddleware<
+  TRegister extends Register,
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
-> extends ServerFnValidator<TMethod, TServerFnResponseType, TMiddlewares>,
-    ServerFnHandler<TMethod, TServerFnResponseType, TMiddlewares, TValidator> {}
+> extends ServerFnValidator<
+      TRegister,
+      TMethod,
+      TServerFnResponseType,
+      TMiddlewares
+    >,
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TServerFnResponseType,
+      TMiddlewares,
+      TValidator
+    > {}
 
 export type ValidatorFn<
+  TRegister extends Register,
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
 > = <TValidator>(
-  validator: ConstrainValidator<TValidator>,
+  validator: ConstrainValidator<TRegister, TValidator>,
 ) => ServerFnAfterValidator<
+  TRegister,
   TMethod,
   TServerFnResponseType,
   TMiddlewares,
@@ -451,27 +496,47 @@ export type ValidatorFn<
 >
 
 export interface ServerFnValidator<
+  TRegister extends Register,
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
 > {
-  validator: ValidatorFn<TMethod, TServerFnResponseType, TMiddlewares>
+  validator: ValidatorFn<
+    TRegister,
+    TMethod,
+    TServerFnResponseType,
+    TMiddlewares
+  >
 }
 
 export interface ServerFnAfterValidator<
+  TRegister extends Register,
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
-> extends ServerFnMiddleware<TMethod, TServerFnResponseType, TValidator>,
-    ServerFnHandler<TMethod, TServerFnResponseType, TMiddlewares, TValidator> {}
+> extends ServerFnMiddleware<
+      TRegister,
+      TMethod,
+      TServerFnResponseType,
+      TValidator
+    >,
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TServerFnResponseType,
+      TMiddlewares,
+      TValidator
+    > {}
 
 export interface ServerFnAfterTyper<
+  TRegister extends Register,
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
 > extends ServerFnHandler<
+    TRegister,
     TMethod,
     TServerFnResponseType,
     TMiddlewares,
@@ -480,6 +545,7 @@ export interface ServerFnAfterTyper<
 
 // Handler
 export interface ServerFnHandler<
+  TRegister extends Register,
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
@@ -487,22 +553,42 @@ export interface ServerFnHandler<
 > {
   handler: <TNewResponse>(
     fn?: ServerFn<
+      TRegister,
       TMethod,
       TServerFnResponseType,
       TMiddlewares,
       TValidator,
       TNewResponse
     >,
-  ) => Fetcher<TMiddlewares, TValidator, TNewResponse, TServerFnResponseType>
+  ) => Fetcher<
+    TRegister,
+    TMiddlewares,
+    TValidator,
+    TNewResponse,
+    TServerFnResponseType
+  >
 }
 
 export interface ServerFnBuilder<
+  TRegister extends Register,
   TMethod extends Method = 'GET',
   TServerFnResponseType extends ServerFnResponseType = 'data',
-> extends ServerFnMiddleware<TMethod, TServerFnResponseType, undefined>,
-    ServerFnValidator<TMethod, TServerFnResponseType, undefined>,
-    ServerFnHandler<TMethod, TServerFnResponseType, undefined, undefined> {
+> extends ServerFnMiddleware<
+      TRegister,
+      TMethod,
+      TServerFnResponseType,
+      undefined
+    >,
+    ServerFnValidator<TRegister, TMethod, TServerFnResponseType, undefined>,
+    ServerFnHandler<
+      TRegister,
+      TMethod,
+      TServerFnResponseType,
+      undefined,
+      undefined
+    > {
   options: ServerFnBaseOptions<
+    TRegister,
     TMethod,
     TServerFnResponseType,
     unknown,
@@ -627,7 +713,7 @@ export function execValidator(
 }
 
 export function serverFnBaseToMiddleware(
-  options: ServerFnBaseOptions<any, any, any, any, any>,
+  options: ServerFnBaseOptions<any, any, any, any, any, any>,
 ): AnyFunctionMiddleware {
   return {
     _types: undefined!,

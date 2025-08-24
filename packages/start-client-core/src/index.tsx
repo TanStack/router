@@ -5,15 +5,6 @@ export type {
 
 export { hydrate, json, mergeHeaders } from '@tanstack/router-core/ssr/client'
 
-export type {
-  Serializable,
-  SerializerParse,
-  SerializerParseBy,
-  SerializerStringify,
-  SerializerStringifyBy,
-  SerializerExtensions,
-} from './serializer'
-
 export {
   createIsomorphicFn,
   type IsomorphicFn,

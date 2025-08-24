@@ -1,8 +1,8 @@
 import { expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import type { RequestServerNextFn } from '../createMiddleware'
-import type { Constrain, Validator } from '@tanstack/router-core'
 import type { ConstrainValidator } from '../createServerFn'
+import type { Register } from '@tanstack/router-core'
 
 test('createServeMiddleware removes middleware after middleware,', () => {
   const middleware = createMiddleware({ type: 'function' })
@@ -211,7 +211,7 @@ test('createMiddleware merges client context and sends to the server', () => {
       expectTypeOf(result).toEqualTypeOf<{
         'use functions must return the result of next()': true
         context: { a: boolean; b: string; c: number }
-        sendContext: { a: boolean; b: string; c: number; d: number }
+        sendContext: { a: boolean; b: string; c: number; d: 5 }
         headers: HeadersInit
       }>()
 
@@ -225,7 +225,7 @@ test('createMiddleware merges client context and sends to the server', () => {
         a: boolean
         b: string
         c: number
-        d: number
+        d: 5
       }>()
 
       const result = await options.next({
@@ -242,7 +242,7 @@ test('createMiddleware merges client context and sends to the server', () => {
           }
           sendContext: undefined
         }
-        context: { a: boolean; b: string; c: number; d: number; e: string }
+        context: { a: boolean; b: string; c: number; d: 5; e: string }
         sendContext: undefined
       }>()
 
@@ -586,9 +586,9 @@ test('createMiddleware cannot validate function', () => {
   expectTypeOf(validator)
     .parameter(0)
     .toEqualTypeOf<
-      Constrain<
-        (input: { func: () => 'string' }) => { output: 'string' },
-        Validator<{ func: 'Function is not serializable' }, any>
+      ConstrainValidator<
+        Register,
+        (input: { func: () => 'string' }) => { output: 'string' }
       >
     >()
 })
@@ -600,7 +600,9 @@ test('createMiddleware can validate Date', () => {
 
   expectTypeOf(validator)
     .parameter(0)
-    .toEqualTypeOf<ConstrainValidator<(input: Date) => { output: 'string' }>>()
+    .toEqualTypeOf<
+      ConstrainValidator<Register, (input: Date) => { output: 'string' }>
+    >()
 })
 
 test('createMiddleware can validate FormData', () => {
@@ -611,7 +613,7 @@ test('createMiddleware can validate FormData', () => {
   expectTypeOf(validator)
     .parameter(0)
     .toEqualTypeOf<
-      ConstrainValidator<(input: FormData) => { output: 'string' }>
+      ConstrainValidator<Register, (input: FormData) => { output: 'string' }>
     >()
 })
 

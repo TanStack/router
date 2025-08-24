@@ -245,6 +245,8 @@ export type {
   ClearCacheFn,
   CreateRouterFn,
   ProcessRouteTreeResult,
+  SSROption,
+  DefaultRegister,
 } from './router'
 
 export type {
@@ -411,7 +413,15 @@ export type {
   ValidateUseParamsResult,
 } from './typePrimitives'
 
-export type { AnyTransformer, Transformer } from './ssr/serializer/transformer'
+export type {
+  AnySerializationAdapter,
+  SerializationAdapter,
+  ValidateSerializableInput,
+  ValidateSerializableInputResult,
+  SerializerExtensions,
+  ValidateSerializable,
+  RegisteredSerializableInput,
+} from './ssr/serializer/transformer'
 
 export {
   createSerializationAdapter,

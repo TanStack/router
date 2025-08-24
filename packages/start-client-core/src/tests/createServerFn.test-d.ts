@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
-import type { Constrain, Validator } from '@tanstack/router-core'
+import type { Constrain, Register, Validator } from '@tanstack/router-core'
 import type { ConstrainValidator } from '../createServerFn'
 
 test('createServerFn method with autocomplete', () => {
@@ -398,7 +398,9 @@ test('createServerFn can validate Date', () => {
 
   expectTypeOf(validator)
     .parameter(0)
-    .toEqualTypeOf<ConstrainValidator<(input: Date) => { output: 'string' }>>()
+    .toEqualTypeOf<
+      ConstrainValidator<Register, (input: Date) => { output: 'string' }>
+    >()
 })
 
 test('createServerFn can validate FormData', () => {
@@ -409,7 +411,7 @@ test('createServerFn can validate FormData', () => {
   expectTypeOf(validator)
     .parameter(0)
     .toEqualTypeOf<
-      ConstrainValidator<(input: FormData) => { output: 'string' }>
+      ConstrainValidator<Register, (input: FormData) => { output: 'string' }>
     >()
 })
 

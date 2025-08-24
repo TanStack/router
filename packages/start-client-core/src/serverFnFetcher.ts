@@ -30,6 +30,7 @@ export async function serverFnFetcher(
       any,
       any,
       any,
+      any,
       any
     > & {
       headers: HeadersInit
@@ -100,7 +101,7 @@ export async function serverFnFetcher(
 }
 
 async function serializePayload(
-  opts: FunctionMiddlewareClientFnOptions<any, any, any, any>,
+  opts: FunctionMiddlewareClientFnOptions<any, any, any, any, any>,
 ) {
   const payloadToSerialize: any = {}
   if (opts.data) {
@@ -121,7 +122,7 @@ async function serialize(data: any) {
 }
 
 async function getFetcherRequestOptions(
-  opts: FunctionMiddlewareClientFnOptions<any, any, any, any>,
+  opts: FunctionMiddlewareClientFnOptions<any, any, any, any, any>,
 ) {
   if (opts.method === 'POST') {
     if (opts.data instanceof FormData) {

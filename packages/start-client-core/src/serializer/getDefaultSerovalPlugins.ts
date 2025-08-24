@@ -5,7 +5,7 @@ import {
 } from '@tanstack/router-core'
 import { FormDataPlugin } from 'seroval-plugins/web'
 import { getRouterInstance } from '../getRouterInstance'
-import type { AnyTransformer } from '@tanstack/router-core'
+import type { AnySerializationAdapter } from '@tanstack/router-core'
 
 import type { Plugin } from 'seroval'
 
@@ -18,7 +18,7 @@ export function getDefaultSerovalPlugins() {
   const router = getRouterInstance()
   invariant(router, 'Expected router instance to be available')
   const adapters = router.options.serializationAdapters as
-    | Array<AnyTransformer>
+    | Array<AnySerializationAdapter>
     | undefined
   return [...(adapters?.map(makeSerovalPlugin) ?? []), ...defaultSerovalPlugins]
 }

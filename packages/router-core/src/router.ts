@@ -84,6 +84,7 @@ import type { Manifest } from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
+import type { AnySerializationAdapter } from './ssr/serializer/transformer'
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -94,6 +95,7 @@ export type InjectedHtmlEntry = Promise<string>
 
 export interface DefaultRegister {
   router: AnyRouter
+  ssr: SSROption
 }
 
 export interface Register extends DefaultRegister {
@@ -111,13 +113,16 @@ export interface DefaultRouterOptionsExtensions {}
 export interface RouterOptionsExtensions
   extends DefaultRouterOptionsExtensions {}
 
+export type SSROption = boolean | 'data-only'
+
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
   TDefaultStructuralSharingOption extends boolean = false,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
-  TTransformerConfig = any,
+  TSerializationAdapters = unknown,
+  TDefaultSSR extends SSROption = SSROption,
 > extends RouterOptionsExtensions {
   /**
    * The history object that will be used to manage the browser history.
@@ -355,7 +360,7 @@ export interface RouterOptions<
    *
    * @default true
    */
-  defaultSsr?: boolean | 'data-only'
+  defaultSsr?: TDefaultSSR
 
   search?: {
     /**
@@ -425,7 +430,7 @@ export interface RouterOptions<
    */
   disableGlobalCatchBoundary?: boolean
 
-  serializationAdapters?: TTransformerConfig
+  serializationAdapters?: TSerializationAdapters
 }
 
 export interface RouterState<
@@ -534,7 +539,8 @@ export type RouterConstructorOptions<
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
-  TTransformerConfig,
+  TSerializationAdapters,
+  TDefaultSSR extends SSROption,
 > = Omit<
   RouterOptions<
     TRouteTree,
@@ -542,7 +548,8 @@ export type RouterConstructorOptions<
     TDefaultStructuralSharingOption,
     TRouterHistory,
     TDehydrated,
-    TTransformerConfig
+    TSerializationAdapters,
+    TDefaultSSR
   >,
   'context'
 > &
@@ -602,7 +609,8 @@ export type UpdateFn<
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
-  TTransformerConfig extends any,
+  TSerializationAdapters,
+  TDefaultSSR extends SSROption,
 > = (
   newOptions: RouterConstructorOptions<
     TRouteTree,
@@ -610,7 +618,8 @@ export type UpdateFn<
     TDefaultStructuralSharingOption,
     TRouterHistory,
     TDehydrated,
-    TTransformerConfig
+    TSerializationAdapters,
+    TDefaultSSR
   >,
 ) => void
 
@@ -696,10 +705,11 @@ export type AnyRouterWithContext<TContext> = RouterCore<
   any,
   any,
   any,
+  any,
   any
 >
 
-export type AnyRouter = RouterCore<any, any, any, any, any, any>
+export type AnyRouter = RouterCore<any, any, any, any, any, any, any>
 
 export interface ViewTransitionOptions {
   types:
@@ -753,7 +763,9 @@ export type CreateRouterFn = <
   TDefaultStructuralSharingOption extends boolean = false,
   TRouterHistory extends RouterHistory = RouterHistory,
   TDehydrated extends Record<string, any> = Record<string, any>,
-  TTransformerConfig = any,
+  const TSerializationAdapters extends
+    ReadonlyArray<AnySerializationAdapter> = [],
+  TDefaultSSR extends SSROption = SSROption,
 >(
   options: undefined extends number
     ? 'strictNullChecks must be enabled in tsconfig.json'
@@ -763,7 +775,8 @@ export type CreateRouterFn = <
         TDefaultStructuralSharingOption,
         TRouterHistory,
         TDehydrated,
-        TTransformerConfig
+        TSerializationAdapters,
+        TDefaultSSR
       >,
 ) => RouterCore<
   TRouteTree,
@@ -771,7 +784,8 @@ export type CreateRouterFn = <
   TDefaultStructuralSharingOption,
   TRouterHistory,
   TDehydrated,
-  TTransformerConfig
+  TSerializationAdapters,
+  TDefaultSSR
 >
 
 export class RouterCore<
@@ -780,7 +794,8 @@ export class RouterCore<
   in out TDefaultStructuralSharingOption extends boolean,
   in out TRouterHistory extends RouterHistory = RouterHistory,
   in out TDehydrated extends Record<string, any> = Record<string, any>,
-  in out TTransformerConfig = any,
+  in out TSerializationAdapters = unknown,
+  in out TDefaultSSR extends SSROption = SSROption,
 > {
   // Option-independent properties
   tempLocationKey: string | undefined = `${Math.round(
@@ -803,7 +818,8 @@ export class RouterCore<
       TDefaultStructuralSharingOption,
       TRouterHistory,
       TDehydrated,
-      TTransformerConfig
+      TSerializationAdapters,
+      TDefaultSSR
     >,
     'stringifySearch' | 'parseSearch' | 'context'
   >
@@ -827,7 +843,8 @@ export class RouterCore<
       TDefaultStructuralSharingOption,
       TRouterHistory,
       TDehydrated,
-      TTransformerConfig
+      TSerializationAdapters,
+      TDefaultSSR
     >,
   ) {
     this.update({
@@ -866,7 +883,8 @@ export class RouterCore<
     TDefaultStructuralSharingOption,
     TRouterHistory,
     TDehydrated,
-    TTransformerConfig
+    TSerializationAdapters,
+    TDefaultSSR
   > = (newOptions) => {
     if (newOptions.notFoundRoute) {
       console.warn(

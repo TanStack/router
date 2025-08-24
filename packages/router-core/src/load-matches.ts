@@ -13,7 +13,7 @@ import type {
   SsrContextOptions,
 } from './route'
 import type { AnyRouteMatch, MakeRouteMatch } from './Matches'
-import type { AnyRouter, UpdateMatchFn } from './router'
+import type { AnyRouter, SSROption, UpdateMatchFn } from './router'
 
 /**
  * An object of this shape is created when calling `loadMatches`.
@@ -220,7 +220,7 @@ const isBeforeLoadSsr = (
     return
   }
 
-  const parentOverride = (tempSsr: boolean | 'data-only') => {
+  const parentOverride = (tempSsr: SSROption) => {
     if (tempSsr === true && parentMatch?.ssr === 'data-only') {
       return 'data-only'
     }

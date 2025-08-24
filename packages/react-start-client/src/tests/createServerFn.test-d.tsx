@@ -10,6 +10,8 @@ test('createServerFn returns RSC', () => {
   }))
 
   expectTypeOf(fn()).toEqualTypeOf<
-    Promise<{ rscs: readonly [ReadableStream, ReadableStream] }>
+    Promise<{
+      rscs: readonly [ReadableStream, ReadableStream]
+    }>
   >()
 })

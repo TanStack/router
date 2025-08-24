@@ -5,7 +5,7 @@ import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
 import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
-import type { AnyTransformer } from './serializer/transformer'
+import type { AnySerializationAdapter } from './serializer/transformer'
 import type { GLOBAL_TSR } from './constants'
 
 declare global {
@@ -63,7 +63,7 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   )
 
   const serializationAdapters = router.options.serializationAdapters as
-    | Array<AnyTransformer>
+    | Array<AnySerializationAdapter>
     | undefined
 
   if (serializationAdapters?.length) {

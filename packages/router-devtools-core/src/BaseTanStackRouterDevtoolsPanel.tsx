@@ -99,6 +99,8 @@ function RouteComp({
     RouterState<
       Route<
         any,
+        any,
+        any,
         '/',
         '/',
         string,

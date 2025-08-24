@@ -1,6 +1,6 @@
 import type * as React from 'react'
 
-declare module '@tanstack/start-client-core' {
+declare module '@tanstack/router-core' {
   export interface SerializerExtensions {
     ReadableStream: React.JSX.Element
   }
