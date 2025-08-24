@@ -209,19 +209,16 @@ describe('useHistoryState', () => {
 
   test('throws when match not found and shouldThrow=true', async () => {
     function RootComponent() {
-      try {
-        useHistoryState({ from: '/non-existent', shouldThrow: true })
-        return <div>No error</div>
-      } catch (e) {
-        return <div>Error occurred: {(e as Error).message}</div>
-      }
+      useHistoryState({ from: '/non-existent', shouldThrow: true })
+      return <div>No error</div>
     }
 
     setup({ RootComponent })
 
-    const errorMessage = await screen.findByText(/Error occurred:/)
+    const errorMessage = await screen.findByText(
+      'Invariant failed: Could not find an active match from "/non-existent"',
+    )
     expect(errorMessage).toBeInTheDocument()
-    expect(errorMessage).toHaveTextContent(/Could not find an active match/)
   })
 
   test('returns undefined when match not found and shouldThrow=false', async () => {
