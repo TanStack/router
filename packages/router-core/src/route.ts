@@ -905,7 +905,12 @@ export type FileBaseRouteOptions<
         TRouterContext,
         TRouteContextFn
       >,
-    ) => any
+    ) => ValidateSerializableLifecycleResult<
+      TRegister,
+      TParentRoute,
+      TSSR,
+      TBeforeLoadFn
+    >
   >
 
   loaderDeps?: (
