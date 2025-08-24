@@ -416,7 +416,9 @@ test('exec on stay (beforeLoad & loader)', async () => {
     path: '/bar',
   })
 
-  const routeTree = rootRoute.addChildren([layoutRoute.addChildren([fooRoute, barRoute])])
+  const routeTree = rootRoute.addChildren([
+    layoutRoute.addChildren([fooRoute, barRoute]),
+  ])
 
   const router = new RouterCore({
     routeTree,
