@@ -47,7 +47,9 @@ export function validateSearchParams<
   expect(router.state.location.search).toEqual(expected)
 }
 
-function createTestRouter(options?: RouterOptions<AnyRoute, 'never'>) {
+function createTestRouter(
+  options?: RouterOptions<AnyRoute, 'never', any, any, any, any, any>,
+) {
   const rootRoute = createRootRoute({
     validateSearch: z.object({ root: z.string().optional() }),
     component: () => {
