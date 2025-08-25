@@ -294,6 +294,7 @@ export {
 
 export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
+export { useNavigationBlockingState } from './useNavigationBlockingState'
 
 export { useNavigate, Navigate } from './useNavigate'
 
