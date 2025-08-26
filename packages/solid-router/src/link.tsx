@@ -15,7 +15,7 @@ import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
-import { useMatch } from './useMatch'
+import { useActiveLocation } from './useActiveLocation'
 import type {
   AnyRouter,
   Constrain,
@@ -133,20 +133,20 @@ export function useLinkProps<
     select: (s) => s.location.searchStr,
   })
 
-  // when `from` is not supplied, use the route of the current match as the `from` location
-  // so relative routing works as expected
-  const from = useMatch({
-    strict: false,
-    select: (match) => options.from ?? match.fullPath,
-  })
+  const { getFromPath, activeLocation } = useActiveLocation()
 
-  const _options = () => ({
-    ...options,
-    from: from(),
-  })
+  const from = getFromPath(options.from)
+
+  const _options = () => {
+    return {
+      ...options,
+      from: from(),
+    }
+  }
 
   const next = Solid.createMemo(() => {
     currentSearch()
+    activeLocation()
     return router.buildLocation(_options() as any)
   })
 

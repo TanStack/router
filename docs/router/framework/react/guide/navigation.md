@@ -28,7 +28,7 @@ type ToOptions<
   TTo extends string = '',
 > = {
   // `from` is an optional route ID or path. If it is not supplied, only absolute paths will be auto-completed and type-safe. It's common to supply the route.fullPath of the origin route you are rendering from for convenience. If you don't know the origin route, leave this empty and work with absolute paths or unsafe relative paths.
-  from: string
+  from?: string
   // `to` can be an absolute route path or a relative path from the `from` option to a valid route path. ⚠️ Do not interpolate path params, hash or search params into the `to` options. Use the `params`, `search`, and `hash` options instead.
   to: string
   // `params` is either an object of path params to interpolate into the `to` option or a function that supplies the previous params and allows you to return new ones. This is the only way to interpolate dynamic parameters into the final URL. Depending on the `from` and `to` route, you may need to supply none, some or all of the path params. TypeScript will notify you of the required params if there are any.
@@ -183,7 +183,7 @@ Keep in mind that normally dynamic segment params are `string` values, but they 
 
 By default, all links are absolute unless a `from` route path is provided. This means that the above link will always navigate to the `/about` route regardless of what route you are currently on.
 
-If you want to make a link that is relative to the current route, you can provide a `from` route path:
+Relative links can be combined with a `from` route path. If a from route path isn't provided, relative paths default to the current active location.
 
 ```tsx
 const postIdRoute = createRoute({
@@ -201,9 +201,9 @@ As seen above, it's common to provide the `route.fullPath` as the `from` route p
 
 ### Special relative paths: `"."` and `".."`
 
-Quite often you might want to reload the current location, for example, to rerun the loaders on the current and/or parent routes, or maybe there was a change in search parameters. This can be achieved by specifying a `to` route path of `"."` which will reload the current location. This is only applicable to the current location, and hence any `from` route path specified is ignored.
+Quite often you might want to reload the current location or another `from` path, for example, to rerun the loaders on the current and/or parent routes, or maybe navigate back to a parent route. This can be achieved by specifying a `to` route path of `"."` which will reload the current location or provided `from` path.
 
-Another common need is to navigate one route back relative to the current location or some other matched route in the current tree. By specifying a `to` route path of `".."` navigation will be resolved to either the first parent route preceding the current location or, if specified, preceding the `"from"` route path.
+Another common need is to navigate one route back relative to the current location or another path. By specifying a `to` route path of `".."` navigation will be resolved to the first parent route preceding the current location.
 
 ```tsx
 export const Route = createFileRoute('/posts/$postId')({
@@ -214,7 +214,14 @@ function PostComponent() {
   return (
     <div>
       <Link to=".">Reload the current route of /posts/$postId</Link>
-      <Link to="..">Navigate to /posts</Link>
+      <Link to="..">Navigate back to /posts</Link>
+      // the below are all equivalent
+      <Link to="/posts">Navigate back to /posts</Link>
+      <Link from="/posts" to=".">
+        Navigate back to /posts
+      </Link>
+      // the below are all equivalent
+      <Link to="/">Navigate to root</Link>
       <Link from="/posts" to="..">
         Navigate to root
       </Link>
