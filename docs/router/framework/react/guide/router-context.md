@@ -101,13 +101,13 @@ export const Route = createFileRoute('/todos')({
 You can use it in your components with the `useRouteContext` hook:
 
 ```tsx
-import { useRouteContext } from '@tanstack/react-router'
+import { createFileRoute, useRouteContext } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/todos')({ component: Todos });
 
 function Todos() {
   const routeContext = Route.useRouteContext();
-  return <div>Todos from {routeContext.user.id}</div>
+  return <div>Todos from {routeContext.user.id}</div>;
 }
 ```
 
