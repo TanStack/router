@@ -106,7 +106,7 @@ import { useRouteContext } from '@tanstack/react-router'
 export const Route = createFileRoute('/todos')({ component: Todos });
 
 function Todos() {
-  const routeContext = useRouteContext({ from: Route.id });
+  const routeContext = Route.useRouteContext();
   return <div>Todos from {routeContext.user.id}</div>
 }
 ```
