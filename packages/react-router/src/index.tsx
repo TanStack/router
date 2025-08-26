@@ -28,10 +28,13 @@ export {
   isPlainObject,
   isPlainArray,
   deepEqual,
+  SearchPersistenceStore,
   shallow,
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
+  persistSearchParams,
+  getSearchPersistenceStore,
 } from '@tanstack/router-core'
 
 export type {

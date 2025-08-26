@@ -31,6 +31,7 @@ import {
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
+import { SearchPersistenceStore } from './searchMiddleware'
 import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
 import { createLRUCache } from './lru-cache'
@@ -276,6 +277,15 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/router-context)
    */
   context?: InferRouterContext<TRouteTree>
+  /**
+   * A store instance that will be used to persist search parameters across route navigations.
+   *
+   * If not provided, a new SearchPersistenceStore instance will be created automatically for this router.
+   * On the server, search persistence will be disabled unless an explicit store is provided.
+   *
+   * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/search-params-persistence)
+   */
+  searchPersistenceStore?: SearchPersistenceStore
   /**
    * A function that will be called when the router is dehydrated.
    *
@@ -922,6 +932,11 @@ export class RouterCore<
       setupScrollRestoration(this)
     }
 
+    // Initialize searchPersistenceStore if not provided and not on server
+    if (!this.options.searchPersistenceStore && typeof window !== 'undefined') {
+      this.options.searchPersistenceStore = new SearchPersistenceStore()
+    }
+
     if (
       typeof window !== 'undefined' &&
       'CSS' in window &&
@@ -1535,6 +1550,7 @@ export class RouterCore<
         dest,
         destRoutes,
         _includeValidateSearch: opts._includeValidateSearch,
+        router: this,
       })
 
       // Replace the equal deep
@@ -2693,13 +2709,18 @@ function applySearchMiddleware({
   dest,
   destRoutes,
   _includeValidateSearch,
+  router,
 }: {
   search: any
   dest: BuildNextOptions
   destRoutes: Array<AnyRoute>
   _includeValidateSearch: boolean | undefined
+  router: { options: { searchPersistenceStore?: any } }
 }) {
-  const allMiddlewares =
+  const allMiddlewares: Array<{
+    middleware: SearchMiddleware<any>
+    route: { id: string; fullPath: string }
+  }> =
     destRoutes.reduce(
       (acc, route) => {
         const middlewares: Array<SearchMiddleware<any>> = []
@@ -2766,20 +2787,31 @@ function applySearchMiddleware({
           middlewares.push(validate)
         }
 
-        return acc.concat(middlewares)
+        return acc.concat(
+          middlewares.map((middleware) => ({
+            middleware,
+            route: { id: route.id, fullPath: route.fullPath },
+          })),
+        )
       },
-      [] as Array<SearchMiddleware<any>>,
+      [] as Array<{
+        middleware: SearchMiddleware<any>
+        route: { id: string; fullPath: string }
+      }>,
     ) ?? []
 
   // the chain ends here since `next` is not called
-  const final: SearchMiddleware<any> = ({ search }) => {
-    if (!dest.search) {
-      return {}
-    }
-    if (dest.search === true) {
-      return search
-    }
-    return functionalUpdate(dest.search, search)
+  const final = {
+    middleware: ({ search }: { search: any }) => {
+      if (!dest.search) {
+        return {}
+      }
+      if (dest.search === true) {
+        return search
+      }
+      return functionalUpdate(dest.search, search)
+    },
+    route: { id: '', fullPath: '' },
   }
 
   allMiddlewares.push(final)
@@ -2790,13 +2822,18 @@ function applySearchMiddleware({
       return currentSearch
     }
 
-    const middleware = allMiddlewares[index]!
+    const { middleware, route } = allMiddlewares[index]!
 
     const next = (newSearch: any): any => {
       return applyNext(index + 1, newSearch)
     }
 
-    return middleware({ search: currentSearch, next })
+    return middleware({
+      search: currentSearch,
+      next,
+      route: { id: route.id, fullPath: route.fullPath },
+      router,
+    })
   }
 
   // Start applying middlewares
