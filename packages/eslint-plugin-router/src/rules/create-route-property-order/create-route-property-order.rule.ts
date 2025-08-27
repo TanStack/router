@@ -51,7 +51,14 @@ export const rule = createRule({
         let args = node.arguments
         if (createRouteFunctionsIndirect.includes(createRouteFunction as any)) {
           if (node.parent.type === AST_NODE_TYPES.CallExpression) {
+            // Default verboseFileRoutes curried usage: createFileRoute('/path')({ ... })
             args = node.parent.arguments
+          } else if (
+            // verboseFileRoutes: false syntax: createFileRoute({ ... })
+            args[0] &&
+            args[0].type === AST_NODE_TYPES.ObjectExpression
+          ) {
+            // use args as-is
           } else {
             return
           }
