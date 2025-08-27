@@ -19,8 +19,9 @@ export interface RouterConfig<
 }
 
 export const createRouterConfig = <
-  const TSerializationAdapters extends ReadonlyArray<AnySerializationAdapter>,
-  TDefaultSsr extends SSROption,
+  const TSerializationAdapters extends
+    ReadonlyArray<AnySerializationAdapter> = [],
+  TDefaultSsr extends SSROption = SSROption,
 >(
   options: RouterConfigOptions<TSerializationAdapters, TDefaultSsr>,
 ): RouterConfig<TSerializationAdapters, TDefaultSsr> => {
