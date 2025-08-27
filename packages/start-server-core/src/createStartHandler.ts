@@ -135,9 +135,10 @@ export function createStartHandler<TRouter extends AnyRouter>({
         isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
       }
       // insert start specific default serialization adapters
-      const serializationAdapters = router.options.serializationAdapters ?? []
-      // TODO: client side needs to install that plugin in hydrateStart!
-      serializationAdapters.push(ServerFunctionSerializationAdapter)
+      const serializationAdapters = (
+        router.options.serializationAdapters ?? []
+      ).concat(ServerFunctionSerializationAdapter)
+
       router.update({
         history,
         isShell,

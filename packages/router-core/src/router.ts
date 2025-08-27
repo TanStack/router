@@ -430,7 +430,7 @@ export interface RouterOptions<
    */
   disableGlobalCatchBoundary?: boolean
 
-  serializationAdapters?: Array<AnySerializationAdapter>
+  serializationAdapters?: ReadonlyArray<AnySerializationAdapter>
 }
 
 export interface RouterState<
