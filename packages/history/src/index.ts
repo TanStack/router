@@ -44,6 +44,7 @@ export interface HistoryLocation extends ParsedPath {
 }
 
 export interface ParsedPath {
+  url: URL
   href: string
   pathname: string
   search: string
@@ -295,14 +296,10 @@ export function createBrowserHistory(opts?: {
   const _setBlockers = (newBlockers: Array<NavigationBlocker>) =>
     (blockers = newBlockers)
 
-  const createHref = opts?.createHref ?? ((path) => path)
+  const createHref = opts?.createHref ?? ((href) => href)
   const parseLocation =
     opts?.parseLocation ??
-    (() =>
-      parseHref(
-        `${win.location.pathname}${win.location.search}${win.location.hash}`,
-        win.history.state,
-      ))
+    (() => parseHref(win.location.href, win.history.state))
 
   // Ensure there is always a key to start
   if (!win.history.state?.__TSR_key && !win.history.state?.key) {
@@ -561,7 +558,10 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
       return parseHref(hashHref, win.history.state)
     },
     createHref: (href) =>
-      `${win.location.pathname}${win.location.search}#${href}`,
+      new URL(
+        `${win.location.pathname}${win.location.search}#${href}`,
+        win.location.origin,
+      ).toString(),
   })
 }
 
@@ -617,12 +617,21 @@ export function parseHref(
   href: string,
   state: ParsedHistoryState | undefined,
 ): HistoryLocation {
+  let url!: URL
+
+  try {
+    url = new URL(href)
+  } catch {
+    url = new URL(href, 'http://localhost')
+  }
+
   const hashIndex = href.indexOf('#')
   const searchIndex = href.indexOf('?')
 
   const addedKey = createRandomKey()
 
   return {
+    url,
     href,
     pathname: href.substring(
       0,

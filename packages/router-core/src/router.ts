@@ -431,6 +431,27 @@ export interface RouterOptions<
   disableGlobalCatchBoundary?: boolean
 
   serializationAdapters?: TSerializationAdapters
+  /**
+   * Configures how the router will rewrite the location between the actual URL and the internal URL of the router.
+   *
+   * @default undefined
+   */
+  rewrite?: {
+    /**
+     * A function that will be called to rewrite the URL before it is interpreted by the router from the history instance.
+     *
+     * @default undefined
+     * @returns The rewritten URL or undefined if no rewrite is needed.
+     */
+    fromURL?: ({ url }: { url: URL }) => undefined | URL | string
+    /**
+     * A function that will be called to rewrite the URL before it is committed to the actual history instance from the router.
+     *
+     * @default undefined
+     * @returns The rewritten URL or undefined if no rewrite is needed.
+     */
+    toURL?: ({ url }: { url: URL }) => undefined | URL | string
+  }
 }
 
 export interface RouterState<
@@ -1030,20 +1051,37 @@ export class RouterCore<
     previousLocation,
   ) => {
     const parse = ({
-      pathname,
-      search,
-      hash,
+      url,
       state,
     }: HistoryLocation): ParsedLocation<FullSearchSchema<TRouteTree>> => {
+      // Before we do any processing, we need to allow rewrites to modify the URL
+      if (this.options.rewrite?.toURL) {
+        url = new URL(this.options.rewrite.toURL({ url }) || url)
+      }
+
+      // Make sure we derive all the properties we need from the URL object now
+      // (These used to come from the history location object, but won't in v2)
+
+      const { pathname, search, hash } = url
+
       const parsedSearch = this.options.parseSearch(search)
       const searchStr = this.options.stringifySearch(parsedSearch)
 
+      // Make sure our final url uses the re-stringified pathname, search, and has for consistency
+      // (We were already doing this, so just keeping it for now)
+      url.search = searchStr
+
+      const fullPath = url.href.replace(url.origin, '')
+
       return {
+        url,
+        fullPath,
         pathname,
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: hash.split('#').reverse()[0] ?? '',
-        href: `${pathname}${searchStr}${hash}`,
+        // TODO: v2 needs to supply the actual href (full URL) instead of the fullPath
+        href: fullPath,
         state: replaceEqualDeep(previousLocation?.state, state),
       }
     }
@@ -1606,14 +1644,31 @@ export class RouterCore<
       // Replace the equal deep
       nextState = replaceEqualDeep(currentLocation.state, nextState)
 
+      // Create the full path of the location
+      const fullPath = `${nextPathname}${searchStr}${hashStr}`
+
+      // Create the URL object
+      let url = new URL(fullPath, currentLocation.url.origin)
+
+      // If a rewrite function is provided, use it to rewrite the URL
+      if (this.options.rewrite?.toURL) {
+        url = new URL(this.options.rewrite.toURL({ url }) || url)
+      }
+
+      // Lastly, allow the history type to modify the URL
+      url = new URL(this.history.createHref(url.toString()))
+
       // Return the next location
       return {
+        url,
         pathname: nextPathname,
         search: nextSearch,
         searchStr,
         state: nextState as any,
         hash: hash ?? '',
-        href: `${nextPathname}${searchStr}${hashStr}`,
+        fullPath,
+        // TODO: v2 needs to supply the actual href (full URL) instead of the fullPath
+        href: fullPath,
         unmaskOnReload: dest.unmaskOnReload,
       }
     }
@@ -1816,7 +1871,7 @@ export class RouterCore<
     if (reloadDocument) {
       if (!href) {
         const location = this.buildLocation({ to, ...rest } as any)
-        href = this.history.createHref(location.href)
+        href = location.url.href
       }
       if (rest.replace) {
         window.location.replace(href)
