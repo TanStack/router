@@ -4,6 +4,7 @@ import type { Plugin, SerovalNode } from 'seroval'
 import type { Register } from '../../router'
 import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
+import type { RouterConfig } from '../../config'
 
 export type Serializable =
   | number
@@ -166,7 +167,9 @@ export type RegisteredSerializableInput<TRegister extends Register> =
       : Serializable
 
 export type RegisteredSerializationAdapters<TRegister extends Register> =
-  NonNullable<TRegister['router']['options']['serializationAdapters']>
+  TRegister['config'] extends RouterConfig<infer TSerializationAdapters, any>
+    ? TSerializationAdapters
+    : never
 
 export type ValidateSerializableInputResult<
   TRegister extends Register,
@@ -182,9 +185,10 @@ export type ValidateSerializableResult<T, TSerializable> =
         ? ReadableStream
         : { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
 
-export type RegisteredSSROption<TRegister extends Register> = NonNullable<
-  TRegister['router']['options']['defaultSsr']
->
+export type RegisteredSSROption<TRegister extends Register> =
+  TRegister['config'] extends RouterConfig<any, infer TDefaultSsr>
+    ? TDefaultSsr
+    : never
 
 export type ValidateSerializableLifecycleResult<
   TRegister extends Register,
@@ -210,6 +214,6 @@ export type ValidateSerializableLifecycleResultSSR<
 > =
   ResolveAllSSR<TParentRoute, TSSR> extends false
     ? any
-    : TRegister['router']['options']['defaultSsr'] extends false
+    : RegisteredSSROption<TRegister> extends false
       ? any
       : ValidateSerializableInput<TRegister, LooseReturnType<TFn>>

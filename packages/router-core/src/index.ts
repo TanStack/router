@@ -249,6 +249,8 @@ export type {
   DefaultRegister,
 } from './router'
 
+export * from './config'
+
 export type {
   MatchLocation,
   CommitLocationOptions,

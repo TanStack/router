@@ -48,7 +48,7 @@ export function validateSearchParams<
 }
 
 function createTestRouter(
-  options?: RouterOptions<AnyRoute, 'never', any, any, any, any, any>,
+  options?: RouterOptions<AnyRoute, 'never', any, any, any>,
 ) {
   const rootRoute = createRootRoute({
     validateSearch: z.object({ root: z.string().optional() }),
