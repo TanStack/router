@@ -31,6 +31,7 @@ function setup({
   scripts,
   defaultPendingMs,
   defaultPendingMinMs,
+  staleTime,
 }: {
   beforeLoad?: () => any
   loader?: () => any
@@ -39,24 +40,26 @@ function setup({
   scripts?: () => any
   defaultPendingMs?: number
   defaultPendingMinMs?: number
+  staleTime?: number
 }) {
   const select = vi.fn()
 
   const rootRoute = createRootRoute({
     component: function RootComponent() {
       useRouterState({ select })
-      return <Outlet />
+      return (
+        <>
+          <Link to="/">Back</Link>
+          <Link to="/posts">Posts</Link>
+          <Outlet />
+        </>
+      )
     },
   })
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: () => (
-      <>
-        <h1>Index</h1>
-        <Link to="/posts">Posts</Link>
-      </>
-    ),
+    component: () => <h1>Index</h1>,
   })
 
   const postsRoute = createRoute({
@@ -83,11 +86,22 @@ function setup({
     defaultPendingComponent: () => <p>Loading...</p>,
     defaultNotFoundComponent: () => <h1>Not Found Title</h1>,
     defaultPreload: 'intent',
+    defaultStaleTime: staleTime,
+    defaultGcTime: staleTime,
   })
 
   render(<RouterProvider router={router} />)
 
   return { select, router }
+}
+
+async function back() {
+  const link = await waitFor(() => screen.getByRole('link', { name: 'Back' }))
+  fireEvent.click(link)
+  const title = await waitFor(() =>
+    screen.getByRole('heading', { name: /Index/ }),
+  )
+  expect(title).toBeInTheDocument()
 }
 
 async function run({ select }: ReturnType<typeof setup>) {
@@ -210,5 +224,71 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     expect(updates).toBe(14)
+  })
+
+  test('navigate, w/ preloaded & async loaders', async () => {
+    const params = setup({
+      beforeLoad: () => Promise.resolve({ foo: 'bar' }),
+      loader: () => resolveAfter(100, { hello: 'world' }),
+      staleTime: 1000,
+    })
+
+    await params.router.preloadRoute({ to: '/posts' })
+    const updates = await run(params)
+
+    // This number should be as small as possible to minimize the amount of work
+    // that needs to be done during a navigation.
+    // Any change that increases this number should be investigated.
+    expect(updates).toBe(7)
+  })
+
+  test('navigate, w/ preloaded & sync loaders', async () => {
+    const params = setup({
+      beforeLoad: () => ({ foo: 'bar' }),
+      loader: () => ({ hello: 'world' }),
+      staleTime: 1000,
+    })
+
+    await params.router.preloadRoute({ to: '/posts' })
+    const updates = await run(params)
+
+    // This number should be as small as possible to minimize the amount of work
+    // that needs to be done during a navigation.
+    // Any change that increases this number should be investigated.
+    expect(updates).toBe(6)
+  })
+
+  test('navigate, w/ previous navigation & async loader', async () => {
+    const params = setup({
+      loader: () => resolveAfter(100, { hello: 'world' }),
+      staleTime: 1000,
+    })
+
+    await run(params)
+    await back()
+    const updates = await run(params)
+
+    // This number should be as small as possible to minimize the amount of work
+    // that needs to be done during a navigation.
+    // Any change that increases this number should be investigated.
+    expect(updates).toBe(5)
+  })
+
+  test('preload a preloaded route w/ async loader', async () => {
+    const params = setup({
+      loader: () => resolveAfter(100, { hello: 'world' }),
+    })
+
+    await params.router.preloadRoute({ to: '/posts' })
+    await new Promise((r) => setTimeout(r, 20))
+    const before = params.select.mock.calls.length
+    await params.router.preloadRoute({ to: '/posts' })
+    const after = params.select.mock.calls.length
+    const updates = after - before
+
+    // This number should be as small as possible to minimize the amount of work
+    // that needs to be done during a navigation.
+    // Any change that increases this number should be investigated.
+    expect(updates).toBe(1)
   })
 })
