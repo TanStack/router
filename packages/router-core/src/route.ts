@@ -75,6 +75,12 @@ export interface SearchMiddlewareRouter {
   options: {
     searchPersistenceStore?: any // Avoid circular dependency, will be typed at usage
   }
+  state?: {
+    location?: {
+      pathname?: string
+    }
+  }
+  destPathname?: string // 🎯 Destination pathname for per-user storage keys
 }
 
 export type SearchMiddlewareContext<TSearchSchema> = {
@@ -84,9 +90,18 @@ export type SearchMiddlewareContext<TSearchSchema> = {
   router: SearchMiddlewareRouter
 }
 
-export type SearchMiddleware<TSearchSchema> = (
+export type SearchMiddlewareFunction<TSearchSchema> = (
   ctx: SearchMiddlewareContext<TSearchSchema>,
 ) => TSearchSchema
+
+export type SearchMiddlewareObject<TSearchSchema> = {
+  middleware: SearchMiddlewareFunction<TSearchSchema>
+  inheritParentMiddlewares?: boolean
+}
+
+export type SearchMiddleware<TSearchSchema = any> =
+  | SearchMiddlewareFunction<TSearchSchema>
+  | SearchMiddlewareObject<TSearchSchema>
 
 export type ResolveId<
   TParentRoute,

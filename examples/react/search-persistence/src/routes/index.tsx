@@ -19,7 +19,6 @@ function HomeComponent() {
 
       <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-8 shadow-lg">
         <div className="flex items-center mb-6">
-          <span className="text-2xl mr-3">🧪</span>
           <h2 className="text-2xl font-semibold text-gray-900">
             Test Restoration Patterns
           </h2>

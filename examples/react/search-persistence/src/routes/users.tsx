@@ -2,6 +2,11 @@ import {
   createFileRoute,
   useNavigate,
   persistSearchParams,
+  retainSearchParams,
+  stripSearchParams,
+  Link,
+  Outlet,
+  useLocation,
 } from '@tanstack/react-router'
 import { z } from 'zod'
 import React from 'react'
@@ -18,7 +23,11 @@ export type UsersSearchSchema = z.infer<typeof usersSearchSchema>
 export const Route = createFileRoute('/users')({
   validateSearch: usersSearchSchema,
   search: {
-    middlewares: [persistSearchParams(['name', 'status', 'page'])],
+    middlewares: [
+      retainSearchParams(['name', 'status', 'page']),
+      persistSearchParams(['name', 'status', 'page']),
+      stripSearchParams(['limit']),
+    ],
   },
   component: UsersComponent,
 })
@@ -71,6 +80,12 @@ const mockUsers = [
 function UsersComponent() {
   const search = Route.useSearch()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Extract userId from pathname like "/users/123"
+  const currentUserId = location.pathname.startsWith('/users/')
+    ? location.pathname.split('/users/')[1]?.split('?')[0]
+    : null
 
   const filteredUsers = React.useMemo(() => {
     let users = mockUsers
@@ -102,6 +117,19 @@ function UsersComponent() {
         back
       </p>
 
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <h4 className="font-medium text-blue-800 mb-2">
+          Testing Middleware Chain:
+        </h4>
+        <p className="text-sm text-blue-700">
+          1. Apply filters below (name, status) <br />
+          2. Click "View Details" on any user <br />
+          3. Switch between tabs (Profile, Activity, Settings) <br />
+          4. Click "← Back" and then "View Details" again <br />
+          5. See both retained filters AND persisted tab selections!
+        </p>
+      </div>
+
       <div className="mt-4 space-y-2">
         <input
           type="text"
@@ -132,10 +160,36 @@ function UsersComponent() {
 
       <div className="mt-4 space-y-2">
         {filteredUsers.map((user) => (
-          <div key={user.id} className="border p-2 rounded">
-            <div className="font-bold">{user.name}</div>
-            <div className="text-sm text-gray-600">{user.email}</div>
-            <div className="text-sm">{user.status}</div>
+          <div key={user.id}>
+            <div className="border p-2 rounded flex justify-between items-center">
+              <div>
+                <div className="font-bold">{user.name}</div>
+                <div className="text-sm text-gray-600">{user.email}</div>
+                <div className="text-sm">{user.status}</div>
+              </div>
+              {currentUserId === user.id.toString() ? (
+                <Link
+                  to="/users"
+                  search={(prev) => prev}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm"
+                >
+                  ← Back
+                </Link>
+              ) : (
+                <Link
+                  to="/users/$userId"
+                  params={{ userId: user.id.toString() }}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+                >
+                  View Details
+                </Link>
+              )}
+            </div>
+            {currentUserId === user.id.toString() && (
+              <div className="mt-2">
+                <Outlet />
+              </div>
+            )}
           </div>
         ))}
       </div>

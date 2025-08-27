@@ -1,47 +1,46 @@
 import { Store } from '@tanstack/store'
 import { deepEqual, replaceEqualDeep } from './utils'
-import type { NoInfer, PickOptional } from './utils'
-import type { AnyRoute, SearchMiddleware } from './route'
-import type { IsRequiredParams } from './link'
+import type {
+  AnyRoute,
+  SearchMiddleware,
+  SearchMiddlewareObject,
+} from './route'
 import type { RouteById, RoutesById } from './routeInfo'
 import type { RegisteredRouter } from './router'
 
-export function retainSearchParams<TSearchSchema extends object>(
+export function retainSearchParams<TSearchSchema extends Record<string, any>>(
   keys: Array<keyof TSearchSchema> | true,
-): SearchMiddleware<TSearchSchema> {
+): SearchMiddleware<any> {
   return ({ search, next }) => {
     const result = next(search)
+
     if (keys === true) {
-      return { ...search, ...result }
+      return replaceEqualDeep({}, { ...search, ...result })
     }
-    // add missing keys from search to result
+
+    const newResult = { ...result } as Record<string, any>
     keys.forEach((key) => {
-      if (!(key in result)) {
-        result[key] = search[key]
+      if (!(key in newResult)) {
+        newResult[key as string] = (search as Record<string, any>)[
+          key as string
+        ]
       }
     })
-    return result
+    return replaceEqualDeep({}, newResult)
   }
 }
 
-export function stripSearchParams<
-  TSearchSchema,
-  TOptionalProps = PickOptional<NoInfer<TSearchSchema>>,
-  const TValues =
-    | Partial<NoInfer<TOptionalProps>>
-    | Array<keyof TOptionalProps>,
-  const TInput = IsRequiredParams<TSearchSchema> extends never
-    ? TValues | true
-    : TValues,
->(input: NoInfer<TInput>): SearchMiddleware<TSearchSchema> {
+export function stripSearchParams<TSearchSchema extends Record<string, any>>(
+  input: Partial<TSearchSchema> | Array<keyof TSearchSchema> | true,
+): SearchMiddleware<any> {
   return ({ search, next }) => {
     if (input === true) {
-      return {} as TSearchSchema
+      return {} as any
     }
     const result = next(search) as Record<string, unknown>
     if (Array.isArray(input)) {
       input.forEach((key) => {
-        delete result[key]
+        delete result[key as string]
       })
     } else {
       Object.entries(input as Record<string, unknown>).forEach(
@@ -52,7 +51,7 @@ export function stripSearchParams<
         },
       )
     }
-    return result as TSearchSchema
+    return result as any
   }
 }
 
@@ -228,86 +227,70 @@ export function getSearchPersistenceStore<
   }
 }
 
-export function persistSearchParams<TSearchSchema>(
+export function persistSearchParams<TSearchSchema extends Record<string, any>>(
   persistedSearchParams: Array<keyof TSearchSchema>,
   exclude?: Array<keyof TSearchSchema>,
-): SearchMiddleware<TSearchSchema> {
-  return ({ search, next, route, router }) => {
-    const store = router.options.searchPersistenceStore as
-      | SearchPersistenceStore
-      | undefined
+): SearchMiddlewareObject<any> {
+  return {
+    middleware: ({ search, next, router }) => {
+      const store = router.options.searchPersistenceStore as
+        | SearchPersistenceStore
+        | undefined
 
-    if (!store) {
-      return next(search)
-    }
-
-    const searchRecord = search as Record<string, unknown>
-    const allowedKeysStr = persistedSearchParams.map((key) => String(key))
-    const filteredSearch = Object.fromEntries(
-      Object.entries(searchRecord).filter(([key]) =>
-        allowedKeysStr.includes(key),
-      ),
-    ) as TSearchSchema
-
-    const savedSearch = store.getSearch(route.id)
-    const searchToProcess = filteredSearch
-
-    if (savedSearch && Object.keys(savedSearch).length > 0) {
-      const currentSearch = filteredSearch as Record<string, unknown>
-      const isEmpty = Object.keys(currentSearch).length === 0
-
-      if (isEmpty) {
-        // Skip router validation for restored data since we know it's valid
-        // This prevents Zod .catch() defaults from overriding our restored values
-        const result = savedSearch as TSearchSchema
-
-        const resultRecord = result as Record<string, unknown>
-        const persistedKeysStr = persistedSearchParams.map((key) => String(key))
-        const paramsToSave = Object.fromEntries(
-          Object.entries(resultRecord).filter(([key]) =>
-            persistedKeysStr.includes(key),
-          ),
-        )
-
-        const excludeKeys = exclude ? exclude.map((key) => String(key)) : []
-        const filteredResult = Object.fromEntries(
-          Object.entries(paramsToSave).filter(
-            ([key]) => !excludeKeys.includes(key),
-          ),
-        )
-
-        if (Object.keys(filteredResult).length > 0) {
-          store.saveSearch(route.id, filteredResult)
-        }
-
-        return result
+      if (!store) {
+        return next(search)
       }
-    }
 
-    const result = next(searchToProcess)
+      const storageKey = router.destPathname || ''
 
-    // Save only the allowed parameters for persistence
-    const resultRecord = result as Record<string, unknown>
-    const persistedKeysStr = persistedSearchParams.map((key) => String(key))
-    const paramsToSave = Object.fromEntries(
-      Object.entries(resultRecord).filter(([key]) =>
-        persistedKeysStr.includes(key),
-      ),
-    )
+      const savedSearch = store.getSearch(storageKey)
 
-    const excludeKeys = exclude ? exclude.map((key) => String(key)) : []
-    const filteredResult = Object.fromEntries(
-      Object.entries(paramsToSave).filter(
-        ([key]) => !excludeKeys.includes(key),
-      ),
-    )
+      let searchToProcess = search
 
-    // Only save if we have actual search params to persist
-    // Don't save empty objects as they overwrite existing data
-    if (Object.keys(filteredResult).length > 0) {
-      store.saveSearch(route.id, filteredResult)
-    }
+      if (savedSearch && Object.keys(savedSearch).length > 0) {
+        // User has saved preferences - restore them
+        const onlyOwnedParams = Object.fromEntries(
+          persistedSearchParams
+            .map((key) => [String(key), savedSearch[String(key)]])
+            .filter(([_, value]) => value !== undefined),
+        )
+        searchToProcess = { ...search, ...onlyOwnedParams }
+      } else {
+        // No saved preferences - remove our parameters to let validateSearch set defaults
+        const searchWithoutOwnedParams = { ...search } as Record<
+          string,
+          unknown
+        >
+        persistedSearchParams.forEach((key) => {
+          delete searchWithoutOwnedParams[String(key)]
+        })
+        searchToProcess = searchWithoutOwnedParams as any
+      }
 
-    return result
+      const result = next(searchToProcess)
+
+      // Save only this route's parameters
+      const resultRecord = result as Record<string, unknown>
+      const persistedKeysStr = persistedSearchParams.map((key) => String(key))
+      const paramsToSave = Object.fromEntries(
+        Object.entries(resultRecord).filter(([key]) =>
+          persistedKeysStr.includes(key),
+        ),
+      )
+
+      const excludeKeys = exclude ? exclude.map((key) => String(key)) : []
+      const filteredResult = Object.fromEntries(
+        Object.entries(paramsToSave).filter(
+          ([key]) => !excludeKeys.includes(key),
+        ),
+      )
+
+      if (Object.keys(filteredResult).length > 0) {
+        store.saveSearch(storageKey, filteredResult)
+      }
+
+      return result
+    },
+    inheritParentMiddlewares: false,
   }
 }

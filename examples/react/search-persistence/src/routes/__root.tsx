@@ -20,19 +20,19 @@ function RootComponent() {
         </Link>{' '}
         <Link
           to="/users"
-          search={(prev) => prev}
           activeProps={{
             className: 'font-bold',
           }}
+          search={{}} // You have to pass an empty object to override the persisted search params
         >
           Users
         </Link>{' '}
         <Link
           to="/products"
-          search={(prev) => prev}
           activeProps={{
             className: 'font-bold',
           }}
+          search={{}}
         >
           Products
         </Link>
