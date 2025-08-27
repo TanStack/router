@@ -7,7 +7,7 @@ SSR-compatible authentication with Neon Auth and TanStack Start.
 
 ## Features
 
--- **Neon Auth Integration** - Complete authentication flow with Neon Auth (based on Stack Auth)
+- **Neon Auth Integration** - Complete authentication flow with Neon Auth (based on Stack Auth)
 - **SSR Compatible** - Works with TanStack Start's server-side rendering
 - **Auto Database Setup** - Neon Launchpad creates database connection
 - **Modern UI** - Clean interface with Tailwind CSS
@@ -34,11 +34,12 @@ npm run dev
    - Claim your project when prompted (a browser tab will open automatically, and the claim URL is also saved to .env)
    - Go to the "Auth" section in your project dashboard, enable Auth, and get your credentials
    - Edit `.env` and replace these values with your actual credentials:
-   ```bash
-   VITE_STACK_PROJECT_ID=your_actual_project_id
-   VITE_STACK_PUBLISHABLE_CLIENT_KEY=your_actual_publishable_key
-   STACK_SECRET_SERVER_KEY=your_actual_secret_key
-   ```
+
+     ```bash
+     VITE_STACK_PROJECT_ID=your_actual_project_id
+     VITE_STACK_PUBLISHABLE_CLIENT_KEY=your_actual_publishable_key
+     STACK_SECRET_SERVER_KEY=your_actual_secret_key
+     ```
 
 3. **Run:** `pnpm dev` → Visit `http://localhost:3000`
 
