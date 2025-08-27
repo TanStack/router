@@ -5,7 +5,6 @@ import type {
   AnyRoute,
   CreateRouterFn,
   RouterConstructorOptions,
-  SSROption,
   TrailingSlashOption,
 } from '@tanstack/router-core'
 import type {

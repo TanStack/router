@@ -59,7 +59,7 @@ export function validateSearchParams<
 }
 
 function createTestRouter(
-  options: RouterOptions<AnyRoute, 'never', any, any, any, any, any> &
+  options: RouterOptions<AnyRoute, 'never', any, any, any> &
     Required<Pick<RouterOptions<AnyRoute, 'never'>, 'history'>>,
 ) {
   const rootRoute = createRootRoute({
