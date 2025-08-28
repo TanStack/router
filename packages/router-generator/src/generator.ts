@@ -1,6 +1,6 @@
 import path from 'node:path'
 import * as fsp from 'node:fs/promises'
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import crypto from 'node:crypto'
 import { deepEqual, rootRouteId } from '@tanstack/router-core'
 import { logging } from './logger'
@@ -194,7 +194,7 @@ export class Generator {
     this.logger = logging({ disabled: this.config.disableLogging })
     this.root = opts.root
     this.fs = opts.fs || DefaultFileSystem
-    this.generatedRouteTreePath = path.resolve(this.config.generatedRouteTree)
+    this.generatedRouteTreePath = this.getGeneratedRouteTreePath()
     this.targetTemplate = getTargetTemplate(this.config)
 
     this.routesDirectoryPath = this.getRoutesDirectoryPath()
@@ -210,6 +210,20 @@ export class Generator {
         this.transformPlugins.push(plugin.transformPlugin)
       }
     })
+  }
+
+  private getGeneratedRouteTreePath() {
+    const generatedRouteTreePath = path.isAbsolute(this.config.generatedRouteTree)
+      ? this.config.generatedRouteTree
+      : path.resolve(this.root, this.config.generatedRouteTree)
+
+    const generatedRouteTreeDir = path.dirname(generatedRouteTreePath);
+
+    if (!existsSync(generatedRouteTreeDir)) {
+      mkdirSync(generatedRouteTreeDir, { recursive: true })
+    }
+
+    return generatedRouteTreePath
   }
 
   private getRoutesDirectoryPath() {

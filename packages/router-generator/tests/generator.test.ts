@@ -270,4 +270,51 @@ describe('generator works', async () => {
       await postprocess(folderName)
     },
   )
+
+  it('should create directory for routeTree if it does not exist',
+    async () => {
+      const folderName = 'only-root'
+      const folderRoot = makeFolderDir(folderName)
+      let pathCreated = false;
+
+      const config = await setupConfig(folderName)
+
+      rewriteConfigByFolderName(folderName, config)
+
+      await preprocess(folderName)
+      config.generatedRouteTree = join(folderRoot,'generated','/routeTree.gen.ts');
+      const generator = new Generator({ config, root: folderRoot })
+      const error = shouldThrow(folderName)
+      if (error) {
+        try {
+          await generator.run()
+        } catch (e) {
+          expect(e).toBeInstanceOf(Error)
+          expect((e as Error).message.startsWith(error)).toBeTruthy()
+        }
+      } else {
+        await generator.run()
+
+        const generatedRouteTree = await getRouteTreeFileText(config)
+
+        await expect(generatedRouteTree).toMatchFileSnapshot(
+          join(
+            'generator',
+            folderName,
+            `routeTree.generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
+          ),
+        )
+
+        pathCreated = await fs.access(dirname(config.generatedRouteTree)).then(()=>true,()=>false)
+
+        await expect(pathCreated).toBe(true);
+      }
+
+      await postprocess(folderName)
+
+      if (pathCreated) {
+         await fs.rm(dirname(config.generatedRouteTree), { recursive: true });
+      }
+    },
+  )
 })
