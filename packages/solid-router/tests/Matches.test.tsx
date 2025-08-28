@@ -1,15 +1,18 @@
 import { expect, test } from 'vitest'
 import { fireEvent, render, screen } from '@solidjs/testing-library'
+import { createContext, useContext } from 'solid-js'
 import {
   Link,
   Outlet,
   RouterProvider,
+  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
   isMatch,
   useMatches,
 } from '../src'
+import { sleep } from './utils'
 
 const rootRoute = createRootRoute()
 
@@ -121,4 +124,100 @@ test('when filtering useMatches by loaderData', async () => {
   ).toBeInTheDocument()
 
   expect(await screen.findByText('Incorrect Matches -')).toBeInTheDocument()
+})
+
+test('Matches provides InnerWrap context to route components', async () => {
+  const rootRoute = createRootRoute({
+    component: () => {
+      const contextValue = useContext(ctx)
+      expect(contextValue, 'Context is not provided').not.toBeUndefined()
+
+      return <div>{contextValue}</div>
+    },
+  })
+
+  const routeTree = rootRoute.addChildren([])
+  const router = createRouter({
+    routeTree,
+  })
+
+  const ctx = createContext<string>()
+
+  const screen = render(() => (
+    <RouterProvider
+      router={router}
+      InnerWrap={(props) => {
+        return (
+          <ctx.Provider value={'context-for-children'}>
+            {props.children}
+          </ctx.Provider>
+        )
+      }}
+    />
+  ))
+
+  const indexElem = await screen.findByText('context-for-children')
+  expect(indexElem).toBeInTheDocument()
+})
+
+test('Matches provides InnerWrap context to defaultPendingComponent', async () => {
+  const rootRoute = createRootRoute({})
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => {
+      return (
+        <div>
+          <Link to="/home">link to home</Link>
+        </div>
+      )
+    },
+  })
+
+  const homeRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/home',
+    loader: () => sleep(300),
+    component: () => <div>Home page</div>,
+  })
+
+  const routeTree = rootRoute.addChildren([homeRoute, indexRoute])
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({
+      initialEntries: ['/'],
+    }),
+  })
+
+  const ctx = createContext<string>()
+
+  const screen = render(() => (
+    <RouterProvider
+      router={router}
+      defaultPendingMs={200}
+      defaultPendingComponent={() => {
+        const contextValue = useContext(ctx)
+        expect(contextValue, 'Context is not provided').not.toBeUndefined()
+
+        return <div>{contextValue}</div>
+      }}
+      InnerWrap={(props) => {
+        return (
+          <ctx.Provider value={'context-for-default-pending'}>
+            {props.children}
+          </ctx.Provider>
+        )
+      }}
+    />
+  ))
+
+  const linkToHome = await screen.findByRole('link', {
+    name: 'link to home',
+  })
+  expect(linkToHome).toBeInTheDocument()
+
+  fireEvent.click(linkToHome)
+
+  const indexElem = await screen.findByText('context-for-default-pending')
+  expect(indexElem).toBeInTheDocument()
 })
