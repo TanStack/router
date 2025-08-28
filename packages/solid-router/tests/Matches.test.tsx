@@ -143,7 +143,7 @@ test('Matches provides InnerWrap context to route components', async () => {
 
   const ctx = createContext<string>()
 
-  const screen = render(() => (
+  const app = render(() => (
     <RouterProvider
       router={router}
       InnerWrap={(props) => {
@@ -156,7 +156,7 @@ test('Matches provides InnerWrap context to route components', async () => {
     />
   ))
 
-  const indexElem = await screen.findByText('context-for-children')
+  const indexElem = await app.findByText('context-for-children')
   expect(indexElem).toBeInTheDocument()
 })
 
@@ -191,7 +191,7 @@ test('Matches provides InnerWrap context to defaultPendingComponent', async () =
 
   const ctx = createContext<string>()
 
-  const screen = render(() => (
+  const app = render(() => (
     <RouterProvider
       router={router}
       defaultPendingMs={200}
@@ -211,13 +211,13 @@ test('Matches provides InnerWrap context to defaultPendingComponent', async () =
     />
   ))
 
-  const linkToHome = await screen.findByRole('link', {
+  const linkToHome = await app.findByRole('link', {
     name: 'link to home',
   })
   expect(linkToHome).toBeInTheDocument()
 
   fireEvent.click(linkToHome)
 
-  const indexElem = await screen.findByText('context-for-default-pending')
+  const indexElem = await app.findByText('context-for-default-pending')
   expect(indexElem).toBeInTheDocument()
 })
