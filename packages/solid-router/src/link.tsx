@@ -147,8 +147,7 @@ export function useLinkProps<
   const from = createMemo(() => {
     const activeLocationMatches = router.matchRoutes(routerLocation(), {
       _buildLocation: false,
-      },
-    )
+    })
 
     const activeLocationMatch = last(activeLocationMatches)
 

@@ -31,7 +31,8 @@ export function useNavigate<
 
       const activeLocationMatch = last(activeLocationMatches)
 
-      const from = options.from ??
+      const from =
+        options.from ??
         _defaultOpts?.from ??
         activeLocationMatch?.fullPath ??
         router.state.matches[matchIndex]!.fullPath

@@ -112,22 +112,19 @@ export function useLinkProps<
   })
 
   // subscribe to location here to re-build fromPath if it changes
-  const from = useMemo(
-    () => {
-      const activeLocationMatches = router.matchRoutes(routerLocation, {
-        _buildLocation: false,
-      })
+  const from = useMemo(() => {
+    const activeLocationMatches = router.matchRoutes(routerLocation, {
+      _buildLocation: false,
+    })
 
-      const activeLocationMatch = last(activeLocationMatches)
+    const activeLocationMatch = last(activeLocationMatches)
 
-      return (
-        options.from ??
-        activeLocationMatch?.fullPath ??
-        router.state.matches[matchIndex]!.fullPath
-      )
-    },
-    [matchIndex, options.from, router, routerLocation],
-  )
+    return (
+      options.from ??
+      activeLocationMatch?.fullPath ??
+      router.state.matches[matchIndex]!.fullPath
+    )
+  }, [matchIndex, options.from, router, routerLocation])
 
   const _options = React.useMemo(
     () => {
