@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@solidjs/testing-library'
+import { render } from '@solidjs/testing-library'
 import { createContext, useContext } from 'solid-js'
 import { createRootRoute, createRouter } from '../src'
 import { RouterProvider } from '../src/RouterProvider'
 
 describe('RouterProvider', () => {
   it('should provide context through RouterProvider Wrap', async () => {
+    const ctx = createContext<string>()
+
     const rootRoute = createRootRoute({
       component: () => {
         const contextValue = useContext(ctx)
@@ -20,9 +22,7 @@ describe('RouterProvider', () => {
       routeTree,
     })
 
-    const ctx = createContext<string>()
-
-    render(() => (
+    const app = render(() => (
       <RouterProvider
         router={router}
         Wrap={(props) => {
@@ -31,7 +31,7 @@ describe('RouterProvider', () => {
       />
     ))
 
-    const indexElem = await screen.findByText('findMe')
+    const indexElem = await app.findByText('findMe')
     expect(indexElem).toBeInTheDocument()
   })
 })
