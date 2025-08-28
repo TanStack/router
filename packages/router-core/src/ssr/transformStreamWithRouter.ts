@@ -24,6 +24,8 @@ const patternBodyStart = /(<body)/
 const patternBodyEnd = /(<\/body>)/
 const patternHtmlEnd = /(<\/html>)/
 const patternHeadStart = /(<head.*?>)/
+const patternHeadEnd = /(<\/head>)/
+const patternCharset = /(<meta\s+charset=(["']?)[^"'>\s]+\2.*?>)/i
 // regex pattern for matching closing tags
 const patternClosingTag = /(<\/[a-zA-Z][\w:.-]*?>)/g
 
@@ -98,6 +100,7 @@ export function transformStreamWithRouter(
   let pendingClosingTags = ''
   let bodyStarted = false as boolean
   let headStarted = false as boolean
+  let headScriptInjected = false as boolean
   let leftover = ''
   let leftoverHtml = ''
 
@@ -181,18 +184,35 @@ export function transformStreamWithRouter(
         }
       }
 
-      if (!headStarted) {
-        const headStartMatch = chunkString.match(patternHeadStart)
-        if (headStartMatch) {
-          headStarted = true
-          const index = headStartMatch.index!
-          const headTag = headStartMatch[0]
-          const remaining = chunkString.slice(index + headTag.length)
-          finalPassThrough.write(
-            chunkString.slice(0, index) + headTag + getBufferedRouterStream(),
-          )
-          // make sure to only write `remaining` until the next closing tag
-          chunkString = remaining
+      if (!headScriptInjected && !bodyStarted) {
+        if (!headStarted) {
+          const headStartMatch = chunkString.match(patternHeadStart)
+          if (headStartMatch) {
+            headStarted = true
+          }
+        }
+
+        if (headStarted) {
+          const charsetMatch = chunkString.match(patternCharset)
+
+          if (charsetMatch) {
+            headScriptInjected = true
+            const index = charsetMatch.index! + charsetMatch[0]!.length
+            finalPassThrough.write(
+              chunkString.slice(0, index) + getBufferedRouterStream(),
+            )
+            chunkString = chunkString.slice(index)
+          } else {
+            const headEndMatch = chunkString.match(patternHeadEnd)
+            if (headEndMatch) {
+              headScriptInjected = true
+              const index = headEndMatch.index!
+              finalPassThrough.write(
+                chunkString.slice(0, index) + getBufferedRouterStream(),
+              )
+              chunkString = chunkString.slice(index)
+            }
+          }
         }
       }
 

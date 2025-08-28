@@ -2,7 +2,7 @@ import { expect } from '@playwright/test'
 import { test } from './fixture'
 
 test.describe('Charset Encoding', () => {
-  test('documents charset meta tag ordering issue in server-rendered HTML', async ({
+  test('asserts charset meta tag appears before dehydration script', async ({
     page,
   }) => {
     // Navigate to a server-rendered page to get the HTML with dehydration scripts
@@ -21,13 +21,8 @@ test.describe('Charset Encoding', () => {
     expect(charsetIndex).toBeGreaterThan(-1)
     expect(tsrScriptIndex).toBeGreaterThan(-1)
 
-    // CURRENT ISSUE: TSR dehydration script appears BEFORE charset meta tag
-    // This can cause encoding issues when the script contains non-ASCII characters
-    // According to HTML5 spec, charset should appear before any content requiring encoding
-    //
-    // This test documents the current (incorrect) behavior
-    expect(tsrScriptIndex).toBeLessThan(charsetIndex)
-
-    // TODO: Once fixed, change to: expect(charsetIndex).toBeLessThan(tsrScriptIndex)
+    // With the fix, the charset meta tag should now appear BEFORE the TSR dehydration script.
+    // This ensures correct character encoding and compliance with the HTML5 spec.
+    expect(charsetIndex).toBeLessThan(tsrScriptIndex)
   })
 })
