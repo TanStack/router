@@ -9,7 +9,9 @@ import type {
   Constrain,
   Expand,
   Register,
+  RegisteredSerializableInput,
   ResolveValidatorInput,
+  ValidateSerializable,
   ValidateSerializableInput,
   ValidateSerializableInputResult,
   Validator,
@@ -328,12 +330,8 @@ export interface FullFetcherData<
   context: AssignAllClientSendContext<TMiddlewares>
 }
 
-export type FetcherData<
-  TRegister extends Register,
-  TResponse,
-> = TResponse extends Response
-  ? Response
-  : TResponse extends JsonResponse<any>
+export type FetcherData<TRegister extends Register, TResponse> =
+  TResponse extends JsonResponse<any>
     ? ValidateSerializableInputResult<TRegister, ReturnType<TResponse['json']>>
     : ValidateSerializableInputResult<TRegister, TResponse>
 
@@ -353,11 +351,9 @@ export type ServerFnReturnType<
   TResponse,
 > = TServerFnResponseType extends 'raw'
   ? RawResponse | Promise<RawResponse>
-  : TResponse extends Response
-    ? TResponse
-    :
-        | Promise<ValidateSerializableInput<TRegister, TResponse>>
-        | ValidateSerializableInput<TRegister, TResponse>
+  :
+      | Promise<ValidateSerializableInput<TRegister, TResponse>>
+      | ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
   TRegister extends Register,
@@ -420,10 +416,13 @@ export type ServerFnBaseOptions<
   functionId: string
 }
 
-export type ValidateValidatorInput<TRegister extends Register, TValidator> =
-  ResolveValidatorInput<TValidator> extends FormData
-    ? ResolveValidatorInput<TValidator>
-    : ValidateSerializableInput<TRegister, ResolveValidatorInput<TValidator>>
+export type ValidateValidatorInput<
+  TRegister extends Register,
+  TValidator,
+> = ValidateSerializable<
+  ResolveValidatorInput<TValidator>,
+  RegisteredSerializableInput<TRegister> | FormData
+>
 
 export type ValidateValidator<TRegister extends Register, TValidator> =
   ValidateValidatorInput<TRegister, TValidator> extends infer TInput
