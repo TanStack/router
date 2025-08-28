@@ -213,11 +213,13 @@ export class Generator {
   }
 
   private getGeneratedRouteTreePath() {
-    const generatedRouteTreePath = path.isAbsolute(this.config.generatedRouteTree)
+    const generatedRouteTreePath = path.isAbsolute(
+      this.config.generatedRouteTree,
+    )
       ? this.config.generatedRouteTree
       : path.resolve(this.root, this.config.generatedRouteTree)
 
-    const generatedRouteTreeDir = path.dirname(generatedRouteTreePath);
+    const generatedRouteTreeDir = path.dirname(generatedRouteTreePath)
 
     if (!existsSync(generatedRouteTreeDir)) {
       mkdirSync(generatedRouteTreeDir, { recursive: true })
