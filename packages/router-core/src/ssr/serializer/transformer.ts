@@ -1,10 +1,9 @@
 import { createPlugin } from 'seroval'
 import { GLOBAL_TSR } from '../constants'
 import type { Plugin, SerovalNode } from 'seroval'
-import type { Register } from '../../router'
+import type { Register, SSROption } from '../../router'
 import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
-import type { RouterConfig } from '../../config'
 
 export type Serializable =
   | number
@@ -158,18 +157,15 @@ export type ValidateSerializableInput<
 > = ValidateSerializable<T, RegisteredSerializableInput<TRegister>>
 
 export type RegisteredSerializableInput<TRegister extends Register> =
-  unknown extends RegisteredSerializationAdapters<TRegister>
-    ? Serializable
-    : RegisteredSerializationAdapters<TRegister> extends ReadonlyArray<AnySerializationAdapter>
-      ?
-          | RegisteredSerializationAdapters<TRegister>[number]['~types']['input']
-          | Serializable
-      : Serializable
+  | (unknown extends RegisteredSerializationAdapters<TRegister>
+      ? never
+      : RegisteredSerializationAdapters<TRegister> extends ReadonlyArray<AnySerializationAdapter>
+        ? RegisteredSerializationAdapters<TRegister>[number]['~types']['input']
+        : never)
+  | Serializable
 
 export type RegisteredSerializationAdapters<TRegister extends Register> =
-  TRegister['config'] extends RouterConfig<infer TSerializationAdapters, any>
-    ? TSerializationAdapters
-    : never
+  TRegister['config']['~types']['serializationAdapters']
 
 export type ValidateSerializableInputResult<
   TRegister extends Register,
@@ -186,9 +182,9 @@ export type ValidateSerializableResult<T, TSerializable> =
         : { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
 
 export type RegisteredSSROption<TRegister extends Register> =
-  TRegister['config'] extends RouterConfig<any, infer TDefaultSsr>
-    ? TDefaultSsr
-    : never
+  unknown extends TRegister['config']['~types']['defaultSsr']
+    ? SSROption
+    : TRegister['config']['~types']['defaultSsr']
 
 export type ValidateSerializableLifecycleResult<
   TRegister extends Register,

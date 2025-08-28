@@ -13,9 +13,17 @@ export interface RouterConfig<
   in out TSerializationAdapters,
   in out TDefaultSsr,
 > {
-  '~types': RouterConfig<TSerializationAdapters, TDefaultSsr>
+  '~types': RouterConfigTypes<TSerializationAdapters, TDefaultSsr>
   serializationAdapters: TSerializationAdapters
   defaultSsr: TDefaultSsr | undefined
+}
+
+export interface RouterConfigTypes<
+  in out TSerializationAdapters,
+  in out TDefaultSsr,
+> {
+  serializationAdapters: TSerializationAdapters
+  defaultSsr: TDefaultSsr
 }
 
 export const createRouterConfig = <
