@@ -4,10 +4,12 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
+  last,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
-import { useActiveLocation } from './useActiveLocation'
+import { useMemo } from 'react'
+import { useMatch } from './useMatch'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
@@ -99,15 +101,33 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  // subscribe to location here to re-build fromPath if it changes
   const routerLocation = useRouterState({
     select: (s) => s.location,
     structuralSharing: true as any,
   })
 
-  const { getFromPath } = useActiveLocation()
+  const matchIndex = useMatch({
+    strict: false,
+    select: (match) => match.index,
+  })
 
-  const from = getFromPath(options.from)
+  // subscribe to location here to re-build fromPath if it changes
+  const from = useMemo(
+    () => {
+      const activeLocationMatches = router.matchRoutes(routerLocation, {
+        _buildLocation: false,
+      })
+
+      const activeLocationMatch = last(activeLocationMatches)
+
+      return (
+        options.from ??
+        activeLocationMatch?.fullPath ??
+        router.state.matches[matchIndex]!.fullPath
+      )
+    },
+    [matchIndex, options.from, router, routerLocation],
+  )
 
   const _options = React.useMemo(
     () => {
@@ -116,7 +136,6 @@ export function useLinkProps<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      routerLocation,
       currentSearch,
       from,
       options._fromLocation,
