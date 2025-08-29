@@ -98,7 +98,6 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  // subscribe to location here to re-build fromPath if it changes
   const from = options.from
 
   const _options = React.useMemo(

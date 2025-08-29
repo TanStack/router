@@ -1,5 +1,4 @@
 import * as Solid from 'solid-js'
-import { last } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
