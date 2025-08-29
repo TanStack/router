@@ -1054,8 +1054,8 @@ export class RouterCore<
       state,
     }: HistoryLocation): ParsedLocation<FullSearchSchema<TRouteTree>> => {
       // Before we do any processing, we need to allow rewrites to modify the URL
-      if (this.options.rewrite?.toURL) {
-        url = new URL(this.options.rewrite.toURL({ url }) || url)
+      if (this.options.rewrite?.fromURL) {
+        url = new URL(this.options.rewrite.fromURL({ url }) || url)
       }
 
       // Make sure we derive all the properties we need from the URL object now
