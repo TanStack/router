@@ -6,13 +6,10 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
-  last,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
 import { Dynamic } from 'solid-js/web'
-import { createMemo } from 'solid-js'
-import { useMatch } from './useMatch'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
@@ -135,33 +132,12 @@ export function useLinkProps<
     select: (s) => s.location.searchStr,
   })
 
-  const routerLocation = useRouterState({
-    select: (s) => s.location,
-  })
-
-  const matchIndex = useMatch({
-    strict: false,
-    select: (match) => match.index,
-  })
-
-  const from = createMemo(() => {
-    const activeLocationMatches = router.matchRoutes(routerLocation(), {
-      _buildLocation: false,
-    })
-
-    const activeLocationMatch = last(activeLocationMatches)
-
-    return (
-      options.from ??
-      activeLocationMatch?.fullPath ??
-      router.state.matches[matchIndex()]!.fullPath
-    )
-  })
+  const from = options.from
 
   const _options = () => {
     return {
       ...options,
-      from: from(),
+      from,
     }
   }
 

@@ -4,12 +4,9 @@ import {
   deepEqual,
   exactPathTest,
   functionalUpdate,
-  last,
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
-import { useMemo } from 'react'
-import { useMatch } from './useMatch'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
@@ -101,30 +98,8 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  const routerLocation = useRouterState({
-    select: (s) => s.location,
-    structuralSharing: true as any,
-  })
-
-  const matchIndex = useMatch({
-    strict: false,
-    select: (match) => match.index,
-  })
-
   // subscribe to location here to re-build fromPath if it changes
-  const from = useMemo(() => {
-    const activeLocationMatches = router.matchRoutes(routerLocation, {
-      _buildLocation: false,
-    })
-
-    const activeLocationMatch = last(activeLocationMatches)
-
-    return (
-      options.from ??
-      activeLocationMatch?.fullPath ??
-      router.state.matches[matchIndex]!.fullPath
-    )
-  }, [matchIndex, options.from, router, routerLocation])
+  const from = options.from
 
   const _options = React.useMemo(
     () => {
