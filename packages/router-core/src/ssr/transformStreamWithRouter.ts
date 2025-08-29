@@ -184,7 +184,7 @@ export function transformStreamWithRouter(
         }
       }
 
-      if (!headScriptInjected && !bodyStarted) {
+      if (!headScriptInjected) {
         if (!headStarted) {
           const headStartMatch = chunkString.match(patternHeadStart)
           if (headStartMatch) {
