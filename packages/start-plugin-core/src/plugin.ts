@@ -290,10 +290,7 @@ export function TanStackStartVitePluginCore(
       },
     },
     // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPluginEnv
-    startCompilerPlugin(corePluginOpts.framework, {
-      client: { envName: VITE_ENVIRONMENT_NAMES.client },
-      server: { envName: VITE_ENVIRONMENT_NAMES.server },
-    }),
+    startCompilerPlugin(corePluginOpts.framework),
     TanStackServerFnPluginEnv({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module

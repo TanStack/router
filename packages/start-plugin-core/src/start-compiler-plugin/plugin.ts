@@ -8,6 +8,7 @@ import path from 'pathe'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { compileStartOutputFactory } from './compilers'
 import { transformFuncs } from './constants'
+import type { ViteEnvironmentNames } from '../constants'
 import type { Plugin } from 'vite'
 import type { CompileStartFrameworkOptions } from './compilers'
 
@@ -37,33 +38,17 @@ function resolvePackage(packageName: string): string {
 
 export function startCompilerPlugin(
   framework: CompileStartFrameworkOptions,
-  inputOpts?: {
-    client?: {
-      envName?: string
-    }
-    server?: {
-      envName?: string
-    }
-  },
 ): Plugin {
-  const opts = {
-    client: {
-      envName: VITE_ENVIRONMENT_NAMES.client,
-      ...inputOpts?.client,
-    },
-    server: {
-      envName: VITE_ENVIRONMENT_NAMES.server,
-      ...inputOpts?.server,
-    },
-  }
-
   const compileStartOutput = compileStartOutputFactory(framework)
 
   return {
     name: 'tanstack-start-core:compiler',
     enforce: 'pre',
     applyToEnvironment(env) {
-      return [opts.client.envName, opts.server.envName].includes(env.name)
+      return [
+        VITE_ENVIRONMENT_NAMES.client,
+        VITE_ENVIRONMENT_NAMES.server,
+      ].includes(env.name as ViteEnvironmentNames)
     },
     transform: {
       filter: {
@@ -103,9 +88,9 @@ export function startCompilerPlugin(
       },
       handler(code, id) {
         const env =
-          this.environment.name === opts.client.envName
+          this.environment.name === VITE_ENVIRONMENT_NAMES.client
             ? 'client'
-            : this.environment.name === opts.server.envName
+            : this.environment.name === VITE_ENVIRONMENT_NAMES.server
               ? 'server'
               : (() => {
                   throw new Error(
