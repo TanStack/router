@@ -391,8 +391,8 @@ export function useLinkProps<
     return _options().disabled
       ? undefined
       : maskedLocation
-        ? maskedLocation.url.href
-        : nextLocation?.url.href
+        ? maskedLocation.fullPath
+        : nextLocation?.fullPath
   })
 
   return Solid.mergeProps(

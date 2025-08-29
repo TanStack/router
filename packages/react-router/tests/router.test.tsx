@@ -326,57 +326,57 @@ function createTestRouter(
 }
 
 describe('encoding: URL param segment for /posts/$slug', () => {
-  it('state.location.pathname, should have the params.slug value of "tanner"', async () => {
+  it('state.location.url.pathname, should have the params.slug value of "tanner"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     })
 
     await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe('/posts/tanner')
+    expect(router.state.location.url.pathname).toBe('/posts/tanner')
   })
 
-  it('state.location.pathname, should have the params.slug value of "🚀"', async () => {
+  it('state.location.url.pathname, should have the params.slug value of "🚀"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
     })
 
     await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe('/posts/🚀')
+    expect(router.state.location.url.pathname).toBe('/posts/%F0%9F%9A%80')
   })
 
-  it('state.location.pathname, should have the params.slug value of "100%25"', async () => {
+  it('state.location.url.pathname, should have the params.slug value of "100%25"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/100%25'] }),
     })
 
     await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe('/posts/100%25')
+    expect(router.state.location.url.pathname).toBe('/posts/100%25')
   })
 
-  it('state.location.pathname, should have the params.slug value of "100%26"', async () => {
+  it('state.location.url.pathname, should have the params.slug value of "100%26"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/100%26'] }),
     })
 
     await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe('/posts/100%26')
+    expect(router.state.location.url.pathname).toBe('/posts/100%26')
   })
 
-  it('state.location.pathname, should have the params.slug value of "%F0%9F%9A%80"', async () => {
+  it('state.location.url.pathname, should have the params.slug value of "%F0%9F%9A%80"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     })
 
     await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
+    expect(router.state.location.url.pathname).toBe('/posts/%F0%9F%9A%80')
   })
 
-  it('state.location.pathname, should have the params.slug value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
+  it('state.location.url.pathname, should have the params.slug value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({
         initialEntries: [
@@ -387,7 +387,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe(
+    expect(router.state.location.url.pathname).toBe(
       '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
     )
   })
@@ -554,7 +554,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
     )
 
-    expect(router.state.location.pathname).toBe('/posts/%40jane')
+    expect(router.state.location.url.pathname).toBe('/posts/%40jane')
   })
 
   it('params.slug should be encoded in the final URL except characters in pathParamsAllowedCharacters', async () => {
@@ -570,62 +570,62 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
     )
 
-    expect(router.state.location.pathname).toBe('/posts/@jane')
+    expect(router.state.location.url.pathname).toBe('/posts/@jane')
   })
 })
 
 describe('encoding: URL splat segment for /$', () => {
-  it('state.location.pathname, should have the params._splat value of "tanner"', async () => {
+  it('state.location.url.pathname, should have the params._splat value of "tanner"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/tanner'] }),
     })
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/tanner')
+    expect(router.state.location.url.pathname).toBe('/tanner')
   })
 
-  it('state.location.pathname, should have the params._splat value of "🚀"', async () => {
+  it('state.location.url.pathname, should have the params._splat value of "🚀"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/🚀'] }),
     })
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/🚀')
+    expect(router.state.location.url.pathname).toBe('/%F0%9F%9A%80')
   })
 
-  it('state.location.pathname, should have the params._splat value of "100%25"', async () => {
+  it('state.location.url.pathname, should have the params._splat value of "100%25"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/100%25'] }),
     })
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/100%25')
+    expect(router.state.location.url.pathname).toBe('/100%25')
   })
 
-  it('state.location.pathname, should have the params._splat value of "100%26"', async () => {
+  it('state.location.url.pathname, should have the params._splat value of "100%26"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/100%26'] }),
     })
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/100%26')
+    expect(router.state.location.url.pathname).toBe('/100%26')
   })
 
-  it('state.location.pathname, should have the params._splat value of "%F0%9F%9A%80"', async () => {
+  it('state.location.url.pathname, should have the params._splat value of "%F0%9F%9A%80"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
     })
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/%F0%9F%9A%80')
+    expect(router.state.location.url.pathname).toBe('/%F0%9F%9A%80')
   })
 
-  it('state.location.pathname, should have the params._splat value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
+  it('state.location.url.pathname, should have the params._splat value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({
         initialEntries: [
@@ -636,12 +636,12 @@ describe('encoding: URL splat segment for /$', () => {
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe(
+    expect(router.state.location.url.pathname).toBe(
       '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
     )
   })
 
-  it('state.location.pathname, should have the params._splat value of "framework/react/guide/file-based-routing tanstack"', async () => {
+  it('state.location.url.pathname, should have the params._splat value of "framework/react/guide/file-based-routing tanstack"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({
         initialEntries: ['/framework/react/guide/file-based-routing tanstack'],
@@ -650,8 +650,8 @@ describe('encoding: URL splat segment for /$', () => {
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe(
-      '/framework/react/guide/file-based-routing tanstack',
+    expect(router.state.location.url.pathname).toBe(
+      '/framework/react/guide/file-based-routing%20tanstack',
     )
   })
 
@@ -736,12 +736,11 @@ describe('encoding: URL path segment', () => {
   it.each([
     {
       input: '/path-segment/%C3%A9',
-      output: '/path-segment/é',
-      type: 'encoded',
+      output: '/path-segment/%C3%A9',
     },
     {
       input: '/path-segment/é',
-      output: '/path-segment/é',
+      output: '/path-segment/%C3%A9',
       type: 'not encoded',
     },
     {
@@ -761,53 +760,46 @@ describe('encoding: URL path segment', () => {
     },
     {
       input: '/path-segment/%F0%9F%9A%80',
-      output: '/path-segment/🚀',
-      type: 'encoded',
+      output: '/path-segment/%F0%9F%9A%80',
     },
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon',
-      type: 'encoded',
+      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/%25🚀to%2Fthe%2Fmoon',
-      type: 'encoded',
+      output: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon%25',
-      type: 'encoded',
+      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
     },
     {
       input:
         '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon%25🚀to%2Fthe%2Fmoon',
-      type: 'encoded',
+      output:
+        '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/🚀',
-      output: '/path-segment/🚀',
+      output: '/path-segment/%F0%9F%9A%80',
       type: 'not encoded',
     },
     {
       input: '/path-segment/🚀to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon',
+      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
       type: 'not encoded',
     },
-  ])(
-    'should resolve $input to $output when the path segment is $type',
-    async ({ input, output }) => {
-      const { router } = createTestRouter({
-        history: createMemoryHistory({ initialEntries: [input] }),
-      })
+  ])('should resolve $input to $output', async ({ input, output }) => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: [input] }),
+    })
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+    render(<RouterProvider router={router} />)
+    await act(() => router.load())
 
-      expect(router.state.location.pathname).toBe(output)
-    },
-  )
+    expect(router.state.location.url.pathname).toBe(output)
+  })
 })
 
 describe('router emits events during rendering', () => {
