@@ -20,10 +20,10 @@ export function useNavigate<
     (options: NavigateOptions) => {
       return router.navigate({
         ...options,
-        from: options.from ??
-          _defaultOpts?.from,
+        from: options.from ?? _defaultOpts?.from,
       })
-    }, [_defaultOpts?.from, router],
+    },
+    [_defaultOpts?.from, router],
   ) as UseNavigateResult<TDefaultFrom>
 }
 
