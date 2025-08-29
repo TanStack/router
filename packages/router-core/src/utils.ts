@@ -223,7 +223,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
     const prevSize = prevItems.length
     const nextItems = array ? next : Reflect.ownKeys(next)
     const nextSize = nextItems.length
-    const copy: any = array ? [] : {}
+    const copy: any = array ? new Array(nextSize) : {}
 
     let equalItems = 0
 
@@ -231,7 +231,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
       const key = array ? i : (nextItems[i] as any)
       const p = prev[key]
       if (
-        (array || prevItems.includes(key)) &&
+        (array || Object.prototype.hasOwnProperty.call(prev, key)) &&
         p === undefined &&
         next[key] === undefined
       ) {
