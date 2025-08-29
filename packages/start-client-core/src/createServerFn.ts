@@ -193,9 +193,7 @@ export async function executeMiddleware(
       return ctx
     }
 
-    if (
-      nextMiddleware.options.validator && env === 'server'
-    ) {
+    if (nextMiddleware.options.validator && env === 'server') {
       // Execute the middleware's input function
       ctx.data = await execValidator(nextMiddleware.options.validator, ctx.data)
     }
