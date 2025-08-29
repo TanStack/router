@@ -1,13 +1,30 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-
-import { compileStartOutputFactory } from '../../src/start-compiler-plugin/compilers'
-
-const compileStartOutput = compileStartOutputFactory('react')
+import { ServerFnCompiler } from '../../src/create-server-fn-plugin/compiler'
 
 async function getFilenames() {
   return await readdir(path.resolve(import.meta.dirname, './test-files'))
+}
+
+async function compile(opts: {
+  env: 'client' | 'server'
+  code: string
+  id: string
+}) {
+  const compiler = new ServerFnCompiler({
+    ...opts,
+    libName: '@tanstack/react-start',
+    loadModule: async (id) => {
+      // do nothing in test
+    },
+    rootExport: 'createServerFn',
+    resolveId: async (id) => {
+      return id
+    },
+  })
+  const result = await compiler.compile({ code: opts.code, id: opts.id })
+  return result
 }
 
 describe('createServerFn compiles correctly', async () => {
@@ -22,47 +39,16 @@ describe('createServerFn compiles correctly', async () => {
     test.each(['client', 'server'] as const)(
       `should compile for ${filename} %s`,
       async (env) => {
-        const compiledResult = compileStartOutput({
-          env,
-          code,
-          filename,
-          dce: false,
-        })
+        const result = await compile({ env, code, id: filename })
 
-        await expect(compiledResult.code).toMatchFileSnapshot(
+        await expect(result!.code).toMatchFileSnapshot(
           `./snapshots/${env}/${filename}`,
         )
       },
     )
   })
 
-  test('should error if created without a handler', () => {
-    expect(() => {
-      compileStartOutput({
-        env: 'client',
-        code: `
-        import { createServerFn } from '@tanstack/react-start'
-        createServerFn()`,
-        filename: 'no-fn.ts',
-        dce: false,
-      })
-    }).toThrowError()
-  })
-
-  test('should be assigned to a variable', () => {
-    expect(() => {
-      compileStartOutput({
-        env: 'client',
-        code: `
-        import { createServerFn } from '@tanstack/react-start'
-        createServerFn().handler(async () => {})`,
-        filename: 'no-fn.ts',
-        dce: false,
-      })
-    }).toThrowError()
-  })
-
-  test('should work with identifiers of functions', () => {
+  test('should work with identifiers of functions', async () => {
     const code = `
         import { createServerFn } from '@tanstack/react-start'
         const myFunc = () => {
@@ -70,21 +56,19 @@ describe('createServerFn compiles correctly', async () => {
         }
         const myServerFn = createServerFn().handler(myFunc)`
 
-    const compiledResultClient = compileStartOutput({
-      filename: 'test.ts',
+    const compiledResultClient = await compile({
+      id: 'test.ts',
       code,
       env: 'client',
-      dce: false,
     })
 
-    const compiledResultServer = compileStartOutput({
-      filename: 'test.ts',
+    const compiledResultServer = await compile({
+      id: 'test.ts',
       code,
       env: 'server',
-      dce: false,
     })
 
-    expect(compiledResultClient.code).toMatchInlineSnapshot(`
+    expect(compiledResultClient!.code).toMatchInlineSnapshot(`
       "import { createServerFn } from '@tanstack/react-start';
       const myServerFn = createServerFn().handler((opts, signal) => {
         "use server";
@@ -93,7 +77,7 @@ describe('createServerFn compiles correctly', async () => {
       });"
     `)
 
-    expect(compiledResultServer.code).toMatchInlineSnapshot(`
+    expect(compiledResultServer!.code).toMatchInlineSnapshot(`
       "import { createServerFn } from '@tanstack/react-start';
       const myFunc = () => {
         return 'hello from the server';
@@ -106,7 +90,7 @@ describe('createServerFn compiles correctly', async () => {
     `)
   })
 
-  test('should use dce by default', () => {
+  test('should use dce by default', async () => {
     const code = `
       import { createServerFn } from '@tanstack/react-start'
       const exportedVar = 'exported'
@@ -119,14 +103,13 @@ describe('createServerFn compiles correctly', async () => {
       })`
 
     // Client
-    const compiledResult = compileStartOutput({
-      filename: 'test.ts',
+    const compiledResult = await compile({
+      id: 'test.ts',
       code,
       env: 'client',
-      dce: true,
     })
 
-    expect(compiledResult.code).toMatchInlineSnapshot(`
+    expect(compiledResult!.code).toMatchInlineSnapshot(`
       "import { createServerFn } from '@tanstack/react-start';
       export const exportedFn = createServerFn().handler((opts, signal) => {
         "use server";
@@ -141,14 +124,13 @@ describe('createServerFn compiles correctly', async () => {
     `)
 
     // Server
-    const compiledResultServer = compileStartOutput({
-      filename: 'test.ts',
+    const compiledResultServer = await compile({
+      id: 'test.ts',
       code,
       env: 'server',
-      dce: true,
     })
 
-    expect(compiledResultServer.code).toMatchInlineSnapshot(`
+    expect(compiledResultServer!.code).toMatchInlineSnapshot(`
       "import { createServerFn } from '@tanstack/react-start';
       const exportedVar = 'exported';
       export const exportedFn = createServerFn().handler((opts, signal) => {

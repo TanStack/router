@@ -97,7 +97,6 @@ test('createServerFn with middleware and context', () => {
 
   expectTypeOf(fnWithMiddleware).toHaveProperty('handler')
   expectTypeOf(fnWithMiddleware).toHaveProperty('validator')
-  expectTypeOf(fnWithMiddleware).not.toHaveProperty('middleware')
 
   fnWithMiddleware.handler((options) => {
     expectTypeOf(options).toEqualTypeOf<{
@@ -512,4 +511,89 @@ test('createServerFn validator infers unknown for default input type', () => {
   >()
 
   expectTypeOf(fn()).toEqualTypeOf<Promise<'failed' | 'success'>>()
+})
+
+test('incrementally building createServerFn with multiple middleware calls', () => {
+  const middleware1 = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { a: 'a' } as const })
+    },
+  )
+
+  const middleware2 = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { b: 'b' } as const })
+    },
+  )
+
+  const middleware3 = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { c: 'c' } as const })
+    },
+  )
+
+  const builderWithMw1 = createServerFn({ method: 'GET' }).middleware([
+    middleware1,
+  ])
+
+  expectTypeOf(builderWithMw1).toHaveProperty('handler')
+  expectTypeOf(builderWithMw1).toHaveProperty('validator')
+  expectTypeOf(builderWithMw1).toHaveProperty('middleware')
+
+  builderWithMw1.handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'GET'
+      context: {
+        readonly a: 'a'
+      }
+      data: undefined
+      signal: AbortSignal
+      response: 'data'
+    }>()
+  })
+
+  // overrides method
+  const builderWithMw2 = builderWithMw1({ method: 'POST' }).middleware([
+    middleware2,
+  ])
+
+  expectTypeOf(builderWithMw2).toHaveProperty('handler')
+  expectTypeOf(builderWithMw2).toHaveProperty('validator')
+  expectTypeOf(builderWithMw2).toHaveProperty('middleware')
+
+  builderWithMw2.handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'POST'
+      context: {
+        readonly a: 'a'
+        readonly b: 'b'
+      }
+      data: undefined
+      signal: AbortSignal
+      response: 'data'
+    }>()
+  })
+
+  // overrides method again
+  const builderWithMw3 = builderWithMw2({ method: 'GET' }).middleware([
+    middleware3,
+  ])
+
+  expectTypeOf(builderWithMw3).toHaveProperty('handler')
+  expectTypeOf(builderWithMw3).toHaveProperty('validator')
+  expectTypeOf(builderWithMw3).toHaveProperty('middleware')
+
+  builderWithMw3.handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'GET'
+      context: {
+        readonly a: 'a'
+        readonly b: 'b'
+        readonly c: 'c'
+      }
+      data: undefined
+      signal: AbortSignal
+      response: 'data'
+    }>()
+  })
 })

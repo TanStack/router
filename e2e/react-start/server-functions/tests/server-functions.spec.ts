@@ -369,3 +369,37 @@ test.describe('middleware', () => {
     })
   })
 })
+
+test('factory', async ({ page }) => {
+  await page.goto('/factory')
+
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  const buttons = await page
+    .locator('[data-testid^="btn-fn-"]')
+    .elementHandles()
+  for (const button of buttons) {
+    const testId = await button.getAttribute('data-testid')
+
+    if (!testId) {
+      throw new Error('Button is missing data-testid')
+    }
+
+    const suffix = testId.replace('btn-fn-', '')
+
+    const expected =
+      (await page.getByTestId(`expected-fn-result-${suffix}`).textContent()) ||
+      ''
+    expect(expected).not.toBe('')
+
+    await button.click()
+
+    await expect(page.getByTestId(`fn-result-${suffix}`)).toContainText(
+      expected,
+    )
+
+    await expect(page.getByTestId(`fn-comparison-${suffix}`)).toContainText(
+      'equal',
+    )
+  }
+})

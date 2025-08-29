@@ -18,6 +18,7 @@ import {
   getServerOutputDirectory,
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
+import { createServerFnPlugin } from './create-server-fn-plugin/plugin'
 import type { ViteEnvironmentNames } from './constants'
 import type { TanStackStartInputConfig } from './schema'
 import type { PluginOption } from 'vite'
@@ -289,6 +290,7 @@ export function TanStackStartVitePluginCore(
         }
       },
     },
+    createServerFnPlugin(corePluginOpts.framework),
     // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPluginEnv
     startCompilerPlugin(corePluginOpts.framework),
     TanStackServerFnPluginEnv({
