@@ -1,5 +1,4 @@
 export const transformFuncs = [
-  'createServerFn',
   'createMiddleware',
   'createServerOnlyFn',
   'createClientOnlyFn',

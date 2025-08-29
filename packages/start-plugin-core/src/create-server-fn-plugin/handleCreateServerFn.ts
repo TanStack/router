@@ -1,38 +1,31 @@
 import * as t from '@babel/types'
-import { codeFrameError, getRootCallExpression } from './utils'
+import {
+  codeFrameError,
+  getRootCallExpression,
+} from '../start-compiler-plugin/utils'
 import type * as babel from '@babel/core'
 
-import type { CompileOptions } from './compilers'
-
-export function handleCreateServerFnCallExpression(
+export function handleCreateServerFn(
   path: babel.NodePath<t.CallExpression>,
-  opts: CompileOptions,
+  opts: {
+    env: 'client' | 'server'
+    code: string
+  },
 ) {
   // Traverse the member expression and find the call expressions for
   // the validator, handler, and middleware methods. Check to make sure they
   // are children of the createServerFn call expression.
 
-  const calledOptions = path.node.arguments[0]
-    ? (path.get('arguments.0') as babel.NodePath<t.ObjectExpression>)
-    : null
-
-  const shouldValidateClient = !!calledOptions?.node.properties.find((prop) => {
-    return (
-      t.isObjectProperty(prop) &&
-      t.isIdentifier(prop.key) &&
-      prop.key.name === 'validateClient' &&
-      t.isBooleanLiteral(prop.value) &&
-      prop.value.value === true
-    )
-  })
-
-  const callExpressionPaths = {
-    middleware: null as babel.NodePath<t.CallExpression> | null,
-    validator: null as babel.NodePath<t.CallExpression> | null,
-    handler: null as babel.NodePath<t.CallExpression> | null,
+  const validMethods = ['middleware', 'validator', 'handler'] as const
+  type ValidMethods = (typeof validMethods)[number]
+  const callExpressionPaths: Record<
+    ValidMethods,
+    babel.NodePath<t.CallExpression> | null
+  > = {
+    middleware: null,
+    validator: null,
+    handler: null,
   }
-
-  const validMethods = Object.keys(callExpressionPaths)
 
   const rootCallExpression = getRootCallExpression(path)
 
@@ -54,8 +47,7 @@ export function handleCreateServerFnCallExpression(
   rootCallExpression.traverse({
     MemberExpression(memberExpressionPath) {
       if (t.isIdentifier(memberExpressionPath.node.property)) {
-        const name = memberExpressionPath.node.property
-          .name as keyof typeof callExpressionPaths
+        const name = memberExpressionPath.node.property.name as ValidMethods
 
         if (
           validMethods.includes(name) &&
@@ -76,15 +68,13 @@ export function handleCreateServerFnCallExpression(
       )
     }
 
-    // If we're on the client, and we're not validating the client, remove the validator call expression
-    if (
-      opts.env === 'client' &&
-      !shouldValidateClient &&
-      t.isMemberExpression(callExpressionPaths.validator.node.callee)
-    ) {
-      callExpressionPaths.validator.replaceWith(
-        callExpressionPaths.validator.node.callee.object,
-      )
+    // If we're on the client, remove the validator call expression
+    if (opts.env === 'client') {
+      if (t.isMemberExpression(callExpressionPaths.validator.node.callee)) {
+        callExpressionPaths.validator.replaceWith(
+          callExpressionPaths.validator.node.callee.object,
+        )
+      }
     }
   }
 

@@ -64,9 +64,15 @@ export function createServerFn<
     resolvedOptions.method = 'GET' as TMethod
   }
 
-  return {
+  const res: ServerFnBuilder<TRegister, TMethod, TServerFnResponseType> = {
     options: resolvedOptions as any,
     middleware: (middleware) => {
+      // multiple calls to `middleware()` merge the middlewares with the previously supplied ones
+      // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
+      const newOptions = {
+        ...resolvedOptions,
+        middleware: [...(resolvedOptions.middleware || []), ...middleware],
+      }
       return createServerFn<
         TRegister,
         TMethod,
@@ -74,9 +80,10 @@ export function createServerFn<
         TResponse,
         TMiddlewares,
         TValidator
-      >(undefined, Object.assign(resolvedOptions, { middleware })) as any
+      >(undefined, newOptions) as any
     },
     validator: (validator) => {
+      const newOptions = { ...resolvedOptions, validator: validator as any }
       return createServerFn<
         TRegister,
         TMethod,
@@ -84,7 +91,7 @@ export function createServerFn<
         TResponse,
         TMiddlewares,
         TValidator
-      >(undefined, Object.assign(resolvedOptions, { validator })) as any
+      >(undefined, newOptions) as any
     },
     handler: (...args) => {
       // This function signature changes due to AST transformations
@@ -104,15 +111,11 @@ export function createServerFn<
 
       // Keep the original function around so we can use it
       // in the server environment
-      Object.assign(resolvedOptions, {
-        ...extractedFn,
-        extractedFn,
-        serverFn,
-      })
+      const newOptions = { ...resolvedOptions, extractedFn, serverFn }
 
       const resolvedMiddleware = [
-        ...(resolvedOptions.middleware || []),
-        serverFnBaseToMiddleware(resolvedOptions),
+        ...(newOptions.middleware || []),
+        serverFnBaseToMiddleware(newOptions),
       ]
 
       // We want to make sure the new function has the same
@@ -123,14 +126,14 @@ export function createServerFn<
           // Start by executing the client-side middleware chain
           return executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
-            ...resolvedOptions,
+            ...newOptions,
             data: opts?.data as any,
             headers: opts?.headers,
             signal: opts?.signal,
             context: {},
             router: getRouterInstance(),
           }).then((d) => {
-            if (resolvedOptions.response === 'full') {
+            if (newOptions.response === 'full') {
               return d
             }
             if (d.error) throw d.error
@@ -162,6 +165,19 @@ export function createServerFn<
       ) as any
     },
   }
+  const fun = (options?: {
+    method?: TMethod
+    response?: TServerFnResponseType
+  }) => {
+    return {
+      ...res,
+      options: {
+        ...res.options,
+        ...options,
+      },
+    }
+  }
+  return Object.assign(fun, res)
 }
 
 export async function executeMiddleware(
@@ -440,10 +456,14 @@ export type ConstrainValidator<TRegister extends Register, TValidator> =
         : never)
   | ValidateValidator<TRegister, TValidator>
 
+type ToTuple<T> =
+  T extends ReadonlyArray<infer U> ? T : T extends undefined ? [] : [T]
+
 export interface ServerFnMiddleware<
   TRegister extends Register,
   TMethod extends Method,
   TServerFnResponseType extends ServerFnResponseType,
+  TMiddlewares,
   TValidator,
 > {
   middleware: <const TNewMiddlewares = undefined>(
@@ -455,7 +475,7 @@ export interface ServerFnMiddleware<
     TRegister,
     TMethod,
     TServerFnResponseType,
-    TNewMiddlewares,
+    [...ToTuple<TMiddlewares>, ...ToTuple<TNewMiddlewares>],
     TValidator
   >
 }
@@ -466,19 +486,36 @@ export interface ServerFnAfterMiddleware<
   TServerFnResponseType extends ServerFnResponseType,
   TMiddlewares,
   TValidator,
-> extends ServerFnValidator<
+> extends ServerFnMiddleware<
       TRegister,
       TMethod,
       TServerFnResponseType,
-      TMiddlewares
+      TMiddlewares,
+      undefined
     >,
+    ServerFnValidator<TRegister, TMethod, TServerFnResponseType, TMiddlewares>,
     ServerFnHandler<
       TRegister,
       TMethod,
       TServerFnResponseType,
       TMiddlewares,
       TValidator
-    > {}
+    > {
+  <
+    TNewMethod extends Method = TMethod,
+    TNewServerFnResponseType extends
+      ServerFnResponseType = TServerFnResponseType,
+  >(options?: {
+    method?: TNewMethod
+    response?: TNewServerFnResponseType
+  }): ServerFnAfterMiddleware<
+    TRegister,
+    TNewMethod,
+    TNewServerFnResponseType,
+    TMiddlewares,
+    TValidator
+  >
+}
 
 export type ValidatorFn<
   TRegister extends Register,
@@ -519,6 +556,7 @@ export interface ServerFnAfterValidator<
       TRegister,
       TMethod,
       TServerFnResponseType,
+      TMiddlewares,
       TValidator
     >,
     ServerFnHandler<
@@ -577,6 +615,7 @@ export interface ServerFnBuilder<
       TRegister,
       TMethod,
       TServerFnResponseType,
+      undefined,
       undefined
     >,
     ServerFnValidator<TRegister, TMethod, TServerFnResponseType, undefined>,

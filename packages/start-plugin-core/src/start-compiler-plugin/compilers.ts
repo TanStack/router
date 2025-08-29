@@ -10,7 +10,6 @@ import { transformFuncs } from './constants'
 import { handleCreateServerFileRouteCallExpressionFactory } from './serverFileRoute'
 import { handleCreateIsomorphicFnCallExpression } from './isomorphicFn'
 import { handleCreateMiddlewareCallExpression } from './middleware'
-import { handleCreateServerFnCallExpression } from './serverFn'
 import {
   handleCreateClientOnlyFnCallExpression,
   handleCreateServerOnlyFnCallExpression,
@@ -45,11 +44,6 @@ const getIdentifiers = (
       framework,
       'createServerFileRoute',
     ),
-    paths: [],
-  },
-  createServerFn: {
-    name: 'createServerFn',
-    handleCallExpression: handleCreateServerFnCallExpression,
     paths: [],
   },
   createMiddleware: {
