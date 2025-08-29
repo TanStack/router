@@ -148,20 +148,13 @@ const loggingMiddleware = createMiddleware({ type: 'function' })
 
 Despite server functions being mostly server-side bound operations, there is still plenty of client-side logic surrounding the outgoing RPC request from the client. This means that we can also define client-side logic in middleware that will execute on the client side around any nested middleware and ultimately the RPC function and its response to the client.
 
-## Client-side Payload Validation
-
-By default, middleware validation is only performed on the server to keep the client bundle size small. However, you may also choose to validate data on the client side by passing the `validateClient: true` option to the `createMiddleware` function. This will cause the data to be validated on the client side before being sent to the server, potentially saving a round trip.
-
-> Why can't I pass a different validation schema for the client?
->
-> The client-side validation schema is derived from the server-side schema. This is because the client-side validation schema is used to validate the data before it is sent to the server. If the client-side schema were different from the server-side schema, the server would receive data that it did not expect, which could lead to unexpected behavior.
 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
-const workspaceMiddleware = createMiddleware({ validateClient: true })
+const workspaceMiddleware = createMiddleware()
   .validator(zodValidator(mySchema))
   .server(({ next, data }) => {
     console.log('Workspace ID:', data.workspaceId)
@@ -425,4 +418,4 @@ const fn = createServerFn()
 Middleware functionality is tree-shaken based on the environment for each bundle produced.
 
 - On the server, nothing is tree-shaken, so all code used in middleware will be included in the server bundle.
-- On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. If `validateClient` is set to `true`, the client-side validation code will be included in the client bundle, otherwise `data` validation code will also be removed.
+- On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. `data` validation code will also be removed.

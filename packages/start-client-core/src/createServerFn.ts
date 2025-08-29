@@ -194,8 +194,7 @@ export async function executeMiddleware(
     }
 
     if (
-      nextMiddleware.options.validator &&
-      (env === 'client' ? nextMiddleware.options.validateClient : true)
+      nextMiddleware.options.validator && env === 'server'
     ) {
       // Execute the middleware's input function
       ctx.data = await execValidator(nextMiddleware.options.validator, ctx.data)
@@ -362,7 +361,6 @@ export type ServerFnBaseOptions<
   TInput = unknown,
 > = {
   method: TMethod
-  validateClient?: boolean
   middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyFunctionMiddleware>>
   validator?: ConstrainValidator<TRegister, TInput>
   extractedFn?: CompiledFetcherFn<TRegister, TResponse>
@@ -632,7 +630,6 @@ export function serverFnBaseToMiddleware(
     _types: undefined!,
     options: {
       validator: options.validator,
-      validateClient: options.validateClient,
       client: async ({ next, sendContext, ...ctx }) => {
         const payload = {
           ...ctx,

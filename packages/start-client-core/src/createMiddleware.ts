@@ -18,7 +18,6 @@ export function createMiddleware<
 >(
   options: {
     type: TType
-    validateClient?: boolean
   },
   __opts?: FunctionMiddlewareOptions<
     TRegister,
@@ -314,7 +313,6 @@ export interface FunctionMiddlewareOptions<
   in out TServerContext,
   in out TClientContext,
 > {
-  validateClient?: boolean
   middleware?: TMiddlewares
   validator?: ConstrainValidator<TRegister, TValidator>
   client?: FunctionMiddlewareClientFn<
