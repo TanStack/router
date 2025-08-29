@@ -26,7 +26,6 @@ export {
   type FetcherBaseOptions,
   type ServerFn,
   type ServerFnCtx,
-  type ServerFnResponseType,
   type JsonResponse,
   type IntersectAllValidatorInputs,
   type IntersectAllValidatorOutputs,

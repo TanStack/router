@@ -30,7 +30,6 @@ export async function serverFnFetcher(
       any,
       any,
       any,
-      any,
       any
     > & {
       headers: HeadersInit
@@ -53,6 +52,9 @@ export async function serverFnFetcher(
 
     // If the method is GET, we need to move the payload to the query string
     if (first.method === 'GET') {
+      if (type === 'formData') {
+        throw new Error('FormData is not supported with GET requests')
+      }
       const encodedPayload = encode({
         payload: await serializePayload(first),
       })
@@ -70,9 +72,6 @@ export async function serverFnFetcher(
       url += `&createServerFn`
     } else {
       url += `?createServerFn`
-    }
-    if (first.response === 'raw') {
-      url += `&raw`
     }
 
     return await getResponse(async () =>
@@ -101,7 +100,7 @@ export async function serverFnFetcher(
 }
 
 async function serializePayload(
-  opts: FunctionMiddlewareClientFnOptions<any, any, any, any, any>,
+  opts: FunctionMiddlewareClientFnOptions<any, any, any, any>,
 ) {
   const payloadToSerialize: any = {}
   if (opts.data) {
@@ -122,7 +121,7 @@ async function serialize(data: any) {
 }
 
 async function getFetcherRequestOptions(
-  opts: FunctionMiddlewareClientFnOptions<any, any, any, any, any>,
+  opts: FunctionMiddlewareClientFnOptions<any, any, any, any>,
 ) {
   if (opts.method === 'POST') {
     if (opts.data instanceof FormData) {

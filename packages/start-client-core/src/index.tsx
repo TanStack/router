@@ -56,7 +56,6 @@ export type {
   FetcherBaseOptions,
   ServerFn,
   ServerFnCtx,
-  ServerFnResponseType,
   MiddlewareFn,
   ServerFnMiddlewareOptions,
   ServerFnMiddlewareResult,
