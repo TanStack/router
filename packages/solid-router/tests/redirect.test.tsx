@@ -351,6 +351,7 @@ describe('redirect', () => {
     expect(currentRedirect.headers.get('Location')).toEqual('/about')
     expect(currentRedirect.options).toEqual({
       _fromLocation: {
+        fullPath: '/',
         hash: '',
         href: '/',
         pathname: '/',
@@ -361,6 +362,7 @@ describe('redirect', () => {
           __TSR_key: currentRedirect.options._fromLocation!.state.__TSR_key,
           key: currentRedirect.options._fromLocation!.state.key,
         },
+        url: new URL('http://localhost/'),
       },
       href: '/about',
       to: '/about',
