@@ -56,7 +56,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "@tanstack/router-core": "workspace:*"
