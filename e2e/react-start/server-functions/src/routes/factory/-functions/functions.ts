@@ -1,4 +1,4 @@
-import { createMiddleware } from '@tanstack/react-start'
+import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { createBarServerFn } from './createBarServerFn'
 import { createFooServerFn } from './createFooServerFn'
 import { createFakeFn } from './createFakeFn'
@@ -79,3 +79,15 @@ export const fakeFn = createFakeFn().handler(async () => {
     window,
   }
 })
+
+export const composeFactory = createServerFn({ method: 'GET' }).middleware([
+  createBarServerFn,
+])
+export const composedFn = composeFactory()
+  .middleware([anotherMiddleware, localFnFactory])
+  .handler(({ context }) => {
+    return {
+      name: 'composedFn',
+      context,
+    }
+  })

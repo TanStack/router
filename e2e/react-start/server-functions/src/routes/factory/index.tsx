@@ -6,6 +6,7 @@ import { fooFnInsideFactoryFile } from './-functions/createFooServerFn'
 import {
   barFn,
   barFnPOST,
+  composedFn,
   fakeFn,
   fooFn,
   fooFnPOST,
@@ -92,6 +93,14 @@ const functions = {
 
     expected: {
       name: 'localFnPOST',
+      context: { foo: 'foo', bar: 'bar', local: 'local', another: 'another' },
+    },
+  },
+  composedFn: {
+    fn: composedFn,
+    type: 'serverFn',
+    expected: {
+      name: 'composedFn',
       context: { foo: 'foo', bar: 'bar', local: 'local', another: 'another' },
     },
   },

@@ -597,3 +597,37 @@ test('incrementally building createServerFn with multiple middleware calls', () 
     }>()
   })
 })
+
+test('compose middlewares and server function factories', () => {
+  const middleware1 = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { a: 'a' } as const })
+    },
+  )
+
+  const middleware2 = createMiddleware({ type: 'function' }).server(
+    ({ next }) => {
+      return next({ context: { b: 'b' } as const })
+    },
+  )
+
+  const builderWithMw1 = createServerFn().middleware([middleware1])
+
+  const composedBuilder = createServerFn({ method: 'GET' }).middleware([
+    middleware2,
+    builderWithMw1,
+  ])
+
+  composedBuilder.handler((options) => {
+    expectTypeOf(options).toEqualTypeOf<{
+      method: 'GET'
+      context: {
+        readonly a: 'a'
+        readonly b: 'b'
+      }
+      data: undefined
+      signal: AbortSignal
+      response: 'data'
+    }>()
+  })
+})

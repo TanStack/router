@@ -3,6 +3,7 @@ import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 import { globalMiddleware } from './registerGlobalMiddleware'
 
 import { getRouterInstance } from './getRouterInstance'
+import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import type {
   AnyRouter,
   AnyValidator,
@@ -69,11 +70,23 @@ export function createServerFn<
     middleware: (middleware) => {
       // multiple calls to `middleware()` merge the middlewares with the previously supplied ones
       // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
+
+      const newMiddleware = [...(resolvedOptions.middleware || [])]
+      middleware.map((m) => {
+        if (TSS_SERVER_FUNCTION_FACTORY in m) {
+          if (m.options.middleware) {
+            newMiddleware.push(...m.options.middleware)
+          }
+        } else {
+          newMiddleware.push(m)
+        }
+      })
+
       const newOptions = {
         ...resolvedOptions,
-        middleware: [...(resolvedOptions.middleware || []), ...middleware],
+        middleware: newMiddleware,
       }
-      return createServerFn<
+      const res = createServerFn<
         TRegister,
         TMethod,
         ServerFnResponseType,
@@ -81,6 +94,8 @@ export function createServerFn<
         TMiddlewares,
         TValidator
       >(undefined, newOptions) as any
+      res[TSS_SERVER_FUNCTION_FACTORY] = true
+      return res
     },
     validator: (validator) => {
       const newOptions = { ...resolvedOptions, validator: validator as any }
@@ -456,8 +471,23 @@ export type ConstrainValidator<TRegister extends Register, TValidator> =
         : never)
   | ValidateValidator<TRegister, TValidator>
 
-type ToTuple<T> =
-  T extends ReadonlyArray<infer U> ? T : T extends undefined ? [] : [T]
+type ToTuple<T> = T extends undefined
+  ? []
+  : T extends ReadonlyArray<any>
+    ? T
+    : [T]
+
+type ExtractMiddlewareArray<T> = T extends readonly [infer Head, ...infer Tail]
+  ? Head extends ServerFnAfterMiddleware<
+      any,
+      any,
+      any,
+      infer TMiddlewares extends ReadonlyArray<unknown>,
+      any
+    >
+    ? [...TMiddlewares, ...ExtractMiddlewareArray<Tail>]
+    : [Head, ...ExtractMiddlewareArray<Tail>]
+  : []
 
 export interface ServerFnMiddleware<
   TRegister extends Register,
@@ -466,16 +496,18 @@ export interface ServerFnMiddleware<
   TMiddlewares,
   TValidator,
 > {
-  middleware: <const TNewMiddlewares = undefined>(
+  middleware: <const TNewMiddlewares>(
     middlewares: Constrain<
       TNewMiddlewares,
-      ReadonlyArray<AnyFunctionMiddleware>
+      ReadonlyArray<
+        AnyFunctionMiddleware | ServerFnAfterMiddleware<any, any, any, any, any>
+      >
     >,
   ) => ServerFnAfterMiddleware<
     TRegister,
     TMethod,
     TServerFnResponseType,
-    [...ToTuple<TMiddlewares>, ...ToTuple<TNewMiddlewares>],
+    [...ToTuple<TMiddlewares>, ...ExtractMiddlewareArray<TNewMiddlewares>],
     TValidator
   >
 }
@@ -515,6 +547,15 @@ export interface ServerFnAfterMiddleware<
     TMiddlewares,
     TValidator
   >
+  options: ServerFnBaseOptions<
+    TRegister,
+    TMethod,
+    TServerFnResponseType,
+    unknown,
+    TMiddlewares,
+    TValidator
+  >
+  [TSS_SERVER_FUNCTION_FACTORY]: true
 }
 
 export type ValidatorFn<
