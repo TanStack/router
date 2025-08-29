@@ -31,7 +31,7 @@ export const getSignUpUrl = createServerFn({ method: 'GET' })
     return getAuthorizationUrl({ data: { returnPathname, screenHint: 'sign-up' } });
   });
 
-export const signOut = createServerFn({ method: 'POST', response: 'full' })
+export const signOut = createServerFn({ method: 'POST' })
   .validator((data?: string) => data)
   .handler(async ({ data: returnTo }) => {
     const cookieName = getConfig('cookieName') || 'wos_session';

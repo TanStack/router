@@ -42,7 +42,6 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
   }
 
   const isCreateServerFn = 'createServerFn' in search
-  const isRaw = 'raw' in search
 
   if (typeof serverFnId !== 'string') {
     throw new Error('Invalid server action param for serverFnId: ' + serverFnId)
@@ -296,17 +295,13 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
         statusText: response?.statusText,
         headers: {
           'Content-Type': 'application/json',
-          'x-tss-serialized': 'true',
+          [X_TSS_SERIALIZED]: 'true',
         },
       })
     }
   })()
 
   request.signal.removeEventListener('abort', abort)
-
-  if (isRaw) {
-    return response
-  }
 
   return response
 }
