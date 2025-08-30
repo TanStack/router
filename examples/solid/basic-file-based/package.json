@@ -9,8 +9,8 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.131.29",
-    "@tanstack/solid-router-devtools": "^1.131.29",
+    "@tanstack/solid-router": "^1.131.30",
+    "@tanstack/solid-router-devtools": "^1.131.30",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.1",
     "redaxios": "^0.5.1",
@@ -19,7 +19,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.131.28",
+    "@tanstack/router-plugin": "^1.131.30",
     "typescript": "^5.7.2",
     "vite": "^6.3.5",
     "vite-plugin-solid": "^2.11.2"
