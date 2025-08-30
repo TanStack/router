@@ -322,8 +322,7 @@ export function deepEqual(
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false
     for (let i = 0, l = a.length; i < l; i++) {
-      if (!deepEqual(a[i], b[i], opts))
-        return false
+      if (!deepEqual(a[i], b[i], opts)) return false
     }
     return true
   }
@@ -334,8 +333,7 @@ export function deepEqual(
     if (opts?.partial) {
       for (const k in b) {
         if (!ignoreUndefined || b[k] !== undefined) {
-          if (!deepEqual(a[k], b[k], opts))
-            return false
+          if (!deepEqual(a[k], b[k], opts)) return false
         }
       }
       return true
@@ -346,8 +344,7 @@ export function deepEqual(
       aCount = Object.keys(a).length
     } else {
       for (const k in a) {
-        if (a[k] !== undefined)
-          aCount++
+        if (a[k] !== undefined) aCount++
       }
     }
 
@@ -355,8 +352,7 @@ export function deepEqual(
     for (const k in b) {
       if (!ignoreUndefined || b[k] !== undefined) {
         bCount++
-        if (bCount > aCount || !deepEqual(a[k], b[k], opts))
-          return false
+        if (bCount > aCount || !deepEqual(a[k], b[k], opts)) return false
       }
     }
 
