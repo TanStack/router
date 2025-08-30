@@ -436,12 +436,15 @@ describe('deepEqual', () => {
   })
 
   describe('augmented object prototype fail case (no one should do this anyway)', () => {
-    it.fails('should not compare objects with augmented prototype properties', () => {
-      // @ts-expect-error -- typescript is right to complain here, don't do this!
-      Object.prototype.x = 'x'
-      const a = { a: 1 }
-      const b = { a: 1 }
-      expect(deepEqual(a, b, { ignoreUndefined: false })).toEqual(true)
-    })
+    it.fails(
+      'should not compare objects with augmented prototype properties',
+      () => {
+        // @ts-expect-error -- typescript is right to complain here, don't do this!
+        Object.prototype.x = 'x'
+        const a = { a: 1 }
+        const b = { a: 1 }
+        expect(deepEqual(a, b, { ignoreUndefined: false })).toEqual(true)
+      },
+    )
   })
 })
