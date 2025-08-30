@@ -7,7 +7,6 @@ import {
   preloadWarning,
   removeTrailingSlash,
 } from '@tanstack/router-core'
-import { useActiveLocation } from './useActiveLocation'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 
@@ -99,15 +98,7 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  // subscribe to location here to re-build fromPath if it changes
-  const routerLocation = useRouterState({
-    select: (s) => s.location,
-    structuralSharing: true as any,
-  })
-
-  const { getFromPath } = useActiveLocation()
-
-  const from = getFromPath(options.from)
+  const from = options.from
 
   const _options = React.useMemo(
     () => {
@@ -116,7 +107,6 @@ export function useLinkProps<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
-      routerLocation,
       currentSearch,
       from,
       options._fromLocation,
