@@ -8,11 +8,17 @@ export interface NavigateOptions {
 
 type SubscriberHistoryAction =
   | {
-      type: Exclude<HistoryAction, 'GO'>
+      type: Exclude<HistoryAction, 'GO' | 'BLOCK'>
     }
   | {
       type: 'GO'
       index: number
+    }
+  | {
+      type: 'BLOCK'
+      proceedAll: () => void
+      proceed: () => void
+      reset: () => void
     }
 
 type SubscriberArgs = {
@@ -60,7 +66,14 @@ export type ParsedHistoryState = HistoryState & {
 
 type ShouldAllowNavigation = any
 
-export type HistoryAction = 'PUSH' | 'REPLACE' | 'FORWARD' | 'BACK' | 'GO'
+export type HistoryAction =
+  | 'PUSH'
+  | 'REPLACE'
+  | 'FORWARD'
+  | 'BACK'
+  | 'GO'
+  | 'BLOCK'
+  | 'DISMISS_BLOCK'
 
 export type BlockerFnArgs = {
   currentLocation: HistoryLocation
@@ -70,7 +83,7 @@ export type BlockerFnArgs = {
 
 export type BlockerFn = (
   args: BlockerFnArgs,
-) => Promise<ShouldAllowNavigation> | ShouldAllowNavigation
+) => AsyncGenerator<(value: boolean) => void, ShouldAllowNavigation, unknown>
 
 export type NavigationBlocker = {
   blockerFn: BlockerFn
@@ -143,11 +156,45 @@ export function createHistory(opts: {
     if (typeof document !== 'undefined' && blockers.length && isPushOrReplace) {
       for (const blocker of blockers) {
         const nextLocation = parseHref(actionInfo.path, actionInfo.state)
-        const isBlocked = await blocker.blockerFn({
+
+        const generator = blocker.blockerFn({
           currentLocation: location,
           nextLocation,
           action: actionInfo.type,
         })
+
+        let isBlocked = false
+        let blockNotified = false
+        let proceedAllCalled = false
+
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        while (true) {
+          const { value, done } = await generator.next()
+
+          if (!done) {
+            const resolver = value
+            notify({
+              type: 'BLOCK',
+              proceed: () => resolver(false),
+              reset: () => resolver(true),
+              proceedAll: () => {
+                proceedAllCalled = true
+                resolver(false)
+              },
+            })
+            blockNotified = true
+          }
+
+          if (done) {
+            isBlocked = value
+            if (blockNotified) notify({ type: 'DISMISS_BLOCK' })
+            break
+          }
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (proceedAllCalled) break
+
         if (isBlocked) {
           opts.onBlocked?.()
           return
@@ -431,11 +478,43 @@ export function createBrowserHistory(opts?: {
       const blockers = _getBlockers()
       if (typeof document !== 'undefined' && blockers.length) {
         for (const blocker of blockers) {
-          const isBlocked = await blocker.blockerFn({
+          const generator = blocker.blockerFn({
             currentLocation,
             nextLocation,
             action,
           })
+
+          let isBlocked = false
+          let blockNotified = false
+          let proceedAllCalled = false
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          while (true) {
+            const { value, done } = await generator.next()
+
+            if (!done) {
+              const resolver = value
+              history.notify({
+                type: 'BLOCK',
+                proceed: () => resolver(false),
+                reset: () => resolver(true),
+                proceedAll: () => {
+                  proceedAllCalled = true
+                  resolver(false)
+                },
+              })
+              blockNotified = true
+            }
+
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+            if (proceedAllCalled) break
+
+            if (done) {
+              isBlocked = value
+              if (blockNotified) history.notify({ type: 'DISMISS_BLOCK' })
+              break
+            }
+          }
+
           if (isBlocked) {
             ignoreNextPop = true
             win.history.go(1)
