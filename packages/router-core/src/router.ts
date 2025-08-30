@@ -35,7 +35,7 @@ import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
 import { createLRUCache } from './lru-cache'
 import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
-import type { ParsePathnameCache, Segment } from './path'
+import type { ParsePathCache, ParseRouteCache, Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -1040,7 +1040,7 @@ export class RouterCore<
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
       caseSensitive: this.options.caseSensitive,
-      parseCache: this.parsePathnameCache,
+      parseRouteCache: this.parseRouteCache,
     })
     return resolvedPath
   }
@@ -1222,7 +1222,8 @@ export class RouterCore<
           params: routeParams,
           leaveWildcards: true,
           decodeCharMap: this.pathParamsDecodeCharMap,
-          parseCache: this.parsePathnameCache,
+          parseRouteCache: this.parseRouteCache,
+          parsePathCache: this.parsePathCache,
         }).interpolatedPath + loaderDepsHash
 
       // Waste not, want not. If we already have a match for this route,
@@ -1366,8 +1367,10 @@ export class RouterCore<
     return matches
   }
 
-  /** a cache for `parsePathname` */
-  private parsePathnameCache: ParsePathnameCache = createLRUCache(1000)
+  /** a cache of parsed routes for `parsePathname` (e.g. `/foo/$bar` => Array<Segment>) */
+  private parseRouteCache: ParseRouteCache = createLRUCache(500)
+  /** a cache of parsed pathnames for `parsePathname` (e.g. `/foo/123` => Array<string>) */
+  private parsePathCache: ParsePathCache = createLRUCache(500)
 
   getMatchedRoutes: GetMatchRoutesFn = (
     pathname: string,
@@ -1381,7 +1384,8 @@ export class RouterCore<
       routesByPath: this.routesByPath,
       routesById: this.routesById,
       flatRoutes: this.flatRoutes,
-      parseCache: this.parsePathnameCache,
+      parseRouteCache: this.parseRouteCache,
+      parsePathCache: this.parsePathCache,
     })
   }
 
@@ -1479,7 +1483,8 @@ export class RouterCore<
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
         params: nextParams,
-        parseCache: this.parsePathnameCache,
+        parseRouteCache: this.parseRouteCache,
+        parsePathCache: this.parsePathCache,
       }).interpolatedPath
 
       const destRoutes = this.matchRoutes(interpolatedNextTo, undefined, {
@@ -1505,7 +1510,8 @@ export class RouterCore<
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
-        parseCache: this.parsePathnameCache,
+        parseRouteCache: this.parseRouteCache,
+        parsePathCache: this.parsePathCache,
       }).interpolatedPath
 
       // Resolve the next search
@@ -1597,7 +1603,8 @@ export class RouterCore<
               caseSensitive: false,
               fuzzy: false,
             },
-            this.parsePathnameCache,
+            this.parseRouteCache,
+            this.parsePathCache,
           )
 
           if (match) {
@@ -2277,7 +2284,8 @@ export class RouterCore<
         ...opts,
         to: next.pathname,
       },
-      this.parsePathnameCache,
+      this.parseRouteCache,
+      this.parsePathCache,
     ) as any
 
     if (!match) {
@@ -2612,7 +2620,8 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesByPath,
   routesById,
   flatRoutes,
-  parseCache,
+  parseRouteCache,
+  parsePathCache,
 }: {
   pathname: string
   routePathname?: string
@@ -2621,7 +2630,8 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   routesByPath: Record<string, TRouteLike>
   routesById: Record<string, TRouteLike>
   flatRoutes: Array<TRouteLike>
-  parseCache?: ParsePathnameCache
+  parseRouteCache?: ParseRouteCache
+  parsePathCache?: ParsePathCache
 }) {
   let routeParams: Record<string, string> = {}
   const trimmedPath = trimPathRight(pathname)
@@ -2635,7 +2645,8 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
         // we need fuzzy matching for `notFoundMode: 'fuzzy'`
         fuzzy: true,
       },
-      parseCache,
+      parseRouteCache,
+      parsePathCache,
     )
     return result
   }
