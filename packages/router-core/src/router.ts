@@ -1368,7 +1368,7 @@ export class RouterCore<
   }
 
   /** a cache of parsed routes for `parsePathname` (e.g. `/foo/$bar` => Array<Segment>) */
-  private parseRouteCache: ParseRouteCache = createLRUCache(500)
+  private parseRouteCache: ParseRouteCache = new Map()
   /** a cache of parsed pathnames for `parsePathname` (e.g. `/foo/123` => Array<string>) */
   private parsePathCache: ParsePathCache = createLRUCache(500)
 
