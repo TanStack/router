@@ -205,7 +205,12 @@ export function resolvePath({
   return joined
 }
 
-function cacheMethod<T>(fn: (key: string) => ReadonlyArray<T>): ((key?: string, cache?: LRUCache<string, ReadonlyArray<T>>) => ReadonlyArray<T>) {
+function cacheMethod<T>(
+  fn: (key: string) => ReadonlyArray<T>,
+): (
+  key?: string,
+  cache?: LRUCache<string, ReadonlyArray<T>>,
+) => ReadonlyArray<T> {
   return (key, cache) => {
     if (!key) return []
     const cached = cache?.get(key)
@@ -573,7 +578,10 @@ export function matchByPath(
 
   // Parse the `from`, it's usually a full pathname without all the custom syntax.
   // We only need the string value of each segment, to match them against the `to`.
-  const baseSegments = splitPathname(from.startsWith('/') ? from : `/${from}`, parsePathCache)
+  const baseSegments = splitPathname(
+    from.startsWith('/') ? from : `/${from}`,
+    parsePathCache,
+  )
 
   // Parse the `to`, it's usually a full route path, with all the custom syntax ($, {}, ...).
   // We need the entire definition of each segment to know if `from` matches that route.
