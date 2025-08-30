@@ -1,12 +1,12 @@
 ---
-id: reading-and-writing-file
-title: Building a Full Stack DevJokes App with TanStack Start
+id: fetching-external-api
+title: Calling an external API using TanStack Start
 ---
 
  This guide demonstrates how to integrate external API calls into your TanStack Start application using route loaders. We will use TMDB API to fetch popular movies using TanStack Start and understand how to fetch data in a TanStack Start app.
 
-<!-- TODO: Add repo for tanstack netflix -->
-The complete code for this tutorial is available on [GitHub](https://github.com/shrutikapoor08/devjokes).
+
+The complete code for this tutorial is available on [GitHub](https://github.com/shrutikapoor08/tanstack-start-movies).
 
 
 ## What You'll Learn
@@ -19,7 +19,7 @@ The complete code for this tutorial is available on [GitHub](https://github.com/
 
 - Basic knowledge of React and TypeScript
 - Node.js and `pnpm` installed on your machine
-- A TMDB API key (free at themoviedb.org)
+- A TMDB API key (free at https://themoviedb.org)
 
 
 ## Nice to know
@@ -45,26 +45,47 @@ pnpm i
 pnpm dev
 ```
 
+## Understanding the Project Structure
 
-Once your project is set up, you can access your app at `localhost:3000`. You should see the default TanStack Start welcome page.
+At this point, the project structure should look like this:
+```
+/movie-discovery
+├── src/
+│   ├── routes/
+│   │   ├── __root.tsx                    # Root layout
+│   │   ├── index.tsx                     # Home page
+│   │   └── fetch-movies.tsx              # Movie fetching route
+│   ├── types/
+│   │   └── movie.ts                      # Movie type definitions
+│   ├── router.tsx                        # Router configuration
+│   ├── routeTree.gen.ts                  # Generated route tree
+│   └── styles.css                        # Global styles
+├── public/                               # Static assets
+├── app.config.ts                         # TanStack Start configuration
+├── package.json                          # Project dependencies
+└── tsconfig.json                         # TypeScript configuration
+
+```
+
+Once your project is set up, you can access your app at localhost:3000. You should see the default TanStack Start welcome page.
+
 
 ## Step 1: Setup a .env file with TMDB_AUTH_TOKEN
-In order to fetch the API for fetching movies, we will need an `auth_token`. You can get this at https://www.themoviedb.org/. 
+To fetch movies from the TMDB API, you need an authentication token. You can get this for free at themoviedb.org.
 
-First, let's set up environment variables for our API key. Create a .env.local file in your project root:
-
-```
-touch .env.local
+First, let's set up environment variables for our API key. Create a `.env` file in your project root:
 
 ```
+touch .env
 
+```
 
 Add your TMDB API token to this file:
 ```
 TMDB_AUTH_TOKEN=your_bearer_token_here
 ```
 
-*Important*: Make sure to add .env.local to your .gitignore file to keep your API keys secure.
+*Important*: Make sure to add `.env` to your `.gitignore` file to keep your API keys secure.
 
 
 ## Step 2: Defining Data Types
@@ -92,11 +113,17 @@ export interface TMDBResponse {
 }
 ```
 
-## Step 3: Creating the API Fetch Function
-Now let's create a function to fetch popular movies from the TMDB API. Create a new file at src/routes/fetch-movies.tsx:
+## Step 3: Creating the Route with API Fetch Function
+Now let's create our route that fetches data from the TMDB API. Create a new file at `src/routes/fetch-movies.tsx`:
 
 
-```ts
+```typescript
+
+// src/routes/fetch-movies.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import type { Movie, TMDBResponse } from '../types/movie'
+
+
 const API_URL = 'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc'
 
 async function fetchPopularMovies(): Promise<TMDBResponse> {
@@ -117,12 +144,7 @@ async function fetchPopularMovies(): Promise<TMDBResponse> {
   return response.json()
 }
 
-```
 
-## Step 4: Creating the Route with Loader
-Now let's setup our route that uses loader to fetch data.  
-
-```tsx
 export const Route = createFileRoute('/fetch-movies')({
   component: MoviesPage,
   loader: async () => {
@@ -136,15 +158,63 @@ export const Route = createFileRoute('/fetch-movies')({
   },
 })
 
-
 ```
 
-## Step 5: Consuming loader data in MoviesPage component
+## Step 4: Building the Movie Components
 
-Finally, lets consume the movies data by calling `Route.useLoaderData()`
+Now let's create the components that will display our movie data. Add these components to the same `fetch-movies.tsx` file:
 
 ```jsx
 
+// MovieCard component
+const MovieCard = ({ movie }: { movie: Movie }) => {
+  return (
+    <div
+      className="bg-white/10 border border-white/20 rounded-lg overflow-hidden backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105"
+      aria-label={`Movie: ${movie.title}`}
+      tabIndex={0}
+      role="group"
+    >
+      {movie.poster_path && (
+        <img
+          src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+          alt={movie.title}
+          className="w-full h-64 object-cover"
+        />
+      )}
+      <div className="p-4">
+        <MovieDetails movie={movie} />
+      </div>
+    </div>
+  )
+}
+
+// MovieDetails component
+const MovieDetails = ({ movie }: { movie: Movie }) => {
+  return (
+    <>
+      <h3 className="text-lg font-semibold mb-2 line-clamp-2">
+        {movie.title}
+      </h3>
+      <p className="text-sm text-gray-300 mb-3 line-clamp-3 h-10">
+        {movie.overview}
+      </p>
+      <div className="flex justify-between items-center text-xs text-gray-400">
+        <span>{movie.release_date}</span>
+        <span className="flex items-center">
+          ⭐️ {movie.vote_average.toFixed(1)}
+        </span>
+      </div>
+    </>
+  )
+}
+```
+
+## Step 5: Creating the MoviesPage Component
+Finally, let's create the main component that consumes the loader data:
+
+```jsx
+// MoviesPage component
 const MoviesPage = () => {
   const { movies, error } = Route.useLoaderData()
 
@@ -186,84 +256,27 @@ const MoviesPage = () => {
   )
 }
 
-//MovieCard component
-const MovieCard = ({ movie }: { movie: Movie }) => {
-  return (
-    <div
-      className="bg-white/10 border border-white/20 rounded-lg overflow-hidden backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105"
-      aria-label={`Movie: ${movie.title}`}
-      tabIndex={0}
-      role="group"
-    >
-      {movie.poster_path && (
-        <img
-          src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-          alt={movie.title}
-          className="w-full h-64 object-cover"
-        />
-      )}
-      <div className="p-4">
-        <MovieDetails movie={movie} />
-      </div>
-    </div>
-  )
-}
-
-//MovieDetails component
-const MovieDetails = ({ movie }: { movie: Movie }) => {
-  return (
-    <>
-      <h3 className="text-lg font-semibold mb-2 line-clamp-2">
-        {movie.title}
-      </h3>
-      <p className="text-sm text-gray-300 mb-3 line-clamp-3 h-10">
-        {movie.overview}
-      </p>
-      <div className="flex justify-between items-center text-xs text-gray-400">
-        <span>{movie.release_date}</span>
-        <span className="flex items-center">
-          ⭐️ {movie.vote_average.toFixed(1)}
-        </span>
-      </div>
-    </>
-  )
-}
-
-
-
 ```
 
-So far, we have done the following - 
-1. We're using `createFileRoute` to create a route with a loader
-2. The loader function runs on the server during SSR and fetches our movie data
-3. We're handling errors gracefully by returning an error state
-4. The component uses `Route.useLoaderData()` to access the fetched data
-5. We're implementing proper accessibility features with ARIA labels
 
-
-
-
-
-## Understanding How It All Works Together
+### Understanding How It All Works Together
 Let's break down how the different parts of our application work together:
 
-1. Route Loader: When a user visits /demo/start/fetch-api, the loader function runs
-2. API Call: The loader calls fetchPopularMovies() which makes an HTTP request to TMDB
-3. Server-Side Rendering: The data is fetched on the server, ensuring it's available immediately
-4. Component Rendering: The MoviesPage component receives the data via `useLoaderData()`
-5. UI Display: The movie cards are rendered with the fetched data
+1. Route Loader: When a user visits `/fetch-movies`, the loader function runs on the server
+2. API Call: The loader calls `fetchPopularMovies()` which makes an HTTP request to TMDB
+3. Server-Side Rendering: The data is fetched on the server reducing the load on the client side
+4. Component Rendering: The `MoviesPage` component receives the data via `Route.useLoaderData()`
+5. UI Loads: The movie cards are rendered with the fetched data
 
-## Why This is Good
-1. Server Rendered: Movies are rendered on the server, making them visible to search engines and reducing load on the client side. 
-2. Fast Loading: Data is available immediately when the page loads
-3. Error Handling: Graceful handling of API failures
-4. Type Safety: Full TypeScript support throughout the data flow
 
 ## Step 6: Testing Your Application
-If everything worked correctly, you should be able to see the popular movies 
+Now you can test your application by visiting http://localhost:3000/fetch-movies. If everything is set up correctly, you should see a beautiful grid of popular movies with their posters, titles, and ratings. Your app should look like this:
 
 
-<TODO: Add image of movies rendered>
+![Netflix style movie setup](https://res.cloudinary.com/dubc3wnbv/image/upload/v1756512946/Screenshot_2025-08-29_at_5.14.26_PM_iiex7o.png)
 
 
-Next Step - Making movie details inteactive and imporoving data handling using TanStack Query
+## Conclusion
+You've successfully built a movie discovery app that integrates with an external API using TanStack Start. This tutorial demonstrated how to use route loaders for server-side data fetching and building UI components with external data.
+
+While fetching data at build time in TanStack Start is perfect for static content like blog posts or product pages, it's not ideal for interactive apps. If you need features like real-time updates, caching, or infinite scrolling, you'll want to use TanStack Query on the client side instead. TanStack Query makes it easy to handle dynamic data with built-in caching, background updates, and smooth user interactions. By using TanStack Start for static content and TanStack Query for interactive features, you get fast loading pages plus all the modern functionality users expect. 
