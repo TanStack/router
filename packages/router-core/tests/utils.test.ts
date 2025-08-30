@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { deepEqual, isPlainArray, replaceEqualDeep } from '../src/utils'
 
 describe('replaceEqualDeep', () => {
@@ -446,5 +446,12 @@ describe('deepEqual', () => {
         expect(deepEqual(a, b, { ignoreUndefined: false })).toEqual(true)
       },
     )
+
+    afterEach(() => {
+      // it's probably not necessary to clean this up because vitest isolates tests
+      // but just in case isolation ever gets disabled, we clean the prototype to avoid disturbing other tests
+      // @ts-expect-error
+      delete Object.prototype.x
+    })
   })
 })
