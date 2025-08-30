@@ -317,6 +317,7 @@ test('createServerFn cannot return function', () => {
   expectTypeOf(createServerFn().handler<{ func: () => 'func' }>)
     .parameter(0)
     .returns.toEqualTypeOf<
+      | Response
       | { func: 'Function is not serializable' }
       | Promise<{ func: 'Function is not serializable' }>
     >()
