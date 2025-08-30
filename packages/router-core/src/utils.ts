@@ -307,9 +307,12 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
 }
 
 function getObjectKeys(obj: any, ignoreUndefined: boolean) {
-  let keys = Object.keys(obj)
-  if (ignoreUndefined) {
-    keys = keys.filter((key) => obj[key] !== undefined)
+  if (!ignoreUndefined) return Object.keys(obj)
+  const keys = []
+  for (const key in obj) {
+    if (obj[key] !== undefined) {
+      keys.push(key)
+    }
   }
   return keys
 }
@@ -336,14 +339,25 @@ export function deepEqual(
       return false
     }
 
-    return bKeys.every((key) => deepEqual(a[key], b[key], opts))
+    for (let i = 0, l = bKeys.length; i < l; i++) {
+      const key = bKeys[i]!
+      if (!deepEqual(a[key], b[key], opts)) {
+        return false
+      }
+    }
+    return true
   }
 
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) {
       return false
     }
-    return !a.some((item, index) => !deepEqual(item, b[index], opts))
+    for (let i = 0, l = a.length; i < l; i++) {
+      if (!deepEqual(a[i], b[i], opts)) {
+        return false
+      }
+    }
+    return true
   }
 
   return false
