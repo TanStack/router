@@ -332,11 +332,13 @@ export function deepEqual(
 
   if (isPlainObject(a) && isPlainObject(b)) {
     const ignoreUndefined = opts?.ignoreUndefined ?? true
-    const aKeys = getObjectKeys(a, ignoreUndefined)
     const bKeys = getObjectKeys(b, ignoreUndefined)
-
-    if (!opts?.partial && aKeys.length !== bKeys.length) {
-      return false
+    
+    if (!opts?.partial) {
+      const aKeys = getObjectKeys(a, ignoreUndefined)
+      if (aKeys.length !== bKeys.length) {
+        return false
+      }
     }
 
     for (let i = 0, l = bKeys.length; i < l; i++) {
