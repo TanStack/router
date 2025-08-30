@@ -217,58 +217,59 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
   const next = _next as any
 
   const array = isPlainArray(prev) && isPlainArray(next)
+  const object = !array && isPlainObject(prev) && isPlainObject(next)
 
-  if (array || (isSimplePlainObject(prev) && isSimplePlainObject(next))) {
-    const prevItems = array
-      ? prev
-      : (Object.keys(prev) as Array<unknown>).concat(
-          Object.getOwnPropertySymbols(prev),
-        )
-    const prevSize = prevItems.length
-    const nextItems = array
-      ? next
-      : (Object.keys(next) as Array<unknown>).concat(
-          Object.getOwnPropertySymbols(next),
-        )
-    const nextSize = nextItems.length
-    const copy: any = array ? [] : {}
+  if (!array && !object) return next
 
-    let equalItems = 0
+  const prevItems = array ? prev : getEnumerableOwnKeys(prev)
+  if (!prevItems) return next
+  const nextItems = array ? next : getEnumerableOwnKeys(next)
+  if (!nextItems) return next
+  const prevSize = prevItems.length
+  const nextSize = nextItems.length
+  const copy: any = array ? new Array(nextSize) : {}
 
-    for (let i = 0; i < nextSize; i++) {
-      const key = array ? i : (nextItems[i] as any)
-      if (
-        ((!array && prevItems.includes(key)) || array) &&
-        prev[key] === undefined &&
-        next[key] === undefined
-      ) {
-        copy[key] = undefined
+  let equalItems = 0
+
+  for (let i = 0; i < nextSize; i++) {
+    const key = array ? i : (nextItems[i] as any)
+    const p = prev[key]
+    if (
+      (array || prev.hasOwnProperty(key)) &&
+      p === undefined &&
+      next[key] === undefined
+    ) {
+      copy[key] = undefined
+      equalItems++
+    } else {
+      const value = replaceEqualDeep(p, next[key])
+      copy[key] = value
+      if (value === p && p !== undefined) {
         equalItems++
-      } else {
-        copy[key] = replaceEqualDeep(prev[key], next[key])
-        if (copy[key] === prev[key] && prev[key] !== undefined) {
-          equalItems++
-        }
       }
     }
-
-    return prevSize === nextSize && equalItems === prevSize ? prev : copy
   }
 
-  return next
+  return prevSize === nextSize && equalItems === prevSize ? prev : copy
 }
 
 /**
- * A wrapper around `isPlainObject` with additional checks to ensure that it is not
- * only a plain object, but also one that is "clone-friendly" (doesn't have any
- * non-enumerable properties).
+ * Equivalent to `Reflect.ownKeys`, but ensures that objects are "clone-friendly":
+ * will return false if object has any non-enumerable properties.
  */
-function isSimplePlainObject(o: any) {
-  return (
-    // all the checks from isPlainObject are more likely to hit so we perform them first
-    isPlainObject(o) &&
-    Object.getOwnPropertyNames(o).length === Object.keys(o).length
-  )
+function getEnumerableOwnKeys(o: object) {
+  const keys = []
+  const names = Object.getOwnPropertyNames(o)
+  for (const name of names) {
+    if (!Object.prototype.propertyIsEnumerable.call(o, name)) return false
+    keys.push(name)
+  }
+  const symbols = Object.getOwnPropertySymbols(o)
+  for (const symbol of symbols) {
+    if (!Object.prototype.propertyIsEnumerable.call(o, symbol)) return false
+    keys.push(symbol)
+  }
+  return keys
 }
 
 // Copied from: https://github.com/jonschlinkert/is-plain-object
