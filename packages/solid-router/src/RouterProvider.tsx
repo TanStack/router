@@ -1,5 +1,6 @@
 import { Matches } from './Matches'
 import { getRouterContext } from './routerContext'
+import { SafeFragment } from './SafeFragment'
 import type * as Solid from 'solid-js'
 import type {
   AnyRouter,
@@ -29,17 +30,15 @@ export function RouterContextProvider<
 
   const routerContext = getRouterContext()
 
-  const provider = (
-    <routerContext.Provider value={router as AnyRouter}>
-      {children()}
-    </routerContext.Provider>
+  const OptionalWrapper = router.options.Wrap || SafeFragment
+
+  return (
+    <OptionalWrapper>
+      <routerContext.Provider value={router as AnyRouter}>
+        {children()}
+      </routerContext.Provider>
+    </OptionalWrapper>
   )
-
-  if (router.options.Wrap) {
-    return <router.options.Wrap>{provider}</router.options.Wrap>
-  }
-
-  return provider
 }
 
 export function RouterProvider<
