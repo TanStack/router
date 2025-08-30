@@ -306,14 +306,6 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
   return Array.isArray(value) && value.length === Object.keys(value).length
 }
 
-function getObjectKeys(obj: any, ignoreUndefined: boolean) {
-  let keys = Object.keys(obj)
-  if (ignoreUndefined) {
-    keys = keys.filter((key) => obj[key] !== undefined)
-  }
-  return keys
-}
-
 export function deepEqual(
   a: any,
   b: any,
@@ -327,23 +319,44 @@ export function deepEqual(
     return false
   }
 
-  if (isPlainObject(a) && isPlainObject(b)) {
-    const ignoreUndefined = opts?.ignoreUndefined ?? true
-    const aKeys = getObjectKeys(a, ignoreUndefined)
-    const bKeys = getObjectKeys(b, ignoreUndefined)
-
-    if (!opts?.partial && aKeys.length !== bKeys.length) {
-      return false
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false
+    for (let i = 0, l = a.length; i < l; i++) {
+      if (!deepEqual(a[i], b[i], opts)) return false
     }
-
-    return bKeys.every((key) => deepEqual(a[key], b[key], opts))
+    return true
   }
 
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) {
-      return false
+  if (isPlainObject(a) && isPlainObject(b)) {
+    const ignoreUndefined = opts?.ignoreUndefined ?? true
+
+    if (opts?.partial) {
+      for (const k in b) {
+        if (!ignoreUndefined || b[k] !== undefined) {
+          if (!deepEqual(a[k], b[k], opts)) return false
+        }
+      }
+      return true
     }
-    return !a.some((item, index) => !deepEqual(item, b[index], opts))
+
+    let aCount = 0
+    if (!ignoreUndefined) {
+      aCount = Object.keys(a).length
+    } else {
+      for (const k in a) {
+        if (a[k] !== undefined) aCount++
+      }
+    }
+
+    let bCount = 0
+    for (const k in b) {
+      if (!ignoreUndefined || b[k] !== undefined) {
+        bCount++
+        if (bCount > aCount || !deepEqual(a[k], b[k], opts)) return false
+      }
+    }
+
+    return aCount === bCount
   }
 
   return false
