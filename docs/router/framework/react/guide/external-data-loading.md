@@ -75,6 +75,8 @@ Let's take a look at a more realistic example using TanStack Query.
 
 ```tsx
 // src/routes/posts.tsx
+const queryClient = new QueryClient()
+
 const postsQueryOptions = queryOptions({
   queryKey: ['posts'],
   queryFn: () => fetchPosts(),
