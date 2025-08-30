@@ -231,7 +231,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
       const key = array ? i : (nextItems[i] as any)
       const p = prev[key]
       if (
-        (array || Object.prototype.hasOwnProperty.call(prev, key)) &&
+        (array || prevItems.includes(key)) &&
         p === undefined &&
         next[key] === undefined
       ) {
