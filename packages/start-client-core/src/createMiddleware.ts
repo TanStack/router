@@ -650,8 +650,16 @@ export type AnyRequestMiddleware = RequestMiddlewareWithTypes<any, any>
 
 export interface RequestMiddlewareWithTypes<TMiddlewares, TServerContext> {
   _types: RequestMiddlewareTypes<TMiddlewares, TServerContext>
+  options: RequestMiddlewareOptions<TMiddlewares, TServerContext>
 }
 
+export interface RequestMiddlewareOptions<
+  in out TMiddlewares,
+  in out TServerContext,
+> {
+  middleware?: TMiddlewares
+  server?: RequestServerFn<TMiddlewares, TServerContext>
+}
 export interface RequestMiddlewareTypes<TMiddlewares, TServerContext> {
   type: 'request'
   middlewares: TMiddlewares
