@@ -8,6 +8,7 @@ import invariant from 'tiny-invariant'
 import {
   createControlledPromise,
   deepEqual,
+  findLast,
   functionalUpdate,
   last,
   replaceEqualDeep,
