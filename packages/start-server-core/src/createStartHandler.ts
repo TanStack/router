@@ -10,6 +10,7 @@ import {
   isResolvedRedirect,
   joinPaths,
   processRouteTree,
+  rewriteBasepath,
   trimPath,
 } from '@tanstack/router-core'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
@@ -334,12 +335,16 @@ async function handleServerRoutes(opts: {
   basePath: string
   executeRouter: () => Promise<Response>
 }) {
-  const url = new URL(opts.request.url)
-  const pathname = url.pathname
+  let href = new URL(opts.request.url).href
+
+  if (opts.basePath) {
+    href = rewriteBasepath(opts.basePath).fromHref?.({ href }) || href
+  }
+
+  const pathname = new URL(href).pathname
 
   const serverTreeResult = getMatchedRoutes<AnyServerRouteWithTypes>({
     pathname,
-    basepath: opts.basePath,
     caseSensitive: true,
     routesByPath: opts.processedServerRouteTree.routesByPath,
     routesById: opts.processedServerRouteTree.routesById,

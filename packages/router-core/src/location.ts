@@ -3,15 +3,12 @@ import type { AnySchema } from './validators'
 
 export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
   /**
-   * The URL instance representing the location. In future versions of TanStack Router,
-   * this will be the preferred way to access basic url information. This will
-   * not include derived properties like `fullPath`, the `search` object,
-   * `maskedLocation`, or anything else that can already be found on the `URL` class.
+   * @description The public href of the location, including the origin before any rewrites.
+   * If a rewrite is applied, the `href` property will be the rewritten URL.
    */
-  url: URL
+  publicHref: string
   /**
-   * @deprecated In future versions of TanStack Router, `href` will
-   * represent the full URL, including the origin. As a replacement,
+   * @description The full URL of the location, including the origin. As a replacement,
    * please upgrade to the new `fullPath` property, which is derived by
    * combining `pathname`, `search`, and `hash`. like so:
    * `${pathname}${searchStr}${hash}`. If you're looking for the actual
@@ -25,9 +22,7 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
    */
   fullPath: string
   /**
-   * @deprecated In future versions of TanStack Router, this property will be removed.
-   * Please use the `location.url.pathname` property instead.
-   * The pathname of the location, including the leading slash.
+   * @description The pathname of the location, including the leading slash.
    */
   pathname: string
   /**

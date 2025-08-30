@@ -351,8 +351,8 @@ export function useLinkProps<
     href: disabled
       ? undefined
       : next.maskedLocation
-        ? next.maskedLocation.fullPath
-        : next.fullPath,
+        ? next.maskedLocation.publicHref
+        : next.publicHref,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),

@@ -19,7 +19,6 @@ import {
   SEGMENT_TYPE_WILDCARD,
   cleanPath,
   interpolatePath,
-  joinPaths,
   matchPathname,
   parsePathname,
   resolvePath,
@@ -34,6 +33,7 @@ import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
 import { createLRUCache } from './lru-cache'
 import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
+import { rewriteBasepath } from './rewriteBasepath'
 import type { ParsePathnameCache, Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
@@ -266,6 +266,18 @@ export interface RouterOptions<
   /**
    * The basepath for then entire router. This is useful for mounting a router instance at a subpath.
    *
+   * @deprecated - use `rewrite.fromURL` with the new `rewriteBasepath` utility instead:
+   * ```ts
+   * const router = createRouter({
+   *   routeTree,
+   *   rewrite: rewriteBasepath('/basepath')
+   *   // Or wrap existing rewrite functionality
+   *   rewrite: rewriteBasepath('/basepath', {
+   *     toURL: ({ url }) => {...},
+   *     fromURL: ({ url }) => {...},
+   *   })
+   * })
+   * ```
    * @default '/'
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#basepath-property)
    */
@@ -431,27 +443,43 @@ export interface RouterOptions<
 
   serializationAdapters?: TSerializationAdapters
   /**
-   * Configures how the router will rewrite the location between the actual URL and the internal URL of the router.
+   * Configures how the router will rewrite the location between the actual href and the internal href of the router.
+   *
+   * @default undefined
+   * @description You can provide a custom rewrite pair (in/out) or use the utilities like `rewriteBasepath` as a convenience for common use cases, or even do both!
+   * This is useful for basepath rewriting, shifting data from the origin to the path (for things like )
+   */
+  rewrite?: LocationRewrite
+}
+
+export type LocationRewrite = {
+  /**
+   * A function that will be called to rewrite the URL before it is interpreted by the router from the history instance.
+   * Utilities like `rewriteBasepath` are provided as a convenience for common use cases.
    *
    * @default undefined
    */
-  rewrite?: {
-    /**
-     * A function that will be called to rewrite the URL before it is interpreted by the router from the history instance.
-     *
-     * @default undefined
-     * @returns The rewritten URL or undefined if no rewrite is needed.
-     */
-    fromURL?: ({ url }: { url: URL }) => undefined | URL | string
-    /**
-     * A function that will be called to rewrite the URL before it is committed to the actual history instance from the router.
-     *
-     * @default undefined
-     * @returns The rewritten URL or undefined if no rewrite is needed.
-     */
-    toURL?: ({ url }: { url: URL }) => undefined | URL | string
-  }
+  fromHref?: LocationRewriteFunction
+  /**
+   * A function that will be called to rewrite the URL before it is committed to the actual history instance from the router.
+   * Utilities like `rewriteBasepath` are provided as a convenience for common use cases.
+   *
+   * @default undefined
+   */
+  toHref?: LocationRewriteFunction
 }
+
+/**
+ * A function that will be called to rewrite the URL.
+ *
+ * @param url The URL to rewrite.
+ * @returns The rewritten URL (as a URL instance or full href string) or undefined if no rewrite is needed.
+ */
+export type LocationRewriteFunction = ({
+  href,
+}: {
+  href: string
+}) => undefined | string
 
 export interface RouterState<
   in out TRouteTree extends AnyRoute = AnyRoute,
@@ -845,6 +873,7 @@ export class RouterCore<
   >
   history!: TRouterHistory
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
+  // @deprecated - basepath functionality is now implemented via the `rewrite` option
   basepath!: string
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
@@ -912,7 +941,6 @@ export class RouterCore<
       )
     }
 
-    const previousOptions = this.options
     this.options = {
       ...this.options,
       ...newOptions,
@@ -930,21 +958,6 @@ export class RouterCore<
       : undefined
 
     if (
-      !this.basepath ||
-      (newOptions.basepath && newOptions.basepath !== previousOptions.basepath)
-    ) {
-      if (
-        newOptions.basepath === undefined ||
-        newOptions.basepath === '' ||
-        newOptions.basepath === '/'
-      ) {
-        this.basepath = '/'
-      } else {
-        this.basepath = `/${trimPath(newOptions.basepath)}`
-      }
-    }
-
-    if (
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
@@ -952,7 +965,7 @@ export class RouterCore<
         this.options.history ??
         ((this.isServer
           ? createMemoryHistory({
-              initialEntries: [this.basepath || '/'],
+              initialEntries: ['/'],
             })
           : createBrowserHistory()) as TRouterHistory)
       this.updateLatestLocation()
@@ -1050,37 +1063,43 @@ export class RouterCore<
     previousLocation,
   ) => {
     const parse = ({
-      url,
+      href: publicHref,
       state,
     }: HistoryLocation): ParsedLocation<FullSearchSchema<TRouteTree>> => {
+      // For backwards compatibility, we support a basepath option, which we now implement as a rewrite
+      let href = publicHref
+
+      if (this.options.basepath) {
+        href =
+          rewriteBasepath(this.options.basepath).fromHref?.({ href }) || href
+      }
+
       // Before we do any processing, we need to allow rewrites to modify the URL
-      if (this.options.rewrite?.fromURL) {
-        url = new URL(this.options.rewrite.fromURL({ url }) || url)
+      if (this.options.rewrite?.fromHref) {
+        href = this.options.rewrite.fromHref({ href }) || href
       }
 
       // Make sure we derive all the properties we need from the URL object now
       // (These used to come from the history location object, but won't in v2)
-
-      const { pathname, search, hash } = url
-
-      const parsedSearch = this.options.parseSearch(search)
+      const url = new URL(href)
+      const parsedSearch = this.options.parseSearch(url.search)
       const searchStr = this.options.stringifySearch(parsedSearch)
-
       // Make sure our final url uses the re-stringified pathname, search, and has for consistency
       // (We were already doing this, so just keeping it for now)
       url.search = searchStr
 
       const fullPath = url.href.replace(url.origin, '')
 
+      const { pathname, hash } = url
+
       return {
-        url,
+        publicHref: href,
+        href,
         fullPath,
         pathname,
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
         hash: hash.split('#').reverse()[0] ?? '',
-        // TODO: v2 needs to supply the actual href (full URL) instead of the fullPath
-        href: fullPath,
         state: replaceEqualDeep(previousLocation?.state, state),
       }
     }
@@ -1108,7 +1127,6 @@ export class RouterCore<
 
   resolvePathWithBase = (from: string, path: string) => {
     const resolvedPath = resolvePath({
-      basepath: this.basepath,
       base: from,
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
@@ -1344,7 +1362,7 @@ export class RouterCore<
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
           _strictParams: usedParams,
-          pathname: joinPaths([this.basepath, interpolatedPath]),
+          pathname: interpolatedPath,
           updatedAt: Date.now(),
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
@@ -1449,7 +1467,6 @@ export class RouterCore<
     return getMatchedRoutes({
       pathname,
       routePathname,
-      basepath: this.basepath,
       caseSensitive: this.options.caseSensitive,
       routesByPath: this.routesByPath,
       routesById: this.routesById,
@@ -1641,28 +1658,38 @@ export class RouterCore<
       // Create the full path of the location
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
 
-      // Create the URL object
-      let url = new URL(fullPath, currentLocation.url.origin)
+      // Create the new href with full origin
+      const href = new URL(fullPath, new URL(currentLocation.href).origin).href
+
+      let publicHref = href
 
       // If a rewrite function is provided, use it to rewrite the URL
-      if (this.options.rewrite?.toURL) {
-        url = new URL(this.options.rewrite.toURL({ url }) || url)
+      if (this.options.rewrite?.toHref) {
+        publicHref =
+          this.options.rewrite.toHref({ href: publicHref }) || publicHref
+      }
+
+      // For backwards compatibility, we support a basepath option, which we now implement as a rewrite
+      if (this.options.basepath) {
+        publicHref =
+          rewriteBasepath(this.options.basepath).toHref?.({
+            href: publicHref,
+          }) || publicHref
       }
 
       // Lastly, allow the history type to modify the URL
-      url = new URL(this.history.createHref(url.toString()))
+      publicHref = this.history.createHref(publicHref)
 
       // Return the next location
       return {
-        url,
+        publicHref,
+        href,
+        fullPath,
         pathname: nextPathname,
         search: nextSearch,
         searchStr,
         state: nextState as any,
         hash: hash ?? '',
-        fullPath,
-        // TODO: v2 needs to supply the actual href (full URL) instead of the fullPath
-        href: fullPath,
         unmaskOnReload: dest.unmaskOnReload,
       }
     }
@@ -1680,7 +1707,6 @@ export class RouterCore<
 
         const foundMask = this.options.routeMasks?.find((d) => {
           const match = matchPathname(
-            this.basepath,
             next.pathname,
             {
               to: d.from,
@@ -1754,7 +1780,9 @@ export class RouterCore<
       return isEqual
     }
 
-    const isSameUrl = this.latestLocation.fullPath === next.fullPath
+    const isSameUrl =
+      trimPathRight(this.latestLocation.fullPath) ===
+      trimPathRight(next.fullPath)
 
     const previousCommitPromise = this.commitLocationPromise
     this.commitLocationPromise = createControlledPromise<void>(() => {
@@ -1803,7 +1831,7 @@ export class RouterCore<
       this.shouldViewTransition = viewTransition
 
       this.history[next.replace ? 'replace' : 'push'](
-        nextHistory.href,
+        nextHistory.publicHref,
         nextHistory.state,
         { ignoreBlocker },
       )
@@ -1865,7 +1893,7 @@ export class RouterCore<
     if (reloadDocument) {
       if (!href) {
         const location = this.buildLocation({ to, ...rest } as any)
-        href = location.url.href
+        href = location.href
       }
       if (rest.replace) {
         window.location.replace(href)
@@ -1893,7 +1921,7 @@ export class RouterCore<
     if (this.isServer) {
       // for SPAs on the initial load, this is handled by the Transitioner
       const nextLocation = this.buildLocation({
-        to: this.latestLocation.url.pathname,
+        to: this.latestLocation.pathname,
         search: true,
         params: true,
         hash: true,
@@ -1915,9 +1943,10 @@ export class RouterCore<
         trimPath(normalizeUrl(this.latestLocation.fullPath)) !==
         trimPath(normalizeUrl(nextLocation.fullPath))
       ) {
-        throw redirect({ href: nextLocation.url.href })
+        throw redirect({ href: nextLocation.href })
       }
     }
+
     // Match the routes
     const pendingMatches = this.matchRoutes(this.latestLocation)
 
@@ -2063,6 +2092,7 @@ export class RouterCore<
           this.latestLoadPromise = undefined
           this.commitLocationPromise = undefined
         }
+
         resolve()
       })
     })
@@ -2361,7 +2391,6 @@ export class RouterCore<
       : this.state.resolvedLocation || this.state.location
 
     const match = matchPathname(
-      this.basepath,
       baseLocation.pathname,
       {
         ...opts,
@@ -2697,7 +2726,6 @@ export function processRouteTree<TRouteLike extends RouteLike>({
 export function getMatchedRoutes<TRouteLike extends RouteLike>({
   pathname,
   routePathname,
-  basepath,
   caseSensitive,
   routesByPath,
   routesById,
@@ -2706,7 +2734,6 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 }: {
   pathname: string
   routePathname?: string
-  basepath: string
   caseSensitive?: boolean
   routesByPath: Record<string, TRouteLike>
   routesById: Record<string, TRouteLike>
@@ -2717,7 +2744,6 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
   const trimmedPath = trimPathRight(pathname)
   const getMatchedParams = (route: TRouteLike) => {
     const result = matchPathname(
-      basepath,
       trimmedPath,
       {
         to: route.fullPath,

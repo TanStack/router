@@ -11,7 +11,6 @@ export {
   parsePathname,
   interpolatePath,
   matchPathname,
-  removeBasepath,
   matchByPath,
   rootRouteId,
   defaultSerializeError,
@@ -354,3 +353,4 @@ export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent, useTags } from './HeadContent'
 export { Scripts } from './Scripts'
+export { rewriteBasepath } from '@tanstack/router-core'

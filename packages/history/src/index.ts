@@ -44,8 +44,8 @@ export interface HistoryLocation extends ParsedPath {
 }
 
 export interface ParsedPath {
-  url: URL
   href: string
+  fullPath: string
   pathname: string
   search: string
   hash: string
@@ -85,7 +85,7 @@ type TryNavigateArgs = {
 } & (
   | {
       type: 'PUSH' | 'REPLACE'
-      path: string
+      href: string
       state: any
     }
   | {
@@ -143,7 +143,7 @@ export function createHistory(opts: {
       actionInfo.type === 'PUSH' || actionInfo.type === 'REPLACE'
     if (typeof document !== 'undefined' && blockers.length && isPushOrReplace) {
       for (const blocker of blockers) {
-        const nextLocation = parseHref(actionInfo.path, actionInfo.state)
+        const nextLocation = parseHref(actionInfo.href, actionInfo.state)
         const isBlocked = await blocker.blockerFn({
           currentLocation: location,
           nextLocation,
@@ -174,31 +174,31 @@ export function createHistory(opts: {
         subscribers.delete(cb)
       }
     },
-    push: (path, state, navigateOpts) => {
+    push: (href, state, navigateOpts) => {
       const currentIndex = location.state[stateIndexKey]
       state = assignKeyAndIndex(currentIndex + 1, state)
       tryNavigation({
         task: () => {
-          opts.pushState(path, state)
+          opts.pushState(href, state)
           notify({ type: 'PUSH' })
         },
         navigateOpts,
         type: 'PUSH',
-        path,
+        href,
         state,
       })
     },
-    replace: (path, state, navigateOpts) => {
+    replace: (href, state, navigateOpts) => {
       const currentIndex = location.state[stateIndexKey]
       state = assignKeyAndIndex(currentIndex, state)
       tryNavigation({
         task: () => {
-          opts.replaceState(path, state)
+          opts.replaceState(href, state)
           notify({ type: 'REPLACE' })
         },
         navigateOpts,
         type: 'REPLACE',
-        path,
+        href,
         state,
       })
     },
@@ -352,7 +352,7 @@ export function createBrowserHistory(opts?: {
     ;(next.isPush ? win.history.pushState : win.history.replaceState)(
       next.state,
       '',
-      next.href,
+      next.href.replace(new URL(next.href).origin, ''),
     )
 
     // Stop ignoring subscriber updates
@@ -617,22 +617,14 @@ export function parseHref(
   href: string,
   state: ParsedHistoryState | undefined,
 ): HistoryLocation {
-  let url!: URL
-
-  try {
-    url = new URL(href)
-  } catch {
-    url = new URL(href, 'http://localhost')
-  }
-
+  href = withOrigin(href, 'http://localhost')
   const hashIndex = href.indexOf('#')
   const searchIndex = href.indexOf('?')
-
   const addedKey = createRandomKey()
 
   return {
-    url,
     href,
+    fullPath: href.replace(new URL(href).origin, ''),
     pathname: href.substring(
       0,
       hashIndex > 0
@@ -649,6 +641,14 @@ export function parseHref(
         ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
     state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey },
+  }
+}
+
+export function withOrigin(href: string, fallbackOrigin: string) {
+  try {
+    return new URL(href).href
+  } catch {
+    return new URL(href, fallbackOrigin).href
   }
 }
 

@@ -97,7 +97,7 @@ export function exactPathTest(
 // /a/b/c + d/ = /a/b/c/d
 // /a/b/c + d/e = /a/b/c/d/e
 interface ResolvePathOptions {
-  basepath: string
+  // basepath: string
   base: string
   to: string
   trailingSlash?: 'always' | 'never' | 'preserve'
@@ -151,16 +151,12 @@ function segmentToString(segment: Segment): string {
 }
 
 export function resolvePath({
-  basepath,
   base,
   to,
   trailingSlash = 'never',
-  caseSensitive,
+  // caseSensitive,
   parseCache,
 }: ResolvePathOptions) {
-  base = removeBasepath(basepath, base, caseSensitive)
-  to = removeBasepath(basepath, to, caseSensitive)
-
   let baseSegments = parsePathname(base, parseCache).slice()
   const toSegments = parsePathname(to, parseCache)
 
@@ -201,7 +197,8 @@ export function resolvePath({
   }
 
   const segmentValues = baseSegments.map(segmentToString)
-  const joined = joinPaths([basepath, ...segmentValues])
+  // const joined = joinPaths([basepath, ...segmentValues])
+  const joined = joinPaths(segmentValues)
   return joined
 }
 
@@ -491,17 +488,11 @@ function encodePathParam(value: string, decodeCharMap?: Map<string, string>) {
 }
 
 export function matchPathname(
-  basepath: string,
   currentPathname: string,
   matchLocation: Pick<MatchLocation, 'to' | 'fuzzy' | 'caseSensitive'>,
   parseCache?: ParsePathnameCache,
 ): AnyPathParams | undefined {
-  const pathParams = matchByPath(
-    basepath,
-    currentPathname,
-    matchLocation,
-    parseCache,
-  )
+  const pathParams = matchByPath(currentPathname, matchLocation, parseCache)
   // const searchMatched = matchBySearch(location.search, matchLocation)
 
   if (matchLocation.to && !pathParams) {
@@ -511,49 +502,7 @@ export function matchPathname(
   return pathParams ?? {}
 }
 
-export function removeBasepath(
-  basepath: string,
-  pathname: string,
-  caseSensitive: boolean = false,
-) {
-  // normalize basepath and pathname for case-insensitive comparison if needed
-  const normalizedBasepath = caseSensitive ? basepath : basepath.toLowerCase()
-  const normalizedPathname = caseSensitive ? pathname : pathname.toLowerCase()
-
-  switch (true) {
-    // default behaviour is to serve app from the root - pathname
-    // left untouched
-    case normalizedBasepath === '/':
-      return pathname
-
-    // shortcut for removing the basepath if it matches the pathname
-    case normalizedPathname === normalizedBasepath:
-      return ''
-
-    // in case pathname is shorter than basepath - there is
-    // nothing to remove
-    case pathname.length < basepath.length:
-      return pathname
-
-    // avoid matching partial segments - strict equality handled
-    // earlier, otherwise, basepath separated from pathname with
-    // separator, therefore lack of separator means partial
-    // segment match (`/app` should not match `/application`)
-    case normalizedPathname[normalizedBasepath.length] !== '/':
-      return pathname
-
-    // remove the basepath from the pathname if it starts with it
-    case normalizedPathname.startsWith(normalizedBasepath):
-      return pathname.slice(basepath.length)
-
-    // otherwise, return the pathname as is
-    default:
-      return pathname
-  }
-}
-
 export function matchByPath(
-  basepath: string,
   from: string,
   {
     to,
@@ -562,14 +511,7 @@ export function matchByPath(
   }: Pick<MatchLocation, 'to' | 'caseSensitive' | 'fuzzy'>,
   parseCache?: ParsePathnameCache,
 ): Record<string, string> | undefined {
-  // check basepath first
-  if (basepath !== '/' && !from.startsWith(basepath)) {
-    return undefined
-  }
-  // Remove the base path from the pathname
-  from = removeBasepath(basepath, from, caseSensitive)
-  // Default to to $ (wildcard)
-  to = removeBasepath(basepath, `${to ?? '$'}`, caseSensitive)
+  const stringTo = to as string
 
   // Parse the from and to
   const baseSegments = parsePathname(
@@ -577,7 +519,7 @@ export function matchByPath(
     parseCache,
   )
   const routeSegments = parsePathname(
-    to.startsWith('/') ? to : `/${to}`,
+    stringTo.startsWith('/') ? stringTo : `/${stringTo}`,
     parseCache,
   )
 
