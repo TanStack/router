@@ -238,6 +238,8 @@ function baseSplitPathname(pathname: string): ReadonlyArray<string> {
   // Remove empty segments
   pathname = cleanPath(pathname)
 
+  if (!pathname || pathname === '/') return ['/']
+
   if (pathname.includes('%25')) {
     pathname = pathname
       .split('%25')
