@@ -101,7 +101,7 @@ const functions = {
     type: 'serverFn',
     expected: {
       name: 'composedFn',
-      context: { foo: 'foo', bar: 'bar', local: 'local', another: 'another' },
+      context: { foo: 'foo', bar: 'bar', another: 'another', local: 'local' },
     },
   },
   fakeFn: {
