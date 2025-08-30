@@ -13,6 +13,25 @@ export const renderRouterToString = async ({
 }) => {
   try {
     let html = ReactDOMServer.renderToString(children)
+
+    // Collect HTML attributes from all route matches
+    const htmlAttributes: Record<string, string> = {}
+    for (const match of router.state.matches) {
+      if (match.html) {
+        Object.assign(htmlAttributes, match.html)
+      }
+    }
+
+    // Convert HTML attributes to string
+    const htmlAttrsString = Object.entries(htmlAttributes)
+      .map(([key, value]) => `${key}="${value}"`)
+      .join(' ')
+
+    // Apply HTML attributes to the html element
+    if (htmlAttrsString) {
+      html = html.replace(/<html([^>]*)>/, `<html$1 ${htmlAttrsString}>`)
+    }
+
     const injectedHtml = await Promise.all(router.serverSsr!.injectedHtml).then(
       (htmls) => htmls.join(''),
     )

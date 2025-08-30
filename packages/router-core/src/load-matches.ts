@@ -505,7 +505,7 @@ const executeHead = (
 ): void | Promise<
   Pick<
     AnyRouteMatch,
-    'meta' | 'links' | 'headScripts' | 'headers' | 'scripts' | 'styles'
+    'meta' | 'links' | 'headScripts' | 'headers' | 'scripts' | 'styles' | 'html'
   >
 > => {
   const match = inner.router.getMatch(matchId)
@@ -513,7 +513,7 @@ const executeHead = (
   if (!match) {
     return
   }
-  if (!route.options.head && !route.options.scripts && !route.options.headers) {
+  if (!route.options.head && !route.options.scripts && !route.options.headers && !route.options.html) {
     return
   }
   const assetContext = {
@@ -527,11 +527,13 @@ const executeHead = (
     route.options.head?.(assetContext),
     route.options.scripts?.(assetContext),
     route.options.headers?.(assetContext),
-  ]).then(([headFnContent, scripts, headers]) => {
+    route.options.html?.(assetContext),
+  ]).then(([headFnContent, scripts, headers, html]) => {
     const meta = headFnContent?.meta
     const links = headFnContent?.links
     const headScripts = headFnContent?.scripts
     const styles = headFnContent?.styles
+    const html = headFnContent?.html
 
     return {
       meta,
@@ -540,6 +542,7 @@ const executeHead = (
       headers,
       scripts,
       styles,
+      html,
     }
   })
 }

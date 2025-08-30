@@ -110,6 +110,7 @@ export interface DefaultRouteMatchExtensions {
   headScripts?: unknown
   meta?: unknown
   styles?: unknown
+  html?: unknown
 }
 
 export interface RouteMatchExtensions extends DefaultRouteMatchExtensions {}

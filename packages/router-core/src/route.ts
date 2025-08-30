@@ -792,7 +792,7 @@ export type BeforeLoadFn<
 export type FileBaseRouteOptions<
   TParentRoute extends AnyRoute = AnyRoute,
   TId extends string = string,
-  TPath extends string = string,
+  TPath extends string = '',
   TSearchValidator = undefined,
   TParams = {},
   TLoaderDeps extends Record<string, any> = {},
@@ -1161,6 +1161,24 @@ export interface UpdatableRouteOptions<
     scripts?: AnyRouteMatch['headScripts']
     meta?: AnyRouteMatch['meta']
     styles?: AnyRouteMatch['styles']
+  }>
+  html?: (
+    ctx: AssetFnContextOptions<
+      TRouteId,
+      TFullPath,
+      TParentRoute,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps
+    >,
+  ) => Awaitable<{
+    lang?: string
+    dir?: string
+    [key: string]: string | undefined
   }>
   scripts?: (
     ctx: AssetFnContextOptions<
