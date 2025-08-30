@@ -222,6 +222,15 @@
               "to": "framework/react/reading-writing-file"
             }
           ]
+        },
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Fetching data from an external API",
+              "to": "framework/react/fetching-external-api"
+            }
+          ]
         }
       ]
     }
