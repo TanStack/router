@@ -148,7 +148,6 @@ const loggingMiddleware = createMiddleware({ type: 'function' })
 
 Despite server functions being mostly server-side bound operations, there is still plenty of client-side logic surrounding the outgoing RPC request from the client. This means that we can also define client-side logic in middleware that will execute on the client side around any nested middleware and ultimately the RPC function and its response to the client.
 
-
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 import { zodValidator } from '@tanstack/zod-adapter'

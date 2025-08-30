@@ -193,9 +193,7 @@ export async function executeMiddleware(
       return ctx
     }
 
-    if (
-      nextMiddleware.options.validator && env === 'server'
-    ) {
+    if (nextMiddleware.options.validator && env === 'server') {
       // Execute the middleware's input function
       ctx.data = await execValidator(nextMiddleware.options.validator, ctx.data)
     }
@@ -264,10 +262,6 @@ export interface FetcherBase {
   }) => Promise<unknown>
 }
 
-export type FetchResult<TRegister extends Register, TResponse> = Promise<
-  FetcherData<TRegister, TResponse>
->
-
 export interface OptionalFetcher<
   TRegister extends Register,
   TMiddlewares,
@@ -276,7 +270,7 @@ export interface OptionalFetcher<
 > extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TValidator>,
-  ): FetchResult<TRegister, TResponse>
+  ): Promise<FetcherData<TRegister, TResponse>>
 }
 
 export interface RequiredFetcher<
@@ -287,7 +281,7 @@ export interface RequiredFetcher<
 > extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TValidator>,
-  ): FetchResult<TRegister, TResponse>
+  ): Promise<FetcherData<TRegister, TResponse>>
 }
 
 export type FetcherBaseOptions = {
@@ -320,14 +314,10 @@ export type RscStream<T> = {
 
 export type Method = 'GET' | 'POST'
 
-export type ServerFnReturnType<
-  TRegister extends Register,
-  TResponse,
-> = TResponse extends Response
-  ? Response
-  :
-      | Promise<ValidateSerializableInput<TRegister, TResponse>>
-      | ValidateSerializableInput<TRegister, TResponse>
+export type ServerFnReturnType<TRegister extends Register, TResponse> =
+  | Response
+  | Promise<ValidateSerializableInput<TRegister, TResponse>>
+  | ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
   TRegister extends Register,
