@@ -1,15 +1,15 @@
 {
-  "name": "tanstack-start-e2e-basic-auth",
+  "name": "tanstack-react-start-e2e-basic-auth",
   "private": true,
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3000",
-    "dev:e2e": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start",
+    "dev": "vite dev --port 3000",
+    "dev:e2e": "vite dev",
+    "build": "vite build",
+    "start": "node .output/server/index.mjs",
     "prisma-generate": "prisma generate",
-    "test:e2e": "exit 0; pnpm run prisma-generate && playwright test --project=chromium"
+    "test:e2e": "exit 0; rm -rf port*.txt; pnpm run prisma-generate && playwright test --project=chromium"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
@@ -21,7 +21,7 @@
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
-    "vinxi": "0.5.3"
+    "vite": "^6.3.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
@@ -30,8 +30,8 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
-    "postcss": "^8.5.1",
     "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4"

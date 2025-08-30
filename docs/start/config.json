@@ -46,12 +46,16 @@
               "to": "framework/react/middleware"
             },
             {
-              "label": "API Routes",
-              "to": "framework/react/api-routes"
+              "label": "Server Routes",
+              "to": "framework/react/server-routes"
             },
             {
-              "label": "SSR",
-              "to": "framework/react/ssr"
+              "label": "Selective SSR",
+              "to": "framework/react/selective-ssr"
+            },
+            {
+              "label": "SPA Mode",
+              "to": "framework/react/spa-mode"
             },
             {
               "label": "Hosting",
@@ -76,6 +80,14 @@
             {
               "label": "Path Aliases",
               "to": "framework/react/path-aliases"
+            },
+            {
+              "label": "Tailwind CSS Integration",
+              "to": "framework/react/tailwind-integration"
+            },
+            {
+              "label": "Migrate from Next.js",
+              "to": "framework/react/migrate-from-next-js"
             }
           ]
         },
@@ -115,12 +127,16 @@
               "to": "framework/solid/middleware"
             },
             {
-              "label": "API Routes",
-              "to": "framework/solid/api-routes"
+              "label": "Server Routes",
+              "to": "framework/solid/server-routes"
             },
             {
-              "label": "SSR",
-              "to": "framework/solid/ssr"
+              "label": "Selective SSR",
+              "to": "framework/solid/selective-ssr"
+            },
+            {
+              "label": "SPA Mode",
+              "to": "framework/solid/spa-mode"
             },
             {
               "label": "Hosting",
@@ -141,6 +157,10 @@
             {
               "label": "Static Prerendering",
               "to": "framework/solid/static-prerendering"
+            },
+            {
+              "label": "Tailwind CSS Integration",
+              "to": "framework/solid/tailwind-integration"
             },
             {
               "label": "Path Aliases",
@@ -205,6 +225,21 @@
             {
               "label": "Basic",
               "to": "framework/solid/examples/start-basic"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Tutorials",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Reading and Writing a File",
+              "to": "framework/react/reading-writing-file"
             }
           ]
         }

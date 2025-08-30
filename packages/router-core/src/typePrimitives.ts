@@ -5,7 +5,7 @@ import type {
   SearchParamOptions,
   ToPathOption,
 } from './link'
-import type { Redirect } from './redirect'
+import type { RedirectOptions } from './redirect'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { UseParamsResult } from './useParams'
@@ -36,7 +36,7 @@ export type ValidateParams<
 > = PathParamOptions<TRouter, TFrom, TTo>
 
 /**
- * @internal
+ * @private
  */
 export type InferFrom<
   TOptions,
@@ -48,7 +48,7 @@ export type InferFrom<
   : TDefaultFrom
 
 /**
- * @internal
+ * @private
  */
 export type InferTo<TOptions> = TOptions extends {
   to: infer TTo extends string
@@ -57,7 +57,7 @@ export type InferTo<TOptions> = TOptions extends {
   : undefined
 
 /**
- * @internal
+ * @private
  */
 export type InferMaskTo<TOptions> = TOptions extends {
   mask: { to: infer TTo extends string }
@@ -104,7 +104,7 @@ export type ValidateRedirectOptions<
   TDefaultFrom extends string = string,
 > = Constrain<
   TOptions,
-  Redirect<
+  RedirectOptions<
     TRouter,
     InferFrom<TOptions, TDefaultFrom>,
     InferTo<TOptions>,
@@ -131,7 +131,7 @@ export type ValidateId<
 > = ConstrainLiteral<TId, RouteIds<TRouter['routeTree']>>
 
 /**
- * @internal
+ * @private
  */
 export type InferStrict<TOptions> = TOptions extends {
   strict: infer TStrict extends boolean
@@ -140,7 +140,7 @@ export type InferStrict<TOptions> = TOptions extends {
   : true
 
 /**
- * @internal
+ * @private
  */
 export type InferShouldThrow<TOptions> = TOptions extends {
   shouldThrow: infer TShouldThrow extends boolean
@@ -149,7 +149,7 @@ export type InferShouldThrow<TOptions> = TOptions extends {
   : true
 
 /**
- * @internal
+ * @private
  */
 export type InferSelected<TOptions> = TOptions extends {
   select: (...args: Array<any>) => infer TSelected

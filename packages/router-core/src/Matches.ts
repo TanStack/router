@@ -109,6 +109,7 @@ export interface DefaultRouteMatchExtensions {
   links?: unknown
   headScripts?: unknown
   meta?: unknown
+  styles?: unknown
 }
 
 export interface RouteMatchExtensions extends DefaultRouteMatchExtensions {}
@@ -135,12 +136,23 @@ export interface RouteMatch<
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  loadPromise?: ControlledPromise<void>
-  beforeLoadPromise?: ControlledPromise<void>
-  loaderPromise?: ControlledPromise<void>
+  _nonReactive: {
+    /** @internal */
+    beforeLoadPromise?: ControlledPromise<void>
+    /** @internal */
+    loaderPromise?: ControlledPromise<void>
+    /** @internal */
+    pendingTimeout?: ReturnType<typeof setTimeout>
+    loadPromise?: ControlledPromise<void>
+    displayPendingPromise?: Promise<void>
+    minPendingPromise?: ControlledPromise<void>
+    dehydrated?: boolean
+  }
   loaderData?: TLoaderData
-  __routeContext: Record<string, unknown>
-  __beforeLoadContext: Record<string, unknown>
+  /** @internal */
+  __routeContext?: Record<string, unknown>
+  /** @internal */
+  __beforeLoadContext?: Record<string, unknown>
   context: TAllContext
   search: TFullSearchSchema
   _strictSearch: TFullSearchSchema
@@ -153,9 +165,44 @@ export interface RouteMatch<
   headers?: Record<string, string>
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
-  minPendingPromise?: ControlledPromise<void>
-  pendingTimeout?: ReturnType<typeof setTimeout>
+  /** This attribute is not reactive */
+  ssr?: boolean | 'data-only'
+  _forcePending?: boolean
+  _displayPending?: boolean
 }
+
+export interface PreValidationErrorHandlingRouteMatch<
+  TRouteId,
+  TFullPath,
+  TAllParams,
+  TFullSearchSchema,
+> {
+  id: string
+  routeId: TRouteId
+  fullPath: TFullPath
+  index: number
+  pathname: string
+  search:
+    | { status: 'success'; value: TFullSearchSchema }
+    | { status: 'error'; error: unknown }
+  params:
+    | { status: 'success'; value: TAllParams }
+    | { status: 'error'; error: unknown }
+  staticData: StaticDataRouteOption
+  ssr?: boolean | 'data-only'
+}
+
+export type MakePreValidationErrorHandlingRouteMatchUnion<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TRoute extends AnyRoute = ParseRoute<TRouter['routeTree']>,
+> = TRoute extends any
+  ? PreValidationErrorHandlingRouteMatch<
+      TRoute['id'],
+      TRoute['fullPath'],
+      TRoute['types']['allParams'],
+      TRoute['types']['fullSearchSchema']
+    >
+  : never
 
 export type MakeRouteMatchFromRoute<TRoute extends AnyRoute> = RouteMatch<
   TRoute['types']['id'],

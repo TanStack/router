@@ -2,7 +2,7 @@
 title: File-Based Routing
 ---
 
-Most of the TanStack Router documentation is written for file-based routing and is intended to help you understand in more detail how to configure file-based routing and the technical details behind how it works. While file-based routing is the preferred and recommended way to configure TanStack Router, you can also use [code-based routing](./code-based-routing.md) if you prefer.
+Most of the TanStack Router documentation is written for file-based routing and is intended to help you understand in more detail how to configure file-based routing and the technical details behind how it works. While file-based routing is the preferred and recommended way to configure TanStack Router, you can also use [code-based routing](../code-based-routing.md) if you prefer.
 
 ## What is File-Based Routing?
 
@@ -47,6 +47,9 @@ See the example below:
 | ┄ ʦ `route-b.tsx`       | `/route-b`                | `<Root><PathlessLayout><RouteB>`  |
 | 📂 `files`              |                           |                                   |
 | ┄ ʦ `$.tsx`             | `/files/$`                | `<Root><Files>`                   |
+| 📂 `account`            |                           |                                   |
+| ┄ ʦ `route.tsx`         | `/account`                | `<Root><Account>`                 |
+| ┄ ʦ `overview.tsx`      | `/account/overview`       | `<Root><Account><Overview>`       |
 
 ## Flat Routes
 
@@ -72,6 +75,8 @@ See the example below:
 | ʦ `_pathlessLayout.route-a.tsx` | `/route-a`                | `<Root><PathlessLayout><RouteA>`  |
 | ʦ `_pathlessLayout.route-b.tsx` | `/route-b`                | `<Root><PathlessLayout><RouteB>`  |
 | ʦ `files.$.tsx`                 | `/files/$`                | `<Root><Files>`                   |
+| ʦ `account.tsx`                 | `/account`                | `<Root><Account>`                 |
+| ʦ `account.overview.tsx`        | `/account/overview`       | `<Root><Account><Overview>`       |
 
 ## Mixed Flat and Directory Routes
 
@@ -92,11 +97,13 @@ See the example below:
 | ʦ `settings.tsx`               | `/settings`               | `<Root><Settings>`                |
 | ʦ `settings.profile.tsx`       | `/settings/profile`       | `<Root><Settings><Profile>`       |
 | ʦ `settings.notifications.tsx` | `/settings/notifications` | `<Root><Settings><Notifications>` |
+| ʦ `account.tsx`                | `/account`                | `<Root><Account>`                 |
+| ʦ `account.overview.tsx`       | `/account/overview`       | `<Root><Account><Overview>`       |
 
 Both flat and directory routes can be mixed together to create a route tree that uses the best of both worlds where it makes sense.
 
 > [!TIP]
-> If you find that the default file-based routing structure doesn't fit your needs, you can always use [Virtual File Routes](./virtual-file-routes.md) to control the source of your routes whilst still getting the awesome performance benefits of file-based routing.
+> If you find that the default file-based routing structure doesn't fit your needs, you can always use [Virtual File Routes](../virtual-file-routes.md) to control the source of your routes whilst still getting the awesome performance benefits of file-based routing.
 
 ## Getting started with File-Based Routing
 
@@ -106,13 +113,13 @@ To enable file-based routing, you'll need to be using React with a supported bun
 
 [//]: # 'SupportedBundlersList'
 
-- [Installation with Vite](./installation-with-vite.md)
-- [Installation with Rspack/Rsbuild](./installation-with-rspack.md)
-- [Installation with Webpack](./installation-with-webpack.md)
-- [Installation with Esbuild](./installation-with-esbuild.md)
+- [Installation with Vite](../installation-with-vite.md)
+- [Installation with Rspack/Rsbuild](../installation-with-rspack.md)
+- [Installation with Webpack](../installation-with-webpack.md)
+- [Installation with Esbuild](../installation-with-esbuild.md)
 
 [//]: # 'SupportedBundlersList'
 
 When using TanStack Router's file-based routing through one of the supported bundlers, our plugin will **automatically generate your route configuration through your bundler's dev and build processes**. It is the easiest way to use TanStack Router's route generation features.
 
-If your bundler is not yet supported, you can reach out to us on Discord or GitHub to let us know. Till then, fear not! You can still use the [`@tanstack/router-cli`](./installation-with-router-cli.md) package to generate your route tree file.
+If your bundler is not yet supported, you can reach out to us on Discord or GitHub to let us know. Till then, fear not! You can still use the [`@tanstack/router-cli`](../installation-with-router-cli.md) package to generate your route tree file.

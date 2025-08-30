@@ -100,4 +100,4 @@ If these defaults work for your project, you don't need to configure anything at
 [//]: # 'TargetConfiguration'
 [//]: # 'TargetConfiguration'
 
-You can find all the available configuration options in the [File-based Routing API Reference](../../../api/file-based-routing.md).
+You can find all the available configuration options in the [File-based Routing API Reference](../../../../api/file-based-routing.md).

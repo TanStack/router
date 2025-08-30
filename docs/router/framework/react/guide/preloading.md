@@ -21,7 +21,7 @@ Preloading in TanStack Router is a way to load a route before the user actually 
 Preloaded route matches are temporarily cached in memory with a few important caveats:
 
 - **Unused preloaded data is removed after 30 seconds by default.** This can be configured by setting the `defaultPreloadMaxAge` option on your router.
-- **Obviously, when a a route is loaded, its preloaded version is promoted to the router's normal pending matches state.**
+- **Obviously, when a route is loaded, its preloaded version is promoted to the router's normal pending matches state.**
 
 If you need more control over preloading, caching and/or garbage collection of preloaded data, you should use an external caching library like [TanStack Query](https://tanstack.com/query).
 

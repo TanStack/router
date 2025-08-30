@@ -11,10 +11,10 @@ import type {
   StructuralSharingOption,
   ValidateSelected,
 } from './structuralSharing'
-import type { ReactNode } from './route'
 import type {
   AnyRouter,
   DeepPartial,
+  Expand,
   MakeOptionalPathParams,
   MakeOptionalSearchParams,
   MakeRouteMatchUnion,
@@ -34,6 +34,7 @@ declare module '@tanstack/router-core' {
     meta?: Array<React.JSX.IntrinsicElements['meta'] | undefined>
     links?: Array<React.JSX.IntrinsicElements['link'] | undefined>
     scripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
+    styles?: Array<React.JSX.IntrinsicElements['style'] | undefined>
     headScripts?: Array<React.JSX.IntrinsicElements['script'] | undefined>
   }
 }
@@ -47,13 +48,13 @@ export function Matches() {
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && router.clientSsr)
+    router.isServer || (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : React.Suspense
 
   const inner = (
     <ResolvedSuspense fallback={pendingElement}>
-      <Transitioner />
+      {!router.isServer && <Transitioner />}
       <MatchesInner />
     </ResolvedSuspense>
   )
@@ -66,6 +67,7 @@ export function Matches() {
 }
 
 function MatchesInner() {
+  const router = useRouter()
   const matchId = useRouterState({
     select: (s) => {
       return s.matches[0]?.id
@@ -76,21 +78,27 @@ function MatchesInner() {
     select: (s) => s.loadedAt,
   })
 
+  const matchComponent = matchId ? <Match matchId={matchId} /> : null
+
   return (
     <matchContext.Provider value={matchId}>
-      <CatchBoundary
-        getResetKey={() => resetKey}
-        errorComponent={ErrorComponent}
-        onCatch={(error) => {
-          warning(
-            false,
-            `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-          )
-          warning(false, error.message || error.toString())
-        }}
-      >
-        {matchId ? <Match matchId={matchId} /> : null}
-      </CatchBoundary>
+      {router.options.disableGlobalCatchBoundary ? (
+        matchComponent
+      ) : (
+        <CatchBoundary
+          getResetKey={() => resetKey}
+          errorComponent={ErrorComponent}
+          onCatch={(error) => {
+            warning(
+              false,
+              `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+            )
+            warning(false, error.message || error.toString())
+          }}
+        >
+          {matchComponent}
+        </CatchBoundary>
+      )}
     </matchContext.Provider>
   )
 }
@@ -123,7 +131,9 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
       const TMaskTo extends string = '',
     >(
       opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-    ): false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams'] => {
+    ):
+      | false
+      | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']> => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
       return router.matchRoute(rest as any, {
@@ -151,7 +161,7 @@ export type MakeMatchRouteOptions<
           TRouter['routeTree'],
           ResolveRelativePath<TFrom, NoInfer<TTo>>
         >['types']['allParams'],
-      ) => ReactNode)
+      ) => React.ReactNode)
     | React.ReactNode
 }
 

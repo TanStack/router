@@ -409,8 +409,31 @@
             {
               "label": "Static Route Data",
               "to": "framework/solid/guide/static-route-data"
+            },
+            {
+              "label": "SSR",
+              "to": "framework/solid/guide/ssr"
             }
           ]
+        }
+      ]
+    },
+    {
+      "label": "How-To",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Install TanStack Router",
+              "to": "framework/react/how-to/install"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": []
         }
       ]
     },
@@ -429,6 +452,25 @@
             {
               "label": "Router",
               "to": "framework/react/api/router"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": []
+        }
+      ]
+    },
+    {
+      "label": "Integrations",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "TanStack Query",
+              "to": "integrations/query"
             }
           ]
         },

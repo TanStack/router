@@ -17,6 +17,19 @@ const router = createRouter({
 })
 ```
 
+For complex selectors that cannot be simply resolved using `document.querySelector(selector)`, you can pass functions that return HTML elements to `routerOptions.scrollToTopSelectors`:
+
+```tsx
+const selector = () =>
+  document
+    .querySelector('#shadowRootParent')
+    ?.shadowRoot?.querySelector('#main-scrollable-area')
+
+const router = createRouter({
+  scrollToTopSelectors: [selector],
+})
+```
+
 These selectors are handled **in addition to `window`** which cannot be disabled currently.
 
 ## Scroll Restoration
@@ -58,7 +71,9 @@ Falling in behind Remix's own Scroll Restoration APIs, you can also customize th
 
 The `getKey` option receives the relevant `Location` state from TanStack Router and expects you to return a string to uniquely identify the scrollable measurements for that state.
 
-The default `getKey` is `(location) => location.state.key!`, where `key` is the unique key generated for each entry in the history.
+The default `getKey` is `(location) => location.state.__TSR_key!`, where `__TSR_key` is the unique key generated for each entry in the history.
+
+> Older versions, prior to `v1.121.34`, used `state.key` as the default key, but this has been deprecated in favor of `state.__TSR_key`. For now, `location.state.key` will still be available for compatibility, but it will be removed in the next major version.
 
 ## Examples
 
@@ -82,7 +97,7 @@ const router = createRouter({
     const paths = ['/', '/chat']
     return paths.includes(location.pathname)
       ? location.pathname
-      : location.state.key!
+      : location.state.__TSR_key!
   },
 })
 ```
@@ -177,12 +192,12 @@ function Component() {
 
 ## Scroll Behavior
 
-To control the scroll behavior when navigating between pages, you can use the `scrollBehavior` option. This allows you to make the transition between pages instant instead of a smooth scroll. The global configuration of scroll restoration behavior has the same options as those supported by the browser, which are `smooth`, `instant`, and `auto` (see [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView#behavior) for more information).
+To control the scroll behavior when navigating between pages, you can use the `scrollRestorationBehavior` option. This allows you to make the transition between pages instant instead of a smooth scroll. The global configuration of scroll restoration behavior has the same options as those supported by the browser, which are `smooth`, `instant`, and `auto` (see [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView#behavior) for more information).
 
 ```tsx
 import { createRouter } from '@tanstack/react-router'
 
 const router = createRouter({
-  scrollBehavior: 'instant',
+  scrollRestorationBehavior: 'instant',
 })
 ```

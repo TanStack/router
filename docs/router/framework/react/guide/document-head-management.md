@@ -15,7 +15,7 @@ For full-stack applications that use Start, and even for single-page application
 - Analytics
 - CSS and JS loading/unloading
 
-To manage the document head, it's required that you render both the `<HeadContent />` and `<Scripts />` components and use the `routeOptions.head` property to manage the head of a route, which returns an object with `title`, `meta`, `links`, and `scripts` properties.
+To manage the document head, it's required that you render both the `<HeadContent />` and `<Scripts />` components and use the `routeOptions.head` property to manage the head of a route, which returns an object with `title`, `meta`, `links`, `styles`, and `scripts` properties.
 
 ## Managing the Document Head
 
@@ -35,6 +35,15 @@ export const Route = createRootRoute({
       {
         rel: 'icon',
         href: '/favicon.ico',
+      },
+    ],
+    styles: [
+      {
+        media: 'all and (max-width: 500px)',
+        children: `p {
+                  color: blue;
+                  background-color: yellow;
+                }`,
       },
     ],
     scripts: [
@@ -80,6 +89,8 @@ export const Route = createRootRoute({
 
 ### Single-Page Applications
 
+First, remove the `<title>` tag from the the index.html if you have set any.
+
 ```tsx
 import { HeadContent } from '@tanstack/react-router'
 
@@ -104,7 +115,7 @@ To do this, you must:
 
 ```tsx
 export const Route = createRootRoute({
-  scripts: [
+  scripts: () => [
     {
       children: 'console.log("Hello, world!")',
     },

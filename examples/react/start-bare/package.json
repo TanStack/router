@@ -4,26 +4,24 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start"
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "start": "vite start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.119.0",
-    "@tanstack/react-router-devtools": "^1.119.1",
-    "@tanstack/react-start": "^1.119.2",
+    "@tanstack/react-router": "^1.131.28",
+    "@tanstack/react-router-devtools": "^1.131.28",
+    "@tanstack/react-start": "^1.131.28",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vinxi": "0.5.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.0.8",
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "tailwindcss": "^4.0.8",
     "typescript": "^5.7.2",
+    "vite": "^6.3.5",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
+import { useActiveLocation } from './useActiveLocation'
 import type {
   AnyRouter,
   FromPathOption,
@@ -14,16 +15,21 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const { navigate } = useRouter()
+  const router = useRouter()
+
+  const { getFromPath, activeLocation } = useActiveLocation()
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      return navigate({
-        from: _defaultOpts?.from,
+      const from = getFromPath(options.from ?? _defaultOpts?.from)
+
+      return router.navigate({
         ...options,
+        from,
       })
     },
-    [_defaultOpts?.from, navigate],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [_defaultOpts?.from, router, getFromPath, activeLocation],
   ) as UseNavigateResult<TDefaultFrom>
 }
 
@@ -35,6 +41,7 @@ export function Navigate<
   const TMaskTo extends string = '',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const router = useRouter()
+  const navigate = useNavigate()
 
   const previousPropsRef = React.useRef<NavigateOptions<
     TRouter,
@@ -45,11 +52,9 @@ export function Navigate<
   > | null>(null)
   React.useEffect(() => {
     if (previousPropsRef.current !== props) {
-      router.navigate({
-        ...props,
-      })
+      navigate(props)
       previousPropsRef.current = props
     }
-  }, [router, props])
+  }, [router, props, navigate])
   return null
 }

@@ -12,7 +12,7 @@ The `linkOptions` accepts the following option:
 ### `...props`
 
 - Type: `LinkProps & React.RefAttributes<HTMLAnchorElement>`
-- [`LinkProps`](./LinkPropsType.md)
+- [`LinkProps`](../LinkPropsType.md)
 
 ## `linkOptions` returns
 

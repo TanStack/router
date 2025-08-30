@@ -1,6 +1,37 @@
 import { isPlainObject } from '@tanstack/router-core'
-import type { StartSerializer } from '@tanstack/router-core'
 
+export interface StartSerializer {
+  stringify: (obj: unknown) => string
+  parse: (str: string) => unknown
+  encode: <T>(value: T) => T
+  decode: <T>(value: T) => T
+}
+
+export type SerializerStringifyBy<T, TSerializable> = T extends TSerializable
+  ? T
+  : T extends (...args: Array<any>) => any
+    ? 'Function is not serializable'
+    : { [K in keyof T]: SerializerStringifyBy<T[K], TSerializable> }
+
+export type SerializerParseBy<T, TSerializable> = T extends TSerializable
+  ? T
+  : unknown extends SerializerExtensions['ReadableStream']
+    ? { [K in keyof T]: SerializerParseBy<T[K], TSerializable> }
+    : T extends SerializerExtensions['ReadableStream']
+      ? ReadableStream
+      : { [K in keyof T]: SerializerParseBy<T[K], TSerializable> }
+
+export interface DefaultSerializerExtensions {
+  ReadableStream: unknown
+}
+
+export interface SerializerExtensions extends DefaultSerializerExtensions {}
+
+export type Serializable = Date | undefined | Error | FormData | bigint
+
+export type SerializerStringify<T> = SerializerStringifyBy<T, Serializable>
+
+export type SerializerParse<T> = SerializerParseBy<T, Serializable>
 export const startSerializer: StartSerializer = {
   stringify: (value: any) =>
     JSON.stringify(value, function replacer(key, val) {
@@ -73,7 +104,6 @@ export const startSerializer: StartSerializer = {
     return value
   },
 }
-
 const createSerializer = <TKey extends string, TInput, TSerialized>(
   key: TKey,
   check: (value: any) => value is TInput,
@@ -86,7 +116,6 @@ const createSerializer = <TKey extends string, TInput, TSerialized>(
   parseCondition: (value: any) => Object.hasOwn(value, `$${key}`),
   parse: (value: any) => fromValue(value[`$${key}`]),
 })
-
 // Keep these ordered by predicted frequency
 // Make sure to keep DefaultSerializable in sync with these serializers
 // Also, make sure that they are unit tested in serializer.test.tsx
@@ -173,5 +202,18 @@ const serializers = [
     (v) => v.toString(),
     // From
     (v) => BigInt(v),
+  ),
+  createSerializer(
+    // Key
+    'server-function',
+    // Check
+    (v): v is { functionId: string } =>
+      typeof v === 'function' &&
+      'functionId' in v &&
+      typeof v.functionId === 'string',
+    // To
+    ({ functionId }) => ({ functionId, __serverFn: true }),
+    // From, dummy impl. the actual server function lookup is done on the server in packages/start-server-core/src/server-functions-handler.ts
+    (v) => v,
   ),
 ] as const

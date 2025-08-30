@@ -3,6 +3,9 @@ id: ssr
 title: SSR
 ---
 
+> [!WARNING]
+> While every effort has been made to separate these APIs from changes to Tanstack Start, there are underlying shared implementations internally. Therefore these can be subject to change and should be regarded as experimental until Start reaches stable status.
+
 Server Side Rendering (SSR) is the process of rendering a component on the server and sending the HTML markup to the client. The client then hydrates the markup into a fully interactive component.
 
 There are usually two different flavors of SSR to be considered:
@@ -21,21 +24,36 @@ Non-Streaming server-side rendering is the classic process of rendering the mark
 
 To implement non-streaming SSR with TanStack Router, you will need the following utilities:
 
-- `StartServer` from `@tanstack/react-start/server`
-  - e.g. `<StartServer router={router} />`
-  - Rendering this component in your server entry will render your application and also automatically handle application-level hydration/dehydration and implement the `Wrap` component option on `Router`
-- `StartClient` from `@tanstack/react-start`
-  - e.g. `<StartClient router={router} />`
+- `RouterClient` from `@tanstack/react-router`
+  - e.g. `<RouterClient router={router} />`
   - Rendering this component in your client entry will render your application and also automatically implement the `Wrap` component option on `Router`
+- And, either:
+  - `defaultRenderHandler` from `@tanstack/react-router`
+    - This will render your application in your server entry and also automatically handle application-level hydration/dehydration and also automatically implement the RouterServer component.
+      or:
+  - `renderRouterToString` from `@tanstack/react-router`
+    - This differs from defaultRenderHandler in that it allows you to manually specify the `Wrap` component option on `Router` together with any other providers you may need to wrap it with.
+  - `RouterServer` from `@tanstack/react-router`
+    - This implements the `Wrap` component option on `Router`
+
+### Automatic Server History
+
+On the client, Router defaults to using an instance of `createBrowserHistory`, which is the preferred type of history to use on the client. On the server, however, you will want to use an instance of `createMemoryHistory` instead. This is because `createBrowserHistory` uses the `window` object, which does not exist on the server. This is handled automatically for you in the RouterServer component.
+
+### Automatic Loader Dehydration/Hydration
+
+Resolved loader data fetched by routes is automatically dehydrated and rehydrated by TanStack Router so long as you complete the standard SSR steps outlined in this guide.
+
+⚠️ If you are using deferred data streaming, you will also need to ensure that you have implemented the [SSR Streaming & Stream Transform](#streaming-ssr) pattern near the end of this guide.
+
+For more information on how to utilize data loading, see the [Data Loading](../data-loading.md) guide.
 
 ### Router Creation
 
 Since your router will exist both on the server and the client, it's important that you create your router in a way that is consistent between both of these environments. The easiest way to do this is to expose a `createRouter` function in a shared file that can be imported and called by both your server and client entry files.
 
-- `src/router.tsx`
-
 ```tsx
-import * as React from 'react'
+// src/router.tsx
 import { createRouter as createTanstackRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
@@ -50,142 +68,77 @@ declare module '@tanstack/react-router' {
 }
 ```
 
-Now you can import this function in both your server and client entry files and create your router.
-
-- `src/entry-server.tsx`
-
-```tsx
-import { createRouter } from './router'
-
-export async function render(req, res) {
-  const router = createRouter()
-}
-```
-
-- `src/entry-client.tsx`
-
-```tsx
-import { createRouter } from './router'
-
-const router = createRouter()
-```
-
-### Server History
-
-On the client, Router defaults to using an instance of `createBrowserHistory`, which is the preferred type of history to use on the client. On the server, however, you will want to use an instance of `createMemoryHistory` instead. This is because `createBrowserHistory` uses the `window` object, which does not exist on the server.
-
-> 🧠 Make sure you initialize your memory history with the server URL that is being rendered.
-
-- `src/entry-server.tsx`
-
-```tsx
-const router = createRouter()
-
-const memoryHistory = createMemoryHistory({
-  initialEntries: [opts.url],
-})
-```
-
-After creating the memory history instance, you can update the router to use it.
-
-- `src/entry-server.tsx`
-
-```tsx
-router.update({
-  history: memoryHistory,
-})
-```
-
-### Loading Critical Router Data on the Server
-
-In order to render your application on the server, you will need to ensure that the router has loaded any critical data via it's route loaders. To do this, you can `await router.load()` before rendering your application. This will quite literally wait for each of the matching route matches found for this url to run their route's `loader` functions in parallel.
-
-- `src/entry-server.tsx`
-
-```tsx
-await router.load()
-```
-
-## Automatic Loader Dehydration/Hydration
-
-Resolved loader data fetched by routes is automatically dehydrated and rehydrated by TanStack Router so long as you complete the standard SSR steps outlined in this guide.
-
-⚠️ If you are using deferred data streaming, you will also need to ensure that you have implemented the [SSR Streaming & Stream Transform](#streaming-ssr) pattern near the end of this guide.
-
-For more information on how to utilize data loading and data streaming, see the [Data Loading](./data-loading.md) and [Data Streaming](../data-streaming) guides.
-
 ### Rendering the Application on the Server
 
 Now that you have a router instance that has loaded all of the critical data for the current URL, you can render your application on the server:
 
-```tsx
-// src/entry-server.tsx
-
-const html = ReactDOMServer.renderToString(<StartServer router={router} />)
-```
-
-### Handling Not Found Errors
-
-`router` has a method `hasNotFoundMatch` to check if a not-found error has occurred during the rendering process. Use this method to check if a not-found error has occurred and set the response status code accordingly:
+using `defaultRenderToString`
 
 ```tsx
 // src/entry-server.tsx
-if (router.hasNotFoundMatch()) statusCode = 404
-```
-
-### All Together Now!
-
-Here is a complete example of a server entry file that uses all of the concepts discussed above.
-
-```tsx
-// src/entry-server.tsx
-import * as React from 'react'
-import ReactDOMServer from 'react-dom/server'
-import { createMemoryHistory } from '@tanstack/react-router'
-import { StartServer } from '@tanstack/react-start/server'
+import {
+  createRequestHandler,
+  defaultRenderToString,
+} from '@tanstack/react-router/ssr/server'
 import { createRouter } from './router'
 
-export async function render(url, response) {
-  const router = createRouter()
+export async function render({ request }: { request: Request }) {
+  const handler = createRequestHandler({ request, createRouter })
 
-  const memoryHistory = createMemoryHistory({
-    initialEntries: [url],
-  })
-
-  router.update({
-    history: memoryHistory,
-  })
-
-  await router.load()
-
-  const appHtml = ReactDOMServer.renderToString(<StartServer router={router} />)
-
-  response.statusCode = router.hasNotFoundMatch() ? 404 : 200
-  response.setHeader('Content-Type', 'text/html')
-  response.end(`<!DOCTYPE html>${appHtml}`)
+  return await handler(defaultRenderToString)
 }
 ```
+
+using `renderRouterToString`
+
+```tsx
+// src/entry-server.tsx
+import {
+  createRequestHandler,
+  renderRouterToString,
+  RouterServer,
+} from '@tanstack/react-router/ssr/server'
+import { createRouter } from './router'
+
+export function render({ request }: { request: Request }) {
+  const handler = createRequestHandler({ request, createRouter })
+
+  return handler(({ request, responseHeaders, router }) =>
+    renderRouterToString({
+      request,
+      responseHeaders,
+      router,
+      children: <RouterServer router={router} />,
+    }),
+  )
+}
+```
+
+NOTE: The createRequestHandler method requires a web api standard Request object, while the handler method will return a web api standard Response promise.
+
+Should you be using a server framework like Express that uses its own Request and Response objects you would need to convert from the one to the other. Please have a look at the examples for how such an implementation might look like.
 
 ## Rendering the Application on the Client
 
 On the client, things are much simpler.
 
 - Create your router instance
-- Render your application using the `<StartClient />` component
+- Render your application using the `<RouterClient />` component
+
+[//]: # 'ClientEntryFileExample'
 
 ```tsx
 // src/entry-client.tsx
-
-import * as React from 'react'
-import ReactDOM from 'react-dom/client'
-
-import { StartClient } from '@tanstack/react-start'
+import { hydrateRoot } from 'react-dom/client'
+import { RouterClient } from '@tanstack/react-router/ssr/client'
 import { createRouter } from './router'
 
 const router = createRouter()
 
-ReactDOM.hydrateRoot(document, <StartClient router={router} />)
+hydrateRoot(document, <RouterClient router={router} />)
 ```
+
+[//]: # 'ClientEntryFileExample'
 
 With this setup, your application will be rendered on the server and then hydrated on the client!
 
@@ -195,7 +148,50 @@ Streaming SSR is the most modern flavor of SSR and is the process of continuousl
 
 This pattern can be useful for pages that have slow or high-latency data fetching requirements. For example, if you have a page that needs to fetch data from a third-party API, you can stream the critical initial markup and data to the client and then stream the less-critical third-party data to the client as it is resolved.
 
-**This streaming pattern is all automatic as long as you are using `renderToPipeableStream`**.
+> [!NOTE]
+> This streaming pattern is all automatic as long as you are using either `defaultStreamHandler` or `renderRouterToStream`.
+
+using `defaultStreamHandler`
+
+```tsx
+// src/entry-server.tsx
+import {
+  createRequestHandler,
+  defaultStreamHandler,
+} from '@tanstack/react-router/ssr/server'
+import { createRouter } from './router'
+
+export async function render({ request }: { request: Request }) {
+  const handler = createRequestHandler({ request, createRouter })
+
+  return await handler(defaultStreamHandler)
+}
+```
+
+using `renderRouterToStream`
+
+```tsx
+// src/entry-server.tsx
+import {
+  createRequestHandler,
+  renderRouterToStream,
+  RouterServer,
+} from '@tanstack/react-router/ssr/server'
+import { createRouter } from './router'
+
+export function render({ request }: { request: Request }) {
+  const handler = createRequestHandler({ request, createRouter })
+
+  return handler(({ request, responseHeaders, router }) =>
+    renderRouterToStream({
+      request,
+      responseHeaders,
+      router,
+      children: <RouterServer router={router} />,
+    }),
+  )
+}
+```
 
 ## Streaming Dehydration/Hydration
 
@@ -215,19 +211,3 @@ Out of the box, the following types are supported:
 If you feel that there are other types that should be supported by default, please open an issue on the TanStack Router repository.
 
 If you are using more complex data types like `Map`, `Set`, `BigInt`, etc, you may need to use a custom serializer to ensure that your type-definitions are accurate and your data is correctly serialized and deserialized. We are currently working on both a more robust serializer and a way to customize the serializer for your application. Open an issue if you are interested in helping out!
-
-<!-- This is where the `serializer` option on `createRouter` comes in. -->
-
-The Data Serialization API allows the usage of a custom serializer that can allow us to transparently use these data types when communicating across the network.
-
-<!-- The following example shows usage with [SuperJSON](https://github.com/blitz-js/superjson), however, anything that implements [`Start Serializer`](../api/router/RouterOptionsType.md#serializer-property) can be used. -->
-
-```tsx
-import { SuperJSON } from 'superjson'
-
-const router = createRouter({
-  serializer: SuperJSON,
-})
-```
-
-Just like that, TanStack Router will now appropriately use SuperJSON to serialize data across the network.

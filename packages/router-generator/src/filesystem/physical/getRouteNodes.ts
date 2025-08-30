@@ -2,15 +2,13 @@ import path from 'node:path'
 import * as fsp from 'node:fs/promises'
 import {
   determineInitialRoutePath,
-  logging,
   removeExt,
-  removeLeadingSlash,
-  removeTrailingSlash,
   replaceBackslash,
   routePathToVariable,
 } from '../../utils'
 import { getRouteNodes as getRouteNodesVirtual } from '../virtual/getRouteNodes'
 import { loadConfigFile } from '../virtual/loadConfigFile'
+import { logging } from '../../logger'
 import { rootPathId } from './rootPathId'
 import type {
   VirtualRootRoute,
@@ -21,16 +19,32 @@ import type { Config } from '../../config'
 
 const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx)/
 
+const virtualConfigFileRegExp = /__virtual\.[mc]?[jt]s$/
+export function isVirtualConfigFile(fileName: string): boolean {
+  return virtualConfigFileRegExp.test(fileName)
+}
+
 export async function getRouteNodes(
-  config: Config,
+  config: Pick<
+    Config,
+    | 'routesDirectory'
+    | 'routeFilePrefix'
+    | 'routeFileIgnorePrefix'
+    | 'routeFileIgnorePattern'
+    | 'disableLogging'
+    | 'routeToken'
+    | 'indexToken'
+  >,
   root: string,
 ): Promise<GetRouteNodesResult> {
   const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
     config
+
   const logger = logging({ disabled: config.disableLogging })
   const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
 
   const routeNodes: Array<RouteNode> = []
+  const allPhysicalDirectories: Array<string> = []
 
   async function recurse(dir: string) {
     const fullDir = path.resolve(config.routesDirectory, dir)
@@ -45,6 +59,13 @@ export async function getRouteNodes(
       }
 
       if (routeFilePrefix) {
+        if (routeFileIgnorePattern) {
+          return (
+            d.name.startsWith(routeFilePrefix) &&
+            !d.name.match(routeFileIgnoreRegExp)
+          )
+        }
+
         return d.name.startsWith(routeFilePrefix)
       }
 
@@ -56,7 +77,7 @@ export async function getRouteNodes(
     })
 
     const virtualConfigFile = dirList.find((dirent) => {
-      return dirent.isFile() && dirent.name.match(/__virtual\.[mc]?[jt]s$/)
+      return dirent.isFile() && isVirtualConfigFile(dirent.name)
     })
 
     if (virtualConfigFile !== undefined) {
@@ -74,14 +95,16 @@ export async function getRouteNodes(
         file: '',
         children: virtualRouteSubtreeConfig,
       }
-      const { routeNodes: virtualRouteNodes } = await getRouteNodesVirtual(
-        {
-          ...config,
-          routesDirectory: fullDir,
-          virtualRouteConfig: dummyRoot,
-        },
-        root,
-      )
+      const { routeNodes: virtualRouteNodes, physicalDirectories } =
+        await getRouteNodesVirtual(
+          {
+            ...config,
+            routesDirectory: fullDir,
+            virtualRouteConfig: dummyRoot,
+          },
+          root,
+        )
+      allPhysicalDirectories.push(...physicalDirectories)
       virtualRouteNodes.forEach((node) => {
         const filePath = replaceBackslash(path.join(dir, node.filePath))
         const routePath = `/${dir}${node.routePath}`
@@ -100,7 +123,7 @@ export async function getRouteNodes(
 
     await Promise.all(
       dirList.map(async (dirent) => {
-        const fullPath = path.posix.join(fullDir, dirent.name)
+        const fullPath = replaceBackslash(path.join(fullDir, dirent.name))
         const relativePath = path.posix.join(dir, dirent.name)
 
         if (dirent.isDirectory()) {
@@ -182,9 +205,14 @@ export async function getRouteNodes(
   const rootRouteNode = routeNodes.find((d) => d.routePath === `/${rootPathId}`)
   if (rootRouteNode) {
     rootRouteNode._fsRouteType = '__root'
+    rootRouteNode.variableName = 'root'
   }
 
-  return { rootRouteNode, routeNodes }
+  return {
+    rootRouteNode,
+    routeNodes,
+    physicalDirectories: allPhysicalDirectories,
+  }
 }
 
 /**
@@ -196,7 +224,7 @@ export async function getRouteNodes(
  */
 export function getRouteMeta(
   routePath: string,
-  config: Config,
+  config: Pick<Config, 'routeToken' | 'indexToken'>,
 ): {
   // `__root` is can be more easily determined by filtering down to routePath === /${rootPathId}
   // `pathless` is needs to determined after `lazy` has been cleaned up from the routePath
@@ -215,15 +243,7 @@ export function getRouteMeta(
 } {
   let fsRouteType: FsRouteType = 'static'
 
-  if (
-    removeLeadingSlash(routePath).startsWith(
-      `${removeTrailingSlash(removeLeadingSlash(config.apiBase))}/`,
-    ) &&
-    config.__enableAPIRoutesGeneration
-  ) {
-    // api routes, i.e. `/api/foo.ts`
-    fsRouteType = 'api'
-  } else if (routePath.endsWith(`/${config.routeToken}`)) {
+  if (routePath.endsWith(`/${config.routeToken}`)) {
     // layout routes, i.e `/foo/route.tsx` or `/foo/_layout/route.tsx`
     fsRouteType = 'layout'
   } else if (routePath.endsWith('/lazy')) {
@@ -257,7 +277,7 @@ export function getRouteMeta(
 function isValidPathlessLayoutRoute(
   normalizedRoutePath: string,
   routeType: FsRouteType,
-  config: Config,
+  config: Pick<Config, 'routeToken' | 'indexToken'>,
 ): boolean {
   if (routeType === 'lazy') {
     return false

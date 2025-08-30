@@ -1,7 +1,7 @@
 import path from 'path'
 import { fileURLToPath } from 'url'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
-import { TanStackRouterWebpack } from '@tanstack/router-plugin/webpack'
+import { tanstackRouter } from '@tanstack/router-plugin/webpack'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -23,7 +23,7 @@ export default ({ WEBPACK_SERVE }) => ({
       template: path.resolve(__dirname, './public/index.html'),
       filename: 'index.html',
     }),
-    TanStackRouterWebpack({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
   ],
   module: {
     rules: [

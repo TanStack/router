@@ -13,7 +13,6 @@ Code splitting and lazy loading is a powerful technique for improving the bundle
 TanStack Router separates code into two categories:
 
 - **Critical Route Configuration** - The code that is required to render the current route and kick off the data loading process as early as possible.
-
   - Path Parsing/Serialization
   - Search Param Validation
   - Loaders, Before Load
@@ -72,7 +71,7 @@ This is the easiest and most powerful way to code split your route files.
 When using the `autoCodeSplitting` feature, TanStack Router will automatically code split your route files based on the non-critical route configuration mentioned above.
 
 > [!IMPORTANT]
-> The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](../routing/file-based-routing.md#getting-started-with-file-based-routing).
+> The automatic code-splitting feature is **ONLY** available when you are using file-based routing with one of our [supported bundlers](../../routing/file-based-routing.md#getting-started-with-file-based-routing).
 > This will **NOT** work if you are **only** using the CLI (`@tanstack/router-cli`).
 
 To enable automatic code-splitting, you just need to add the following to the configuration of your TanStack Router Bundler Plugin:
@@ -81,11 +80,11 @@ To enable automatic code-splitting, you just need to add the following to the co
 // vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
   plugins: [
-    TanStackRouterVite({
+    tanstackRouter({
       // ...
       autoCodeSplitting: true,
     }),
@@ -96,7 +95,7 @@ export default defineConfig({
 
 That's it! TanStack Router will automatically code-split all your route files by their critical and non-critical route configurations.
 
-If you want more control over the code-splitting process, head over to the [Automatic Code Splitting](./automatic-code-splitting.md) guide to learn more about the options available.
+If you want more control over the code-splitting process, head over to the [Automatic Code Splitting](../automatic-code-splitting.md) guide to learn more about the options available.
 
 ## Using the `.lazy.tsx` suffix
 
@@ -217,7 +216,7 @@ If you are using code-based routing, you can still code-split your routes using 
 Create a lazy route using the `createLazyRoute` function.
 
 ```tsx
-// src/posts.tsx
+// src/posts.lazy.tsx
 export const Route = createLazyRoute('/posts')({
   component: MyComponent,
 })

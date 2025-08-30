@@ -16,21 +16,21 @@ An instance of the `Router` has the following properties and methods:
 
 ### `state` property
 
-- Type: [`RouterState`](./RouterStateType.md)
+- Type: [`RouterState`](../RouterStateType.md)
 - The current state of the router.
 
-> ⚠️⚠️⚠️ **`router.state` is always up to date, but NOT REACTIVE. If you use `router.state` in a component, the component will not re-render when the router state changes. To get a reactive version of the router state, use the [`useRouterState`](./useRouterStateHook.md) hook.**
+> ⚠️⚠️⚠️ **`router.state` is always up to date, but NOT REACTIVE. If you use `router.state` in a component, the component will not re-render when the router state changes. To get a reactive version of the router state, use the [`useRouterState`](../useRouterStateHook.md) hook.**
 
 ### `.subscribe` method
 
 - Type: `(eventType: TType, fn: ListenerFn<RouterEvents[TType]>) => (event: RouterEvent) => void`
-- Subscribes to a [`RouterEvent`](./RouterEventsType.md).
+- Subscribes to a [`RouterEvent`](../RouterEventsType.md).
 - Returns a function that can be used to unsubscribe from the event.
 - The callback provided to the returned function will be called with the event that was emitted.
 
 ### `.matchRoutes` method
 
-- Type: `(pathname: string, locationSearch: Record<string, any>, opts?: { throwOnError?: boolean; }) => RouteMatch[]`
+- Type: `(pathname: string, locationSearch?: Record<string, any>, opts?: { throwOnError?: boolean; }) => RouteMatch[]`
 - Matches a pathname and search params against the router's route tree and returns an array of route matches.
 - If `opts.throwOnError` is `true`, any errors that occur during the matching process will be thrown (in addition to being returned in the route match's `error` property).
 
@@ -100,7 +100,7 @@ Commits a new location object to the browser history.
   ```
 - Properties
   - `location`
-    - Type: [`ParsedLocation`](./ParsedLocationType.md)
+    - Type: [`ParsedLocation`](../ParsedLocationType.md)
     - Required
     - The location to commit to the browser history.
   - `replace`
@@ -139,11 +139,12 @@ Navigates to a new location.
 
 Invalidates route matches by forcing their `beforeLoad` and `load` functions to be called again.
 
-- Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean, sync?: boolean}) => Promise<void>`
+- Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean, sync?: boolean, forcePending?: boolean }) => Promise<void>`
 - This is useful any time your loader data might be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up-to-date.
 - if `filter` is not supplied, all matches will be invalidated
 - if `filter` is supplied, only matches for which `filter` returns `true` will be invalidated.
 - if `sync` is true, the promise returned by this function will only resolve once all loaders have finished.
+- if `forcePending` is true, the invalidated matches will be put into `'pending'` state regardless whether they are in `'error'` state or not.
 - You might also want to invalidate the Router if you imperatively `reset` the router's `CatchBoundary` to trigger loaders again.
 
 ### `.clearCache` method

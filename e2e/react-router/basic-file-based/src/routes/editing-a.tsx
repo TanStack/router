@@ -1,5 +1,6 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
-import { createFileRoute, useBlocker } from '@tanstack/react-router'
+import { useBlocker } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/editing-a')({
   component: RouteComponent,

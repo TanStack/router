@@ -1,6 +1,7 @@
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 
+export type Awaitable<T> = T | Promise<T>
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue
   ? TYesResult
@@ -37,12 +38,12 @@ export type DeepPartial<T> = T extends object
     }
   : T
 
-export type MakeDifferenceOptional<TLeft, TRight> = Omit<
-  TRight,
-  keyof TLeft
-> & {
-  [K in keyof TLeft & keyof TRight]?: TRight[K]
-}
+export type MakeDifferenceOptional<TLeft, TRight> = keyof TLeft &
+  keyof TRight extends never
+  ? TRight
+  : Omit<TRight, keyof TLeft & keyof TRight> & {
+      [K in keyof TLeft & keyof TRight]?: TRight[K]
+    }
 
 // from https://stackoverflow.com/a/53955431
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -169,6 +170,20 @@ export type ValidateJSON<T> = ((...args: Array<any>) => any) extends T
     : 'Function is not serializable'
   : { [K in keyof T]: ValidateJSON<T[K]> }
 
+export type LooseReturnType<T> = T extends (
+  ...args: Array<any>
+) => infer TReturn
+  ? TReturn
+  : never
+
+export type LooseAsyncReturnType<T> = T extends (
+  ...args: Array<any>
+) => infer TReturn
+  ? TReturn extends Promise<infer TReturn>
+    ? TReturn
+    : TReturn
+  : never
+
 export function last<T>(arr: Array<T>) {
   return arr[arr.length - 1]
 }
@@ -188,16 +203,6 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   return updater
 }
 
-export function pick<TValue, TKey extends keyof TValue>(
-  parent: TValue,
-  keys: Array<TKey>,
-): Pick<TValue, TKey> {
-  return keys.reduce((obj: any, key: TKey) => {
-    obj[key] = parent[key]
-    return obj
-  }, {} as any)
-}
-
 /**
  * This function returns `prev` if `_next` is deeply equal.
  * If not, it will replace any deeply equal children of `b` with those of `a`.
@@ -213,10 +218,18 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
 
   const array = isPlainArray(prev) && isPlainArray(next)
 
-  if (array || (isPlainObject(prev) && isPlainObject(next))) {
-    const prevItems = array ? prev : Object.keys(prev)
+  if (array || (isSimplePlainObject(prev) && isSimplePlainObject(next))) {
+    const prevItems = array
+      ? prev
+      : (Object.keys(prev) as Array<unknown>).concat(
+          Object.getOwnPropertySymbols(prev),
+        )
     const prevSize = prevItems.length
-    const nextItems = array ? next : Object.keys(next)
+    const nextItems = array
+      ? next
+      : (Object.keys(next) as Array<unknown>).concat(
+          Object.getOwnPropertySymbols(next),
+        )
     const nextSize = nextItems.length
     const copy: any = array ? [] : {}
 
@@ -243,6 +256,19 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
   }
 
   return next
+}
+
+/**
+ * A wrapper around `isPlainObject` with additional checks to ensure that it is not
+ * only a plain object, but also one that is "clone-friendly" (doesn't have any
+ * non-enumerable properties).
+ */
+function isSimplePlainObject(o: any) {
+  return (
+    // all the checks from isPlainObject are more likely to hit so we perform them first
+    isPlainObject(o) &&
+    Object.getOwnPropertyNames(o).length === Object.keys(o).length
+  )
 }
 
 // Copied from: https://github.com/jonschlinkert/is-plain-object
@@ -426,19 +452,35 @@ export function shallow<T>(objA: T, objB: T) {
   return true
 }
 
-/**
- * Checks if a string contains URI-encoded special characters (e.g., %3F, %20).
- *
- * @param {string} inputString The string to check.
- * @returns {boolean} True if the string contains URI-encoded characters, false otherwise.
- * @example
- * ```typescript
- * const str1 = "foo%3Fbar";
- * const hasEncodedChars = hasUriEncodedChars(str1); // returns true
- * ```
- */
-export function hasUriEncodedChars(inputString: string): boolean {
-  // This regex looks for a percent sign followed by two hexadecimal digits
-  const pattern = /%[0-9A-Fa-f]{2}/
-  return pattern.test(inputString)
+export function isModuleNotFoundError(error: any): boolean {
+  // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
+  // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
+  // safari: "Importing a module script failed."
+  if (typeof error?.message !== 'string') return false
+  return (
+    error.message.startsWith('Failed to fetch dynamically imported module') ||
+    error.message.startsWith('error loading dynamically imported module') ||
+    error.message.startsWith('Importing a module script failed')
+  )
+}
+
+export function isPromise<T>(
+  value: Promise<Awaited<T>> | T,
+): value is Promise<Awaited<T>> {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      typeof (value as Promise<T>).then === 'function',
+  )
+}
+
+export function findLast<T>(
+  array: ReadonlyArray<T>,
+  predicate: (item: T) => boolean,
+): T | undefined {
+  for (let i = array.length - 1; i >= 0; i--) {
+    const item = array[i]!
+    if (predicate(item)) return item
+  }
+  return undefined
 }

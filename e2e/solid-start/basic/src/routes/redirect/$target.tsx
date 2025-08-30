@@ -1,4 +1,4 @@
-import { createFileRoute, retainSearchParams } from '@tanstack/solid-router'
+import { retainSearchParams, createFileRoute } from '@tanstack/solid-router'
 import z from 'zod'
 
 export const Route = createFileRoute('/redirect/$target')({

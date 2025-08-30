@@ -3,7 +3,9 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import { z } from 'zod'
+import { createSignal } from 'solid-js'
 import {
+  Block,
   RouterProvider,
   createRootRoute,
   createRoute,
@@ -11,6 +13,7 @@ import {
   useBlocker,
   useNavigate,
 } from '../src'
+import type { Setter } from 'solid-js'
 
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
@@ -420,5 +423,73 @@ describe('useBlocker', () => {
     ).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/invoices')
+  })
+
+  test('<Block /> disabled property is reactive', async () => {
+    const rootRoute = createRootRoute()
+
+    let _setDisabled: Setter<boolean> = null!
+
+    const IndexComponent = () => {
+      const navigate = useNavigate()
+
+      const [disabled, setDisabled] = createSignal(false)
+      _setDisabled = setDisabled
+
+      return (
+        <>
+          <Block shouldBlockFn={() => true} disabled={disabled()} />
+          <h1>Index</h1>
+          <button onClick={() => navigate({ to: '/' })}>Index</button>
+          <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+        </>
+      )
+    }
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => {
+        return (
+          <>
+            <h1>Posts</h1>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    let postsButton = await screen.findByRole('button', { name: 'Posts' })
+
+    fireEvent.click(postsButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Index' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/')
+
+    _setDisabled(true)
+
+    postsButton = await screen.findByRole('button', { name: 'Posts' })
+
+    fireEvent.click(postsButton)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Posts' }),
+    ).toBeInTheDocument()
+
+    expect(window.location.pathname).toBe('/posts')
   })
 })

@@ -13,6 +13,7 @@ The following options are available for configuring the file-based routing:
 - [`virtualRouteConfig`](#virtualrouteconfig)
 - [`routeFilePrefix`](#routefileprefix)
 - [`routeFileIgnorePrefix`](#routefileignoreprefix)
+- [`routeFileIgnorePattern`](#routefileignorepattern)
 - [`indexToken`](#indextoken)
 - [`routeToken`](#routetoken)
 - [`quoteStyle`](#quotestyle)
@@ -24,8 +25,8 @@ The following options are available for configuring the file-based routing:
 - [`disableLogging`](#disablelogging)
 - [`routeTreeFileHeader`](#routetreefileheader)
 - [`routeTreeFileFooter`](#routetreefilefooter)
-- [`disableManifestGeneration`](#disablemanifestgeneration)
 - [`enableRouteTreeFormatting`](#enableroutetreeformatting)
+- [`tmpDir`](#tmpdir)
 
 > [!WARNING]
 > Do not set the `routeFilePrefix`, `routeFileIgnorePrefix`, or `routeFileIgnorePattern` options, to match any of the tokens used in the **File Naming Conventions** guide, or you may run into unexpected behavior.
@@ -58,6 +59,12 @@ This option is used to configure the Virtual File Routes feature. See the "Virtu
 
 By default, this value is set to `undefined`.
 
+### `routeFilePrefix`
+
+This option is used to identify route files in the route directory. This means that only files that start with this prefix will be considered for routing.
+
+By default, this value is set to `` and as such all files in the route directory will be considered for routing.
+
 ### `routeFileIgnorePrefix`
 
 This option is used to ignore specific files and directories in the route directory. This can be useful if you want to "opt-in" certain files or directories that you do not want to be considered for routing.
@@ -80,12 +87,6 @@ src/routes
 This option is used to ignore specific files and directories in the route directory. It can be used in regular expression format. For example, `.((css|const).ts)|test-page` will ignore files / directories with names containing `.css.ts`, `.const.ts` or `test-page`.
 
 By default, this value is set to `undefined`.
-
-### `routeFilePrefix`
-
-This option is used to identify route files in the route directory. This means that only files that start with this prefix will be considered for routing.
-
-By default, this value is set to `` and as such all files in the route directory will be considered for routing.
 
 ### `routeToken`
 
@@ -132,22 +133,9 @@ By default, this value is set to `false`.
 > [!TIP]
 > You should ignore the path of your generated route tree file from your linter and formatter to avoid conflicts.
 
-### `apiBase`
-
-As a framework, [TanStack Start](/start) supports the concept of API routes. This option configures the base path for API routes.
-
-By default, this value is set to `/api`.
-
-This means that all API routes will be prefixed with `/api`.
-
-This configuration value is only useful if you are using TanStack Start.
-
-> [!IMPORTANT]
-> This default value may conflict with your own project's routing if you planned on having a normal route with the same base path. You can change this value to avoid conflicts.
-
 ### `autoCodeSplitting`
 
-This feature is only available is you are using the TanStack Router Bundler Plugin.
+This feature is only available if you are using the TanStack Router Bundler Plugin.
 
 This option is used to enable automatic code-splitting for non-critical route configuration items. See the "Automatic Code-Splitting" guide for more information.
 
@@ -200,16 +188,17 @@ By default, this value is set to:
 []
 ```
 
-### `disableManifestGeneration`
-
-[TanStack Start](/start) leverages the `generatedRouteTree` file to also store a JSON tree which allows Start to easily traverse the available route tree to understand the routing structure of the application. This JSON tree is saved at the end of the generated route tree file.
-
-This option allows you to disable the generation of the manifest.
-
-By default, this value is set to `false`.
-
 ### `enableRouteTreeFormatting`
 
 This option turns on the formatting function on the generated route tree file, which can be time-consuming for large projects.
 
 By default, this value is set to `true`.
+
+### `tmpDir`
+
+Atomic file writes (route files and the generated route tree file) are implemented by creating a temporary file first and then renaming it to their actual location.
+
+This config option allows to configure the path of the temp directory that will be used for creating those temporary files.
+If it is a relative path, it will be resolved to the current working directory.
+If this value is not set, `process.env.TSR_TMP_DIR` will be used.
+If `process.env.TSR_TMP_DIR` is not set, it will default to `.tanstack/tmp` relative to the current working directory.

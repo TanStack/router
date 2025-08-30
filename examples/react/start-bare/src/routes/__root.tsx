@@ -1,13 +1,14 @@
+/// <reference types="vite/client" />
+import * as React from 'react'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import {
-  createRootRoute,
   HeadContent,
   Link,
   Outlet,
   Scripts,
+  createRootRoute,
 } from '@tanstack/react-router'
 import appCss from '~/styles/app.css?url'
-import * as React from 'react'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -31,7 +32,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <div>
           <Link to="/">Index</Link>
           <Link to="/about">About</Link>
         </div>

@@ -1,9 +1,10 @@
+/// <reference types="vite/client" />
 import { Link, Outlet, createRootRoute } from '@tanstack/solid-router'
 
+import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
-import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -39,6 +40,17 @@ export const Route = createRootRoute({
       },
       { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
       { rel: 'icon', href: '/favicon.ico' },
+    ],
+    styles: [
+      {
+        media: 'all and (min-width: 500px)',
+        children: `
+        .inline-div {
+          color: white;
+          background-color: gray;
+          max-width: 250px;
+        }`,
+      },
     ],
   }),
   errorComponent: (props) => <p>{props.error.stack}</p>,
@@ -118,6 +130,7 @@ function RootComponent() {
         </Link>
       </div>
       <Outlet />
+      <div class="inline-div">This is an inline styled div</div>
       <TanStackRouterDevtoolsInProd />
     </>
   )

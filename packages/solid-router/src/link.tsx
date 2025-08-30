@@ -15,7 +15,7 @@ import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
-import { useMatches } from './Matches'
+import { useActiveLocation } from './useActiveLocation'
 import type {
   AnyRouter,
   Constrain,
@@ -62,7 +62,6 @@ export function useLinkProps<
       'startTransition',
       'resetScroll',
       'viewTransition',
-      'children',
       'target',
       'disabled',
       'style',
@@ -113,6 +112,7 @@ export function useLinkProps<
     'state',
     'mask',
     'reloadDocument',
+    'unsafeRelative',
   ])
 
   // If this link simply reloads the current route,
@@ -133,19 +133,20 @@ export function useLinkProps<
     select: (s) => s.location.searchStr,
   })
 
-  // when `from` is not supplied, use the leaf route of the current matches as the `from` location
-  // so relative routing works as expected
-  const from = useMatches({
-    select: (matches) => options.from ?? matches[matches.length - 1]?.fullPath,
-  })
+  const { getFromPath, activeLocation } = useActiveLocation()
 
-  const _options = () => ({
-    ...options,
-    from: from(),
-  })
+  const from = getFromPath(options.from)
+
+  const _options = () => {
+    return {
+      ...options,
+      from: from(),
+    }
+  }
 
   const next = Solid.createMemo(() => {
     currentSearch()
+    activeLocation()
     return router.buildLocation(_options() as any)
   })
 
@@ -250,7 +251,6 @@ export function useLinkProps<
         },
       },
       Solid.splitProps(local, [
-        'children',
         'target',
         'disabled',
         'style',
@@ -286,7 +286,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      return router.navigate({
+      router.navigate({
         ..._options(),
         replace: local.replace,
         resetScroll: local.resetScroll,
@@ -294,7 +294,7 @@ export function useLinkProps<
         startTransition: local.startTransition,
         viewTransition: local.viewTransition,
         ignoreBlocker: local.ignoreBlocker,
-      } as any)
+      })
     }
   }
 
@@ -509,9 +509,12 @@ export type CreateLinkProps = LinkProps<
   string
 >
 
-export type LinkComponent<TComp> = <
+export type LinkComponent<
+  in out TComp,
+  in out TDefaultFrom extends string = string,
+> = <
   TRouter extends AnyRouter = RegisteredRouter,
-  const TFrom extends string = string,
+  const TFrom extends string = TDefaultFrom,
   const TTo extends string | undefined = undefined,
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
@@ -519,32 +522,60 @@ export type LinkComponent<TComp> = <
   props: LinkComponentProps<TComp, TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ) => Solid.JSX.Element
 
+export interface LinkComponentRoute<
+  in out TDefaultFrom extends string = string,
+> {
+  defaultFrom: TDefaultFrom
+  <
+    TRouter extends AnyRouter = RegisteredRouter,
+    const TTo extends string | undefined = undefined,
+    const TMaskTo extends string = '',
+  >(
+    props: LinkComponentProps<
+      'a',
+      TRouter,
+      this['defaultFrom'],
+      TTo,
+      this['defaultFrom'],
+      TMaskTo
+    >,
+  ): Solid.JSX.Element
+}
+
 export function createLink<const TComp>(
   Comp: Constrain<TComp, any, (props: CreateLinkProps) => Solid.JSX.Element>,
 ): LinkComponent<TComp> {
-  return (props) => <Link {...(props as any)} _asChild={Comp} />
+  return (props) => <Link {...props} _asChild={Comp} />
 }
 
-export const Link: LinkComponent<'a'> = (props: any) => {
-  const [local, rest] = Solid.splitProps(props, ['_asChild'])
+export const Link: LinkComponent<'a'> = (props) => {
+  const [local, rest] = Solid.splitProps(
+    props as typeof props & { _asChild: any },
+    ['_asChild', 'children'],
+  )
 
   const [_, linkProps] = Solid.splitProps(
     useLinkProps(rest as unknown as any),
-    ['type', 'children'],
+    ['type'],
   )
 
-  const children = () =>
-    typeof rest.children === 'function'
-      ? rest.children({
-          get isActive() {
-            return (linkProps as any)['data-status'] === 'active'
-          },
-        })
-      : rest.children
+  const children = Solid.createMemo(() => {
+    const ch = local.children
+    if (typeof ch === 'function') {
+      return ch({
+        get isActive() {
+          return (linkProps as any)['data-status'] === 'active'
+        },
+        isTransitioning: false,
+      })
+    }
+
+    return ch satisfies Solid.JSX.Element
+  })
 
   return (
     <Dynamic component={local._asChild ? local._asChild : 'a'} {...linkProps}>
-      {children}
+      {children()}
     </Dynamic>
   )
 }

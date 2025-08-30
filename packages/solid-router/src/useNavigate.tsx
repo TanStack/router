@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { useRouter } from './useRouter'
+import { useActiveLocation } from './useActiveLocation'
 import type {
   AnyRouter,
   FromPathOption,
@@ -14,10 +15,20 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const { navigate } = useRouter()
+  const router = useRouter()
+
+  const { getFromPath, setActiveLocation } = useActiveLocation(
+    router.latestLocation,
+  )
 
   return ((options: NavigateOptions) => {
-    return navigate({ from: _defaultOpts?.from, ...options })
+    setActiveLocation(router.latestLocation)
+    const from = getFromPath(options.from ?? _defaultOpts?.from)
+
+    return router.navigate({
+      ...options,
+      from: from(),
+    })
   }) as UseNavigateResult<TDefaultFrom>
 }
 

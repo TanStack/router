@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import * as React from 'react'
 import {
   HeadContent,
@@ -49,6 +50,17 @@ export const Route = createRootRoute({
       },
       { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
       { rel: 'icon', href: '/favicon.ico' },
+    ],
+    styles: [
+      {
+        media: 'all and (min-width: 500px)',
+        children: `
+        .inline-div {
+          color: white;
+          background-color: gray;
+          max-width: 250px;
+        }`,
+      },
     ],
   }),
   errorComponent: (props) => {
@@ -157,6 +169,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </div>
         <hr />
         {children}
+        <div className="inline-div">This is an inline styled div</div>
         <RouterDevtools position="bottom-right" />
         <Scripts />
       </body>

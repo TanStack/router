@@ -5,7 +5,7 @@ title: FileRoute class
 
 > [!CAUTION]
 > This class has been deprecated and will be removed in the next major version of TanStack Router.
-> Please use the [`createFileRoute`](./createFileRouteFunction.md) function instead.
+> Please use the [`createFileRoute`](../createFileRouteFunction.md) function instead.
 
 The `FileRoute` class is a factory that can be used to create a file-based route instance. This route instance can then be used to automatically generate a route tree with the `tsr generate` and `tsr watch` commands.
 
@@ -34,13 +34,13 @@ The `createRoute` method is a method that can be used to configure the file rout
 #### .createRoute options
 
 - Type: `Omit<RouteOptions, 'getParentRoute' | 'path' | 'id'>`
-- [`RouteOptions`](./RouteOptionsType.md)
+- [`RouteOptions`](../RouteOptionsType.md)
 - Optional
 - The same options that are available to the `Route` class, but with the `getParentRoute`, `path`, and `id` options omitted since they are unnecessary for file-based routing.
 
 #### .createRoute returns
 
-A [`Route`](./RouteType.md) instance that can be used to configure the route to be inserted into the route-tree.
+A [`Route`](../RouteType.md) instance that can be used to configure the route to be inserted into the route-tree.
 
 > ⚠️ Note: For `tsr generate` and `tsr watch` to work properly, the file route instance must be exported from the file using the `Route` identifier.
 

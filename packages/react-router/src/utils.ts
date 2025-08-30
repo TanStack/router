@@ -69,34 +69,26 @@ export function useIntersectionObserver<T extends Element>(
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
   options: { disabled?: boolean } = {},
-): IntersectionObserver | null {
-  const isIntersectionObserverAvailable = React.useRef(
-    typeof IntersectionObserver === 'function',
-  )
-
-  const observerRef = React.useRef<IntersectionObserver | null>(null)
-
+) {
   React.useEffect(() => {
     if (
       !ref.current ||
-      !isIntersectionObserverAvailable.current ||
-      options.disabled
+      options.disabled ||
+      typeof IntersectionObserver !== 'function'
     ) {
       return
     }
 
-    observerRef.current = new IntersectionObserver(([entry]) => {
+    const observer = new IntersectionObserver(([entry]) => {
       callback(entry)
     }, intersectionObserverOptions)
 
-    observerRef.current.observe(ref.current)
+    observer.observe(ref.current)
 
     return () => {
-      observerRef.current?.disconnect()
+      observer.disconnect()
     }
   }, [callback, intersectionObserverOptions, options.disabled, ref])
-
-  return observerRef.current
 }
 
 /**

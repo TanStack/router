@@ -1,10 +1,10 @@
+import { createFileRoute } from '@tanstack/react-router'
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import * as React from 'react'
 import {
   Link,
   MatchRoute,
   Outlet,
-  createFileRoute,
   retainSearchParams,
   useNavigate,
 } from '@tanstack/react-router'
@@ -30,7 +30,7 @@ export const Route = createFileRoute('/dashboard/users')({
     middlewares: [retainSearchParams(['usersView'])],
   },
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(usersQueryOptions(opts.deps)),
+    opts.context.queryClient.ensureQueryData(usersQueryOptions({})),
   component: UsersComponent,
 })
 

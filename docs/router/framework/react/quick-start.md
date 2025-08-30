@@ -44,13 +44,16 @@ deno add npm:@tanstack/react-router npm:@tanstack/router-plugin npm:@tanstack/re
 // vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     // Please make sure that '@tanstack/router-plugin' is passed before '@vitejs/plugin-react'
-    TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
+    }),
     react(),
     // ...,
   ],
@@ -58,7 +61,7 @@ export default defineConfig({
 ```
 
 > [!TIP]
-> If you are not using Vite, or any of the supported bundlers, you can check out the [TanStack Router CLI](./routing/installation-with-router-cli.md) guide for more info.
+> If you are not using Vite, or any of the supported bundlers, you can check out the [TanStack Router CLI](../routing/installation-with-router-cli.md) guide for more info.
 
 Create the following files:
 
@@ -95,9 +98,9 @@ export const Route = createRootRoute({
 #### `src/routes/index.tsx`
 
 ```tsx
-import { createLazyFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createLazyFileRoute('/')({
+export const Route = createFileRoute('/')({
   component: Index,
 })
 
@@ -113,9 +116,9 @@ function Index() {
 #### `src/routes/about.tsx`
 
 ```tsx
-import { createLazyFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createLazyFileRoute('/about')({
+export const Route = createFileRoute('/about')({
   component: About,
 })
 

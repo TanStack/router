@@ -1,4 +1,4 @@
-name: '🐛 Bug report'
+name: 🐛 Bug Report
 description: Create a report to help us improve
 body:
   - type: markdown
@@ -83,9 +83,12 @@ body:
     attributes:
       label: Platform
       value: |
+        - Router / Start Version: [e.g. 1.121.0]
         - OS: [e.g. macOS, Windows, Linux]
         - Browser: [e.g. Chrome, Safari, Firefox]
-        - Version: [e.g. 91.1]
+        - Browser Version: [e.g. 91.1]
+        - Bundler: [e.g. vite]
+        - Bundler Version: [e.g. 7.0.0]
     validations:
       required: true
   - type: textarea

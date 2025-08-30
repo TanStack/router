@@ -1,5 +1,6 @@
 import { createSignal, lazy } from 'solid-js'
 import { render } from 'solid-js/web'
+import { ShadowDomTargetContext } from './context'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Signal } from 'solid-js'
 
@@ -58,6 +59,7 @@ class TanStackRouterDevtoolsCore {
   #panelProps: any
   #closeButtonProps: any
   #toggleButtonProps: any
+  #containerElement?: string | any
 
   #isMounted = false
   #Component: any
@@ -73,6 +75,7 @@ class TanStackRouterDevtoolsCore {
     this.#panelProps = config.panelProps
     this.#closeButtonProps = config.closeButtonProps
     this.#toggleButtonProps = config.toggleButtonProps
+    this.#containerElement = config.containerElement
   }
 
   mount<T extends HTMLElement>(el: T) {
@@ -90,6 +93,7 @@ class TanStackRouterDevtoolsCore {
       const panelProps = this.#panelProps
       const closeButtonProps = this.#closeButtonProps
       const toggleButtonProps = this.#toggleButtonProps
+      const containerElement = this.#containerElement
 
       let Devtools
 
@@ -101,16 +105,19 @@ class TanStackRouterDevtoolsCore {
       }
 
       return (
-        <Devtools
-          position={position}
-          initialIsOpen={initialIsOpen}
-          shadowDOMTarget={shadowDOMTarget}
-          router={router}
-          routerState={routerState}
-          panelProps={panelProps}
-          closeButtonProps={closeButtonProps}
-          toggleButtonProps={toggleButtonProps}
-        />
+        <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
+          <Devtools
+            position={position}
+            initialIsOpen={initialIsOpen}
+            router={router}
+            routerState={routerState}
+            shadowDOMTarget={shadowDOMTarget}
+            panelProps={panelProps}
+            closeButtonProps={closeButtonProps}
+            toggleButtonProps={toggleButtonProps}
+            containerElement={containerElement}
+          />
+        </ShadowDomTargetContext.Provider>
       )
     }, el)
 
@@ -145,6 +152,10 @@ class TanStackRouterDevtoolsCore {
 
     if (options.shadowDOMTarget !== undefined) {
       this.#shadowDOMTarget = options.shadowDOMTarget
+    }
+
+    if (options.containerElement !== undefined) {
+      this.#containerElement = options.containerElement
     }
   }
 }

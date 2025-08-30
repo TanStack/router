@@ -1,9 +1,10 @@
+export * from './global'
+
 export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
 export { preloadWarning } from './link'
 export type {
   IsRequiredParams,
-  ParsePathParams,
   AddTrailingSlash,
   RemoveTrailingSlashes,
   AddLeadingSlash,
@@ -38,6 +39,8 @@ export type {
   RequiredToOptions,
 } from './link'
 
+export { componentTypes } from './load-matches'
+
 export type {
   RouteToPath,
   TrailingSlashOptionByRouter,
@@ -60,19 +63,11 @@ export type {
   InferFileRouteTypes,
   FileRouteTypes,
   FileRoutesByPath,
+  CreateFileRoute,
   LazyRoute,
   LazyRouteOptions,
+  CreateLazyFileRoute,
 } from './fileRoute'
-
-export type {
-  StartSerializer,
-  Serializable,
-  SerializerParse,
-  SerializerParseBy,
-  SerializerStringify,
-  SerializerStringifyBy,
-  SerializerExtensions,
-} from './serializer'
 
 export type { ParsedLocation } from './location'
 export type { Manifest, RouterManagedTag } from './manifest'
@@ -142,15 +137,11 @@ export type {
   ErrorRouteProps,
   ErrorComponentProps,
   NotFoundRouteProps,
-  ParseSplatParams,
-  SplatParams,
   ResolveParams,
   ParseParamsFn,
   StringifyParamsFn,
   ParamsOptions,
   UpdatableStaticRouteOption,
-  LooseReturnType,
-  LooseAsyncReturnType,
   ContextReturnType,
   ContextAsyncReturnType,
   ResolveRouteContext,
@@ -189,6 +180,7 @@ export type {
   RouteContextOptions,
   BeforeLoadContextOptions,
   RootRouteOptions,
+  RootRouteOptionsExtensions,
   UpdatableRouteOptionsExtensions,
   RouteConstraints,
   RouteTypesById,
@@ -198,25 +190,24 @@ export type {
   RouteAddChildrenFn,
   RouteAddFileChildrenFn,
   RouteAddFileTypesFn,
+  ResolveOptionalParams,
+  ResolveRequiredParams,
+  RootRoute,
 } from './route'
 
 export {
   defaultSerializeError,
   getLocationChangeInfo,
   RouterCore,
-  componentTypes,
   lazyFn,
   SearchParamError,
   PathParamError,
   getInitialRouterState,
+  processRouteTree,
+  getMatchedRoutes,
 } from './router'
 export type {
   ViewTransitionOptions,
-  ExtractedBaseEntry,
-  ExtractedStream,
-  ExtractedPromise,
-  ExtractedEntry,
-  StreamState,
   TrailingSlashOption,
   Register,
   AnyRouter,
@@ -241,8 +232,6 @@ export type {
   InvalidateFn,
   ControllablePromise,
   InjectedHtmlEntry,
-  RouterErrorSerializer,
-  MatchedRoutesResult,
   EmitFn,
   LoadFn,
   GetMatchFn,
@@ -253,9 +242,9 @@ export type {
   MatchRoutesFn,
   StartTransitionFn,
   LoadRouteChunkFn,
-  ServerSrr,
   ClearCacheFn,
   CreateRouterFn,
+  ProcessRouteTreeResult,
 } from './router'
 
 export type {
@@ -280,7 +269,6 @@ export type { OptionalStructuralSharing } from './structuralSharing'
 export {
   last,
   functionalUpdate,
-  pick,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,
@@ -288,6 +276,7 @@ export {
   escapeJSON,
   shallow,
   createControlledPromise,
+  isModuleNotFoundError,
 } from './utils'
 export type {
   NoInfer,
@@ -322,6 +311,9 @@ export type {
   MergeAll,
   ValidateJSON,
   StrictOrFrom,
+  LooseReturnType,
+  LooseAsyncReturnType,
+  Awaitable,
 } from './utils'
 
 export type {
@@ -368,9 +360,19 @@ export type { UseLoaderDepsResult, ResolveUseLoaderDeps } from './useLoaderDeps'
 
 export type { UseLoaderDataResult, ResolveUseLoaderData } from './useLoaderData'
 
-export type { Redirect, ResolvedRedirect, AnyRedirect } from './redirect'
+export type {
+  Redirect,
+  RedirectOptions,
+  ResolvedRedirect,
+  AnyRedirect,
+} from './redirect'
 
-export { redirect, isRedirect, isResolvedRedirect } from './redirect'
+export {
+  redirect,
+  isRedirect,
+  isResolvedRedirect,
+  parseRedirect,
+} from './redirect'
 
 export type { NotFoundError } from './not-found'
 export { isNotFound, notFound } from './not-found'

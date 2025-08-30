@@ -2,7 +2,7 @@
 title: Custom Link
 ---
 
-While repeating yourself can be acceptable in many situations, you might find that you do it too often. At times, you may want to create cross-cutting components with additional behavior or styles. You might also consider using third-party libraries in combination with TanStack Router’s type safety.
+While repeating yourself can be acceptable in many situations, you might find that you do it too often. At times, you may want to create cross-cutting components with additional behavior or styles. You might also consider using third-party libraries in combination with TanStack Router's type safety.
 
 ## `createLink` for cross-cutting concerns
 
@@ -53,59 +53,38 @@ Here are some examples of how you can use `createLink` with third-party librarie
 
 ### React Aria Components example
 
-React Aria Components’
-[Link](https://react-spectrum.adobe.com/react-aria/Link.html) component does not support the standard `onMouseEnter` and `onMouseLeave` events.
-Therefore, you cannot use it directly with TanStack Router’s `preload (intent)` prop.
-
-Explanation for this can be found here:
-
-- [https://react-spectrum.adobe.com/react-aria/interactions.html](https://react-spectrum.adobe.com/react-aria/interactions.html)
-- [https://react-spectrum.adobe.com/blog/building-a-button-part-2.html](https://react-spectrum.adobe.com/blog/building-a-button-part-2.html)
-
-It is possible to work around this by using the [useLink](https://react-spectrum.adobe.com/react-aria/useLink.html) hook from [React Aria Hooks](https://react-spectrum.adobe.com/react-aria/hooks.html) with a standard anchor element.
+React Aria Components v1.11.0 and later works with TanStack Router's `preload (intent)` prop. Use `createLink` to wrap each React Aria component that you use as a link.
 
 ```tsx
-import * as React from 'react'
-import { createLink, LinkComponent } from '@tanstack/react-router'
-import {
-  mergeProps,
-  useFocusRing,
-  useHover,
-  useLink,
-  useObjectRef,
-} from 'react-aria'
-import type { AriaLinkOptions } from 'react-aria'
+import { createLink } from '@tanstack/react-router'
+import { Link as RACLink, MenuItem } from 'react-aria-components'
 
-interface RACLinkProps extends Omit<AriaLinkOptions, 'href'> {
-  children?: React.ReactNode
+export const Link = createLink(RACLink)
+export const MenuItemLink = createLink(MenuItem)
+```
+
+To use React Aria's render props, including the `className`, `style`, and `children` functions, create a wrapper component and pass that to `createLink`.
+
+```tsx
+import { createLink } from '@tanstack/react-router'
+import { Link as RACLink, type LinkProps } from 'react-aria-components'
+
+interface MyLinkProps extends LinkProps {
+  // your props
 }
 
-const RACLinkComponent = React.forwardRef<HTMLAnchorElement, RACLinkProps>(
-  (props, forwardedRef) => {
-    const ref = useObjectRef(forwardedRef)
-
-    const { isPressed, linkProps } = useLink(props, ref)
-    const { isHovered, hoverProps } = useHover(props)
-    const { isFocusVisible, isFocused, focusProps } = useFocusRing(props)
-
-    return (
-      <a
-        {...mergeProps(linkProps, hoverProps, focusProps, props)}
-        ref={ref}
-        data-hovered={isHovered || undefined}
-        data-pressed={isPressed || undefined}
-        data-focus-visible={isFocusVisible || undefined}
-        data-focused={isFocused || undefined}
-      />
-    )
-  },
-)
-
-const CreatedLinkComponent = createLink(RACLinkComponent)
-
-export const CustomLink: LinkComponent<typeof RACLinkComponent> = (props) => {
-  return <CreatedLinkComponent preload={'intent'} {...props} />
+function MyLink(props: MyLinkProps) {
+  return (
+    <RACLink
+      {...props}
+      style={({ isHovered }) => ({
+        color: isHovered ? 'red' : 'blue',
+      })}
+    />
+  )
 }
+
+export const Link = createLink(MyLink)
 ```
 
 ### Chakra UI example
@@ -146,7 +125,7 @@ export const CustomLink: LinkComponent<typeof ChakraLinkComponent> = (
 
 ### MUI example
 
-There is an [example](../examples/start-material-ui) available which uses these patterns.
+There is an [example](https://github.com/TanStack/router/tree/main/examples/react/start-material-ui) available which uses these patterns.
 
 #### `Link`
 

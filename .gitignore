@@ -23,6 +23,7 @@ coverage
 # tests
 packages/router-generator/tests/**/*.gen.ts
 packages/router-generator/tests/**/*.gen.js
+e2e/**/port*.txt
 
 # misc
 .DS_Store
@@ -60,20 +61,21 @@ nx-cloud.env
 
 gpt/db.json
 
-app.config.timestamp-*
+vite.config.timestamp-*
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-app.config.js.timestamp-*
-app.config.ts.timestamp-*
 
-app.config.timestamp_*
+vite.config.timestamp_*
 vite.config.js.timestamp_*
 vite.config.ts.timestamp_*
-app.config.js.timestamp_*
-app.config.ts.timestamp_*
+
 .idea
 *.vitest-temp.json
 
 # Handling VSCode settings
 /.vscode/
 !/examples/react/**/.vscode/settings.json
+
+**/llms
+
+**/.tanstack

@@ -1,10 +1,6 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { useLayoutEffect, useRef, useState } from 'react'
-import {
-  Link,
-  createFileRoute,
-  useLocation,
-  useNavigate,
-} from '@tanstack/react-router'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/anchor')({
   component: AnchorComponent,

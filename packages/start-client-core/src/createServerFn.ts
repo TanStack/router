@@ -1,29 +1,43 @@
 import { default as invariant } from 'tiny-invariant'
 import { default as warning } from 'tiny-warning'
 import { isNotFound, isRedirect } from '@tanstack/router-core'
-import { startSerializer } from './serializer'
-import { mergeHeaders } from './headers'
+import { mergeHeaders } from '@tanstack/router-core/ssr/client'
+import { getStartContext } from '@tanstack/start-storage-context'
 import { globalMiddleware } from './registerGlobalMiddleware'
+
+import { startSerializer } from './serializer'
+
+import { createIsomorphicFn } from './createIsomorphicFn'
 import type {
+  SerializerParse,
+  SerializerStringify,
+  SerializerStringifyBy,
+} from './serializer'
+import type {
+  AnyRouter,
   AnyValidator,
   Constrain,
   Expand,
   ResolveValidatorInput,
-  SerializerParse,
-  SerializerStringify,
-  SerializerStringifyBy,
   Validator,
 } from '@tanstack/router-core'
+import type { JsonResponse } from '@tanstack/router-core/ssr/client'
 import type { Readable } from 'node:stream'
 import type {
-  AnyMiddleware,
+  AnyFunctionMiddleware,
   AssignAllClientSendContext,
   AssignAllServerContext,
+  FunctionMiddlewareClientFnResult,
+  FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
   IntersectAllValidatorOutputs,
-  MiddlewareClientFnResult,
-  MiddlewareServerFnResult,
 } from './createMiddleware'
+
+type TODO = any
+
+const getRouterInstance = createIsomorphicFn()
+  .client(() => window.__TSR_ROUTER__!)
+  .server(() => getStartContext({ throwIfNotFound: false })?.router)
 
 export function createServerFn<
   TMethod extends Method,
@@ -127,6 +141,7 @@ export function createServerFn<
             headers: opts?.headers,
             signal: opts?.signal,
             context: {},
+            router: getRouterInstance(),
           }).then((d) => {
             if (resolvedOptions.response === 'full') {
               return d
@@ -215,8 +230,8 @@ export function createServerFn<
   }
 }
 
-async function executeMiddleware(
-  middlewares: Array<AnyMiddleware>,
+export async function executeMiddleware(
+  middlewares: Array<AnyFunctionMiddleware>,
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
@@ -276,10 +291,6 @@ async function executeMiddleware(
   })
 }
 
-export interface JsonResponse<TData> extends Response {
-  json: () => Promise<TData>
-}
-
 export type CompiledFetcherFnOptions = {
   method: Method
   data: unknown
@@ -287,6 +298,7 @@ export type CompiledFetcherFnOptions = {
   headers?: HeadersInit
   signal?: AbortSignal
   context?: any
+  // router?: AnyRouter
 }
 
 export type Fetcher<
@@ -398,6 +410,7 @@ export type ServerFnReturnType<
 > = TServerFnResponseType extends 'raw'
   ? RawResponse | Promise<RawResponse>
   : Promise<SerializerStringify<TResponse>> | SerializerStringify<TResponse>
+
 export type ServerFn<
   TMethod,
   TServerFnResponseType extends ServerFnResponseType,
@@ -442,7 +455,7 @@ export type ServerFnBaseOptions<
   method: TMethod
   response?: TServerFnResponseType
   validateClient?: boolean
-  middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyMiddleware>>
+  middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyFunctionMiddleware>>
   validator?: ConstrainValidator<TInput>
   extractedFn?: CompiledFetcherFn<TResponse, TServerFnResponseType>
   serverFn?: ServerFn<
@@ -485,7 +498,10 @@ export interface ServerFnMiddleware<
   TValidator,
 > {
   middleware: <const TNewMiddlewares = undefined>(
-    middlewares: Constrain<TNewMiddlewares, ReadonlyArray<AnyMiddleware>>,
+    middlewares: Constrain<
+      TNewMiddlewares,
+      ReadonlyArray<AnyFunctionMiddleware>
+    >,
   ) => ServerFnAfterMiddleware<
     TMethod,
     TServerFnResponseType,
@@ -812,12 +828,12 @@ export function extractFormDataContext(formData: FormData) {
 }
 
 export function flattenMiddlewares(
-  middlewares: Array<AnyMiddleware>,
-): Array<AnyMiddleware> {
-  const seen = new Set<AnyMiddleware>()
-  const flattened: Array<AnyMiddleware> = []
+  middlewares: Array<AnyFunctionMiddleware>,
+): Array<AnyFunctionMiddleware> {
+  const seen = new Set<AnyFunctionMiddleware>()
+  const flattened: Array<AnyFunctionMiddleware> = []
 
-  const recurse = (middleware: Array<AnyMiddleware>) => {
+  const recurse = (middleware: Array<AnyFunctionMiddleware>) => {
     middleware.forEach((m) => {
       if (m.options.middleware) {
         recurse(m.options.middleware)
@@ -845,6 +861,7 @@ export type ServerFnMiddlewareOptions = {
   context?: any
   type: ServerFnTypeOrTypeFn<any, any, any, any>
   functionId: string
+  router?: AnyRouter
 }
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
@@ -929,7 +946,7 @@ export function execValidator(
 
 export function serverFnBaseToMiddleware(
   options: ServerFnBaseOptions<any, any, any, any, any>,
-): AnyMiddleware {
+): AnyFunctionMiddleware {
   return {
     _types: undefined!,
     options: {
@@ -973,16 +990,25 @@ export function serverFnBaseToMiddleware(
         // but not before serializing the context
         const res = await options.extractedFn?.(payload)
 
-        return next(res) as unknown as MiddlewareClientFnResult<any, any, any>
+        return next(res) as unknown as FunctionMiddlewareClientFnResult<
+          any,
+          any,
+          any
+        >
       },
       server: async ({ next, ...ctx }) => {
         // Execute the server function
-        const result = await options.serverFn?.(ctx)
+        const result = await options.serverFn?.(ctx as TODO)
 
         return next({
           ...ctx,
           result,
-        } as any) as unknown as MiddlewareServerFnResult<any, any, any, any>
+        } as any) as unknown as FunctionMiddlewareServerFnResult<
+          any,
+          any,
+          any,
+          any
+        >
       },
     },
   }

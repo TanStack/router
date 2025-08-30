@@ -9,7 +9,7 @@ export const defaultStringifySearch = stringifySearchWith(
 
 export function parseSearchWith(parser: (str: string) => any) {
   return (searchStr: string): AnySchema => {
-    if (searchStr.substring(0, 1) === '?') {
+    if (searchStr[0] === '?') {
       searchStr = searchStr.substring(1)
     }
 
@@ -21,8 +21,8 @@ export function parseSearchWith(parser: (str: string) => any) {
       if (typeof value === 'string') {
         try {
           query[key] = parser(value)
-        } catch (err) {
-          //
+        } catch (_err) {
+          // silent
         }
       }
     }
@@ -35,20 +35,21 @@ export function stringifySearchWith(
   stringify: (search: any) => string,
   parser?: (str: string) => any,
 ) {
+  const hasParser = typeof parser === 'function'
   function stringifyValue(val: any) {
     if (typeof val === 'object' && val !== null) {
       try {
         return stringify(val)
-      } catch (err) {
+      } catch (_err) {
         // silent
       }
-    } else if (typeof val === 'string' && typeof parser === 'function') {
+    } else if (hasParser && typeof val === 'string') {
       try {
         // Check if it's a valid parseable string.
         // If it is, then stringify it again.
         parser(val)
         return stringify(val)
-      } catch (err) {
+      } catch (_err) {
         // silent
       }
     }
@@ -56,19 +57,7 @@ export function stringifySearchWith(
   }
 
   return (search: Record<string, any>) => {
-    search = { ...search }
-
-    Object.keys(search).forEach((key) => {
-      const val = search[key]
-      if (typeof val === 'undefined' || val === undefined) {
-        delete search[key]
-      } else {
-        search[key] = stringifyValue(val)
-      }
-    })
-
-    const searchStr = encode(search as Record<string, string>).toString()
-
+    const searchStr = encode(search, stringifyValue)
     return searchStr ? `?${searchStr}` : ''
   }
 }

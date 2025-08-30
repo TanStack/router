@@ -10,6 +10,7 @@ import { SafeFragment } from './SafeFragment'
 import type {
   AnyRouter,
   DeepPartial,
+  Expand,
   MakeOptionalPathParams,
   MakeOptionalSearchParams,
   MakeRouteMatchUnion,
@@ -29,6 +30,7 @@ declare module '@tanstack/router-core' {
     meta?: Array<Solid.JSX.IntrinsicElements['meta'] | undefined>
     links?: Array<Solid.JSX.IntrinsicElements['link'] | undefined>
     scripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
+    styles?: Array<Solid.JSX.IntrinsicElements['style'] | undefined>
     headScripts?: Array<Solid.JSX.IntrinsicElements['script'] | undefined>
   }
 }
@@ -36,31 +38,32 @@ declare module '@tanstack/router-core' {
 export function Matches() {
   const router = useRouter()
 
-  const pendingElement = router.options.defaultPendingComponent ? (
-    <router.options.defaultPendingComponent />
-  ) : null
-
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && router.clientSsr)
+    router.isServer || (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : Solid.Suspense
 
-  const inner = (
-    <ResolvedSuspense fallback={pendingElement}>
-      <Transitioner />
-      <MatchesInner />
-    </ResolvedSuspense>
-  )
+  const OptionalWrapper = router.options.InnerWrap || SafeFragment
 
-  return router.options.InnerWrap ? (
-    <router.options.InnerWrap>{inner}</router.options.InnerWrap>
-  ) : (
-    inner
+  return (
+    <OptionalWrapper>
+      <ResolvedSuspense
+        fallback={
+          router.options.defaultPendingComponent ? (
+            <router.options.defaultPendingComponent />
+          ) : null
+        }
+      >
+        {!router.isServer && <Transitioner />}
+        <MatchesInner />
+      </ResolvedSuspense>
+    </OptionalWrapper>
   )
 }
 
 function MatchesInner() {
+  const router = useRouter()
   const matchId = useRouterState({
     select: (s) => {
       return s.matches[0]?.id
@@ -71,21 +74,30 @@ function MatchesInner() {
     select: (s) => s.loadedAt,
   })
 
+  const matchComponent = () => {
+    const id = matchId()
+    return id ? <Match matchId={id} /> : null
+  }
+
   return (
     <matchContext.Provider value={matchId}>
-      <CatchBoundary
-        getResetKey={() => resetKey()}
-        errorComponent={ErrorComponent}
-        onCatch={(error) => {
-          warning(
-            false,
-            `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
-          )
-          warning(false, error.message || error.toString())
-        }}
-      >
-        {matchId() ? <Match matchId={matchId()!} /> : null}
-      </CatchBoundary>
+      {router.options.disableGlobalCatchBoundary ? (
+        matchComponent()
+      ) : (
+        <CatchBoundary
+          getResetKey={() => resetKey()}
+          errorComponent={ErrorComponent}
+          onCatch={(error) => {
+            warning(
+              false,
+              `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+            )
+            warning(false, error.message || error.toString())
+          }}
+        >
+          {matchComponent()}
+        </CatchBoundary>
+      )}
     </matchContext.Provider>
   )
 }
@@ -117,7 +129,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   >(
     opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   ): Solid.Accessor<
-    false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
+    false | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']>
   > => {
     const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
@@ -169,12 +181,12 @@ export function MatchRoute<
       {(_) => {
         const matchRoute = useMatchRoute()
         const params = matchRoute(props as any)() as boolean
-
-        if (typeof props.children === 'function') {
-          return (props.children as any)(params)
+        const child = props.children
+        if (typeof child === 'function') {
+          return (child as any)(params)
         }
 
-        return params ? props.children : null
+        return params ? child : null
       }}
     </Solid.Show>
   )
