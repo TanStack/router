@@ -61,7 +61,6 @@ import { createServerFn } from '@tanstack/react-start'
 
 export const getData = createServerFn({
   method: 'GET', // HTTP method to use
-  response: 'data', // Response handling mode
 }).handler(async () => {
   // Function implementation
 })
@@ -78,18 +77,6 @@ method?: 'GET' | 'POST'
 ```
 
 By default, server functions use `GET` if not specified.
-
-**`response`**
-
-Controls how responses are processed and returned:
-
-```tsx
-response?: 'data' | 'full' | 'raw'
-```
-
-- `'data'` (default): Automatically parses JSON responses and returns just the data
-- `'full'`: Returns a response object with result data, error information, and context
-- `'raw'`: Returns the raw Response object directly, enabling streaming responses and custom headers
 
 ## Where can I call server functions?
 
@@ -495,28 +482,26 @@ export const getServerTime = createServerFn({ method: 'GET' }).handler(
 
 ## Returning Raw Response objects
 
-To return a raw Response object, return a Response object from the server function and set `response: 'raw'`:
+To return a raw Response object, return a Response object from the server function:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
 
 export const getServerTime = createServerFn({
   method: 'GET',
-  response: 'raw',
 }).handler(async () => {
   // Read a file from s3
   return fetch('https://example.com/time.txt')
 })
 ```
 
-The response: 'raw' option also allows for streaming responses among other things:
+This also allows fro streaming responses among other things:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
 
 export const streamEvents = createServerFn({
   method: 'GET',
-  response: 'raw',
 }).handler(async ({ signal }) => {
   // Create a ReadableStream to send chunks of data
   const stream = new ReadableStream({
@@ -566,7 +551,7 @@ export const streamEvents = createServerFn({
 })
 ```
 
-The `response: 'raw'` option is particularly useful for:
+Returning raw responses is particularly useful for:
 
 - Streaming APIs where data is sent incrementally
 - Server-sent events
