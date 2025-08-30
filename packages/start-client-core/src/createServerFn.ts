@@ -20,6 +20,7 @@ import type {
 import type { JsonResponse } from '@tanstack/router-core/ssr/client'
 import type {
   AnyFunctionMiddleware,
+  AnyRequestMiddleware,
   AssignAllServerContext,
   FunctionMiddlewareClientFnResult,
   FunctionMiddlewareServerFnResult,
@@ -175,7 +176,7 @@ export function createServerFn<
 }
 
 export async function executeMiddleware(
-  middlewares: Array<AnyFunctionMiddleware>,
+  middlewares: Array<AnyFunctionMiddleware | AnyRequestMiddleware>,
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
@@ -193,13 +194,17 @@ export async function executeMiddleware(
       return ctx
     }
 
-    if (nextMiddleware.options.validator && env === 'server') {
+    if (
+      'validator' in nextMiddleware.options &&
+      nextMiddleware.options.validator &&
+      env === 'server'
+    ) {
       // Execute the middleware's input function
       ctx.data = await execValidator(nextMiddleware.options.validator, ctx.data)
     }
 
     const middlewareFn = (
-      env === 'client'
+      env === 'client' && 'client' in nextMiddleware.options
         ? nextMiddleware.options.client
         : nextMiddleware.options.server
     ) as MiddlewareFn | undefined
@@ -351,7 +356,10 @@ export type ServerFnBaseOptions<
   TInput = unknown,
 > = {
   method: TMethod
-  middleware?: Constrain<TMiddlewares, ReadonlyArray<AnyFunctionMiddleware>>
+  middleware?: Constrain<
+    TMiddlewares,
+    ReadonlyArray<AnyFunctionMiddleware | AnyRequestMiddleware>
+  >
   validator?: ConstrainValidator<TRegister, TInput>
   extractedFn?: CompiledFetcherFn<TRegister, TResponse>
   serverFn?: ServerFn<TRegister, TMethod, TMiddlewares, TInput, TResponse>
@@ -409,7 +417,9 @@ export interface ServerFnMiddleware<
     middlewares: Constrain<
       TNewMiddlewares,
       ReadonlyArray<
-        AnyFunctionMiddleware | ServerFnAfterMiddleware<any, any, any, any>
+        | AnyFunctionMiddleware
+        | AnyRequestMiddleware
+        | ServerFnAfterMiddleware<any, any, any, any>
       >
     >,
   ) => ServerFnAfterMiddleware<
@@ -500,12 +510,14 @@ export interface ServerFnBuilder<
 }
 
 export function flattenMiddlewares(
-  middlewares: Array<AnyFunctionMiddleware>,
-): Array<AnyFunctionMiddleware> {
-  const seen = new Set<AnyFunctionMiddleware>()
-  const flattened: Array<AnyFunctionMiddleware> = []
+  middlewares: Array<AnyFunctionMiddleware | AnyRequestMiddleware>,
+): Array<AnyFunctionMiddleware | AnyRequestMiddleware> {
+  const seen = new Set<AnyFunctionMiddleware | AnyRequestMiddleware>()
+  const flattened: Array<AnyFunctionMiddleware | AnyRequestMiddleware> = []
 
-  const recurse = (middleware: Array<AnyFunctionMiddleware>) => {
+  const recurse = (
+    middleware: Array<AnyFunctionMiddleware | AnyRequestMiddleware>,
+  ) => {
     middleware.forEach((m) => {
       if (m.options.middleware) {
         recurse(m.options.middleware)
