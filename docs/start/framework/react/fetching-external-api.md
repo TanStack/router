@@ -126,21 +126,17 @@ const API_URL =
   'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc'
 
 async function fetchPopularMovies(): Promise<TMDBResponse> {
-
   const token = process.env.TMDB_AUTH_TOKEN
   if (!token) {
     throw new Error('Missing TMDB_AUTH_TOKEN environment variable')
   }
 
-  const response = await fetch(
-    API_URL,
-    {
-      headers: {
-        'accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-    }
-  )
+  const response = await fetch(API_URL, {
+    headers: {
+      accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
 
   if (!response.ok) {
     throw new Error(`Failed to fetch movies: ${response.statusText}`)
@@ -169,7 +165,6 @@ export const Route = createFileRoute('/fetch-movies')({
 Now let's create the components that will display our movie data. Add these components to the same `fetch-movies.tsx` file:
 
 ```tsx
-
 // MovieCard component
 const MovieCard = ({ movie }: { movie: Movie }) => {
   return (
@@ -196,9 +191,7 @@ const MovieCard = ({ movie }: { movie: Movie }) => {
 const MovieDetails = ({ movie }: { movie: Movie }) => {
   return (
     <>
-      <h3 className="text-lg font-semibold mb-2 line-clamp-2">
-        {movie.title}
-      </h3>
+      <h3 className="text-lg font-semibold mb-2 line-clamp-2">{movie.title}</h3>
       <p className="text-sm text-gray-300 mb-3 line-clamp-3 h-10">
         {movie.overview}
       </p>
@@ -220,7 +213,10 @@ Finally, let's create the main component that consumes the loader data:
 ```tsx
 // MoviesPage component
 const MoviesPage = () => {
-  const { movies, error } = Route.useLoaderData()<{ movies: Movie[]; error: string | null }>()
+  const { movies, error } = Route.useLoaderData()<{
+    movies: Movie[]
+    error: string | null
+  }>()
 
   return (
     <div
@@ -256,10 +252,7 @@ const MoviesPage = () => {
           </div>
         ) : (
           !error && (
-            <div
-              className="text-center text-gray-400"
-              role="status"
-            >
+            <div className="text-center text-gray-400" role="status">
               Loading movies...
             </div>
           )
