@@ -17,12 +17,12 @@ The complete code for this tutorial is available on [GitHub](https://github.com/
 ## Prerequisites
 
 - Basic knowledge of React and TypeScript
-- Node.js and `pnpm` installed on your machine
-- A TMDB API key (free at https://themoviedb.org)
+- Node.js (v18+) and `pnpm` installed on your machine
+- A TMDB API key (free at [themoviedb.org](https://www.themoviedb.org))
 
 ## Nice to know
 
-- [TanStack Router](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts)
+- [TanStack Router](/router/latest/docs/framework/react/routing/routing-concepts)
 
 ## Setting up a TanStack Start Project
 
@@ -48,7 +48,7 @@ pnpm dev
 
 At this point, the project structure should look like this:
 
-```
+```text
 /movie-discovery
 ├── src/
 │   ├── routes/
@@ -75,14 +75,14 @@ To fetch movies from the TMDB API, you need an authentication token. You can get
 
 First, let's set up environment variables for our API key. Create a `.env` file in your project root:
 
-```
+```bash
 touch .env
 
 ```
 
 Add your TMDB API token to this file:
 
-```
+```dotenv
 TMDB_AUTH_TOKEN=your_bearer_token_here
 ```
 
@@ -126,23 +126,33 @@ const API_URL =
   'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc'
 
 async function fetchPopularMovies(): Promise<TMDBResponse> {
-  const response = await fetch(API_URL, {
-    headers: {
-      accept: 'application/json',
-      Authorization: `Bearer ${process.env.TMDB_AUTH_TOKEN}`,
-    },
-  })
+
+  const token = process.env.TMDB_AUTH_TOKEN
+  if (!token) {
+    throw new Error('Missing TMDB_AUTH_TOKEN environment variable')
+  }
+
+  const response = await fetch(
+    API_URL,
+    {
+      headers: {
+        'accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    }
+  )
 
   if (!response.ok) {
     throw new Error(`Failed to fetch movies: ${response.statusText}`)
   }
 
-  return response.json()
+  const data = (await response.json()) as TMDBResponse
+  return data
 }
 
 export const Route = createFileRoute('/fetch-movies')({
   component: MoviesPage,
-  loader: async () => {
+  loader: async (): Promise<{ movies: Movie[]; error: string | null }> => {
     try {
       const moviesData = await fetchPopularMovies()
       return { movies: moviesData.results, error: null }
@@ -158,7 +168,7 @@ export const Route = createFileRoute('/fetch-movies')({
 
 Now let's create the components that will display our movie data. Add these components to the same `fetch-movies.tsx` file:
 
-```jsx
+```tsx
 
 // MovieCard component
 const MovieCard = ({ movie }: { movie: Movie }) => {
@@ -166,7 +176,6 @@ const MovieCard = ({ movie }: { movie: Movie }) => {
     <div
       className="bg-white/10 border border-white/20 rounded-lg overflow-hidden backdrop-blur-sm shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105"
       aria-label={`Movie: ${movie.title}`}
-      tabIndex={0}
       role="group"
     >
       {movie.poster_path && (
@@ -208,10 +217,10 @@ const MovieDetails = ({ movie }: { movie: Movie }) => {
 
 Finally, let's create the main component that consumes the loader data:
 
-```jsx
+```tsx
 // MoviesPage component
 const MoviesPage = () => {
-  const { movies, error } = Route.useLoaderData()
+  const { movies, error } = Route.useLoaderData()<{ movies: Movie[]; error: string | null }>()
 
   return (
     <div
@@ -231,7 +240,6 @@ const MoviesPage = () => {
           <div
             className="text-red-400 text-center mb-4 p-4 bg-red-900/20 rounded-lg"
             role="alert"
-            tabIndex={0}
           >
             {error}
           </div>
@@ -251,7 +259,6 @@ const MoviesPage = () => {
             <div
               className="text-center text-gray-400"
               role="status"
-              tabIndex={0}
             >
               Loading movies...
             </div>
@@ -267,15 +274,15 @@ const MoviesPage = () => {
 
 Let's break down how the different parts of our application work together:
 
-1. Route Loader: When a user visits `/fetch-movies`, the loader function runs on the server
-2. API Call: The loader calls `fetchPopularMovies()` which makes an HTTP request to TMDB
-3. Server-Side Rendering: The data is fetched on the server reducing the load on the client side
-4. Component Rendering: The `MoviesPage` component receives the data via `Route.useLoaderData()`
-5. UI Loads: The movie cards are rendered with the fetched data
+1. Route loader: When a user visits `/fetch-movies`, the loader function runs on the server
+2. API call: The loader calls `fetchPopularMovies()` which makes an HTTP request to TMDB
+3. Server-Side rendering: The data is fetched on the server reducing the load on the client side
+4. Component rendering: The `MoviesPage` component receives the data via `Route.useLoaderData()`
+5. Rendering UI: The movie cards are rendered with the fetched data
 
 ## Step 6: Testing Your Application
 
-Now you can test your application by visiting http://localhost:3000/fetch-movies. If everything is set up correctly, you should see a beautiful grid of popular movies with their posters, titles, and ratings. Your app should look like this:
+Now you can test your application by visiting [http://localhost:3000/fetch-movies](http://localhost:3000/fetch-movies). If everything is set up correctly, you should see a grid of popular movies with their posters, titles, and ratings. Your app should look like this:
 
 ![Netflix style movie setup](https://res.cloudinary.com/dubc3wnbv/image/upload/v1756512946/Screenshot_2025-08-29_at_5.14.26_PM_iiex7o.png)
 
