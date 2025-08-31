@@ -31,13 +31,16 @@ import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as virtualLayoutBarRouteImport } from './routes/(virtualLayout)/bar'
 import { Route as groupLazyinsideRouteImport } from './routes/(group)/lazyinside'
 import { Route as groupInsideRouteImport } from './routes/(group)/inside'
 import { Route as groupLayoutRouteImport } from './routes/(group)/_layout'
 import { Route as anotherGroupOnlyrouteinsideRouteImport } from './routes/(another-group)/onlyrouteinside'
+import { Route as virtualLayoutQuxRouteRouteImport } from './routes/(virtualLayout)/qux/route'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
 import { Route as ParamsPsWildcardIndexRouteImport } from './routes/params-ps/wildcard/index'
 import { Route as ParamsPsNamedIndexRouteImport } from './routes/params-ps/named/index'
+import { Route as virtualLayoutBazIndexRouteImport } from './routes/(virtualLayout)/baz/index'
 import { Route as RedirectPreloadThirdRouteImport } from './routes/redirect/preload/third'
 import { Route as RedirectPreloadSecondRouteImport } from './routes/redirect/preload/second'
 import { Route as RedirectPreloadFirstRouteImport } from './routes/redirect/preload/first'
@@ -53,10 +56,19 @@ import { Route as ParamsPsNamedPrefixChar123fooChar125RouteImport } from './rout
 import { Route as ParamsPsNamedFooRouteImport } from './routes/params-ps/named/$foo'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as virtualLayoutQuxQuxLayoutRouteImport } from './routes/(virtualLayout)/qux/_quxLayout'
+import { Route as virtualLayoutQuuxQuuxLayoutRouteImport } from './routes/(virtualLayout)/quux/_quuxLayout'
+import { Route as virtualLayoutFooFooLayoutRouteImport } from './routes/(virtualLayout)/foo/_fooLayout'
+import { Route as virtualLayoutBazBazLayoutRouteImport } from './routes/(virtualLayout)/baz/_bazLayout'
+import { Route as virtualLayoutBarBarLayoutRouteImport } from './routes/(virtualLayout)/bar/_barLayout'
 import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
 import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_layout.insidelayout'
+import { Route as virtualLayoutQuuxQuuxLayoutHelloRouteImport } from './routes/(virtualLayout)/quux/_quuxLayout.hello'
 
 const groupRouteImport = createFileRoute('/(group)')()
+const virtualLayoutQuuxRouteImport = createFileRoute('/(virtualLayout)/quux')()
+const virtualLayoutFooRouteImport = createFileRoute('/(virtualLayout)/foo')()
+const virtualLayoutBazRouteImport = createFileRoute('/(virtualLayout)/baz')()
 
 const groupRoute = groupRouteImport.update({
   id: '/(group)',
@@ -117,6 +129,23 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const virtualLayoutQuuxRoute = virtualLayoutQuuxRouteImport.update({
+  id: '/(virtualLayout)/quux',
+  path: '/quux',
+  getParentRoute: () => rootRouteImport,
+  isVirtualLayout: true,
+} as any)
+const virtualLayoutFooRoute = virtualLayoutFooRouteImport.update({
+  id: '/(virtualLayout)/foo',
+  path: '/foo',
+  getParentRoute: () => rootRouteImport,
+  isVirtualLayout: true,
+} as any)
+const virtualLayoutBazRoute = virtualLayoutBazRouteImport.update({
+  id: '/(virtualLayout)/baz',
+  path: '/baz',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -162,6 +191,11 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
+const virtualLayoutBarRoute = virtualLayoutBarRouteImport.update({
+  id: '/(virtualLayout)/bar',
+  path: '/bar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const groupLazyinsideRoute = groupLazyinsideRouteImport
   .update({
     id: '/lazyinside',
@@ -184,6 +218,11 @@ const anotherGroupOnlyrouteinsideRoute =
     path: '/onlyrouteinside',
     getParentRoute: () => rootRouteImport,
   } as any)
+const virtualLayoutQuxRouteRoute = virtualLayoutQuxRouteRouteImport.update({
+  id: '/(virtualLayout)/qux',
+  path: '/qux',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -198,6 +237,11 @@ const ParamsPsNamedIndexRoute = ParamsPsNamedIndexRouteImport.update({
   id: '/params-ps/named/',
   path: '/params-ps/named/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const virtualLayoutBazIndexRoute = virtualLayoutBazIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => virtualLayoutBazRoute,
 } as any)
 const RedirectPreloadThirdRoute = RedirectPreloadThirdRouteImport.update({
   id: '/redirect/preload/third',
@@ -279,6 +323,31 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
+const virtualLayoutQuxQuxLayoutRoute =
+  virtualLayoutQuxQuxLayoutRouteImport.update({
+    id: '/_quxLayout',
+    getParentRoute: () => virtualLayoutQuxRouteRoute,
+  } as any)
+const virtualLayoutQuuxQuuxLayoutRoute =
+  virtualLayoutQuuxQuuxLayoutRouteImport.update({
+    id: '/_quuxLayout',
+    getParentRoute: () => virtualLayoutQuuxRoute,
+  } as any)
+const virtualLayoutFooFooLayoutRoute =
+  virtualLayoutFooFooLayoutRouteImport.update({
+    id: '/_fooLayout',
+    getParentRoute: () => virtualLayoutFooRoute,
+  } as any)
+const virtualLayoutBazBazLayoutRoute =
+  virtualLayoutBazBazLayoutRouteImport.update({
+    id: '/_bazLayout',
+    getParentRoute: () => virtualLayoutBazRoute,
+  } as any)
+const virtualLayoutBarBarLayoutRoute =
+  virtualLayoutBarBarLayoutRouteImport.update({
+    id: '/_barLayout',
+    getParentRoute: () => virtualLayoutBarRoute,
+  } as any)
 const groupSubfolderInsideRoute = groupSubfolderInsideRouteImport.update({
   id: '/subfolder/inside',
   path: '/subfolder/inside',
@@ -289,6 +358,12 @@ const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
   path: '/insidelayout',
   getParentRoute: () => groupLayoutRoute,
 } as any)
+const virtualLayoutQuuxQuuxLayoutHelloRoute =
+  virtualLayoutQuuxQuuxLayoutHelloRouteImport.update({
+    id: '/hello',
+    path: '/hello',
+    getParentRoute: () => virtualLayoutQuuxQuuxLayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
@@ -301,9 +376,11 @@ export interface FileRoutesByFullPath {
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
+  '/qux': typeof virtualLayoutQuxQuxLayoutRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
+  '/bar': typeof virtualLayoutBarBarLayoutRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -314,6 +391,9 @@ export interface FileRoutesByFullPath {
   '/search-params/': typeof SearchParamsIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
+  '/baz': typeof virtualLayoutBazBazLayoutRoute
+  '/foo': typeof virtualLayoutFooFooLayoutRoute
+  '/quux': typeof virtualLayoutQuuxQuuxLayoutRouteWithChildren
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRoute
@@ -329,9 +409,11 @@ export interface FileRoutesByFullPath {
   '/redirect/preload/first': typeof RedirectPreloadFirstRoute
   '/redirect/preload/second': typeof RedirectPreloadSecondRoute
   '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/baz/': typeof virtualLayoutBazIndexRoute
   '/params-ps/named': typeof ParamsPsNamedIndexRoute
   '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/quux/hello': typeof virtualLayoutQuuxQuuxLayoutHelloRoute
 }
 export interface FileRoutesByTo {
   '/': typeof groupLayoutRouteWithChildren
@@ -342,9 +424,11 @@ export interface FileRoutesByTo {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
+  '/qux': typeof virtualLayoutQuxQuxLayoutRoute
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/inside': typeof groupInsideRoute
   '/lazyinside': typeof groupLazyinsideRoute
+  '/bar': typeof virtualLayoutBarBarLayoutRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
   '/structural-sharing/$enabled': typeof StructuralSharingEnabledRoute
@@ -354,6 +438,9 @@ export interface FileRoutesByTo {
   '/search-params': typeof SearchParamsIndexRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
+  '/baz': typeof virtualLayoutBazIndexRoute
+  '/foo': typeof virtualLayoutFooFooLayoutRoute
+  '/quux': typeof virtualLayoutQuuxQuuxLayoutRouteWithChildren
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRoute
@@ -372,6 +459,7 @@ export interface FileRoutesByTo {
   '/params-ps/named': typeof ParamsPsNamedIndexRoute
   '/params-ps/wildcard': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
+  '/quux/hello': typeof virtualLayoutQuuxQuuxLayoutHelloRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -386,11 +474,13 @@ export interface FileRoutesById {
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
+  '/(virtualLayout)/qux': typeof virtualLayoutQuxRouteRouteWithChildren
   '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
   '/(group)': typeof groupRouteWithChildren
   '/(group)/_layout': typeof groupLayoutRouteWithChildren
   '/(group)/inside': typeof groupInsideRoute
   '/(group)/lazyinside': typeof groupLazyinsideRoute
+  '/(virtualLayout)/bar': typeof virtualLayoutBarRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
@@ -402,6 +492,14 @@ export interface FileRoutesById {
   '/search-params/': typeof SearchParamsIndexRoute
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
+  '/(virtualLayout)/bar/_barLayout': typeof virtualLayoutBarBarLayoutRoute
+  '/(virtualLayout)/baz': typeof virtualLayoutBazRouteWithChildren
+  '/(virtualLayout)/baz/_bazLayout': typeof virtualLayoutBazBazLayoutRoute
+  '/(virtualLayout)/foo': typeof virtualLayoutFooRouteWithChildren
+  '/(virtualLayout)/foo/_fooLayout': typeof virtualLayoutFooFooLayoutRoute
+  '/(virtualLayout)/quux': typeof virtualLayoutQuuxRouteWithChildren
+  '/(virtualLayout)/quux/_quuxLayout': typeof virtualLayoutQuuxQuuxLayoutRouteWithChildren
+  '/(virtualLayout)/qux/_quxLayout': typeof virtualLayoutQuxQuxLayoutRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRoute
@@ -417,9 +515,11 @@ export interface FileRoutesById {
   '/redirect/preload/first': typeof RedirectPreloadFirstRoute
   '/redirect/preload/second': typeof RedirectPreloadSecondRoute
   '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/(virtualLayout)/baz/': typeof virtualLayoutBazIndexRoute
   '/params-ps/named/': typeof ParamsPsNamedIndexRoute
   '/params-ps/wildcard/': typeof ParamsPsWildcardIndexRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/(virtualLayout)/quux/_quuxLayout/hello': typeof virtualLayoutQuuxQuuxLayoutHelloRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -434,9 +534,11 @@ export interface FileRouteTypes {
     | '/posts'
     | '/remountDeps'
     | '/대한민국'
+    | '/qux'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
+    | '/bar'
     | '/posts/$postId'
     | '/redirect/$target'
     | '/search-params/default'
@@ -447,6 +549,9 @@ export interface FileRouteTypes {
     | '/search-params/'
     | '/insidelayout'
     | '/subfolder/inside'
+    | '/baz'
+    | '/foo'
+    | '/quux'
     | '/layout-a'
     | '/layout-b'
     | '/params-ps/named/$foo'
@@ -462,9 +567,11 @@ export interface FileRouteTypes {
     | '/redirect/preload/first'
     | '/redirect/preload/second'
     | '/redirect/preload/third'
+    | '/baz/'
     | '/params-ps/named'
     | '/params-ps/wildcard'
     | '/redirect/$target/'
+    | '/quux/hello'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -475,9 +582,11 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/remountDeps'
     | '/대한민국'
+    | '/qux'
     | '/onlyrouteinside'
     | '/inside'
     | '/lazyinside'
+    | '/bar'
     | '/posts/$postId'
     | '/search-params/default'
     | '/structural-sharing/$enabled'
@@ -487,6 +596,9 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/insidelayout'
     | '/subfolder/inside'
+    | '/baz'
+    | '/foo'
+    | '/quux'
     | '/layout-a'
     | '/layout-b'
     | '/params-ps/named/$foo'
@@ -505,6 +617,7 @@ export interface FileRouteTypes {
     | '/params-ps/named'
     | '/params-ps/wildcard'
     | '/redirect/$target'
+    | '/quux/hello'
   id:
     | '__root__'
     | '/'
@@ -518,11 +631,13 @@ export interface FileRouteTypes {
     | '/posts'
     | '/remountDeps'
     | '/대한민국'
+    | '/(virtualLayout)/qux'
     | '/(another-group)/onlyrouteinside'
     | '/(group)'
     | '/(group)/_layout'
     | '/(group)/inside'
     | '/(group)/lazyinside'
+    | '/(virtualLayout)/bar'
     | '/_layout/_layout-2'
     | '/posts/$postId'
     | '/redirect/$target'
@@ -534,6 +649,14 @@ export interface FileRouteTypes {
     | '/search-params/'
     | '/(group)/_layout/insidelayout'
     | '/(group)/subfolder/inside'
+    | '/(virtualLayout)/bar/_barLayout'
+    | '/(virtualLayout)/baz'
+    | '/(virtualLayout)/baz/_bazLayout'
+    | '/(virtualLayout)/foo'
+    | '/(virtualLayout)/foo/_fooLayout'
+    | '/(virtualLayout)/quux'
+    | '/(virtualLayout)/quux/_quuxLayout'
+    | '/(virtualLayout)/qux/_quxLayout'
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
     | '/params-ps/named/$foo'
@@ -549,9 +672,11 @@ export interface FileRouteTypes {
     | '/redirect/preload/first'
     | '/redirect/preload/second'
     | '/redirect/preload/third'
+    | '/(virtualLayout)/baz/'
     | '/params-ps/named/'
     | '/params-ps/wildcard/'
     | '/redirect/$target/'
+    | '/(virtualLayout)/quux/_quuxLayout/hello'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -566,12 +691,17 @@ export interface RootRouteChildren {
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
   Char45824Char54620Char48124Char44397Route: typeof Char45824Char54620Char48124Char44397Route
+  virtualLayoutQuxRouteRoute: typeof virtualLayoutQuxRouteRouteWithChildren
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
   groupRoute: typeof groupRouteWithChildren
+  virtualLayoutBarRoute: typeof virtualLayoutBarRouteWithChildren
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
   ParamsPsIndexRoute: typeof ParamsPsIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
+  virtualLayoutBazRoute: typeof virtualLayoutBazRouteWithChildren
+  virtualLayoutFooRoute: typeof virtualLayoutFooRouteWithChildren
+  virtualLayoutQuuxRoute: typeof virtualLayoutQuuxRouteWithChildren
   ParamsPsNamedFooRoute: typeof ParamsPsNamedFooRoute
   ParamsPsNamedPrefixChar123fooChar125Route: typeof ParamsPsNamedPrefixChar123fooChar125Route
   ParamsPsNamedChar123fooChar125suffixRoute: typeof ParamsPsNamedChar123fooChar125suffixRoute
@@ -673,6 +803,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(virtualLayout)/quux': {
+      id: '/(virtualLayout)/quux'
+      path: '/quux'
+      fullPath: '/quux'
+      preLoaderRoute: typeof virtualLayoutQuuxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(virtualLayout)/foo': {
+      id: '/(virtualLayout)/foo'
+      path: '/foo'
+      fullPath: '/foo'
+      preLoaderRoute: typeof virtualLayoutFooRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(virtualLayout)/baz': {
+      id: '/(virtualLayout)/baz'
+      path: '/baz'
+      fullPath: '/baz'
+      preLoaderRoute: typeof virtualLayoutBazRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/search-params/': {
       id: '/search-params/'
       path: '/'
@@ -736,6 +887,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/(virtualLayout)/bar': {
+      id: '/(virtualLayout)/bar'
+      path: '/bar'
+      fullPath: '/bar'
+      preLoaderRoute: typeof virtualLayoutBarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(group)/lazyinside': {
       id: '/(group)/lazyinside'
       path: '/lazyinside'
@@ -764,6 +922,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof anotherGroupOnlyrouteinsideRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(virtualLayout)/qux': {
+      id: '/(virtualLayout)/qux'
+      path: '/qux'
+      fullPath: '/qux'
+      preLoaderRoute: typeof virtualLayoutQuxRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/redirect/$target/': {
       id: '/redirect/$target/'
       path: '/'
@@ -784,6 +949,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/params-ps/named'
       preLoaderRoute: typeof ParamsPsNamedIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/(virtualLayout)/baz/': {
+      id: '/(virtualLayout)/baz/'
+      path: '/'
+      fullPath: '/baz/'
+      preLoaderRoute: typeof virtualLayoutBazIndexRouteImport
+      parentRoute: typeof virtualLayoutBazRoute
     }
     '/redirect/preload/third': {
       id: '/redirect/preload/third'
@@ -890,6 +1062,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
       parentRoute: typeof LayoutLayout2Route
     }
+    '/(virtualLayout)/qux/_quxLayout': {
+      id: '/(virtualLayout)/qux/_quxLayout'
+      path: ''
+      fullPath: '/qux'
+      preLoaderRoute: typeof virtualLayoutQuxQuxLayoutRouteImport
+      parentRoute: typeof virtualLayoutQuxRouteRoute
+    }
+    '/(virtualLayout)/quux/_quuxLayout': {
+      id: '/(virtualLayout)/quux/_quuxLayout'
+      path: '/quux'
+      fullPath: '/quux'
+      preLoaderRoute: typeof virtualLayoutQuuxQuuxLayoutRouteImport
+      parentRoute: typeof virtualLayoutQuuxRoute
+    }
+    '/(virtualLayout)/foo/_fooLayout': {
+      id: '/(virtualLayout)/foo/_fooLayout'
+      path: '/foo'
+      fullPath: '/foo'
+      preLoaderRoute: typeof virtualLayoutFooFooLayoutRouteImport
+      parentRoute: typeof virtualLayoutFooRoute
+    }
+    '/(virtualLayout)/baz/_bazLayout': {
+      id: '/(virtualLayout)/baz/_bazLayout'
+      path: '/baz'
+      fullPath: '/baz'
+      preLoaderRoute: typeof virtualLayoutBazBazLayoutRouteImport
+      parentRoute: typeof virtualLayoutBazRoute
+    }
+    '/(virtualLayout)/bar/_barLayout': {
+      id: '/(virtualLayout)/bar/_barLayout'
+      path: ''
+      fullPath: '/bar'
+      preLoaderRoute: typeof virtualLayoutBarBarLayoutRouteImport
+      parentRoute: typeof virtualLayoutBarRoute
+    }
     '/(group)/subfolder/inside': {
       id: '/(group)/subfolder/inside'
       path: '/subfolder/inside'
@@ -903,6 +1110,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/insidelayout'
       preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
       parentRoute: typeof groupLayoutRoute
+    }
+    '/(virtualLayout)/quux/_quuxLayout/hello': {
+      id: '/(virtualLayout)/quux/_quuxLayout/hello'
+      path: '/hello'
+      fullPath: '/quux/hello'
+      preLoaderRoute: typeof virtualLayoutQuuxQuuxLayoutHelloRouteImport
+      parentRoute: typeof virtualLayoutQuuxQuuxLayoutRoute
     }
   }
 }
@@ -957,6 +1171,19 @@ const PostsRouteChildren: PostsRouteChildren = {
 
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
+interface virtualLayoutQuxRouteRouteChildren {
+  virtualLayoutQuxQuxLayoutRoute: typeof virtualLayoutQuxQuxLayoutRoute
+}
+
+const virtualLayoutQuxRouteRouteChildren: virtualLayoutQuxRouteRouteChildren = {
+  virtualLayoutQuxQuxLayoutRoute: virtualLayoutQuxQuxLayoutRoute,
+}
+
+const virtualLayoutQuxRouteRouteWithChildren =
+  virtualLayoutQuxRouteRoute._addFileChildren(
+    virtualLayoutQuxRouteRouteChildren,
+  )
+
 interface groupLayoutRouteChildren {
   groupLayoutInsidelayoutRoute: typeof groupLayoutInsidelayoutRoute
 }
@@ -985,6 +1212,17 @@ const groupRouteChildren: groupRouteChildren = {
 
 const groupRouteWithChildren = groupRoute._addFileChildren(groupRouteChildren)
 
+interface virtualLayoutBarRouteChildren {
+  virtualLayoutBarBarLayoutRoute: typeof virtualLayoutBarBarLayoutRoute
+}
+
+const virtualLayoutBarRouteChildren: virtualLayoutBarRouteChildren = {
+  virtualLayoutBarBarLayoutRoute: virtualLayoutBarBarLayoutRoute,
+}
+
+const virtualLayoutBarRouteWithChildren =
+  virtualLayoutBarRoute._addFileChildren(virtualLayoutBarRouteChildren)
+
 interface RedirectTargetRouteChildren {
   RedirectTargetViaBeforeLoadRoute: typeof RedirectTargetViaBeforeLoadRoute
   RedirectTargetViaLoaderRoute: typeof RedirectTargetViaLoaderRoute
@@ -1001,6 +1239,57 @@ const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
   RedirectTargetRouteChildren,
 )
 
+interface virtualLayoutBazRouteChildren {
+  virtualLayoutBazBazLayoutRoute: typeof virtualLayoutBazBazLayoutRoute
+  virtualLayoutBazIndexRoute: typeof virtualLayoutBazIndexRoute
+}
+
+const virtualLayoutBazRouteChildren: virtualLayoutBazRouteChildren = {
+  virtualLayoutBazBazLayoutRoute: virtualLayoutBazBazLayoutRoute,
+  virtualLayoutBazIndexRoute: virtualLayoutBazIndexRoute,
+}
+
+const virtualLayoutBazRouteWithChildren =
+  virtualLayoutBazRoute._addFileChildren(virtualLayoutBazRouteChildren)
+
+interface virtualLayoutFooRouteChildren {
+  virtualLayoutFooFooLayoutRoute: typeof virtualLayoutFooFooLayoutRoute
+}
+
+const virtualLayoutFooRouteChildren: virtualLayoutFooRouteChildren = {
+  virtualLayoutFooFooLayoutRoute: virtualLayoutFooFooLayoutRoute,
+}
+
+const virtualLayoutFooRouteWithChildren =
+  virtualLayoutFooRoute._addFileChildren(virtualLayoutFooRouteChildren)
+
+interface virtualLayoutQuuxQuuxLayoutRouteChildren {
+  virtualLayoutQuuxQuuxLayoutHelloRoute: typeof virtualLayoutQuuxQuuxLayoutHelloRoute
+}
+
+const virtualLayoutQuuxQuuxLayoutRouteChildren: virtualLayoutQuuxQuuxLayoutRouteChildren =
+  {
+    virtualLayoutQuuxQuuxLayoutHelloRoute:
+      virtualLayoutQuuxQuuxLayoutHelloRoute,
+  }
+
+const virtualLayoutQuuxQuuxLayoutRouteWithChildren =
+  virtualLayoutQuuxQuuxLayoutRoute._addFileChildren(
+    virtualLayoutQuuxQuuxLayoutRouteChildren,
+  )
+
+interface virtualLayoutQuuxRouteChildren {
+  virtualLayoutQuuxQuuxLayoutRoute: typeof virtualLayoutQuuxQuuxLayoutRouteWithChildren
+}
+
+const virtualLayoutQuuxRouteChildren: virtualLayoutQuuxRouteChildren = {
+  virtualLayoutQuuxQuuxLayoutRoute:
+    virtualLayoutQuuxQuuxLayoutRouteWithChildren,
+}
+
+const virtualLayoutQuuxRouteWithChildren =
+  virtualLayoutQuuxRoute._addFileChildren(virtualLayoutQuuxRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
@@ -1014,12 +1303,17 @@ const rootRouteChildren: RootRouteChildren = {
   RemountDepsRoute: RemountDepsRoute,
   Char45824Char54620Char48124Char44397Route:
     Char45824Char54620Char48124Char44397Route,
+  virtualLayoutQuxRouteRoute: virtualLayoutQuxRouteRouteWithChildren,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,
+  virtualLayoutBarRoute: virtualLayoutBarRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
   ParamsPsIndexRoute: ParamsPsIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
+  virtualLayoutBazRoute: virtualLayoutBazRouteWithChildren,
+  virtualLayoutFooRoute: virtualLayoutFooRouteWithChildren,
+  virtualLayoutQuuxRoute: virtualLayoutQuuxRouteWithChildren,
   ParamsPsNamedFooRoute: ParamsPsNamedFooRoute,
   ParamsPsNamedPrefixChar123fooChar125Route:
     ParamsPsNamedPrefixChar123fooChar125Route,

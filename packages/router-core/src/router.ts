@@ -2391,6 +2391,7 @@ interface RouteLike {
   children?: Array<RouteLike>
   options?: {
     caseSensitive?: boolean
+    isVirtualLayout?: boolean
   }
 }
 
@@ -2651,6 +2652,8 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
       | { foundRoute: TRouteLike; routeParams: Record<string, string> }
       | undefined = undefined
     for (const route of flatRoutes) {
+      if (route.options?.isVirtualLayout) continue
+
       const matchedParams = getMatchedParams(route)
 
       if (matchedParams) {

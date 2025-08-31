@@ -42,11 +42,13 @@ const NestedRoute = NestedRouteImport.update({
   id: '/nested',
   path: '/nested',
   getParentRoute: () => rootRouteImport,
+  isVirtualLayout: true,
 } as any)
 const FooRoute = FooRouteImport.update({
   id: '/foo',
   path: '/foo',
   getParentRoute: () => rootRouteImport,
+  isVirtualLayout: true,
 } as any)
 const LayoutA2Route = LayoutA2RouteImport.update({
   id: '/_layout-a2',
