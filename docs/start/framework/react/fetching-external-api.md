@@ -264,6 +264,7 @@ const MoviesPage = () => {
 ```
 
 ### Understanding How It All Works Together
+
 ```mermaid
 sequenceDiagram
     autonumber
