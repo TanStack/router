@@ -85,7 +85,10 @@ import type { Manifest } from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type { NotFoundError } from './not-found'
-import type { AnySerializationAdapter, ValidateSerializableInput } from './ssr/serializer/transformer'
+import type {
+  AnySerializationAdapter,
+  ValidateSerializableInput,
+} from './ssr/serializer/transformer'
 import type { AnyRouterConfig } from './config'
 
 export type ControllablePromise<T = any> = Promise<T> & {
@@ -291,7 +294,10 @@ export interface RouterOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#dehydrate-method)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/external-data-loading#critical-dehydrationhydration)
    */
-  dehydrate?: () => Constrain<TDehydrated,  ValidateSerializableInput<Register, TDehydrated>>
+  dehydrate?: () => Constrain<
+    TDehydrated,
+    ValidateSerializableInput<Register, TDehydrated>
+  >
   /**
    * A function that will be called when the router is hydrated.
    *
