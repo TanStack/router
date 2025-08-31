@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
-import { useActiveLocation } from './useActiveLocation'
 import type {
   AnyRouter,
   FromPathOption,
@@ -17,19 +16,14 @@ export function useNavigate<
 }): UseNavigateResult<TDefaultFrom> {
   const router = useRouter()
 
-  const { getFromPath, activeLocation } = useActiveLocation()
-
   return React.useCallback(
     (options: NavigateOptions) => {
-      const from = getFromPath(options.from ?? _defaultOpts?.from)
-
       return router.navigate({
         ...options,
-        from,
+        from: options.from ?? _defaultOpts?.from,
       })
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [_defaultOpts?.from, router, getFromPath, activeLocation],
+    [_defaultOpts?.from, router],
   ) as UseNavigateResult<TDefaultFrom>
 }
 
