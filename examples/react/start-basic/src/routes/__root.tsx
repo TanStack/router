@@ -69,7 +69,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <nav className="p-2 flex gap-2 text-lg">
           <Link
             to="/"
             activeProps={{
@@ -120,7 +120,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             This Route Does Not Exist
           </Link>
-        </div>
+        </nav>
         <hr />
         {children}
         <TanStackRouterDevtools position="bottom-right" />
