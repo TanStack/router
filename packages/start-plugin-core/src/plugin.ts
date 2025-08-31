@@ -218,7 +218,6 @@ export function TanStackStartVitePluginCore(
                   ...Object.values(VIRTUAL_MODULES),
                   ...result.optimizeDeps.exclude.sort(),
                   ...additionalOptimizeDeps.exclude,
-                  `@tanstack/${corePluginOpts.framework}-start/server`,
                 ],
                 include: [
                   ...additionalOptimizeDeps.include,
