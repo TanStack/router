@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/relative/useNavigate/relative-useNavigate-b')({
+export const Route = createFileRoute(
+  '/relative/useNavigate/relative-useNavigate-b',
+)({
   component: RouteComponent,
 })
 
