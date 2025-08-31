@@ -346,20 +346,27 @@ test('createServerFn can validate Date', () => {
   expectTypeOf(validator)
     .parameter(0)
     .toEqualTypeOf<
-      ConstrainValidator<Register, (input: Date) => { output: 'string' }>
+      ConstrainValidator<Register, 'GET', (input: Date) => { output: 'string' }>
     >()
 })
 
 test('createServerFn can validate FormData', () => {
-  const validator = createServerFn().validator<
+  const validator = createServerFn({ method: 'POST' }).validator<
+    (input: FormData) => { output: 'string' }
+  >
+
+  expectTypeOf(validator).parameter(0).parameter(0).toEqualTypeOf<FormData>()
+})
+
+test('createServerFn cannot validate FormData for GET', () => {
+  const validator = createServerFn({ method: 'GET' }).validator<
     (input: FormData) => { output: 'string' }
   >
 
   expectTypeOf(validator)
     .parameter(0)
-    .toEqualTypeOf<
-      ConstrainValidator<Register, (input: FormData) => { output: 'string' }>
-    >()
+    .parameter(0)
+    .not.toEqualTypeOf<FormData>()
 })
 
 describe('response', () => {

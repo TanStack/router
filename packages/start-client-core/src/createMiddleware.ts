@@ -1,4 +1,4 @@
-import type { ConstrainValidator, Method } from './createServerFn'
+import type { AnyServerFn, ConstrainValidator, Method } from './createServerFn'
 import type {
   AnyRouter,
   Assign,
@@ -194,10 +194,14 @@ export type IntersectAllMiddleware<
   TMiddlewares,
   TType extends
     | keyof AnyFunctionMiddleware['_types']
-    | keyof AnyRequestMiddleware['_types'],
+    | keyof AnyRequestMiddleware['_types']
+    | keyof AnyServerFn['_types'],
   TAcc = undefined,
 > = TMiddlewares extends readonly [infer TMiddleware, ...infer TRest]
-  ? TMiddleware extends AnyFunctionMiddleware | AnyRequestMiddleware
+  ? TMiddleware extends
+      | AnyFunctionMiddleware
+      | AnyRequestMiddleware
+      | AnyServerFn
     ? IntersectAllMiddleware<
         TRest,
         TType,
@@ -249,10 +253,14 @@ export type AssignAllMiddleware<
   TMiddlewares,
   TType extends
     | keyof AnyFunctionMiddleware['_types']
-    | keyof AnyRequestMiddleware['_types'],
+    | keyof AnyRequestMiddleware['_types']
+    | keyof AnyServerFn['_types'],
   TAcc = undefined,
 > = TMiddlewares extends readonly [infer TMiddleware, ...infer TRest]
-  ? TMiddleware extends AnyFunctionMiddleware | AnyRequestMiddleware
+  ? TMiddleware extends
+      | AnyFunctionMiddleware
+      | AnyRequestMiddleware
+      | AnyServerFn
     ? AssignAllMiddleware<
         TRest,
         TType,
@@ -314,7 +322,7 @@ export interface FunctionMiddlewareOptions<
   in out TClientContext,
 > {
   middleware?: TMiddlewares
-  validator?: ConstrainValidator<TRegister, TValidator>
+  validator?: ConstrainValidator<TRegister, 'GET', TValidator>
   client?: FunctionMiddlewareClientFn<
     TRegister,
     TMiddlewares,
@@ -613,7 +621,7 @@ export interface FunctionMiddlewareValidator<
   TMiddlewares,
 > {
   validator: <TNewValidator>(
-    input: ConstrainValidator<TRegister, TNewValidator>,
+    input: ConstrainValidator<TRegister, 'GET', TNewValidator>,
   ) => FunctionMiddlewareAfterValidator<TRegister, TMiddlewares, TNewValidator>
 }
 

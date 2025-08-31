@@ -588,6 +588,7 @@ test('createMiddleware cannot validate function', () => {
     .toEqualTypeOf<
       ConstrainValidator<
         Register,
+        'GET',
         (input: { func: () => 'string' }) => { output: 'string' }
       >
     >()
@@ -601,7 +602,7 @@ test('createMiddleware can validate Date', () => {
   expectTypeOf(validator)
     .parameter(0)
     .toEqualTypeOf<
-      ConstrainValidator<Register, (input: Date) => { output: 'string' }>
+      ConstrainValidator<Register, 'GET', (input: Date) => { output: 'string' }>
     >()
 })
 
@@ -613,7 +614,11 @@ test('createMiddleware can validate FormData', () => {
   expectTypeOf(validator)
     .parameter(0)
     .toEqualTypeOf<
-      ConstrainValidator<Register, (input: FormData) => { output: 'string' }>
+      ConstrainValidator<
+        Register,
+        'GET',
+        (input: FormData) => { output: 'string' }
+      >
     >()
 })
 
