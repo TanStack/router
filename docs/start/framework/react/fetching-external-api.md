@@ -271,6 +271,31 @@ const MoviesPage = () => {
 ```
 
 ### Understanding How It All Works Together
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant R as Router (TanStack Start)
+    participant L as Route Loader (/fetch-movies)
+    participant A as External API (TMDB)
+    participant V as MoviesPage (UI)
+
+    U->>R: Navigate to /fetch-movies
+    R->>L: Invoke loader (server-side)
+    L->>A: GET /movie/popular\nAuthorization: Bearer <TOKEN>
+    A-->>L: JSON TMDBResponse
+    alt response.ok
+        L-->>R: { movies, error: null }
+        R->>V: Render SSR with movies
+        V-->>U: HTML with movie grid
+    else non-ok / error
+        L-->>R: { movies: [], error: "Failed to load movies" }
+        R->>V: Render SSR with error alert
+        V-->>U: HTML with error state
+    end
+
+    note over L,V: Loader validates response.ok,\nreturns data or error for initial render
+```
 
 Let's break down how the different parts of our application work together:
 
@@ -290,4 +315,4 @@ Now you can test your application by visiting [http://localhost:3000/fetch-movie
 
 You've successfully built a movie discovery app that integrates with an external API using TanStack Start. This tutorial demonstrated how to use route loaders for server-side data fetching and building UI components with external data.
 
-While fetching data at build time in TanStack Start is perfect for static content like blog posts or product pages, it's not ideal for interactive apps. If you need features like real-time updates, caching, or infinite scrolling, you'll want to use TanStack Query on the client side instead. TanStack Query makes it easy to handle dynamic data with built-in caching, background updates, and smooth user interactions. By using TanStack Start for static content and TanStack Query for interactive features, you get fast loading pages plus all the modern functionality users expect.
+While fetching data at build time in TanStack Start is perfect for static content like blog posts or product pages, it's not ideal for interactive apps. If you need features like real-time updates, caching, or infinite scrolling, you'll want to use [TanStack Query](query/latest) on the client side instead. TanStack Query makes it easy to handle dynamic data with built-in caching, background updates, and smooth user interactions. By using TanStack Start for static content and TanStack Query for interactive features, you get fast loading pages plus all the modern functionality users expect.
