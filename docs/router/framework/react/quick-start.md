@@ -92,7 +92,7 @@ const RootLayout = () => (
   </>
 )
 
-export const Route = createRootRoute({ component: RootLayout });
+export const Route = createRootRoute({ component: RootLayout })
 ```
 
 #### `src/routes/index.tsx`
