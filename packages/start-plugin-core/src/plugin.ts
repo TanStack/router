@@ -215,6 +215,8 @@ export function TanStackStartVitePluginCore(
               },
               optimizeDeps: {
                 exclude: [
+                  '@tanstack/start-client-core',
+                  '@tanstack/start-storage-context',
                   ...Object.values(VIRTUAL_MODULES),
                   ...result.optimizeDeps.exclude.sort(),
                   ...additionalOptimizeDeps.exclude,
