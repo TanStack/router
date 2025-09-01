@@ -78,15 +78,6 @@ export function tanstackStart(
       {
         framework: 'react',
         defaultEntryPaths,
-        crawlPackages(opts) {
-          if (opts.name === '@tanstack/react-router-devtools') {
-            return 'exclude'
-          }
-          if (hasRootExport(opts.exports) && 'react' in opts.peerDependencies) {
-            return 'include'
-          }
-          return undefined
-        },
       },
       options,
     ),

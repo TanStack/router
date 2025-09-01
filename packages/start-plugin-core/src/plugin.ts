@@ -30,11 +30,6 @@ export interface TanStackStartVitePluginCoreOptions {
     client: string
     server: string
   }
-  crawlPackages?: (opts: {
-    name: string
-    peerDependencies: Record<string, any>
-    exports?: Record<string, any> | string
-  }) => 'include' | 'exclude' | undefined
 }
 
 export function TanStackStartVitePluginCore(
@@ -136,11 +131,6 @@ export function TanStackStartVitePluginCore(
         const startPackageName = `@tanstack/${corePluginOpts.framework}-start`
         const routerPackageName = `@tanstack/${corePluginOpts.framework}-router`
 
-        const additionalOptimizeDeps = {
-          include: new Set<string>(),
-          exclude: new Set<string>(),
-        }
-
         // crawl packages that have start in "peerDependencies"
         // see https://github.com/svitejs/vitefu/blob/d8d82fa121e3b2215ba437107093c77bde51b63b/src/index.js#L95-L101
 
@@ -158,18 +148,6 @@ export function TanStackStartVitePluginCore(
             const peerDependencies = pkgJson['peerDependencies']
 
             if (peerDependencies) {
-              const internalResult = corePluginOpts.crawlPackages?.({
-                name: pkgJson.name,
-                peerDependencies,
-                exports: pkgJson.exports,
-              })
-              if (internalResult) {
-                if (internalResult === 'exclude') {
-                  additionalOptimizeDeps.exclude.add(pkgJson.name)
-                } else {
-                  additionalOptimizeDeps.include.add(pkgJson.name)
-                }
-              }
               return (
                 startPackageName in peerDependencies ||
                 routerPackageName in peerDependencies
@@ -219,12 +197,8 @@ export function TanStackStartVitePluginCore(
                   '@tanstack/start-storage-context',
                   ...Object.values(VIRTUAL_MODULES),
                   ...result.optimizeDeps.exclude.sort(),
-                  ...additionalOptimizeDeps.exclude,
                 ],
-                include: [
-                  ...additionalOptimizeDeps.include,
-                  ...result.optimizeDeps.include.sort(),
-                ],
+                include: [...result.optimizeDeps.include.sort()],
               },
             },
           },
@@ -246,9 +220,7 @@ export function TanStackStartVitePluginCore(
               ...Object.values(VIRTUAL_MODULES),
               startPackageName,
               ...result.optimizeDeps.exclude.sort(),
-              ...additionalOptimizeDeps.exclude,
             ],
-            include: [...additionalOptimizeDeps.include],
           },
           /* prettier-ignore */
           define: {
