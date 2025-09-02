@@ -123,6 +123,14 @@ function RootComponent() {
           redirect
         </Link>{' '}
         <Link
+          to="/relative"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          relative routing
+        </Link>{' '}
+        <Link
           // @ts-expect-error
           to="/this-route-does-not-exist"
           activeProps={{

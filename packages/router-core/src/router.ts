@@ -9,9 +9,9 @@ import invariant from 'tiny-invariant'
 import {
   createControlledPromise,
   deepEqual,
+  findLast,
   functionalUpdate,
   last,
-  pick,
   replaceEqualDeep,
 } from './utils'
 import {
@@ -1456,52 +1456,44 @@ export class RouterCore<
         _buildLocation: true,
       })
 
+      // Now let's find the starting pathname
+      // This should default to the current location if no from is provided
       const lastMatch = last(allCurrentLocationMatches)!
 
-      // First let's find the starting pathname
-      // By default, start with the current location
-      let fromPath = this.resolvePathWithBase(lastMatch.fullPath, '.')
-      const toPath = dest.to
-        ? this.resolvePathWithBase(fromPath, `${dest.to}`)
-        : this.resolvePathWithBase(fromPath, '.')
+      // check that from path exists in the current route tree
+      // do this check only on navigations during test or development
+      if (
+        dest.from &&
+        process.env.NODE_ENV !== 'production' &&
+        dest._isNavigate
+      ) {
+        const allFromMatches = this.getMatchedRoutes(
+          dest.from,
+          undefined,
+        ).matchedRoutes
 
-      const routeIsChanging =
-        !!dest.to &&
-        !comparePaths(dest.to.toString(), fromPath) &&
-        !comparePaths(toPath, fromPath)
+        const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
+          return comparePaths(d.fullPath, dest.from!)
+        })
 
-      // If the route is changing we need to find the relative fromPath
-      if (dest.unsafeRelative === 'path') {
-        fromPath = currentLocation.pathname
-      } else if (routeIsChanging && dest.from) {
-        fromPath = dest.from
+        const matchedCurrent = findLast(allFromMatches, (d) => {
+          return comparePaths(d.fullPath, lastMatch.fullPath)
+        })
 
-        // do this check only on navigations during test or development
-        if (process.env.NODE_ENV !== 'production' && dest._isNavigate) {
-          const allFromMatches = this.getMatchedRoutes(
-            dest.from,
-            undefined,
-          ).matchedRoutes
-
-          const matchedFrom = [...allCurrentLocationMatches]
-            .reverse()
-            .find((d) => {
-              return comparePaths(d.fullPath, fromPath)
-            })
-
-          const matchedCurrent = [...allFromMatches].reverse().find((d) => {
-            return comparePaths(d.fullPath, currentLocation.pathname)
-          })
-
-          // for from to be invalid it shouldn't just be unmatched to currentLocation
-          // but the currentLocation should also be unmatched to from
-          if (!matchedFrom && !matchedCurrent) {
-            console.warn(`Could not find match for from: ${fromPath}`)
-          }
+        // for from to be invalid it shouldn't just be unmatched to currentLocation
+        // but the currentLocation should also be unmatched to from
+        if (!matchedFrom && !matchedCurrent) {
+          console.warn(`Could not find match for from: ${dest.from}`)
         }
       }
 
-      fromPath = this.resolvePathWithBase(fromPath, '.')
+      const defaultedFromPath =
+        dest.unsafeRelative === 'path'
+          ? currentLocation.pathname
+          : (dest.from ?? lastMatch.fullPath)
+
+      // ensure this includes the basePath if set
+      const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
       // From search should always use the current location
       const fromSearch = lastMatch.search
@@ -1509,25 +1501,26 @@ export class RouterCore<
       const fromParams = { ...lastMatch.params }
 
       // Resolve the next to
+      // ensure this includes the basePath if set
       const nextTo = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
         : this.resolvePathWithBase(fromPath, '.')
 
       // Resolve the next params
-      let nextParams =
+      const nextParams =
         dest.params === false || dest.params === null
           ? {}
           : (dest.params ?? true) === true
             ? fromParams
-            : {
-                ...fromParams,
-                ...functionalUpdate(dest.params as any, fromParams),
-              }
+            : Object.assign(
+                fromParams,
+                functionalUpdate(dest.params as any, fromParams),
+              )
 
       // Interpolate the path first to get the actual resolved path, then match against that
       const interpolatedNextTo = interpolatePath({
         path: nextTo,
-        params: nextParams ?? {},
+        params: nextParams,
         parseCache: this.parsePathnameCache,
       }).interpolatedPath
 
@@ -1537,23 +1530,20 @@ export class RouterCore<
 
       // If there are any params, we need to stringify them
       if (Object.keys(nextParams).length > 0) {
-        destRoutes
-          .map((route) => {
-            return (
-              route.options.params?.stringify ?? route.options.stringifyParams
-            )
-          })
-          .filter(Boolean)
-          .forEach((fn) => {
-            nextParams = { ...nextParams!, ...fn!(nextParams) }
-          })
+        for (const route of destRoutes) {
+          const fn =
+            route.options.params?.stringify ?? route.options.stringifyParams
+          if (fn) {
+            Object.assign(nextParams, fn(nextParams))
+          }
+        }
       }
 
       const nextPathname = interpolatePath({
         // Use the original template path for interpolation
         // This preserves the original parameter syntax including optional parameters
         path: nextTo,
-        params: nextParams ?? {},
+        params: nextParams,
         leaveWildcards: false,
         leaveParams: opts.leaveParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
@@ -1563,20 +1553,20 @@ export class RouterCore<
       // Resolve the next search
       let nextSearch = fromSearch
       if (opts._includeValidateSearch && this.options.search?.strict) {
-        let validatedSearch = {}
+        const validatedSearch = {}
         destRoutes.forEach((route) => {
-          try {
-            if (route.options.validateSearch) {
-              validatedSearch = {
-                ...validatedSearch,
-                ...(validateSearch(route.options.validateSearch, {
+          if (route.options.validateSearch) {
+            try {
+              Object.assign(
+                validatedSearch,
+                validateSearch(route.options.validateSearch, {
                   ...validatedSearch,
                   ...nextSearch,
-                }) ?? {}),
-              }
+                }),
+              )
+            } catch {
+              // ignore errors here because they are already handled in matchRoutes
             }
-          } catch {
-            // ignore errors here because they are already handled in matchRoutes
           }
         })
         nextSearch = validatedSearch
@@ -1691,7 +1681,7 @@ export class RouterCore<
         if (foundMask) {
           const { from: _from, ...maskProps } = foundMask
           maskedDest = {
-            ...pick(opts, ['from']),
+            from: opts.from,
             ...maskProps,
             params,
           }
@@ -1709,7 +1699,7 @@ export class RouterCore<
 
     if (opts.mask) {
       return buildWithMatches(opts, {
-        ...pick(opts, ['from']),
+        from: opts.from,
         ...opts.mask,
       })
     }

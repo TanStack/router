@@ -38,27 +38,27 @@ declare module '@tanstack/router-core' {
 export function Matches() {
   const router = useRouter()
 
-  const pendingElement = router.options.defaultPendingComponent ? (
-    <router.options.defaultPendingComponent />
-  ) : null
-
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
     router.isServer || (typeof document !== 'undefined' && router.ssr)
       ? SafeFragment
       : Solid.Suspense
 
-  const inner = (
-    <ResolvedSuspense fallback={pendingElement}>
-      {!router.isServer && <Transitioner />}
-      <MatchesInner />
-    </ResolvedSuspense>
-  )
+  const OptionalWrapper = router.options.InnerWrap || SafeFragment
 
-  return router.options.InnerWrap ? (
-    <router.options.InnerWrap>{inner}</router.options.InnerWrap>
-  ) : (
-    inner
+  return (
+    <OptionalWrapper>
+      <ResolvedSuspense
+        fallback={
+          router.options.defaultPendingComponent ? (
+            <router.options.defaultPendingComponent />
+          ) : null
+        }
+      >
+        {!router.isServer && <Transitioner />}
+        <MatchesInner />
+      </ResolvedSuspense>
+    </OptionalWrapper>
   )
 }
 
@@ -74,8 +74,10 @@ function MatchesInner() {
     select: (s) => s.loadedAt,
   })
 
-  const matchComponent = () =>
-    matchId() ? <Match matchId={matchId()!} /> : null
+  const matchComponent = () => {
+    const id = matchId()
+    return id ? <Match matchId={id} /> : null
+  }
 
   return (
     <matchContext.Provider value={matchId}>

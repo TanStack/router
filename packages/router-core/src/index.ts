@@ -270,7 +270,6 @@ export type { OptionalStructuralSharing } from './structuralSharing'
 export {
   last,
   functionalUpdate,
-  pick,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,
