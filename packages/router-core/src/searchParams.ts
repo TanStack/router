@@ -8,6 +8,7 @@ export const defaultStringifySearch = stringifySearchWith(
 )
 
 export function parseSearchWith(parser: (str: string) => any) {
+  const isJsonParser = parser === JSON.parse
   return (searchStr: string): AnySchema => {
     if (searchStr[0] === '?') {
       searchStr = searchStr.substring(1)
@@ -18,7 +19,10 @@ export function parseSearchWith(parser: (str: string) => any) {
     // Try to parse any query params that might be json
     for (const key in query) {
       const value = query[key]
-      if (typeof value === 'string') {
+      if (
+        typeof value === 'string' &&
+        (!isJsonParser || looksLikeJson(value))
+      ) {
         try {
           query[key] = parser(value)
         } catch (_err) {
@@ -36,6 +40,7 @@ export function stringifySearchWith(
   parser?: (str: string) => any,
 ) {
   const hasParser = typeof parser === 'function'
+  const isJsonParser = parser === JSON.parse
   function stringifyValue(val: any) {
     if (typeof val === 'object' && val !== null) {
       try {
@@ -43,7 +48,11 @@ export function stringifySearchWith(
       } catch (_err) {
         // silent
       }
-    } else if (hasParser && typeof val === 'string') {
+    } else if (
+      hasParser &&
+      typeof val === 'string' &&
+      (!isJsonParser || looksLikeJson(val))
+    ) {
       try {
         // Check if it's a valid parseable string.
         // If it is, then stringify it again.
@@ -64,3 +73,23 @@ export function stringifySearchWith(
 
 export type SearchSerializer = (searchObj: Record<string, any>) => string
 export type SearchParser = (searchStr: string) => Record<string, any>
+
+/**
+ * Fast check to see if the string is a likely to be a JSON value.
+ * It could return false positives (returned true but wasn't actually a json),
+ * but not false negatives (returned false but was actually a json).
+ */
+function looksLikeJson(str: string): boolean {
+  if (!str) return false
+  const c = str.charCodeAt(0)
+  return (
+    c === 34 || // "
+    c === 123 || // {
+    c === 91 || // [
+    c === 45 || // -
+    (c >= 48 && c <= 57) || // 0-9
+    c === 116 || // t (true)
+    c === 102 || // f (false)
+    c === 110 // n (null)
+  )
+}
