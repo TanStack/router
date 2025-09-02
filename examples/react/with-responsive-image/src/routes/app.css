@@ -1,0 +1,34 @@
+aside {
+  display: flex;
+  overflow: auto;
+  justify-content: center;
+
+  margin-bottom: 5px;
+}
+
+aside a {
+  border: solid 1px transparent;
+}
+
+aside a.active {
+  border-color: #00c2ab;
+}
+
+img {
+  display: block;
+}
+
+main {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.intro {
+  padding: 20px;
+}
+
+img.large {
+  max-height: calc(100vh - 140px);
+  width: auto;
+}
