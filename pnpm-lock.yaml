@@ -6597,6 +6597,58 @@ importers:
         specifier: ^7.1.7
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
 
+  examples/react/with-responsive-image:
+    dependencies:
+      '@responsive-image/core':
+        specifier: ^2.1.0
+        version: 2.1.0(blurhash@2.0.5)(thumbhash@0.1.1)
+      '@responsive-image/react':
+        specifier: ^1.1.5
+        version: 1.1.5(blurhash@2.0.5)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(thumbhash@0.1.1)
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../../../packages/react-router
+      '@tanstack/react-router-devtools':
+        specifier: workspace:^
+        version: link:../../../packages/react-router-devtools
+      '@tanstack/react-start':
+        specifier: workspace:*
+        version: link:../../../packages/react-start
+      react:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.0.0(react@19.0.0)
+    devDependencies:
+      '@responsive-image/vite-plugin':
+        specifier: ^2.0.2
+        version: 2.0.2(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      '@types/node':
+        specifier: 22.10.2
+        version: 22.10.2
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.0.8
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.0.3(@types/react@19.0.8)
+      '@vitejs/plugin-react':
+        specifier: ^4.6.0
+        version: 4.7.0(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+      srvx:
+        specifier: ^0.8.16
+        version: 0.8.16
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.2
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+
   examples/react/with-trpc:
     dependencies:
       '@tailwindcss/postcss':
@@ -8583,7 +8635,7 @@ importers:
         version: link:../start-storage-context
       h3-v2:
         specifier: npm:h3@2.0.0-beta.4
-        version: h3@2.0.0-beta.4(crossws@0.4.1(srvx@0.8.15))
+        version: h3@2.0.0-beta.4(crossws@0.4.1(srvx@0.8.16))
       seroval:
         specifier: ^1.3.2
         version: 1.3.2
@@ -11760,6 +11812,33 @@ packages:
   '@remix-run/node-fetch-server@0.8.1':
     resolution: {integrity: sha512-J1dev372wtJqmqn9U/qbpbZxbJSQrogNN2+Qv1lKlpATpe/WQ9aCZfl/xSb9d2Rgh1IyLSvNxZAXPZxruO6Xig==}
 
+  '@responsive-image/build-utils@2.0.0':
+    resolution: {integrity: sha512-YaYmxORoYV1xX880fN/wGo2c1sKwM3jDrHFJaT+0pKFjCm89+ce8dhI7Mff/DDTxMVeoNLIHbX4WENoQyXTYLQ==}
+    engines: {node: 20.* || >= 22}
+
+  '@responsive-image/core@2.1.0':
+    resolution: {integrity: sha512-UH1sLdoPVhLoKQC9tjFmhq+m2y1dknMETQ7VeX3gu98XRElz1bxNlx8ahy73H74452MyrlsyIzODyA58NkYfBQ==}
+    peerDependencies:
+      blurhash: ^2.0.0
+      thumbhash: ^0.1.1
+    peerDependenciesMeta:
+      blurhash:
+        optional: true
+      thumbhash:
+        optional: true
+
+  '@responsive-image/react@1.1.5':
+    resolution: {integrity: sha512-JDErpyfqEImNrkikEnJBb9DKhtCl8tZgeiF6q25ZIoJb0S2aHPzUyNnu7T+ugEpYeFT4AXWyhKVKPgvDZd340A==}
+    peerDependencies:
+      react: ^19.0.0
+      react-dom: ^19.0.0
+
+  '@responsive-image/vite-plugin@2.0.2':
+    resolution: {integrity: sha512-iXPdKFFMG1R1KgzE/FpO4I5sDqYiVTe40BhdsKgPctfP0PwobVUZPa0F3S+6HNQRVUpRpRGSth6Q9qQsVesMKg==}
+    engines: {node: 20.* || >= 22}
+    peerDependencies:
+      vite: ^7.1.7
+
   '@rolldown/pluginutils@1.0.0-beta.19':
     resolution: {integrity: sha512-3FL3mnMbPu0muGOCaKAhhFEYmqv9eTfPSJRJmANrCwtgK8VuxpsZDGK+m0LYAGoyO8+0j5uRe4PeyPDK1yA/hA==}
 
@@ -13980,6 +14059,10 @@ packages:
     resolution: {integrity: sha512-UOCGPYbl0tv8+006qks/dTgV9ajs97X2p0FAbyS2iyCRrmLSRolDaHdp+v/CLgnzHc3fVB+CwYiUmei7ndFcgA==}
     engines: {node: '>=12.0.0'}
 
+  assert-plus@1.0.0:
+    resolution: {integrity: sha512-NfJ4UzBCcQGLDlQq7nHxH+tv3kyZ0hHQqF5BO6J7tNJeP5do1llPr8dZ8zHonfhAu0PHAdMkSo+8o0wxg9lZWw==}
+    engines: {node: '>=0.8'}
+
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
@@ -14036,6 +14119,15 @@ packages:
 
   bare-events@2.5.4:
     resolution: {integrity: sha512-+gFfDkR8pj4/TrWCGUGWmJIkBwuxPS5F+a5yWjOHQt2hHvNZd5YLzadjmDUtFmMM4y429bnKLa8bYBMHcYdnQA==}
+
+  base-n@3.0.0:
+    resolution: {integrity: sha512-u+HQjUyXwqZLbDDlunZUoFlWSZWIwIpNpDErBMOCkBU/VOMpVYMLYih/+FRFCkfrgXrdnbI46fTkUIu1C22v7Q==}
+    engines: {node: '>= 10.0.0'}
+    hasBin: true
+
+  base64-arraybuffer@1.0.2:
+    resolution: {integrity: sha512-I3yl4r9QB5ZRY3XuJVEPfc2XhZO6YweFPI+UovAzn+8/hb3oJ6lnysaFcjVpkCPfVWFUDvoZ8kmVDP7WyRtYtQ==}
+    engines: {node: '>= 0.6.0'}
 
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
@@ -14099,6 +14191,9 @@ packages:
 
   blake3-wasm@2.1.5:
     resolution: {integrity: sha512-F1+K8EbfOZE49dtoPtmxUQrpXaBIl3ICvasLh+nJta0xkz+9kF/7uet9fLnwKqhDrmj6g+6K3Tw9yQPUg2ka5g==}
+
+  blurhash@2.0.5:
+    resolution: {integrity: sha512-cRygWd7kGBQO3VEhPiTgq4Wc43ctsM+o46urrmPOiuAe+07fzlSB9OJVdpgDL0jPqXUVQ9ht7aq7kxOeJHRK+w==}
 
   body-parser@1.20.3:
     resolution: {integrity: sha512-7rAxByjUMqQ3/bHJy7D6OGXvx/MMc4IqBn/X0fcM1QUcAItpZrBEYhWGem+tzXH90c+G01ypMcYJBO9Y30203g==}
@@ -14650,6 +14745,10 @@ packages:
 
   csstype@3.1.3:
     resolution: {integrity: sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==}
+
+  dashdash@1.14.1:
+    resolution: {integrity: sha512-jRFi8UDGo6j+odZiEpjazZaWqEal3w/basFjQHQEwVtZJGDpxbH1MeYluwCS8Xq5wmLJooDlMgvVarmWfGM44g==}
+    engines: {node: '>=0.10'}
 
   data-uri-to-buffer@4.0.1:
     resolution: {integrity: sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A==}
@@ -15917,6 +16016,10 @@ packages:
     engines: {node: '>=16.x'}
     hasBin: true
 
+  imagetools-core@7.1.0:
+    resolution: {integrity: sha512-8Aa4NecBBGmTkaAUjcuRYgTPKHCsBEWYmCnvKCL6/bxedehtVVFyZPdXe8DD0Nevd6UWBq85ifUaJ8498lgqNQ==}
+    engines: {node: '>=18.0.0'}
+
   immer@10.1.1:
     resolution: {integrity: sha512-s2MPrmjovJcoMaHtx6K11Ra7oD05NT97w1IC5zpMkT6Atjr7H8LjaDd81iIxUYpMKSRRNMJE703M1Fhr/TctHw==}
 
@@ -16182,6 +16285,9 @@ packages:
   jackspeak@4.0.2:
     resolution: {integrity: sha512-bZsjR/iRjl1Nk1UkjGpAzLNfQtzuijhn2g+pbZb98HQ1Gk8vM9hfbxeMBP+M2/UUdwj0RqGG3mlvk2MsAqwvEw==}
     engines: {node: 20 || >=22}
+
+  javascript-stringify@2.1.0:
+    resolution: {integrity: sha512-JVAfqNPTvNq3sB/VHQJAFxN/sPgKnsKrCwyRt15zwNCdrMMJDdcEOdubuy+DuJYYdm0ox1J4uzEuYKkN+9yhVg==}
 
   jest-diff@30.0.5:
     resolution: {integrity: sha512-1UIqE9PoEKaHcIKvq2vbibrCog4Y8G0zmOxgQUVEiTqwR5hJVMCoDsN1vFvI5JvwD37hjueZ1C4l2FyGnfpE0A==}
@@ -18174,6 +18280,11 @@ packages:
     engines: {node: '>=20.16.0'}
     hasBin: true
 
+  srvx@0.8.16:
+    resolution: {integrity: sha512-hmcGW4CgroeSmzgF1Ihwgl+Ths0JqAJ7HwjP2X7e3JzY7u4IydLMcdnlqGQiQGUswz+PO9oh/KtCpOISIvs9QQ==}
+    engines: {node: '>=20.16.0'}
+    hasBin: true
+
   srvx@0.8.7:
     resolution: {integrity: sha512-g3+15LlwVOGL2QpoTPZlvRjg+9a5Tx/69CatXjFP6txvhIaW2FmGyzJfb8yft5wyfGddvJmP/Yx+e/uNDMRSLQ==}
     engines: {node: '>=20.16.0'}
@@ -18405,6 +18516,9 @@ packages:
 
   through@2.3.8:
     resolution: {integrity: sha512-w89qg7PI8wAdvX60bMDP+bFoD5Dvhm9oLheFp5O4a2QF0cSBGsBX4qZmadPMvVqlLJBBci+WqGGOAPvcDeNSVg==}
+
+  thumbhash@0.1.1:
+    resolution: {integrity: sha512-kH5pKeIIBPQXAOni2AiY/Cu/NKdkFREdpH+TLdM0g6WA7RriCv0kPLgP731ady67MhTAqrVG/4mnEeibVuCJcg==}
 
   thunky@1.1.0:
     resolution: {integrity: sha512-eHY7nBftgThBqOyHGVN+l8gF0BucP09fMo0oO/Lb0w1OF80dJv+lDVpXG60WMQvkcxAkNybKsrEIE3ZtKGmPrA==}
@@ -21184,7 +21298,7 @@ snapshots:
 
   '@img/sharp-wasm32@0.33.5':
     dependencies:
-      '@emnapi/runtime': 1.3.1
+      '@emnapi/runtime': 1.5.0
     optional: true
 
   '@img/sharp-wasm32@0.34.4':
@@ -22898,6 +23012,48 @@ snapshots:
       '@types/react-dom': 19.0.3(@types/react@19.0.8)
 
   '@remix-run/node-fetch-server@0.8.1': {}
+
+  '@responsive-image/build-utils@2.0.0(blurhash@2.0.5)(rollup@4.52.5)(thumbhash@0.1.1)':
+    dependencies:
+      '@responsive-image/core': 2.1.0(blurhash@2.0.5)(thumbhash@0.1.1)
+      '@rollup/pluginutils': 5.1.4(rollup@4.52.5)
+      base-n: 3.0.0
+      imagetools-core: 7.1.0
+      javascript-stringify: 2.1.0
+      sharp: 0.34.4
+    transitivePeerDependencies:
+      - blurhash
+      - rollup
+      - thumbhash
+
+  '@responsive-image/core@2.1.0(blurhash@2.0.5)(thumbhash@0.1.1)':
+    dependencies:
+      base64-arraybuffer: 1.0.2
+    optionalDependencies:
+      blurhash: 2.0.5
+      thumbhash: 0.1.1
+
+  '@responsive-image/react@1.1.5(blurhash@2.0.5)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(thumbhash@0.1.1)':
+    dependencies:
+      '@responsive-image/core': 2.1.0(blurhash@2.0.5)(thumbhash@0.1.1)
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+    transitivePeerDependencies:
+      - blurhash
+      - thumbhash
+
+  '@responsive-image/vite-plugin@2.0.2(rollup@4.52.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))':
+    dependencies:
+      '@responsive-image/build-utils': 2.0.0(blurhash@2.0.5)(rollup@4.52.5)(thumbhash@0.1.1)
+      '@responsive-image/core': 2.1.0(blurhash@2.0.5)(thumbhash@0.1.1)
+      '@rollup/pluginutils': 5.1.4(rollup@4.52.5)
+      blurhash: 2.0.5
+      imagetools-core: 7.1.0
+      sharp: 0.34.4
+      thumbhash: 0.1.1
+      vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+    transitivePeerDependencies:
+      - rollup
 
   '@rolldown/pluginutils@1.0.0-beta.19': {}
 
@@ -25293,6 +25449,8 @@ snapshots:
       pvutils: 1.1.3
       tslib: 2.8.1
 
+  assert-plus@1.0.0: {}
+
   assertion-error@2.0.1: {}
 
   ast-module-types@6.0.1: {}
@@ -25377,6 +25535,12 @@ snapshots:
   bare-events@2.5.4:
     optional: true
 
+  base-n@3.0.0:
+    dependencies:
+      dashdash: 1.14.1
+
+  base64-arraybuffer@1.0.2: {}
+
   base64-js@1.5.1: {}
 
   batch@0.6.1: {}
@@ -25437,6 +25601,8 @@ snapshots:
       readable-stream: 3.6.2
 
   blake3-wasm@2.1.5: {}
+
+  blurhash@2.0.5: {}
 
   body-parser@1.20.3:
     dependencies:
@@ -25948,9 +26114,9 @@ snapshots:
     dependencies:
       uncrypto: 0.1.3
 
-  crossws@0.4.1(srvx@0.8.15):
+  crossws@0.4.1(srvx@0.8.16):
     optionalDependencies:
-      srvx: 0.8.15
+      srvx: 0.8.16
 
   css-select@4.3.0:
     dependencies:
@@ -26004,6 +26170,10 @@ snapshots:
       - postcss
 
   csstype@3.1.3: {}
+
+  dashdash@1.14.1:
+    dependencies:
+      assert-plus: 1.0.0
 
   data-uri-to-buffer@4.0.1: {}
 
@@ -27246,23 +27416,23 @@ snapshots:
       ufo: 1.6.1
       uncrypto: 0.1.3
 
-  h3@2.0.0-beta.4(crossws@0.4.1(srvx@0.8.15)):
+  h3@2.0.0-beta.4(crossws@0.4.1(srvx@0.8.16)):
     dependencies:
       cookie-es: 2.0.0
       fetchdts: 0.1.7
       rou3: 0.7.5
-      srvx: 0.8.15
+      srvx: 0.8.16
     optionalDependencies:
-      crossws: 0.4.1(srvx@0.8.15)
+      crossws: 0.4.1(srvx@0.8.16)
 
-  h3@2.0.1-rc.2(crossws@0.4.1(srvx@0.8.15)):
+  h3@2.0.1-rc.2(crossws@0.4.1(srvx@0.8.16)):
     dependencies:
       cookie-es: 2.0.0
       fetchdts: 0.1.7
       rou3: 0.7.8
-      srvx: 0.8.15
+      srvx: 0.8.16
     optionalDependencies:
-      crossws: 0.4.1(srvx@0.8.15)
+      crossws: 0.4.1(srvx@0.8.16)
 
   handle-thing@2.0.1: {}
 
@@ -27452,6 +27622,8 @@ snapshots:
   image-meta@0.2.2: {}
 
   image-size@2.0.2: {}
+
+  imagetools-core@7.1.0: {}
 
   immer@10.1.1: {}
 
@@ -27693,6 +27865,8 @@ snapshots:
   jackspeak@4.0.2:
     dependencies:
       '@isaacs/cliui': 8.0.2
+
+  javascript-stringify@2.1.0: {}
 
   jest-diff@30.0.5:
     dependencies:
@@ -28485,18 +28659,18 @@ snapshots:
     dependencies:
       consola: 3.4.2
       cookie-es: 2.0.0
-      crossws: 0.4.1(srvx@0.8.15)
+      crossws: 0.4.1(srvx@0.8.16)
       db0: 0.3.4
       esbuild: 0.25.10
       fetchdts: 0.1.7
-      h3: 2.0.1-rc.2(crossws@0.4.1(srvx@0.8.15))
+      h3: 2.0.1-rc.2(crossws@0.4.1(srvx@0.8.16))
       jiti: 2.6.1
       nf3: 0.1.1
       ofetch: 1.4.1
       ohash: 2.0.11
       rendu: 0.0.6
       rollup: 4.52.5
-      srvx: 0.8.15
+      srvx: 0.8.16
       undici: 7.16.0
       unenv: 2.0.0-rc.21
       unstorage: 2.0.0-alpha.3(@netlify/blobs@10.1.0)(chokidar@4.0.3)(db0@0.3.4)(ioredis@5.8.0)(lru-cache@11.2.2)(ofetch@1.4.1)
@@ -29465,7 +29639,7 @@ snapshots:
   rendu@0.0.6:
     dependencies:
       cookie-es: 2.0.0
-      srvx: 0.8.15
+      srvx: 0.8.16
 
   repeat-string@1.6.1: {}
 
@@ -29973,6 +30147,8 @@ snapshots:
     dependencies:
       cookie-es: 2.0.0
 
+  srvx@0.8.16: {}
+
   srvx@0.8.7:
     dependencies:
       cookie-es: 2.0.0
@@ -30229,6 +30405,8 @@ snapshots:
       tslib: 2.8.1
 
   through@2.3.8: {}
+
+  thumbhash@0.1.1: {}
 
   thunky@1.1.0: {}
 
