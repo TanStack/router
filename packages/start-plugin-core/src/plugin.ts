@@ -130,8 +130,6 @@ export function TanStackStartVitePluginCore(
 
         const startPackageName =
           `@tanstack/${corePluginOpts.framework}-start` as const
-        const routerPackageName =
-          `@tanstack/${corePluginOpts.framework}-router` as const
 
         // crawl packages that have start in "peerDependencies"
         // see https://github.com/svitejs/vitefu/blob/d8d82fa121e3b2215ba437107093c77bde51b63b/src/index.js#L95-L101
@@ -139,22 +137,16 @@ export function TanStackStartVitePluginCore(
         // this is currently uncached; could be implemented similarly as vite handles lock file changes
         // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
 
-        const result = await crawlFrameworkPkgs({
+        const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
           root: process.cwd(),
           isBuild: command === 'build',
           isFrameworkPkgByJson(pkgJson) {
-            if ([routerPackageName, startPackageName].includes(pkgJson.name)) {
-              return false
-            }
-
             const peerDependencies = pkgJson['peerDependencies']
 
             if (peerDependencies) {
-              return (
-                startPackageName in peerDependencies ||
-                routerPackageName in peerDependencies
-              )
+              return startPackageName in peerDependencies
             }
+
             return false
           },
         })
@@ -199,8 +191,7 @@ export function TanStackStartVitePluginCore(
             noExternal: [
               '@tanstack/start**',
               `@tanstack/${corePluginOpts.framework}-start**`,
-              startPackageName,
-              ...result.ssr.noExternal.sort(),
+              ...crawlFrameworkPkgsResult.ssr.noExternal.sort(),
             ],
             alias: {
               ...entryAliasConfiguration,
