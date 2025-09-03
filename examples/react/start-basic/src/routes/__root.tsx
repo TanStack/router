@@ -6,13 +6,34 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { createMiddleware } from '@tanstack/react-start'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 
+const testParentMiddleware = createMiddleware({ type: 'request' }).server(
+  async ({ next }) => {
+    const result = await next({ context: { testParent: true } })
+    return result
+  },
+)
+
+const testMiddleware = createMiddleware({ type: 'request' })
+  .middleware([testParentMiddleware])
+  .server(async ({ next }) => {
+    const result = await next({ context: { test: true } })
+    return result
+  })
+
 export const Route = createRootRoute({
+  server: {
+    middleware: [testMiddleware],
+  },
+  beforeLoad: async (ctx) => {
+    ctx.serverContext
+  },
   head: () => ({
     meta: [
       {

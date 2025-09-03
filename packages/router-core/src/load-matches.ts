@@ -406,23 +406,29 @@ const executeBeforeLoad = (
 
   const { search, params, cause } = match
   const preload = resolvePreload(inner, matchId)
-  const beforeLoadFnContext: BeforeLoadContextOptions<any, any, any, any, any> =
-    {
-      search,
-      abortController,
-      params,
-      preload,
-      context,
-      location: inner.location,
-      navigate: (opts: any) =>
-        inner.router.navigate({
-          ...opts,
-          _fromLocation: inner.location,
-        }),
-      buildLocation: inner.router.buildLocation,
-      cause: preload ? 'preload' : cause,
-      matches: inner.matches,
-    }
+  const beforeLoadFnContext: BeforeLoadContextOptions<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  > = {
+    search,
+    abortController,
+    params,
+    preload,
+    context,
+    location: inner.location,
+    navigate: (opts: any) =>
+      inner.router.navigate({
+        ...opts,
+        _fromLocation: inner.location,
+      }),
+    buildLocation: inner.router.buildLocation,
+    cause: preload ? 'preload' : cause,
+    matches: inner.matches,
+  }
 
   const updateContext = (beforeLoadContext: any) => {
     if (beforeLoadContext === undefined) {
