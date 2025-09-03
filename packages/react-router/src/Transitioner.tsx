@@ -53,8 +53,8 @@ export function Transitioner() {
     })
 
     if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
+      trimPathRight(router.latestLocation.fullPath) !==
+      trimPathRight(nextLocation.fullPath)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
