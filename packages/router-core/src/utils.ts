@@ -203,6 +203,8 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   return updater
 }
 
+const hasOwn = Object.prototype.hasOwnProperty
+
 /**
  * This function returns `prev` if `_next` is deeply equal.
  * If not, it will replace any deeply equal children of `b` with those of `a`.
@@ -237,7 +239,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
 
     if (p === n) {
       copy[key] = p
-      if (array ? i < prevSize : prev.hasOwnProperty(key)) equalItems++
+      if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++
       continue
     }
 
@@ -463,7 +465,7 @@ export function shallow<T>(objA: T, objB: T) {
 
   for (const item of keysA) {
     if (
-      !Object.prototype.hasOwnProperty.call(objB, item) ||
+      !hasOwn.call(objB, item) ||
       !Object.is(objA[item as keyof T], objB[item as keyof T])
     ) {
       return false
