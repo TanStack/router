@@ -95,9 +95,10 @@ export const isMatch = <TMatch, TPath extends string>(
 ): match is IsMatch<TMatch, TPath>['result'] => {
   const parts = (path as string).split('.')
   let part
+  let i = 0
   let value: any = match
 
-  while ((part = parts.shift()) != null && value != null) {
+  while ((part = parts[i++]) != null && value != null) {
     value = value[part]
   }
 
