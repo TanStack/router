@@ -30,7 +30,12 @@ import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
 import { createLRUCache } from './lru-cache'
 import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
-import { executefromURL, executetoURL, rewriteBasepath } from './rewrite'
+import {
+  composeRewrites,
+  executeRewriteInput,
+  executeRewriteOutput,
+  rewriteBasepath,
+} from './rewrite'
 import type { ParsePathnameCache, Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
@@ -267,15 +272,15 @@ export interface RouterOptions<
   /**
    * The basepath for then entire router. This is useful for mounting a router instance at a subpath.
    *
-   * @deprecated - use `rewrite.fromURL` with the new `rewriteBasepath` utility instead:
+   * @deprecated - use `rewrite.input` with the new `rewriteBasepath` utility instead:
    * ```ts
    * const router = createRouter({
    *   routeTree,
    *   rewrite: rewriteBasepath('/basepath')
    *   // Or wrap existing rewrite functionality
    *   rewrite: rewriteBasepath('/basepath', {
-   *     toURL: ({ url }) => {...},
-   *     fromURL: ({ url }) => {...},
+   *     output: ({ url }) => {...},
+   *     input: ({ url }) => {...},
    *   })
    * })
    * ```
@@ -464,14 +469,14 @@ export type LocationRewrite = {
    *
    * @default undefined
    */
-  fromURL?: LocationRewriteFunction
+  input?: LocationRewriteFunction
   /**
    * A function that will be called to rewrite the URL before it is committed to the actual history instance from the router.
    * Utilities like `rewriteBasepath` are provided as a convenience for common use cases.
    *
    * @default undefined
    */
-  toURL?: LocationRewriteFunction
+  output?: LocationRewriteFunction
 }
 
 /**
@@ -953,10 +958,14 @@ export class RouterCore<
     }
     // For backwards compatibility, we support a basepath option, which we now implement as a rewrite
     if (this.options.basepath) {
-      this.rewrite = rewriteBasepath(
-        this.options.basepath,
-        this.options.rewrite,
-      )
+      const basepathRewrite = rewriteBasepath({
+        basepath: this.options.basepath,
+      })
+      if (this.options.rewrite) {
+        this.rewrite = composeRewrites([basepathRewrite, this.options.rewrite])
+      } else {
+        this.rewrite = basepathRewrite
+      }
     } else {
       this.rewrite = this.options.rewrite
     }
@@ -1072,7 +1081,7 @@ export class RouterCore<
       // Before we do any processing, we need to allow rewrites to modify the URL
       // build up the full URL by combining the href from history with the router's origin
       const fullUrl = new URL(href, this.origin)
-      const url = executefromURL(this.rewrite, fullUrl)
+      const url = executeRewriteInput(this.rewrite, fullUrl)
 
       const parsedSearch = this.options.parseSearch(url.search)
       const searchStr = this.options.stringifySearch(parsedSearch)
@@ -1653,7 +1662,7 @@ export class RouterCore<
       const url = new URL(fullPath, this.origin)
 
       // If a rewrite function is provided, use it to rewrite the URL
-      const rewrittenUrl = executetoURL(this.rewrite, url)
+      const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
 
       return {
         publicHref:

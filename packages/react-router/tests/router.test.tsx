@@ -8,6 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { z } from 'zod'
+import { composeRewrites } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
@@ -1852,7 +1853,7 @@ describe('statusCode reset on navigation', () => {
 })
 
 describe('Router rewrite functionality', () => {
-  it('should rewrite URLs using fromURL before router interprets them', async () => {
+  it('should rewrite URLs using input before router interprets them', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1869,7 +1870,7 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/old-path'] }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           // Rewrite /old-path to /new-path
 
           if (url.pathname === '/old-path') {
@@ -1890,7 +1891,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.pathname).toBe('/new-path')
   })
 
-  it('should handle fromURL rewrite with complex URL transformations', async () => {
+  it('should handle input rewrite with complex URL transformations', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1909,7 +1910,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['/legacy/users?page=1#top'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           // Rewrite legacy URLs to new format
           if (url.pathname === '/legacy/users') {
             url.pathname = `/users`
@@ -1931,7 +1932,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.hash).toBe('top')
   })
 
-  it('should handle multiple fromURL rewrite conditions', async () => {
+  it('should handle multiple input rewrite conditions', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1954,7 +1955,7 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/old-about'] }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           // Multiple rewrite rules
           if (url.pathname === '/old-home' || url.pathname === '/home') {
             url.pathname = '/'
@@ -1976,7 +1977,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.pathname).toBe('/about')
   })
 
-  it('should handle fromURL rewrite with search params and hash preservation', async () => {
+  it('should handle input rewrite with search params and hash preservation', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1995,7 +1996,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['/old/documentation?version=v2&lang=en#installation'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           // Rewrite old docs URL structure
           if (url.pathname === '/old/documentation') {
             url.pathname = `/docs`
@@ -2021,7 +2022,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.hash).toBe('installation')
   })
 
-  it('should handle subdomain to path rewriting with fromURL', async () => {
+  it('should handle subdomain to path rewriting with input', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2042,7 +2043,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://test.domain.com/users'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           // Rewrite test.domain.com/path to /test/path (subdomain becomes path segment)
           if (url.hostname.startsWith('test.domain.com')) {
             url.pathname = `/test${url.pathname}`
@@ -2062,7 +2063,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.pathname).toBe('/test/users')
   })
 
-  it('should handle hostname-based routing with fromURL rewrite', async () => {
+  it('should handle hostname-based routing with input rewrite', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2087,7 +2088,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://admin.example.com/dashboard'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           // Route based on subdomain
           if (url.hostname === 'admin.example.com') {
             url.pathname = '/admin'
@@ -2134,7 +2135,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['/old/shop/items?category=electronics'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           // Multiple transformation patterns
           if (url.pathname === '/old/shop/items') {
             url.pathname = `/products`
@@ -2179,7 +2180,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://legacy.example.com/api/v1'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           if (
             url.hostname === 'legacy.example.com' &&
             url.pathname === '/api/v1'
@@ -2221,7 +2222,7 @@ describe('Router rewrite functionality', () => {
         ],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           if (
             url.hostname === 'old-api.company.com' &&
             url.pathname === '/users'
@@ -2271,7 +2272,7 @@ describe('Router rewrite functionality', () => {
         ],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           // Mutate URL: change subdomain to path, preserve params and hash
           if (url.hostname === 'blog.oldsite.com') {
             url.hostname = 'newsite.com'
@@ -2319,7 +2320,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://store.example.com/items?id=123'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           // Alternative pattern: create new URL instance and return it
 
           if (
@@ -2352,12 +2353,8 @@ describe('Router rewrite functionality', () => {
     })
   })
 
-  // NOTE: toURL functionality tests - Currently failing as toURL may not be fully implemented
-  // These tests are preserved for when toURL functionality becomes available
-
-  it.skip('should handle toURL rewrite when navigating (PENDING: toURL not implemented)', async () => {
-    // This test demonstrates expected toURL behavior for programmatic navigation
-    // Currently fails because toURL doesn't affect history.location.pathname
+  it('should handle output rewrite when navigating', async () => {
+    // This test demonstrates expected output behavior for programmatic navigation
     const Navigate = () => {
       const navigate = useNavigate()
       return (
@@ -2370,9 +2367,7 @@ describe('Router rewrite functionality', () => {
       )
     }
 
-    const rootRoute = createRootRoute({
-      component: () => <Outlet />,
-    })
+    const rootRoute = createRootRoute()
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -2393,10 +2388,17 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history,
       rewrite: {
-        fromURL: ({ url }) => {
-          // Should rewrite dashboard URLs to admin URLs in the history
+        output: ({ url }) => {
           if (url.pathname === '/dashboard') {
-            return '/admin/panel'
+            url.pathname = '/admin/panel'
+            return url
+          }
+          return undefined
+        },
+        input: ({ url }) => {
+          if (url.pathname === '/admin/panel') {
+            url.pathname = '/dashboard'
+            return url
           }
           return undefined
         },
@@ -2407,24 +2409,20 @@ describe('Router rewrite functionality', () => {
 
     const navigateBtn = await screen.findByTestId('navigate-btn')
 
-    await act(() => {
-      fireEvent.click(navigateBtn)
-    })
+    fireEvent.click(navigateBtn)
+    await router.latestLoadPromise
 
-    await waitFor(() => {
-      expect(screen.getByTestId('dashboard')).toBeInTheDocument()
-    })
+    await screen.findByTestId('dashboard')
 
     // Router internal state should show the internal path
     expect(router.state.location.pathname).toBe('/dashboard')
 
-    // EXPECTED: History should be updated with the rewritten path due to toURL
-    // ACTUAL: Currently fails - history.location.pathname remains '/dashboard'
+    // History should be updated with the rewritten path due to output
     expect(history.location.pathname).toBe('/admin/panel')
   })
 
-  it.skip('should handle toURL rewrite with Link navigation (PENDING: toURL not implemented)', async () => {
-    // This test demonstrates expected toURL behavior for Link-based navigation
+  it('should handle output rewrite with Link navigation', async () => {
+    // This test demonstrates expected output behavior for Link-based navigation
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2454,12 +2452,17 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history,
       rewrite: {
-        fromURL: ({ url }) => {
-          // Should rewrite profile URLs to user URLs in history
-
+        output: ({ url }) => {
           if (url.pathname === '/profile') {
             url.pathname = '/user'
-            return url.href
+            return url
+          }
+          return undefined
+        },
+        input: ({ url }) => {
+          if (url.pathname === '/user') {
+            url.pathname = '/profile'
+            return url
           }
           return undefined
         },
@@ -2470,34 +2473,18 @@ describe('Router rewrite functionality', () => {
 
     const profileLink = await screen.findByTestId('profile-link')
 
-    await act(() => {
-      fireEvent.click(profileLink)
-    })
+    fireEvent.click(profileLink)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('profile')).toBeInTheDocument()
-    })
+    expect(await screen.findByTestId('profile')).toBeInTheDocument()
 
     expect(router.state.location.pathname).toBe('/profile')
 
-    // EXPECTED: History should show rewritten path
-    // ACTUAL: Currently fails - history shows original path
     expect(history.location.pathname).toBe('/user')
-  })
-
-  it.skip('should handle toURL with search params and hash (PENDING: toURL not implemented)', async () => {
-    // This test would verify toURL rewriting with complex URL components
-    // Currently skipped as toURL functionality is not working as expected
-  })
-
-  it.skip('should handle toURL returning fully formed href string (PENDING: toURL not implemented)', async () => {
-    // This test would verify toURL returning complete URLs with origins
-    // Currently skipped as toURL functionality is not working as expected
   })
 })
 
 describe('rewriteBasepath utility', () => {
-  it('should handle basic basepath rewriting with fromURL', async () => {
+  it('should handle basic basepath rewriting with input', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2521,7 +2508,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/my-app/about'],
       }),
-      rewrite: rewriteBasepath('my-app'),
+      rewrite: rewriteBasepath({ basepath: 'my-app' }),
     })
 
     render(<RouterProvider router={router} />)
@@ -2552,7 +2539,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/api/v1/users'],
       }),
-      rewrite: rewriteBasepath('/api/v1/'), // With leading and trailing slashes
+      rewrite: rewriteBasepath({ basepath: '/api/v1/' }), // With leading and trailing slashes
     })
 
     render(<RouterProvider router={router} />)
@@ -2582,19 +2569,17 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/test'],
       }),
-      rewrite: rewriteBasepath(''), // Empty basepath
+      rewrite: rewriteBasepath({ basepath: '' }), // Empty basepath
     })
 
     render(<RouterProvider router={router} />)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('test')).toBeInTheDocument()
-    })
+    expect(await screen.findByTestId('test')).toBeInTheDocument()
 
     expect(router.state.location.pathname).toBe('/test')
   })
 
-  it('should combine basepath with additional fromURL rewrite logic', async () => {
+  it('should combine basepath with additional input rewrite logic', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2612,23 +2597,24 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/my-app/legacy/api/v1'],
       }),
-      rewrite: rewriteBasepath('my-app', {
-        // Additional rewrite logic after basepath removal
-        fromURL: ({ url }) => {
-          if (url.pathname === '/legacy/api/v1') {
-            url.pathname = '/api/v2'
-            return url
-          }
-          return undefined
+      rewrite: composeRewrites([
+        rewriteBasepath({ basepath: 'my-app' }),
+        {
+          // Additional rewrite logic after basepath removal
+          input: ({ url }) => {
+            if (url.pathname === '/legacy/api/v1') {
+              url.pathname = '/api/v2'
+              return url
+            }
+            return undefined
+          },
         },
-      }),
+      ]),
     })
 
     render(<RouterProvider router={router} />)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('api-v2')).toBeInTheDocument()
-    })
+    expect(await screen.findByTestId('api-v2')).toBeInTheDocument()
 
     // Should first remove basepath (/my-app/legacy/api/v1 -> /legacy/api/v1)
     // Then apply additional rewrite (/legacy/api/v1 -> /api/v2)
@@ -2653,7 +2639,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/tenant-123/dashboard'],
       }),
-      rewrite: rewriteBasepath('tenant-123'),
+      rewrite: rewriteBasepath({ basepath: 'tenant-123' }),
     })
 
     render(<RouterProvider router={router} />)
@@ -2683,7 +2669,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/app/search?q=test&filter=all#results'],
       }),
-      rewrite: rewriteBasepath('app'),
+      rewrite: rewriteBasepath({ basepath: 'app' }),
     })
 
     render(<RouterProvider router={router} />)
@@ -2700,7 +2686,7 @@ describe('rewriteBasepath utility', () => {
     expect(router.state.location.hash).toBe('results')
   })
 
-  it.skip('should handle nested basepath with multiple rewrite layers (complex case)', async () => {
+  it('should handle nested basepath with multiple rewrite layers', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2718,48 +2704,61 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/base/legacy/old/path'],
       }),
-      rewrite: rewriteBasepath('base', {
-        fromURL: ({ url }) => {
-          // First layer: convert legacy paths
-          if (url.pathname === '/legacy/old/path') {
-            url.pathname = '/new/path'
-            return url
-          }
-          return undefined
+      rewrite: composeRewrites([
+        rewriteBasepath({ basepath: 'base' }),
+        {
+          input: ({ url }) => {
+            // First layer: convert legacy paths
+            if (url.pathname === '/legacy/old/path') {
+              url.pathname = '/new/path'
+              return url
+            }
+            return undefined
+          },
+          output: ({ url }) => {
+            // First layer: convert legacy paths
+            if (url.pathname === '/new/path') {
+              url.pathname = '/legacy/old/path'
+              return url
+            }
+            return undefined
+          },
         },
-      }),
+      ]),
     })
 
     // Add a second rewrite layer
     const originalRewrite = router.options.rewrite
-    router.options.rewrite = {
-      fromURL: ({ url }) => {
-        // Apply basepath rewrite first
-        const result = originalRewrite?.fromURL?.({ href })
-        if (result && typeof result !== 'string') {
-          // Second layer: convert new paths to final
-          if (result.pathname === '/new/path') {
-            result.pathname = '/final'
-            return result
-          }
-        }
-        return result
-      },
-    }
+    router.update({
+      rewrite: composeRewrites([
+        originalRewrite!,
+        {
+          input: ({ url }) => {
+            if (url.pathname === '/new/path') {
+              url.pathname = '/final'
+            }
+            return url
+          },
+          output: ({ url }) => {
+            if (url.pathname === '/final') {
+              url.pathname = '/new/path'
+            }
+            return url
+          },
+        },
+      ]),
+    })
 
     render(<RouterProvider router={router} />)
 
-    await waitFor(() => {
-      expect(screen.getByTestId('final')).toBeInTheDocument()
-    })
+    expect(router.state.location.pathname).toBe('/final')
+    expect(await screen.findByTestId('final')).toBeInTheDocument()
 
     // Should apply: /base/legacy/old/path -> /legacy/old/path -> /new/path -> /final
-    expect(router.state.location.pathname).toBe('/final')
   })
 
-  it.skip('should handle basepath with toURL rewriting (PENDING: toURL not implemented)', async () => {
-    // This test would verify that basepath is added back when navigating
-    // Currently skipped as toURL functionality is not working as expected
+  it('should handle basepath with output rewriting', async () => {
+    // This test verifies that basepath is added back when navigating
 
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
@@ -2790,7 +2789,7 @@ describe('rewriteBasepath utility', () => {
     const router = createRouter({
       routeTree,
       history,
-      rewrite: rewriteBasepath('my-app'),
+      rewrite: rewriteBasepath({ basepath: 'my-app' }),
     })
 
     render(<RouterProvider router={router} />)
@@ -2803,11 +2802,7 @@ describe('rewriteBasepath utility', () => {
       expect(screen.getByTestId('about')).toBeInTheDocument()
     })
 
-    // Router internal state should show clean path
     expect(router.state.location.pathname).toBe('/about')
-
-    // EXPECTED: History should show path with basepath added back
-    // ACTUAL: Currently fails due to toURL not being implemented
     expect(history.location.pathname).toBe('/my-app/about')
   })
 })

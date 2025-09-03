@@ -5,7 +5,7 @@ import {
   mergeHeaders,
 } from '@tanstack/start-client-core'
 import {
-  executefromURL,
+  executeRewriteInput,
   getMatchedRoutes,
   isRedirect,
   isResolvedRedirect,
@@ -344,7 +344,7 @@ async function handleServerRoutes(opts: {
 }) {
   let url = new URL(opts.request.url)
   if (opts.basePath) {
-    url = executefromURL(rewriteBasepath(opts.basePath), url)
+    url = executeRewriteInput(rewriteBasepath({ basepath: opts.basePath }), url)
   }
   const pathname = url.pathname
 

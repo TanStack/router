@@ -6200,13 +6200,13 @@ describe('rewrite', () => {
       history,
       origin: 'http://example.com',
       rewrite: {
-        fromURL: ({ url }) => {
+        input: ({ url }) => {
           if (url.href.startsWith('http://app.example.com')) {
             return url.href.replace('http://example.com/ap', '')
           }
           return undefined
         },
-        toURL: ({ url }) => {
+        output: ({ url }) => {
           if (url.pathname.startsWith('/app')) {
             ;((url.hostname = 'app.example.com'),
               (url.pathname = url.pathname.replace(/^\/app/, '')))
