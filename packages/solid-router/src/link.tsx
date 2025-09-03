@@ -133,27 +133,25 @@ export function useLinkProps<
   })
 
   const hrefOption = Solid.createMemo(() => {
-    if (!_options().disabled) {
-      let publicHref
-      const maskedLocation = next().maskedLocation
-      if (maskedLocation) {
-        publicHref = maskedLocation.publicHref
-      } else {
-        publicHref = next().publicHref
-      }
-      const url = new URL(publicHref)
-      let href = url.href
-      let external: boolean | undefined = undefined
-      if (router.origin) {
-        if (url.href.startsWith(router.origin)) {
-          href = url.href.replace(router.origin, '')
-        } else {
-          external = true
-        }
-      }
-      return { href, external }
+    if (_options().disabled) {
+      return undefined
     }
-    return undefined
+    let href
+    const maskedLocation = next().maskedLocation
+    if (maskedLocation) {
+      href = maskedLocation.url
+    } else {
+      href = next().url
+    }
+    let external = false
+    if (router.origin) {
+      if (href.startsWith(router.origin)) {
+        href = href.replace(router.origin, '')
+      } else {
+        external = true
+      }
+    }
+    return { href, external }
   })
 
   const externalLink = Solid.createMemo(() => {

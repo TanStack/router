@@ -359,7 +359,7 @@ describe('redirect', () => {
         _fromLocation: {
           hash: '',
           href: '/',
-          publicHref: 'http://localhost/',
+          publicHref: '/',
           pathname: '/',
           search: {},
           searchStr: '',

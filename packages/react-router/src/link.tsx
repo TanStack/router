@@ -112,24 +112,21 @@ export function useLinkProps<
   )
 
   const hrefOption = React.useMemo(() => {
-    if (!disabled) {
-      const publicHref = next.maskedLocation
-        ? next.maskedLocation.publicHref
-        : next.publicHref
-      const url = new URL(publicHref)
-      let href = url.href
-      let external: boolean | undefined = undefined
-      if (router.origin) {
-        if (url.href.startsWith(router.origin)) {
-          href = url.href.replace(router.origin, '')
-        } else {
-          external = true
-        }
-      }
-      return { href, external }
+    if (disabled) {
+      return undefined
     }
-    return undefined
-  }, [disabled, next.maskedLocation, next.publicHref, router.origin])
+    let href = next.maskedLocation ? next.maskedLocation.url : next.url
+
+    let external = false
+    if (router.origin) {
+      if (href.startsWith(router.origin)) {
+        href = href.replace(router.origin, '') || '/'
+      } else {
+        external = true
+      }
+    }
+    return { href, external }
+  }, [disabled, next.maskedLocation, next.url, router.origin])
 
   const externalLink = React.useMemo(() => {
     if (hrefOption?.external) {

@@ -2321,9 +2321,10 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
                 Link to ./a
               </button>
               <button
-                onClick={() => navigate({ params: { param: 'bar' } as any })}
+                data-testid="btn-param-bar"
+                onClick={() => navigate({ to:'.', params: { param: 'bar' } as any })}
               >
-                Link to . with param:bar
+                Navigate to to . with param:bar
               </button>
               <Outlet />
             </>
@@ -2522,16 +2523,13 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       await act(async () => {
         history.push(`${basepath}/param/foo/a/b`)
-      })
-      try {
-        const parentLink = await screen.findByText('Link to . with param:bar')
-
-        fireEvent.click(parentLink)
         await router.latestLoadPromise
-      } catch (e) {
-        console.log('#####', router.state.location)
-        throw e
-      }
+      })
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a/b`)
+
+      const btn = screen.getByTestId('btn-param-bar')
+      fireEvent.click(btn)
+      await router.latestLoadPromise
 
       expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
     })

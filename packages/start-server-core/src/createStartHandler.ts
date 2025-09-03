@@ -138,17 +138,13 @@ export function createStartHandler<TRouter extends AnyRouter>({
       const serializationAdapters = (
         router.options.serializationAdapters ?? []
       ).concat(ServerFunctionSerializationAdapter)
-
-      let origin = router.options.origin
-      if (!origin) {
-        origin = getOrigin()
-      }
+    
       // Create a history for the client-side router
       const history = createMemoryHistory({
         initialEntries: [href],
-        origin,
       })
 
+      const origin = router.options.origin ?? getOrigin()
       router.update({
         history,
         isShell,

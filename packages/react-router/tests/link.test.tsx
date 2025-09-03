@@ -68,7 +68,7 @@ const WAIT_TIME = 300
 describe('Link', () => {
   test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
     /**
-     * This is the hook that will be testet.
+     * This is the hook that will be tested.
      *
      * @returns custom state
      */
@@ -6145,4 +6145,79 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
 
   test('Route', () => runTest('Route'))
   test('RouteApi', () => runTest('RouteApi'))
+})
+
+
+describe('rewrite', () => {
+  test('renders hard link when rewrite points to different origin', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        return (
+          <>
+            <h1>Index</h1>
+            <Link data-testid="link-to-index" to="/">Index</Link>
+            <Link data-testid="link-to-info" to="/info">Info</Link>
+            <Link data-testid="link-to-app" to="/app">App</Link>
+          </>
+        )
+      },
+    })
+
+    const infoRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/info',
+      component: () => {
+        return (
+          <>
+            <h1>Info</h1>
+          </>
+        )
+      },
+    })
+
+    const appRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/app',
+      component: () => {
+        return (
+          <>
+            <h1>App</h1>
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, infoRoute, appRoute]),
+      history,
+      origin: 'http://example.com',
+      rewrite: {
+        fromHref: ({href}) => {
+          if (href.startsWith('http://app.example.com')) {
+            return href.replace('http://example.com/ap', '')
+          }
+          return undefined
+        },
+        toHref: ({href}) => {
+          const url = new URL(href)
+          if (url.pathname.startsWith('/app')) {
+            url.hostname = 'app.example.com',
+            url.pathname = url.pathname.replace(/^\/app/, '')
+          }
+          return url
+        }
+      }
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const infoLink = await screen.findByTestId('link-to-info')
+    expect(infoLink).toHaveAttribute('href', '/info')
+
+    const appLink = await screen.findByTestId('link-to-app')
+    expect(appLink).toHaveAttribute('href', 'http://app.example.com/')
+  })
 })

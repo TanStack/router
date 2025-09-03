@@ -962,10 +962,16 @@ export class RouterCore<
     }
 
     this.origin = this.options.origin
-    if (this.history) {
-      if (!this.origin && this.history.origin) {
-        this.origin = this.history.origin
+    if (!this.origin) {
+      if (!this.isServer) {
+        this.origin = window.origin
       }
+      else {
+        // fallback for the server, can be overridden by calling router.update({origin}) on the server
+        this.origin = 'http://localhost'
+      }
+    }
+    if (this.history) {
       this.updateLatestLocation()
     }
 
@@ -1061,13 +1067,13 @@ export class RouterCore<
     previousLocation,
   ) => {
     const parse = ({
-      url: publicHref,
+      href,
       state,
     }: HistoryLocation): ParsedLocation<FullSearchSchema<TRouteTree>> => {
       // Before we do any processing, we need to allow rewrites to modify the URL
-      // Make sure we derive all the properties we need from the URL object now
-      // (These used to   come from the history location object, but won't in v2)
-      const url = executeFromHref(this.rewrite, publicHref)
+      // build up the full URL by combining the href from history with the router's origin
+      const fullUrl = new URL(href, this.origin)
+      const url = executeFromHref(this.rewrite, fullUrl.href)
 
       const parsedSearch = this.options.parseSearch(url.search)
       const searchStr = this.options.stringifySearch(parsedSearch)
@@ -1080,9 +1086,9 @@ export class RouterCore<
       const { pathname, hash } = url
 
       return {
-        publicHref,
-        url: url.href,
         href: fullPath,
+        publicHref: href,
+        url: url.href,
         pathname,
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
@@ -1645,19 +1651,16 @@ export class RouterCore<
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
 
       // Create the new href with full origin
-      const url = new URL(fullPath, new URL(currentLocation.url).origin)
+      const url = new URL(fullPath, this.origin)
 
       // If a rewrite function is provided, use it to rewrite the URL
-      let publicHref = executeToHref(this.rewrite, url.href)
+      const publicHref = executeToHref(this.rewrite, url.href)
+      const rewrittenUrl = new URL(publicHref)
 
-      // Lastly, allow the history type to modify the URL
-      publicHref = this.history.createHref(publicHref)
-
-      // Return the next location
       return {
-        publicHref,
+        publicHref: rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
         href: fullPath,
-        url: url.href,
+        url: publicHref,
         pathname: nextPathname,
         search: nextSearch,
         searchStr,
@@ -1805,7 +1808,7 @@ export class RouterCore<
       this.history[next.replace ? 'replace' : 'push'](
         nextHistory.publicHref,
         nextHistory.state,
-        { ignoreBlocker, _fullHref: true },
+        { ignoreBlocker },
       )
     }
 
@@ -1834,8 +1837,7 @@ export class RouterCore<
         href,
         {
           __TSR_index: replace ? currentIndex : currentIndex + 1,
-        },
-        this.options.origin,
+        }
       )
       rest.to = parsed.pathname
       rest.search = this.options.parseSearch(parsed.search)
