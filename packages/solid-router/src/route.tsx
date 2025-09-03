@@ -176,6 +176,7 @@ export class Route<
     in out TChildren = unknown,
     in out TFileRouteTypes = unknown,
     in out TSSR = unknown,
+    in out TMiddlewares = unknown,
   >
   extends BaseRoute<
     TRegister,
@@ -193,7 +194,8 @@ export class Route<
     TLoaderFn,
     TChildren,
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    TMiddlewares
   >
   implements
     RouteCore<
@@ -212,7 +214,8 @@ export class Route<
       TLoaderFn,
       TChildren,
       TFileRouteTypes,
-      TSSR
+      TSSR,
+      TMiddlewares
     >
 {
   /**
