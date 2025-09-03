@@ -14,7 +14,7 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
    * represent the full URL, including the origin. As a replacement,
    * please upgrade to the new `fullPath` property, which is derived by
    * combining `pathname`, `search`, and `hash`. like so:
-   * `${pathname}${searchStr}${hash}`. If you'r looking for the actual
+   * `${pathname}${searchStr}${hash}`. If you're looking for the actual
    * `href` of the location, you can use the `location.url.href` property.
    */
   href: string
