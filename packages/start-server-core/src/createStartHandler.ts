@@ -34,7 +34,6 @@ import type {
   AnyRoute,
   AnyRouter,
   Awaitable,
-  FileBaseRouteOptions,
   Manifest,
   ProcessRouteTreeResult,
 } from '@tanstack/router-core'
@@ -389,23 +388,6 @@ async function handleServerRoutes(opts: {
       }
     }
   }
-
-  type Test = FileBaseRouteOptions<
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any,
-    any
-  >['']
 
   if (matchedRoutes.length) {
     // We've found a server route that (partially) matches the request, so we can call it.
