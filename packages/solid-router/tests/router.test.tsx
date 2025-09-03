@@ -333,7 +333,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/posts/🚀')
+    expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
   })
 
   it('state.location.pathname, should have the params.slug value of "100%25"', async () => {
@@ -578,7 +578,7 @@ describe('encoding: URL splat segment for /$', () => {
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/🚀')
+    expect(router.state.location.pathname).toBe('/%F0%9F%9A%80')
   })
 
   it('state.location.pathname, should have the params._splat value of "100%25"', async () => {
@@ -637,7 +637,7 @@ describe('encoding: URL splat segment for /$', () => {
     await router.load()
 
     expect(router.state.location.pathname).toBe(
-      '/framework/react/guide/file-based-routing tanstack',
+      '/framework/react/guide/file-based-routing%20tanstack',
     )
   })
 
@@ -722,78 +722,64 @@ describe('encoding: URL path segment', () => {
   it.each([
     {
       input: '/path-segment/%C3%A9',
-      output: '/path-segment/é',
-      type: 'encoded',
+      output: '/path-segment/%C3%A9',
     },
     {
       input: '/path-segment/é',
-      output: '/path-segment/é',
-      type: 'not encoded',
+      output: '/path-segment/%C3%A9',
     },
     {
       input: '/path-segment/100%25', // `%25` = `%`
       output: '/path-segment/100%25',
-      type: 'not encoded',
     },
     {
       input: '/path-segment/100%25%25',
       output: '/path-segment/100%25%25',
-      type: 'not encoded',
     },
     {
       input: '/path-segment/100%26', // `%26` = `&`
       output: '/path-segment/100%26',
-      type: 'not encoded',
     },
     {
       input: '/path-segment/%F0%9F%9A%80',
-      output: '/path-segment/🚀',
-      type: 'encoded',
+      output: '/path-segment/%F0%9F%9A%80',
     },
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon',
-      type: 'encoded',
+      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/%25🚀to%2Fthe%2Fmoon',
-      type: 'encoded',
+      output: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon%25',
-      type: 'encoded',
+      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
     },
     {
       input:
         '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon%25🚀to%2Fthe%2Fmoon',
-      type: 'encoded',
+      output:
+        '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/🚀',
-      output: '/path-segment/🚀',
-      type: 'not encoded',
+      output: '/path-segment/%F0%9F%9A%80',
     },
     {
       input: '/path-segment/🚀to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon',
-      type: 'not encoded',
+      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
-  ])(
-    'should resolve $input to $output when the path segment is $type',
-    async ({ input, output }) => {
-      const { router } = createTestRouter({
-        history: createMemoryHistory({ initialEntries: [input] }),
-      })
+  ])('should resolve $input to $output', async ({ input, output }) => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: [input] }),
+    })
 
-      render(() => <RouterProvider router={router} />)
-      await router.load()
+    render(() => <RouterProvider router={router} />)
+    await router.load()
 
-      expect(router.state.location.pathname).toBe(output)
-    },
-  )
+    expect(router.state.location.pathname).toBe(output)
+  })
 })
 
 describe('router emits events during rendering', () => {

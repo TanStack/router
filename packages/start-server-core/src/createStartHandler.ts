@@ -5,11 +5,13 @@ import {
   mergeHeaders,
 } from '@tanstack/start-client-core'
 import {
+  executeRewriteInput,
   getMatchedRoutes,
   isRedirect,
   isResolvedRedirect,
   joinPaths,
   processRouteTree,
+  rewriteBasepath,
   trimPath,
 } from '@tanstack/router-core'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
@@ -73,6 +75,17 @@ export function createStartHandler<TRouter extends AnyRouter>({
     const originalFetch = globalThis.fetch
 
     const startRequestResolver: RequestHandler = async (request) => {
+      function getOrigin() {
+        const originHeader = request.headers.get('Origin')
+        if (originHeader) {
+          return originHeader
+        }
+        try {
+          return new URL(request.url).origin
+        } catch (_) {}
+        return 'http://localhost'
+      }
+
       // Patching fetch function to use our request resolver
       // if the input starts with `/` which is a common pattern for
       // client-side routing.
@@ -82,14 +95,6 @@ export function createStartHandler<TRouter extends AnyRouter>({
         function resolve(url: URL, requestOptions: RequestInit | undefined) {
           const fetchRequest = new Request(url, requestOptions)
           return startRequestResolver(fetchRequest)
-        }
-
-        function getOrigin() {
-          return (
-            request.headers.get('Origin') ||
-            request.headers.get('Referer') ||
-            'http://localhost'
-          )
         }
 
         if (typeof input === 'string' && input.startsWith('/')) {
@@ -119,11 +124,6 @@ export function createStartHandler<TRouter extends AnyRouter>({
       // TODO how does this work with base path? does the router need to be configured the same as APP_BASE?
       const router = await createRouter()
 
-      // Create a history for the client-side router
-      const history = createMemoryHistory({
-        initialEntries: [href],
-      })
-
       // Update the client-side router with the history
       const isPrerendering = process.env.TSS_PRERENDERING === 'true'
       // env var is set during dev is SPA mode is enabled
@@ -139,11 +139,18 @@ export function createStartHandler<TRouter extends AnyRouter>({
         router.options.serializationAdapters ?? []
       ).concat(ServerFunctionSerializationAdapter)
 
+      // Create a history for the client-side router
+      const history = createMemoryHistory({
+        initialEntries: [href],
+      })
+
+      const origin = router.options.origin ?? getOrigin()
       router.update({
         history,
         isShell,
         isPrerendering,
         serializationAdapters,
+        origin,
       })
 
       const response = await runWithStartContext({ router }, async () => {
@@ -335,12 +342,14 @@ async function handleServerRoutes(opts: {
   basePath: string
   executeRouter: () => Promise<Response>
 }) {
-  const url = new URL(opts.request.url)
+  let url = new URL(opts.request.url)
+  if (opts.basePath) {
+    url = executeRewriteInput(rewriteBasepath({ basepath: opts.basePath }), url)
+  }
   const pathname = url.pathname
 
   const serverTreeResult = getMatchedRoutes<AnyServerRouteWithTypes>({
     pathname,
-    basepath: opts.basePath,
     caseSensitive: true,
     routesByPath: opts.processedServerRouteTree.routesByPath,
     routesById: opts.processedServerRouteTree.routesById,

@@ -103,7 +103,6 @@ export {
   parsePathname,
   interpolatePath,
   matchPathname,
-  removeBasepath,
   matchByPath,
 } from './path'
 export type { Segment } from './path'
@@ -432,3 +431,11 @@ export {
 } from './ssr/serializer/transformer'
 
 export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
+
+export {
+  rewriteBasepath,
+  composeRewrites,
+  executeRewriteInput,
+  executeRewriteOutput,
+} from './rewrite'
+export type { LocationRewrite, LocationRewriteFunction } from './router'
