@@ -199,11 +199,9 @@ export function TanStackStartVitePluginCore(
             noExternal: [
               '@tanstack/start**',
               `@tanstack/${corePluginOpts.framework}-start**`,
-              ...Object.values(VIRTUAL_MODULES),
               startPackageName,
               ...result.ssr.noExternal.sort(),
             ],
-            dedupe: [startPackageName],
             alias: {
               ...entryAliasConfiguration,
             },

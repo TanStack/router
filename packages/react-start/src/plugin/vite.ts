@@ -49,7 +49,12 @@ export function tanstackStart(
       configEnvironment(environmentName, options) {
         return {
           resolve: {
-            dedupe: ['react', 'react-dom', '@tanstack/react-router'],
+            dedupe: [
+              'react',
+              'react-dom',
+              '@tanstack/react-start',
+              '@tanstack/react-router',
+            ],
             external:
               options.resolve?.noExternal === true || !isInsideRouterMonoRepo
                 ? undefined
