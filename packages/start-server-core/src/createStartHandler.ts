@@ -24,19 +24,22 @@ import { loadVirtualModule } from './loadVirtualModule'
 
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
-import type {
-  AnyServerRouteWithTypes,
-  ServerRouteMethodHandlerFn,
-} from './serverRoute'
+// import type {
+//   AnyRoute,
+//   ServerRouteMethodHandlerFn,
+// } from './serverRoute'
+import type { RouteMethodHandlerFn } from './serverRoute'
 import type { RequestHandler } from './request-response'
 import type {
   AnyRoute,
   AnyRouter,
   Awaitable,
+  FileBaseRouteOptions,
   Manifest,
   ProcessRouteTreeResult,
 } from '@tanstack/router-core'
 import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
+import './serverRoute'
 
 type TODO = any
 
@@ -63,13 +66,11 @@ export function createStartHandler<TRouter extends AnyRouter>({
   createRouter: () => Awaitable<TRouter>
 }): CustomizeStartHandler<TRouter> {
   let routeTreeModule: {
-    serverRouteTree: AnyServerRouteWithTypes | undefined
     routeTree: AnyRoute | undefined
   } | null = null
   let startRoutesManifest: Manifest | null = null
-  let processedServerRouteTree:
-    | ProcessRouteTreeResult<AnyServerRouteWithTypes>
-    | undefined = undefined
+  let processedServerRouteTree: ProcessRouteTreeResult<AnyRoute> | undefined =
+    undefined
 
   return (cb) => {
     const originalFetch = globalThis.fetch
@@ -177,16 +178,15 @@ export function createStartHandler<TRouter extends AnyRouter>({
               routeTreeModule = await loadVirtualModule(
                 VIRTUAL_MODULES.routeTree,
               )
-              if (routeTreeModule.serverRouteTree) {
-                processedServerRouteTree =
-                  processRouteTree<AnyServerRouteWithTypes>({
-                    routeTree: routeTreeModule.serverRouteTree,
-                    initRoute: (route, i) => {
-                      route.init({
-                        originalIndex: i,
-                      })
-                    },
-                  })
+              if (routeTreeModule.routeTree) {
+                processedServerRouteTree = processRouteTree<AnyRoute>({
+                  routeTree: routeTreeModule.routeTree,
+                  initRoute: (route, i) => {
+                    route.init({
+                      originalIndex: i,
+                    })
+                  },
+                })
               }
             } catch (e) {
               console.log(e)
@@ -337,7 +337,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
 
 async function handleServerRoutes(opts: {
   router: AnyRouter
-  processedServerRouteTree: ProcessRouteTreeResult<AnyServerRouteWithTypes>
+  processedServerRouteTree: ProcessRouteTreeResult<AnyRoute>
   request: Request
   basePath: string
   executeRouter: () => Promise<Response>
@@ -348,7 +348,7 @@ async function handleServerRoutes(opts: {
   }
   const pathname = url.pathname
 
-  const serverTreeResult = getMatchedRoutes<AnyServerRouteWithTypes>({
+  const serverTreeResult = getMatchedRoutes<AnyRoute>({
     pathname,
     caseSensitive: true,
     routesByPath: opts.processedServerRouteTree.routesByPath,
@@ -359,7 +359,7 @@ async function handleServerRoutes(opts: {
   const routeTreeResult = opts.router.getMatchedRoutes(pathname, undefined)
 
   let response: Response | undefined
-  let matchedRoutes: Array<AnyServerRouteWithTypes> = []
+  let matchedRoutes: Array<AnyRoute> = []
   matchedRoutes = serverTreeResult.matchedRoutes
   // check if the app route tree found a match that is deeper than the server route tree
   if (routeTreeResult.foundRoute) {
@@ -389,6 +389,23 @@ async function handleServerRoutes(opts: {
       }
     }
   }
+
+  type Test = FileBaseRouteOptions<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  >['']
 
   if (matchedRoutes.length) {
     // We've found a server route that (partially) matches the request, so we can call it.
@@ -452,13 +469,7 @@ async function handleServerRoutes(opts: {
 }
 
 function handlerToMiddleware(
-  handler: ServerRouteMethodHandlerFn<
-    AnyServerRouteWithTypes,
-    any,
-    any,
-    any,
-    any
-  >,
+  handler: RouteMethodHandlerFn<AnyRoute, any, any, any, any>,
 ) {
   return async ({ next: _next, ...rest }: TODO) => {
     const response = await handler(rest)
