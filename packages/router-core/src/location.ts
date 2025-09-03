@@ -3,24 +3,11 @@ import type { AnySchema } from './validators'
 
 export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
   /**
-   * @description The public href of the location, including the origin before any rewrites.
-   * If a rewrite is applied, the `href` property will be the rewritten URL.
-   */
-  publicHref: string
-  /**
-   * @description The full URL of the location, including the origin. As a replacement,
-   * please upgrade to the new `fullPath` property, which is derived by
-   * combining `pathname`, `search`, and `hash`. like so:
-   * `${pathname}${searchStr}${hash}`. If you're looking for the actual
-   * `href` of the location, you can use the `location.url.href` property.
-   */
-  href: string
-  /**
    * The full path of the location, including pathname, search, and hash.
    * Does not include the origin. Is the equivalent of calling
    * `url.replace(url.origin, '')`
    */
-  fullPath: string
+  href: string
   /**
    * @description The pathname of the location, including the leading slash.
    */
@@ -49,4 +36,16 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
    * Whether to unmask the location on reload.
    */
   unmaskOnReload?: boolean
+  /**
+   * @private
+   * @description The public href of the location, including the origin before any rewrites.
+   * If a rewrite is applied, the `href` property will be the rewritten URL.
+   */
+  publicHref: string
+  /**
+   * @private
+   * @description The full URL of the location, including the origin.
+   * @private
+   */
+  url: string
 }

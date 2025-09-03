@@ -4,6 +4,7 @@
 
 export interface NavigateOptions {
   ignoreBlocker?: boolean
+  _fullHref?: boolean
 }
 
 type SubscriberHistoryAction =
@@ -37,6 +38,7 @@ export interface RouterHistory {
   destroy: () => void
   notify: (action: SubscriberHistoryAction) => void
   _ignoreSubscribers?: boolean
+  origin?: string
 }
 
 export interface HistoryLocation extends ParsedPath {
@@ -45,7 +47,7 @@ export interface HistoryLocation extends ParsedPath {
 
 export interface ParsedPath {
   href: string
-  fullPath: string
+  url: string
   pathname: string
   search: string
   hash: string
@@ -100,8 +102,8 @@ const beforeUnloadEvent = 'beforeunload'
 export function createHistory(opts: {
   getLocation: () => HistoryLocation
   getLength: () => number
-  pushState: (path: string, state: any) => void
-  replaceState: (path: string, state: any) => void
+  pushState: (path: string, state: any, opts?: NavigateOptions) => void
+  replaceState: (path: string, state: any, opts?: NavigateOptions) => void
   go: (n: number) => void
   back: (ignoreBlocker: boolean) => void
   forward: (ignoreBlocker: boolean) => void
@@ -113,6 +115,7 @@ export function createHistory(opts: {
   setBlockers?: (blockers: Array<NavigationBlocker>) => void
   // Avoid notifying on forward/back/go, used for browser history as we already get notified by the popstate event
   notifyOnIndexChange?: boolean
+  origin?: string
 }): RouterHistory {
   let location = opts.getLocation()
   const subscribers = new Set<(opts: SubscriberArgs) => void>()
@@ -143,7 +146,11 @@ export function createHistory(opts: {
       actionInfo.type === 'PUSH' || actionInfo.type === 'REPLACE'
     if (typeof document !== 'undefined' && blockers.length && isPushOrReplace) {
       for (const blocker of blockers) {
-        const nextLocation = parseHref(actionInfo.href, actionInfo.state)
+        const nextLocation = parseHref(
+          actionInfo.href,
+          actionInfo.state,
+          opts.origin,
+        )
         const isBlocked = await blocker.blockerFn({
           currentLocation: location,
           nextLocation,
@@ -160,6 +167,7 @@ export function createHistory(opts: {
   }
 
   return {
+    origin: opts.origin,
     get location() {
       return location
     },
@@ -179,7 +187,7 @@ export function createHistory(opts: {
       state = assignKeyAndIndex(currentIndex + 1, state)
       tryNavigation({
         task: () => {
-          opts.pushState(href, state)
+          opts.pushState(href, state, navigateOpts)
           notify({ type: 'PUSH' })
         },
         navigateOpts,
@@ -193,7 +201,7 @@ export function createHistory(opts: {
       state = assignKeyAndIndex(currentIndex, state)
       tryNavigation({
         task: () => {
-          opts.replaceState(href, state)
+          opts.replaceState(href, state, navigateOpts)
           notify({ type: 'REPLACE' })
         },
         navigateOpts,
@@ -233,7 +241,7 @@ export function createHistory(opts: {
       })
     },
     canGoBack: () => location.state[stateIndexKey] !== 0,
-    createHref: (str) => opts.createHref(str),
+    createHref: opts.createHref,
     block: (blocker) => {
       if (!opts.setBlockers) return () => {}
       const blockers = opts.getBlockers?.() ?? []
@@ -299,7 +307,7 @@ export function createBrowserHistory(opts?: {
   const createHref = opts?.createHref ?? ((href) => href)
   const parseLocation =
     opts?.parseLocation ??
-    (() => parseHref(win.location.href, win.history.state))
+    (() => parseHref(win.location.href, win.history.state, win.origin))
 
   // Ensure there is always a key to start
   if (!win.history.state?.__TSR_key && !win.history.state?.key) {
@@ -369,15 +377,20 @@ export function createBrowserHistory(opts?: {
     type: 'push' | 'replace',
     destHref: string,
     state: any,
+    navigateOpts?: NavigateOptions,
   ) => {
-    const href = createHref(destHref)
+    let href = destHref
+    if (!navigateOpts?._fullHref) {
+      destHref = new URL(destHref, win.origin).href
+      href = createHref(destHref)
+    }
 
     if (!scheduled) {
       rollbackLocation = currentLocation
     }
 
     // Update the location in memory
-    currentLocation = parseHref(destHref, state)
+    currentLocation = parseHref(destHref, state, win.origin)
 
     // Keep track of the next location we need to flush to the URL
     next = {
@@ -388,7 +401,7 @@ export function createBrowserHistory(opts?: {
 
     if (!scheduled) {
       // Schedule an update to the browser history
-      scheduled = Promise.resolve().then(() => flush())
+      scheduled = Promise.resolve().then(flush)
     }
   }
 
@@ -485,8 +498,10 @@ export function createBrowserHistory(opts?: {
   const history = createHistory({
     getLocation,
     getLength: () => win.history.length,
-    pushState: (href, state) => queueHistoryAction('push', href, state),
-    replaceState: (href, state) => queueHistoryAction('replace', href, state),
+    pushState: (href, state, opts) =>
+      queueHistoryAction('push', href, state, opts),
+    replaceState: (href, state, opts) =>
+      queueHistoryAction('replace', href, state, opts),
     back: (ignoreBlocker) => {
       if (ignoreBlocker) skipBlockerNextPop = true
       ignoreNextBeforeUnload = true
@@ -521,6 +536,7 @@ export function createBrowserHistory(opts?: {
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
     notifyOnIndexChange: false,
+    origin: win.origin,
   })
 
   win.addEventListener(beforeUnloadEvent, onBeforeUnload, { capture: true })
@@ -555,13 +571,13 @@ export function createHashHistory(opts?: { window?: any }): RouterHistory {
       const hashPart =
         hashEntries.length === 0 ? '' : `#${hashEntries.join('#')}`
       const hashHref = `${pathPart}${searchPart}${hashPart}`
-      return parseHref(hashHref, win.history.state)
+      return parseHref(hashHref, win.history.state, win.origin)
     },
-    createHref: (href) =>
-      new URL(
-        `${win.location.pathname}${win.location.search}#${href}`,
-        win.location.origin,
-      ).toString(),
+    createHref: (href) => {
+      const winLocation = new URL(win.location)
+      winLocation.hash = ''
+      return winLocation.href + '#' + href.replace(win.origin, '')
+    },
   })
 }
 
@@ -569,10 +585,12 @@ export function createMemoryHistory(
   opts: {
     initialEntries: Array<string>
     initialIndex?: number
+    origin?: string
   } = {
     initialEntries: ['/'],
   },
 ): RouterHistory {
+  const _origin = opts.origin ?? 'http://localhost'
   const entries = opts.initialEntries
   let index = opts.initialIndex
     ? Math.min(Math.max(opts.initialIndex, 0), entries.length - 1)
@@ -581,7 +599,7 @@ export function createMemoryHistory(
     assignKeyAndIndex(index, undefined),
   )
 
-  const getLocation = () => parseHref(entries[index]!, states[index])
+  const getLocation = () => parseHref(entries[index]!, states[index], _origin)
 
   return createHistory({
     getLocation,
@@ -610,22 +628,25 @@ export function createMemoryHistory(
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
     createHref: (path) => path,
+    origin: opts.origin,
   })
 }
 
 export function parseHref(
   href: string,
   state: ParsedHistoryState | undefined,
+  fallbackOrigin?: string,
 ): HistoryLocation {
-  href = withOrigin(href, 'http://localhost')
-  const hashIndex = href.indexOf('#')
-  const searchIndex = href.indexOf('?')
+  href = withOrigin(href, fallbackOrigin ?? 'http://localhost')
+  const fullPath = href.replace(new URL(href).origin, '')
+  const hashIndex = fullPath.indexOf('#')
+  const searchIndex = fullPath.indexOf('?')
   const addedKey = createRandomKey()
 
   return {
-    href,
-    fullPath: href.replace(new URL(href).origin, ''),
-    pathname: href.substring(
+    href: fullPath,
+    url: href,
+    pathname: fullPath.substring(
       0,
       hashIndex > 0
         ? searchIndex > 0
@@ -633,12 +654,12 @@ export function parseHref(
           : hashIndex
         : searchIndex > 0
           ? searchIndex
-          : href.length,
+          : fullPath.length,
     ),
-    hash: hashIndex > -1 ? href.substring(hashIndex) : '',
+    hash: hashIndex > -1 ? fullPath.substring(hashIndex) : '',
     search:
       searchIndex > -1
-        ? href.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
+        ? fullPath.slice(searchIndex, hashIndex === -1 ? undefined : hashIndex)
         : '',
     state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey },
   }

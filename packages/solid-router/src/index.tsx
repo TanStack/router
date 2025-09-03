@@ -354,3 +354,7 @@ export { Asset } from './Asset'
 export { HeadContent, useTags } from './HeadContent'
 export { Scripts } from './Scripts'
 export { rewriteBasepath } from '@tanstack/router-core'
+export type {
+  LocationRewrite,
+  LocationRewriteFunction,
+} from '@tanstack/router-core'

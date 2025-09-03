@@ -1,9 +1,5 @@
 import { Store, batch } from '@tanstack/store'
-import {
-  createBrowserHistory,
-  createMemoryHistory,
-  parseHref,
-} from '@tanstack/history'
+import { createBrowserHistory, parseHref } from '@tanstack/history'
 import invariant from 'tiny-invariant'
 import {
   createControlledPromise,
@@ -34,7 +30,7 @@ import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
 import { createLRUCache } from './lru-cache'
 import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
-import { rewriteBasepath } from './rewriteBasepath'
+import { executeFromHref, executeToHref, rewriteBasepath } from './rewrite'
 import type { ParsePathnameCache, Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
@@ -458,6 +454,7 @@ export interface RouterOptions<
    * This is useful for basepath rewriting, shifting data from the origin to the path (for things like )
    */
   rewrite?: LocationRewrite
+  origin?: string
 }
 
 export type LocationRewrite = {
@@ -487,7 +484,7 @@ export type LocationRewriteFunction = ({
   href,
 }: {
   href: string
-}) => undefined | string
+}) => undefined | string | URL
 
 export interface RouterState<
   in out TRouteTree extends AnyRoute = AnyRoute,
@@ -859,6 +856,8 @@ export class RouterCore<
     'stringifySearch' | 'parseSearch' | 'context'
   >
   history!: TRouterHistory
+  rewrite?: LocationRewrite
+  origin?: string
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   // @deprecated - basepath functionality is now implemented via the `rewrite` option
   basepath!: string
@@ -944,13 +943,29 @@ export class RouterCore<
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
-      this.history =
-        this.options.history ??
-        ((this.isServer
-          ? createMemoryHistory({
-              initialEntries: ['/'],
-            })
-          : createBrowserHistory()) as TRouterHistory)
+      if (!this.options.history) {
+        if (!this.isServer) {
+          this.history = createBrowserHistory() as TRouterHistory
+        }
+      } else {
+        this.history = this.options.history
+      }
+    }
+    // For backwards compatibility, we support a basepath option, which we now implement as a rewrite
+    if (this.options.basepath) {
+      this.rewrite = rewriteBasepath(
+        this.options.basepath,
+        this.options.rewrite,
+      )
+    } else {
+      this.rewrite = this.options.rewrite
+    }
+
+    this.origin = this.options.origin
+    if (this.history) {
+      if (!this.origin && this.history.origin) {
+        this.origin = this.history.origin
+      }
       this.updateLatestLocation()
     }
 
@@ -959,7 +974,7 @@ export class RouterCore<
       this.buildRouteTree()
     }
 
-    if (!this.__store) {
+    if (!this.__store && this.latestLocation) {
       this.__store = new Store(getInitialRouterState(this.latestLocation), {
         onUpdate: () => {
           this.__store.state = {
@@ -1046,25 +1061,14 @@ export class RouterCore<
     previousLocation,
   ) => {
     const parse = ({
-      href: publicHref,
+      url: publicHref,
       state,
     }: HistoryLocation): ParsedLocation<FullSearchSchema<TRouteTree>> => {
-      // For backwards compatibility, we support a basepath option, which we now implement as a rewrite
-      let href = publicHref
-
-      if (this.options.basepath) {
-        href =
-          rewriteBasepath(this.options.basepath).fromHref?.({ href }) || href
-      }
-
       // Before we do any processing, we need to allow rewrites to modify the URL
-      if (this.options.rewrite?.fromHref) {
-        href = this.options.rewrite.fromHref({ href }) || href
-      }
-
       // Make sure we derive all the properties we need from the URL object now
-      // (These used to come from the history location object, but won't in v2)
-      const url = new URL(href)
+      // (These used to   come from the history location object, but won't in v2)
+      const url = executeFromHref(this.rewrite, publicHref)
+
       const parsedSearch = this.options.parseSearch(url.search)
       const searchStr = this.options.stringifySearch(parsedSearch)
       // Make sure our final url uses the re-stringified pathname, search, and has for consistency
@@ -1076,9 +1080,9 @@ export class RouterCore<
       const { pathname, hash } = url
 
       return {
-        publicHref: href,
-        href,
-        fullPath,
+        publicHref,
+        url: url.href,
+        href: fullPath,
         pathname,
         searchStr,
         search: replaceEqualDeep(previousLocation?.search, parsedSearch) as any,
@@ -1113,7 +1117,6 @@ export class RouterCore<
       base: from,
       to: cleanPath(path),
       trailingSlash: this.options.trailingSlash,
-      caseSensitive: this.options.caseSensitive,
       parseCache: this.parsePathnameCache,
     })
     return resolvedPath
@@ -1642,23 +1645,10 @@ export class RouterCore<
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
 
       // Create the new href with full origin
-      const href = new URL(fullPath, new URL(currentLocation.href).origin).href
-
-      let publicHref = href
+      const url = new URL(fullPath, new URL(currentLocation.url).origin)
 
       // If a rewrite function is provided, use it to rewrite the URL
-      if (this.options.rewrite?.toHref) {
-        publicHref =
-          this.options.rewrite.toHref({ href: publicHref }) || publicHref
-      }
-
-      // For backwards compatibility, we support a basepath option, which we now implement as a rewrite
-      if (this.options.basepath) {
-        publicHref =
-          rewriteBasepath(this.options.basepath).toHref?.({
-            href: publicHref,
-          }) || publicHref
-      }
+      let publicHref = executeToHref(this.rewrite, url.href)
 
       // Lastly, allow the history type to modify the URL
       publicHref = this.history.createHref(publicHref)
@@ -1666,8 +1656,8 @@ export class RouterCore<
       // Return the next location
       return {
         publicHref,
-        href,
-        fullPath,
+        href: fullPath,
+        url: url.href,
         pathname: nextPathname,
         search: nextSearch,
         searchStr,
@@ -1764,8 +1754,7 @@ export class RouterCore<
     }
 
     const isSameUrl =
-      trimPathRight(this.latestLocation.fullPath) ===
-      trimPathRight(next.fullPath)
+      trimPathRight(this.latestLocation.href) === trimPathRight(next.href)
 
     const previousCommitPromise = this.commitLocationPromise
     this.commitLocationPromise = createControlledPromise<void>(() => {
@@ -1816,7 +1805,7 @@ export class RouterCore<
       this.history[next.replace ? 'replace' : 'push'](
         nextHistory.publicHref,
         nextHistory.state,
-        { ignoreBlocker },
+        { ignoreBlocker, _fullHref: true },
       )
     }
 
@@ -1841,9 +1830,13 @@ export class RouterCore<
     if (href) {
       const currentIndex = this.history.location.state.__TSR_index
 
-      const parsed = parseHref(href, {
-        __TSR_index: replace ? currentIndex : currentIndex + 1,
-      })
+      const parsed = parseHref(
+        href,
+        {
+          __TSR_index: replace ? currentIndex : currentIndex + 1,
+        },
+        this.options.origin,
+      )
       rest.to = parsed.pathname
       rest.search = this.options.parseSearch(parsed.search)
       // remove the leading `#` from the hash
@@ -1923,8 +1916,8 @@ export class RouterCore<
       }
 
       if (
-        trimPath(normalizeUrl(this.latestLocation.fullPath)) !==
-        trimPath(normalizeUrl(nextLocation.fullPath))
+        trimPath(normalizeUrl(this.latestLocation.href)) !==
+        trimPath(normalizeUrl(nextLocation.href))
       ) {
         throw redirect({ href: nextLocation.href })
       }

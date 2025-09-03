@@ -351,3 +351,7 @@ export { HeadContent } from './HeadContent'
 export { Scripts } from './Scripts'
 export type * from './ssr/serializer'
 export { rewriteBasepath } from '@tanstack/router-core'
+export type {
+  LocationRewrite,
+  LocationRewriteFunction,
+} from '@tanstack/router-core'

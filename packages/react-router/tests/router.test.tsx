@@ -18,6 +18,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  rewriteBasepath,
   useNavigate,
 } from '../src'
 import type { StandardSchemaValidator } from '@tanstack/router-core'
@@ -326,57 +327,57 @@ function createTestRouter(
 }
 
 describe('encoding: URL param segment for /posts/$slug', () => {
-  it('state.location.url.pathname, should have the params.slug value of "tanner"', async () => {
+  it('state.location.pathname, should have the params.slug value of "tanner"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/tanner'] }),
     })
 
     await act(() => router.load())
 
-    expect(router.state.location.url.pathname).toBe('/posts/tanner')
+    expect(router.state.location.pathname).toBe('/posts/tanner')
   })
 
-  it('state.location.url.pathname, should have the params.slug value of "🚀"', async () => {
+  it('state.location.pathname, should have the params.slug value of "🚀"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/🚀'] }),
     })
 
     await act(() => router.load())
 
-    expect(router.state.location.url.pathname).toBe('/posts/%F0%9F%9A%80')
+    expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
   })
 
-  it('state.location.url.pathname, should have the params.slug value of "100%25"', async () => {
+  it('state.location.pathname, should have the params.slug value of "100%25"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/100%25'] }),
     })
 
     await act(() => router.load())
 
-    expect(router.state.location.url.pathname).toBe('/posts/100%25')
+    expect(router.state.location.pathname).toBe('/posts/100%25')
   })
 
-  it('state.location.url.pathname, should have the params.slug value of "100%26"', async () => {
+  it('state.location.pathname, should have the params.slug value of "100%26"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/100%26'] }),
     })
 
     await act(() => router.load())
 
-    expect(router.state.location.url.pathname).toBe('/posts/100%26')
+    expect(router.state.location.pathname).toBe('/posts/100%26')
   })
 
-  it('state.location.url.pathname, should have the params.slug value of "%F0%9F%9A%80"', async () => {
+  it('state.location.pathname, should have the params.slug value of "%F0%9F%9A%80"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/posts/%F0%9F%9A%80'] }),
     })
 
     await act(() => router.load())
 
-    expect(router.state.location.url.pathname).toBe('/posts/%F0%9F%9A%80')
+    expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
   })
 
-  it('state.location.url.pathname, should have the params.slug value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
+  it('state.location.pathname, should have the params.slug value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({
         initialEntries: [
@@ -387,7 +388,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.url.pathname).toBe(
+    expect(router.state.location.pathname).toBe(
       '/posts/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
     )
   })
@@ -554,7 +555,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
     )
 
-    expect(router.state.location.url.pathname).toBe('/posts/%40jane')
+    expect(router.state.location.pathname).toBe('/posts/%40jane')
   })
 
   it('params.slug should be encoded in the final URL except characters in pathParamsAllowedCharacters', async () => {
@@ -570,62 +571,62 @@ describe('encoding: URL param segment for /posts/$slug', () => {
       router.navigate({ to: '/posts/$slug', params: { slug: '@jane' } }),
     )
 
-    expect(router.state.location.url.pathname).toBe('/posts/@jane')
+    expect(router.state.location.pathname).toBe('/posts/@jane')
   })
 })
 
 describe('encoding: URL splat segment for /$', () => {
-  it('state.location.url.pathname, should have the params._splat value of "tanner"', async () => {
+  it('state.location.pathname, should have the params._splat value of "tanner"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/tanner'] }),
     })
 
     await router.load()
 
-    expect(router.state.location.url.pathname).toBe('/tanner')
+    expect(router.state.location.pathname).toBe('/tanner')
   })
 
-  it('state.location.url.pathname, should have the params._splat value of "🚀"', async () => {
+  it('state.location.pathname, should have the params._splat value of "🚀"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/🚀'] }),
     })
 
     await router.load()
 
-    expect(router.state.location.url.pathname).toBe('/%F0%9F%9A%80')
+    expect(router.state.location.pathname).toBe('/%F0%9F%9A%80')
   })
 
-  it('state.location.url.pathname, should have the params._splat value of "100%25"', async () => {
+  it('state.location.pathname, should have the params._splat value of "100%25"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/100%25'] }),
     })
 
     await router.load()
 
-    expect(router.state.location.url.pathname).toBe('/100%25')
+    expect(router.state.location.pathname).toBe('/100%25')
   })
 
-  it('state.location.url.pathname, should have the params._splat value of "100%26"', async () => {
+  it('state.location.pathname, should have the params._splat value of "100%26"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/100%26'] }),
     })
 
     await router.load()
 
-    expect(router.state.location.url.pathname).toBe('/100%26')
+    expect(router.state.location.pathname).toBe('/100%26')
   })
 
-  it('state.location.url.pathname, should have the params._splat value of "%F0%9F%9A%80"', async () => {
+  it('state.location.pathname, should have the params._splat value of "%F0%9F%9A%80"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({ initialEntries: ['/%F0%9F%9A%80'] }),
     })
 
     await router.load()
 
-    expect(router.state.location.url.pathname).toBe('/%F0%9F%9A%80')
+    expect(router.state.location.pathname).toBe('/%F0%9F%9A%80')
   })
 
-  it('state.location.url.pathname, should have the params._splat value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
+  it('state.location.pathname, should have the params._splat value of "framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({
         initialEntries: [
@@ -636,12 +637,12 @@ describe('encoding: URL splat segment for /$', () => {
 
     await router.load()
 
-    expect(router.state.location.url.pathname).toBe(
+    expect(router.state.location.href).toBe(
       '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
     )
   })
 
-  it('state.location.url.pathname, should have the params._splat value of "framework/react/guide/file-based-routing tanstack"', async () => {
+  it('state.location.pathname, should have the params._splat value of "framework/react/guide/file-based-routing tanstack"', async () => {
     const { router } = createTestRouter({
       history: createMemoryHistory({
         initialEntries: ['/framework/react/guide/file-based-routing tanstack'],
@@ -650,7 +651,7 @@ describe('encoding: URL splat segment for /$', () => {
 
     await router.load()
 
-    expect(router.state.location.url.pathname).toBe(
+    expect(router.state.location.href).toBe(
       '/framework/react/guide/file-based-routing%20tanstack',
     )
   })
@@ -798,7 +799,7 @@ describe('encoding: URL path segment', () => {
     render(<RouterProvider router={router} />)
     await act(() => router.load())
 
-    expect(router.state.location.url.pathname).toBe(output)
+    expect(new URL(router.state.location.url).pathname).toBe(output)
   })
 })
 
@@ -1851,7 +1852,7 @@ describe('statusCode reset on navigation', () => {
 })
 
 describe('Router rewrite functionality', () => {
-  it('should rewrite URLs using fromURL before router interprets them', async () => {
+  it('should rewrite URLs using fromHref before router interprets them', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1868,12 +1869,13 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/old-path'] }),
       rewrite: {
-        fromURL: ({ url }) => {
+        fromHref: ({ href }) => {
           // Rewrite /old-path to /new-path
+          const url = new URL(href)
           if (url.pathname === '/old-path') {
-            return `/new-path${url.search}${url.hash}`
+            url.pathname = `/new-path`
           }
-          return undefined
+          return url
         },
       },
     })
@@ -1888,7 +1890,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.pathname).toBe('/new-path')
   })
 
-  it('should handle fromURL rewrite with complex URL transformations', async () => {
+  it('should handle fromHref rewrite with complex URL transformations', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1907,12 +1909,13 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['/legacy/users?page=1#top'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           // Rewrite legacy URLs to new format
           if (url.pathname === '/legacy/users') {
-            return `/users${url.search}${url.hash}`
+            url.pathname = `/users`
           }
-          return undefined
+          return url
         },
       },
     })
@@ -1929,7 +1932,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.hash).toBe('top')
   })
 
-  it('should handle multiple fromURL rewrite conditions', async () => {
+  it('should handle multiple fromHref rewrite conditions', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1952,15 +1955,16 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/old-about'] }),
       rewrite: {
-        fromURL: ({ url }) => {
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           // Multiple rewrite rules
           if (url.pathname === '/old-home' || url.pathname === '/home') {
-            return '/'
+            url.pathname = '/'
           }
           if (url.pathname === '/old-about' || url.pathname === '/info') {
-            return '/about'
+            url.pathname = '/about'
           }
-          return undefined
+          return url
         },
       },
     })
@@ -1974,7 +1978,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.pathname).toBe('/about')
   })
 
-  it('should handle fromURL rewrite with search params and hash preservation', async () => {
+  it('should handle fromHref rewrite with search params and hash preservation', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1993,10 +1997,12 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['/old/documentation?version=v2&lang=en#installation'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           // Rewrite old docs URL structure
           if (url.pathname === '/old/documentation') {
-            return `/docs${url.search}${url.hash}`
+            url.pathname = `/docs`
+            return url
           }
           return undefined
         },
@@ -2018,15 +2024,17 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.hash).toBe('installation')
   })
 
-  it('should handle subdomain to path rewriting with fromURL', async () => {
+  it('should handle subdomain to path rewriting with fromHref', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
 
     const apiRoute = createRoute({
       getParentRoute: () => rootRoute,
-      path: '/api/users',
-      component: () => <div data-testid="api">API Users</div>,
+      path: '/$stage/users',
+      component: () => (
+        <div data-testid="component">{apiRoute.useParams().stage} Users</div>
+      ),
     })
 
     const routeTree = rootRoute.addChildren([apiRoute])
@@ -2037,27 +2045,28 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://test.domain.com/users'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
-          // Rewrite test.domain.com/path to /api/path (subdomain becomes path segment)
-          if (url.pathname.startsWith('/test.domain.com/')) {
-            return url.pathname.replace('/test.domain.com/', '/api/')
+        fromHref: ({ href }) => {
+          const url = new URL(href)
+          // Rewrite test.domain.com/path to /test/path (subdomain becomes path segment)
+          if (url.hostname.startsWith('test.domain.com')) {
+            url.pathname = `/test${url.pathname}`
+            return url
           }
           return undefined
         },
       },
     })
-
     render(<RouterProvider router={router} />)
-
+    await router.latestLoadPromise
     await waitFor(() => {
-      expect(screen.getByTestId('api')).toBeInTheDocument()
+      expect(screen.getByTestId('component')).toHaveTextContent('test Users')
     })
 
     // Router should have interpreted the rewritten URL
-    expect(router.state.location.pathname).toBe('/api/users')
+    expect(router.state.location.pathname).toBe('/test/users')
   })
 
-  it('should handle hostname-based routing with fromURL rewrite', async () => {
+  it('should handle hostname-based routing with fromHref rewrite', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2082,15 +2091,16 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://admin.example.com/dashboard'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           // Route based on subdomain
           if (url.hostname === 'admin.example.com') {
-            return '/admin'
+            url.pathname = '/admin'
           }
           if (url.hostname === 'app.example.com') {
-            return '/app'
+            url.pathname = '/app'
           }
-          return undefined
+          return url
         },
       },
     })
@@ -2129,18 +2139,19 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['/old/shop/items?category=electronics'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           // Multiple transformation patterns
           if (url.pathname === '/old/shop/items') {
-            return `/products${url.search}${url.hash}`
+            url.pathname = `/products`
           }
           if (url.pathname.startsWith('/legacy/')) {
-            return url.pathname.replace('/legacy/', '/blog/')
+            url.pathname = url.pathname.replace('/legacy/', '/blog/')
           }
           if (url.pathname.startsWith('/v1/')) {
-            return url.pathname.replace('/v1/', '/')
+            url.pathname = url.pathname.replace('/v1/', '/')
           }
-          return undefined
+          return url
         },
       },
     })
@@ -2155,7 +2166,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.search).toEqual({ category: 'electronics' })
   })
 
-  it('should handle returning a fully formed href string with origin (edge case)', async () => {
+  it('should handle rewriting subdomain and path', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2174,8 +2185,8 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://legacy.example.com/api/v1'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
-          // Edge case: return fully formed href string with origin
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           if (
             url.hostname === 'legacy.example.com' &&
             url.pathname === '/api/v1'
@@ -2196,7 +2207,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.pathname).toBe('/api/v2')
   })
 
-  it('should handle mutating the url parameter and returning it (recommended pattern)', async () => {
+  it('should handle rewriting subdomain, path and search', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2217,8 +2228,8 @@ describe('Router rewrite functionality', () => {
         ],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
-          // Recommended pattern: mutate the url parameter and return it
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           if (
             url.hostname === 'old-api.company.com' &&
             url.pathname === '/users'
@@ -2226,7 +2237,7 @@ describe('Router rewrite functionality', () => {
             url.hostname = 'api.company.com'
             url.pathname = '/api/v3/users'
             url.searchParams.set('version', '3')
-            return url // Return the mutated URL instance
+            return url
           }
           return undefined
         },
@@ -2268,14 +2279,15 @@ describe('Router rewrite functionality', () => {
         ],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           // Mutate URL: change subdomain to path, preserve params and hash
           if (url.hostname === 'blog.oldsite.com') {
             url.hostname = 'newsite.com'
             url.pathname = '/content/blog'
             url.searchParams.set('source', 'migration')
             // Keep existing search params and hash
-            return url
+            return url.href
           }
           return undefined
         },
@@ -2316,8 +2328,9 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://store.example.com/items?id=123'],
       }),
       rewrite: {
-        fromURL: ({ url }) => {
+        fromHref: ({ href }) => {
           // Alternative pattern: create new URL instance and return it
+          const url = new URL(href)
           if (
             url.hostname === 'store.example.com' &&
             url.pathname === '/items'
@@ -2389,7 +2402,8 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history,
       rewrite: {
-        toURL: ({ url }) => {
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           // Should rewrite dashboard URLs to admin URLs in the history
           if (url.pathname === '/dashboard') {
             return '/admin/panel'
@@ -2450,11 +2464,12 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history,
       rewrite: {
-        toURL: ({ url }) => {
+        fromHref: ({ href }) => {
           // Should rewrite profile URLs to user URLs in history
+          const url = new URL(href)
           if (url.pathname === '/profile') {
             url.pathname = '/user'
-            return url
+            return url.href
           }
           return undefined
         },
@@ -2492,30 +2507,7 @@ describe('Router rewrite functionality', () => {
 })
 
 describe('rewriteBasepath utility', () => {
-  // Helper function to create basepath rewrite logic (mimicking the utility)
-  const createBasepathRewrite = (
-    basepath: string,
-    additionalRewrite?: {
-      fromURL: (opts: { url: URL }) => URL | undefined
-    },
-  ) => {
-    const trimmedBasepath = basepath.replace(/^\/+|\/+$/g, '') // trim slashes
-    return {
-      fromURL: ({ url }: { url: URL }) => {
-        if (trimmedBasepath) {
-          url.pathname = url.pathname.replace(
-            new RegExp(`^/${trimmedBasepath}`),
-            '',
-          )
-        }
-        return additionalRewrite?.fromURL
-          ? additionalRewrite.fromURL({ url })
-          : url
-      },
-    } as const
-  }
-
-  it('should handle basic basepath rewriting with fromURL', async () => {
+  it('should handle basic basepath rewriting with fromHref', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2539,7 +2531,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/my-app/about'],
       }),
-      rewrite: createBasepathRewrite('my-app'),
+      rewrite: rewriteBasepath('my-app'),
     })
 
     render(<RouterProvider router={router} />)
@@ -2570,7 +2562,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/api/v1/users'],
       }),
-      rewrite: createBasepathRewrite('/api/v1/'), // With leading and trailing slashes
+      rewrite: rewriteBasepath('/api/v1/'), // With leading and trailing slashes
     })
 
     render(<RouterProvider router={router} />)
@@ -2600,7 +2592,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/test'],
       }),
-      rewrite: createBasepathRewrite(''), // Empty basepath
+      rewrite: rewriteBasepath(''), // Empty basepath
     })
 
     render(<RouterProvider router={router} />)
@@ -2612,7 +2604,7 @@ describe('rewriteBasepath utility', () => {
     expect(router.state.location.pathname).toBe('/test')
   })
 
-  it('should combine basepath with additional fromURL rewrite logic', async () => {
+  it('should combine basepath with additional fromHref rewrite logic', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2630,9 +2622,10 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/my-app/legacy/api/v1'],
       }),
-      rewrite: createBasepathRewrite('my-app', {
+      rewrite: rewriteBasepath('my-app', {
         // Additional rewrite logic after basepath removal
-        fromURL: ({ url }) => {
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           if (url.pathname === '/legacy/api/v1') {
             url.pathname = '/api/v2'
             return url
@@ -2671,7 +2664,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/tenant-123/dashboard'],
       }),
-      rewrite: createBasepathRewrite('tenant-123'),
+      rewrite: rewriteBasepath('tenant-123'),
     })
 
     render(<RouterProvider router={router} />)
@@ -2701,7 +2694,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/app/search?q=test&filter=all#results'],
       }),
-      rewrite: createBasepathRewrite('app'),
+      rewrite: rewriteBasepath('app'),
     })
 
     render(<RouterProvider router={router} />)
@@ -2736,8 +2729,9 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/base/legacy/old/path'],
       }),
-      rewrite: createBasepathRewrite('base', {
-        fromURL: ({ url }) => {
+      rewrite: rewriteBasepath('base', {
+        fromHref: ({ href }) => {
+          const url = new URL(href)
           // First layer: convert legacy paths
           if (url.pathname === '/legacy/old/path') {
             url.pathname = '/new/path'
@@ -2751,9 +2745,9 @@ describe('rewriteBasepath utility', () => {
     // Add a second rewrite layer
     const originalRewrite = router.options.rewrite
     router.options.rewrite = {
-      fromURL: ({ url }) => {
+      fromHref: ({ href }) => {
         // Apply basepath rewrite first
-        const result = originalRewrite?.fromURL?.({ url })
+        const result = originalRewrite?.fromHref?.({ href })
         if (result && typeof result !== 'string') {
           // Second layer: convert new paths to final
           if (result.pathname === '/new/path') {
@@ -2808,16 +2802,14 @@ describe('rewriteBasepath utility', () => {
     const router = createRouter({
       routeTree,
       history,
-      rewrite: createBasepathRewrite('my-app'),
+      rewrite: rewriteBasepath('my-app'),
     })
 
     render(<RouterProvider router={router} />)
 
     const aboutLink = await screen.findByTestId('about-link')
 
-    await act(() => {
-      fireEvent.click(aboutLink)
-    })
+    fireEvent.click(aboutLink)
 
     await waitFor(() => {
       expect(screen.getByTestId('about')).toBeInTheDocument()

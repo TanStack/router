@@ -5,6 +5,7 @@ import {
   mergeHeaders,
 } from '@tanstack/start-client-core'
 import {
+  executeFromHref,
   getMatchedRoutes,
   isRedirect,
   isResolvedRedirect,
@@ -74,6 +75,17 @@ export function createStartHandler<TRouter extends AnyRouter>({
     const originalFetch = globalThis.fetch
 
     const startRequestResolver: RequestHandler = async (request) => {
+      function getOrigin() {
+        const originHeader = request.headers.get('Origin')
+        if (originHeader) {
+          return originHeader
+        }
+        try {
+          return new URL(request.url).origin
+        } catch (_) {}
+        return 'http://localhost'
+      }
+
       // Patching fetch function to use our request resolver
       // if the input starts with `/` which is a common pattern for
       // client-side routing.
@@ -83,14 +95,6 @@ export function createStartHandler<TRouter extends AnyRouter>({
         function resolve(url: URL, requestOptions: RequestInit | undefined) {
           const fetchRequest = new Request(url, requestOptions)
           return startRequestResolver(fetchRequest)
-        }
-
-        function getOrigin() {
-          return (
-            request.headers.get('Origin') ||
-            request.headers.get('Referer') ||
-            'http://localhost'
-          )
         }
 
         if (typeof input === 'string' && input.startsWith('/')) {
@@ -120,11 +124,6 @@ export function createStartHandler<TRouter extends AnyRouter>({
       // TODO how does this work with base path? does the router need to be configured the same as APP_BASE?
       const router = await createRouter()
 
-      // Create a history for the client-side router
-      const history = createMemoryHistory({
-        initialEntries: [href],
-      })
-
       // Update the client-side router with the history
       const isPrerendering = process.env.TSS_PRERENDERING === 'true'
       // env var is set during dev is SPA mode is enabled
@@ -140,11 +139,22 @@ export function createStartHandler<TRouter extends AnyRouter>({
         router.options.serializationAdapters ?? []
       ).concat(ServerFunctionSerializationAdapter)
 
+      let origin = router.options.origin
+      if (!origin) {
+        origin = getOrigin()
+      }
+      // Create a history for the client-side router
+      const history = createMemoryHistory({
+        initialEntries: [href],
+        origin,
+      })
+
       router.update({
         history,
         isShell,
         isPrerendering,
         serializationAdapters,
+        origin,
       })
 
       const response = await runWithStartContext({ router }, async () => {
@@ -336,13 +346,17 @@ async function handleServerRoutes(opts: {
   basePath: string
   executeRouter: () => Promise<Response>
 }) {
-  let href = new URL(opts.request.url).href
-
+  const originalUrl = new URL(opts.request.url)
+  let pathname: string
   if (opts.basePath) {
-    href = rewriteBasepath(opts.basePath).fromHref?.({ href }) || href
+    const url = executeFromHref(
+      rewriteBasepath(opts.basePath),
+      originalUrl.href,
+    )
+    pathname = url.pathname
+  } else {
+    pathname = originalUrl.pathname
   }
-
-  const pathname = new URL(href).pathname
 
   const serverTreeResult = getMatchedRoutes<AnyServerRouteWithTypes>({
     pathname,

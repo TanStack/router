@@ -2409,9 +2409,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       const parentLink = await screen.findByText('Link to Parent')
 
       // Click the link and ensure the new location
-      await act(async () => {
-        fireEvent.click(parentLink)
-      })
+      fireEvent.click(parentLink)
+      await router.latestLoadPromise
 
       expect(window.location.pathname).toBe(`${basepath}/a`)
     })
@@ -2430,9 +2429,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       const parentLink = await screen.findByText('Link to Parent')
 
       // Click the link and ensure the new location
-      await act(async () => {
-        fireEvent.click(parentLink)
-      })
+      fireEvent.click(parentLink)
+      await router.latestLoadPromise
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
@@ -2453,9 +2451,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       )
 
       // Click the link and ensure the new location
-      await act(async () => {
-        fireEvent.click(parentLink)
-      })
+      fireEvent.click(parentLink)
+      await router.latestLoadPromise
 
       expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
     })
@@ -2473,9 +2470,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       const relativeLink = await screen.findByText('Link to ./a')
 
       // Click the link and ensure the new location
-      await act(async () => {
-        fireEvent.click(relativeLink)
-      })
+      fireEvent.click(relativeLink)
+      await router.latestLoadPromise
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
@@ -2495,9 +2491,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       )
 
       // Click the link and ensure the new location
-      await act(async () => {
-        fireEvent.click(relativeLink)
-      })
+      fireEvent.click(relativeLink)
+      await router.latestLoadPromise
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo`)
     })
@@ -2514,9 +2509,8 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       const relativeLink = await screen.findByTestId('link-to-previous')
 
       // Click the link and ensure the new location
-      await act(async () => {
-        fireEvent.click(relativeLink)
-      })
+      fireEvent.click(relativeLink)
+      await router.latestLoadPromise
 
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
@@ -2529,12 +2523,15 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       await act(async () => {
         history.push(`${basepath}/param/foo/a/b`)
       })
+      try {
+        const parentLink = await screen.findByText('Link to . with param:bar')
 
-      const parentLink = await screen.findByText('Link to . with param:bar')
-
-      await act(async () => {
         fireEvent.click(parentLink)
-      })
+        await router.latestLoadPromise
+      } catch (e) {
+        console.log('#####', router.state.location)
+        throw e
+      }
 
       expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
     })

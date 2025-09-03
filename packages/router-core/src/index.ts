@@ -432,4 +432,5 @@ export {
 
 export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
 
-export { rewriteBasepath } from './rewriteBasepath'
+export { rewriteBasepath, executeFromHref, executeToHref } from './rewrite'
+export type { LocationRewrite, LocationRewriteFunction } from './router'

@@ -3,20 +3,20 @@ import { matchByPath } from '../src'
 
 describe('default path matching', () => {
   it.each([
-    ['', '', '', {}],
-    ['', '/', '', {}],
-    ['', '', '/', {}],
-    ['', '/', '/', {}],
-    ['/', '/', '/', {}],
-    ['/', '/a', '/a', {}],
-    ['/', '/a/b', '/a/b', {}],
-    ['/', '/a', '/a/', {}],
-    ['/', '/a/', '/a/', {}],
-    ['/', '/a/', '/a', undefined],
-    ['/', '/b', '/a', undefined],
-  ])('static %s %s => %s', (base, from, to, result) => {
+    ['', '', {}],
+    ['/', '', {}],
+    ['', '/', {}],
+    ['/', '/', {}],
+    ['/', '/', {}],
+    ['/a', '/a', {}],
+    ['/a/b', '/a/b', {}],
+    ['/a', '/a/', {}],
+    ['/a/', '/a/', {}],
+    ['/a/', '/a', undefined],
+    ['/b', '/a', undefined],
+  ])('static %s %s => %s', (from, to, result) => {
     expect(
-      matchByPath(base, from, { to, caseSensitive: true, fuzzy: false }),
+      matchByPath(from, { to, caseSensitive: true, fuzzy: false }),
     ).toEqual(result)
   })
 
@@ -27,7 +27,7 @@ describe('default path matching', () => {
     ['/a/1/b/2', '/a/$id/b/$id', { id: '2' }],
   ])('params %s => %s', (from, to, result) => {
     expect(
-      matchByPath('/', from, { to, caseSensitive: true, fuzzy: false }),
+      matchByPath(from, { to, caseSensitive: true, fuzzy: false }),
     ).toEqual(result)
   })
 
@@ -35,14 +35,13 @@ describe('default path matching', () => {
     // in the value: basically everything except / and %
     expect(
       matchByPath(
-        '/',
         '/a/@&é"\'(§è!çà)-_°^¨$*€£`ù=+:;.,?~<>|î©#0123456789\\😀}{',
         { to: '/a/$id' },
       ),
     ).toEqual({ id: '@&é"\'(§è!çà)-_°^¨$*€£`ù=+:;.,?~<>|î©#0123456789\\😀}{' })
     // in the key: basically everything except / and % and $
     expect(
-      matchByPath('/', '/a/1', {
+      matchByPath('/a/1', {
         to: '/a/$@&é"\'(§è!çà)-_°^¨*€£`ù=+:;.,?~<>|î©#0123456789\\😀}{',
       }),
     ).toEqual({ '@&é"\'(§è!çà)-_°^¨*€£`ù=+:;.,?~<>|î©#0123456789\\😀}{': '1' })
@@ -60,7 +59,7 @@ describe('default path matching', () => {
     ['/a/1/b/2', '/a/{-$id}/b/{-$id}', { id: '2' }],
   ])('optional %s => %s', (from, to, result) => {
     expect(
-      matchByPath('/', from, { to, caseSensitive: true, fuzzy: false }),
+      matchByPath(from, { to, caseSensitive: true, fuzzy: false }),
     ).toEqual(result)
   })
 
@@ -71,7 +70,7 @@ describe('default path matching', () => {
     ['/a/b/c', '/a/$/foo', { _splat: 'b/c', '*': 'b/c' }],
   ])('wildcard %s => %s', (from, to, result) => {
     expect(
-      matchByPath('/', from, { to, caseSensitive: true, fuzzy: false }),
+      matchByPath(from, { to, caseSensitive: true, fuzzy: false }),
     ).toEqual(result)
   })
 })
@@ -91,7 +90,7 @@ describe('case insensitive path matching', () => {
     ['/', '/b', '/A', undefined],
   ])('static %s %s => %s', (base, from, to, result) => {
     expect(
-      matchByPath(base, from, { to, caseSensitive: false, fuzzy: false }),
+      matchByPath(from, { to, caseSensitive: false, fuzzy: false }),
     ).toEqual(result)
   })
 
@@ -102,7 +101,7 @@ describe('case insensitive path matching', () => {
     ['/a/1/b/2', '/A/$id/B/$id', { id: '2' }],
   ])('params %s => %s', (from, to, result) => {
     expect(
-      matchByPath('/', from, { to, caseSensitive: false, fuzzy: false }),
+      matchByPath(from, { to, caseSensitive: false, fuzzy: false }),
     ).toEqual(result)
   })
 
@@ -118,7 +117,7 @@ describe('case insensitive path matching', () => {
     ['/a/1/b/2', '/A/{-$id}/B/{-$id}', { id: '2' }],
   ])('optional %s => %s', (from, to, result) => {
     expect(
-      matchByPath('/', from, { to, caseSensitive: false, fuzzy: false }),
+      matchByPath(from, { to, caseSensitive: false, fuzzy: false }),
     ).toEqual(result)
   })
 
@@ -129,7 +128,7 @@ describe('case insensitive path matching', () => {
     ['/a/b/c', '/A/$/foo', { _splat: 'b/c', '*': 'b/c' }],
   ])('wildcard %s => %s', (from, to, result) => {
     expect(
-      matchByPath('/', from, { to, caseSensitive: false, fuzzy: false }),
+      matchByPath(from, { to, caseSensitive: false, fuzzy: false }),
     ).toEqual(result)
   })
 })
@@ -153,9 +152,9 @@ describe('fuzzy path matching', () => {
     ['/', '/b', '/a', undefined],
     ['/', '/a', '/b', undefined],
   ])('static %s %s => %s', (base, from, to, result) => {
-    expect(
-      matchByPath(base, from, { to, fuzzy: true, caseSensitive: true }),
-    ).toEqual(result)
+    expect(matchByPath(from, { to, fuzzy: true, caseSensitive: true })).toEqual(
+      result,
+    )
   })
 
   it.each([
@@ -165,9 +164,9 @@ describe('fuzzy path matching', () => {
     ['/a/1/b/2', '/a/$id/b/$other', { id: '1', other: '2' }],
     ['/a/1/b/2/c', '/a/$id/b/$other', { id: '1', other: '2', '**': 'c' }],
   ])('params %s => %s', (from, to, result) => {
-    expect(
-      matchByPath('/', from, { to, fuzzy: true, caseSensitive: true }),
-    ).toEqual(result)
+    expect(matchByPath(from, { to, fuzzy: true, caseSensitive: true })).toEqual(
+      result,
+    )
   })
 
   it.each([
@@ -181,9 +180,9 @@ describe('fuzzy path matching', () => {
     ['/a/b/2/d', '/a/{-$id}/b/{-$other}', { other: '2', '**': 'd' }],
     ['/a/1/b/2/c', '/a/{-$id}/b/{-$other}', { id: '1', other: '2', '**': 'c' }],
   ])('optional %s => %s', (from, to, result) => {
-    expect(
-      matchByPath('/', from, { to, fuzzy: true, caseSensitive: true }),
-    ).toEqual(result)
+    expect(matchByPath(from, { to, fuzzy: true, caseSensitive: true })).toEqual(
+      result,
+    )
   })
 
   it.each([
@@ -192,8 +191,8 @@ describe('fuzzy path matching', () => {
     ['/a', '/a/$', { _splat: '', '*': '' }],
     ['/a/b/c/d', '/a/$/foo', { _splat: 'b/c/d', '*': 'b/c/d' }],
   ])('wildcard %s => %s', (from, to, result) => {
-    expect(
-      matchByPath('/', from, { to, fuzzy: true, caseSensitive: true }),
-    ).toEqual(result)
+    expect(matchByPath(from, { to, fuzzy: true, caseSensitive: true })).toEqual(
+      result,
+    )
   })
 })

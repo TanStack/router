@@ -78,20 +78,6 @@ export function useLinkProps<
     ...propsSafeToSpread
   } = options
 
-  // If this link simply reloads the current route,
-  // make sure it has a new key so it will trigger a data refresh
-
-  // If this `to` is a valid external URL, return
-  // null for LinkUtils
-
-  const type: 'internal' | 'external' = React.useMemo(() => {
-    try {
-      new URL(to as any)
-      return 'external'
-    } catch {}
-    return 'internal'
-  }, [to])
-
   // subscribe to search params to re-build location if it changes
   const currentSearch = useRouterState({
     select: (s) => s.location.search,
@@ -125,10 +111,39 @@ export function useLinkProps<
     [router, _options],
   )
 
-  const isExternal = type === 'external'
+  const hrefOption = React.useMemo(() => {
+    if (!disabled) {
+      const publicHref = next.maskedLocation
+        ? next.maskedLocation.publicHref
+        : next.publicHref
+      const url = new URL(publicHref)
+      let href = url.href
+      let external: boolean | undefined = undefined
+      if (router.origin) {
+        if (url.href.startsWith(router.origin)) {
+          href = url.href.replace(router.origin, '')
+        } else {
+          external = true
+        }
+      }
+      return { href, external }
+    }
+    return undefined
+  }, [disabled, next.maskedLocation, next.publicHref, router.origin])
+
+  const externalLink = React.useMemo(() => {
+    if (hrefOption?.external) {
+      return hrefOption.href
+    }
+    try {
+      new URL(to as any)
+      return to
+    } catch {}
+    return undefined
+  }, [to, hrefOption])
 
   const preload =
-    options.reloadDocument || isExternal
+    options.reloadDocument || externalLink
       ? false
       : (userPreload ?? router.options.defaultPreload)
   const preloadDelay =
@@ -136,7 +151,7 @@ export function useLinkProps<
 
   const isActive = useRouterState({
     select: (s) => {
-      if (isExternal) return false
+      if (externalLink) return false
       if (activeOptions?.exact) {
         const testExact = exactPathTest(
           s.location.pathname,
@@ -250,12 +265,11 @@ export function useLinkProps<
     }
   }
 
-  if (isExternal) {
+  if (externalLink) {
     return {
       ...propsSafeToSpread,
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      type,
-      href: to,
+      href: externalLink,
       ...(children && { children }),
       ...(target && { target }),
       ...(disabled && { disabled }),
@@ -338,11 +352,7 @@ export function useLinkProps<
     ...propsSafeToSpread,
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
-    href: disabled
-      ? undefined
-      : next.maskedLocation
-        ? next.maskedLocation.publicHref
-        : next.publicHref,
+    href: hrefOption?.href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),

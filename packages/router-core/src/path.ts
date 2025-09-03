@@ -97,11 +97,9 @@ export function exactPathTest(
 // /a/b/c + d/ = /a/b/c/d
 // /a/b/c + d/e = /a/b/c/d/e
 interface ResolvePathOptions {
-  // basepath: string
   base: string
   to: string
   trailingSlash?: 'always' | 'never' | 'preserve'
-  caseSensitive?: boolean
   parseCache?: ParsePathnameCache
 }
 
@@ -154,7 +152,6 @@ export function resolvePath({
   base,
   to,
   trailingSlash = 'never',
-  // caseSensitive,
   parseCache,
 }: ResolvePathOptions) {
   let baseSegments = parsePathname(base, parseCache).slice()
