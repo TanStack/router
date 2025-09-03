@@ -136,12 +136,20 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Optional
 - The default `onCatch` handler for errors caught by the Router ErrorBoundary
 
+### `disableGlobalCatchBoundary` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `false`
+- When `true`, disables the global catch boundary that normally wraps all route matches. This allows unhandled errors to bubble up to top-level error handlers in the browser.
+- Useful for testing tools, error reporting services, and debugging scenarios.
+
 ### `defaultViewTransition` property
 
 - Type: `boolean | ViewTransitionOptions`
 - Optional
 - If `true`, route navigations will be called using `document.startViewTransition()`.
-- If [`ViewTransitionOptions`](./ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})`
+- If [`ViewTransitionOptions`](../ViewTransitionOptionsType.md), route navigations will be called using `document.startViewTransition({update, types})`
   where `types` will be the strings array passed with `ViewTransitionOptions["types"]`. If the browser does not support viewTransition types,
   the navigation will fall back to normal `document.startTransition()`, same as if `true` was passed.
 - If the browser does not support this api, this option will be ignored.
@@ -169,12 +177,12 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Type: `string`
 - Optional
 - Defaults to `/`
-- The basepath for then entire router. This is useful for mounting a router instance at a subpath.
+- The basepath for the entire router. This is useful for mounting a router instance at a subpath.
 
 ### `context` property
 
 - Type: `any`
-- Optional or required if the root route was created with [`createRootRouteWithContext()`](./createRootRouteWithContextFunction.md).
+- Optional or required if the root route was created with [`createRootRouteWithContext()`](../createRootRouteWithContextFunction.md).
 - The root context that will be provided to all routes in the route tree. This can be used to provide a context to all routes in the tree without having to provide it to each route individually.
 
 ### `dehydrate` method
@@ -251,7 +259,7 @@ const router = createRouter({
 - Type: `'root' | 'fuzzy'`
 - Optional
 - Defaults to `'fuzzy'`
-- This property controls how TanStack Router will handle scenarios where it cannot find a route to match the current location. See the [Not Found Errors guide](../../guide/not-found-errors.md) for more information.
+- This property controls how TanStack Router will handle scenarios where it cannot find a route to match the current location. See the [Not Found Errors guide](../../../guide/not-found-errors.md) for more information.
 
 ### `notFoundRoute` property
 
@@ -259,22 +267,6 @@ const router = createRouter({
 - Type: `NotFoundRoute`
 - Optional
 - A route that will be used as the default not found route for every branch of the route tree. This can be overridden on a per-branch basis by providing a not found route to the `NotFoundRoute` option on the root route of the branch.
-
-### `errorSerializer` property
-
-- Type: [`RouterErrorSerializer`]
-- Optional
-- The serializer object that will be used to determine how errors are serialized and deserialized between the server and the client.
-
-#### `errorSerializer.serialize` method
-
-- Type: `(err: unknown) => TSerializedError`
-- This method is called to define how errors are serialized when they are stored in the router's dehydrated state.
-
-#### `errorSerializer.deserialize` method
-
-- Type: `(err: TSerializedError) => unknown`
-- This method is called to define how errors are deserialized from the router's dehydrated state.
 
 ### `trailingSlash` property
 
@@ -295,7 +287,7 @@ const router = createRouter({
 - Optional
 - Defaults to `false`
 - Configures whether structural sharing is enabled by default for fine-grained selectors.
-- See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
+- See the [Render Optimizations guide](../../../guide/render-optimizations.md) for more information.
 
 ### `defaultRemountDeps` property
 

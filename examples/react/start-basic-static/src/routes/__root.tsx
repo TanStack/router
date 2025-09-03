@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import {
   HeadContent,
   Link,
@@ -53,9 +54,9 @@ export const Route = createRootRoute({
   }),
   errorComponent: (props) => {
     return (
-      <RootDocument>
+      <RootLayout>
         <DefaultCatchBoundary {...props} />
-      </RootDocument>
+      </RootLayout>
     )
   },
   notFoundComponent: () => <NotFound />,
@@ -64,13 +65,13 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <RootDocument>
+    <RootLayout>
       <Outlet />
-    </RootDocument>
+    </RootLayout>
   )
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html>
       <head>

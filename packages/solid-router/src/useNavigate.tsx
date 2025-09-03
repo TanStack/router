@@ -14,10 +14,13 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const { navigate } = useRouter()
+  const router = useRouter()
 
   return ((options: NavigateOptions) => {
-    return navigate({ from: _defaultOpts?.from, ...options })
+    return router.navigate({
+      ...options,
+      from: options.from ?? _defaultOpts?.from,
+    })
   }) as UseNavigateResult<TDefaultFrom>
 }
 

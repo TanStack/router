@@ -9,7 +9,7 @@ The `redirect` function returns a new `Redirect` object that can be either retur
 
 The `redirect` function accepts a single argument, the `options` to determine the redirect behavior.
 
-- Type: [`Redirect`](./RedirectType.md)
+- Type: [`Redirect`](../RedirectType.md)
 - Required
 
 ## redirect returns
@@ -23,11 +23,19 @@ The `redirect` function accepts a single argument, the `options` to determine th
 import { redirect } from '@tanstack/react-router'
 
 const route = createRoute({
-  // throwing a redirect object
+  // throwing an internal redirect object using 'to' property
   loader: () => {
     if (!user) {
       throw redirect({
         to: '/login',
+      })
+    }
+  },
+  // throwing an external redirect object using 'href' property
+  loader: () => {
+    if (needsExternalAuth) {
+      throw redirect({
+        href: 'https://authprovider.com/login',
       })
     }
   },

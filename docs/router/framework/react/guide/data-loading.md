@@ -49,7 +49,7 @@ TanStack Router Cache Cons:
 - No built-in cache-level optimistic update APIs (you can still use ephemeral state from something like a `useMutation` hook to achieve this at the component level)
 
 > [!TIP]
-> If you know right away that you'd like to or need to use something more robust like TanStack Query, skip to the [External Data Loading](./external-data-loading.md) guide.
+> If you know right away that you'd like to or need to use something more robust like TanStack Query, skip to the [External Data Loading](../external-data-loading.md) guide.
 
 ## Using the Router Cache
 
@@ -71,7 +71,10 @@ export const Route = createFileRoute('/posts')({
 The `loader` function receives a single object with the following properties:
 
 - `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `loader` function becomes outdated.
-- `cause` - The cause of the current route match, either `enter` or `stay`.
+- `cause` - The cause of the current route match. Can be either one of the following:
+  - `enter` - When the route is matched and loaded after not being matched in the previous location.
+  - `preload` - When the route is being preloaded.
+  - `stay` - When the route is matched and loaded after being matched in the previous location.
 - `context` - The route's context object, which is a merged union of:
   - Parent route context
   - This route's context as provided by the `beforeLoad` option
@@ -219,7 +222,7 @@ To opt out of preloading, don't turn it on via the `routerOptions.defaultPreload
 
 ## Passing all loader events to an external cache
 
-We break down this use case in the [External Data Loading](./external-data-loading.md) page, but if you'd like to use an external cache like TanStack Query, you can do so by passing all loader events to your external cache. As long as you are using the defaults, the only change you'll need to make is to set the `defaultPreloadStaleTime` option on the router to `0`:
+We break down this use case in the [External Data Loading](../external-data-loading.md) page, but if you'd like to use an external cache like TanStack Query, you can do so by passing all loader events to your external cache. As long as you are using the defaults, the only change you'll need to make is to set the `defaultPreloadStaleTime` option on the router to `0`:
 
 ```tsx
 const router = createRouter({
@@ -401,7 +404,7 @@ export const Route = createFileRoute('/posts')({
 
 Ideally most route loaders can resolve their data within a short moment, removing the need to render a placeholder spinner and simply rely on suspense to render the next route when it's completely ready. When critical data that is required to render a route's component is slow though, you have 2 options:
 
-- Split up your fast and slow data into separate promises and `defer` the slow data until after the fast data is loaded (see the [Deferred Data Loading](./deferred-data-loading.md) guide).
+- Split up your fast and slow data into separate promises and `defer` the slow data until after the fast data is loaded (see the [Deferred Data Loading](../deferred-data-loading.md) guide).
 - Show a pending component after an optimistic suspense threshold until all of the data is ready (See below).
 
 ## Showing a pending component

@@ -52,9 +52,8 @@ describe('ssr scripts', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
     })
-
-    router.isServer = true
 
     await router.load()
 
@@ -87,9 +86,8 @@ describe('ssr scripts', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
     })
-
-    router.isServer = true
 
     await router.load()
 
@@ -102,7 +100,7 @@ describe('ssr scripts', () => {
     const { container } = render(() => <RouterProvider router={router} />)
 
     expect(container.innerHTML).toEqual(
-      `<script src="script.js"></script><script src="script3.js"></script>`,
+      '<script src="script.js"></script><script src="script3.js"></script>',
     )
   })
 })
@@ -179,9 +177,8 @@ describe('ssr HeadContent', () => {
         initialEntries: ['/'],
       }),
       routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: true,
     })
-
-    router.isServer = true
 
     await router.load()
 

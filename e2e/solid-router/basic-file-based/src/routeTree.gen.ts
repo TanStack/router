@@ -10,415 +10,1028 @@
 
 import { createFileRoute } from '@tanstack/solid-router'
 
-// Import Routes
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as RemountDepsRouteImport } from './routes/remountDeps'
+import { Route as PostsRouteImport } from './routes/posts'
+import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
+import { Route as EditingBRouteImport } from './routes/editing-b'
+import { Route as EditingARouteImport } from './routes/editing-a'
+import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
+import { Route as AnchorRouteImport } from './routes/anchor'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
+import { Route as RelativeIndexRouteImport } from './routes/relative/index'
+import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
+import { Route as PostsIndexRouteImport } from './routes/posts.index'
+import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
+import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
+import { Route as groupLazyinsideRouteImport } from './routes/(group)/lazyinside'
+import { Route as groupInsideRouteImport } from './routes/(group)/inside'
+import { Route as groupLayoutRouteImport } from './routes/(group)/_layout'
+import { Route as anotherGroupOnlyrouteinsideRouteImport } from './routes/(another-group)/onlyrouteinside'
+import { Route as RelativeUseNavigateRouteRouteImport } from './routes/relative/useNavigate/route'
+import { Route as RelativeLinkRouteRouteImport } from './routes/relative/link/route'
+import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
+import { Route as RelativeUseNavigateRelativeUseNavigateBRouteImport } from './routes/relative/useNavigate/relative-useNavigate-b'
+import { Route as RelativeUseNavigateRelativeUseNavigateARouteImport } from './routes/relative/useNavigate/relative-useNavigate-a'
+import { Route as RelativeLinkRelativeLinkBRouteImport } from './routes/relative/link/relative-link-b'
+import { Route as RelativeLinkRelativeLinkARouteImport } from './routes/relative/link/relative-link-a'
+import { Route as RedirectPreloadThirdRouteImport } from './routes/redirect/preload/third'
+import { Route as RedirectPreloadSecondRouteImport } from './routes/redirect/preload/second'
+import { Route as RedirectPreloadFirstRouteImport } from './routes/redirect/preload/first'
+import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
+import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
+import { Route as PostsPostIdEditRouteImport } from './routes/posts_.$postId.edit'
+import { Route as ParamsSingleValueRouteImport } from './routes/params.single.$value'
+import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
+import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_layout.insidelayout'
+import { Route as RelativeUseNavigateWithSearchIndexRouteImport } from './routes/relative/useNavigate/with-search/index'
+import { Route as RelativeUseNavigatePathIndexRouteImport } from './routes/relative/useNavigate/path/index'
+import { Route as RelativeUseNavigateNestedIndexRouteImport } from './routes/relative/useNavigate/nested/index'
+import { Route as RelativeLinkWithSearchIndexRouteImport } from './routes/relative/link/with-search/index'
+import { Route as RelativeLinkPathIndexRouteImport } from './routes/relative/link/path/index'
+import { Route as RelativeLinkNestedIndexRouteImport } from './routes/relative/link/nested/index'
+import { Route as RelativeUseNavigatePathPathIndexRouteImport } from './routes/relative/useNavigate/path/$path/index'
+import { Route as RelativeUseNavigateNestedDeepIndexRouteImport } from './routes/relative/useNavigate/nested/deep/index'
+import { Route as RelativeLinkPathPathIndexRouteImport } from './routes/relative/link/path/$path/index'
+import { Route as RelativeLinkNestedDeepIndexRouteImport } from './routes/relative/link/nested/deep/index'
 
-import { Route as rootRoute } from './routes/__root'
-import { Route as PostsImport } from './routes/posts'
-import { Route as EditingBImport } from './routes/editing-b'
-import { Route as EditingAImport } from './routes/editing-a'
-import { Route as AnchorImport } from './routes/anchor'
-import { Route as LayoutImport } from './routes/_layout'
-import { Route as IndexImport } from './routes/index'
-import { Route as RedirectIndexImport } from './routes/redirect/index'
-import { Route as PostsIndexImport } from './routes/posts.index'
-import { Route as RedirectTargetImport } from './routes/redirect/$target'
-import { Route as PostsPostIdImport } from './routes/posts.$postId'
-import { Route as LayoutLayout2Import } from './routes/_layout/_layout-2'
-import { Route as groupLazyinsideImport } from './routes/(group)/lazyinside'
-import { Route as groupInsideImport } from './routes/(group)/inside'
-import { Route as groupLayoutImport } from './routes/(group)/_layout'
-import { Route as anotherGroupOnlyrouteinsideImport } from './routes/(another-group)/onlyrouteinside'
-import { Route as RedirectTargetIndexImport } from './routes/redirect/$target/index'
-import { Route as RedirectPreloadThirdImport } from './routes/redirect/preload/third'
-import { Route as RedirectPreloadSecondImport } from './routes/redirect/preload/second'
-import { Route as RedirectPreloadFirstImport } from './routes/redirect/preload/first'
-import { Route as RedirectTargetViaLoaderImport } from './routes/redirect/$target/via-loader'
-import { Route as RedirectTargetViaBeforeLoadImport } from './routes/redirect/$target/via-beforeLoad'
-import { Route as PostsPostIdEditImport } from './routes/posts_.$postId.edit'
-import { Route as ParamsSingleValueImport } from './routes/params.single.$value'
-import { Route as LayoutLayout2LayoutBImport } from './routes/_layout/_layout-2/layout-b'
-import { Route as LayoutLayout2LayoutAImport } from './routes/_layout/_layout-2/layout-a'
-import { Route as groupSubfolderInsideImport } from './routes/(group)/subfolder/inside'
-import { Route as groupLayoutInsidelayoutImport } from './routes/(group)/_layout.insidelayout'
+const groupRouteImport = createFileRoute('/(group)')()
 
-// Create Virtual Routes
-
-const groupImport = createFileRoute('/(group)')()
-
-// Create/Update Routes
-
-const groupRoute = groupImport.update({
+const groupRoute = groupRouteImport.update({
   id: '/(group)',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const PostsRoute = PostsImport.update({
+const RemountDepsRoute = RemountDepsRouteImport.update({
+  id: '/remountDeps',
+  path: '/remountDeps',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const EditingBRoute = EditingBImport.update({
+const NotRemountDepsRoute = NotRemountDepsRouteImport.update({
+  id: '/notRemountDeps',
+  path: '/notRemountDeps',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EditingBRoute = EditingBRouteImport.update({
   id: '/editing-b',
   path: '/editing-b',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const EditingARoute = EditingAImport.update({
+const EditingARoute = EditingARouteImport.update({
   id: '/editing-a',
   path: '/editing-a',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const AnchorRoute = AnchorImport.update({
+const ComponentTypesTestRoute = ComponentTypesTestRouteImport.update({
+  id: '/component-types-test',
+  path: '/component-types-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnchorRoute = AnchorRouteImport.update({
   id: '/anchor',
   path: '/anchor',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const LayoutRoute = LayoutImport.update({
+const LayoutRoute = LayoutRouteImport.update({
   id: '/_layout',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const IndexRoute = IndexImport.update({
+const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
+  id: '/search-params',
+  path: '/search-params',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const RedirectIndexRoute = RedirectIndexImport.update({
+const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SearchParamsRouteRoute,
+} as any)
+const RelativeIndexRoute = RelativeIndexRouteImport.update({
+  id: '/relative/',
+  path: '/relative/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedirectIndexRoute = RedirectIndexRouteImport.update({
   id: '/redirect/',
   path: '/redirect/',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const PostsIndexRoute = PostsIndexImport.update({
+const PostsIndexRoute = PostsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PostsRoute,
 } as any)
-
-const RedirectTargetRoute = RedirectTargetImport.update({
+const SearchParamsDefaultRoute = SearchParamsDefaultRouteImport.update({
+  id: '/default',
+  path: '/default',
+  getParentRoute: () => SearchParamsRouteRoute,
+} as any)
+const RedirectTargetRoute = RedirectTargetRouteImport.update({
   id: '/redirect/$target',
   path: '/redirect/$target',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const PostsPostIdRoute = PostsPostIdImport.update({
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
-
-const LayoutLayout2Route = LayoutLayout2Import.update({
+const LayoutLayout2Route = LayoutLayout2RouteImport.update({
   id: '/_layout-2',
   getParentRoute: () => LayoutRoute,
 } as any)
-
-const groupLazyinsideRoute = groupLazyinsideImport
+const groupLazyinsideRoute = groupLazyinsideRouteImport
   .update({
     id: '/lazyinside',
     path: '/lazyinside',
     getParentRoute: () => groupRoute,
   } as any)
   .lazy(() => import('./routes/(group)/lazyinside.lazy').then((d) => d.Route))
-
-const groupInsideRoute = groupInsideImport.update({
+const groupInsideRoute = groupInsideRouteImport.update({
   id: '/inside',
   path: '/inside',
   getParentRoute: () => groupRoute,
 } as any)
-
-const groupLayoutRoute = groupLayoutImport.update({
+const groupLayoutRoute = groupLayoutRouteImport.update({
   id: '/_layout',
   getParentRoute: () => groupRoute,
 } as any)
-
 const anotherGroupOnlyrouteinsideRoute =
-  anotherGroupOnlyrouteinsideImport.update({
+  anotherGroupOnlyrouteinsideRouteImport.update({
     id: '/(another-group)/onlyrouteinside',
     path: '/onlyrouteinside',
-    getParentRoute: () => rootRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
-
-const RedirectTargetIndexRoute = RedirectTargetIndexImport.update({
+const RelativeUseNavigateRouteRoute =
+  RelativeUseNavigateRouteRouteImport.update({
+    id: '/relative/useNavigate',
+    path: '/relative/useNavigate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const RelativeLinkRouteRoute = RelativeLinkRouteRouteImport.update({
+  id: '/relative/link',
+  path: '/relative/link',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
-
-const RedirectPreloadThirdRoute = RedirectPreloadThirdImport.update({
+const RelativeUseNavigateRelativeUseNavigateBRoute =
+  RelativeUseNavigateRelativeUseNavigateBRouteImport.update({
+    id: '/relative-useNavigate-b',
+    path: '/relative-useNavigate-b',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
+  } as any)
+const RelativeUseNavigateRelativeUseNavigateARoute =
+  RelativeUseNavigateRelativeUseNavigateARouteImport.update({
+    id: '/relative-useNavigate-a',
+    path: '/relative-useNavigate-a',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
+  } as any)
+const RelativeLinkRelativeLinkBRoute =
+  RelativeLinkRelativeLinkBRouteImport.update({
+    id: '/relative-link-b',
+    path: '/relative-link-b',
+    getParentRoute: () => RelativeLinkRouteRoute,
+  } as any)
+const RelativeLinkRelativeLinkARoute =
+  RelativeLinkRelativeLinkARouteImport.update({
+    id: '/relative-link-a',
+    path: '/relative-link-a',
+    getParentRoute: () => RelativeLinkRouteRoute,
+  } as any)
+const RedirectPreloadThirdRoute = RedirectPreloadThirdRouteImport.update({
   id: '/redirect/preload/third',
   path: '/redirect/preload/third',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const RedirectPreloadSecondRoute = RedirectPreloadSecondImport.update({
+const RedirectPreloadSecondRoute = RedirectPreloadSecondRouteImport.update({
   id: '/redirect/preload/second',
   path: '/redirect/preload/second',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const RedirectPreloadFirstRoute = RedirectPreloadFirstImport.update({
+const RedirectPreloadFirstRoute = RedirectPreloadFirstRouteImport.update({
   id: '/redirect/preload/first',
   path: '/redirect/preload/first',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderImport.update({
+const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
   id: '/via-loader',
   path: '/via-loader',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
-
 const RedirectTargetViaBeforeLoadRoute =
-  RedirectTargetViaBeforeLoadImport.update({
+  RedirectTargetViaBeforeLoadRouteImport.update({
     id: '/via-beforeLoad',
     path: '/via-beforeLoad',
     getParentRoute: () => RedirectTargetRoute,
   } as any)
-
-const PostsPostIdEditRoute = PostsPostIdEditImport.update({
+const PostsPostIdEditRoute = PostsPostIdEditRouteImport.update({
   id: '/posts_/$postId/edit',
   path: '/posts/$postId/edit',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const ParamsSingleValueRoute = ParamsSingleValueImport.update({
+const ParamsSingleValueRoute = ParamsSingleValueRouteImport.update({
   id: '/params/single/$value',
   path: '/params/single/$value',
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-
-const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBImport.update({
+const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
   id: '/layout-b',
   path: '/layout-b',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
-
-const LayoutLayout2LayoutARoute = LayoutLayout2LayoutAImport.update({
+const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   id: '/layout-a',
   path: '/layout-a',
   getParentRoute: () => LayoutLayout2Route,
 } as any)
-
-const groupSubfolderInsideRoute = groupSubfolderInsideImport.update({
+const groupSubfolderInsideRoute = groupSubfolderInsideRouteImport.update({
   id: '/subfolder/inside',
   path: '/subfolder/inside',
   getParentRoute: () => groupRoute,
 } as any)
-
-const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutImport.update({
+const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
   id: '/insidelayout',
   path: '/insidelayout',
   getParentRoute: () => groupLayoutRoute,
 } as any)
+const RelativeUseNavigateWithSearchIndexRoute =
+  RelativeUseNavigateWithSearchIndexRouteImport.update({
+    id: '/with-search/',
+    path: '/with-search/',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
+  } as any)
+const RelativeUseNavigatePathIndexRoute =
+  RelativeUseNavigatePathIndexRouteImport.update({
+    id: '/path/',
+    path: '/path/',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
+  } as any)
+const RelativeUseNavigateNestedIndexRoute =
+  RelativeUseNavigateNestedIndexRouteImport.update({
+    id: '/nested/',
+    path: '/nested/',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
+  } as any)
+const RelativeLinkWithSearchIndexRoute =
+  RelativeLinkWithSearchIndexRouteImport.update({
+    id: '/with-search/',
+    path: '/with-search/',
+    getParentRoute: () => RelativeLinkRouteRoute,
+  } as any)
+const RelativeLinkPathIndexRoute = RelativeLinkPathIndexRouteImport.update({
+  id: '/path/',
+  path: '/path/',
+  getParentRoute: () => RelativeLinkRouteRoute,
+} as any)
+const RelativeLinkNestedIndexRoute = RelativeLinkNestedIndexRouteImport.update({
+  id: '/nested/',
+  path: '/nested/',
+  getParentRoute: () => RelativeLinkRouteRoute,
+} as any)
+const RelativeUseNavigatePathPathIndexRoute =
+  RelativeUseNavigatePathPathIndexRouteImport.update({
+    id: '/path/$path/',
+    path: '/path/$path/',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
+  } as any)
+const RelativeUseNavigateNestedDeepIndexRoute =
+  RelativeUseNavigateNestedDeepIndexRouteImport.update({
+    id: '/nested/deep/',
+    path: '/nested/deep/',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
+  } as any)
+const RelativeLinkPathPathIndexRoute =
+  RelativeLinkPathPathIndexRouteImport.update({
+    id: '/path/$path/',
+    path: '/path/$path/',
+    getParentRoute: () => RelativeLinkRouteRoute,
+  } as any)
+const RelativeLinkNestedDeepIndexRoute =
+  RelativeLinkNestedDeepIndexRouteImport.update({
+    id: '/nested/deep/',
+    path: '/nested/deep/',
+    getParentRoute: () => RelativeLinkRouteRoute,
+  } as any)
 
-// Populate the FileRoutesByPath interface
+export interface FileRoutesByFullPath {
+  '/': typeof groupLayoutRouteWithChildren
+  '/search-params': typeof SearchParamsRouteRouteWithChildren
+  '/anchor': typeof AnchorRoute
+  '/component-types-test': typeof ComponentTypesTestRoute
+  '/editing-a': typeof EditingARoute
+  '/editing-b': typeof EditingBRoute
+  '/notRemountDeps': typeof NotRemountDepsRoute
+  '/posts': typeof PostsRouteWithChildren
+  '/remountDeps': typeof RemountDepsRoute
+  '/relative/link': typeof RelativeLinkRouteRouteWithChildren
+  '/relative/useNavigate': typeof RelativeUseNavigateRouteRouteWithChildren
+  '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
+  '/inside': typeof groupInsideRoute
+  '/lazyinside': typeof groupLazyinsideRoute
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/$target': typeof RedirectTargetRouteWithChildren
+  '/search-params/default': typeof SearchParamsDefaultRoute
+  '/posts/': typeof PostsIndexRoute
+  '/redirect': typeof RedirectIndexRoute
+  '/relative': typeof RelativeIndexRoute
+  '/search-params/': typeof SearchParamsIndexRoute
+  '/insidelayout': typeof groupLayoutInsidelayoutRoute
+  '/subfolder/inside': typeof groupSubfolderInsideRoute
+  '/layout-a': typeof LayoutLayout2LayoutARoute
+  '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params/single/$value': typeof ParamsSingleValueRoute
+  '/posts/$postId/edit': typeof PostsPostIdEditRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
+  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
+  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/relative/link/relative-link-a': typeof RelativeLinkRelativeLinkARoute
+  '/relative/link/relative-link-b': typeof RelativeLinkRelativeLinkBRoute
+  '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
+  '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
+  '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/relative/link/nested': typeof RelativeLinkNestedIndexRoute
+  '/relative/link/path': typeof RelativeLinkPathIndexRoute
+  '/relative/link/with-search': typeof RelativeLinkWithSearchIndexRoute
+  '/relative/useNavigate/nested': typeof RelativeUseNavigateNestedIndexRoute
+  '/relative/useNavigate/path': typeof RelativeUseNavigatePathIndexRoute
+  '/relative/useNavigate/with-search': typeof RelativeUseNavigateWithSearchIndexRoute
+  '/relative/link/nested/deep': typeof RelativeLinkNestedDeepIndexRoute
+  '/relative/link/path/$path': typeof RelativeLinkPathPathIndexRoute
+  '/relative/useNavigate/nested/deep': typeof RelativeUseNavigateNestedDeepIndexRoute
+  '/relative/useNavigate/path/$path': typeof RelativeUseNavigatePathPathIndexRoute
+}
+export interface FileRoutesByTo {
+  '/': typeof groupLayoutRouteWithChildren
+  '/anchor': typeof AnchorRoute
+  '/component-types-test': typeof ComponentTypesTestRoute
+  '/editing-a': typeof EditingARoute
+  '/editing-b': typeof EditingBRoute
+  '/notRemountDeps': typeof NotRemountDepsRoute
+  '/remountDeps': typeof RemountDepsRoute
+  '/relative/link': typeof RelativeLinkRouteRouteWithChildren
+  '/relative/useNavigate': typeof RelativeUseNavigateRouteRouteWithChildren
+  '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
+  '/inside': typeof groupInsideRoute
+  '/lazyinside': typeof groupLazyinsideRoute
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/search-params/default': typeof SearchParamsDefaultRoute
+  '/posts': typeof PostsIndexRoute
+  '/redirect': typeof RedirectIndexRoute
+  '/relative': typeof RelativeIndexRoute
+  '/search-params': typeof SearchParamsIndexRoute
+  '/insidelayout': typeof groupLayoutInsidelayoutRoute
+  '/subfolder/inside': typeof groupSubfolderInsideRoute
+  '/layout-a': typeof LayoutLayout2LayoutARoute
+  '/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params/single/$value': typeof ParamsSingleValueRoute
+  '/posts/$postId/edit': typeof PostsPostIdEditRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
+  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
+  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/relative/link/relative-link-a': typeof RelativeLinkRelativeLinkARoute
+  '/relative/link/relative-link-b': typeof RelativeLinkRelativeLinkBRoute
+  '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
+  '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
+  '/redirect/$target': typeof RedirectTargetIndexRoute
+  '/relative/link/nested': typeof RelativeLinkNestedIndexRoute
+  '/relative/link/path': typeof RelativeLinkPathIndexRoute
+  '/relative/link/with-search': typeof RelativeLinkWithSearchIndexRoute
+  '/relative/useNavigate/nested': typeof RelativeUseNavigateNestedIndexRoute
+  '/relative/useNavigate/path': typeof RelativeUseNavigatePathIndexRoute
+  '/relative/useNavigate/with-search': typeof RelativeUseNavigateWithSearchIndexRoute
+  '/relative/link/nested/deep': typeof RelativeLinkNestedDeepIndexRoute
+  '/relative/link/path/$path': typeof RelativeLinkPathPathIndexRoute
+  '/relative/useNavigate/nested/deep': typeof RelativeUseNavigateNestedDeepIndexRoute
+  '/relative/useNavigate/path/$path': typeof RelativeUseNavigatePathPathIndexRoute
+}
+export interface FileRoutesById {
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/search-params': typeof SearchParamsRouteRouteWithChildren
+  '/_layout': typeof LayoutRouteWithChildren
+  '/anchor': typeof AnchorRoute
+  '/component-types-test': typeof ComponentTypesTestRoute
+  '/editing-a': typeof EditingARoute
+  '/editing-b': typeof EditingBRoute
+  '/notRemountDeps': typeof NotRemountDepsRoute
+  '/posts': typeof PostsRouteWithChildren
+  '/remountDeps': typeof RemountDepsRoute
+  '/relative/link': typeof RelativeLinkRouteRouteWithChildren
+  '/relative/useNavigate': typeof RelativeUseNavigateRouteRouteWithChildren
+  '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
+  '/(group)': typeof groupRouteWithChildren
+  '/(group)/_layout': typeof groupLayoutRouteWithChildren
+  '/(group)/inside': typeof groupInsideRoute
+  '/(group)/lazyinside': typeof groupLazyinsideRoute
+  '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/redirect/$target': typeof RedirectTargetRouteWithChildren
+  '/search-params/default': typeof SearchParamsDefaultRoute
+  '/posts/': typeof PostsIndexRoute
+  '/redirect/': typeof RedirectIndexRoute
+  '/relative/': typeof RelativeIndexRoute
+  '/search-params/': typeof SearchParamsIndexRoute
+  '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
+  '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
+  '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
+  '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
+  '/params/single/$value': typeof ParamsSingleValueRoute
+  '/posts_/$postId/edit': typeof PostsPostIdEditRoute
+  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
+  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
+  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
+  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
+  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
+  '/relative/link/relative-link-a': typeof RelativeLinkRelativeLinkARoute
+  '/relative/link/relative-link-b': typeof RelativeLinkRelativeLinkBRoute
+  '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
+  '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
+  '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/relative/link/nested/': typeof RelativeLinkNestedIndexRoute
+  '/relative/link/path/': typeof RelativeLinkPathIndexRoute
+  '/relative/link/with-search/': typeof RelativeLinkWithSearchIndexRoute
+  '/relative/useNavigate/nested/': typeof RelativeUseNavigateNestedIndexRoute
+  '/relative/useNavigate/path/': typeof RelativeUseNavigatePathIndexRoute
+  '/relative/useNavigate/with-search/': typeof RelativeUseNavigateWithSearchIndexRoute
+  '/relative/link/nested/deep/': typeof RelativeLinkNestedDeepIndexRoute
+  '/relative/link/path/$path/': typeof RelativeLinkPathPathIndexRoute
+  '/relative/useNavigate/nested/deep/': typeof RelativeUseNavigateNestedDeepIndexRoute
+  '/relative/useNavigate/path/$path/': typeof RelativeUseNavigatePathPathIndexRoute
+}
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/search-params'
+    | '/anchor'
+    | '/component-types-test'
+    | '/editing-a'
+    | '/editing-b'
+    | '/notRemountDeps'
+    | '/posts'
+    | '/remountDeps'
+    | '/relative/link'
+    | '/relative/useNavigate'
+    | '/onlyrouteinside'
+    | '/inside'
+    | '/lazyinside'
+    | '/posts/$postId'
+    | '/redirect/$target'
+    | '/search-params/default'
+    | '/posts/'
+    | '/redirect'
+    | '/relative'
+    | '/search-params/'
+    | '/insidelayout'
+    | '/subfolder/inside'
+    | '/layout-a'
+    | '/layout-b'
+    | '/params/single/$value'
+    | '/posts/$postId/edit'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/preload/first'
+    | '/redirect/preload/second'
+    | '/redirect/preload/third'
+    | '/relative/link/relative-link-a'
+    | '/relative/link/relative-link-b'
+    | '/relative/useNavigate/relative-useNavigate-a'
+    | '/relative/useNavigate/relative-useNavigate-b'
+    | '/redirect/$target/'
+    | '/relative/link/nested'
+    | '/relative/link/path'
+    | '/relative/link/with-search'
+    | '/relative/useNavigate/nested'
+    | '/relative/useNavigate/path'
+    | '/relative/useNavigate/with-search'
+    | '/relative/link/nested/deep'
+    | '/relative/link/path/$path'
+    | '/relative/useNavigate/nested/deep'
+    | '/relative/useNavigate/path/$path'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/anchor'
+    | '/component-types-test'
+    | '/editing-a'
+    | '/editing-b'
+    | '/notRemountDeps'
+    | '/remountDeps'
+    | '/relative/link'
+    | '/relative/useNavigate'
+    | '/onlyrouteinside'
+    | '/inside'
+    | '/lazyinside'
+    | '/posts/$postId'
+    | '/search-params/default'
+    | '/posts'
+    | '/redirect'
+    | '/relative'
+    | '/search-params'
+    | '/insidelayout'
+    | '/subfolder/inside'
+    | '/layout-a'
+    | '/layout-b'
+    | '/params/single/$value'
+    | '/posts/$postId/edit'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/preload/first'
+    | '/redirect/preload/second'
+    | '/redirect/preload/third'
+    | '/relative/link/relative-link-a'
+    | '/relative/link/relative-link-b'
+    | '/relative/useNavigate/relative-useNavigate-a'
+    | '/relative/useNavigate/relative-useNavigate-b'
+    | '/redirect/$target'
+    | '/relative/link/nested'
+    | '/relative/link/path'
+    | '/relative/link/with-search'
+    | '/relative/useNavigate/nested'
+    | '/relative/useNavigate/path'
+    | '/relative/useNavigate/with-search'
+    | '/relative/link/nested/deep'
+    | '/relative/link/path/$path'
+    | '/relative/useNavigate/nested/deep'
+    | '/relative/useNavigate/path/$path'
+  id:
+    | '__root__'
+    | '/'
+    | '/search-params'
+    | '/_layout'
+    | '/anchor'
+    | '/component-types-test'
+    | '/editing-a'
+    | '/editing-b'
+    | '/notRemountDeps'
+    | '/posts'
+    | '/remountDeps'
+    | '/relative/link'
+    | '/relative/useNavigate'
+    | '/(another-group)/onlyrouteinside'
+    | '/(group)'
+    | '/(group)/_layout'
+    | '/(group)/inside'
+    | '/(group)/lazyinside'
+    | '/_layout/_layout-2'
+    | '/posts/$postId'
+    | '/redirect/$target'
+    | '/search-params/default'
+    | '/posts/'
+    | '/redirect/'
+    | '/relative/'
+    | '/search-params/'
+    | '/(group)/_layout/insidelayout'
+    | '/(group)/subfolder/inside'
+    | '/_layout/_layout-2/layout-a'
+    | '/_layout/_layout-2/layout-b'
+    | '/params/single/$value'
+    | '/posts_/$postId/edit'
+    | '/redirect/$target/via-beforeLoad'
+    | '/redirect/$target/via-loader'
+    | '/redirect/preload/first'
+    | '/redirect/preload/second'
+    | '/redirect/preload/third'
+    | '/relative/link/relative-link-a'
+    | '/relative/link/relative-link-b'
+    | '/relative/useNavigate/relative-useNavigate-a'
+    | '/relative/useNavigate/relative-useNavigate-b'
+    | '/redirect/$target/'
+    | '/relative/link/nested/'
+    | '/relative/link/path/'
+    | '/relative/link/with-search/'
+    | '/relative/useNavigate/nested/'
+    | '/relative/useNavigate/path/'
+    | '/relative/useNavigate/with-search/'
+    | '/relative/link/nested/deep/'
+    | '/relative/link/path/$path/'
+    | '/relative/useNavigate/nested/deep/'
+    | '/relative/useNavigate/path/$path/'
+  fileRoutesById: FileRoutesById
+}
+export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
+  SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
+  LayoutRoute: typeof LayoutRouteWithChildren
+  AnchorRoute: typeof AnchorRoute
+  ComponentTypesTestRoute: typeof ComponentTypesTestRoute
+  EditingARoute: typeof EditingARoute
+  EditingBRoute: typeof EditingBRoute
+  NotRemountDepsRoute: typeof NotRemountDepsRoute
+  PostsRoute: typeof PostsRouteWithChildren
+  RemountDepsRoute: typeof RemountDepsRoute
+  RelativeLinkRouteRoute: typeof RelativeLinkRouteRouteWithChildren
+  RelativeUseNavigateRouteRoute: typeof RelativeUseNavigateRouteRouteWithChildren
+  anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
+  groupRoute: typeof groupRouteWithChildren
+  RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
+  RedirectIndexRoute: typeof RedirectIndexRoute
+  RelativeIndexRoute: typeof RelativeIndexRoute
+  ParamsSingleValueRoute: typeof ParamsSingleValueRoute
+  PostsPostIdEditRoute: typeof PostsPostIdEditRoute
+  RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
+  RedirectPreloadSecondRoute: typeof RedirectPreloadSecondRoute
+  RedirectPreloadThirdRoute: typeof RedirectPreloadThirdRoute
+}
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/(group)': {
+      id: '/(group)'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof groupRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof LayoutImport
-      parentRoute: typeof rootRoute
-    }
-    '/anchor': {
-      id: '/anchor'
-      path: '/anchor'
-      fullPath: '/anchor'
-      preLoaderRoute: typeof AnchorImport
-      parentRoute: typeof rootRoute
-    }
-    '/editing-a': {
-      id: '/editing-a'
-      path: '/editing-a'
-      fullPath: '/editing-a'
-      preLoaderRoute: typeof EditingAImport
-      parentRoute: typeof rootRoute
-    }
-    '/editing-b': {
-      id: '/editing-b'
-      path: '/editing-b'
-      fullPath: '/editing-b'
-      preLoaderRoute: typeof EditingBImport
-      parentRoute: typeof rootRoute
+    '/remountDeps': {
+      id: '/remountDeps'
+      path: '/remountDeps'
+      fullPath: '/remountDeps'
+      preLoaderRoute: typeof RemountDepsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof PostsImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/(another-group)/onlyrouteinside': {
-      id: '/(another-group)/onlyrouteinside'
-      path: '/onlyrouteinside'
-      fullPath: '/onlyrouteinside'
-      preLoaderRoute: typeof anotherGroupOnlyrouteinsideImport
-      parentRoute: typeof rootRoute
+    '/notRemountDeps': {
+      id: '/notRemountDeps'
+      path: '/notRemountDeps'
+      fullPath: '/notRemountDeps'
+      preLoaderRoute: typeof NotRemountDepsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/(group)': {
-      id: '/(group)'
+    '/editing-b': {
+      id: '/editing-b'
+      path: '/editing-b'
+      fullPath: '/editing-b'
+      preLoaderRoute: typeof EditingBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/editing-a': {
+      id: '/editing-a'
+      path: '/editing-a'
+      fullPath: '/editing-a'
+      preLoaderRoute: typeof EditingARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/component-types-test': {
+      id: '/component-types-test'
+      path: '/component-types-test'
+      fullPath: '/component-types-test'
+      preLoaderRoute: typeof ComponentTypesTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/anchor': {
+      id: '/anchor'
+      path: '/anchor'
+      fullPath: '/anchor'
+      preLoaderRoute: typeof AnchorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof LayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search-params': {
+      id: '/search-params'
+      path: '/search-params'
+      fullPath: '/search-params'
+      preLoaderRoute: typeof SearchParamsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof groupImport
-      parentRoute: typeof rootRoute
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/(group)/_layout': {
-      id: '/(group)/_layout'
+    '/search-params/': {
+      id: '/search-params/'
       path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof groupLayoutImport
+      fullPath: '/search-params/'
+      preLoaderRoute: typeof SearchParamsIndexRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/relative/': {
+      id: '/relative/'
+      path: '/relative'
+      fullPath: '/relative'
+      preLoaderRoute: typeof RelativeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/search-params/default': {
+      id: '/search-params/default'
+      path: '/default'
+      fullPath: '/search-params/default'
+      preLoaderRoute: typeof SearchParamsDefaultRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/redirect/$target': {
+      id: '/redirect/$target'
+      path: '/redirect/$target'
+      fullPath: '/redirect/$target'
+      preLoaderRoute: typeof RedirectTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/_layout/_layout-2': {
+      id: '/_layout/_layout-2'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof LayoutLayout2RouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/(group)/lazyinside': {
+      id: '/(group)/lazyinside'
+      path: '/lazyinside'
+      fullPath: '/lazyinside'
+      preLoaderRoute: typeof groupLazyinsideRouteImport
       parentRoute: typeof groupRoute
     }
     '/(group)/inside': {
       id: '/(group)/inside'
       path: '/inside'
       fullPath: '/inside'
-      preLoaderRoute: typeof groupInsideImport
-      parentRoute: typeof groupImport
+      preLoaderRoute: typeof groupInsideRouteImport
+      parentRoute: typeof groupRoute
     }
-    '/(group)/lazyinside': {
-      id: '/(group)/lazyinside'
-      path: '/lazyinside'
-      fullPath: '/lazyinside'
-      preLoaderRoute: typeof groupLazyinsideImport
-      parentRoute: typeof groupImport
-    }
-    '/_layout/_layout-2': {
-      id: '/_layout/_layout-2'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof LayoutLayout2Import
-      parentRoute: typeof LayoutImport
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdImport
-      parentRoute: typeof PostsImport
-    }
-    '/redirect/$target': {
-      id: '/redirect/$target'
-      path: '/redirect/$target'
-      fullPath: '/redirect/$target'
-      preLoaderRoute: typeof RedirectTargetImport
-      parentRoute: typeof rootRoute
-    }
-    '/posts/': {
-      id: '/posts/'
+    '/(group)/_layout': {
+      id: '/(group)/_layout'
       path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexImport
-      parentRoute: typeof PostsImport
+      fullPath: '/'
+      preLoaderRoute: typeof groupLayoutRouteImport
+      parentRoute: typeof groupRoute
     }
-    '/redirect/': {
-      id: '/redirect/'
-      path: '/redirect'
-      fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectIndexImport
-      parentRoute: typeof rootRoute
+    '/(another-group)/onlyrouteinside': {
+      id: '/(another-group)/onlyrouteinside'
+      path: '/onlyrouteinside'
+      fullPath: '/onlyrouteinside'
+      preLoaderRoute: typeof anotherGroupOnlyrouteinsideRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/(group)/_layout/insidelayout': {
-      id: '/(group)/_layout/insidelayout'
-      path: '/insidelayout'
-      fullPath: '/insidelayout'
-      preLoaderRoute: typeof groupLayoutInsidelayoutImport
-      parentRoute: typeof groupLayoutImport
+    '/relative/useNavigate': {
+      id: '/relative/useNavigate'
+      path: '/relative/useNavigate'
+      fullPath: '/relative/useNavigate'
+      preLoaderRoute: typeof RelativeUseNavigateRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/(group)/subfolder/inside': {
-      id: '/(group)/subfolder/inside'
-      path: '/subfolder/inside'
-      fullPath: '/subfolder/inside'
-      preLoaderRoute: typeof groupSubfolderInsideImport
-      parentRoute: typeof groupImport
-    }
-    '/_layout/_layout-2/layout-a': {
-      id: '/_layout/_layout-2/layout-a'
-      path: '/layout-a'
-      fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutAImport
-      parentRoute: typeof LayoutLayout2Import
-    }
-    '/_layout/_layout-2/layout-b': {
-      id: '/_layout/_layout-2/layout-b'
-      path: '/layout-b'
-      fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBImport
-      parentRoute: typeof LayoutLayout2Import
-    }
-    '/params/single/$value': {
-      id: '/params/single/$value'
-      path: '/params/single/$value'
-      fullPath: '/params/single/$value'
-      preLoaderRoute: typeof ParamsSingleValueImport
-      parentRoute: typeof rootRoute
-    }
-    '/posts_/$postId/edit': {
-      id: '/posts_/$postId/edit'
-      path: '/posts/$postId/edit'
-      fullPath: '/posts/$postId/edit'
-      preLoaderRoute: typeof PostsPostIdEditImport
-      parentRoute: typeof rootRoute
-    }
-    '/redirect/$target/via-beforeLoad': {
-      id: '/redirect/$target/via-beforeLoad'
-      path: '/via-beforeLoad'
-      fullPath: '/redirect/$target/via-beforeLoad'
-      preLoaderRoute: typeof RedirectTargetViaBeforeLoadImport
-      parentRoute: typeof RedirectTargetImport
-    }
-    '/redirect/$target/via-loader': {
-      id: '/redirect/$target/via-loader'
-      path: '/via-loader'
-      fullPath: '/redirect/$target/via-loader'
-      preLoaderRoute: typeof RedirectTargetViaLoaderImport
-      parentRoute: typeof RedirectTargetImport
-    }
-    '/redirect/preload/first': {
-      id: '/redirect/preload/first'
-      path: '/redirect/preload/first'
-      fullPath: '/redirect/preload/first'
-      preLoaderRoute: typeof RedirectPreloadFirstImport
-      parentRoute: typeof rootRoute
-    }
-    '/redirect/preload/second': {
-      id: '/redirect/preload/second'
-      path: '/redirect/preload/second'
-      fullPath: '/redirect/preload/second'
-      preLoaderRoute: typeof RedirectPreloadSecondImport
-      parentRoute: typeof rootRoute
-    }
-    '/redirect/preload/third': {
-      id: '/redirect/preload/third'
-      path: '/redirect/preload/third'
-      fullPath: '/redirect/preload/third'
-      preLoaderRoute: typeof RedirectPreloadThirdImport
-      parentRoute: typeof rootRoute
+    '/relative/link': {
+      id: '/relative/link'
+      path: '/relative/link'
+      fullPath: '/relative/link'
+      preLoaderRoute: typeof RelativeLinkRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/redirect/$target/': {
       id: '/redirect/$target/'
       path: '/'
       fullPath: '/redirect/$target/'
-      preLoaderRoute: typeof RedirectTargetIndexImport
-      parentRoute: typeof RedirectTargetImport
+      preLoaderRoute: typeof RedirectTargetIndexRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/relative/useNavigate/relative-useNavigate-b': {
+      id: '/relative/useNavigate/relative-useNavigate-b'
+      path: '/relative-useNavigate-b'
+      fullPath: '/relative/useNavigate/relative-useNavigate-b'
+      preLoaderRoute: typeof RelativeUseNavigateRelativeUseNavigateBRouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
+    }
+    '/relative/useNavigate/relative-useNavigate-a': {
+      id: '/relative/useNavigate/relative-useNavigate-a'
+      path: '/relative-useNavigate-a'
+      fullPath: '/relative/useNavigate/relative-useNavigate-a'
+      preLoaderRoute: typeof RelativeUseNavigateRelativeUseNavigateARouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
+    }
+    '/relative/link/relative-link-b': {
+      id: '/relative/link/relative-link-b'
+      path: '/relative-link-b'
+      fullPath: '/relative/link/relative-link-b'
+      preLoaderRoute: typeof RelativeLinkRelativeLinkBRouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/relative/link/relative-link-a': {
+      id: '/relative/link/relative-link-a'
+      path: '/relative-link-a'
+      fullPath: '/relative/link/relative-link-a'
+      preLoaderRoute: typeof RelativeLinkRelativeLinkARouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/redirect/preload/third': {
+      id: '/redirect/preload/third'
+      path: '/redirect/preload/third'
+      fullPath: '/redirect/preload/third'
+      preLoaderRoute: typeof RedirectPreloadThirdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/preload/second': {
+      id: '/redirect/preload/second'
+      path: '/redirect/preload/second'
+      fullPath: '/redirect/preload/second'
+      preLoaderRoute: typeof RedirectPreloadSecondRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/preload/first': {
+      id: '/redirect/preload/first'
+      path: '/redirect/preload/first'
+      fullPath: '/redirect/preload/first'
+      preLoaderRoute: typeof RedirectPreloadFirstRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/$target/via-loader': {
+      id: '/redirect/$target/via-loader'
+      path: '/via-loader'
+      fullPath: '/redirect/$target/via-loader'
+      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/via-beforeLoad': {
+      id: '/redirect/$target/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/redirect/$target/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/posts_/$postId/edit': {
+      id: '/posts_/$postId/edit'
+      path: '/posts/$postId/edit'
+      fullPath: '/posts/$postId/edit'
+      preLoaderRoute: typeof PostsPostIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params/single/$value': {
+      id: '/params/single/$value'
+      path: '/params/single/$value'
+      fullPath: '/params/single/$value'
+      preLoaderRoute: typeof ParamsSingleValueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layout/_layout-2/layout-b': {
+      id: '/_layout/_layout-2/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/_layout/_layout-2/layout-a': {
+      id: '/_layout/_layout-2/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/(group)/subfolder/inside': {
+      id: '/(group)/subfolder/inside'
+      path: '/subfolder/inside'
+      fullPath: '/subfolder/inside'
+      preLoaderRoute: typeof groupSubfolderInsideRouteImport
+      parentRoute: typeof groupRoute
+    }
+    '/(group)/_layout/insidelayout': {
+      id: '/(group)/_layout/insidelayout'
+      path: '/insidelayout'
+      fullPath: '/insidelayout'
+      preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
+      parentRoute: typeof groupLayoutRoute
+    }
+    '/relative/useNavigate/with-search/': {
+      id: '/relative/useNavigate/with-search/'
+      path: '/with-search'
+      fullPath: '/relative/useNavigate/with-search'
+      preLoaderRoute: typeof RelativeUseNavigateWithSearchIndexRouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
+    }
+    '/relative/useNavigate/path/': {
+      id: '/relative/useNavigate/path/'
+      path: '/path'
+      fullPath: '/relative/useNavigate/path'
+      preLoaderRoute: typeof RelativeUseNavigatePathIndexRouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
+    }
+    '/relative/useNavigate/nested/': {
+      id: '/relative/useNavigate/nested/'
+      path: '/nested'
+      fullPath: '/relative/useNavigate/nested'
+      preLoaderRoute: typeof RelativeUseNavigateNestedIndexRouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
+    }
+    '/relative/link/with-search/': {
+      id: '/relative/link/with-search/'
+      path: '/with-search'
+      fullPath: '/relative/link/with-search'
+      preLoaderRoute: typeof RelativeLinkWithSearchIndexRouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/relative/link/path/': {
+      id: '/relative/link/path/'
+      path: '/path'
+      fullPath: '/relative/link/path'
+      preLoaderRoute: typeof RelativeLinkPathIndexRouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/relative/link/nested/': {
+      id: '/relative/link/nested/'
+      path: '/nested'
+      fullPath: '/relative/link/nested'
+      preLoaderRoute: typeof RelativeLinkNestedIndexRouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/relative/useNavigate/path/$path/': {
+      id: '/relative/useNavigate/path/$path/'
+      path: '/path/$path'
+      fullPath: '/relative/useNavigate/path/$path'
+      preLoaderRoute: typeof RelativeUseNavigatePathPathIndexRouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
+    }
+    '/relative/useNavigate/nested/deep/': {
+      id: '/relative/useNavigate/nested/deep/'
+      path: '/nested/deep'
+      fullPath: '/relative/useNavigate/nested/deep'
+      preLoaderRoute: typeof RelativeUseNavigateNestedDeepIndexRouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
+    }
+    '/relative/link/path/$path/': {
+      id: '/relative/link/path/$path/'
+      path: '/path/$path'
+      fullPath: '/relative/link/path/$path'
+      preLoaderRoute: typeof RelativeLinkPathPathIndexRouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/relative/link/nested/deep/': {
+      id: '/relative/link/nested/deep/'
+      path: '/nested/deep'
+      fullPath: '/relative/link/nested/deep'
+      preLoaderRoute: typeof RelativeLinkNestedDeepIndexRouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
     }
   }
 }
 
-// Create and export the route tree
+interface SearchParamsRouteRouteChildren {
+  SearchParamsDefaultRoute: typeof SearchParamsDefaultRoute
+  SearchParamsIndexRoute: typeof SearchParamsIndexRoute
+}
+
+const SearchParamsRouteRouteChildren: SearchParamsRouteRouteChildren = {
+  SearchParamsDefaultRoute: SearchParamsDefaultRoute,
+  SearchParamsIndexRoute: SearchParamsIndexRoute,
+}
+
+const SearchParamsRouteRouteWithChildren =
+  SearchParamsRouteRoute._addFileChildren(SearchParamsRouteRouteChildren)
 
 interface LayoutLayout2RouteChildren {
   LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
@@ -456,6 +1069,60 @@ const PostsRouteChildren: PostsRouteChildren = {
 }
 
 const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
+
+interface RelativeLinkRouteRouteChildren {
+  RelativeLinkRelativeLinkARoute: typeof RelativeLinkRelativeLinkARoute
+  RelativeLinkRelativeLinkBRoute: typeof RelativeLinkRelativeLinkBRoute
+  RelativeLinkNestedIndexRoute: typeof RelativeLinkNestedIndexRoute
+  RelativeLinkPathIndexRoute: typeof RelativeLinkPathIndexRoute
+  RelativeLinkWithSearchIndexRoute: typeof RelativeLinkWithSearchIndexRoute
+  RelativeLinkNestedDeepIndexRoute: typeof RelativeLinkNestedDeepIndexRoute
+  RelativeLinkPathPathIndexRoute: typeof RelativeLinkPathPathIndexRoute
+}
+
+const RelativeLinkRouteRouteChildren: RelativeLinkRouteRouteChildren = {
+  RelativeLinkRelativeLinkARoute: RelativeLinkRelativeLinkARoute,
+  RelativeLinkRelativeLinkBRoute: RelativeLinkRelativeLinkBRoute,
+  RelativeLinkNestedIndexRoute: RelativeLinkNestedIndexRoute,
+  RelativeLinkPathIndexRoute: RelativeLinkPathIndexRoute,
+  RelativeLinkWithSearchIndexRoute: RelativeLinkWithSearchIndexRoute,
+  RelativeLinkNestedDeepIndexRoute: RelativeLinkNestedDeepIndexRoute,
+  RelativeLinkPathPathIndexRoute: RelativeLinkPathPathIndexRoute,
+}
+
+const RelativeLinkRouteRouteWithChildren =
+  RelativeLinkRouteRoute._addFileChildren(RelativeLinkRouteRouteChildren)
+
+interface RelativeUseNavigateRouteRouteChildren {
+  RelativeUseNavigateRelativeUseNavigateARoute: typeof RelativeUseNavigateRelativeUseNavigateARoute
+  RelativeUseNavigateRelativeUseNavigateBRoute: typeof RelativeUseNavigateRelativeUseNavigateBRoute
+  RelativeUseNavigateNestedIndexRoute: typeof RelativeUseNavigateNestedIndexRoute
+  RelativeUseNavigatePathIndexRoute: typeof RelativeUseNavigatePathIndexRoute
+  RelativeUseNavigateWithSearchIndexRoute: typeof RelativeUseNavigateWithSearchIndexRoute
+  RelativeUseNavigateNestedDeepIndexRoute: typeof RelativeUseNavigateNestedDeepIndexRoute
+  RelativeUseNavigatePathPathIndexRoute: typeof RelativeUseNavigatePathPathIndexRoute
+}
+
+const RelativeUseNavigateRouteRouteChildren: RelativeUseNavigateRouteRouteChildren =
+  {
+    RelativeUseNavigateRelativeUseNavigateARoute:
+      RelativeUseNavigateRelativeUseNavigateARoute,
+    RelativeUseNavigateRelativeUseNavigateBRoute:
+      RelativeUseNavigateRelativeUseNavigateBRoute,
+    RelativeUseNavigateNestedIndexRoute: RelativeUseNavigateNestedIndexRoute,
+    RelativeUseNavigatePathIndexRoute: RelativeUseNavigatePathIndexRoute,
+    RelativeUseNavigateWithSearchIndexRoute:
+      RelativeUseNavigateWithSearchIndexRoute,
+    RelativeUseNavigateNestedDeepIndexRoute:
+      RelativeUseNavigateNestedDeepIndexRoute,
+    RelativeUseNavigatePathPathIndexRoute:
+      RelativeUseNavigatePathPathIndexRoute,
+  }
+
+const RelativeUseNavigateRouteRouteWithChildren =
+  RelativeUseNavigateRouteRoute._addFileChildren(
+    RelativeUseNavigateRouteRouteChildren,
+  )
 
 interface groupLayoutRouteChildren {
   groupLayoutInsidelayoutRoute: typeof groupLayoutInsidelayoutRoute
@@ -501,363 +1168,30 @@ const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
   RedirectTargetRouteChildren,
 )
 
-export interface FileRoutesByFullPath {
-  '/': typeof groupLayoutRouteWithChildren
-  '': typeof LayoutLayout2RouteWithChildren
-  '/anchor': typeof AnchorRoute
-  '/editing-a': typeof EditingARoute
-  '/editing-b': typeof EditingBRoute
-  '/posts': typeof PostsRouteWithChildren
-  '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
-  '/inside': typeof groupInsideRoute
-  '/lazyinside': typeof groupLazyinsideRoute
-  '/posts/$postId': typeof PostsPostIdRoute
-  '/redirect/$target': typeof RedirectTargetRouteWithChildren
-  '/posts/': typeof PostsIndexRoute
-  '/redirect': typeof RedirectIndexRoute
-  '/insidelayout': typeof groupLayoutInsidelayoutRoute
-  '/subfolder/inside': typeof groupSubfolderInsideRoute
-  '/layout-a': typeof LayoutLayout2LayoutARoute
-  '/layout-b': typeof LayoutLayout2LayoutBRoute
-  '/params/single/$value': typeof ParamsSingleValueRoute
-  '/posts/$postId/edit': typeof PostsPostIdEditRoute
-  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
-  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
-  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
-  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
-  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
-  '/redirect/$target/': typeof RedirectTargetIndexRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof groupLayoutRouteWithChildren
-  '': typeof LayoutLayout2RouteWithChildren
-  '/anchor': typeof AnchorRoute
-  '/editing-a': typeof EditingARoute
-  '/editing-b': typeof EditingBRoute
-  '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
-  '/inside': typeof groupInsideRoute
-  '/lazyinside': typeof groupLazyinsideRoute
-  '/posts/$postId': typeof PostsPostIdRoute
-  '/posts': typeof PostsIndexRoute
-  '/redirect': typeof RedirectIndexRoute
-  '/insidelayout': typeof groupLayoutInsidelayoutRoute
-  '/subfolder/inside': typeof groupSubfolderInsideRoute
-  '/layout-a': typeof LayoutLayout2LayoutARoute
-  '/layout-b': typeof LayoutLayout2LayoutBRoute
-  '/params/single/$value': typeof ParamsSingleValueRoute
-  '/posts/$postId/edit': typeof PostsPostIdEditRoute
-  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
-  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
-  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
-  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
-  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
-  '/redirect/$target': typeof RedirectTargetIndexRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexRoute
-  '/_layout': typeof LayoutRouteWithChildren
-  '/anchor': typeof AnchorRoute
-  '/editing-a': typeof EditingARoute
-  '/editing-b': typeof EditingBRoute
-  '/posts': typeof PostsRouteWithChildren
-  '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
-  '/(group)': typeof groupRouteWithChildren
-  '/(group)/_layout': typeof groupLayoutRouteWithChildren
-  '/(group)/inside': typeof groupInsideRoute
-  '/(group)/lazyinside': typeof groupLazyinsideRoute
-  '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
-  '/posts/$postId': typeof PostsPostIdRoute
-  '/redirect/$target': typeof RedirectTargetRouteWithChildren
-  '/posts/': typeof PostsIndexRoute
-  '/redirect/': typeof RedirectIndexRoute
-  '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
-  '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
-  '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
-  '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
-  '/params/single/$value': typeof ParamsSingleValueRoute
-  '/posts_/$postId/edit': typeof PostsPostIdEditRoute
-  '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
-  '/redirect/$target/via-loader': typeof RedirectTargetViaLoaderRoute
-  '/redirect/preload/first': typeof RedirectPreloadFirstRoute
-  '/redirect/preload/second': typeof RedirectPreloadSecondRoute
-  '/redirect/preload/third': typeof RedirectPreloadThirdRoute
-  '/redirect/$target/': typeof RedirectTargetIndexRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | ''
-    | '/anchor'
-    | '/editing-a'
-    | '/editing-b'
-    | '/posts'
-    | '/onlyrouteinside'
-    | '/inside'
-    | '/lazyinside'
-    | '/posts/$postId'
-    | '/redirect/$target'
-    | '/posts/'
-    | '/redirect'
-    | '/insidelayout'
-    | '/subfolder/inside'
-    | '/layout-a'
-    | '/layout-b'
-    | '/params/single/$value'
-    | '/posts/$postId/edit'
-    | '/redirect/$target/via-beforeLoad'
-    | '/redirect/$target/via-loader'
-    | '/redirect/preload/first'
-    | '/redirect/preload/second'
-    | '/redirect/preload/third'
-    | '/redirect/$target/'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | ''
-    | '/anchor'
-    | '/editing-a'
-    | '/editing-b'
-    | '/onlyrouteinside'
-    | '/inside'
-    | '/lazyinside'
-    | '/posts/$postId'
-    | '/posts'
-    | '/redirect'
-    | '/insidelayout'
-    | '/subfolder/inside'
-    | '/layout-a'
-    | '/layout-b'
-    | '/params/single/$value'
-    | '/posts/$postId/edit'
-    | '/redirect/$target/via-beforeLoad'
-    | '/redirect/$target/via-loader'
-    | '/redirect/preload/first'
-    | '/redirect/preload/second'
-    | '/redirect/preload/third'
-    | '/redirect/$target'
-  id:
-    | '__root__'
-    | '/'
-    | '/_layout'
-    | '/anchor'
-    | '/editing-a'
-    | '/editing-b'
-    | '/posts'
-    | '/(another-group)/onlyrouteinside'
-    | '/(group)'
-    | '/(group)/_layout'
-    | '/(group)/inside'
-    | '/(group)/lazyinside'
-    | '/_layout/_layout-2'
-    | '/posts/$postId'
-    | '/redirect/$target'
-    | '/posts/'
-    | '/redirect/'
-    | '/(group)/_layout/insidelayout'
-    | '/(group)/subfolder/inside'
-    | '/_layout/_layout-2/layout-a'
-    | '/_layout/_layout-2/layout-b'
-    | '/params/single/$value'
-    | '/posts_/$postId/edit'
-    | '/redirect/$target/via-beforeLoad'
-    | '/redirect/$target/via-loader'
-    | '/redirect/preload/first'
-    | '/redirect/preload/second'
-    | '/redirect/preload/third'
-    | '/redirect/$target/'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  LayoutRoute: typeof LayoutRouteWithChildren
-  AnchorRoute: typeof AnchorRoute
-  EditingARoute: typeof EditingARoute
-  EditingBRoute: typeof EditingBRoute
-  PostsRoute: typeof PostsRouteWithChildren
-  anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
-  groupRoute: typeof groupRouteWithChildren
-  RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
-  RedirectIndexRoute: typeof RedirectIndexRoute
-  ParamsSingleValueRoute: typeof ParamsSingleValueRoute
-  PostsPostIdEditRoute: typeof PostsPostIdEditRoute
-  RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
-  RedirectPreloadSecondRoute: typeof RedirectPreloadSecondRoute
-  RedirectPreloadThirdRoute: typeof RedirectPreloadThirdRoute
-}
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
+  ComponentTypesTestRoute: ComponentTypesTestRoute,
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
+  NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
+  RemountDepsRoute: RemountDepsRoute,
+  RelativeLinkRouteRoute: RelativeLinkRouteRouteWithChildren,
+  RelativeUseNavigateRouteRoute: RelativeUseNavigateRouteRouteWithChildren,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
   groupRoute: groupRouteWithChildren,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   RedirectIndexRoute: RedirectIndexRoute,
+  RelativeIndexRoute: RelativeIndexRoute,
   ParamsSingleValueRoute: ParamsSingleValueRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
   RedirectPreloadFirstRoute: RedirectPreloadFirstRoute,
   RedirectPreloadSecondRoute: RedirectPreloadSecondRoute,
   RedirectPreloadThirdRoute: RedirectPreloadThirdRoute,
 }
-
-export const routeTree = rootRoute
+export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-/* ROUTE_MANIFEST_START
-{
-  "routes": {
-    "__root__": {
-      "filePath": "__root.tsx",
-      "children": [
-        "/",
-        "/_layout",
-        "/anchor",
-        "/editing-a",
-        "/editing-b",
-        "/posts",
-        "/(another-group)/onlyrouteinside",
-        "/(group)",
-        "/redirect/$target",
-        "/redirect/",
-        "/params/single/$value",
-        "/posts_/$postId/edit",
-        "/redirect/preload/first",
-        "/redirect/preload/second",
-        "/redirect/preload/third"
-      ]
-    },
-    "/": {
-      "filePath": "index.tsx"
-    },
-    "/_layout": {
-      "filePath": "_layout.tsx",
-      "children": [
-        "/_layout/_layout-2"
-      ]
-    },
-    "/anchor": {
-      "filePath": "anchor.tsx"
-    },
-    "/editing-a": {
-      "filePath": "editing-a.tsx"
-    },
-    "/editing-b": {
-      "filePath": "editing-b.tsx"
-    },
-    "/posts": {
-      "filePath": "posts.tsx",
-      "children": [
-        "/posts/$postId",
-        "/posts/"
-      ]
-    },
-    "/(another-group)/onlyrouteinside": {
-      "filePath": "(another-group)/onlyrouteinside.tsx"
-    },
-    "/(group)": {
-      "filePath": "(group)",
-      "children": [
-        "/(group)/_layout",
-        "/(group)/inside",
-        "/(group)/lazyinside",
-        "/(group)/subfolder/inside"
-      ]
-    },
-    "/(group)/_layout": {
-      "filePath": "(group)/_layout.tsx",
-      "parent": "/(group)",
-      "children": [
-        "/(group)/_layout/insidelayout"
-      ]
-    },
-    "/(group)/inside": {
-      "filePath": "(group)/inside.tsx",
-      "parent": "/(group)"
-    },
-    "/(group)/lazyinside": {
-      "filePath": "(group)/lazyinside.tsx",
-      "parent": "/(group)"
-    },
-    "/_layout/_layout-2": {
-      "filePath": "_layout/_layout-2.tsx",
-      "parent": "/_layout",
-      "children": [
-        "/_layout/_layout-2/layout-a",
-        "/_layout/_layout-2/layout-b"
-      ]
-    },
-    "/posts/$postId": {
-      "filePath": "posts.$postId.tsx",
-      "parent": "/posts"
-    },
-    "/redirect/$target": {
-      "filePath": "redirect/$target.tsx",
-      "children": [
-        "/redirect/$target/via-beforeLoad",
-        "/redirect/$target/via-loader",
-        "/redirect/$target/"
-      ]
-    },
-    "/posts/": {
-      "filePath": "posts.index.tsx",
-      "parent": "/posts"
-    },
-    "/redirect/": {
-      "filePath": "redirect/index.tsx"
-    },
-    "/(group)/_layout/insidelayout": {
-      "filePath": "(group)/_layout.insidelayout.tsx",
-      "parent": "/(group)/_layout"
-    },
-    "/(group)/subfolder/inside": {
-      "filePath": "(group)/subfolder/inside.tsx",
-      "parent": "/(group)"
-    },
-    "/_layout/_layout-2/layout-a": {
-      "filePath": "_layout/_layout-2/layout-a.tsx",
-      "parent": "/_layout/_layout-2"
-    },
-    "/_layout/_layout-2/layout-b": {
-      "filePath": "_layout/_layout-2/layout-b.tsx",
-      "parent": "/_layout/_layout-2"
-    },
-    "/params/single/$value": {
-      "filePath": "params.single.$value.tsx"
-    },
-    "/posts_/$postId/edit": {
-      "filePath": "posts_.$postId.edit.tsx"
-    },
-    "/redirect/$target/via-beforeLoad": {
-      "filePath": "redirect/$target/via-beforeLoad.tsx",
-      "parent": "/redirect/$target"
-    },
-    "/redirect/$target/via-loader": {
-      "filePath": "redirect/$target/via-loader.tsx",
-      "parent": "/redirect/$target"
-    },
-    "/redirect/preload/first": {
-      "filePath": "redirect/preload/first.tsx"
-    },
-    "/redirect/preload/second": {
-      "filePath": "redirect/preload/second.tsx"
-    },
-    "/redirect/preload/third": {
-      "filePath": "redirect/preload/third.tsx"
-    },
-    "/redirect/$target/": {
-      "filePath": "redirect/$target/index.tsx",
-      "parent": "/redirect/$target"
-    }
-  }
-}
-ROUTE_MANIFEST_END */

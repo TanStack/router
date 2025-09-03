@@ -1,3 +1,4 @@
+import invariant from 'tiny-invariant'
 import { joinPaths, trimPathLeft } from './path'
 import { notFound } from './not-found'
 import { rootRouteId } from './root'
@@ -7,6 +8,7 @@ import type { NavigateOptions, ParsePathParams } from './link'
 import type { ParsedLocation } from './location'
 import type {
   AnyRouteMatch,
+  MakePreValidationErrorHandlingRouteMatchUnion,
   MakeRouteMatchFromRoute,
   MakeRouteMatchUnion,
   RouteMatch,
@@ -17,9 +19,12 @@ import type { AnyRouter, RegisteredRouter } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
   Assign,
+  Awaitable,
   Constrain,
   Expand,
   IntersectAssign,
+  LooseAsyncReturnType,
+  LooseReturnType,
   NoInfer,
 } from './utils'
 import type {
@@ -150,27 +155,24 @@ export type ResolveSearchSchema<TSearchValidator> =
           ? ResolveSearchSchemaFn<TSearchValidator['parse']>
           : ResolveSearchSchemaFn<TSearchValidator>
 
-export type ParseSplatParams<TPath extends string> = TPath &
-  `${string}$` extends never
-  ? TPath & `${string}$/${string}` extends never
-    ? never
-    : '_splat'
-  : '_splat'
-
-export interface SplatParams {
-  _splat?: string
+export type ResolveRequiredParams<TPath extends string, T> = {
+  [K in ParsePathParams<TPath>['required']]: T
 }
 
-export type ResolveParams<TPath extends string> =
-  ParseSplatParams<TPath> extends never
-    ? Record<ParsePathParams<TPath>, string>
-    : Record<ParsePathParams<TPath>, string> & SplatParams
+export type ResolveOptionalParams<TPath extends string, T> = {
+  [K in ParsePathParams<TPath>['optional']]?: T
+}
+
+export type ResolveParams<
+  TPath extends string,
+  T = string,
+> = ResolveRequiredParams<TPath, T> & ResolveOptionalParams<TPath, T>
 
 export type ParseParamsFn<in out TPath extends string, in out TParams> = (
-  rawParams: ResolveParams<TPath>,
-) => TParams extends Record<ParsePathParams<TPath>, any>
+  rawParams: Expand<ResolveParams<TPath>>,
+) => TParams extends ResolveParams<TPath, any>
   ? TParams
-  : Record<ParsePathParams<TPath>, any>
+  : ResolveParams<TPath, any>
 
 export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
@@ -269,20 +271,6 @@ export type TrimPathRight<T extends string> = T extends '/'
   : T extends `${infer U}/`
     ? TrimPathRight<U>
     : T
-
-export type LooseReturnType<T> = T extends (
-  ...args: Array<any>
-) => infer TReturn
-  ? TReturn
-  : never
-
-export type LooseAsyncReturnType<T> = T extends (
-  ...args: Array<any>
-) => infer TReturn
-  ? TReturn extends Promise<infer TReturn>
-    ? TReturn
-    : TReturn
-  : never
 
 export type ContextReturnType<TContextFn> = unknown extends TContextFn
   ? TContextFn
@@ -442,10 +430,13 @@ export type ResolveFullPath<
   TPrefixed = RoutePrefix<TParentRoute['fullPath'], TPath>,
 > = TPrefixed extends RootRouteId ? '/' : TPrefixed
 
-export interface RouteExtensions<TId, TFullPath> {}
+export interface RouteExtensions<in out TId, in out TFullPath> {
+  id: TId
+  fullPath: TFullPath
+}
 
 export type RouteLazyFn<TRoute extends AnyRoute> = (
-  lazyFn: () => Promise<LazyRoute>,
+  lazyFn: () => Promise<LazyRoute<TRoute>>,
 ) => TRoute
 
 export type RouteAddChildrenFn<
@@ -564,9 +555,7 @@ export interface Route<
   in out TChildren,
   in out TFileRouteTypes,
 > extends RouteExtensions<TId, TFullPath> {
-  fullPath: TFullPath
   path: TPath
-  id: TId
   parentRoute: TParentRoute
   children?: TChildren
   types: RouteTypes<
@@ -600,12 +589,37 @@ export interface Route<
     TBeforeLoadFn
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
-  _componentsPromise?: Promise<Array<void>>
-  lazyFn?: () => Promise<LazyRoute>
+  /** @internal */
+  _componentsPromise?: Promise<void>
+  /** @internal */
+  _componentsLoaded?: boolean
+  lazyFn?: () => Promise<
+    LazyRoute<
+      Route<
+        TParentRoute,
+        TPath,
+        TFullPath,
+        TCustomId,
+        TId,
+        TSearchValidator,
+        TParams,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn,
+        TLoaderDeps,
+        TLoaderFn,
+        TChildren,
+        TFileRouteTypes
+      >
+    >
+  >
+  /** @internal */
   _lazyPromise?: Promise<void>
+  /** @internal */
+  _lazyLoaded?: boolean
   rank: number
   to: TrimPathRight<TFullPath>
-  init: (opts: { originalIndex: number; defaultSsr?: boolean }) => void
+  init: (opts: { originalIndex: number }) => void
   update: (
     options: UpdatableRouteOptions<
       TParentRoute,
@@ -620,7 +634,24 @@ export interface Route<
       TBeforeLoadFn
     >,
   ) => this
-  lazy: RouteLazyFn<this>
+  lazy: RouteLazyFn<
+    Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+  >
   addChildren: RouteAddChildrenFn<
     TParentRoute,
     TPath,
@@ -799,6 +830,14 @@ export type FileBaseRouteOptions<
     ) => any
   >
 
+  ssr?:
+    | undefined
+    | boolean
+    | 'data-only'
+    | ((
+        ctx: SsrContextOptions<TParentRoute, TSearchValidator, TParams>,
+      ) => Awaitable<undefined | boolean | 'data-only'>)
+
   // This async function is called before a route is loaded.
   // If an error is thrown here, the route's loader will not be called.
   // If thrown during a navigation, the navigation will be cancelled and the error will be passed to the `onError` function.
@@ -903,6 +942,27 @@ export interface RouteContextOptions<
   context: Expand<RouteContextParameter<TParentRoute, TRouterContext>>
 }
 
+export interface SsrContextOptions<
+  in out TParentRoute extends AnyRoute,
+  in out TSearchValidator,
+  in out TParams,
+> {
+  params:
+    | {
+        status: 'success'
+        value: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
+      }
+    | { status: 'error'; error: unknown }
+  search:
+    | {
+        status: 'success'
+        value: Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
+      }
+    | { status: 'error'; error: unknown }
+  location: ParsedLocation
+  matches: Array<MakePreValidationErrorHandlingRouteMatchUnion>
+}
+
 export interface BeforeLoadContextOptions<
   in out TParentRoute extends AnyRoute,
   in out TSearchValidator,
@@ -959,7 +1019,7 @@ type AssetFnContextOptions<
     TLoaderDeps
   >
   params: ResolveAllParamsFromParent<TParentRoute, TParams>
-  loaderData: ResolveLoaderData<TLoaderFn>
+  loaderData?: ResolveLoaderData<TLoaderFn>
 }
 
 export interface DefaultUpdatableRouteOptionsExtensions {
@@ -1069,9 +1129,20 @@ export interface UpdatableRouteOptions<
       TLoaderDeps
     >,
   ) => void
-  headers?: (ctx: {
-    loaderData: ResolveLoaderData<TLoaderFn>
-  }) => Record<string, string>
+  headers?: (
+    ctx: AssetFnContextOptions<
+      TRouteId,
+      TFullPath,
+      TParentRoute,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps
+    >,
+  ) => Awaitable<Record<string, string>>
   head?: (
     ctx: AssetFnContextOptions<
       TRouteId,
@@ -1085,11 +1156,12 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => {
+  ) => Awaitable<{
     links?: AnyRouteMatch['links']
     scripts?: AnyRouteMatch['headScripts']
     meta?: AnyRouteMatch['meta']
-  }
+    styles?: AnyRouteMatch['styles']
+  }>
   scripts?: (
     ctx: AssetFnContextOptions<
       TRouteId,
@@ -1103,8 +1175,7 @@ export interface UpdatableRouteOptions<
       TBeforeLoadFn,
       TLoaderDeps
     >,
-  ) => AnyRouteMatch['scripts']
-  ssr?: boolean
+  ) => Awaitable<AnyRouteMatch['scripts']>
   codeSplitGroupings?: Array<
     Array<
       | 'loader'
@@ -1170,6 +1241,13 @@ export interface LoaderFnContext<
   route: AnyRoute
 }
 
+export interface DefaultRootRouteOptionsExtensions {
+  shellComponent?: unknown
+}
+
+export interface RootRouteOptionsExtensions
+  extends DefaultRootRouteOptionsExtensions {}
+
 export type RootRouteOptions<
   TSearchValidator = undefined,
   TRouterContext = {},
@@ -1199,7 +1277,8 @@ export type RootRouteOptions<
   | 'parseParams'
   | 'stringifyParams'
   | 'params'
->
+> &
+  RootRouteOptionsExtensions
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute
@@ -1244,8 +1323,8 @@ export type ErrorRouteProps = {
   reset: () => void
 }
 
-export type ErrorComponentProps = {
-  error: Error
+export type ErrorComponentProps<TError = Error> = {
+  error: TError
   info?: { componentStack: string }
   reset: () => void
 }
@@ -1269,24 +1348,7 @@ export class BaseRoute<
   in out TLoaderFn = undefined,
   in out TChildren = unknown,
   in out TFileRouteTypes = unknown,
-> implements
-    Route<
-      TParentRoute,
-      TPath,
-      TFullPath,
-      TCustomId,
-      TId,
-      TSearchValidator,
-      TParams,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      TLoaderDeps,
-      TLoaderFn,
-      TChildren,
-      TFileRouteTypes
-    >
-{
+> {
   isRoot: TParentRoute extends AnyRoute ? true : false
   options: RouteOptions<
     TParentRoute,
@@ -1309,7 +1371,6 @@ export class BaseRoute<
   private _path!: TPath
   private _fullPath!: TFullPath
   private _to!: TrimPathRight<TFullPath>
-  private _ssr!: boolean
 
   public get to() {
     return this._to
@@ -1327,17 +1388,34 @@ export class BaseRoute<
     return this._fullPath
   }
 
-  public get ssr() {
-    return this._ssr
-  }
-
   // Optional
   children?: TChildren
   originalIndex?: number
   rank!: number
-  lazyFn?: () => Promise<LazyRoute>
+  lazyFn?: () => Promise<
+    LazyRoute<
+      Route<
+        TParentRoute,
+        TPath,
+        TFullPath,
+        TCustomId,
+        TId,
+        TSearchValidator,
+        TParams,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn,
+        TLoaderDeps,
+        TLoaderFn,
+        TChildren,
+        TFileRouteTypes
+      >
+    >
+  >
+  /** @internal */
   _lazyPromise?: Promise<void>
-  _componentsPromise?: Promise<Array<void>>
+  /** @internal */
+  _componentsPromise?: Promise<void>
 
   constructor(
     options?: RouteOptions<
@@ -1380,7 +1458,7 @@ export class BaseRoute<
     TFileRouteTypes
   >
 
-  init = (opts: { originalIndex: number; defaultSsr?: boolean }): void => {
+  init = (opts: { originalIndex: number }): void => {
     this.originalIndex = opts.originalIndex
 
     const options = this.options as
@@ -1408,7 +1486,8 @@ export class BaseRoute<
     if (isRoot) {
       this._path = rootRouteId as TPath
     } else if (!this.parentRoute) {
-      throw new Error(
+      invariant(
+        false,
         `Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
       )
     }
@@ -1445,7 +1524,15 @@ export class BaseRoute<
     this._id = id as TId
     this._fullPath = fullPath as TFullPath
     this._to = fullPath as TrimPathRight<TFullPath>
-    this._ssr = options?.ssr ?? opts.defaultSsr ?? true
+  }
+
+  clone = (other: typeof this) => {
+    this._path = other._path
+    this._id = other._id
+    this._fullPath = other._fullPath
+    this._to = other._to
+    this.options.getParentRoute = other.options.getParentRoute
+    this.children = other.children
   }
 
   addChildren: RouteAddChildrenFn<
@@ -1561,7 +1648,24 @@ export class BaseRoute<
     return this
   }
 
-  lazy: RouteLazyFn<this> = (lazyFn) => {
+  lazy: RouteLazyFn<
+    Route<
+      TParentRoute,
+      TPath,
+      TFullPath,
+      TCustomId,
+      TId,
+      TSearchValidator,
+      TParams,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TLoaderDeps,
+      TLoaderFn,
+      TChildren,
+      TFileRouteTypes
+    >
+  > = (lazyFn) => {
     this.lazyFn = lazyFn
     return this
   }
@@ -1578,6 +1682,32 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
     return notFound({ routeId: this.id as string, ...opts })
   }
 }
+
+export interface RootRoute<
+  in out TSearchValidator = undefined,
+  in out TRouterContext = {},
+  in out TRouteContextFn = AnyContext,
+  in out TBeforeLoadFn = AnyContext,
+  in out TLoaderDeps extends Record<string, any> = {},
+  in out TLoaderFn = undefined,
+  in out TChildren = unknown,
+  in out TFileRouteTypes = unknown,
+> extends Route<
+    any, // TParentRoute
+    '/', // TPath
+    '/', // TFullPath
+    string, // TCustomId
+    RootRouteId, // TId
+    TSearchValidator, // TSearchValidator
+    {}, // TParams
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren, // TChildren
+    TFileRouteTypes
+  > {}
 
 export class BaseRootRoute<
   in out TSearchValidator = undefined,

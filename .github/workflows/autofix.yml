@@ -16,6 +16,7 @@ jobs:
   autofix:
     name: autofix
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || !github.event.pull_request.draft }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -23,7 +24,9 @@ jobs:
         uses: tanstack/config/.github/setup@main
       - name: Fix formatting
         run: pnpm prettier:write
+      - name: Generate labeler config
+        run: pnpm labeler-generate
       - name: Apply fixes
-        uses: autofix-ci/action@551dded8c6cc8a1054039c8bc0b8b48c51dfc6ef
+        uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27
         with:
           commit-message: 'ci: apply automated fixes'

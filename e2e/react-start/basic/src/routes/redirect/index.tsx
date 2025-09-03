@@ -1,6 +1,6 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/redirect/')({
+export const Route = createFileRoute({
   component: () => (
     <div>
       <Link

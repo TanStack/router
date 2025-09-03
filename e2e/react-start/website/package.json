@@ -1,14 +1,14 @@
 {
-  "name": "tanstack-start-e2e-website",
+  "name": "tanstack-react-start-e2e-website",
   "private": true,
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vinxi dev --port 3000",
-    "dev:e2e": "vinxi dev",
-    "build": "vinxi build && tsc --noEmit",
-    "start": "vinxi start",
-    "test:e2e": "playwright test --project=chromium"
+    "dev": "vite dev --port 3000",
+    "dev:e2e": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "start": "node .output/server/index.mjs",
+    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -18,7 +18,6 @@
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
-    "vinxi": "0.5.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -28,10 +27,11 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
-    "postcss": "^8.5.1",
     "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
+    "vite": "^6.3.5",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

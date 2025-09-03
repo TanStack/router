@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { deepEqual, isPlainArray, replaceEqualDeep } from '../src/utils'
 
 describe('replaceEqualDeep', () => {
@@ -27,6 +27,44 @@ describe('replaceEqualDeep', () => {
     const obj2 = { a: 1, b: { c: 3 } }
     const result = replaceEqualDeep(obj1, obj2)
     expect(result).toStrictEqual(obj2)
+  })
+
+  describe('symbol properties', () => {
+    it('should look at symbol properties in the object comparison', () => {
+      const propertyKey = Symbol('property')
+      const obj1 = { a: 1, [propertyKey]: 2 }
+      const obj2 = { a: 1, [propertyKey]: 3 }
+      const result = replaceEqualDeep(obj1, obj2)
+      expect(result).toStrictEqual(obj2)
+    })
+
+    it('should copy over symbol properties when creating a new object', () => {
+      const propertyKey = Symbol('property')
+      const obj1 = { a: 1, [propertyKey]: 2 }
+      const obj2 = { a: 3, [propertyKey]: 2 }
+      const result = replaceEqualDeep(obj1, obj2)
+      expect(result).toStrictEqual(obj2)
+    })
+  })
+
+  describe('non-enumerable properties', () => {
+    it('should treat objects with non-enumerable properties as non-plain (no need for property comparisons)', () => {
+      const obj1: { a: number; b?: number } = { a: 1 }
+      Object.defineProperty(obj1, 'b', { enumerable: false, value: 2 })
+      const obj2: { a: number; b?: number } = { a: 1 }
+      Object.defineProperty(obj2, 'b', { enumerable: false, value: 3 })
+      const result = replaceEqualDeep(obj1, obj2)
+      expect(result).toBe(obj2)
+    })
+
+    it("should treat objects with non-enumerable properties as non-plain (copying doesn't happen)", () => {
+      const obj1: { a: number; b?: number } = { a: 1 }
+      Object.defineProperty(obj1, 'b', { enumerable: false, value: 2 })
+      const obj2: { a: number; b?: number } = { a: 3 }
+      Object.defineProperty(obj2, 'b', { enumerable: false, value: 2 })
+      const result = replaceEqualDeep(obj1, obj2)
+      expect(result).toBe(obj2)
+    })
   })
 
   it('should properly handle non-existent keys', () => {
@@ -394,6 +432,51 @@ describe('deepEqual', () => {
       const b = { a: { b: 'b' }, c: 'c', d: undefined }
       expect(deepEqual(a, b, { partial: true })).toEqual(true)
       expect(deepEqual(b, a, { partial: true })).toEqual(false)
+    })
+  })
+
+  // This might not be what we want, but this test documents how things are now
+  describe('symbol and non-enumerable properties are not handled', () => {
+    it.fails(
+      'should return `false` for unequal objects with symbol properties',
+      () => {
+        const key = Symbol('foo')
+        const a = { [key]: 1 }
+        const b = { [key]: 2 }
+        expect(deepEqual(a, b)).toEqual(false)
+      },
+    )
+
+    it.fails(
+      'should return `false` for unequal objects with non-enumerable properties',
+      () => {
+        const a = {}
+        Object.defineProperty(a, 'prop', { value: 1, enumerable: false })
+        const b = {}
+        Object.defineProperty(b, 'prop', { value: 2, enumerable: false })
+        expect(deepEqual(a, b)).toEqual(false)
+      },
+    )
+  })
+
+  // We voluntarily fail in this case, because users should not do it, and ignoring it enables some performance improvements
+  describe('augmented object prototype fail case (no one should do this anyway)', () => {
+    it.fails(
+      'should not compare objects with augmented prototype properties',
+      () => {
+        // @ts-expect-error -- typescript is right to complain here, don't do this!
+        Object.prototype.x = 'x'
+        const a = { a: 1 }
+        const b = { a: 1 }
+        expect(deepEqual(a, b, { ignoreUndefined: false })).toEqual(true)
+      },
+    )
+
+    afterEach(() => {
+      // it's probably not necessary to clean this up because vitest isolates tests
+      // but just in case isolation ever gets disabled, we clean the prototype to avoid disturbing other tests
+      // @ts-expect-error
+      delete Object.prototype.x
     })
   })
 })

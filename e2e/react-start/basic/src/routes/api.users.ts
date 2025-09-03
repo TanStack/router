@@ -1,15 +1,18 @@
-import { json } from '@tanstack/start'
-import { createAPIFileRoute } from '@tanstack/start/api'
+import { json } from '@tanstack/react-start'
 import axios from 'redaxios'
 
 import type { User } from '~/utils/users'
 
-export const APIRoute = createAPIFileRoute('/api/users')({
+let queryURL = 'https://jsonplaceholder.typicode.com'
+
+if (import.meta.env.VITE_NODE_ENV === 'test') {
+  queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
+}
+
+export const ServerRoute = createServerFileRoute().methods({
   GET: async ({ request }) => {
     console.info('Fetching users... @', request.url)
-    const res = await axios.get<Array<User>>(
-      'https://jsonplaceholder.typicode.com/users',
-    )
+    const res = await axios.get<Array<User>>(`${queryURL}/users`)
 
     const list = res.data.slice(0, 10)
 

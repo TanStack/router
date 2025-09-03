@@ -3,9 +3,10 @@ import {
   isNotFound,
   isPlainObject,
   isRedirect,
+  parseRedirect,
 } from '@tanstack/router-core'
 import { startSerializer } from '@tanstack/start-client-core'
-import type { MiddlewareClientFnOptions } from '@tanstack/start-client-core'
+import type { FunctionMiddlewareClientFnOptions } from '@tanstack/start-client-core'
 
 export async function serverFnFetcher(
   url: string,
@@ -17,13 +18,19 @@ export async function serverFnFetcher(
   // If createServerFn was used to wrap the fetcher,
   // We need to handle the arguments differently
   if (isPlainObject(_first) && _first.method) {
-    const first = _first as MiddlewareClientFnOptions<any, any, any> & {
+    const first = _first as FunctionMiddlewareClientFnOptions<
+      any,
+      any,
+      any,
+      any
+    > & {
       headers: HeadersInit
     }
     const type = first.data instanceof FormData ? 'formData' : 'payload'
 
     // Arrange the headers
     const headers = new Headers({
+      'x-tsr-redirect': 'manual',
       ...(type === 'payload'
         ? {
             'content-type': 'application/json',
@@ -63,62 +70,34 @@ export async function serverFnFetcher(
       url += `&raw`
     }
 
-    const handlerResponse = await handler(url, {
-      method: first.method,
-      headers,
-      signal: first.signal,
-      ...getFetcherRequestOptions(first),
-    })
-
-    const response = await handleResponseErrors(handlerResponse)
-
-    // Check if the response is JSON
-    if (response.headers.get('content-type')?.includes('application/json')) {
-      // Even though the response is JSON, we need to decode it
-      // because the server may have transformed it
-      const json = startSerializer.decode(await response.json())
-
-      // If the response is a redirect or not found, throw it
-      // for the router to handle
-      if (isRedirect(json) || isNotFound(json) || json instanceof Error) {
-        throw json
-      }
-
-      return json
-    }
-
-    // Must be a raw response
-    return response
+    return await getResponse(() =>
+      handler(url, {
+        method: first.method,
+        headers,
+        signal: first.signal,
+        ...getFetcherRequestOptions(first),
+      }),
+    )
   }
 
   // If not a custom fetcher, it was probably
   // a `use server` function, so just proxy the arguments
   // through as a POST request
-  const response = await handleResponseErrors(
-    await handler(url, {
+  return await getResponse(() =>
+    handler(url, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(args),
+      redirect: 'manual',
     }),
   )
-
-  // If the response is JSON, return it parsed
-  const contentType = response.headers.get('content-type')
-  if (contentType && contentType.includes('application/json')) {
-    return startSerializer.decode(await response.json())
-  } else {
-    // Otherwise, return the text as a fallback
-    // If the user wants more than this, they can pass a
-    // request instead
-    return response.text()
-  }
 }
 
 function getFetcherRequestOptions(
-  opts: MiddlewareClientFnOptions<any, any, any>,
+  opts: FunctionMiddlewareClientFnOptions<any, any, any, any>,
 ) {
   if (opts.method === 'POST') {
     if (opts.data instanceof FormData) {
@@ -139,16 +118,57 @@ function getFetcherRequestOptions(
   return {}
 }
 
-async function handleResponseErrors(response: Response) {
+/**
+ * Retrieves a response from a given function and manages potential errors
+ * and special response types including redirects and not found errors.
+ *
+ * @param fn - The function to execute for obtaining the response.
+ * @returns The processed response from the function.
+ * @throws If the response is invalid or an error occurs during processing.
+ */
+async function getResponse(fn: () => Promise<Response>) {
+  const response = await (async () => {
+    try {
+      return await fn()
+    } catch (error) {
+      if (error instanceof Response) {
+        return error
+      }
+
+      throw error
+    }
+  })()
+
+  // If the response is not ok, throw an error
   if (!response.ok) {
     const contentType = response.headers.get('content-type')
     const isJson = contentType && contentType.includes('application/json')
 
     if (isJson) {
+      // If it's JSON, decode it and throw it
       throw startSerializer.decode(await response.json())
     }
 
     throw new Error(await response.text())
+  }
+
+  // Check if the response is JSON
+  if (response.headers.get('content-type')?.includes('application/json')) {
+    // Even though the response is JSON, we need to decode it
+    // because the server may have transformed it
+    let json = startSerializer.decode(await response.json())
+
+    const redirect = parseRedirect(json)
+
+    if (redirect) json = redirect
+
+    // If the response is a redirect or not found, throw it
+    // for the router to handle
+    if (isRedirect(json) || isNotFound(json) || json instanceof Error) {
+      throw json
+    }
+
+    return json
   }
 
   return response

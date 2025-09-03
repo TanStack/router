@@ -10,8 +10,8 @@
     "serve": "vite preview",
     "start": "vite",
     "test:e2e:browser": "VITE_APP_HISTORY=browser playwright test --config=playwright.browser.config.ts --project=chromium",
-    "test:e2e:hash": "exit 0; VITE_APP_HISTORY=hash playwright test --config=playwright.hash.config.ts --project=chromium",
-    "test:e2e": "pnpm run test:e2e:browser && pnpm run test:e2e:hash"
+    "test:e2e:hash": "VITE_APP_HISTORY=hash playwright test --config=playwright.hash.config.ts --project=chromium",
+    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:browser && pnpm run test:e2e:hash"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -32,6 +32,6 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.1.0"
+    "vite": "^6.3.5"
   }
 }

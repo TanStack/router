@@ -14,12 +14,15 @@ Once installed, you'll need to add the plugin to your configuration.
 
 ```tsx
 // esbuild.config.js
-import { TanStackRouterEsbuild } from '@tanstack/router-plugin/esbuild'
+import { tanstackRouter } from '@tanstack/router-plugin/esbuild'
 
 export default {
   // ...
   plugins: [
-    TanStackRouterEsbuild({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
+    }),
   ],
 }
 ```
@@ -74,6 +77,6 @@ When using the TanStack Router Plugin with Esbuild for File-based routing, it co
 }
 ```
 
-If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by editing the configuration object passed into the `TanStackRouterEsbuild` function.
+If these defaults work for your project, you don't need to configure anything at all! However, if you need to customize the configuration, you can do so by editing the configuration object passed into the `tanstackRouter` function.
 
-You can find all the available configuration options in the [File-based Routing API Reference](../../../api/file-based-routing.md).
+You can find all the available configuration options in the [File-based Routing API Reference](../../../../api/file-based-routing.md).

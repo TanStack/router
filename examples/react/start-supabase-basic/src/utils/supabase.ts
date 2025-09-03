@@ -7,7 +7,6 @@ export function getSupabaseServerClient() {
     process.env.SUPABASE_ANON_KEY!,
     {
       cookies: {
-        // @ts-ignore Wait till Supabase overload works
         getAll() {
           return Object.entries(parseCookies()).map(([name, value]) => ({
             name,

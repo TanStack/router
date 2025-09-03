@@ -15,9 +15,9 @@ However, since hosting is one of the most crucial aspects of your application's 
 
 <a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-dark.svg" width="280">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" width="280">
-    <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/netlify-light.svg" width="280">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-dark.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg" width="280">
+    <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg" width="280">
   </picture>
 </a>
 
@@ -31,7 +31,7 @@ Netlify is a leading hosting platform that provides a fast, secure, and reliable
 > [!WARNING]
 > The page is still a work in progress. We'll keep updating this page with guides on deployment to different hosting providers soon!
 
-When a TanStack Start application is being deployed, the `server.preset` value in the `app.config.ts` file determines the deployment target. The deployment target can be set to one of the following values:
+When a TanStack Start application is being deployed, the `target` value in the `vite.config.ts` file determines the deployment target. The deployment target can be set to one of the following values:
 
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
@@ -44,46 +44,32 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 
 ### Netlify
 
-Set the `server.preset` value to `netlify` in your `app.config.ts` file.
+Set the `target` value to `netlify` in your `vite.config.ts` file.
 
 ```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/solid-start/config'
+// vite.config.ts
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    preset: 'netlify',
-  },
+  plugins: [tanstackStart({ target: 'netlify' })],
 })
 ```
 
-Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
-
-```sh
-npm run build --preset netlify
-```
-
-Deploy you application to Netlify using their one-click deployment process, and you're ready to go!
+Deploy your application to Netlify using their one-click deployment process, and you're ready to go!
 
 ### Vercel
 
-Deploying your TanStack Start application to Vercel is easy and straightforward. Just set the `server.preset` value to `vercel` in your `app.config.ts` file, and you're ready to deploy your application to Vercel.
+Deploying your TanStack Start application to Vercel is easy and straightforward. Just set the `target` value to `vercel` in your `vite.config.ts` file, and you're ready to deploy your application to Vercel.
 
 ```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/solid-start/config'
+// vite.config.ts
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    preset: 'vercel',
-  },
+  plugins: [tanstackStart({ target: 'vercel' })],
 })
-```
-
-Or you can use the `--preset` flag with the `build` command to specify the deployment target when building the application:
-
-```sh
-npm run build --preset vercel
 ```
 
 Deploy you application to Vercel using their one-click deployment process, and you're ready to go!
@@ -92,32 +78,21 @@ Deploy you application to Vercel using their one-click deployment process, and y
 
 When deploying to Cloudflare Pages, you'll need to complete a few extra steps before your users can start using your app.
 
-1. Installation
+1. Update `vite.config.ts`
 
-First you will need to install `unenv`
-
-```sh
-npm install unenv
-```
-
-2. Update `app.config.ts`
-
-Set the `server.preset` value to `cloudflare-pages` and the `server.unenv` value to the `cloudflare` from `unenv` in your `app.config.ts` file.
+Set the `target` value to `cloudflare-pages` in your `vite.config.ts` file.
 
 ```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/solid-start/config'
-import { cloudflare } from 'unenv'
+// vite.config.ts
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    preset: 'cloudflare-pages',
-    unenv: cloudflare,
-  },
+  plugins: [tanstackStart({ target: 'cloudflare-module' })],
 })
 ```
 
-3. Add a `wrangler.toml` config file
+2. Add a `wrangler.toml` config file
 
 ```toml
 # wrangler.toml
@@ -131,21 +106,16 @@ Deploy you application to Cloudflare Pages using their one-click deployment proc
 
 ### Node.js
 
-Set the `server.preset` value to `node-server` in your `app.config.ts` file.
+Set the `target` value to `node-server` in your `vite.config.ts` file.
 
 ```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/solid-start/config'
+// vite.config.ts
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    preset: 'node-server',
-  },
+  plugins: [tanstackStart({ target: 'node-server' })],
 })
-
-// Or you can use the --preset flag with the build command
-// to specify the deployment target when building the application:
-// npm run build --preset node-server
 ```
 
 Then you can run the following command to build and start your application:
@@ -168,21 +138,16 @@ Make sure that your `solid-js` in your `package.json` file. If not, run the foll
 npm install solid-js
 ```
 
-Set the `server.preset` value to `bun` in your `app.config.ts` file.
+Set the `target` value to `bun` in your `vite.config.ts` file.
 
 ```ts
-// app.config.ts
-import { defineConfig } from '@tanstack/solid-start/config'
+// vite.config.ts
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  server: {
-    preset: 'bun',
-  },
+  plugins: [tanstackStart({ target: 'bun' })],
 })
-
-// Or you can use the --preset flag with the build command
-// to specify the deployment target when building the application:
-// npm run build --preset bun
 ```
 
 Then you can run the following command to build and start your application:

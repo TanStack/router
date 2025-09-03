@@ -1,5 +1,6 @@
+import { createFileRoute } from '@tanstack/solid-router'
 import * as Solid from 'solid-js'
-import { Link, createFileRoute } from '@tanstack/solid-router'
+import { Link } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/')({
   component: IndexComponent,

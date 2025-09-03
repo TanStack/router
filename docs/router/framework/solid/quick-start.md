@@ -44,12 +44,15 @@ deno add npm:@tanstack/solid-router npm:@tanstack/router-plugin npm:@tanstack/so
 // vite.config.ts
 import { defineConfig } from 'vite'
 import solid from 'vite-plugin-solid'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    TanStackRouterVite({ target: 'solid', autoCodeSplitting: true }),
+    tanstackRouter({
+      target: 'solid',
+      autoCodeSplitting: true,
+    }),
     solid(),
     // ...,
   ],
@@ -57,7 +60,7 @@ export default defineConfig({
 ```
 
 > [!TIP]
-> If you are not using Vite, or any of the supported bundlers, you can check out the [TanStack Router CLI](./routing/installation-with-router-cli.md) guide for more info.
+> If you are not using Vite, or any of the supported bundlers, you can check out the [TanStack Router CLI](../routing/installation-with-router-cli.md) guide for more info.
 
 Create the following files:
 
@@ -94,9 +97,9 @@ export const Route = createRootRoute({
 #### `src/routes/index.tsx`
 
 ```tsx
-import { createLazyFileRoute } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createLazyFileRoute('/')({
+export const Route = createFileRoute('/')({
   component: Index,
 })
 
@@ -112,9 +115,9 @@ function Index() {
 #### `src/routes/about.tsx`
 
 ```tsx
-import { createLazyFileRoute } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createLazyFileRoute('/about')({
+export const Route = createFileRoute('/about')({
   component: About,
 })
 

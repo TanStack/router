@@ -17,9 +17,9 @@ That said, authentication is not something to be taken lightly. After much vetti
 
 <a href="https://go.clerk.com/wOwHtuJ" alt="Clerk Logo">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-dark.svg" width="280">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-light.svg" width="280">
-    <img alt="Clerk logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/app/images/clerk-logo-light.svg" width="280">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-dark.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-light.svg" width="280">
+    <img alt="Clerk logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-light.svg" width="280">
   </picture>
 </a>
 
@@ -27,8 +27,8 @@ Clerk is a modern authentication platform that provides a full suite of authenti
 
 - To learn more about Clerk, visit the [Clerk website](https://go.clerk.com/wOwHtuJ)
 - To sign up, visit the [Clerk dashboard](https://go.clerk.com/PrSDXti)
-- To get started with Clerk, check out our [official Start + Clerk examples!](../examples/start-clerk-basic/)
+- To get started with Clerk, check out our [official Start + Clerk examples!](https://github.com/TanStack/router/tree/main/examples/react/start-clerk-basic)
 
 ## Documentation & APIs
 
-Documentation for implementing your own authentication logic with TanStack Start is coming soon! In the meantime, you can check out any of the `-auth` prefixed [examples](../examples) for a starting point.
+Documentation for implementing your own authentication logic with TanStack Start is coming soon! In the meantime, you can check out any of the `-auth` prefixed [examples](https://github.com/TanStack/router/tree/main/examples/react) for a starting point.

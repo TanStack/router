@@ -1,16 +1,17 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
-import axios from 'redaxios'
-import { DEPLOY_URL } from '../utils/users'
 import type { User } from '../utils/users'
 
 export const Route = createFileRoute('/users')({
   loader: async () => {
-    return await axios
-      .get<Array<User>>(DEPLOY_URL + '/api/users')
-      .then((r) => r.data)
-      .catch(() => {
-        throw new Error('Failed to fetch users')
-      })
+    const res = await fetch('/api/users')
+
+    if (!res.ok) {
+      throw new Error('Unexpected status code')
+    }
+
+    const data = (await res.json()) as Array<User>
+
+    return data
   },
   component: UsersComponent,
 })

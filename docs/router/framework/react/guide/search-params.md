@@ -318,7 +318,7 @@ export const Route = createFileRoute('/shop/products/')({
 })
 ```
 
-## Effect/Schema
+### Effect/Schema
 
 When using [Effect/Schema](https://effect.website/docs/schema/introduction/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [Effect/Schema](https://effect.website/docs/schema/standard-schema/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
 
@@ -363,7 +363,7 @@ Once your search params have been validated and typed, you're finally ready to s
 
 ### Using Search Params in Loaders
 
-Please read the [Search Params in Loaders](./data-loading.md#using-loaderdeps-to-access-search-params) section for more information about how to read search params in loaders with the `loaderDeps` option.
+Please read the [Search Params in Loaders](../data-loading.md#using-loaderdeps-to-access-search-params) section for more information about how to read search params in loaders with the `loaderDeps` option.
 
 ### Search Params are inherited from Parent Routes
 
@@ -415,7 +415,7 @@ const ProductList = () => {
 ```
 
 > [!TIP]
-> If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
+> If your component is code-split, you can use the [getRouteApi function](../code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
 
 ### Search Params outside of Route Components
 
@@ -587,15 +587,15 @@ export const Route = createRootRoute({
   validateSearch: zodValidator(searchSchema),
   search: {
     middlewares: [
-      ({search, next}) => {
+      ({ search, next }) => {
         const result = next(search)
         return {
-          rootValue: search.rootValue
-          ...result
+          rootValue: search.rootValue,
+          ...result,
         }
-      }
-    ]
-  }
+      },
+    ],
+  },
 })
 ```
 

@@ -30,36 +30,9 @@ export interface ClientOnlyProps {
  * ```
  */
 export function ClientOnly(props: ClientOnlyProps) {
-  return useHydrated() ? <>{props.children}</> : <>{props.fallback}</>
-}
-
-/**
- * Return a boolean indicating if the JS has been hydrated already.
- * When doing Server-Side Rendering, the result will always be false.
- * When doing Client-Side Rendering, the result will always be false on the
- * first render and true from then on. Even if a new component renders it will
- * always start with true.
- *
- * @example
- * ```tsx
- * // Disable a button that needs JS to work.
- * let hydrated = useHydrated()
- * return (
- *   <button type="button" disabled={!hydrated()} onClick={doSomethingCustom}>
- *     Click me
- *   </button>
- * )
- * ```
- * @returns A signal accessor function that returns true if the JS has been hydrated already, false otherwise.
- */
-export function useHydrated() {
-  const [hydrated, setHydrated] = Solid.createSignal(!isServer)
-
-  if (!isServer) {
-    Solid.createEffect(() => {
-      setHydrated(true)
-    })
-  }
-
-  return hydrated
+  return (
+    <Solid.Show when={!isServer} fallback={props.fallback}>
+      <>{props.children}</>
+    </Solid.Show>
+  )
 }

@@ -12,9 +12,9 @@ type UseLinkPropsOptions = ActiveLinkOptions &
   React.AnchorHTMLAttributes<HTMLAnchorElement>
 ```
 
-- [`ActiveLinkOptions`](./ActiveLinkOptionsType.md)
-- The `useLinkProps` options are used to build a [`LinkProps`](./LinkPropsType.md) object.
-- It also extends the `React.AnchorHTMLAttributes<HTMLAnchorElement>` type, so that any additional props that are passed to the `useLinkProps` hook will be merged with the [`LinkProps`](./LinkPropsType.md) object.
+- [`ActiveLinkOptions`](../ActiveLinkOptionsType.md)
+- The `useLinkProps` options are used to build a [`LinkProps`](../LinkPropsType.md) object.
+- It also extends the `React.AnchorHTMLAttributes<HTMLAnchorElement>` type, so that any additional props that are passed to the `useLinkProps` hook will be merged with the [`LinkProps`](../LinkPropsType.md) object.
 
 ## useLinkProps returns
 

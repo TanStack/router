@@ -1,143 +1,136 @@
-import { fileURLToPath, pathToFileURL } from 'node:url'
-import path from 'node:path'
-import { existsSync } from 'node:fs'
-import { logDiff } from '@tanstack/router-utils'
-import { compileStartOutput } from './compilers'
-import type { Plugin } from 'vite'
+import { fileURLToPath } from 'node:url'
+import viteReact from '@vitejs/plugin-react'
+import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
+import path from 'pathe'
+import { getTanStackStartOptions } from './schema'
+import type { TanStackStartInputConfig, WithReactPlugin } from './schema'
+import type { PluginOption } from 'vite'
 
-const debug =
-  process.env.TSR_VITE_DEBUG &&
-  ['true', 'react-start-plugin'].includes(process.env.TSR_VITE_DEBUG)
+export type {
+  TanStackStartInputConfig,
+  TanStackStartOutputConfig,
+  WithReactPlugin,
+} from './schema'
 
-export type TanStackStartViteOptions = {
-  globalMiddlewareEntry: string
+function hasRootExport(
+  exportsField?: Record<string, unknown> | string,
+): boolean {
+  if (!exportsField) return false
+
+  if (typeof exportsField === 'string') {
+    // shorthand form: "exports": "./index.js"
+    return true
+  }
+
+  if (typeof exportsField === 'object') {
+    return '.' in exportsField
+  }
+
+  return false
 }
 
-const transformFuncs = [
-  'createServerFn',
-  'createMiddleware',
-  'serverOnly',
-  'clientOnly',
-  'createIsomorphicFn',
-]
-const tokenRegex = new RegExp(transformFuncs.join('|'))
-// const eitherFuncRegex = new RegExp(
-//   `(function ${transformFuncs.join('|function ')})`,
-// )
+export function TanStackStartVitePlugin(
+  opts?: TanStackStartInputConfig & WithReactPlugin,
+): Array<PluginOption> {
+  type OptionsWithReact = ReturnType<typeof getTanStackStartOptions> &
+    WithReactPlugin
+  const options: OptionsWithReact = getTanStackStartOptions(opts)
 
-export function createTanStackStartPlugin(opts: TanStackStartViteOptions): {
-  client: Array<Plugin>
-  ssr: Array<Plugin>
-  server: Array<Plugin>
-} {
-  const globalMiddlewarePlugin = (): Plugin => {
-    let entry: string | null = null
-    let resolvedGlobalMiddlewareEntry: string | null = null
-    let globalMiddlewareEntryExists = false
-    let ROOT: string = process.cwd()
-    return {
-      name: 'vite-plugin-tanstack-start-ensure-global-middleware',
-      enforce: 'pre',
-      configResolved: (config) => {
-        ROOT = config.root
-        entry = path.resolve(ROOT, (config as any).router.handler)
-        resolvedGlobalMiddlewareEntry = path.resolve(
-          ROOT,
-          opts.globalMiddlewareEntry,
-        )
-        globalMiddlewareEntryExists = existsSync(resolvedGlobalMiddlewareEntry)
+  if (opts?.customViteReactPlugin !== true) {
+    console.warn(
+      `please add the vite-react plugin to your Vite config and set 'customViteReactPlugin: true'`,
+    )
+    console.warn(
+      `TanStack Start will not configure the vite-react plugin in future anymore.`,
+    )
+  }
 
-        if (!entry) {
-          throw new Error(
-            '@tanstack/react-start-plugin: No server entry found!',
-          )
+  const isInsideRouterMonoRepo = (() => {
+    const currentDir = path.dirname(fileURLToPath(import.meta.url))
+    return path.basename(path.resolve(currentDir, '../../../')) === 'packages'
+  })()
+
+  return [
+    {
+      name: 'tanstack-react-start:config',
+      configEnvironment() {
+        return {
+          resolve: {
+            dedupe: ['react', 'react-dom', '@tanstack/react-router'],
+
+            external: isInsideRouterMonoRepo
+              ? ['@tanstack/react-router', '@tanstack/react-router-devtools']
+              : undefined,
+          },
+
+          optimizeDeps: {
+            exclude: ['@tanstack/react-router-devtools'],
+            include: [
+              'react',
+              'react/jsx-runtime',
+              'react/jsx-dev-runtime',
+              'react-dom',
+              'react-dom/client',
+              '@tanstack/react-router',
+            ],
+          },
         }
       },
-      transform(code, id) {
-        if (entry && id.includes(entry)) {
-          if (globalMiddlewareEntryExists) {
-            return {
-              code: `${code}\n\nimport '${path.resolve(ROOT, opts.globalMiddlewareEntry)}'`,
-              map: null,
-            }
+    },
+    TanStackStartVitePluginCore(
+      {
+        framework: 'react',
+        getVirtualServerRootHandler(ctx) {
+          return `
+import { toWebRequest, defineEventHandler } from '@tanstack/react-start/server';
+import serverEntry from '${ctx.serverEntryFilepath}';
+
+export default defineEventHandler(function(event) {
+  const request = toWebRequest(event);
+  return serverEntry({ request });
+});`
+        },
+        getVirtualClientEntry(ctx) {
+          return `
+import { StrictMode, startTransition } from 'react';
+import { hydrateRoot } from 'react-dom/client';
+import { StartClient } from '@tanstack/react-start';
+import { createRouter } from '${ctx.routerFilepath}';
+
+const router = createRouter();
+
+startTransition(() => {
+  hydrateRoot(
+    document,
+    <StrictMode>
+      <StartClient router={router} />
+    </StrictMode>
+  );
+});`
+        },
+        getVirtualServerEntry(ctx) {
+          return `
+import { createStartHandler, defaultStreamHandler } from '@tanstack/react-start/server';
+import { createRouter } from '${ctx.routerFilepath}';
+
+export default createStartHandler({
+  createRouter,
+})(defaultStreamHandler);`
+        },
+        crawlPackages(opts) {
+          if (opts.name === '@tanstack/react-router-devtools') {
+            return 'exclude'
           }
-        }
-        return null
+          if (hasRootExport(opts.exports) && 'react' in opts.peerDependencies) {
+            return 'include'
+          }
+          return undefined
+        },
       },
-    }
-  }
-
-  return {
-    client: [
-      globalMiddlewarePlugin(),
-      TanStackStartServerFnsAndMiddleware({ ...opts, env: 'client' }),
-    ],
-    ssr: [
-      globalMiddlewarePlugin(),
-      TanStackStartServerFnsAndMiddleware({ ...opts, env: 'ssr' }),
-    ],
-    server: [
-      globalMiddlewarePlugin(),
-      TanStackStartServerFnsAndMiddleware({ ...opts, env: 'server' }),
-    ],
-  }
+      options,
+    ),
+    !opts?.customViteReactPlugin && viteReact(options.react),
+  ]
 }
 
-export function TanStackStartServerFnsAndMiddleware(opts: {
-  env: 'server' | 'ssr' | 'client'
-}): Plugin {
-  let ROOT: string = process.cwd()
-
-  return {
-    name: 'vite-plugin-tanstack-start-create-server-fn',
-    enforce: 'pre',
-    configResolved: (config) => {
-      ROOT = config.root
-    },
-    transform(code, id) {
-      const url = pathToFileURL(id)
-      url.searchParams.delete('v')
-      id = fileURLToPath(url).replace(/\\/g, '/')
-
-      const includesToken = tokenRegex.test(code)
-      // const includesEitherFunc = eitherFuncRegex.test(code)
-
-      if (
-        !includesToken
-        // includesEitherFunc
-        // /node_modules/.test(id)
-      ) {
-        return null
-      }
-
-      if (code.includes('@react-refresh')) {
-        throw new Error(
-          `We detected that the '@vitejs/plugin-react' was passed before '@tanstack/react-start-plugin'. Please make sure that '@tanstack/router-vite-plugin' is passed before '@vitejs/plugin-react' and try again: 
-e.g.
-
-plugins: [
-  TanStackStartVite(), // Place this before viteReact()
-  viteReact(),
-]
-`,
-        )
-      }
-
-      if (debug) console.info(`${opts.env} Compiling Start: `, id)
-
-      const compiled = compileStartOutput({
-        code,
-        root: ROOT,
-        filename: id,
-        env: opts.env,
-      })
-
-      if (debug) {
-        logDiff(code, compiled.code)
-        console.log('Output:\n', compiled.code + '\n\n')
-      }
-
-      return compiled
-    },
-  }
-}
+export { TanStackStartVitePlugin as tanstackStart }

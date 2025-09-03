@@ -1,18 +1,21 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import axios from 'redaxios'
-import type { User } from '~/utils/users'
-import { DEPLOY_URL } from '~/utils/users'
-import { NotFound } from '~/components/NotFound'
-import { UserErrorComponent } from '~/components/UserError'
+import { NotFound } from 'src/components/NotFound'
+import { UserErrorComponent } from 'src/components/UserError'
 
 export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
-    return await axios
-      .get<User>(DEPLOY_URL + '/api/users/' + userId)
-      .then((r) => r.data)
-      .catch(() => {
-        throw new Error('Failed to fetch user')
-      })
+    try {
+      const res = await fetch('/api/users/' + userId)
+      if (!res.ok) {
+        throw new Error('Unexpected status code')
+      }
+
+      const data = await res.json()
+
+      return data
+    } catch {
+      throw new Error('Failed to fetch user')
+    }
   },
   errorComponent: UserErrorComponent,
   component: UserComponent,
@@ -28,6 +31,14 @@ function UserComponent() {
     <div class="space-y-2">
       <h4 class="text-xl font-bold underline">{user().name}</h4>
       <div class="text-sm">{user().email}</div>
+      <div>
+        <a
+          href={`/api/users/${user().id}`}
+          class="text-blue-800 hover:text-blue-600 underline"
+        >
+          View as JSON
+        </a>
+      </div>
     </div>
   )
 }

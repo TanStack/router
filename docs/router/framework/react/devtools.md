@@ -109,6 +109,29 @@ function App() {
 }
 ```
 
+### Devtools Options
+
+- `router: Router`
+  - The router instance to connect to.
+- `initialIsOpen: Boolean`
+  - Set this `true` if you want the devtools to default to being open.
+- `panelProps: PropsObject`
+  - Use this to add props to the panel. For example, you can add `className`, `style` (merge and override default style), etc.
+- `closeButtonProps: PropsObject`
+  - Use this to add props to the close button. For example, you can add `className`, `style` (merge and override default style), `onClick` (extend default handler), etc.
+- `toggleButtonProps: PropsObject`
+  - Use this to add props to the toggle button. For example, you can add `className`, `style` (merge and override default style), `onClick` (extend default handler), etc.
+- `position?: "top-left" | "top-right" | "bottom-left" | "bottom-right"`
+  - Defaults to `bottom-left`.
+  - The position of the TanStack Router logo to open and close the devtools panel.
+- `shadowDOMTarget?: ShadowRoot`
+  - Specifies a Shadow DOM target for the devtools.
+  - By default, devtool styles are applied to the `<head>` tag of the main document (light DOM). When a `shadowDOMTarget` is provided, styles will be applied within this Shadow DOM instead.
+- `containerElement?: string | any`
+  - Use this to render the devtools inside a different type of container element for ally purposes.
+  - Any string which corresponds to a valid intrinsic JSX element is allowed.
+  - Defaults to 'footer'.
+
 ## Fixed Mode
 
 To control the position of the devtools, import the `TanStackRouterDevtoolsPanel`:
@@ -127,25 +150,6 @@ It can then be attached to provided shadow DOM target:
 ```
 
 Click [here](https://tanstack.com/router/latest/docs/framework/react/examples/basic-devtools-panel) to see a live example of this in StackBlitz.
-
-### Options
-
-- `router: Router`
-  - The router instance to connect to
-- `initialIsOpen: Boolean`
-  - Set this `true` if you want the devtools to default to being open
-- `panelProps: PropsObject`
-  - Use this to add props to the panel. For example, you can add `className`, `style` (merge and override default style), etc.
-- `closeButtonProps: PropsObject`
-  - Use this to add props to the close button. For example, you can add `className`, `style` (merge and override default style), `onClick` (extend default handler), etc.
-- `toggleButtonProps: PropsObject`
-  - Use this to add props to the toggle button. For example, you can add `className`, `style` (merge and override default style), `onClick` (extend default handler), etc.
-- `position?: "top-left" | "top-right" | "bottom-left" | "bottom-right"`
-  - Defaults to `bottom-left`
-  - The position of the TanStack Router logo to open and close the devtools panel
-- `shadowDOMTarget?: ShadowRoot`
-  - Specifies a Shadow DOM target for the devtools.
-  - By default, devtool styles are applied to the `<head>` tag of the main document (light DOM). When a `shadowDOMTarget` is provided, styles will be applied within this Shadow DOM instead.
 
 ## Embedded Mode
 
@@ -168,11 +172,20 @@ function App() {
 }
 ```
 
-### Options
+### DevtoolsPanel Options
 
-Use these options to style the devtools.
-
+- `router: Router`
+  - The router instance to connect to.
 - `style: StyleObject`
-  - The standard React style object used to style a component with inline styles
+  - The standard React style object used to style a component with inline styles.
 - `className: string`
-  - The standard React className property used to style a component with classes
+  - The standard React className property used to style a component with classes.
+- `isOpen?: boolean`
+  - A boolean variable indicating whether the panel is open or closed.
+- `setIsOpen?: (isOpen: boolean) => void`
+  - A function that toggles the open and close state of the panel.
+- `handleDragStart?: (e: any) => void`
+  - Handles the opening and closing the devtools panel.
+- `shadowDOMTarget?: ShadowRoot`
+  - Specifies a Shadow DOM target for the devtools.
+  - By default, devtool styles are applied to the `<head>` tag of the main document (light DOM). When a `shadowDOMTarget` is provided, styles will be applied within this Shadow DOM instead.
