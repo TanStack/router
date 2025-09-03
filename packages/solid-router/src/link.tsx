@@ -387,8 +387,8 @@ export function useLinkProps<
     return _options().disabled
       ? undefined
       : maskedLocation
-        ? router.history.createHref(maskedLocation.href)
-        : router.history.createHref(nextLocation?.href)
+        ? maskedLocation.url.href
+        : nextLocation?.url.href
   })
 
   return Solid.mergeProps(
