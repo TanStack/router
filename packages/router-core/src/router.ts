@@ -1737,7 +1737,7 @@ export class RouterCore<
       return isEqual
     }
 
-    const isSameUrl = this.latestLocation.href === next.href
+    const isSameUrl = this.latestLocation.fullPath === next.fullPath
 
     const previousCommitPromise = this.commitLocationPromise
     this.commitLocationPromise = createControlledPromise<void>(() => {
@@ -1876,7 +1876,7 @@ export class RouterCore<
     if (this.isServer) {
       // for SPAs on the initial load, this is handled by the Transitioner
       const nextLocation = this.buildLocation({
-        to: this.latestLocation.pathname,
+        to: this.latestLocation.url.pathname,
         search: true,
         params: true,
         hash: true,
@@ -1895,10 +1895,10 @@ export class RouterCore<
       }
 
       if (
-        trimPath(normalizeUrl(this.latestLocation.href)) !==
-        trimPath(normalizeUrl(nextLocation.href))
+        trimPath(normalizeUrl(this.latestLocation.fullPath)) !==
+        trimPath(normalizeUrl(nextLocation.fullPath))
       ) {
-        throw redirect({ href: nextLocation.href })
+        throw redirect({ href: nextLocation.url.href })
       }
     }
     // Match the routes

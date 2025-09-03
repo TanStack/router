@@ -167,7 +167,7 @@ function OnRendered() {
         if (
           el &&
           (prevLocationRef.current === undefined ||
-            prevLocationRef.current.href !== router.latestLocation.href)
+            prevLocationRef.current.fullPath !== router.latestLocation.fullPath)
         ) {
           router.emit({
             type: 'onRendered',
