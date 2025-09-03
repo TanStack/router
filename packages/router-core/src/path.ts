@@ -244,113 +244,106 @@ const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
  * - `/foo/{$foo}[$]` - Dynamic route with a static suffix of `$`
  */
 function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
+  // Remove empty segments
   pathname = cleanPath(pathname)
 
-  const segments: Array<Segment> = []
-
-  if (pathname.slice(0, 1) === '/') {
-    pathname = pathname.substring(1)
-    segments.push({
-      type: SEGMENT_TYPE_PATHNAME,
-      value: '/',
-    })
-  }
-
-  if (!pathname) {
-    return segments
-  }
-
-  // Remove empty segments and '.' segments
-  const split = pathname.split('/').filter(Boolean)
-
-  segments.push(
-    ...split.map((part): Segment => {
-      // Check for wildcard with curly braces: prefix{$}suffix
-      const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
-      if (wildcardBracesMatch) {
-        const prefix = wildcardBracesMatch[1]
-        const suffix = wildcardBracesMatch[2]
-        return {
-          type: SEGMENT_TYPE_WILDCARD,
-          value: '$',
-          prefixSegment: prefix || undefined,
-          suffixSegment: suffix || undefined,
-        }
-      }
-
-      // Check for optional parameter format: prefix{-$paramName}suffix
-      const optionalParamBracesMatch = part.match(
-        OPTIONAL_PARAM_W_CURLY_BRACES_RE,
-      )
-      if (optionalParamBracesMatch) {
-        const prefix = optionalParamBracesMatch[1]
-        const paramName = optionalParamBracesMatch[2]!
-        const suffix = optionalParamBracesMatch[3]
-        return {
-          type: SEGMENT_TYPE_OPTIONAL_PARAM,
-          value: paramName, // Now just $paramName (no prefix)
-          prefixSegment: prefix || undefined,
-          suffixSegment: suffix || undefined,
-        }
-      }
-
-      // Check for the new parameter format: prefix{$paramName}suffix
-      const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
-      if (paramBracesMatch) {
-        const prefix = paramBracesMatch[1]
-        const paramName = paramBracesMatch[2]
-        const suffix = paramBracesMatch[3]
-        return {
-          type: SEGMENT_TYPE_PARAM,
-          value: '' + paramName,
-          prefixSegment: prefix || undefined,
-          suffixSegment: suffix || undefined,
-        }
-      }
-
-      // Check for bare parameter format: $paramName (without curly braces)
-      if (PARAM_RE.test(part)) {
-        const paramName = part.substring(1)
-        return {
-          type: SEGMENT_TYPE_PARAM,
-          value: '$' + paramName,
-          prefixSegment: undefined,
-          suffixSegment: undefined,
-        }
-      }
-
-      // Check for bare wildcard: $ (without curly braces)
-      if (WILDCARD_RE.test(part)) {
-        return {
-          type: SEGMENT_TYPE_WILDCARD,
-          value: '$',
-          prefixSegment: undefined,
-          suffixSegment: undefined,
-        }
-      }
-
-      // Handle regular pathname segment
-      return {
+  if (!pathname || pathname === '/')
+    return [
+      {
         type: SEGMENT_TYPE_PATHNAME,
-        value: part.includes('%25')
-          ? part
-              .split('%25')
-              .map((segment) => decodeURI(segment))
-              .join('%25')
-          : decodeURI(part),
-      }
-    }),
-  )
+        value: '/',
+      },
+    ]
 
-  if (pathname.slice(-1) === '/') {
-    pathname = pathname.substring(1)
-    segments.push({
-      type: SEGMENT_TYPE_PATHNAME,
-      value: '/',
-    })
+  const parts = splitPathname(pathname)
+  return parts.map(partToSegment)
+}
+
+function splitPathname(pathname: string): ReadonlyArray<string> {
+  if (pathname.includes('%25')) {
+    pathname = pathname
+      .split('%25')
+      .map((segment) => decodeURI(segment))
+      .join('%25')
+  } else {
+    pathname = decodeURI(pathname)
   }
 
-  return segments
+  const parts = pathname.split('/')
+  if (parts[0] === '') parts[0] = '/'
+  if (last(parts) === '') parts[parts.length - 1] = '/'
+
+  return parts
+}
+
+function partToSegment(part: string): Segment {
+  // Check for wildcard with curly braces: prefix{$}suffix
+  const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
+  if (wildcardBracesMatch) {
+    const prefix = wildcardBracesMatch[1]
+    const suffix = wildcardBracesMatch[2]
+    return {
+      type: SEGMENT_TYPE_WILDCARD,
+      value: '$',
+      prefixSegment: prefix || undefined,
+      suffixSegment: suffix || undefined,
+    }
+  }
+
+  // Check for optional parameter format: prefix{-$paramName}suffix
+  const optionalParamBracesMatch = part.match(OPTIONAL_PARAM_W_CURLY_BRACES_RE)
+  if (optionalParamBracesMatch) {
+    const prefix = optionalParamBracesMatch[1]
+    const paramName = optionalParamBracesMatch[2]!
+    const suffix = optionalParamBracesMatch[3]
+    return {
+      type: SEGMENT_TYPE_OPTIONAL_PARAM,
+      value: paramName, // Now just $paramName (no prefix)
+      prefixSegment: prefix || undefined,
+      suffixSegment: suffix || undefined,
+    }
+  }
+
+  // Check for the new parameter format: prefix{$paramName}suffix
+  const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
+  if (paramBracesMatch) {
+    const prefix = paramBracesMatch[1]
+    const paramName = paramBracesMatch[2]
+    const suffix = paramBracesMatch[3]
+    return {
+      type: SEGMENT_TYPE_PARAM,
+      value: '' + paramName,
+      prefixSegment: prefix || undefined,
+      suffixSegment: suffix || undefined,
+    }
+  }
+
+  // Check for bare parameter format: $paramName (without curly braces)
+  if (PARAM_RE.test(part)) {
+    const paramName = part.substring(1)
+    return {
+      type: SEGMENT_TYPE_PARAM,
+      value: '$' + paramName,
+      prefixSegment: undefined,
+      suffixSegment: undefined,
+    }
+  }
+
+  // Check for bare wildcard: $ (without curly braces)
+  if (WILDCARD_RE.test(part)) {
+    return {
+      type: SEGMENT_TYPE_WILDCARD,
+      value: '$',
+      prefixSegment: undefined,
+      suffixSegment: undefined,
+    }
+  }
+
+  // Handle regular pathname segment
+  return {
+    type: SEGMENT_TYPE_PATHNAME,
+    value: part,
+  }
 }
 
 interface InterpolatePathOptions {
