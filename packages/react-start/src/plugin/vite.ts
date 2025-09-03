@@ -46,31 +46,41 @@ export function tanstackStart(
   return [
     {
       name: 'tanstack-react-start:config',
-      configEnvironment(env, userConfig) {
+      configEnvironment(environmentName, options) {
         return {
           resolve: {
             dedupe: ['react', 'react-dom', '@tanstack/react-router'],
-
             external:
-              userConfig.resolve?.noExternal === true || !isInsideRouterMonoRepo
+              options.resolve?.noExternal === true || !isInsideRouterMonoRepo
                 ? undefined
                 : ['@tanstack/react-router', '@tanstack/react-router-devtools'],
           },
-
-          optimizeDeps: {
-            exclude: ['@tanstack/react-router-devtools'],
-            include: [
-              'react',
-              'react/jsx-runtime',
-              'react/jsx-dev-runtime',
-              'react-dom',
-              'react-dom/client',
-              '@tanstack/react-router',
-              ...(env === VITE_ENVIRONMENT_NAMES.server
-                ? ['react-dom/server']
-                : []),
-            ],
-          },
+          optimizeDeps:
+            environmentName === VITE_ENVIRONMENT_NAMES.client ||
+            (environmentName === VITE_ENVIRONMENT_NAMES.server &&
+              // This indicates that the server environment has opted in to dependency optimization
+              options.optimizeDeps?.noDiscovery === false)
+              ? {
+                  // As `@tanstack/react-start` depends on `@tanstack/react-router`, we should exclude both.
+                  exclude: [
+                    '@tanstack/react-start',
+                    '@tanstack/react-router',
+                    '@tanstack/react-router-devtools',
+                  ],
+                  include: [
+                    'react',
+                    'react/jsx-runtime',
+                    'react/jsx-dev-runtime',
+                    'react-dom',
+                    ...(environmentName === VITE_ENVIRONMENT_NAMES.client
+                      ? ['react-dom/client']
+                      : ['react-dom/server']),
+                    // `@tanstack/react-store` has a dependency on `use-sync-external-store`, which is CJS.
+                    // It therefore needs to included so that it is converted to ESM.
+                    '@tanstack/react-router > @tanstack/react-store',
+                  ],
+                }
+              : undefined,
         }
       },
     },

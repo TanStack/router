@@ -128,8 +128,10 @@ export function TanStackStartVitePluginCore(
           return nitroOutputPublicDir
         })()*/
 
-        const startPackageName = `@tanstack/${corePluginOpts.framework}-start`
-        const routerPackageName = `@tanstack/${corePluginOpts.framework}-router`
+        const startPackageName =
+          `@tanstack/${corePluginOpts.framework}-start` as const
+        const routerPackageName =
+          `@tanstack/${corePluginOpts.framework}-router` as const
 
         // crawl packages that have start in "peerDependencies"
         // see https://github.com/svitejs/vitefu/blob/d8d82fa121e3b2215ba437107093c77bde51b63b/src/index.js#L95-L101
@@ -191,15 +193,6 @@ export function TanStackStartVitePluginCore(
                   viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
                     ?.build?.copyPublicDir ?? false,
               },
-              optimizeDeps: {
-                exclude: [
-                  '@tanstack/start-client-core',
-                  '@tanstack/start-storage-context',
-                  ...Object.values(VIRTUAL_MODULES),
-                  ...result.optimizeDeps.exclude.sort(),
-                ],
-                include: [...result.optimizeDeps.include.sort()],
-              },
             },
           },
           resolve: {
@@ -214,13 +207,6 @@ export function TanStackStartVitePluginCore(
             alias: {
               ...entryAliasConfiguration,
             },
-          },
-          optimizeDeps: {
-            exclude: [
-              ...Object.values(VIRTUAL_MODULES),
-              startPackageName,
-              ...result.optimizeDeps.exclude.sort(),
-            ],
           },
           /* prettier-ignore */
           define: {
