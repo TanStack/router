@@ -30,7 +30,7 @@ import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
 import { createLRUCache } from './lru-cache'
 import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
-import { executeFromHref, executeToHref, rewriteBasepath } from './rewrite'
+import { executefromURL, executetoURL, rewriteBasepath } from './rewrite'
 import type { ParsePathnameCache, Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
@@ -464,14 +464,14 @@ export type LocationRewrite = {
    *
    * @default undefined
    */
-  fromHref?: LocationRewriteFunction
+  fromURL?: LocationRewriteFunction
   /**
    * A function that will be called to rewrite the URL before it is committed to the actual history instance from the router.
    * Utilities like `rewriteBasepath` are provided as a convenience for common use cases.
    *
    * @default undefined
    */
-  toHref?: LocationRewriteFunction
+  toURL?: LocationRewriteFunction
 }
 
 /**
@@ -481,9 +481,9 @@ export type LocationRewrite = {
  * @returns The rewritten URL (as a URL instance or full href string) or undefined if no rewrite is needed.
  */
 export type LocationRewriteFunction = ({
-  href,
+  url,
 }: {
-  href: string
+  url: URL
 }) => undefined | string | URL
 
 export interface RouterState<
@@ -965,8 +965,7 @@ export class RouterCore<
     if (!this.origin) {
       if (!this.isServer) {
         this.origin = window.origin
-      }
-      else {
+      } else {
         // fallback for the server, can be overridden by calling router.update({origin}) on the server
         this.origin = 'http://localhost'
       }
@@ -1073,7 +1072,7 @@ export class RouterCore<
       // Before we do any processing, we need to allow rewrites to modify the URL
       // build up the full URL by combining the href from history with the router's origin
       const fullUrl = new URL(href, this.origin)
-      const url = executeFromHref(this.rewrite, fullUrl.href)
+      const url = executefromURL(this.rewrite, fullUrl)
 
       const parsedSearch = this.options.parseSearch(url.search)
       const searchStr = this.options.stringifySearch(parsedSearch)
@@ -1654,13 +1653,13 @@ export class RouterCore<
       const url = new URL(fullPath, this.origin)
 
       // If a rewrite function is provided, use it to rewrite the URL
-      const publicHref = executeToHref(this.rewrite, url.href)
-      const rewrittenUrl = new URL(publicHref)
+      const rewrittenUrl = executetoURL(this.rewrite, url)
 
       return {
-        publicHref: rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
+        publicHref:
+          rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
         href: fullPath,
-        url: publicHref,
+        url: rewrittenUrl.href,
         pathname: nextPathname,
         search: nextSearch,
         searchStr,
@@ -1833,12 +1832,9 @@ export class RouterCore<
     if (href) {
       const currentIndex = this.history.location.state.__TSR_index
 
-      const parsed = parseHref(
-        href,
-        {
-          __TSR_index: replace ? currentIndex : currentIndex + 1,
-        }
-      )
+      const parsed = parseHref(href, {
+        __TSR_index: replace ? currentIndex : currentIndex + 1,
+      })
       rest.to = parsed.pathname
       rest.search = this.options.parseSearch(parsed.search)
       // remove the leading `#` from the hash

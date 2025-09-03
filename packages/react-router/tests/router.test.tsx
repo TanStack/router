@@ -1852,7 +1852,7 @@ describe('statusCode reset on navigation', () => {
 })
 
 describe('Router rewrite functionality', () => {
-  it('should rewrite URLs using fromHref before router interprets them', async () => {
+  it('should rewrite URLs using fromURL before router interprets them', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1869,9 +1869,9 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/old-path'] }),
       rewrite: {
-        fromHref: ({ href }) => {
+        fromURL: ({ url }) => {
           // Rewrite /old-path to /new-path
-          const url = new URL(href)
+
           if (url.pathname === '/old-path') {
             url.pathname = `/new-path`
           }
@@ -1890,7 +1890,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.pathname).toBe('/new-path')
   })
 
-  it('should handle fromHref rewrite with complex URL transformations', async () => {
+  it('should handle fromURL rewrite with complex URL transformations', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1909,8 +1909,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['/legacy/users?page=1#top'],
       }),
       rewrite: {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           // Rewrite legacy URLs to new format
           if (url.pathname === '/legacy/users') {
             url.pathname = `/users`
@@ -1932,7 +1931,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.hash).toBe('top')
   })
 
-  it('should handle multiple fromHref rewrite conditions', async () => {
+  it('should handle multiple fromURL rewrite conditions', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1955,8 +1954,7 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history: createMemoryHistory({ initialEntries: ['/old-about'] }),
       rewrite: {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           // Multiple rewrite rules
           if (url.pathname === '/old-home' || url.pathname === '/home') {
             url.pathname = '/'
@@ -1978,7 +1976,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.pathname).toBe('/about')
   })
 
-  it('should handle fromHref rewrite with search params and hash preservation', async () => {
+  it('should handle fromURL rewrite with search params and hash preservation', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -1997,8 +1995,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['/old/documentation?version=v2&lang=en#installation'],
       }),
       rewrite: {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           // Rewrite old docs URL structure
           if (url.pathname === '/old/documentation') {
             url.pathname = `/docs`
@@ -2024,7 +2021,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.hash).toBe('installation')
   })
 
-  it('should handle subdomain to path rewriting with fromHref', async () => {
+  it('should handle subdomain to path rewriting with fromURL', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2045,8 +2042,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://test.domain.com/users'],
       }),
       rewrite: {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           // Rewrite test.domain.com/path to /test/path (subdomain becomes path segment)
           if (url.hostname.startsWith('test.domain.com')) {
             url.pathname = `/test${url.pathname}`
@@ -2066,7 +2062,7 @@ describe('Router rewrite functionality', () => {
     expect(router.state.location.pathname).toBe('/test/users')
   })
 
-  it('should handle hostname-based routing with fromHref rewrite', async () => {
+  it('should handle hostname-based routing with fromURL rewrite', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2091,8 +2087,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://admin.example.com/dashboard'],
       }),
       rewrite: {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           // Route based on subdomain
           if (url.hostname === 'admin.example.com') {
             url.pathname = '/admin'
@@ -2139,8 +2134,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['/old/shop/items?category=electronics'],
       }),
       rewrite: {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           // Multiple transformation patterns
           if (url.pathname === '/old/shop/items') {
             url.pathname = `/products`
@@ -2185,8 +2179,7 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://legacy.example.com/api/v1'],
       }),
       rewrite: {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           if (
             url.hostname === 'legacy.example.com' &&
             url.pathname === '/api/v1'
@@ -2228,8 +2221,7 @@ describe('Router rewrite functionality', () => {
         ],
       }),
       rewrite: {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           if (
             url.hostname === 'old-api.company.com' &&
             url.pathname === '/users'
@@ -2279,8 +2271,7 @@ describe('Router rewrite functionality', () => {
         ],
       }),
       rewrite: {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           // Mutate URL: change subdomain to path, preserve params and hash
           if (url.hostname === 'blog.oldsite.com') {
             url.hostname = 'newsite.com'
@@ -2328,9 +2319,9 @@ describe('Router rewrite functionality', () => {
         initialEntries: ['https://store.example.com/items?id=123'],
       }),
       rewrite: {
-        fromHref: ({ href }) => {
+        fromURL: ({ url }) => {
           // Alternative pattern: create new URL instance and return it
-          const url = new URL(href)
+
           if (
             url.hostname === 'store.example.com' &&
             url.pathname === '/items'
@@ -2402,8 +2393,7 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history,
       rewrite: {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           // Should rewrite dashboard URLs to admin URLs in the history
           if (url.pathname === '/dashboard') {
             return '/admin/panel'
@@ -2464,9 +2454,9 @@ describe('Router rewrite functionality', () => {
       routeTree,
       history,
       rewrite: {
-        fromHref: ({ href }) => {
+        fromURL: ({ url }) => {
           // Should rewrite profile URLs to user URLs in history
-          const url = new URL(href)
+
           if (url.pathname === '/profile') {
             url.pathname = '/user'
             return url.href
@@ -2507,7 +2497,7 @@ describe('Router rewrite functionality', () => {
 })
 
 describe('rewriteBasepath utility', () => {
-  it('should handle basic basepath rewriting with fromHref', async () => {
+  it('should handle basic basepath rewriting with fromURL', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2604,7 +2594,7 @@ describe('rewriteBasepath utility', () => {
     expect(router.state.location.pathname).toBe('/test')
   })
 
-  it('should combine basepath with additional fromHref rewrite logic', async () => {
+  it('should combine basepath with additional fromURL rewrite logic', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
     })
@@ -2624,8 +2614,7 @@ describe('rewriteBasepath utility', () => {
       }),
       rewrite: rewriteBasepath('my-app', {
         // Additional rewrite logic after basepath removal
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           if (url.pathname === '/legacy/api/v1') {
             url.pathname = '/api/v2'
             return url
@@ -2730,8 +2719,7 @@ describe('rewriteBasepath utility', () => {
         initialEntries: ['/base/legacy/old/path'],
       }),
       rewrite: rewriteBasepath('base', {
-        fromHref: ({ href }) => {
-          const url = new URL(href)
+        fromURL: ({ url }) => {
           // First layer: convert legacy paths
           if (url.pathname === '/legacy/old/path') {
             url.pathname = '/new/path'
@@ -2745,9 +2733,9 @@ describe('rewriteBasepath utility', () => {
     // Add a second rewrite layer
     const originalRewrite = router.options.rewrite
     router.options.rewrite = {
-      fromHref: ({ href }) => {
+      fromURL: ({ url }) => {
         // Apply basepath rewrite first
-        const result = originalRewrite?.fromHref?.({ href })
+        const result = originalRewrite?.fromURL?.({ href })
         if (result && typeof result !== 'string') {
           // Second layer: convert new paths to final
           if (result.pathname === '/new/path') {

@@ -14,24 +14,22 @@ export function rewriteBasepath(
     opts?.caseSensitive ? '' : 'i',
   )
   return {
-    fromHref: ({ href }) => {
-      const url = new URL(href)
+    fromURL: ({ url }) => {
       url.pathname = url.pathname.replace(regex, '/')
-      return rewrite?.fromHref ? rewrite.fromHref({ href: url.href }) : url
+      return rewrite?.fromURL ? rewrite.fromURL({ url }) : url
     },
-    toHref: ({ href }) => {
-      const url = new URL(href)
+    toURL: ({ url }) => {
       url.pathname = joinPaths(['/', trimmedBasepath, url.pathname])
-      return rewrite?.toHref ? rewrite.toHref({ href: url.href }) : url
+      return rewrite?.toURL ? rewrite.toURL({ url }) : url
     },
   } satisfies LocationRewrite
 }
 
-export function executeFromHref(
+export function executefromURL(
   rewrite: LocationRewrite | undefined,
-  href: string,
+  url: URL,
 ): URL {
-  const res = rewrite?.fromHref?.({ href })
+  const res = rewrite?.fromURL?.({ url })
   if (res) {
     if (typeof res === 'string') {
       return new URL(res)
@@ -39,20 +37,20 @@ export function executeFromHref(
       return res
     }
   }
-  return new URL(href)
+  return url
 }
 
-export function executeToHref(
+export function executetoURL(
   rewrite: LocationRewrite | undefined,
-  href: string,
-): string {
-  const res = rewrite?.toHref?.({ href })
+  url: URL,
+): URL {
+  const res = rewrite?.toURL?.({ url })
   if (res) {
     if (typeof res === 'string') {
-      return res
+      return new URL(res)
     } else if (res instanceof URL) {
-      return res.href
+      return res
     }
   }
-  return href
+  return url
 }

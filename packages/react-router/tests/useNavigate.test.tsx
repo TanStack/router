@@ -2322,7 +2322,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
               </button>
               <button
                 data-testid="btn-param-bar"
-                onClick={() => navigate({ to:'.', params: { param: 'bar' } as any })}
+                onClick={() =>
+                  navigate({ to: '.', params: { param: 'bar' } as any })
+                }
               >
                 Navigate to to . with param:bar
               </button>

@@ -6147,7 +6147,6 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
   test('RouteApi', () => runTest('RouteApi'))
 })
 
-
 describe('rewrite', () => {
   test('renders hard link when rewrite points to different origin', async () => {
     const rootRoute = createRootRoute()
@@ -6158,9 +6157,15 @@ describe('rewrite', () => {
         return (
           <>
             <h1>Index</h1>
-            <Link data-testid="link-to-index" to="/">Index</Link>
-            <Link data-testid="link-to-info" to="/info">Info</Link>
-            <Link data-testid="link-to-app" to="/app">App</Link>
+            <Link data-testid="link-to-index" to="/">
+              Index
+            </Link>
+            <Link data-testid="link-to-info" to="/info">
+              Info
+            </Link>
+            <Link data-testid="link-to-app" to="/app">
+              App
+            </Link>
           </>
         )
       },
@@ -6195,21 +6200,20 @@ describe('rewrite', () => {
       history,
       origin: 'http://example.com',
       rewrite: {
-        fromHref: ({href}) => {
-          if (href.startsWith('http://app.example.com')) {
-            return href.replace('http://example.com/ap', '')
+        fromURL: ({ url }) => {
+          if (url.href.startsWith('http://app.example.com')) {
+            return url.href.replace('http://example.com/ap', '')
           }
           return undefined
         },
-        toHref: ({href}) => {
-          const url = new URL(href)
+        toURL: ({ url }) => {
           if (url.pathname.startsWith('/app')) {
-            url.hostname = 'app.example.com',
-            url.pathname = url.pathname.replace(/^\/app/, '')
+            ;((url.hostname = 'app.example.com'),
+              (url.pathname = url.pathname.replace(/^\/app/, '')))
           }
           return url
-        }
-      }
+        },
+      },
     })
 
     render(<RouterProvider router={router} />)

@@ -5,7 +5,7 @@ import {
   mergeHeaders,
 } from '@tanstack/start-client-core'
 import {
-  executeFromHref,
+  executefromURL,
   getMatchedRoutes,
   isRedirect,
   isResolvedRedirect,
@@ -138,7 +138,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       const serializationAdapters = (
         router.options.serializationAdapters ?? []
       ).concat(ServerFunctionSerializationAdapter)
-    
+
       // Create a history for the client-side router
       const history = createMemoryHistory({
         initialEntries: [href],
@@ -342,17 +342,11 @@ async function handleServerRoutes(opts: {
   basePath: string
   executeRouter: () => Promise<Response>
 }) {
-  const originalUrl = new URL(opts.request.url)
-  let pathname: string
+  let url = new URL(opts.request.url)
   if (opts.basePath) {
-    const url = executeFromHref(
-      rewriteBasepath(opts.basePath),
-      originalUrl.href,
-    )
-    pathname = url.pathname
-  } else {
-    pathname = originalUrl.pathname
+    url = executefromURL(rewriteBasepath(opts.basePath), url)
   }
+  const pathname = url.pathname
 
   const serverTreeResult = getMatchedRoutes<AnyServerRouteWithTypes>({
     pathname,
