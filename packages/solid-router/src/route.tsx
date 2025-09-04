@@ -236,7 +236,8 @@ export class Route<
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
-      TSSR
+      TSSR,
+      TMiddlewares
     >,
   ) {
     super(options)

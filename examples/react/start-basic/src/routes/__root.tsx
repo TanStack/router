@@ -13,26 +13,26 @@ import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 
-const testParentMiddleware = createMiddleware({ type: 'request' }).server(
+const rootMiddleware = createMiddleware({ type: 'request' }).server(
   async ({ next }) => {
-    const result = await next({ context: { testParent: true } })
-    return result
+    return next({ context: { rootMiddleware: true } })
   },
 )
 
-const testMiddleware = createMiddleware({ type: 'request' })
-  .middleware([testParentMiddleware])
-  .server(async ({ next }) => {
-    const result = await next({ context: { test: true } })
-    return result
-  })
-
 export const Route = createRootRoute({
   server: {
-    middleware: [testMiddleware],
+    middleware: [rootMiddleware],
+    methods: {
+      GET: ({ context }) => {
+        context.rootMiddleware
+        //      ^?
+      },
+    },
   },
-  beforeLoad: async (ctx) => {
-    ctx.serverContext
+  beforeLoad: (ctx) => {
+    ctx.serverContext?.rootMiddleware
+    //                 ^?
+    return
   },
   head: () => ({
     meta: [

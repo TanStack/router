@@ -2,7 +2,6 @@ import invariant from 'tiny-invariant'
 import { joinPaths, trimPathLeft } from './path'
 import { notFound } from './not-found'
 import { rootRouteId } from './root'
-import type { ResolveAllServerContext } from './middleware'
 import type { LazyRoute } from './fileRoute'
 import type { NotFoundError } from './not-found'
 import type { NavigateOptions, ParsePathParams } from './link'
@@ -428,7 +427,6 @@ export interface RouteTypes<
   fileRouteTypes: TFileRouteTypes
   ssr: ResolveSSR<TSSR>
   allSsr: ResolveAllSSR<TParentRoute, TSSR>
-  allServerContext: ResolveAllServerContext<TParentRoute, TServerMiddlewares>
 }
 
 export type ResolveSSR<TSSR> = TSSR extends (...args: ReadonlyArray<any>) => any
@@ -1102,7 +1100,6 @@ export interface BeforeLoadContextOptions<
   context: Expand<
     BeforeLoadContextParameter<TParentRoute, TRouterContext, TRouteContextFn>
   >
-  serverContext?: ResolveAllServerContext<TParentRoute, TServerMiddlewares>
 }
 
 type AssetFnContextOptions<
