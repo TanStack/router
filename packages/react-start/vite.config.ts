@@ -12,7 +12,7 @@ const config = defineConfig({
   plugins: [
     copyFilesPlugin({
       pattern: ['*.ts', '*.tsx', '!*.d.ts'],
-      fromDir: 'src/plugin/default-entry',
+      fromDir: 'src/default-entry',
       toDir: 'dist/plugin/default-entry',
     }),
   ],
@@ -22,12 +22,12 @@ export default mergeConfig(
   config,
   tanstackViteConfig({
     srcDir: './src',
+    exclude: ['./src/default-entry'],
     entry: ['./src/client.tsx', './src/server.tsx', './src/plugin/vite.ts'],
     externalDeps: [
       '@tanstack/react-start-client',
       '@tanstack/react-start-server',
     ],
-    exclude: ['./src/plugin/default-entry'],
     cjs: false,
   }),
 )

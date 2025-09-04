@@ -27,7 +27,7 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:build",
     "test:build": "exit 0; vitest",
-    "build": "vite build"
+    "build": "vite build && vite build -c vite.config.server-entry.ts"
   },
   "type": "module",
   "types": "dist/esm/client.d.ts",
@@ -54,6 +54,12 @@
       "import": {
         "types": "./dist/esm/plugin/vite.d.ts",
         "default": "./dist/esm/plugin/vite.js"
+      }
+    },
+    "./server-entry": {
+      "import": {
+        "types": "./dist/default-entry/esm/server.d.ts",
+        "default": "./dist/default-entry/esm/server.js"
       }
     },
     "./package.json": "./package.json"
