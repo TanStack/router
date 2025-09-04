@@ -62,6 +62,23 @@ Key features that make Neon stand out:
 - To learn more about Neon, visit the [Neon website](https://neon.tech?utm_source=tanstack)
 - To sign up, visit the [Neon dashboard](https://console.neon.tech/signup?utm_source=tanstack)
 
+## What is Convex?
+
+<a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-white.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-color.svg" width="280">
+    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-color.svg" width="280">
+  </picture>
+</a>
+
+Convex is a powerful, serverless database platform that simplifies the process of managing your application's data. With Convex, you can build full-stack applications without the need to manually manage database servers or write complex queries. Convex provides a real-time, scalable, and transactional data backend that seamlessly integrates with TanStack Start, making it an excellent choice for modern web applications.
+
+Convex's declarative data model and automatic conflict resolution ensure that your application remains consistent and responsive, even at scale. It's designed to be developer-friendly, with a focus on simplicity and productivity.
+
+- To learn more about Convex, visit the [Convex website](https://convex.dev?utm_source=tanstack)
+- To sign up, visit the [Convex dashboard](https://dashboard.convex.dev/signup?utm_source=tanstack)
+
 ## What is Prisma Postgres?
 
 <a href="https://www.prisma.io?utm_source=tanstack&via=tanstack" alt="Prisma Logo">
@@ -83,23 +100,6 @@ Instant Postgres, Zero Setup: Get a production-ready Postgres database in second
   <br />
 - To learn more about Prisma Postgres, visit the [Prisma website](https://www.prisma.io?utm_source=tanstack&via=tanstack)
 - To sign up, visit the [Prisma Console](https://console.prisma.io/sign-up?utm_source=tanstack&via=tanstack)
-
-## What is Convex?
-
-<a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-white.svg" width="280">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-color.svg" width="280">
-    <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-color.svg" width="280">
-  </picture>
-</a>
-
-Convex is a powerful, serverless database platform that simplifies the process of managing your application's data. With Convex, you can build full-stack applications without the need to manually manage database servers or write complex queries. Convex provides a real-time, scalable, and transactional data backend that seamlessly integrates with TanStack Start, making it an excellent choice for modern web applications.
-
-Convex's declarative data model and automatic conflict resolution ensure that your application remains consistent and responsive, even at scale. It's designed to be developer-friendly, with a focus on simplicity and productivity.
-
-- To learn more about Convex, visit the [Convex website](https://convex.dev?utm_source=tanstack)
-- To sign up, visit the [Convex dashboard](https://dashboard.convex.dev/signup?utm_source=tanstack)
 
 ## Documentation & APIs
 
