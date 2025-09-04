@@ -128,8 +128,8 @@ export function TanStackStartVitePluginCore(
           return nitroOutputPublicDir
         })()*/
 
-        const startPackageName = `@tanstack/${corePluginOpts.framework}-start`
-        const routerPackageName = `@tanstack/${corePluginOpts.framework}-router`
+        const startPackageName =
+          `@tanstack/${corePluginOpts.framework}-start` as const
 
         // crawl packages that have start in "peerDependencies"
         // see https://github.com/svitejs/vitefu/blob/d8d82fa121e3b2215ba437107093c77bde51b63b/src/index.js#L95-L101
@@ -137,22 +137,16 @@ export function TanStackStartVitePluginCore(
         // this is currently uncached; could be implemented similarly as vite handles lock file changes
         // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
 
-        const result = await crawlFrameworkPkgs({
+        const crawlFrameworkPkgsResult = await crawlFrameworkPkgs({
           root: process.cwd(),
           isBuild: command === 'build',
           isFrameworkPkgByJson(pkgJson) {
-            if ([routerPackageName, startPackageName].includes(pkgJson.name)) {
-              return false
-            }
-
             const peerDependencies = pkgJson['peerDependencies']
 
             if (peerDependencies) {
-              return (
-                startPackageName in peerDependencies ||
-                routerPackageName in peerDependencies
-              )
+              return startPackageName in peerDependencies
             }
+
             return false
           },
         })
@@ -191,36 +185,17 @@ export function TanStackStartVitePluginCore(
                   viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
                     ?.build?.copyPublicDir ?? false,
               },
-              optimizeDeps: {
-                exclude: [
-                  '@tanstack/start-client-core',
-                  '@tanstack/start-storage-context',
-                  ...Object.values(VIRTUAL_MODULES),
-                  ...result.optimizeDeps.exclude.sort(),
-                ],
-                include: [...result.optimizeDeps.include.sort()],
-              },
             },
           },
           resolve: {
             noExternal: [
               '@tanstack/start**',
               `@tanstack/${corePluginOpts.framework}-start**`,
-              ...Object.values(VIRTUAL_MODULES),
-              startPackageName,
-              ...result.ssr.noExternal.sort(),
+              ...crawlFrameworkPkgsResult.ssr.noExternal.sort(),
             ],
-            dedupe: [startPackageName],
             alias: {
               ...entryAliasConfiguration,
             },
-          },
-          optimizeDeps: {
-            exclude: [
-              ...Object.values(VIRTUAL_MODULES),
-              startPackageName,
-              ...result.optimizeDeps.exclude.sort(),
-            ],
           },
           /* prettier-ignore */
           define: {
