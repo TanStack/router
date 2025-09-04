@@ -43,7 +43,7 @@ Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [TanStack Q
   <img alt="Neon" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="40"
 </a></div><br />
 <div><a href="https://www.prisma.io?utm_source=tanstack&via=tanstack">
-  <img alt="Prisma" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" height="40"
+  <img alt="Prisma" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" height="40">
 </a></div><br />  
 <div><a href="https://convex.dev?utm_source=tanstack">
   <img alt="Convex" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40"
