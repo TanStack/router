@@ -94,6 +94,15 @@ TanStack works closely with our partners to provide the best possible developer 
   </picture>
   </a>
   A serverless, autoscaling Postgres solution purpose-built for modern full-stack apps. Neon offers rich integration opportunities with TanStack Start, including server functions and database-backed routing. Together, we’re simplifying the database experience for developers using TanStack.
+- **Prisma**
+  <a href="https://prisma.io?utm_source=tanstack&via=tanstack" alt="Prisma Logo">
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-dark.svg" style="height: 60px;">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" style="height: 60px;">
+  <img alt="Prisma logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" style="height: 60px;">
+  </picture>
+  </a>
+  Skip the database setup, get to building. Prisma Postgres provisions production-ready Postgres databases in seconds—no resource config, no infrastructure planning, no late-night "why is my connection pool maxed out?" debugging sessions. Just connect your TanStack app and start building features that matter. 
 - **Convex**
   <a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
   <picture>
