@@ -10,7 +10,7 @@
   "exports": {
     ".": {
       "import": "./src/index.ts",
-			"default": "./src/index.ts"
+      "default": "./src/index.ts"
     },
     "./package.json": "./package.json"
   },
