@@ -1,17 +1,11 @@
 // DO NOT DELETE THIS FILE!!!
 // This file is a good smoke test to make sure the custom server entry is working
-import {
-  createStartHandler,
-  defaultStreamHandler,
-} from '@tanstack/react-start/server'
-import { createRouter } from './router'
+import handler from '@tanstack/react-start/server-entry'
 
 console.log("[server-entry]: using custom server entry in 'src/server.ts'")
 
-const fetch = createStartHandler({
-  createRouter,
-})(defaultStreamHandler)
-
 export default {
-  fetch,
+  fetch(request: Request) {
+    return handler.fetch(request)
+  },
 }
