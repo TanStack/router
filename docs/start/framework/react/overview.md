@@ -120,7 +120,7 @@ TanStack works closely with our partners to provide the best possible developer 
   <img alt="Prisma logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" style="height: 60px;">
   </picture>
   </a>
-  Skip the database setup, get to building. Prisma Postgres provisions production-ready Postgres databases in seconds—no resource config, no infrastructure planning, no late-night "why is my connection pool maxed out?" debugging sessions. Just connect your TanStack app and start building features that matter. 
+  Skip the database setup, get to building. Prisma Postgres provisions production-ready Postgres databases in seconds—no resource config, no infrastructure planning, no late-night "why is my connection pool maxed out?" debugging sessions. Just connect your TanStack app and start building features that matter.
 
 ## Ready to get started?
 
