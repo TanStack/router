@@ -67,15 +67,6 @@ TanStack Start is not for you if:
 
 TanStack works closely with our partners to provide the best possible developer experience while also providing solutions that work anywhere and are vetted by industry experts. Each of our partners plays a unique role in the TanStack ecosystem:
 
-- **Clerk**
-  <a href="https://go.clerk.com/wOwHtuJ" alt="Clerk Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-dark.svg" style="height: 40px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-light.svg" style="height: 40px;">
-  <img alt="Clerk logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-light.svg" style="height: 40px;">
-  </picture>
-  </a>
-  The best possible authentication experience for modern web applications, including TanStack Start applications. Clerk provides TanStack Start users with first-class integrations and solutions to auth and collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in auth best practices.
 - **Netlify**
   <a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
   <picture>
@@ -94,6 +85,15 @@ TanStack works closely with our partners to provide the best possible developer 
   </picture>
   </a>
   A serverless, autoscaling Postgres solution purpose-built for modern full-stack apps. Neon offers rich integration opportunities with TanStack Start, including server functions and database-backed routing. Together, we’re simplifying the database experience for developers using TanStack.
+- **Clerk**
+  <a href="https://go.clerk.com/wOwHtuJ" alt="Clerk Logo">
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-dark.svg" style="height: 40px;">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-light.svg" style="height: 40px;">
+  <img alt="Clerk logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-light.svg" style="height: 40px;">
+  </picture>
+  </a>
+  The best possible authentication experience for modern web applications, including TanStack Start applications. Clerk provides TanStack Start users with first-class integrations and solutions to auth and collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in auth best practices.
 - **Convex**
   <a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
   <picture>
@@ -112,6 +112,15 @@ TanStack works closely with our partners to provide the best possible developer 
   </picture>
   </a>
   A powerful, full-featured observability platform that integrates seamlessly with TanStack Start. Sentry helps developers monitor and fix crashes in real-time and provides insights into your application's performance and error tracking. Sentry collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in observability best practices.
+- **Prisma**
+  <a href="https://prisma.io?utm_source=tanstack&via=tanstack" alt="Prisma Logo">
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-dark.svg" style="height: 60px;">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" style="height: 60px;">
+  <img alt="Prisma logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" style="height: 60px;">
+  </picture>
+  </a>
+  Skip the database setup, get to building. Prisma Postgres provisions production-ready Postgres databases in seconds—no resource config, no infrastructure planning, no late-night "why is my connection pool maxed out?" debugging sessions. Just connect your TanStack app and start building features that matter.
 
 ## Ready to get started?
 

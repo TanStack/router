@@ -1414,50 +1414,44 @@ export class RouterCore<
         _buildLocation: true,
       })
 
+      // Now let's find the starting pathname
+      // This should default to the current location if no from is provided
       const lastMatch = last(allCurrentLocationMatches)!
 
-      // First let's find the starting pathname
-      // By default, start with the current location
-      let fromPath = this.resolvePathWithBase(lastMatch.fullPath, '.')
-      const toPath = dest.to
-        ? this.resolvePathWithBase(fromPath, `${dest.to}`)
-        : this.resolvePathWithBase(fromPath, '.')
+      // check that from path exists in the current route tree
+      // do this check only on navigations during test or development
+      if (
+        dest.from &&
+        process.env.NODE_ENV !== 'production' &&
+        dest._isNavigate
+      ) {
+        const allFromMatches = this.getMatchedRoutes(
+          dest.from,
+          undefined,
+        ).matchedRoutes
 
-      const routeIsChanging =
-        !!dest.to &&
-        !comparePaths(dest.to.toString(), fromPath) &&
-        !comparePaths(toPath, fromPath)
+        const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
+          return comparePaths(d.fullPath, dest.from!)
+        })
 
-      // If the route is changing we need to find the relative fromPath
-      if (dest.unsafeRelative === 'path') {
-        fromPath = currentLocation.pathname
-      } else if (routeIsChanging && dest.from) {
-        fromPath = dest.from
+        const matchedCurrent = findLast(allFromMatches, (d) => {
+          return comparePaths(d.fullPath, lastMatch.fullPath)
+        })
 
-        // do this check only on navigations during test or development
-        if (process.env.NODE_ENV !== 'production' && dest._isNavigate) {
-          const allFromMatches = this.getMatchedRoutes(
-            dest.from,
-            undefined,
-          ).matchedRoutes
-
-          const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
-            return comparePaths(d.fullPath, fromPath)
-          })
-
-          const matchedCurrent = findLast(allFromMatches, (d) => {
-            return comparePaths(d.fullPath, currentLocation.pathname)
-          })
-
-          // for from to be invalid it shouldn't just be unmatched to currentLocation
-          // but the currentLocation should also be unmatched to from
-          if (!matchedFrom && !matchedCurrent) {
-            console.warn(`Could not find match for from: ${fromPath}`)
-          }
+        // for from to be invalid it shouldn't just be unmatched to currentLocation
+        // but the currentLocation should also be unmatched to from
+        if (!matchedFrom && !matchedCurrent) {
+          console.warn(`Could not find match for from: ${dest.from}`)
         }
       }
 
-      fromPath = this.resolvePathWithBase(fromPath, '.')
+      const defaultedFromPath =
+        dest.unsafeRelative === 'path'
+          ? currentLocation.pathname
+          : (dest.from ?? lastMatch.fullPath)
+
+      // ensure this includes the basePath if set
+      const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
       // From search should always use the current location
       const fromSearch = lastMatch.search
@@ -1465,6 +1459,7 @@ export class RouterCore<
       const fromParams = { ...lastMatch.params }
 
       // Resolve the next to
+      // ensure this includes the basePath if set
       const nextTo = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
         : this.resolvePathWithBase(fromPath, '.')
@@ -1625,8 +1620,7 @@ export class RouterCore<
       }
 
       if (maskedNext) {
-        const maskedFinal = build(maskedDest)
-        next.maskedLocation = maskedFinal
+        next.maskedLocation = maskedNext
       }
 
       return next
