@@ -1208,7 +1208,9 @@ export class RouterCore<
           search: preMatchSearch,
         }) ?? ''
 
-      const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
+      const loaderDepsHash = loaderDeps
+        ? this.options.stringifySearch(loaderDeps)
+        : ''
 
       const { usedParams, interpolatedPath } = interpolatePath({
         path: route.fullPath,
