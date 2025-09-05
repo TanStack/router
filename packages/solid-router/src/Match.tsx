@@ -185,8 +185,7 @@ export const MatchInner = (props: { matchId: string }): any => {
 
   const matchState = useRouterState({
     select: (s) => {
-      const matchIndex = s.matches.findIndex((d) => d.id === props.matchId)
-      const match = s.matches[matchIndex]!
+      const match = s.matches.find((d) => d.id === props.matchId)!
       const routeId = match.routeId as string
 
       const remountFn =
@@ -221,8 +220,9 @@ export const MatchInner = (props: { matchId: string }): any => {
   const out = () => {
     const Comp = route().options.component ?? router.options.defaultComponent
     if (Comp) {
+      const key = matchState().key ?? matchState().match.id
       return (
-        <Solid.Show when={matchState().match.id} keyed>
+        <Solid.Show when={key} keyed>
           <Comp />
         </Solid.Show>
       )
@@ -263,9 +263,7 @@ export const MatchInner = (props: { matchId: string }): any => {
               if (!router.isServer) {
                 const minPendingPromise = createControlledPromise<void>()
 
-                Promise.resolve().then(() => {
-                  routerMatch._nonReactive.minPendingPromise = minPendingPromise
-                })
+                routerMatch._nonReactive.minPendingPromise = minPendingPromise
 
                 setTimeout(() => {
                   minPendingPromise.resolve()

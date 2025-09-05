@@ -95,9 +95,10 @@ export const isMatch = <TMatch, TPath extends string>(
 ): match is IsMatch<TMatch, TPath>['result'] => {
   const parts = (path as string).split('.')
   let part
+  let i = 0
   let value: any = match
 
-  while ((part = parts.shift()) != null && value != null) {
+  while ((part = parts[i++]) != null && value != null) {
     value = value[part]
   }
 
@@ -150,7 +151,7 @@ export interface RouteMatch<
   }
   loaderData?: TLoaderData
   /** @internal */
-  __routeContext: Record<string, unknown>
+  __routeContext?: Record<string, unknown>
   /** @internal */
   __beforeLoadContext?: Record<string, unknown>
   context: TAllContext

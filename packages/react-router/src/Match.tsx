@@ -189,8 +189,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
   const { match, key, routeId } = useRouterState({
     select: (s) => {
-      const matchIndex = s.matches.findIndex((d) => d.id === matchId)
-      const match = s.matches[matchIndex]!
+      const match = s.matches.find((d) => d.id === matchId)!
       const routeId = match.routeId as string
 
       const remountFn =
@@ -249,9 +248,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         if (!router.isServer) {
           const minPendingPromise = createControlledPromise<void>()
 
-          Promise.resolve().then(() => {
-            routerMatch._nonReactive.minPendingPromise = minPendingPromise
-          })
+          routerMatch._nonReactive.minPendingPromise = minPendingPromise
 
           setTimeout(() => {
             minPendingPromise.resolve()

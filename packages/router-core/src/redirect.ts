@@ -65,14 +65,14 @@ export function redirect<
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
   opts.statusCode = opts.statusCode || opts.code || 307
 
-  if (!opts.reloadDocument) {
+  if (!opts.reloadDocument && typeof opts.href === 'string') {
     try {
-      new URL(`${opts.href}`)
+      new URL(opts.href)
       opts.reloadDocument = true
     } catch {}
   }
 
-  const headers = new Headers(opts.headers || {})
+  const headers = new Headers(opts.headers)
   if (opts.href && headers.get('Location') === null) {
     headers.set('Location', opts.href)
   }
@@ -103,7 +103,7 @@ export function isResolvedRedirect(
 }
 
 export function parseRedirect(obj: any) {
-  if (typeof obj === 'object' && obj.isSerializedRedirect) {
+  if (obj !== null && typeof obj === 'object' && obj.isSerializedRedirect) {
     return redirect(obj)
   }
 

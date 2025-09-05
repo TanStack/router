@@ -2,9 +2,7 @@ import * as React from 'react';
 import { Link, Outlet } from '@tanstack/react-router';
 import { fetchPosts } from '../posts';
 import { Route } from "function-declaration.tsx";
-const SplitLoader = fetchPosts;
-export { SplitLoader as loader };
-const SplitComponent = function PostsComponent() {
+function PostsComponent() {
   const posts = Route.useLoaderData();
   return <div className="p-2 flex gap-2">
       <ul className="list-disc pl-4">
@@ -26,5 +24,7 @@ const SplitComponent = function PostsComponent() {
       <hr />
       <Outlet />
     </div>;
-};
-export { SplitComponent as component };
+}
+const SplitLoader = fetchPosts;
+export { SplitLoader as loader };
+export { PostsComponent as component };
