@@ -86,7 +86,7 @@ export class FileRoute<
     TLoaderFn = undefined,
     TChildren = unknown,
     TSSR = unknown,
-    TMiddlewares = unknown,
+    const TMiddlewares = unknown,
   >(
     options?: FileBaseRouteOptions<
       TRegister,
@@ -101,7 +101,8 @@ export class FileRoute<
       TRouteContextFn,
       TBeforeLoadFn,
       AnyContext,
-      TSSR
+      TSSR,
+      TMiddlewares
     > &
       UpdatableRouteOptions<
         TParentRoute,
