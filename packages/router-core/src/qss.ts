@@ -6,12 +6,15 @@
  * This reimplementation uses modern browser APIs
  * (namely URLSearchParams) and TypeScript while still
  * maintaining the original functionality and interface.
+ *
+ * Update: this implementation has also been mangled to
+ * fit exactly our use-case (single value per key in encoding).
  */
 
 /**
  * Encodes an object into a query string.
  * @param obj - The object to encode into a query string.
- * @param [pfx] - An optional prefix to add before the query string.
+ * @param stringify - An optional custom stringify function.
  * @returns The encoded query string.
  * @example
  * ```
@@ -19,18 +22,20 @@
  * // Expected output: "token=foo&key=value"
  * ```
  */
-export function encode(obj: any, pfx?: string) {
-  const normalizedObject = Object.entries(obj).flatMap(([key, value]) => {
-    if (Array.isArray(value)) {
-      return value.map((v) => [key, String(v)])
-    } else {
-      return [[key, String(value)]]
+export function encode(
+  obj: Record<string, any>,
+  stringify: (value: any) => string = String,
+): string {
+  const result = new URLSearchParams()
+
+  for (const key in obj) {
+    const val = obj[key]
+    if (val !== undefined) {
+      result.set(key, stringify(val))
     }
-  })
+  }
 
-  const searchParams = new URLSearchParams(normalizedObject)
-
-  return (pfx || '') + searchParams.toString()
+  return result.toString()
 }
 
 /**
@@ -52,28 +57,26 @@ function toValue(str: unknown) {
 /**
  * Decodes a query string into an object.
  * @param str - The query string to decode.
- * @param [pfx] - An optional prefix to filter out from the query string.
  * @returns The decoded key-value pairs in an object format.
  * @example
  * // Example input: decode("token=foo&key=value")
  * // Expected output: { "token": "foo", "key": "value" }
  */
-export function decode(str: any, pfx?: string): any {
-  const searchParamsPart = pfx ? str.slice(pfx.length) : str
-  const searchParams = new URLSearchParams(searchParamsPart)
+export function decode(str: any): any {
+  const searchParams = new URLSearchParams(str)
 
-  const entries = [...searchParams.entries()]
+  const result: Record<string, unknown> = {}
 
-  return entries.reduce<Record<string, unknown>>((acc, [key, value]) => {
-    const previousValue = acc[key]
+  for (const [key, value] of searchParams.entries()) {
+    const previousValue = result[key]
     if (previousValue == null) {
-      acc[key] = toValue(value)
+      result[key] = toValue(value)
+    } else if (Array.isArray(previousValue)) {
+      previousValue.push(toValue(value))
     } else {
-      acc[key] = Array.isArray(previousValue)
-        ? [...previousValue, toValue(value)]
-        : [previousValue, toValue(value)]
+      result[key] = [previousValue, toValue(value)]
     }
+  }
 
-    return acc
-  }, {})
+  return result
 }

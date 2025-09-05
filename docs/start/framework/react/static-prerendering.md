@@ -40,7 +40,7 @@ export default defineConfig({
         retryDelay: 1000,
 
         // Callback when page is successfully rendered
-        onSuccess: (page) => {
+        onSuccess: ({ page }) => {
           console.log(`Rendered ${page.path}!`)
         },
       },

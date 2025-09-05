@@ -203,4 +203,17 @@ const serializers = [
     // From
     (v) => BigInt(v),
   ),
+  createSerializer(
+    // Key
+    'server-function',
+    // Check
+    (v): v is { functionId: string } =>
+      typeof v === 'function' &&
+      'functionId' in v &&
+      typeof v.functionId === 'string',
+    // To
+    ({ functionId }) => ({ functionId, __serverFn: true }),
+    // From, dummy impl. the actual server function lookup is done on the server in packages/start-server-core/src/server-functions-handler.ts
+    (v) => v,
+  ),
 ] as const
