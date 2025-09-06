@@ -51,3 +51,12 @@ vibe-rules install cursor
 ```
 
 But you can also use `windsurf`, `claude-code`, etc. Check the [vibe-rules](https://www.npmjs.com/package/vibe-rules) documentation for more information.
+
+### Usage with yarn workspaces
+
+When using yarn workspaces, you will need to add the following config to the `.yarnrc.yml` of the application using TanStack Router
+
+```yml
+pnpFallbackMode: all
+pnpMode: loose
+```

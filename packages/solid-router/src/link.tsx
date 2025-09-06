@@ -15,7 +15,6 @@ import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
-import { useActiveLocation } from './useActiveLocation'
 import type {
   AnyRouter,
   Constrain,
@@ -133,20 +132,17 @@ export function useLinkProps<
     select: (s) => s.location.searchStr,
   })
 
-  const { getFromPath, activeLocation } = useActiveLocation()
-
-  const from = getFromPath(options.from)
+  const from = options.from
 
   const _options = () => {
     return {
       ...options,
-      from: from(),
+      from,
     }
   }
 
   const next = Solid.createMemo(() => {
     currentSearch()
-    activeLocation()
     return router.buildLocation(_options() as any)
   })
 
