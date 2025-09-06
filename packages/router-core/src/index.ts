@@ -1,3 +1,5 @@
+export * from './global'
+
 export { TSR_DEFERRED_PROMISE, defer } from './defer'
 export type { DeferredPromiseState, DeferredPromise } from './defer'
 export { preloadWarning } from './link'
@@ -36,6 +38,8 @@ export type {
   ToSubOptionsProps,
   RequiredToOptions,
 } from './link'
+
+export { componentTypes } from './load-matches'
 
 export type {
   RouteToPath,
@@ -195,7 +199,6 @@ export {
   defaultSerializeError,
   getLocationChangeInfo,
   RouterCore,
-  componentTypes,
   lazyFn,
   SearchParamError,
   PathParamError,
@@ -266,7 +269,6 @@ export type { OptionalStructuralSharing } from './structuralSharing'
 export {
   last,
   functionalUpdate,
-  pick,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,

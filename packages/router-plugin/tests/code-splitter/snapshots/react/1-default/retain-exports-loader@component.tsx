@@ -2,12 +2,7 @@ console.warn("These exports from \"retain-exports-loader.tsx?component\" are not
 import * as React from 'react';
 import { Outlet } from '@tanstack/react-router';
 import { importedComponent as ImportedComponent } from '../../shared/imported';
-import { Route } from "retain-exports-loader.tsx";
-const HEADER_HEIGHT = '63px';
-import { SIDEBAR_WIDTH } from "retain-exports-loader.tsx";
-import { SIDEBAR_MINI_WIDTH } from "retain-exports-loader.tsx";
-const ASIDE_WIDTH = '250px';
-const SplitComponent = function Layout() {
+function Layout() {
   return <main>
       <header style={{
       height: HEADER_HEIGHT
@@ -23,5 +18,10 @@ const SplitComponent = function Layout() {
       <ImportedComponent />
       <Outlet />
     </main>;
-};
-export { SplitComponent as component };
+}
+import { Route } from "retain-exports-loader.tsx";
+const HEADER_HEIGHT = '63px';
+import { SIDEBAR_WIDTH } from "retain-exports-loader.tsx";
+import { SIDEBAR_MINI_WIDTH } from "retain-exports-loader.tsx";
+const ASIDE_WIDTH = '250px';
+export { Layout as component };

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/zod-adapter",
-  "version": "1.127.9",
+  "version": "1.131.35",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -27,12 +27,12 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint ./src",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts53": "node ../../node_modules/typescript53/lib/tsc.js",
     "test:types:ts54": "node ../../node_modules/typescript54/lib/tsc.js",
     "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
-    "test:types:ts58": "tsc",
+    "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js",
+    "test:types:ts59": "tsc",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch --typecheck",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
@@ -66,7 +66,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
-    "@tanstack/react-router": "workspace:^",
+    "@tanstack/react-router": "workspace:*",
     "zod": "^3.24.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

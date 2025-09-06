@@ -1,6 +1,6 @@
 import path from 'node:path'
 import * as fsp from 'node:fs/promises'
-import { mkdtempSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import crypto from 'node:crypto'
 import { deepEqual, rootRouteId } from '@tanstack/router-core'
 import { logging } from './logger'
@@ -61,7 +61,6 @@ interface fs {
   stat: (
     filePath: string,
   ) => Promise<{ mtimeMs: bigint; mode: number; uid: number; gid: number }>
-  mkdtempSync: (prefix: string) => string
   rename: (oldPath: string, newPath: string) => Promise<void>
   writeFile: (filePath: string, content: string) => Promise<void>
   readFile: (
@@ -83,7 +82,6 @@ const DefaultFileSystem: fs = {
       gid: Number(res.gid),
     }
   },
-  mkdtempSync: mkdtempSync,
   rename: (oldPath, newPath) => fsp.rename(oldPath, newPath),
   writeFile: (filePath, content) => fsp.writeFile(filePath, content),
   readFile: async (filePath: string) => {
@@ -178,7 +176,7 @@ export class Generator {
 
   private root: string
   private routesDirectoryPath: string
-  private tmpDir: string
+  private sessionId?: string
   private fs: fs
   private logger: Logger
   private generatedRouteTreePath: string
@@ -196,9 +194,6 @@ export class Generator {
     this.logger = logging({ disabled: this.config.disableLogging })
     this.root = opts.root
     this.fs = opts.fs || DefaultFileSystem
-    this.tmpDir = this.fs.mkdtempSync(
-      path.join(this.config.tmpDir, 'router-generator-'),
-    )
     this.generatedRouteTreePath = path.resolve(this.config.generatedRouteTree)
     this.targetTemplate = getTargetTemplate(this.config)
 
@@ -893,7 +888,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
             tLazyRouteTemplate.template(),
           {
             tsrImports: tLazyRouteTemplate.imports.tsrImports(),
-            tsrPath: escapedRoutePath.replaceAll(/\{(.+)\}/gm, '$1'),
+            tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
             tsrExportStart:
               tLazyRouteTemplate.imports.tsrExportStart(escapedRoutePath),
             tsrExportEnd: tLazyRouteTemplate.imports.tsrExportEnd(),
@@ -921,7 +916,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
             tRouteTemplate.template(),
           {
             tsrImports: tRouteTemplate.imports.tsrImports(),
-            tsrPath: escapedRoutePath.replaceAll(/\{(.+)\}/gm, '$1'),
+            tsrPath: escapedRoutePath.replaceAll(/\{(.+?)\}/gm, '$1'),
             tsrExportStart:
               tRouteTemplate.imports.tsrExportStart(escapedRoutePath),
             tsrExportEnd: tRouteTemplate.imports.tsrExportEnd(),
@@ -1089,7 +1084,13 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
   private getTempFileName(filePath: string) {
     const absPath = path.resolve(filePath)
     const hash = crypto.createHash('md5').update(absPath).digest('hex')
-    return path.join(this.tmpDir, hash)
+    // lazy initialize sessionId to only create tmpDir when it is first needed
+    if (!this.sessionId) {
+      // ensure the directory exists
+      mkdirSync(this.config.tmpDir, { recursive: true })
+      this.sessionId = crypto.randomBytes(4).toString('hex')
+    }
+    return path.join(this.config.tmpDir, `${this.sessionId}-${hash}`)
   }
 
   private async isRouteFileCacheFresh(node: RouteNode): Promise<

@@ -7,8 +7,8 @@
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "node .output/server/index.mjs",
-    "test:e2e": "playwright test --project=chromium"
+    "start": "npx serve .output/public",
+    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/solid-router": "workspace:^",

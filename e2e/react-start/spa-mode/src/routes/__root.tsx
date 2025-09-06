@@ -9,8 +9,8 @@ import {
   createRootRoute,
   useRouterState,
 } from '@tanstack/react-router'
-import appCss from '~/styles/app.css?url'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -28,9 +28,6 @@ export const Route = createRootRoute({
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
-  ssr: () => {
-    throw new Error('ssr() should not be called in SPA mode')
-  },
   beforeLoad: () => {
     console.log(
       `beforeLoad for ${Route.id} called on the ${typeof window !== 'undefined' ? 'client' : 'server'}`,

@@ -4,6 +4,7 @@ import { trimPathRight } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
+import { crawlFrameworkPkgs } from 'vitefu'
 import { createTanStackConfig } from './schema'
 import { nitroPlugin } from './nitro-plugin/plugin'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
@@ -43,6 +44,11 @@ export interface TanStackStartVitePluginCoreOptions {
   }) => string
   getVirtualServerEntry: (ctx: { routerFilepath: string }) => string
   getVirtualClientEntry: (ctx: { routerFilepath: string }) => string
+  crawlPackages?: (opts: {
+    name: string
+    peerDependencies: Record<string, any>
+    exports?: Record<string, any> | string
+  }) => 'include' | 'exclude' | undefined
 }
 // this needs to live outside of the TanStackStartVitePluginCore since it will be invoked multiple times by vite
 let ssrBundle: Rollup.OutputBundle
@@ -60,7 +66,7 @@ export function TanStackStartVitePluginCore(
     resolveVirtualEntriesPlugin(opts, startConfig),
     {
       name: 'tanstack-start-core:config-client',
-      async config(viteConfig) {
+      async config(viteConfig, { command }) {
         const viteAppBase = trimPathRight(viteConfig.base || '/')
         globalThis.TSS_APP_BASE = viteAppBase
 
@@ -76,6 +82,52 @@ export function TanStackStartVitePluginCore(
 
           return nitroOutputPublicDir
         })()
+
+        const startPackageName = `@tanstack/${opts.framework}-start`
+        const routerPackageName = `@tanstack/${opts.framework}-router`
+
+        const additionalOptimizeDeps = {
+          include: new Set<string>(),
+          exclude: new Set<string>(),
+        }
+
+        // crawl packages that have start in "peerDependencies"
+        // see https://github.com/svitejs/vitefu/blob/d8d82fa121e3b2215ba437107093c77bde51b63b/src/index.js#L95-L101
+
+        // this is currently uncached; could be implemented similarly as vite handles lock file changes
+        // see https://github.com/vitejs/vite/blob/557f797d29422027e8c451ca50dd84bf8c41b5f0/packages/vite/src/node/optimizer/index.ts#L1282
+
+        const result = await crawlFrameworkPkgs({
+          root: process.cwd(),
+          isBuild: command === 'build',
+          isFrameworkPkgByJson(pkgJson) {
+            if ([routerPackageName, startPackageName].includes(pkgJson.name)) {
+              return false
+            }
+
+            const peerDependencies = pkgJson['peerDependencies']
+
+            if (peerDependencies) {
+              const internalResult = opts.crawlPackages?.({
+                name: pkgJson.name,
+                peerDependencies,
+                exports: pkgJson.exports,
+              })
+              if (internalResult) {
+                if (internalResult === 'exclude') {
+                  additionalOptimizeDeps.exclude.add(pkgJson.name)
+                } else {
+                  additionalOptimizeDeps.include.add(pkgJson.name)
+                }
+              }
+              return (
+                startPackageName in peerDependencies ||
+                routerPackageName in peerDependencies
+              )
+            }
+            return false
+          },
+        })
 
         return {
           base: viteAppBase,
@@ -126,23 +178,23 @@ export function TanStackStartVitePluginCore(
           },
           resolve: {
             noExternal: [
-              '@tanstack/start-client',
-              '@tanstack/start-client-core',
-              '@tanstack/start-server',
-              '@tanstack/start-server-core',
-              '@tanstack/start-server-functions-fetcher',
-              '@tanstack/start-server-functions-client',
-              '@tanstack/start-server-functions-server',
-              '@tanstack/start-router-manifest',
-              '@tanstack/start-config',
-              '@tanstack/server-functions-plugin',
-              'nitropack',
-              '@tanstack/**start**',
+              '@tanstack/start**',
+              `@tanstack/${opts.framework}-start**`,
               ...Object.values(VIRTUAL_MODULES),
+              startPackageName,
+              ...result.ssr.noExternal.sort(),
             ],
+            external: [...result.ssr.external.sort()],
+            dedupe: [startPackageName],
           },
           optimizeDeps: {
-            exclude: [...Object.values(VIRTUAL_MODULES)],
+            exclude: [
+              ...Object.values(VIRTUAL_MODULES),
+              startPackageName,
+              ...result.optimizeDeps.exclude.sort(),
+              ...additionalOptimizeDeps.exclude,
+            ],
+            include: [...additionalOptimizeDeps.include],
           },
           /* prettier-ignore */
           define: {
@@ -153,7 +205,7 @@ export function TanStackStartVitePluginCore(
             ...defineReplaceEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
             ...defineReplaceEnv('TSS_OUTPUT_PUBLIC_DIR', nitroOutputPublicDir),
             ...defineReplaceEnv('TSS_APP_BASE', viteAppBase),
-            ...defineReplaceEnv('TSS_SPA_MODE', startConfig.spa?.enabled ? 'true' : 'false'),
+            ...(command === 'serve' ? defineReplaceEnv('TSS_SHELL', startConfig.spa?.enabled ? 'true' : 'false') : {}),
           },
         }
       },
@@ -189,7 +241,7 @@ export function TanStackStartVitePluginCore(
     {
       name: 'tanstack-start:core:capture-client-bundle',
       applyToEnvironment(e) {
-        return e.config.consumer === 'client'
+        return e.name === VITE_ENVIRONMENT_NAMES.client
       },
       enforce: 'post',
       generateBundle(_options, bundle) {

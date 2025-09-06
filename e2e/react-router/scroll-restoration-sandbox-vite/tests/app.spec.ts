@@ -9,14 +9,30 @@ test('Smoke - Renders home', async ({ page }) => {
   ).toBeVisible()
 })
 
-// Test for scroll related stuff
-;[
+const pages = [
   linkOptions({ to: '/normal-page' }),
   linkOptions({ to: '/lazy-page' }),
   linkOptions({ to: '/virtual-page' }),
   linkOptions({ to: '/lazy-with-loader-page' }),
   linkOptions({ to: '/page-with-search', search: { where: 'footer' } }),
-].forEach((options) => {
+] as const
+
+pages.forEach((options, index) => {
+  const from = index === 0 ? pages[1].to : pages[0].to
+  test(`On navigate from ${from} to ${options.to} (from the footer), scroll should be at top`, async ({
+    page,
+  }) => {
+    await page.goto(toRuntimePath(from))
+    const link = page.getByRole('link', { name: `Foot-${options.to}` })
+    await link.scrollIntoViewIfNeeded()
+    await page.waitForTimeout(500)
+    await link.click()
+    await expect(page.getByTestId('at-the-top')).toBeInViewport()
+  })
+})
+
+// Test for scroll related stuff
+pages.forEach((options) => {
   test(`On navigate to ${options.to} (from the header), scroll should be at top`, async ({
     page,
   }) => {

@@ -14,15 +14,23 @@ export function ScrollRestoration() {
   const resolvedKey =
     userKey !== defaultGetScrollRestorationKey(router.latestLocation)
       ? userKey
-      : null
+      : undefined
 
   if (!router.isScrollRestoring || !router.isServer) {
     return null
   }
 
+  const restoreScrollOptions: Parameters<typeof restoreScroll>[0] = {
+    storageKey,
+    shouldScrollRestoration: true,
+  }
+  if (resolvedKey) {
+    restoreScrollOptions.key = resolvedKey
+  }
+
   return (
     <ScriptOnce
-      children={`(${restoreScroll.toString()})(${JSON.stringify(storageKey)},${JSON.stringify(resolvedKey)}, undefined, true)`}
+      children={`(${restoreScroll.toString()})(${JSON.stringify(restoreScrollOptions)})`}
     />
   )
 }

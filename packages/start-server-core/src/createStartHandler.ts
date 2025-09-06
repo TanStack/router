@@ -13,11 +13,14 @@ import {
   trimPath,
 } from '@tanstack/router-core'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
+import { runWithStartContext } from '@tanstack/start-storage-context'
 import { getResponseHeaders, requestHandler } from './h3'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
 import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
+
+import { HEADERS } from './constants'
 import type {
   AnyServerRouteWithTypes,
   ServerRouteMethodHandlerFn,
@@ -108,21 +111,32 @@ export function createStartHandler<TRouter extends AnyRouter>({
       }
 
       const url = new URL(request.url)
-      const href = decodeURIComponent(url.href.replace(url.origin, ''))
+      const href = url.href.replace(url.origin, '')
 
       const APP_BASE = process.env.TSS_APP_BASE || '/'
 
       // TODO how does this work with base path? does the router need to be configured the same as APP_BASE?
       const router = await createRouter()
+
       // Create a history for the client-side router
       const history = createMemoryHistory({
         initialEntries: [href],
       })
 
       // Update the client-side router with the history
+      const isPrerendering = process.env.TSS_PRERENDERING === 'true'
+      // env var is set during dev is SPA mode is enabled
+      let isShell = process.env.TSS_SHELL === 'true'
+      if (isPrerendering && !isShell) {
+        // only read the shell header if we are prerendering
+        // to avoid runtime behavior changes by injecting this header
+        // the header is set by the prerender plugin
+        isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
+      }
       router.update({
         history,
-        isShell: process.env.TSS_SPA_MODE === 'true',
+        isShell,
+        isPrerendering,
       })
 
       const response = await (async () => {
@@ -165,57 +179,58 @@ export function createStartHandler<TRouter extends AnyRouter>({
             }
           }
 
-          async function executeRouter() {
-            const requestAcceptHeader = request.headers.get('Accept') || '*/*'
-            const splitRequestAcceptHeader = requestAcceptHeader.split(',')
+          const executeRouter = () =>
+            runWithStartContext({ router }, async () => {
+              const requestAcceptHeader = request.headers.get('Accept') || '*/*'
+              const splitRequestAcceptHeader = requestAcceptHeader.split(',')
 
-            const supportedMimeTypes = ['*/*', 'text/html']
-            const isRouterAcceptSupported = supportedMimeTypes.some(
-              (mimeType) =>
-                splitRequestAcceptHeader.some((acceptedMimeType) =>
-                  acceptedMimeType.trim().startsWith(mimeType),
-                ),
-            )
-
-            if (!isRouterAcceptSupported) {
-              return json(
-                {
-                  error: 'Only HTML requests are supported here',
-                },
-                {
-                  status: 500,
-                },
+              const supportedMimeTypes = ['*/*', 'text/html']
+              const isRouterAcceptSupported = supportedMimeTypes.some(
+                (mimeType) =>
+                  splitRequestAcceptHeader.some((acceptedMimeType) =>
+                    acceptedMimeType.trim().startsWith(mimeType),
+                  ),
               )
-            }
 
-            // if the startRoutesManifest is not loaded yet, load it once
-            if (startRoutesManifest === null) {
-              startRoutesManifest = await getStartManifest({
-                basePath: APP_BASE,
+              if (!isRouterAcceptSupported) {
+                return json(
+                  {
+                    error: 'Only HTML requests are supported here',
+                  },
+                  {
+                    status: 500,
+                  },
+                )
+              }
+
+              // if the startRoutesManifest is not loaded yet, load it once
+              if (startRoutesManifest === null) {
+                startRoutesManifest = await getStartManifest({
+                  basePath: APP_BASE,
+                })
+              }
+
+              // Attach the server-side SSR utils to the client-side router
+              attachRouterServerSsrUtils(router, startRoutesManifest)
+
+              await router.load()
+
+              // If there was a redirect, skip rendering the page at all
+              if (router.state.redirect) {
+                return router.state.redirect
+              }
+
+              await router.serverSsr!.dehydrate()
+
+              const responseHeaders = getStartResponseHeaders({ router })
+              const response = await cb({
+                request,
+                router,
+                responseHeaders,
               })
-            }
 
-            // Attach the server-side SSR utils to the client-side router
-            attachRouterServerSsrUtils(router, startRoutesManifest)
-
-            await router.load()
-
-            // If there was a redirect, skip rendering the page at all
-            if (router.state.redirect) {
-              return router.state.redirect
-            }
-
-            await router.serverSsr!.dehydrate()
-
-            const responseHeaders = getStartResponseHeaders({ router })
-            const response = await cb({
-              request,
-              router,
-              responseHeaders,
+              return response
             })
-
-            return response
-          }
 
           // If we have a server route tree, then we try matching to see if we have a
           // server route that matches the request.
@@ -264,7 +279,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
           !response.options.to.startsWith('/')
         ) {
           throw new Error(
-            `Server side redirects must use absolute paths via the 'href' or 'to' options. Received: ${JSON.stringify(response.options)}`,
+            `Server side redirects must use absolute paths via the 'href' or 'to' options. The redirect() method's "to" property accepts an internal path only. Use the "href" property to provide an external URL. Received: ${JSON.stringify(response.options)}`,
           )
         }
 
@@ -452,7 +467,14 @@ function executeMiddleware(middlewares: TODO, ctx: TODO) {
       // Allow the middleware to call the next middleware in the chain
       next: async (nextCtx: TODO) => {
         // Allow the caller to extend the context for the next middleware
-        const nextResult = await next({ ...ctx, ...nextCtx })
+        const nextResult = await next({
+          ...ctx,
+          ...nextCtx,
+          context: {
+            ...ctx.context,
+            ...(nextCtx?.context || {}),
+          },
+        })
 
         // Merge the result into the context\
         return Object.assign(ctx, handleCtxResult(nextResult))
