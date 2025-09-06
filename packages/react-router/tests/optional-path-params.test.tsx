@@ -781,7 +781,7 @@ describe('React Router - Optional Path Parameters', () => {
           getParentRoute: () => postsRoute,
           path: '/{-$slug}',
           component: () => {
-            const { slug } = postsRoute.useParams()
+            const { slug } = postRoute.useParams()
             return (
               <div>
                 <h2>Post Detail</h2>
