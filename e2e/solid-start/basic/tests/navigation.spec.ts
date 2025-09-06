@@ -34,7 +34,7 @@ test('Navigating nested layouts', async ({ page }) => {
 
 test('client side navigating to a route with scripts', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('link', { name: 'Scripts' }).click()
+  await page.getByRole('link', { name: 'Scripts', exact: true }).click()
   await expect(page.getByTestId('scripts-test-heading')).toBeInViewport()
   expect(await page.evaluate('window.SCRIPT_1')).toBe(true)
   expect(await page.evaluate('window.SCRIPT_2')).toBe(undefined)

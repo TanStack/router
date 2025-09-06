@@ -38,6 +38,13 @@ function Script({
 }): JSX.Element | null {
   onMount(() => {
     if (attrs?.src) {
+      const existingScript = document.querySelector(
+        `script[src="${attrs.src}"]`,
+      )
+      if (existingScript) {
+        return
+      }
+
       const script = document.createElement('script')
 
       for (const [key, value] of Object.entries(attrs)) {
@@ -57,6 +64,13 @@ function Script({
         }
       })
     } else if (typeof children === 'string') {
+      const existingScript = Array.from(
+        document.querySelectorAll('script:not([src])'),
+      ).find((script) => script.textContent === children)
+      if (existingScript) {
+        return
+      }
+
       const script = document.createElement('script')
       script.textContent = children
 
@@ -80,6 +94,10 @@ function Script({
       })
     }
   })
+
+  if (typeof window !== 'undefined') {
+    return null
+  }
 
   if (attrs?.src && typeof attrs.src === 'string') {
     return <script {...attrs} />
