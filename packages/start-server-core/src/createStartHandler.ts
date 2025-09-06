@@ -28,7 +28,7 @@ import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionS
 //   AnyRoute,
 //   ServerRouteMethodHandlerFn,
 // } from './serverRoute'
-import type { RouteMethodHandlerFn } from './serverRoute'
+import type { RouteMethod, RouteMethodHandlerFn } from './serverRoute'
 import type { RequestHandler } from './request-response'
 import type {
   AnyRoute,
@@ -402,40 +402,47 @@ async function handleServerRoutes(opts: {
     const server = serverTreeResult.foundRoute?.options.server
 
     if (server) {
-      if (server.methods) {
-        const methods =
-          typeof server?.methods === 'function'
-            ? server.methods(
-                (d) =>
-                  ({
-                    _options: d,
-                  }) as TODO,
-              )
-            : server.methods
+      if (server.handlers) {
+        const handlers =
+          typeof server.handlers === 'function'
+            ? server.handlers({
+                createHandlers: (d) => d as TODO,
+              })
+            : server.handlers
 
-        const method = Object.keys(methods).find(
-          (method) =>
-            method.toLowerCase() === opts.request.method.toLowerCase(),
+        const requestMethod = opts.request.method.toLowerCase()
+
+        // Attempt to find the method in the handlers
+        let method = Object.keys(handlers).find(
+          (method) => method.toLowerCase() === requestMethod,
         )
 
+        // If no method is found, attempt to find the 'all' method
+        if (!method) {
+          method = Object.keys(handlers).find(
+            (method) => method.toLowerCase() === 'all',
+          )
+            ? 'all'
+            : undefined
+        }
+
+        // If a method is found, execute the handler
         if (method) {
-          const handler = methods[method as keyof typeof methods]
+          const handler = handlers[method as RouteMethod]
           if (handler) {
             if (typeof handler === 'function') {
               middlewares.push(handlerToMiddleware(handler))
             } else {
-              if (
-                handler._options.middlewares &&
-                handler._options.middlewares.length
-              ) {
+              const { middleware } = handler
+              if (middleware && middleware.length) {
                 middlewares.push(
-                  ...flattenMiddlewares(
-                    handler._options.middlewares as any,
-                  ).map((d) => d.options.server),
+                  ...flattenMiddlewares(middleware as TODO).map(
+                    (d) => d.options.server,
+                  ),
                 )
               }
-              if (handler._options.handler) {
-                middlewares.push(handlerToMiddleware(handler._options.handler))
+              if (handler.handler) {
+                middlewares.push(handlerToMiddleware(handler.handler))
               }
             }
           }
