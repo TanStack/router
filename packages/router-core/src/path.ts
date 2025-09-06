@@ -397,6 +397,10 @@ export function interpolatePath({
 
       if (segment.type === SEGMENT_TYPE_WILDCARD) {
         usedParams._splat = params._splat
+
+        // TODO: Deprecate *
+        usedParams['*'] = params._splat
+
         const segmentPrefix = segment.prefixSegment || ''
         const segmentSuffix = segment.suffixSegment || ''
 
