@@ -8,7 +8,7 @@ function RouteComponent() {
   const params = Route.useParams()
   return (
     <div>
-      Hello "/params-ps/named/{params().foo}/{params().bar}/{params().baz}"!
+      Hello "/params-ps/named/$foo/$bar/$baz"!
       <div>
         baz: <span data-testid="foo-bar-baz-value">{params().baz}</span>
       </div>

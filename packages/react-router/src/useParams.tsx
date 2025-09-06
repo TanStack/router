@@ -95,7 +95,7 @@ export function useParams<
   }) as any
 
   const params = isStrict
-    ? router.getMatch(matchResult)!.params
+    ? router.getMatch(matchResult)?.params
     : matchResult.params
 
   return opts.select ? (opts.select(params) as any) : (params ?? {})

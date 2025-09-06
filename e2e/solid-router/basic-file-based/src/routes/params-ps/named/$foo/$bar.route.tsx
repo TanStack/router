@@ -30,7 +30,7 @@ function RouteComponent() {
 
   return (
     <div>
-      Hello "/params-ps/named/{params().foo}/{params().bar}"!
+      Hello "/params-ps/named/$foo/$bar"!
       <div>
         Bar Render Count:{' '}
         <span data-testid="foo-bar-render-count">{renderBarCount()}</span>

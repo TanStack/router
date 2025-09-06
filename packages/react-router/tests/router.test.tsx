@@ -1012,7 +1012,7 @@ describe('router rendering stability', () => {
       getParentRoute: () => rootRoute,
       path: '/foo2/$foo2Id',
       component: Foo2IdRouteComponent,
-      remountDeps: opts?.remountDeps.fooId,
+      remountDeps: opts?.remountDeps.foo2Id,
     })
 
     function Foo2IdRouteComponent() {
@@ -1039,7 +1039,7 @@ describe('router rendering stability', () => {
       getParentRoute: () => foo2IdRoute,
       path: '/bar2/$bar2Id',
       component: Bar2IdRouteComponent,
-      remountDeps: opts?.remountDeps.barId,
+      remountDeps: opts?.remountDeps.bar2Id,
     })
 
     function Bar2IdRouteComponent() {

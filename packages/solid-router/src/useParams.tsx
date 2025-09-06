@@ -73,11 +73,15 @@ export function useParams<
     select: (match) => (isStrict ? match.id : match),
   }) as Accessor<any>
 
-  const params = isStrict
-    ? router.getMatch(matchResult())!.params
-    : matchResult().params
+  const params = createMemo(() => {
+    const res = matchResult()
 
-  return createMemo(() =>
-    opts.select ? (opts.select(params) as any) : (params ?? {}),
-  )
+    return isStrict ? router.getMatch(res)?.params : res.params
+  })
+
+  return createMemo(() => {
+    const p = params()
+
+    return opts.select ? (opts.select(p) as any) : (p ?? {})
+  })
 }
