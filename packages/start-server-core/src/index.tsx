@@ -17,21 +17,18 @@ export { handleServerAction } from './server-functions-handler'
 export * from './request-response'
 export type {
   ResolveAllServerContext,
-  RouteVerb,
+  RouteMethod,
   RouteMethodHandlerFn,
   MergeMethodMiddlewares,
   AssignAllMethodContext,
-  RouteVerbs,
-  CreateMethodFn,
+  RouteMethods,
+  CreateHandlersFn,
   CreateMethodFnOpts,
-  RouteMethodBuilderResult,
   RouteMethodHandler,
   RouteMethodHandlerCtx,
-  RouteMethodWithMiddleware,
   RouteServerOptions,
   RouteMethodBuilderOptions,
-  RouteMethodsOrOptionsRecord,
-  RouteMethodsRecord,
+  HandlersFnOpts,
 } from './serverRoute'
 
 export * from './virtual-modules'

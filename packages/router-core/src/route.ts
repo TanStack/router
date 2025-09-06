@@ -920,7 +920,8 @@ export interface FilebaseRouteOptionsInterface<
           TLoaderDeps,
           TRouterContext,
           TRouteContextFn,
-          TBeforeLoadFn
+          TBeforeLoadFn,
+          TServerMiddlewares
         >,
       ) => any)
 
@@ -994,7 +995,8 @@ export interface FilebaseRouteOptionsInterface<
         TLoaderDeps,
         TRouterContext,
         TRouteContextFn,
-        TBeforeLoadFn
+        TBeforeLoadFn,
+        TServerMiddlewares
       >,
     ) => ValidateSerializableLifecycleResult<
       TRegister,
@@ -1321,6 +1323,7 @@ export type RouteLoaderFn<
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
+  in out TServerMiddlewares = unknown,
 > = (
   match: LoaderFnContext<
     TParentRoute,
@@ -1329,7 +1332,8 @@ export type RouteLoaderFn<
     TLoaderDeps,
     TRouterContext,
     TRouteContextFn,
-    TBeforeLoadFn
+    TBeforeLoadFn,
+    TServerMiddlewares
   >,
 ) => any
 
@@ -1341,6 +1345,7 @@ export interface LoaderFnContext<
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
+  in out TServerMiddlewares = unknown,
 > {
   abortController: AbortController
   preload: boolean
