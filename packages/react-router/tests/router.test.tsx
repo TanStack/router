@@ -950,7 +950,7 @@ describe('router rendering stability', () => {
                 to="/foo2/$foo2Id/bar2/$bar2Id"
                 params={{ foo2Id: '2', bar2Id: '1' }}
               >
-                Foo2-2-Bar2_2
+                Foo2-2-Bar2_1
               </Link>
             </div>
             <Outlet />

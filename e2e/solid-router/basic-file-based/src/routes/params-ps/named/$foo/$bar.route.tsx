@@ -11,8 +11,8 @@ export const Route = createFileRoute('/params-ps/named/$foo/$bar')({
 })
 
 function RouteComponent() {
-  const [renderBarCount, setBarRenderCountCount] = createSignal(0)
-  const [renderBazCount, setBazRenderCountCount] = createSignal(0)
+  const [renderBarCount, setBarRenderCount] = createSignal(0)
+  const [renderBazCount, setBazRenderCount] = createSignal(0)
 
   const params = useParams({
     strict: false,
@@ -20,12 +20,12 @@ function RouteComponent() {
 
   createEffect(() => {
     params().bar
-    setBarRenderCountCount((prev) => prev + 1)
+    setBarRenderCount((prev) => prev + 1)
   })
 
   createEffect(() => {
     params().baz
-    setBazRenderCountCount((prev) => prev + 1)
+    setBazRenderCount((prev) => prev + 1)
   })
 
   return (

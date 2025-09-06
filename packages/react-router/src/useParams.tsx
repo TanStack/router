@@ -88,7 +88,7 @@ export function useParams<
 
   const matchResult = useMatch({
     from: opts.from!,
-    shouldThrow: false,
+    shouldThrow: opts.shouldThrow,
     structuralSharing: opts.structuralSharing,
     strict: opts.strict,
     select: (match) => (isStrict ? match.id : match),
