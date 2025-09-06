@@ -1,4 +1,4 @@
-import { act, useEffect } from 'react'
+import { act, useEffect, useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
@@ -885,12 +885,16 @@ describe('router rendering stability', () => {
     remountDeps: {
       default?: RemountDepsFn
       fooId?: RemountDepsFn
+      foo2Id?: RemountDepsFn
       barId?: RemountDepsFn
+      bar2Id?: RemountDepsFn
     }
   }) {
     const mountMocks = {
       fooId: vi.fn(),
+      foo2Id: vi.fn(),
       barId: vi.fn(),
+      bar2Id: vi.fn(),
     }
 
     const rootRoute = createRootRoute({
@@ -927,12 +931,34 @@ describe('router rendering stability', () => {
               >
                 Foo3-Bar2
               </Link>
+              <Link
+                data-testid="link-foo2-1-bar2-1"
+                to="/foo2/$foo2Id/bar2/$bar2Id"
+                params={{ foo2Id: '1', bar2Id: '1' }}
+              >
+                Foo2-1-Bar2_1
+              </Link>
+              <Link
+                data-testid="link-foo2-1-bar2-2"
+                to="/foo2/$foo2Id/bar2/$bar2Id"
+                params={{ foo2Id: '1', bar2Id: '2' }}
+              >
+                Foo2-1-Bar2_2
+              </Link>
+              <Link
+                data-testid="link-foo2-2-bar2-1"
+                to="/foo2/$foo2Id/bar2/$bar2Id"
+                params={{ foo2Id: '2', bar2Id: '1' }}
+              >
+                Foo2-2-Bar2_2
+              </Link>
             </div>
             <Outlet />
           </div>
         )
       },
     })
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
@@ -940,6 +966,7 @@ describe('router rendering stability', () => {
         return ''
       },
     })
+
     const fooIdRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/foo/$fooId',
@@ -968,7 +995,7 @@ describe('router rendering stability', () => {
     })
 
     function BarIdRouteComponent() {
-      const barId = fooIdRoute.useParams({ select: (s) => s.barId })
+      const barId = barIdRoute.useParams({ select: (s) => s.barId })
 
       useEffect(() => {
         mountMocks.barId()
@@ -981,8 +1008,57 @@ describe('router rendering stability', () => {
       )
     }
 
+    const foo2IdRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo2/$foo2Id',
+      component: Foo2IdRouteComponent,
+      remountDeps: opts?.remountDeps.fooId,
+    })
+
+    function Foo2IdRouteComponent() {
+      const renderCounter = useRef(0)
+      renderCounter.current = renderCounter.current + 1
+
+      const { foo2Id } = foo2IdRoute.useParams()
+
+      useEffect(() => {
+        mountMocks.foo2Id()
+      }, [foo2Id])
+
+      return (
+        <div data-testid="foo2Id-page">
+          RenderCount:{' '}
+          <span data-testid="foo2Id-Render-Count">{renderCounter.current}</span>
+          Foo page <span data-testid="foo2Id-value">{foo2Id}</span>
+          <Outlet />
+        </div>
+      )
+    }
+
+    const bar2IdRoute = createRoute({
+      getParentRoute: () => foo2IdRoute,
+      path: '/bar2/$bar2Id',
+      component: Bar2IdRouteComponent,
+      remountDeps: opts?.remountDeps.barId,
+    })
+
+    function Bar2IdRouteComponent() {
+      const { bar2Id } = bar2IdRoute.useParams()
+
+      useEffect(() => {
+        mountMocks.bar2Id()
+      }, [bar2Id])
+
+      return (
+        <div data-testid="bar2Id-page">
+          Bar2 page <span data-testid="bar2Id-value">{bar2Id}</span> <Outlet />
+        </div>
+      )
+    }
+
     const routeTree = rootRoute.addChildren([
       fooIdRoute.addChildren([barIdRoute]),
+      foo2IdRoute.addChildren([bar2IdRoute]),
       indexRoute,
     ])
     const router = createRouter({
@@ -998,19 +1074,37 @@ describe('router rendering stability', () => {
 
     const foo3bar1 = await screen.findByTestId('link-foo-3-bar-1')
     const foo3bar2 = await screen.findByTestId('link-foo-3-bar-2')
+    const foo_2_1_bar2_1 = await screen.findByTestId('link-foo2-1-bar2-1')
+    const foo_2_1_bar2_2 = await screen.findByTestId('link-foo2-1-bar2-2')
+    const foo_2_2_bar2_1 = await screen.findByTestId('link-foo2-2-bar2-1')
 
     expect(foo1).toBeInTheDocument()
     expect(foo2).toBeInTheDocument()
     expect(foo3bar1).toBeInTheDocument()
     expect(foo3bar2).toBeInTheDocument()
+    expect(foo_2_1_bar2_1).toBeInTheDocument()
+    expect(foo_2_1_bar2_2).toBeInTheDocument()
+    expect(foo_2_2_bar2_1).toBeInTheDocument()
 
-    return { router, mountMocks, links: { foo1, foo2, foo3bar1, foo3bar2 } }
+    return {
+      router,
+      mountMocks,
+      links: {
+        foo1,
+        foo2,
+        foo3bar1,
+        foo3bar2,
+        foo_2_1_bar2_1,
+        foo_2_1_bar2_2,
+        foo_2_2_bar2_1,
+      },
+    }
   }
 
   async function check(
-    page: 'fooId' | 'barId',
+    page: 'fooId' | 'foo2Id' | 'barId' | 'bar2Id',
     expected: { value: string; mountCount: number },
-    mountMocks: Record<'fooId' | 'barId', () => void>,
+    mountMocks: Record<'fooId' | 'foo2Id' | 'barId' | 'bar2Id', () => void>,
   ) {
     const p = await screen.findByTestId(`${page}-page`)
     expect(p).toBeInTheDocument()
@@ -1027,7 +1121,6 @@ describe('router rendering stability', () => {
     await act(() => fireEvent.click(links.foo1))
     await check('fooId', { value: '1', mountCount: 1 }, mountMocks)
     expect(mountMocks.barId).not.toHaveBeenCalled()
-
     await act(() => fireEvent.click(links.foo2))
     await check('fooId', { value: '2', mountCount: 1 }, mountMocks)
     expect(mountMocks.barId).not.toHaveBeenCalled()
@@ -1035,9 +1128,35 @@ describe('router rendering stability', () => {
     await act(() => fireEvent.click(links.foo3bar1))
     await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
     await check('barId', { value: '1', mountCount: 1 }, mountMocks)
+
     await act(() => fireEvent.click(links.foo3bar2))
     await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
     await check('barId', { value: '2', mountCount: 1 }, mountMocks)
+
+    mountMocks.foo2Id.mockClear()
+    mountMocks.bar2Id.mockClear()
+    await act(() => fireEvent.click(links.foo_2_1_bar2_1))
+    const renderCount = await screen.findByTestId('foo2Id-Render-Count')
+
+    await check('foo2Id', { value: '1', mountCount: 1 }, mountMocks)
+    await check('bar2Id', { value: '1', mountCount: 1 }, mountMocks)
+    expect(renderCount).toBeInTheDocument()
+    expect(renderCount).toHaveTextContent('1')
+
+    await act(() => fireEvent.click(links.foo_2_1_bar2_2))
+    await check('foo2Id', { value: '1', mountCount: 1 }, mountMocks)
+    await check('bar2Id', { value: '2', mountCount: 2 }, mountMocks)
+    expect(renderCount).toBeInTheDocument()
+    expect(renderCount).toHaveTextContent('1')
+
+    mountMocks.foo2Id.mockClear()
+    mountMocks.bar2Id.mockClear()
+
+    await act(() => fireEvent.click(links.foo_2_2_bar2_1))
+    await check('foo2Id', { value: '2', mountCount: 1 }, mountMocks)
+    await check('bar2Id', { value: '1', mountCount: 1 }, mountMocks)
+    expect(renderCount).toBeInTheDocument()
+    expect(renderCount).toHaveTextContent('2')
   })
 
   it('should remount the fooId and barId page component when navigating to the same route but different path param if defaultRemountDeps with params is used', async () => {

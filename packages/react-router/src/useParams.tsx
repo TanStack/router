@@ -1,4 +1,5 @@
 import { useMatch } from './useMatch'
+import { useRouter } from './useRouter'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -81,13 +82,21 @@ export function useParams<
   UseParamsResult<TRouter, TFrom, TStrict, TSelected>,
   TThrow
 > {
-  return useMatch({
+  const router = useRouter()
+
+  const isStrict = opts.strict !== false
+
+  const matchResult = useMatch({
     from: opts.from!,
-    strict: opts.strict,
-    shouldThrow: opts.shouldThrow,
+    shouldThrow: false,
     structuralSharing: opts.structuralSharing,
-    select: (match: any) => {
-      return opts.select ? opts.select(match.params) : match.params
-    },
+    strict: opts.strict,
+    select: (match) => (isStrict ? match.id : match),
   }) as any
+
+  const params = isStrict
+    ? router.getMatch(matchResult)!.params
+    : matchResult.params
+
+  return opts.select ? (opts.select(params) as any) : (params ?? {})
 }
