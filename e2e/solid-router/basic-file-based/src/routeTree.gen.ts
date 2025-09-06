@@ -51,16 +51,19 @@ import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layo
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
 import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_layout.insidelayout'
+import { Route as ParamsPsNamedFooRouteRouteImport } from './routes/params-ps/named/$foo/route'
 import { Route as RelativeUseNavigateWithSearchIndexRouteImport } from './routes/relative/useNavigate/with-search/index'
 import { Route as RelativeUseNavigatePathIndexRouteImport } from './routes/relative/useNavigate/path/index'
 import { Route as RelativeUseNavigateNestedIndexRouteImport } from './routes/relative/useNavigate/nested/index'
 import { Route as RelativeLinkWithSearchIndexRouteImport } from './routes/relative/link/with-search/index'
 import { Route as RelativeLinkPathIndexRouteImport } from './routes/relative/link/path/index'
 import { Route as RelativeLinkNestedIndexRouteImport } from './routes/relative/link/nested/index'
+import { Route as ParamsPsNamedFooBarRouteRouteImport } from './routes/params-ps/named/$foo/$bar.route'
 import { Route as RelativeUseNavigatePathPathIndexRouteImport } from './routes/relative/useNavigate/path/$path/index'
 import { Route as RelativeUseNavigateNestedDeepIndexRouteImport } from './routes/relative/useNavigate/nested/deep/index'
 import { Route as RelativeLinkPathPathIndexRouteImport } from './routes/relative/link/path/$path/index'
 import { Route as RelativeLinkNestedDeepIndexRouteImport } from './routes/relative/link/nested/deep/index'
+import { Route as ParamsPsNamedFooBarBazRouteImport } from './routes/params-ps/named/$foo/$bar.$baz'
 
 const groupRouteImport = createFileRoute('/(group)')()
 
@@ -274,6 +277,11 @@ const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
   path: '/insidelayout',
   getParentRoute: () => groupLayoutRoute,
 } as any)
+const ParamsPsNamedFooRouteRoute = ParamsPsNamedFooRouteRouteImport.update({
+  id: '/params-ps/named/$foo',
+  path: '/params-ps/named/$foo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RelativeUseNavigateWithSearchIndexRoute =
   RelativeUseNavigateWithSearchIndexRouteImport.update({
     id: '/with-search/',
@@ -308,6 +316,12 @@ const RelativeLinkNestedIndexRoute = RelativeLinkNestedIndexRouteImport.update({
   path: '/nested/',
   getParentRoute: () => RelativeLinkRouteRoute,
 } as any)
+const ParamsPsNamedFooBarRouteRoute =
+  ParamsPsNamedFooBarRouteRouteImport.update({
+    id: '/$bar',
+    path: '/$bar',
+    getParentRoute: () => ParamsPsNamedFooRouteRoute,
+  } as any)
 const RelativeUseNavigatePathPathIndexRoute =
   RelativeUseNavigatePathPathIndexRouteImport.update({
     id: '/path/$path/',
@@ -332,6 +346,11 @@ const RelativeLinkNestedDeepIndexRoute =
     path: '/nested/deep/',
     getParentRoute: () => RelativeLinkRouteRoute,
   } as any)
+const ParamsPsNamedFooBarBazRoute = ParamsPsNamedFooBarBazRouteImport.update({
+  id: '/$baz',
+  path: '/$baz',
+  getParentRoute: () => ParamsPsNamedFooBarRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
@@ -355,6 +374,7 @@ export interface FileRoutesByFullPath {
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -371,12 +391,14 @@ export interface FileRoutesByFullPath {
   '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
   '/relative/link/nested': typeof RelativeLinkNestedIndexRoute
   '/relative/link/path': typeof RelativeLinkPathIndexRoute
   '/relative/link/with-search': typeof RelativeLinkWithSearchIndexRoute
   '/relative/useNavigate/nested': typeof RelativeUseNavigateNestedIndexRoute
   '/relative/useNavigate/path': typeof RelativeUseNavigatePathIndexRoute
   '/relative/useNavigate/with-search': typeof RelativeUseNavigateWithSearchIndexRoute
+  '/params-ps/named/$foo/$bar/$baz': typeof ParamsPsNamedFooBarBazRoute
   '/relative/link/nested/deep': typeof RelativeLinkNestedDeepIndexRoute
   '/relative/link/path/$path': typeof RelativeLinkPathPathIndexRoute
   '/relative/useNavigate/nested/deep': typeof RelativeUseNavigateNestedDeepIndexRoute
@@ -401,6 +423,7 @@ export interface FileRoutesByTo {
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params': typeof SearchParamsIndexRoute
+  '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -417,12 +440,14 @@ export interface FileRoutesByTo {
   '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
+  '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
   '/relative/link/nested': typeof RelativeLinkNestedIndexRoute
   '/relative/link/path': typeof RelativeLinkPathIndexRoute
   '/relative/link/with-search': typeof RelativeLinkWithSearchIndexRoute
   '/relative/useNavigate/nested': typeof RelativeUseNavigateNestedIndexRoute
   '/relative/useNavigate/path': typeof RelativeUseNavigatePathIndexRoute
   '/relative/useNavigate/with-search': typeof RelativeUseNavigateWithSearchIndexRoute
+  '/params-ps/named/$foo/$bar/$baz': typeof ParamsPsNamedFooBarBazRoute
   '/relative/link/nested/deep': typeof RelativeLinkNestedDeepIndexRoute
   '/relative/link/path/$path': typeof RelativeLinkPathPathIndexRoute
   '/relative/useNavigate/nested/deep': typeof RelativeUseNavigateNestedDeepIndexRoute
@@ -455,6 +480,7 @@ export interface FileRoutesById {
   '/redirect/': typeof RedirectIndexRoute
   '/relative/': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
@@ -471,12 +497,14 @@ export interface FileRoutesById {
   '/relative/useNavigate/relative-useNavigate-a': typeof RelativeUseNavigateRelativeUseNavigateARoute
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
   '/relative/link/nested/': typeof RelativeLinkNestedIndexRoute
   '/relative/link/path/': typeof RelativeLinkPathIndexRoute
   '/relative/link/with-search/': typeof RelativeLinkWithSearchIndexRoute
   '/relative/useNavigate/nested/': typeof RelativeUseNavigateNestedIndexRoute
   '/relative/useNavigate/path/': typeof RelativeUseNavigatePathIndexRoute
   '/relative/useNavigate/with-search/': typeof RelativeUseNavigateWithSearchIndexRoute
+  '/params-ps/named/$foo/$bar/$baz': typeof ParamsPsNamedFooBarBazRoute
   '/relative/link/nested/deep/': typeof RelativeLinkNestedDeepIndexRoute
   '/relative/link/path/$path/': typeof RelativeLinkPathPathIndexRoute
   '/relative/useNavigate/nested/deep/': typeof RelativeUseNavigateNestedDeepIndexRoute
@@ -506,6 +534,7 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/relative'
     | '/search-params/'
+    | '/params-ps/named/$foo'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
@@ -522,12 +551,14 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-a'
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/redirect/$target/'
+    | '/params-ps/named/$foo/$bar'
     | '/relative/link/nested'
     | '/relative/link/path'
     | '/relative/link/with-search'
     | '/relative/useNavigate/nested'
     | '/relative/useNavigate/path'
     | '/relative/useNavigate/with-search'
+    | '/params-ps/named/$foo/$bar/$baz'
     | '/relative/link/nested/deep'
     | '/relative/link/path/$path'
     | '/relative/useNavigate/nested/deep'
@@ -552,6 +583,7 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/relative'
     | '/search-params'
+    | '/params-ps/named/$foo'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
@@ -568,12 +600,14 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-a'
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/redirect/$target'
+    | '/params-ps/named/$foo/$bar'
     | '/relative/link/nested'
     | '/relative/link/path'
     | '/relative/link/with-search'
     | '/relative/useNavigate/nested'
     | '/relative/useNavigate/path'
     | '/relative/useNavigate/with-search'
+    | '/params-ps/named/$foo/$bar/$baz'
     | '/relative/link/nested/deep'
     | '/relative/link/path/$path'
     | '/relative/useNavigate/nested/deep'
@@ -605,6 +639,7 @@ export interface FileRouteTypes {
     | '/redirect/'
     | '/relative/'
     | '/search-params/'
+    | '/params-ps/named/$foo'
     | '/(group)/_layout/insidelayout'
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
@@ -621,12 +656,14 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-a'
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/redirect/$target/'
+    | '/params-ps/named/$foo/$bar'
     | '/relative/link/nested/'
     | '/relative/link/path/'
     | '/relative/link/with-search/'
     | '/relative/useNavigate/nested/'
     | '/relative/useNavigate/path/'
     | '/relative/useNavigate/with-search/'
+    | '/params-ps/named/$foo/$bar/$baz'
     | '/relative/link/nested/deep/'
     | '/relative/link/path/$path/'
     | '/relative/useNavigate/nested/deep/'
@@ -651,6 +688,7 @@ export interface RootRouteChildren {
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   RedirectIndexRoute: typeof RedirectIndexRoute
   RelativeIndexRoute: typeof RelativeIndexRoute
+  ParamsPsNamedFooRouteRoute: typeof ParamsPsNamedFooRouteRouteWithChildren
   ParamsSingleValueRoute: typeof ParamsSingleValueRoute
   PostsPostIdEditRoute: typeof PostsPostIdEditRoute
   RedirectPreloadFirstRoute: typeof RedirectPreloadFirstRoute
@@ -947,6 +985,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
       parentRoute: typeof groupLayoutRoute
     }
+    '/params-ps/named/$foo': {
+      id: '/params-ps/named/$foo'
+      path: '/params-ps/named/$foo'
+      fullPath: '/params-ps/named/$foo'
+      preLoaderRoute: typeof ParamsPsNamedFooRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/relative/useNavigate/with-search/': {
       id: '/relative/useNavigate/with-search/'
       path: '/with-search'
@@ -989,6 +1034,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof RelativeLinkNestedIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
+    '/params-ps/named/$foo/$bar': {
+      id: '/params-ps/named/$foo/$bar'
+      path: '/$bar'
+      fullPath: '/params-ps/named/$foo/$bar'
+      preLoaderRoute: typeof ParamsPsNamedFooBarRouteRouteImport
+      parentRoute: typeof ParamsPsNamedFooRouteRoute
+    }
     '/relative/useNavigate/path/$path/': {
       id: '/relative/useNavigate/path/$path/'
       path: '/path/$path'
@@ -1016,6 +1068,13 @@ declare module '@tanstack/solid-router' {
       fullPath: '/relative/link/nested/deep'
       preLoaderRoute: typeof RelativeLinkNestedDeepIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/params-ps/named/$foo/$bar/$baz': {
+      id: '/params-ps/named/$foo/$bar/$baz'
+      path: '/$baz'
+      fullPath: '/params-ps/named/$foo/$bar/$baz'
+      preLoaderRoute: typeof ParamsPsNamedFooBarBazRouteImport
+      parentRoute: typeof ParamsPsNamedFooBarRouteRoute
     }
   }
 }
@@ -1168,6 +1227,33 @@ const RedirectTargetRouteWithChildren = RedirectTargetRoute._addFileChildren(
   RedirectTargetRouteChildren,
 )
 
+interface ParamsPsNamedFooBarRouteRouteChildren {
+  ParamsPsNamedFooBarBazRoute: typeof ParamsPsNamedFooBarBazRoute
+}
+
+const ParamsPsNamedFooBarRouteRouteChildren: ParamsPsNamedFooBarRouteRouteChildren =
+  {
+    ParamsPsNamedFooBarBazRoute: ParamsPsNamedFooBarBazRoute,
+  }
+
+const ParamsPsNamedFooBarRouteRouteWithChildren =
+  ParamsPsNamedFooBarRouteRoute._addFileChildren(
+    ParamsPsNamedFooBarRouteRouteChildren,
+  )
+
+interface ParamsPsNamedFooRouteRouteChildren {
+  ParamsPsNamedFooBarRouteRoute: typeof ParamsPsNamedFooBarRouteRouteWithChildren
+}
+
+const ParamsPsNamedFooRouteRouteChildren: ParamsPsNamedFooRouteRouteChildren = {
+  ParamsPsNamedFooBarRouteRoute: ParamsPsNamedFooBarRouteRouteWithChildren,
+}
+
+const ParamsPsNamedFooRouteRouteWithChildren =
+  ParamsPsNamedFooRouteRoute._addFileChildren(
+    ParamsPsNamedFooRouteRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
@@ -1186,6 +1272,7 @@ const rootRouteChildren: RootRouteChildren = {
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   RedirectIndexRoute: RedirectIndexRoute,
   RelativeIndexRoute: RelativeIndexRoute,
+  ParamsPsNamedFooRouteRoute: ParamsPsNamedFooRouteRouteWithChildren,
   ParamsSingleValueRoute: ParamsSingleValueRoute,
   PostsPostIdEditRoute: PostsPostIdEditRoute,
   RedirectPreloadFirstRoute: RedirectPreloadFirstRoute,
