@@ -203,6 +203,8 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   return updater
 }
 
+const hasOwn = Object.prototype.hasOwnProperty
+
 /**
  * This function returns `prev` if `_next` is deeply equal.
  * If not, it will replace any deeply equal children of `b` with those of `a`.
@@ -217,9 +219,8 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
   const next = _next as any
 
   const array = isPlainArray(prev) && isPlainArray(next)
-  const object = !array && isPlainObject(prev) && isPlainObject(next)
 
-  if (!array && !object) return next
+  if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
 
   const prevItems = array ? prev : getEnumerableOwnKeys(prev)
   if (!prevItems) return next
@@ -234,20 +235,27 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
   for (let i = 0; i < nextSize; i++) {
     const key = array ? i : (nextItems[i] as any)
     const p = prev[key]
-    if (
-      (array || prev.hasOwnProperty(key)) &&
-      p === undefined &&
-      next[key] === undefined
-    ) {
-      copy[key] = undefined
-      equalItems++
-    } else {
-      const value = replaceEqualDeep(p, next[key])
-      copy[key] = value
-      if (value === p && p !== undefined) {
-        equalItems++
-      }
+    const n = next[key]
+
+    if (p === n) {
+      copy[key] = p
+      if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++
+      continue
     }
+
+    if (
+      p === null ||
+      n === null ||
+      typeof p !== 'object' ||
+      typeof n !== 'object'
+    ) {
+      copy[key] = n
+      continue
+    }
+
+    const v = replaceEqualDeep(p, n)
+    copy[key] = v
+    if (v === p) equalItems++
   }
 
   return prevSize === nextSize && equalItems === prevSize ? prev : copy
@@ -457,7 +465,7 @@ export function shallow<T>(objA: T, objB: T) {
 
   for (const item of keysA) {
     if (
-      !Object.prototype.hasOwnProperty.call(objB, item) ||
+      !hasOwn.call(objB, item) ||
       !Object.is(objA[item as keyof T], objB[item as keyof T])
     ) {
       return false

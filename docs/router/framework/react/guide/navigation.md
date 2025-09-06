@@ -667,13 +667,13 @@ With preloading enabled and relatively quick asynchronous route dependencies (if
 
 What's even better is that by using a cache-first library like `@tanstack/query`, preloaded routes will stick around and be ready for a stale-while-revalidate experience if the user decides to navigate to the route later on.
 
-### Link Preloading Timeout
+### Link Preloading Delay
 
-Along with preloading is a configurable timeout which determines how long a user must hover over a link to trigger the intent-based preloading. The default timeout is 50 milliseconds, but you can change this by passing a `preloadTimeout` prop to the `Link` component with the number of milliseconds you'd like to wait:
+Along with preloading is a configurable delay which determines how long a user must hover over a link to trigger the intent-based preloading. The default delay is 50 milliseconds, but you can change this by passing a `preloadDelay` prop to the `Link` component with the number of milliseconds you'd like to wait:
 
 ```tsx
 const link = (
-  <Link to="/blog/post/$postId" preload="intent" preloadTimeout={100}>
+  <Link to="/blog/post/$postId" preload="intent" preloadDelay={100}>
     Blog Post
   </Link>
 )

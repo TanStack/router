@@ -186,3 +186,51 @@ root { ssr: undefined }
 For the first route with `ssr: false` or `ssr: 'data-only'`, the server will render the route's `pendingComponent` as a fallback. If `pendingComponent` isn't configured, the `defaultPendingComponent` will be rendered. If neither is configured, no fallback will be rendered.
 
 On the client during hydration, this fallback will be displayed for at least `minPendingMs` (or `defaultPendingMinMs` if not configured), even if the route doesn't have `beforeLoad` or `loader` defined.
+
+## How to disable SSR of the root route?
+
+You can disable server side rendering of the root route component, however the `<html>` shell still needs to be rendered on the server. This shell is configured via the `shellComponent` property and takes a single property `children`. The `shellComponent` is always SSRed and is wrapping around the root `component`, the root `errorComponent` or the root `notFound` component respectively.
+
+A minimal setup of a root route with disabled SSR for the route component looks like this:
+
+```tsx
+import * as React from 'react'
+
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/react-router'
+
+export const Route = createRootRoute({
+  shellComponent: RootShell,
+  component: RootComponent,
+  errorComponent: () => <div>Error</div>,
+  notFoundComponent: () => <div>Not found</>,
+  ssr: false // or `defaultSsr: false` on the router
+})
+
+function RootShell({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+
+function RootComponent() {
+  return (
+    <div>
+      <h1>This component will be rendered on the client</h1>
+      <Outlet />
+    </div>
+  )
+}
+```

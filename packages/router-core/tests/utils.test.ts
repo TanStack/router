@@ -326,6 +326,18 @@ describe('replaceEqualDeep', () => {
 
     expect(next).toBe(current)
   })
+
+  it('works w/ null prototype objects', () => {
+    const current = Object.create(null)
+    const next = Object.create(null)
+
+    current.foo = 'bar'
+    next.foo = 'bar'
+    expect(replaceEqualDeep(current, next)).toBe(current)
+
+    next.foo = 'baz'
+    expect(replaceEqualDeep(current, next)).toEqual(next)
+  })
 })
 
 describe('isPlainArray', () => {
