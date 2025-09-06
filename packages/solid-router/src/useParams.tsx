@@ -1,4 +1,6 @@
+import { createMemo } from 'solid-js'
 import { useMatch } from './useMatch'
+import { useRouter } from './useRouter'
 import type { Accessor } from 'solid-js'
 import type {
   AnyRouter,
@@ -60,12 +62,22 @@ export function useParams<
 ): Accessor<
   ThrowOrOptional<UseParamsResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
-  return useMatch({
+  const router = useRouter()
+
+  const isStrict = opts.strict !== false
+
+  const matchResult = useMatch({
     from: opts.from!,
-    strict: opts.strict,
     shouldThrow: opts.shouldThrow,
-    select: (match: any) => {
-      return opts.select ? opts.select(match.params) : match.params
-    },
-  } as any) as any
+    strict: opts.strict,
+    select: (match) => (isStrict ? match.id : match),
+  }) as Accessor<any>
+
+  const params = isStrict
+    ? router.getMatch(matchResult())!.params
+    : matchResult().params
+
+  return createMemo(() =>
+    opts.select ? (opts.select(params) as any) : (params ?? {}),
+  )
 }
