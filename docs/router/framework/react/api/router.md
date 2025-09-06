@@ -32,6 +32,7 @@ title: Router API
   - [`<Link>`](../router/linkComponent.md)
   - [`<MatchRoute>`](../router/matchRouteComponent.md)
   - [`<Navigate>`](../router/navigateComponent.md)
+  - [`<NotFoundComponent>`](../router/notFoundComponentComponent.md)
   - [`<Outlet>`](../router/outletComponent.md)
 - Hooks
   - [`useAwaited`](../router/useAwaitedHook.md)
