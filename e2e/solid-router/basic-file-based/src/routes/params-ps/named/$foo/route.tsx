@@ -6,13 +6,13 @@ export const Route = createFileRoute('/params-ps/named/$foo')({
 })
 
 function RouteComponent() {
-  const [renderCount, setRenderCountCount] = createSignal(0)
+  const [renderCount, setRenderCount] = createSignal(0)
   const params = Route.useParams()
 
   createEffect(() => {
     params().foo
 
-    setRenderCountCount((prev) => prev + 1)
+    setRenderCount((prev) => prev + 1)
   })
 
   return (

@@ -944,7 +944,7 @@ describe('router rendering stability', () => {
                 to="/foo2/$foo2Id/bar2/$bar2Id"
                 params={{ foo2Id: '2', bar2Id: '1' }}
               >
-                Foo2-2-Bar2_2
+                Foo2-2-Bar2_1
               </Link>
             </div>
             <Outlet />
@@ -1006,7 +1006,7 @@ describe('router rendering stability', () => {
       getParentRoute: () => rootRoute,
       path: '/foo2/$foo2Id',
       component: Foo2IdRouteComponent,
-      remountDeps: opts?.remountDeps.fooId,
+      remountDeps: opts?.remountDeps.foo2Id,
     })
 
     function Foo2IdRouteComponent() {
@@ -1033,7 +1033,7 @@ describe('router rendering stability', () => {
       getParentRoute: () => foo2IdRoute,
       path: '/bar2/$bar2Id',
       component: Bar2IdRouteComponent,
-      remountDeps: opts?.remountDeps.barId,
+      remountDeps: opts?.remountDeps.bar2Id,
     })
 
     function Bar2IdRouteComponent() {

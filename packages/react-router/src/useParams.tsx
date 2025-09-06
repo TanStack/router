@@ -88,14 +88,14 @@ export function useParams<
 
   const matchResult = useMatch({
     from: opts.from!,
-    shouldThrow: false,
+    shouldThrow: opts.shouldThrow,
     structuralSharing: opts.structuralSharing,
     strict: opts.strict,
     select: (match) => (isStrict ? match.id : match),
   }) as any
 
   const params = isStrict
-    ? router.getMatch(matchResult)!.params
+    ? router.getMatch(matchResult)?.params
     : matchResult.params
 
   return opts.select ? (opts.select(params) as any) : (params ?? {})
