@@ -35,7 +35,7 @@ When a TanStack Start application is being deployed, the `target` value in the T
 
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
-- [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
+- [`cloudflare-workers`](#cloudflare-workers): Deploy to Cloudflare Workers
 - [`railway`](#railway): Deploy to Railway
 - [`node-server`](#nodejs): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
