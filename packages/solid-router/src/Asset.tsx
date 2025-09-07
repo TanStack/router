@@ -1,5 +1,6 @@
 import { Meta, Style, Title } from '@solidjs/meta'
 import { onCleanup, onMount } from 'solid-js'
+import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 import type { JSX } from 'solid-js'
 
@@ -36,6 +37,8 @@ function Script({
   attrs?: ScriptAttrs
   children?: string
 }): JSX.Element | null {
+  const router = useRouter()
+
   onMount(() => {
     if (attrs?.src) {
       const existingScript = document.querySelector(
@@ -95,7 +98,7 @@ function Script({
     }
   })
 
-  if (typeof window !== 'undefined') {
+  if (!router.isServer) {
     return null
   }
 

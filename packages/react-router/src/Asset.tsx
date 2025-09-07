@@ -1,5 +1,6 @@
 import * as React from 'react'
 import type { RouterManagedTag } from '@tanstack/router-core'
+import { useRouter } from './useRouter'
 
 interface ScriptAttrs {
   [key: string]: string | boolean | undefined
@@ -44,6 +45,8 @@ function Script({
   attrs?: ScriptAttrs
   children?: string
 }) {
+  const router = useRouter()
+
   React.useEffect(() => {
     if (attrs?.src) {
       const existingScript = document.querySelector(
@@ -115,7 +118,7 @@ function Script({
     return undefined
   }, [attrs, children])
 
-  if (typeof window !== 'undefined') {
+  if (!router.isServer) {
     return null
   }
 
