@@ -98,7 +98,7 @@ function Script({
     }
   })
 
-  if (!router.isServer) {
+  if (router && !router.isServer) {
     return null
   }
 
