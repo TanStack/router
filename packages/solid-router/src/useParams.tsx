@@ -62,10 +62,12 @@ export function useParams<
 > {
   return useMatch({
     from: opts.from!,
-    strict: opts.strict,
     shouldThrow: opts.shouldThrow,
-    select: (match: any) => {
-      return opts.select ? opts.select(match.params) : match.params
+    strict: opts.strict,
+    select: (match) => {
+      const params = opts.strict === false ? match.params : match._strictParams
+
+      return opts.select ? opts.select(params) : params
     },
-  } as any) as any
+  }) as Accessor<any>
 }
