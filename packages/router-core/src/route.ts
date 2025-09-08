@@ -848,6 +848,7 @@ export type BeforeLoadFn<
   in out TRouterContext,
   in out TRouteContextFn,
   in out TServerMiddlewares,
+  in out TServerSendContext,
 > = (
   ctx: BeforeLoadContextOptions<
     TParentRoute,
@@ -855,7 +856,8 @@ export type BeforeLoadFn<
     TParams,
     TRouterContext,
     TRouteContextFn,
-    TServerMiddlewares
+    TServerMiddlewares,
+    TServerSendContext
   >,
 ) => any
 
@@ -874,6 +876,7 @@ export type FileBaseRouteOptions<
   TRemountDepsFn = AnyContext,
   TSSR = unknown,
   TServerMiddlewares = unknown,
+  TServerSendContext = AnyContext,
 > = ParamsOptions<TPath, TParams> &
   FilebaseRouteOptionsInterface<
     TRegister,
@@ -889,7 +892,8 @@ export type FileBaseRouteOptions<
     TBeforeLoadFn,
     TRemountDepsFn,
     TSSR,
-    TServerMiddlewares
+    TServerMiddlewares,
+    TServerSendContext
   >
 
 export interface FilebaseRouteOptionsInterface<
@@ -907,6 +911,7 @@ export interface FilebaseRouteOptionsInterface<
   TRemountDepsFn = AnyContext,
   TSSR = unknown,
   TServerMiddlewares = unknown,
+  TServerSendContext = AnyContext,
 > {
   validateSearch?: Constrain<TSearchValidator, AnyValidator, DefaultValidator>
 
@@ -921,7 +926,8 @@ export interface FilebaseRouteOptionsInterface<
           TRouterContext,
           TRouteContextFn,
           TBeforeLoadFn,
-          TServerMiddlewares
+          TServerMiddlewares,
+          TServerSendContext
         >,
       ) => any)
 
@@ -959,7 +965,8 @@ export interface FilebaseRouteOptionsInterface<
         TParams,
         TRouterContext,
         TRouteContextFn,
-        TServerMiddlewares
+        TServerMiddlewares,
+        TServerSendContext
       >,
     ) => ValidateSerializableLifecycleResult<
       TRegister,
@@ -996,7 +1003,8 @@ export interface FilebaseRouteOptionsInterface<
         TRouterContext,
         TRouteContextFn,
         TBeforeLoadFn,
-        TServerMiddlewares
+        TServerMiddlewares,
+        TServerSendContext
       >,
     ) => ValidateSerializableLifecycleResult<
       TRegister,
@@ -1097,6 +1105,7 @@ export interface BeforeLoadContextOptions<
   in out TRouterContext,
   in out TRouteContextFn,
   in out TServerMiddlewares,
+  in out TServerSendContext,
 > extends ContextOptions<TParentRoute, TParams>,
     FullSearchSchemaOption<TParentRoute, TSearchValidator> {
   context: Expand<
@@ -1324,6 +1333,7 @@ export type RouteLoaderFn<
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
   in out TServerMiddlewares = unknown,
+  in out TServerSendContext = AnyContext,
 > = (
   match: LoaderFnContext<
     TParentRoute,
@@ -1333,7 +1343,8 @@ export type RouteLoaderFn<
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
-    TServerMiddlewares
+    TServerMiddlewares,
+    TServerSendContext
   >,
 ) => any
 
@@ -1346,6 +1357,7 @@ export interface LoaderFnContext<
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
   in out TServerMiddlewares = unknown,
+  in out TServerSendContext = AnyContext,
 > {
   abortController: AbortController
   preload: boolean

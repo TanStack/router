@@ -406,7 +406,7 @@ async function handleServerRoutes(opts: {
         const handlers =
           typeof server.handlers === 'function'
             ? server.handlers({
-                createHandlers: (d) => d as TODO,
+                createHandlers: (d) => d as any,
               })
             : server.handlers
 
