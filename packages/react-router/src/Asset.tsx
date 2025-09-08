@@ -1,6 +1,6 @@
 import * as React from 'react'
-import type { RouterManagedTag } from '@tanstack/router-core'
 import { useRouter } from './useRouter'
+import type { RouterManagedTag } from '@tanstack/router-core'
 
 interface ScriptAttrs {
   [key: string]: string | boolean | undefined
