@@ -1,93 +1,131 @@
 <img src="https://static.scarf.sh/a.png?x-pxid=d988eb79-b0fc-4a2b-8514-6a1ab932d188" />
 
-![TanStack Router Header](https://github.com/tanstack/router/raw/main/media/header.png)
+<div align="center" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px;">
 
-🤖 Type-safe router w/ built-in caching & URL state management for React!
+  <div
+    style="flex: 1; min-width: 280px; max-width: 400px; border: 1px solid #ddd; border-radius: 8px;text-align: left;"
+  >
+    <img
+      src="https://github.com/tanstack/router/raw/main/media/header.png"
+      alt="TanStack Router"
+      style="max-width: 100%; border-radius: 6px;"
+    />
+    <div style="padding: 0px 20px 20px 20px;">
+    <h3>TanStack Router</h3>
+    <p>
+      A modern router designed for type safety, data‑driven navigation, and seamless developer experience.
+    </p>
+    <ul>
+      <li>End‑to‑end type safety (routes, params, loaders)</li>
+      <li>Schema‑driven search params with validation</li>
+      <li>Built‑in caching, prefetching & invalidation</li>
+      <li>Nested layouts, transitions & error boundaries</li>
+    </ul>
+    <p><strong>Use when:</strong> building modern client‑side apps</p>
+    <a
+      href="https://tanstack.com/router"
+      style="font-weight: bold;"
+      >Read the Router Docs →</a
+    >
+    </div>
+  </div>
 
-<a href="https://twitter.com/intent/tweet?button_hashtag=TanStack" target="\_parent">
-  <img alt="#TanStack" src="https://img.shields.io/twitter/url?color=%2308a0e9&label=%23TanStack&style=social&url=https%3A%2F%2Ftwitter.com%2Fintent%2Ftweet%3Fbutton_hashtag%3DTanStack">
-</a><a href="https://discord.com/invite/WrRKjPJ" target="\_parent">
-  <img alt="" src="https://img.shields.io/badge/Discord-TanStack-%235865F2" />
-</a><a href="https://npmjs.com/package/@tanstack/react-router" target="\_parent">
-  <img alt="" src="https://img.shields.io/npm/dm/@tanstack/react-router.svg" />
-</a><a href="https://bundlephobia.com/result?p=@tanstack/react-router" target="\_parent">
-  <img alt="" src="https://badgen.net/bundlephobia/minzip/@tanstack/react-router" />
-</a><a href="#badge">
+  <div
+    style="flex: 1; min-width: 280px; max-width: 400px; border: 1px solid #ddd; border-radius: 8px; text-align: left;"
+  >
+    <img
+      src="https://github.com/tanstack/router/raw/main/media/header.png"
+      alt="TanStack Router"
+      style="max-width: 100%; border-radius: 6px;"
+    />
+    <div style="padding: 0px 20px 20px 20px;">
+    <h3 style="line-height: 1.25;" >TanStack Start</h3>
+     <p>
+     A full‑stack framework built on Router, designed for server rendering, streaming, and production‑ready deployments.
+     </p>
+    <ul>
+        <li>Full‑document SSR & streaming</li>
+  <li>Server functions & end‑to‑end type safety</li>
+  <li>Deployment‑ready bundling & builds</li>
+  <li>All the power of TanStack Router, plus full‑stack features</li>
+    </ul>
+    <p><strong>Use when:</strong> building full‑stack production apps</p>
+    <a href="https://tanstack.com/start" style="font-weight: bold;">Read the Start Docs →</a>
+  </div>
+  </div>
+  </div>
+
+<div align="center" style="gap: 20px; flex-wrap: wrap; justify-content: center;">
+
+<div align="center">
+  <a href="https://npmjs.com/package/@tanstack/react-router">
+    <img src="https://img.shields.io/npm/dm/@tanstack/react-router.svg" alt="npm downloads" />
+  </a>
+  <a href="https://github.com/tanstack/router">
+    <img src="https://img.shields.io/github/stars/tanstack/router.svg?style=social&label=Star" alt="GitHub stars" />
+  </a>
+  <a href="https://bundlephobia.com/result?p=@tanstack/react-router">
+    <img src="https://badgen.net/bundlephobia/minzip/@tanstack/react-router" alt="Bundle size" />
+  </a>
+</div>
+
+<div align="center">
+  <a href="#badge">
     <img alt="semantic-release" src="https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg">
-  </a><a href="https://github.com/tanstack/router/discussions">
-  <img alt="Join the discussion on Github" src="https://img.shields.io/badge/Github%20Discussions%20%26%20Support-Chat%20now!-blue" />
-</a><a href="https://bestofjs.org/projects/tanstack-router"><img alt="Best of JS" src="https://img.shields.io/endpoint?url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=tanstack%2Frouter%26since=daily" /></a><a href="https://github.com/tanstack/router" target="\_parent">
-  <img alt="" src="https://img.shields.io/github/stars/tanstack/router.svg?style=social&label=Star" />
-</a><a href="https://twitter.com/tan_stack" target="\_parent">
-  <img alt="" src="https://img.shields.io/twitter/follow/tan_stack.svg?style=social&label=Follow @TanStack" />
-</a><a href="https://twitter.com/tannerlinsley" target="\_parent">
-  <img alt="" src="https://img.shields.io/twitter/follow/tannerlinsley.svg?style=social&label=Follow @TannerLinsley" />
-</a>
+  </a>
+  <a href="https://bestofjs.org/projects/tanstack-router"><img alt="Best of JS" src="https://img.shields.io/endpoint?url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=tanstack%2Frouter%26since=daily" /></a
+  <a href="https://twitter.com/tan_stack"><img src="https://img.shields.io/twitter/follow/tan_stack.svg?style=social" alt="Follow @TanStack"/></a>
+</div>
+</div>
 
-Enjoy this library? Try the entire [TanStack](https://tanstack.com)! [TanStack Query](https://github.com/tannerlinsley/react-query), [TanStack Table](https://github.com/tanstack/react-table), [TanStack Form](https://github.com/TanStack/form), [TanStack Virtual](https://github.com/tannerlinsley/react-virtual), [TanStack Pacer](https://github.com/TanStack/pacer), [TanStack Store](https://github.com/TanStack/store), [TanStack Ranger](https://github.com/TanStack/ranger), [TanStack DB](https://github.com/TanStack/db), [TanStack Config](https://github.com/TanStack/config)
+## Get Involved
 
-## Visit [tanstack.com/router](https://tanstack.com/router) for docs, guides, API and more!
+- We welcome issues and pull requests!
+- Participate in [GitHub discussions](https://github.com/TanStack/router/discussions)
+- Chat with the community on [Discord](https://discord.com/invite/WrRKjPJ)
+- See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup instructions
 
 ## Partners
 
-<div><a href="https://go.clerk.com/wOwHtuJ">
-  <img alt="Clerk" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40"
-</a></div><br />
-<div><a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable">
-  <img alt="AG Grid" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/ag-grid.svg" height="40"
-</a></div><br />
-<div><a href="https://netlify.com?utm_source=tanstack">
-  <img alt="Netlify" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/netlify.svg" height="40"
-</a></div><br />
-<div><a href="https://neon.tech?utm_source=tanstack">
-  <img alt="Neon" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="40"
-</a></div><br />
-<div><a href="https://www.prisma.io?utm_source=tanstack&via=tanstack">
-  <img alt="Prisma" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" height="40">
-</a></div><br />  
-<div><a href="https://convex.dev?utm_source=tanstack">
-  <img alt="Convex" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40"
-</a></div><br />
-<div><a href="https://sentry.io?utm_source=tanstack">
-  <img alt="Sentry" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40"
-</a></div><br />
-<div><a href="https://speakeasy.com/?utm_source=tanstack&utm_campaign=tanstack">
-  <img alt="Speakeasy" src="https://tanstack.com/assets/speakeasy-light-UpY7QmwQ.svg" height="40"
-</a></div><br />
-<div><a href="https://nozzle.io/?utm_source=tanstack&utm_campaign=tanstack">
-  <img alt="Nozzle.io" src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/nozzle.svg" height="40"
-</a></div><br />
+<div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-items: center;">
+  <a href="https://go.clerk.com/wOwHtuJ" style="display: flex; align-items: center; border: none; padding: 8px;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40" alt="Clerk"/>
+  </a>
+  <a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable" style="display: flex; align-items: center; border: none; padding: 8px;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/ag-grid.svg" height="40" alt="AG Grid"/>
+  </a>
+  <a href="https://netlify.com?utm_source=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/netlify.svg" height="40" alt="Netlify"/>
+  </a>
+  <a href="https://neon.tech?utm_source=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="40" alt="Neon"/>
+  </a>
+  <a href="https://www.prisma.io?utm_source=tanstack&via=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
+    <img src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" height="40" alt="Prisma"/>
+  </a>
+  <a href="https://convex.dev?utm_source=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40" alt="Convex"/>
+  </a>
+  <a href="https://sentry.io?utm_source=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40" alt="Sentry"/>
+  </a>
+  <a href="https://speakeasy.com/?utm_source=tanstack&utm_campaign=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
+    <img src="https://tanstack.com/assets/speakeasy-light-UpY7QmwQ.svg" height="40" alt="Speakeasy"/>
+  </a>
+</div>
 
-## Quick Features
+## Explore the TanStack Ecosystem
 
-- 100% TypeSafe
-  - Route Defs
-  - Navigation
-  - Relative Navigation
-  - Search Params
-  - Path Params
-  - Loaders
-- 1st Class Search Params
-  - Schemas + Validation
-  - Parsing + Serialization
-  - Immutable
-  - Structural Sharing
-  - Pre/Post Processing
-- Built-in Caching
-  - Stale-While-Revalidate
-  - Max-Age
-  - Auto Garbage Collection
-  - Invalidation
-- Prefetching
-- Automatic Prefetching
-- Transitions
-- Error Boundaries
-- Code Splitting
-- Layout Routes
-- Easy Integration w/ external caches and storage (eg. React Query, Apollo, SWR, RTKQuery)
-
-## Example Usage
-
-To run example React projects with Tanstack Router, see [CONTRIBUTING.md](./CONTRIBUTING.md)
-
-<!-- Use the force, Luke!!!! -->
+<div align="center">
+<a href="https://github.com/tanstack/config" style="font-weight: bold;">TanStack Config</a> – Tooling for JS/TS packages <br/>
+  <a href="https://github.com/tanstack/db" style="font-weight: bold;">TanStack DB</a> – Reactive sync client store <br/>
+  <a href="https://github.com/tanstack/config" style="font-weight: bold;">TanStack DevTools</a> – Unified devtools panel <br/>
+  <a href="https://github.com/tanstack/form" style="font-weight: bold;">TanStack Form</a> – Type‑safe form state <br/>
+  <a href="https://github.com/tanstack/pacer" style="font-weight: bold;">TanStack Pacer</a> – Debouncing, throttling, batching <br/>
+  <a href="https://github.com/tanstack/query" style="font-weight: bold;">TanStack Query</a> – Async state & caching <br/>
+  <a href="https://github.com/tanstack/ranger" style="font-weight: bold;">TanStack Ranger</a> – Range & slider primitives <br/>
+  <a href="https://github.com/tanstack/store" style="font-weight: bold;">TanStack Store</a> – Reactive data store <br/>
+  <a href="https://github.com/tanstack/table" style="font-weight: bold;">TanStack Table</a> – Headless datagrids <br/>
+  <a href="https://github.com/tanstack/virtual" style="font-weight: bold;">TanStack Virtual</a> – Virtualized rendering <br/>
+  … and more at <a href="https://tanstack.com" style="font-weight: bold;">TanStack.com »</a>
+</div>
