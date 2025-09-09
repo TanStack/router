@@ -1387,11 +1387,12 @@ export class BaseRoute<
       return this._computedTo as TrimPathRight<TFullPath>
     }
 
-    const collectPaths = (route: any): Array<string> => {
-      if (!route || route.isRoot) return []
+    const collectPaths = (route: any, seen = new Set<any>()): Array<string> => {
+      if (!route || route.isRoot || seen.has(route)) return []
+      seen.add(route)
 
       const parent = route.options?.getParentRoute?.()
-      const parentPaths = parent ? collectPaths(parent) : []
+      const parentPaths = parent ? collectPaths(parent, seen) : []
 
       if (route.options?.path) {
         const trimmed = trimPathLeft(route.options.path)
@@ -1404,7 +1405,7 @@ export class BaseRoute<
     }
 
     const paths = collectPaths(this)
-    const fullPath = '/' + paths.join('/')
+    const fullPath = joinPaths(['/', ...paths])
 
     this._computedTo = fullPath
 
@@ -1566,6 +1567,7 @@ export class BaseRoute<
     this._id = other._id
     this._fullPath = other._fullPath
     this._to = other._to
+    this._computedTo = other._computedTo
     this.options.getParentRoute = other.options.getParentRoute
     this.children = other.children
   }
@@ -1680,6 +1682,7 @@ export class BaseRoute<
     >,
   ): this => {
     Object.assign(this.options, options)
+    this._computedTo = undefined
     return this
   }
 
