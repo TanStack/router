@@ -66,23 +66,11 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         event,
       })
     },
-    async buildStart() {
-      await generate()
-    },
     vite: {
-      configResolved() {
+      async configResolved() {
         initConfigAndGenerator()
-      },
-      applyToEnvironment(environment) {
-        if (userConfig.plugin?.vite?.environmentName) {
-          return userConfig.plugin.vite.environmentName === environment.name
-        }
-        return true
-      },
-      async buildStart() {
         await generate()
       },
-      sharedDuringBuild: true,
     },
     rspack(compiler) {
       initConfigAndGenerator()
