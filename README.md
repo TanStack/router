@@ -1,17 +1,17 @@
 <img src="https://static.scarf.sh/a.png?x-pxid=d988eb79-b0fc-4a2b-8514-6a1ab932d188" />
 
-<div align="center" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px;">
+<div align="center" style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; margin-bottom: 30px;">
 
   <div
-    style="flex: 1; min-width: 280px; max-width: 400px; border: 1px solid #ddd; border-radius: 8px;text-align: left;"
+    style="flex: 1; min-width: 280px; max-width: 500px; border: 1px solid #ddd; border-radius: 8px;text-align: left;"
   >
     <img
-      src="https://github.com/tanstack/router/raw/main/media/header.png"
+      src="./media/header_router.png"
       alt="TanStack Router"
       style="max-width: 100%; border-radius: 6px;"
     />
     <div style="padding: 0px 20px 20px 20px;">
-    <h3>TanStack Router</h3>
+    <h3 style="line-height: 1.25;">TanStack Router</h3>
     <p>
       A modern router designed for type safety, data‑driven navigation, and seamless developer experience.
     </p>
@@ -31,10 +31,10 @@
   </div>
 
   <div
-    style="flex: 1; min-width: 280px; max-width: 400px; border: 1px solid #ddd; border-radius: 8px; text-align: left;"
+    style="flex: 1; min-width: 280px; max-width: 500px; border: 1px solid #ddd; border-radius: 8px; text-align: left;"
   >
     <img
-      src="https://github.com/tanstack/router/raw/main/media/header.png"
+      src="./media/header_start.png"
       alt="TanStack Router"
       style="max-width: 100%; border-radius: 6px;"
     />
@@ -55,7 +55,7 @@
   </div>
   </div>
 
-<div align="center" style="gap: 20px; flex-wrap: wrap; justify-content: center;">
+<div align="center" style="display: flex; gap: 10px; flex-direction: column; justify-content: center;">
 
 <div align="center">
   <a href="https://npmjs.com/package/@tanstack/react-router">
@@ -73,9 +73,16 @@
   <a href="#badge">
     <img alt="semantic-release" src="https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg">
   </a>
-  <a href="https://bestofjs.org/projects/tanstack-router"><img alt="Best of JS" src="https://img.shields.io/endpoint?url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=tanstack%2Frouter%26since=daily" /></a
+  <a href="https://bestofjs.org/projects/tanstack-router"><img alt="Best of JS" src="https://img.shields.io/endpoint?url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=TanStack%2Frouter%26since=daily" /></a>
   <a href="https://twitter.com/tan_stack"><img src="https://img.shields.io/twitter/follow/tan_stack.svg?style=social" alt="Follow @TanStack"/></a>
 </div>
+
+<div align="center" style="font-size: 2rem; font-weight: bolder;">
+
+[Become a Sponsor!](https://github.com/sponsors/tannerlinsley/)
+
+</div>
+
 </div>
 
 ## Get Involved
@@ -87,29 +94,29 @@
 
 ## Partners
 
-<div style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; align-items: center;">
-  <a href="https://go.clerk.com/wOwHtuJ" style="display: flex; align-items: center; border: none; padding: 8px;">
+<div style="display: flex; flex-wrap: wrap; gap: 50px; justify-content: center; align-items: center;">
+  <a href="https://go.clerk.com/wOwHtuJ" style="display: flex; align-items: center; border: none; margin-right: -80px; margin-top: 6px;">
     <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40" alt="Clerk"/>
   </a>
-  <a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable" style="display: flex; align-items: center; border: none; padding: 8px;">
+  <a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable" style="display: flex; align-items: center; border: none;">
     <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/ag-grid.svg" height="40" alt="AG Grid"/>
   </a>
-  <a href="https://netlify.com?utm_source=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
-    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/netlify.svg" height="40" alt="Netlify"/>
+  <a href="https://netlify.com?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/netlify.svg" height="60" alt="Netlify"/>
   </a>
-  <a href="https://neon.tech?utm_source=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
-    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="40" alt="Neon"/>
+  <a href="https://neon.tech?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="45" alt="Neon"/>
   </a>
-  <a href="https://www.prisma.io?utm_source=tanstack&via=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
-    <img src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" height="40" alt="Prisma"/>
+  <a href="https://www.prisma.io?utm_source=tanstack&via=tanstack" style="display: flex; align-items: center; border: none;">
+    <img src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" height="50" alt="Prisma"/>
   </a>
-  <a href="https://convex.dev?utm_source=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
+  <a href="https://convex.dev?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
     <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40" alt="Convex"/>
   </a>
-  <a href="https://sentry.io?utm_source=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
+  <a href="https://sentry.io?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
     <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40" alt="Sentry"/>
   </a>
-  <a href="https://speakeasy.com/?utm_source=tanstack&utm_campaign=tanstack" style="display: flex; align-items: center; border: none; padding: 8px;">
+  <a href="https://speakeasy.com/?utm_source=tanstack&utm_campaign=tanstack" style="display: flex; align-items: center; border: none;">
     <img src="https://tanstack.com/assets/speakeasy-light-UpY7QmwQ.svg" height="40" alt="Speakeasy"/>
   </a>
 </div>
@@ -129,3 +136,5 @@
   <a href="https://github.com/tanstack/virtual" style="font-weight: bold;">TanStack Virtual</a> – Virtualized rendering <br/>
   … and more at <a href="https://tanstack.com" style="font-weight: bold;">TanStack.com »</a>
 </div>
+
+<!-- Use the force, Luke -->
