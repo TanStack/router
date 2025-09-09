@@ -190,4 +190,44 @@ describe('Route.to getter early access', () => {
     expect(navigation[1]?.to).toBe('/about')
     expect(navigation[2]?.to).toBe('/contact')
   })
+
+  test('Pathless parent routes should not affect child path', () => {
+    const rootRoute = createRootRoute({})
+
+    const layoutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+    })
+
+    const childRoute = createRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/child',
+    })
+
+    expect(childRoute.to).toBe('/child')
+
+    const routeTree = rootRoute.addChildren([
+      layoutRoute.addChildren([childRoute]),
+    ])
+
+    createRouter({
+      routeTree,
+      history: createMemoryHistory(),
+    })
+
+    expect(childRoute.to).toBe('/child')
+  })
+
+  test('Root route should always return "/" for to getter', () => {
+    const rootRoute = createRootRoute({})
+
+    expect(rootRoute.to).toBe('/')
+
+    createRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory(),
+    })
+
+    expect(rootRoute.to).toBe('/')
+  })
 })
