@@ -126,8 +126,8 @@
 <div align="center">
 <a href="https://github.com/tanstack/config" style="font-weight: bold;">TanStack Config</a> – Tooling for JS/TS packages <br/>
   <a href="https://github.com/tanstack/db" style="font-weight: bold;">TanStack DB</a> – Reactive sync client store <br/>
-  <a href="https://github.com/tanstack/config" style="font-weight: bold;">TanStack DevTools</a> – Unified devtools panel <br/>
-  <a href="https://github.com/tanstack/form" style="font-weight: bold;">TanStack Form</a> – Type‑safe form state <br/>
+  <a href="https://github.com/tanstack/devtools" style="font-weight: bold;">TanStack DevTools</a> – Unified devtools panel <br/>
+  <a href="https://github.com/tanstack/form" style="font-weight: bold;">TanStack Form</a> – Type-safe form state <br/>
   <a href="https://github.com/tanstack/pacer" style="font-weight: bold;">TanStack Pacer</a> – Debouncing, throttling, batching <br/>
   <a href="https://github.com/tanstack/query" style="font-weight: bold;">TanStack Query</a> – Async state & caching <br/>
   <a href="https://github.com/tanstack/ranger" style="font-weight: bold;">TanStack Ranger</a> – Range & slider primitives <br/>
