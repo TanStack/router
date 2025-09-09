@@ -1371,9 +1371,44 @@ export class BaseRoute<
   private _path!: TPath
   private _fullPath!: TFullPath
   private _to!: TrimPathRight<TFullPath>
+  private _computedTo?: string
 
-  public get to() {
-    return this._to
+  public get to(): TrimPathRight<TFullPath> {
+    if (this._to) {
+      return this._to
+    }
+
+    if (this._computedTo !== undefined) {
+      return this._computedTo as TrimPathRight<TFullPath>
+    }
+
+    if (this.isRoot) {
+      this._computedTo = '/'
+      return this._computedTo as TrimPathRight<TFullPath>
+    }
+
+    const collectPaths = (route: any): Array<string> => {
+      if (!route || route.isRoot) return []
+
+      const parent = route.options?.getParentRoute?.()
+      const parentPaths = parent ? collectPaths(parent) : []
+
+      if (route.options?.path) {
+        const trimmed = trimPathLeft(route.options.path)
+        if (trimmed && trimmed !== '/') {
+          return [...parentPaths, trimmed]
+        }
+      }
+
+      return parentPaths
+    }
+
+    const paths = collectPaths(this)
+    const fullPath = '/' + paths.join('/')
+
+    this._computedTo = fullPath
+
+    return this._computedTo as TrimPathRight<TFullPath>
   }
 
   public get id() {
