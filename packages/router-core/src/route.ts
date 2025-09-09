@@ -1371,7 +1371,7 @@ export class BaseRoute<
   private _path!: TPath
   private _fullPath!: TFullPath
   private _to!: TrimPathRight<TFullPath>
-  private _computedTo?: string
+  private _computedTo?: TrimPathRight<TFullPath>
 
   public get to(): TrimPathRight<TFullPath> {
     if (this._to) {
@@ -1379,20 +1379,25 @@ export class BaseRoute<
     }
 
     if (this._computedTo !== undefined) {
-      return this._computedTo as TrimPathRight<TFullPath>
+      return this._computedTo
     }
 
     if (this.isRoot) {
-      this._computedTo = '/'
-      return this._computedTo as TrimPathRight<TFullPath>
+      this._computedTo = '/' as TrimPathRight<TFullPath>
+      return this._computedTo
     }
 
+    let incomplete = false
     const collectPaths = (route: any, seen = new Set<any>()): Array<string> => {
       if (!route || route.isRoot || seen.has(route)) return []
       seen.add(route)
 
       const parent = route.options?.getParentRoute?.()
-      const parentPaths = parent ? collectPaths(parent, seen) : []
+      if (!parent) {
+        incomplete = true
+        return []
+      }
+      const parentPaths = collectPaths(parent, seen)
 
       if (route.options?.path) {
         const trimmed = trimPathLeft(route.options.path)
@@ -1405,11 +1410,13 @@ export class BaseRoute<
     }
 
     const paths = collectPaths(this)
-    const fullPath = joinPaths(['/', ...paths])
+    const fullPath = joinPaths(['/', ...paths]) as TrimPathRight<TFullPath>
 
-    this._computedTo = fullPath
+    if (!incomplete) {
+      this._computedTo = fullPath
+    }
 
-    return this._computedTo as TrimPathRight<TFullPath>
+    return fullPath
   }
 
   public get id() {
@@ -1567,7 +1574,7 @@ export class BaseRoute<
     this._id = other._id
     this._fullPath = other._fullPath
     this._to = other._to
-    this._computedTo = other._computedTo
+    this._computedTo = undefined
     this.options.getParentRoute = other.options.getParentRoute
     this.children = other.children
   }
