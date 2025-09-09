@@ -35,7 +35,7 @@
   >
     <img
       src="./media/header_start.png"
-      alt="TanStack Router"
+     alt="TanStack Start"
       style="max-width: 100%; border-radius: 6px;"
     />
     <div style="padding: 0px 20px 20px 20px;">
