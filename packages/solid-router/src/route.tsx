@@ -177,6 +177,7 @@ export class Route<
     in out TFileRouteTypes = unknown,
     in out TSSR = unknown,
     in out TMiddlewares = unknown,
+    in out THandlers = undefined,
   >
   extends BaseRoute<
     TRegister,
@@ -195,7 +196,8 @@ export class Route<
     TChildren,
     TFileRouteTypes,
     TSSR,
-    TMiddlewares
+    TMiddlewares,
+    THandlers
   >
   implements
     RouteCore<
@@ -215,7 +217,8 @@ export class Route<
       TChildren,
       TFileRouteTypes,
       TSSR,
-      TMiddlewares
+      TMiddlewares,
+      THandlers
     >
 {
   /**
@@ -237,7 +240,8 @@ export class Route<
       TRouteContextFn,
       TBeforeLoadFn,
       TSSR,
-      TMiddlewares
+      TMiddlewares,
+      THandlers
     >,
   ) {
     super(options)
@@ -311,6 +315,7 @@ export function createRoute<
   TLoaderFn = undefined,
   TChildren = unknown,
   TSSR = unknown,
+  THandlers = undefined,
 >(
   options: RouteOptions<
     TRegister,
@@ -326,7 +331,8 @@ export function createRoute<
     AnyContext,
     TRouteContextFn,
     TBeforeLoadFn,
-    TSSR
+    TSSR,
+    THandlers
   >,
 ): Route<
   TRegister,
@@ -344,7 +350,8 @@ export function createRoute<
   TLoaderFn,
   TChildren,
   unknown,
-  TSSR
+  TSSR,
+  THandlers
 > {
   return new Route<
     TRegister,
@@ -362,7 +369,8 @@ export function createRoute<
     TLoaderFn,
     TChildren,
     unknown,
-    TSSR
+    TSSR,
+    THandlers
   >(options)
 }
 
@@ -388,6 +396,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
     TSSR = unknown,
+    THandlers = undefined,
   >(
     options?: RootRouteOptions<
       TRegister,
@@ -397,7 +406,8 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
-      TSSR
+      TSSR,
+      THandlers
     >,
   ) => {
     return createRootRoute<
@@ -408,7 +418,8 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
-      TSSR
+      TSSR,
+      THandlers
     >(options as any)
   }
 }
@@ -429,6 +440,7 @@ export class RootRoute<
     in out TChildren = unknown,
     in out TFileRouteTypes = unknown,
     in out TSSR = unknown,
+    in out THandlers = undefined,
   >
   extends BaseRootRoute<
     TRegister,
@@ -440,7 +452,8 @@ export class RootRoute<
     TLoaderFn,
     TChildren,
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    THandlers
   >
   implements
     RootRouteCore<
@@ -453,7 +466,8 @@ export class RootRoute<
       TLoaderFn,
       TChildren,
       TFileRouteTypes,
-      TSSR
+      TSSR,
+      THandlers
     >
 {
   /**
@@ -468,7 +482,8 @@ export class RootRoute<
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
-      TSSR
+      TSSR,
+      THandlers
     >,
   ) {
     super(options)
@@ -560,6 +575,7 @@ export class NotFoundRoute<
   TLoaderFn = undefined,
   TChildren = unknown,
   TSSR = unknown,
+  THandlers = undefined,
 > extends Route<
   TRegister,
   TParentRoute,
@@ -575,7 +591,8 @@ export class NotFoundRoute<
   TLoaderDeps,
   TLoaderFn,
   TChildren,
-  TSSR
+  TSSR,
+  THandlers
 > {
   constructor(
     options: Omit<
@@ -593,7 +610,8 @@ export class NotFoundRoute<
         TRouterContext,
         TRouteContextFn,
         TBeforeLoadFn,
-        TSSR
+        TSSR,
+        THandlers
       >,
       | 'caseSensitive'
       | 'parseParams'
@@ -619,6 +637,7 @@ export function createRootRoute<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
+  THandlers = undefined,
 >(
   options?: RootRouteOptions<
     TRegister,
@@ -628,7 +647,8 @@ export function createRootRoute<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TSSR
+    TSSR,
+    THandlers
   >,
 ): RootRoute<
   TRegister,
@@ -640,7 +660,8 @@ export function createRootRoute<
   TLoaderFn,
   unknown,
   unknown,
-  TSSR
+  TSSR,
+  THandlers
 > {
   return new RootRoute<
     TRegister,
@@ -652,6 +673,7 @@ export function createRootRoute<
     TLoaderFn,
     unknown,
     unknown,
-    TSSR
+    TSSR,
+    THandlers
   >(options)
 }
