@@ -51,7 +51,8 @@ function Script({
     if (attrs?.src) {
       const normSrc = (() => {
         try {
-          return new URL(attrs.src, window.location.href).href
+          const base = document.baseURI || window.location.href
+          return new URL(attrs.src, base).href
         } catch {
           return attrs.src
         }
