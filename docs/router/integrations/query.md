@@ -4,7 +4,7 @@ title: TanStack Query Integration
 ---
 
 > [!IMPORTANT]
-> This integration automates SSR dehydration/hydration and streaming between TanStack Router and TanStack Query. If you haven't read the standard [External Data Loading](../framework/react/guide/external-data-loading.md) guide, start there.
+> This integration automates SSR dehydration/hydration and streaming between TanStack Router and TanStack Query. If you haven't read the standard [External Data Loading](../../framework/react/guide/external-data-loading.md) guide, start there.
 
 ## What you get
 
