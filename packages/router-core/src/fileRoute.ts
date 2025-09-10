@@ -48,7 +48,7 @@ export interface FileRouteOptions<
   TLoaderFn = undefined,
   TSSR = unknown,
   TServerMiddlewares = unknown,
-  TServerSendContext = undefined,
+  THandlers = undefined,
 > extends FileBaseRouteOptions<
       TRegister,
       TParentRoute,
@@ -64,7 +64,7 @@ export interface FileRouteOptions<
       AnyContext,
       TSSR,
       TServerMiddlewares,
-      TServerSendContext
+      THandlers
     >,
     UpdatableRouteOptions<
       TParentRoute,
@@ -94,7 +94,8 @@ export type CreateFileRoute<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
-  TMiddlewares = unknown,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
 >(
   options?: FileRouteOptions<
     TRegister,
@@ -110,7 +111,8 @@ export type CreateFileRoute<
     TLoaderDeps,
     TLoaderFn,
     TSSR,
-    TMiddlewares
+    TServerMiddlewares,
+    THandlers
   >,
 ) => Route<
   TRegister,
@@ -129,7 +131,8 @@ export type CreateFileRoute<
   unknown,
   unknown,
   TSSR,
-  TMiddlewares
+  TServerMiddlewares,
+  THandlers
 >
 
 export type LazyRouteOptions = Pick<

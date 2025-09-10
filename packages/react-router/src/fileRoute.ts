@@ -87,6 +87,7 @@ export class FileRoute<
     TChildren = unknown,
     TSSR = unknown,
     const TMiddlewares = unknown,
+    THandlers = undefined,
   >(
     options?: FileBaseRouteOptions<
       TRegister,
@@ -102,7 +103,8 @@ export class FileRoute<
       TBeforeLoadFn,
       AnyContext,
       TSSR,
-      TMiddlewares
+      TMiddlewares,
+      THandlers
     > &
       UpdatableRouteOptions<
         TParentRoute,
@@ -133,7 +135,8 @@ export class FileRoute<
     TChildren,
     unknown,
     TSSR,
-    TMiddlewares
+    TMiddlewares,
+    THandlers
   > => {
     warning(
       this.silent,

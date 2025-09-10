@@ -114,7 +114,8 @@ function RouteComp({
         undefined,
         any,
         FileRouteTypes,
-        unknown
+        unknown,
+        undefined
       >,
       MakeRouteMatchUnion
     >
