@@ -77,8 +77,10 @@ function Script({
     }
 
     if (typeof children === 'string') {
-      const typeAttr = attrs?.type ?? 'text/javascript'
-      const nonceAttr = attrs?.nonce
+      const typeAttr =
+        typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
+      const nonceAttr =
+        typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
       const existingScript = Array.from(
         document.querySelectorAll('script:not([src])'),
       ).find((el) => {
