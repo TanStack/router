@@ -49,9 +49,17 @@ function Script({
 
   React.useEffect(() => {
     if (attrs?.src) {
-      const existingScript = document.querySelector(
-        `script[src="${attrs.src}"]`,
-      )
+      const normSrc = (() => {
+        try {
+          return new URL(attrs.src, window.location.href).href
+        } catch {
+          return attrs.src
+        }
+      })()
+      const existingScript = Array.from(
+        document.querySelectorAll('script[src]'),
+      ).find((el) => (el as HTMLScriptElement).src === normSrc)
+
       if (existingScript) {
         return
       }
@@ -81,9 +89,21 @@ function Script({
     }
 
     if (typeof children === 'string') {
+      const typeAttr = attrs?.type ?? 'text/javascript'
+      const nonceAttr = attrs?.nonce
       const existingScript = Array.from(
         document.querySelectorAll('script:not([src])'),
-      ).find((script) => script.textContent === children)
+      ).find((el) => {
+        if (!(el instanceof HTMLScriptElement)) return false
+        const sType = el.getAttribute('type') ?? 'text/javascript'
+        const sNonce = el.getAttribute('nonce') ?? undefined
+        return (
+          el.textContent === children &&
+          sType === typeAttr &&
+          sNonce === nonceAttr
+        )
+      })
+
       if (existingScript) {
         return
       }
