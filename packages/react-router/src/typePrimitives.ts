@@ -32,7 +32,7 @@ export type ValidateLinkOptions<
 >
 
 /**
- * @internal
+ * @private
  */
 export type InferStructuralSharing<TOptions> = TOptions extends {
   structuralSharing: infer TStructuralSharing
