@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { processRouteTree } from '../src/process-route-tree'
 import { getMatchedRoutes } from '../src/router'
 import { joinPaths } from '../src'
-import type { RouteLike } from "../src/route"
+import type { RouteLike } from '../src/route'
 
 type PathOrChildren = string | [string, Array<PathOrChildren>]
 
