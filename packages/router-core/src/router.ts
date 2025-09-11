@@ -1111,33 +1111,6 @@ export class RouterCore<
       return rootRouteId
     })()
 
-    const parseErrors = matchedRoutes.map((route) => {
-      let parsedParamsError
-
-      const parseParams =
-        route.options.params?.parse ?? route.options.parseParams
-
-      if (parseParams) {
-        try {
-          const parsedParams = parseParams(routeParams)
-          // Add the parsed params to the accumulated params bag
-          Object.assign(routeParams, parsedParams)
-        } catch (err: any) {
-          parsedParamsError = new PathParamError(err.message, {
-            cause: err,
-          })
-
-          if (opts?.throwOnError) {
-            throw parsedParamsError
-          }
-
-          return parsedParamsError
-        }
-      }
-
-      return
-    })
-
     const matches: Array<AnyRouteMatch> = []
 
     const getParentContext = (parentMatch?: AnyRouteMatch) => {
@@ -1224,31 +1197,6 @@ export class RouterCore<
         parseCache: this.parsePathnameCache,
       })
 
-      const strictParams = interpolatePathResult.usedParams
-
-      let paramsError = parseErrors[index]
-
-      const strictParseParams =
-        route.options.params?.parse ?? route.options.parseParams
-
-      if (strictParseParams) {
-        try {
-          Object.assign(strictParams, strictParseParams(strictParams as any))
-        } catch (err: any) {
-          // any param errors should already have been dealt with above, if this
-          // somehow differs, let's report this in the same manner
-          if (!paramsError) {
-            paramsError = new PathParamError(err.message, {
-              cause: err,
-            })
-
-            if (opts?.throwOnError) {
-              throw paramsError
-            }
-          }
-        }
-      }
-
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
       // around between navigation actions that only change leaf routes.
@@ -1262,6 +1210,35 @@ export class RouterCore<
       const previousMatch = this.state.matches.find(
         (d) => d.routeId === route.id,
       )
+
+      const strictParams =
+        existingMatch?._strictParams ?? interpolatePathResult.usedParams
+
+      let paramsError: PathParamError | undefined = undefined
+
+      if (!existingMatch) {
+        const strictParseParams =
+          route.options.params?.parse ?? route.options.parseParams
+
+        if (strictParseParams) {
+          try {
+            Object.assign(
+              strictParams,
+              strictParseParams(strictParams as Record<string, string>),
+            )
+          } catch (err: any) {
+            paramsError = new PathParamError(err.message, {
+              cause: err,
+            })
+
+            if (opts?.throwOnError) {
+              throw paramsError
+            }
+          }
+        }
+      }
+
+      Object.assign(routeParams, strictParams)
 
       const cause = previousMatch ? 'stay' : 'enter'
 
