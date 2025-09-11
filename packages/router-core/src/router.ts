@@ -1216,7 +1216,7 @@ export class RouterCore<
         decodeCharMap: this.pathParamsDecodeCharMap,
       })
 
-      const matchedInterpolatePath = interpolatePath({
+      const interpolatePathResult = interpolatePath({
         path: route.id,
         params: routeParams,
         leaveWildcards: true,
@@ -1224,21 +1224,7 @@ export class RouterCore<
         parseCache: this.parsePathnameCache,
       })
 
-      const matchId = matchedInterpolatePath.interpolatedPath + loaderDepsHash
-
-      const strictParams = matchedInterpolatePath.usedParams
-
-      // Waste not, want not. If we already have a match for this route,
-      // reuse it. This is important for layout routes, which might stick
-      // around between navigation actions that only change leaf routes.
-
-      // Existing matches are matches that are already loaded along with
-      // pending matches that are still loading
-      const existingMatch = this.getMatch(matchId)
-
-      const previousMatch = this.state.matches.find(
-        (d) => d.routeId === route.id,
-      )
+      const strictParams = interpolatePathResult.usedParams
 
       let paramsError = parseErrors[index]
 
@@ -1249,19 +1235,33 @@ export class RouterCore<
         try {
           Object.assign(strictParams, strictParseParams(strictParams as any))
         } catch (err: any) {
-          const strictParsedParamsError = new PathParamError(err.message, {
-            cause: err,
-          })
-
-          if (opts?.throwOnError) {
-            throw strictParsedParamsError
-          }
-
+          // any param errors should already have been dealt with above, if this
+          // somehow differs, let's report this in the same manner
           if (!paramsError) {
-            paramsError = strictParsedParamsError
+            paramsError = new PathParamError(err.message, {
+              cause: err,
+            })
+
+            if (opts?.throwOnError) {
+              throw paramsError
+            }
           }
         }
       }
+
+      // Waste not, want not. If we already have a match for this route,
+      // reuse it. This is important for layout routes, which might stick
+      // around between navigation actions that only change leaf routes.
+
+      // Existing matches are matches that are already loaded along with
+      // pending matches that are still loading
+      const matchId = interpolatePathResult.interpolatedPath + loaderDepsHash
+
+      const existingMatch = this.getMatch(matchId)
+
+      const previousMatch = this.state.matches.find(
+        (d) => d.routeId === route.id,
+      )
 
       const cause = previousMatch ? 'stay' : 'enter'
 

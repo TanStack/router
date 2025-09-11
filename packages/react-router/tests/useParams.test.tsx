@@ -10,7 +10,7 @@ import {
   useParams,
 } from '../src'
 
-test('params from useParams and params.parse should be the same.', async () => {
+test('useParams must return parsed result if applicable.', async () => {
   const posts = [
     {
       id: 1,
@@ -34,7 +34,7 @@ test('params from useParams and params.parse should be the same.', async () => {
 
   const postCategoryRoute = createRoute({
     getParentRoute: () => postsRoute,
-    path: '$category',
+    path: 'category_{$category}',
     component: PostCategoryComponent,
     params: {
       parse: (params) => {
@@ -95,14 +95,14 @@ test('params from useParams and params.parse should be the same.', async () => {
         <h1 data-testid="posts-heading">Posts</h1>
         <Link
           data-testid="all-category-link"
-          to="/posts/$category"
+          to={postCategoryRoute.fullPath}
           params={{ category: 'all' }}
         >
           All Categories
         </Link>
         <Link
           data-testid="first-category-link"
-          to="/posts/$category"
+          to={postCategoryRoute.fullPath}
           params={{ category: 'first' }}
         >
           First Category
@@ -189,16 +189,14 @@ test('params from useParams and params.parse should be the same.', async () => {
 
   await act(() => fireEvent.click(firstCategoryLink))
 
-  expect(window.location.pathname).toBe('/posts/first')
+  expect(window.location.pathname).toBe('/posts/category_first')
 
-  const postCategoryHeading = await screen.findByTestId('post-category-heading')
   const firstPostLink = await screen.findByTestId('post-one-link')
 
-  expect(postCategoryHeading).toBeInTheDocument()
+  expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
 
-  fireEvent.click(firstPostLink)
+  await act(() => fireEvent.click(firstPostLink))
 
-  let postHeading = await screen.findByTestId('post-heading')
   let paramCategoryValue = await screen.findByTestId('param_category_value')
   let paramPostIdValue = await screen.findByTestId('param_postId_value')
   let paramIdValue = await screen.findByTestId('param_id_value')
@@ -206,8 +204,8 @@ test('params from useParams and params.parse should be the same.', async () => {
   let postTitleValue = await screen.findByTestId('post_title_value')
   let postIdValue = await screen.findByTestId('post_id_value')
 
-  expect(window.location.pathname).toBe('/posts/first/one')
-  expect(postHeading).toBeInTheDocument()
+  expect(window.location.pathname).toBe('/posts/category_first/one')
+  expect(await screen.findByTestId('post-heading')).toBeInTheDocument()
 
   let renderedPost = {
     id: parseInt(postIdValue.textContent),
@@ -227,16 +225,15 @@ test('params from useParams and params.parse should be the same.', async () => {
 
   await act(() => fireEvent.click(allCategoryLink))
 
-  expect(window.location.pathname).toBe('/posts/all')
+  expect(window.location.pathname).toBe('/posts/category_all')
 
   const secondPostLink = await screen.findByTestId('post-two-link')
 
-  expect(postCategoryHeading).toBeInTheDocument()
+  expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
   expect(secondPostLink).toBeInTheDocument()
 
-  fireEvent.click(secondPostLink)
+  await act(() => fireEvent.click(secondPostLink))
 
-  postHeading = await screen.findByTestId('post-heading')
   paramCategoryValue = await screen.findByTestId('param_category_value')
   paramPostIdValue = await screen.findByTestId('param_postId_value')
   paramIdValue = await screen.findByTestId('param_id_value')
@@ -244,8 +241,8 @@ test('params from useParams and params.parse should be the same.', async () => {
   postTitleValue = await screen.findByTestId('post_title_value')
   postIdValue = await screen.findByTestId('post_id_value')
 
-  expect(window.location.pathname).toBe('/posts/all/two')
-  expect(postHeading).toBeInTheDocument()
+  expect(window.location.pathname).toBe('/posts/category_all/two')
+  expect(await screen.findByTestId('post-heading')).toBeInTheDocument()
 
   renderedPost = {
     id: parseInt(postIdValue.textContent),
