@@ -429,6 +429,7 @@ const executeBeforeLoad = (
     buildLocation: inner.router.buildLocation,
     cause: preload ? 'preload' : cause,
     matches: inner.matches,
+    ...inner.router.options.additionalContext,
   }
 
   const updateContext = (beforeLoadContext: any) => {
@@ -494,13 +495,13 @@ const handleBeforeLoad = (
     return queueExecution()
   }
 
+  const execute = () => executeBeforeLoad(inner, matchId, index, route)
+
   const queueExecution = () => {
     if (shouldSkipLoader(inner, matchId)) return
     const result = preBeforeLoadSetup(inner, matchId, route)
     return isPromise(result) ? result.then(execute) : execute()
   }
-
-  const execute = () => executeBeforeLoad(inner, matchId, index, route)
 
   return serverSsr()
 }
@@ -578,6 +579,7 @@ const getLoaderContext = (
       }),
     cause: preload ? 'preload' : cause,
     route,
+    ...inner.router.options.additionalContext,
   }
 }
 
