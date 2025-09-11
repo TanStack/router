@@ -1,9 +1,3 @@
-import { Outlet, createFileRoute } from '@tanstack/solid-router'
+import { createFileRoute } from '@tanstack/solid-router'
 
-export const Route = createFileRoute('/params-ps/non-nested/$foo_')({
-  component: RouteComponent,
-})
-
-function RouteComponent() {
-  return <Outlet />
-}
+export const Route = createFileRoute('/params-ps/non-nested/$foo_')()
