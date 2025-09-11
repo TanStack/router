@@ -2,14 +2,14 @@ import { createFileRoute } from '@tanstack/solid-router'
 import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware, json } from '@tanstack/solid-start'
 
-const testParentMiddleware = createMiddleware({ type: 'request' }).server(
+const testParentMiddleware = createMiddleware().server(
   async ({ next }) => {
     const result = await next({ context: { testParent: true } })
     return result
   },
 )
 
-const testMiddleware = createMiddleware({ type: 'request' })
+const testMiddleware = createMiddleware()
   .middleware([testParentMiddleware])
   .server(async ({ next }) => {
     const result = await next({ context: { test: true } })

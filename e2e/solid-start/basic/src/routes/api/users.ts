@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware, json } from '@tanstack/solid-start'
 import type { User } from '~/utils/users'
 
-const userLoggerMiddleware = createMiddleware({ type: 'request' }).server(
+const userLoggerMiddleware = createMiddleware().server(
   async ({ next, request }) => {
     console.info('In: /users')
     const result = await next()
@@ -13,7 +13,7 @@ const userLoggerMiddleware = createMiddleware({ type: 'request' }).server(
   },
 )
 
-const testParentMiddleware = createMiddleware({ type: 'request' }).server(
+const testParentMiddleware = createMiddleware().server(
   async ({ next, request }) => {
     console.info('In: testParentMiddleware')
     const result = await next()
@@ -23,7 +23,7 @@ const testParentMiddleware = createMiddleware({ type: 'request' }).server(
   },
 )
 
-const testMiddleware = createMiddleware({ type: 'request' })
+const testMiddleware = createMiddleware()
   .middleware([testParentMiddleware])
   .server(async ({ next, request }) => {
     console.info('In: testMiddleware')
