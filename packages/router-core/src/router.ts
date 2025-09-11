@@ -1210,20 +1210,23 @@ export class RouterCore<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
-      const { usedParams, interpolatedPath } = interpolatePath({
+      const { interpolatedPath } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
       })
 
-      const matchId =
-        interpolatePath({
-          path: route.id,
-          params: routeParams,
-          leaveWildcards: true,
-          decodeCharMap: this.pathParamsDecodeCharMap,
-          parseCache: this.parsePathnameCache,
-        }).interpolatedPath + loaderDepsHash
+      const matchedInterpolatePath = interpolatePath({
+        path: route.id,
+        params: routeParams,
+        leaveWildcards: true,
+        decodeCharMap: this.pathParamsDecodeCharMap,
+        parseCache: this.parsePathnameCache,
+      })
+
+      const matchId = matchedInterpolatePath.interpolatedPath + loaderDepsHash
+
+      const strictParams = matchedInterpolatePath.usedParams
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -1237,6 +1240,29 @@ export class RouterCore<
         (d) => d.routeId === route.id,
       )
 
+      let paramsError = parseErrors[index]
+
+      const strictParseParams =
+        route.options.params?.parse ?? route.options.parseParams
+
+      if (strictParseParams) {
+        try {
+          Object.assign(strictParams, strictParseParams(strictParams as any))
+        } catch (err: any) {
+          const strictParsedParamsError = new PathParamError(err.message, {
+            cause: err,
+          })
+
+          if (opts?.throwOnError) {
+            throw strictParsedParamsError
+          }
+
+          if (!paramsError) {
+            paramsError = strictParsedParamsError
+          }
+        }
+      }
+
       const cause = previousMatch ? 'stay' : 'enter'
 
       let match: AnyRouteMatch
@@ -1248,7 +1274,7 @@ export class RouterCore<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
-          _strictParams: usedParams,
+          _strictParams: strictParams,
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : replaceEqualDeep(existingMatch.search, preMatchSearch),
@@ -1270,7 +1296,7 @@ export class RouterCore<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
-          _strictParams: usedParams,
+          _strictParams: strictParams,
           pathname: joinPaths([this.basepath, interpolatedPath]),
           updatedAt: Date.now(),
           search: previousMatch
@@ -1281,7 +1307,7 @@ export class RouterCore<
           status,
           isFetching: false,
           error: undefined,
-          paramsError: parseErrors[index],
+          paramsError,
           __routeContext: undefined,
           _nonReactive: {
             loadPromise: createControlledPromise(),
