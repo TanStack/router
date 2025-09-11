@@ -95,29 +95,32 @@
 ## Partners
 
 <div style="display: flex; flex-wrap: wrap; gap: 50px; justify-content: center; align-items: center;">
+<a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable" style="display: flex; align-items: center; border: none; margin-bottom: -20px;">
+    <img src="https://tanstack.com/assets/coderabbit-light-DVMJ2jHi.svg" height="40" alt="Code Rabbit"/>
+  </a>
+   <a href="https://www.cloudflare.com?utm_source=tanstack">
+     <img src="https://tanstack.com/assets/cloudflare-black-CPufaW0B.svg" height="60" alt="Cloudflare"/>
+  </a>
+   <a href="https://netlify.com?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/netlify.svg" height="60" alt="Netlify"/>
+  </a>
+    <a href="https://neon.tech?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="45" alt="Neon"/>
+  </a>
   <a href="https://go.clerk.com/wOwHtuJ" style="display: flex; align-items: center; border: none; margin-right: -80px; margin-top: 6px;">
     <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40" alt="Clerk"/>
   </a>
-  <a href="https://ag-grid.com/react-data-grid/?utm_source=reacttable&utm_campaign=githubreacttable" style="display: flex; align-items: center; border: none;">
-    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/ag-grid.svg" height="40" alt="AG Grid"/>
+    <a href="https://convex.dev?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40" alt="Convex"/>
   </a>
-  <a href="https://netlify.com?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
-    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/netlify.svg" height="60" alt="Netlify"/>
-  </a>
-  <a href="https://neon.tech?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
-    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="45" alt="Neon"/>
+    <a href="https://sentry.io?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
+    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40" alt="Sentry"/>
   </a>
   <a href="https://www.prisma.io?utm_source=tanstack&via=tanstack" style="display: flex; align-items: center; border: none;">
     <img src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" height="50" alt="Prisma"/>
   </a>
-  <a href="https://convex.dev?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
-    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40" alt="Convex"/>
-  </a>
-  <a href="https://sentry.io?utm_source=tanstack" style="display: flex; align-items: center; border: none;">
-    <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="40" alt="Sentry"/>
-  </a>
-  <a href="https://speakeasy.com/?utm_source=tanstack&utm_campaign=tanstack" style="display: flex; align-items: center; border: none;">
-    <img src="https://tanstack.com/assets/speakeasy-light-UpY7QmwQ.svg" height="40" alt="Speakeasy"/>
+  <a href="https://strapi.link/tanstack-start" style="display: flex; align-items: center; border: none;">
+    <img src="https://tanstack.com/assets/strapi-light-6x7linao.svg" height="40" alt="Strapi"/>
   </a>
 </div>
 
