@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@solidjs/testing-library'
 import {
   Link,
@@ -72,20 +72,16 @@ test('useParams must return parsed result if applicable.', async () => {
     path: '$postId',
     params: {
       parse: (params) => {
+        console.log()
         return {
           ...params,
-          id: params.postId === 'one' ? 1 : 2,
-        }
-      },
-      stringify: (params) => {
-        return {
-          postId: params.id === 1 ? 'one' : 'two',
+          postId: params.postId === 'one' ? '1' : '2',
         }
       },
     },
     component: PostComponent,
     loader: ({ params }) => ({
-      post: posts.find((post) => post.id === params.id),
+      post: posts.find((post) => post.id === parseInt(params.postId)),
     }),
   })
 
@@ -123,7 +119,8 @@ test('useParams must return parsed result if applicable.', async () => {
           return (
             <Link
               from={postCategoryRoute.fullPath}
-              to={`./${id}`}
+              to="./$postId"
+              params={{ postId: id }}
               data-testid={`post-${id}-link`}
             >
               {post.title}
@@ -152,9 +149,6 @@ test('useParams must return parsed result if applicable.', async () => {
           <span data-testid="param_postId_value">{params().postId}</span>
         </div>
         <div>
-          Id_Param: <span data-testid="param_id_value">{params().id}</span>
-        </div>
-        <div>
           PostId: <span data-testid="post_id_value">{data().post.id}</span>
         </div>
         <div>
@@ -169,6 +163,7 @@ test('useParams must return parsed result if applicable.', async () => {
   }
 
   window.history.replaceState({}, '', '/posts')
+  const consoleSpy = vi.spyOn(console, 'log')
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([
@@ -186,72 +181,68 @@ test('useParams must return parsed result if applicable.', async () => {
 
   expect(firstCategoryLink).toBeInTheDocument()
 
+  consoleSpy.mockClear()
   await waitFor(() => fireEvent.click(firstCategoryLink))
-
-  expect(window.location.pathname).toBe('/posts/category_first')
 
   const firstPostLink = await screen.findByTestId('post-one-link')
 
+  expect(window.location.pathname).toBe('/posts/category_first')
   expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
+  expect(consoleSpy).toHaveBeenCalledTimes(1)
 
+  consoleSpy.mockClear()
   await waitFor(() => fireEvent.click(firstPostLink))
 
+  const allCategoryLink = await screen.findByTestId('all-category-link')
   let paramCategoryValue = await screen.findByTestId('param_category_value')
   let paramPostIdValue = await screen.findByTestId('param_postId_value')
-  let paramIdValue = await screen.findByTestId('param_id_value')
   let postCategory = await screen.findByTestId('post_category_value')
   let postTitleValue = await screen.findByTestId('post_title_value')
   let postIdValue = await screen.findByTestId('post_id_value')
-
-  expect(window.location.pathname).toBe('/posts/category_first/one')
-  expect(await screen.findByTestId('post-heading')).toBeInTheDocument()
-
   let renderedPost = {
     id: parseInt(postIdValue.textContent),
     title: postTitleValue.textContent,
     category: postCategory.textContent,
   }
 
+  expect(window.location.pathname).toBe('/posts/category_first/one')
+  expect(await screen.findByTestId('post-heading')).toBeInTheDocument()
   expect(renderedPost).toEqual(posts[0])
   expect(renderedPost.category).toBe('one')
   expect(paramCategoryValue.textContent).toBe('one')
-  expect(paramPostIdValue.textContent).toBe('one')
-  expect(paramIdValue.textContent).toBe('1')
-
-  const allCategoryLink = await screen.findByTestId('all-category-link')
-
+  expect(paramPostIdValue.textContent).toBe('1')
+  expect(consoleSpy).toHaveBeenCalledTimes(2)
   expect(allCategoryLink).toBeInTheDocument()
 
+  consoleSpy.mockClear()
   await waitFor(() => fireEvent.click(allCategoryLink))
-
-  expect(window.location.pathname).toBe('/posts/category_all')
 
   const secondPostLink = await screen.findByTestId('post-two-link')
 
+  expect(window.location.pathname).toBe('/posts/category_all')
   expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
   expect(secondPostLink).toBeInTheDocument()
+  expect(consoleSpy).toHaveBeenCalledTimes(2)
 
+  consoleSpy.mockClear()
   await waitFor(() => fireEvent.click(secondPostLink))
 
   paramCategoryValue = await screen.findByTestId('param_category_value')
   paramPostIdValue = await screen.findByTestId('param_postId_value')
-  paramIdValue = await screen.findByTestId('param_id_value')
   postCategory = await screen.findByTestId('post_category_value')
   postTitleValue = await screen.findByTestId('post_title_value')
   postIdValue = await screen.findByTestId('post_id_value')
-
-  expect(window.location.pathname).toBe('/posts/category_all/two')
-  expect(await screen.findByTestId('post-heading')).toBeInTheDocument()
-
   renderedPost = {
     id: parseInt(postIdValue.textContent),
     title: postTitleValue.textContent,
     category: postCategory.textContent,
   }
 
+  expect(window.location.pathname).toBe('/posts/category_all/two')
+  expect(await screen.findByTestId('post-heading')).toBeInTheDocument()
   expect(renderedPost).toEqual(posts[1])
   expect(renderedPost.category).toBe('two')
   expect(paramCategoryValue.textContent).toBe('all')
-  expect(paramPostIdValue.textContent).toBe('two')
-  expect(paramIdValue.textContent).toBe('2')
+  expect(paramPostIdValue.textContent).toBe('2')
+  expect(consoleSpy).toHaveBeenCalledTimes(2)
 })
