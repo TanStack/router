@@ -3,7 +3,6 @@ import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,
-  SEGMENT_TYPE_WILDCARD,
   parsePathname,
   trimPathLeft,
   trimPathRight,
@@ -11,9 +10,12 @@ import {
 import type { Segment } from './path'
 import type { RouteLike } from './route'
 
+const SLASH_SCORE = 0.75
+const STATIC_SEGMENT_SCORE = 1
 const REQUIRED_PARAM_BASE_SCORE = 0.5
 const OPTIONAL_PARAM_BASE_SCORE = 0.4
 const WILDCARD_PARAM_BASE_SCORE = 0.25
+const STATIC_AFTER_DYNAMIC_BONUS_SCORE = 0.2
 const BOTH_PRESENCE_BASE_SCORE = 0.05
 const PREFIX_PRESENCE_BASE_SCORE = 0.02
 const SUFFIX_PRESENCE_BASE_SCORE = 0.01
@@ -81,7 +83,11 @@ function sortRoutes<TRouteLike extends RouteLike>(
     let hasStaticAfter = false
     const scores = parsed.map((segment, index) => {
       if (segment.value === '/') {
-        return 0.75
+        return SLASH_SCORE
+      }
+
+      if (segment.type === SEGMENT_TYPE_PATHNAME) {
+        return STATIC_SEGMENT_SCORE
       }
 
       let baseScore: number | undefined = undefined
@@ -90,29 +96,25 @@ function sortRoutes<TRouteLike extends RouteLike>(
       } else if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
         baseScore = OPTIONAL_PARAM_BASE_SCORE
         optionalParamCount++
-      } else if (segment.type === SEGMENT_TYPE_WILDCARD) {
+      } else {
         baseScore = WILDCARD_PARAM_BASE_SCORE
       }
 
-      if (baseScore) {
-        // if there is any static segment (that is not an index) after a required / optional param,
-        // we will boost this param so it ranks higher than a required/optional param without a static segment after it
-        // JUST FOR SORTING, NOT FOR MATCHING
-        for (let i = index + 1; i < parsed.length; i++) {
-          const nextSegment = parsed[i]!
-          if (
-            nextSegment.type === SEGMENT_TYPE_PATHNAME &&
-            nextSegment.value !== '/'
-          ) {
-            hasStaticAfter = true
-            return handleParam(segment, baseScore + 0.2)
-          }
+      // if there is any static segment (that is not an index) after a required / optional param,
+      // we will boost this param so it ranks higher than a required/optional param without a static segment after it
+      // JUST FOR SORTING, NOT FOR MATCHING
+      for (let i = index + 1; i < parsed.length; i++) {
+        const nextSegment = parsed[i]!
+        if (
+          nextSegment.type === SEGMENT_TYPE_PATHNAME &&
+          nextSegment.value !== '/'
+        ) {
+          hasStaticAfter = true
+          return handleParam(segment, baseScore + STATIC_AFTER_DYNAMIC_BONUS_SCORE)
         }
-
-        return handleParam(segment, baseScore)
       }
 
-      return 1
+      return handleParam(segment, baseScore)
     })
 
     scoredRoutes.push({
