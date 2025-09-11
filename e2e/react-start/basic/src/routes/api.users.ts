@@ -9,7 +9,9 @@ if (import.meta.env.VITE_NODE_ENV === 'test') {
   queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
 }
 
-export const ServerRoute = createServerFileRoute().methods({
+export const Route = createFileRoute({
+  server: {
+    handlers:{
   GET: async ({ request }) => {
     console.info('Fetching users... @', request.url)
     const res = await axios.get<Array<User>>(`${queryURL}/users`)
@@ -18,4 +20,6 @@ export const ServerRoute = createServerFileRoute().methods({
 
     return json(list.map((u) => ({ id: u.id, name: u.name, email: u.email })))
   },
+}
+  }
 })
