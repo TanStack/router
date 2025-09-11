@@ -6,12 +6,9 @@ import {
 } from '@tanstack/start-client-core'
 import {
   executeRewriteInput,
-  getMatchedRoutes,
   isRedirect,
   isResolvedRedirect,
   joinPaths,
-  processRouteTree,
-  rewriteBasepath,
   trimPath,
 } from '@tanstack/router-core'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
@@ -19,15 +16,9 @@ import { runWithStartContext } from '@tanstack/start-storage-context'
 import { getResponseHeaders, requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
-import { VIRTUAL_MODULES } from './virtual-modules'
-import { loadVirtualModule } from './loadVirtualModule'
 
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
-// import type {
-//   AnyRoute,
-//   ServerRouteMethodHandlerFn,
-// } from './serverRoute'
 import type { RouteMethod, RouteMethodHandlerFn } from './serverRoute'
 import type { RequestHandler } from './request-response'
 import type {
@@ -35,7 +26,6 @@ import type {
   AnyRouter,
   Awaitable,
   Manifest,
-  ProcessRouteTreeResult,
 } from '@tanstack/router-core'
 import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 import './serverRoute'
@@ -64,12 +54,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
 }: {
   createRouter: () => Awaitable<TRouter>
 }): CustomizeStartHandler<TRouter> {
-  let routeTreeModule: {
-    routeTree: AnyRoute | undefined
-  } | null = null
   let startRoutesManifest: Manifest | null = null
-  let processedServerRouteTree: ProcessRouteTreeResult<AnyRoute> | undefined =
-    undefined
 
   return (cb) => {
     const originalFetch = globalThis.fetch
@@ -119,6 +104,7 @@ export function createStartHandler<TRouter extends AnyRouter>({
       const url = new URL(request.url)
       const href = url.href.replace(url.origin, '')
 
+      // TODO do we remove this?
       const APP_BASE = process.env.TSS_APP_BASE || '/'
 
       // TODO how does this work with base path? does the router need to be configured the same as APP_BASE?
@@ -153,6 +139,12 @@ export function createStartHandler<TRouter extends AnyRouter>({
         origin,
       })
 
+      // TODO make all this one big middleware chain
+      // 1. global request middlewares
+      // 2. serverFunctionMiddleware, will handle the request if the request path matches
+      //  => invoke server function and pass in context from global request middlewares
+      // 3. server routes
+      // 4. render router
       const response = await runWithStartContext({ router }, async () => {
         try {
           if (!process.env.TSS_SERVER_FN_BASE) {
@@ -172,27 +164,11 @@ export function createStartHandler<TRouter extends AnyRouter>({
             return await handleServerAction({ request })
           }
 
-          if (routeTreeModule === null) {
-            try {
-              routeTreeModule = await loadVirtualModule(
-                VIRTUAL_MODULES.routeTree,
-              )
-              if (routeTreeModule.routeTree) {
-                processedServerRouteTree = processRouteTree<AnyRoute>({
-                  routeTree: routeTreeModule.routeTree,
-                  initRoute: (route, i) => {
-                    route.init({
-                      originalIndex: i,
-                    })
-                  },
-                })
-              }
-            } catch (e) {
-              console.log(e)
-            }
-          }
-
-          const executeRouter = async () => {
+          const executeRouter = async ({
+            serverContext,
+          }: {
+            serverContext: any
+          }) => {
             const requestAcceptHeader = request.headers.get('Accept') || '*/*'
             const splitRequestAcceptHeader = requestAcceptHeader.split(',')
 
@@ -222,9 +198,9 @@ export function createStartHandler<TRouter extends AnyRouter>({
               })
             }
 
-            // Attach the server-side SSR utils to the client-side router
             attachRouterServerSsrUtils(router, startRoutesManifest)
 
+            router.update({ additionalContext: { serverContext } })
             await router.load()
 
             // If there was a redirect, skip rendering the page at all
@@ -244,23 +220,13 @@ export function createStartHandler<TRouter extends AnyRouter>({
             return response
           }
 
-          // If we have a server route tree, then we try matching to see if we have a
-          // server route that matches the request.
-          if (processedServerRouteTree) {
-            const [_matchedRoutes, response] = await handleServerRoutes({
-              processedServerRouteTree,
-              router,
-              request,
-              basePath: APP_BASE,
-              executeRouter,
-            })
+          const response = await handleServerRoutes({
+            router,
+            request,
+            executeRouter,
+          })
 
-            if (response) return response
-          }
-
-          // Server Routes did not produce a response, so fallback to normal SSR matching using the router
-          const routerResponse = await executeRouter()
-          return routerResponse
+          return response
         } catch (err) {
           if (err instanceof Response) {
             return err
@@ -334,154 +300,136 @@ export function createStartHandler<TRouter extends AnyRouter>({
   }
 }
 
-async function handleServerRoutes(opts: {
+async function handleServerRoutes({
+  router,
+  request,
+  executeRouter,
+}: {
   router: AnyRouter
-  processedServerRouteTree: ProcessRouteTreeResult<AnyRoute>
   request: Request
-  basePath: string
-  executeRouter: () => Promise<Response>
+  executeRouter: ({
+    serverContext,
+  }: {
+    serverContext: any
+  }) => Promise<Response>
 }) {
-  let url = new URL(opts.request.url)
-  if (opts.basePath) {
-    url = executeRewriteInput(rewriteBasepath({ basepath: opts.basePath }), url)
-  }
+  let url = new URL(request.url)
+  url = executeRewriteInput(router.rewrite, url)
   const pathname = url.pathname
-
-  const serverTreeResult = getMatchedRoutes<AnyRoute>({
+  const { matchedRoutes, foundRoute, routeParams } = router.getMatchedRoutes(
     pathname,
-    caseSensitive: true,
-    routesByPath: opts.processedServerRouteTree.routesByPath,
-    routesById: opts.processedServerRouteTree.routesById,
-    flatRoutes: opts.processedServerRouteTree.flatRoutes,
-  })
+    undefined,
+  )
 
-  const routeTreeResult = opts.router.getMatchedRoutes(pathname, undefined)
+  // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
 
-  let response: Response | undefined
-  let matchedRoutes: Array<AnyRoute> = []
-  matchedRoutes = serverTreeResult.matchedRoutes
-  // check if the app route tree found a match that is deeper than the server route tree
-  if (routeTreeResult.foundRoute) {
-    if (
-      serverTreeResult.matchedRoutes.length <
-      routeTreeResult.matchedRoutes.length
-    ) {
-      const closestCommon = [...routeTreeResult.matchedRoutes]
-        .reverse()
-        .find((r) => {
-          return opts.processedServerRouteTree.routesById[r.id] !== undefined
-        })
-      if (closestCommon) {
-        // walk up the tree and collect all parents
-        let routeId = closestCommon.id
-        matchedRoutes = []
-        do {
-          const route = opts.processedServerRouteTree.routesById[routeId]
-          if (!route) {
-            break
-          }
-          matchedRoutes.push(route)
-          routeId = route.parentRoute?.id
-        } while (routeId)
+  const middlewares = flattenMiddlewares(
+    matchedRoutes.flatMap((r) => r.options.server?.middleware).filter(Boolean),
+  ).map((d) => d.options.server)
 
-        matchedRoutes.reverse()
-      }
-    }
-  }
+  const server = foundRoute?.options.server
 
-  if (matchedRoutes.length) {
-    // We've found a server route that (partially) matches the request, so we can call it.
-    // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
+  if (server) {
+    if (server.handlers) {
+      const handlers =
+        typeof server.handlers === 'function'
+          ? server.handlers({
+              createHandlers: (d: any) => d,
+            })
+          : server.handlers
 
-    const middlewares = flattenMiddlewares(
-      matchedRoutes
-        .flatMap((r) => r.options.server?.middleware)
-        .filter(Boolean),
-    ).map((d) => d.options.server)
+      const requestMethod = request.method.toLowerCase()
 
-    const server = serverTreeResult.foundRoute?.options.server
+      // Attempt to find the method in the handlers
+      let method = Object.keys(handlers).find(
+        (method) => method.toLowerCase() === requestMethod,
+      )
 
-    if (server) {
-      if (server.handlers) {
-        const handlers =
-          // typeof server.handlers === 'function'
-          //   ? server.handlers({
-          //       createHandlers: (d) => d,
-          //     })
-          //   :
-          server.handlers
-
-        const requestMethod = opts.request.method.toLowerCase()
-
-        // Attempt to find the method in the handlers
-        let method = Object.keys(handlers).find(
-          (method) => method.toLowerCase() === requestMethod,
+      // If no method is found, attempt to find the 'all' method
+      if (!method) {
+        method = Object.keys(handlers).find(
+          (method) => method.toLowerCase() === 'all',
         )
+          ? 'all'
+          : undefined
+      }
 
-        // If no method is found, attempt to find the 'all' method
-        if (!method) {
-          method = Object.keys(handlers).find(
-            (method) => method.toLowerCase() === 'all',
-          )
-            ? 'all'
-            : undefined
-        }
-
-        // If a method is found, execute the handler
-        if (method) {
-          const handler = handlers[method as RouteMethod]
-          if (handler) {
-            if (typeof handler === 'function') {
-              middlewares.push(handlerToMiddleware(handler))
-            } else {
-              // const { middleware } = handler
-              // if (middleware && middleware.length) {
-              //   middlewares.push(
-              //     ...flattenMiddlewares(middleware as TODO).map(
-              //       (d) => d.options.server,
-              //     ),
-              //   )
-              // }
-              // if (handler.handler) {
-              //   middlewares.push(handlerToMiddleware(handler.handler))
-              // }
+      // If a method is found, execute the handler
+      if (method) {
+        const handler = handlers[method as RouteMethod]
+        if (handler) {
+          const mayDefer = !!foundRoute.options.component
+          if (typeof handler === 'function') {
+            middlewares.push(handlerToMiddleware(handler, mayDefer))
+          } else {
+            const { middleware } = handler
+            if (middleware && middleware.length) {
+              middlewares.push(
+                ...flattenMiddlewares(middleware).map((d) => d.options.server),
+              )
+            }
+            if (handler.handler) {
+              middlewares.push(handlerToMiddleware(handler.handler, mayDefer))
             }
           }
         }
       }
     }
-
-    // eventually, execute the router
-    middlewares.push(handlerToMiddleware(opts.executeRouter))
-
-    // TODO: This is starting to feel too much like a server function
-    // Do generalize the existing middleware execution? Or do we need to
-    // build a new middleware execution system for server routes?
-    const ctx = await executeMiddleware(middlewares, {
-      request: opts.request,
-      context: {},
-      params: serverTreeResult.routeParams,
-      pathname,
-    })
-
-    response = ctx.response
   }
 
-  // We return the matched routes too so if
-  // the app router happens to match the same path,
-  // it can use any request middleware from server routes
-  return [matchedRoutes, response] as const
+  // eventually, execute the router
+  middlewares.push(
+    handlerToMiddleware(
+      (ctx) => executeRouter({ serverContext: ctx.context }),
+      false,
+    ),
+  )
+
+  // TODO: This is starting to feel too much like a server function
+  // Do generalize the existing middleware execution? Or do we need to
+  // build a new middleware execution system for server routes?
+  const ctx = await executeMiddleware(middlewares, {
+    request,
+    context: {},
+    params: routeParams,
+    pathname,
+  })
+
+  const response: Response = ctx.response
+
+  return response
 }
 
+function throwRouteHandlerError() {
+  if (process.env.NODE_ENV === 'development') {
+    throw new Error(
+      `It looks like you forgot to return a response from your server route handler. If you want to defer to the app router, make sure to have a component set in this route.`,
+    )
+  }
+  throw new Error('Internal Server Error')
+}
+
+function throwIfMayNotDefer() {
+  if (process.env.NODE_ENV === 'development') {
+    throw new Error(
+      `You cannot defer to the app router if there is no component defined on this route.`,
+    )
+  }
+  throw new Error('Internal Server Error')
+}
 function handlerToMiddleware(
   handler: RouteMethodHandlerFn<AnyRoute, any, any, any, any>,
+  mayDefer: boolean,
 ) {
+  if (mayDefer) {
+    return handler as TODO
+  }
   return async ({ next: _next, ...rest }: TODO) => {
-    const response = await handler(rest)
-    if (response) {
-      return { response }
+    const response = await handler({ ...rest, next: throwIfMayNotDefer })
+    if (!response) {
+      throwRouteHandlerError()
     }
-    return _next(rest)
+    return response
   }
 }
 

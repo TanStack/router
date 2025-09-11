@@ -18,33 +18,34 @@ import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 export type CompileStartFrameworkOptions = 'react' | 'solid'
 
 type Identifiers = { [K in (typeof transformFuncs)[number]]: IdentifierConfig }
-const identifiers: Identifiers = {
-  createMiddleware: {
-    name: 'createMiddleware',
-    handleCallExpression: handleCreateMiddlewareCallExpression,
-    paths: [],
-  },
-  createServerOnlyFn: {
-    name: 'createServerOnlyFn',
-    handleCallExpression: handleCreateServerOnlyFnCallExpression,
-    paths: [],
-  },
-  createClientOnlyFn: {
-    name: 'createClientOnlyFn',
-    handleCallExpression: handleCreateClientOnlyFnCallExpression,
-    paths: [],
-  },
-  createIsomorphicFn: {
-    name: 'createIsomorphicFn',
-    handleCallExpression: handleCreateIsomorphicFnCallExpression,
-    paths: [],
-  },
-}
 
 export function compileStartOutputFactory(
   framework: CompileStartFrameworkOptions,
 ) {
   return function compileStartOutput(opts: CompileOptions): GeneratorResult {
+    const identifiers: Identifiers = {
+      createMiddleware: {
+        name: 'createMiddleware',
+        handleCallExpression: handleCreateMiddlewareCallExpression,
+        paths: [],
+      },
+      createServerOnlyFn: {
+        name: 'createServerOnlyFn',
+        handleCallExpression: handleCreateServerOnlyFnCallExpression,
+        paths: [],
+      },
+      createClientOnlyFn: {
+        name: 'createClientOnlyFn',
+        handleCallExpression: handleCreateClientOnlyFnCallExpression,
+        paths: [],
+      },
+      createIsomorphicFn: {
+        name: 'createIsomorphicFn',
+        handleCallExpression: handleCreateIsomorphicFnCallExpression,
+        paths: [],
+      },
+    }
+
     const ast = parseAst(opts)
 
     const doDce = opts.dce ?? true
