@@ -328,10 +328,14 @@ Learn more about the [Server Functions](../server-functions.md).
 
 ```ts
 - export async function GET() { // [!code --]
-+ export const ServerRoute = createServerFileRoute().methods({ // [!code ++]
-+   GET: async () => { // [!code ++]
-    return Response.json("Hello, World!")
-  }
++ export const Route = createFileRoute('/api/hello')({ // [!code ++]
++  server: { // [!code ++]
++     handlers: { // [!code ++]
++       GET: async () => { // [!code ++]
++         return Response.json("Hello, World!")
++       } // [!code ++]
++    } // [!code ++]
++  } // [!code ++]
 + }) // [!code ++]
 ```
 
