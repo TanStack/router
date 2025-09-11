@@ -19,8 +19,8 @@ function RouteComponent() {
             /params-ps/non-nested/$foo/$bar
           </Link>
         </li>
-        <Outlet />
       </ul>
+      <Outlet />
     </div>
   )
 }
