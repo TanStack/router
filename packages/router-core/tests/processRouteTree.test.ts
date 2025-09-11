@@ -1,26 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { getMatchedRoutes, processRouteTree } from '../src/router'
+import { processRouteTree } from '../src/process-route-tree'
+import { getMatchedRoutes } from '../src/router'
 import { joinPaths } from '../src'
-
-interface TestRoute {
-  id: string
-  isRoot?: boolean
-  path?: string
-  fullPath: string
-  rank?: number
-  parentRoute?: TestRoute
-  children?: Array<TestRoute>
-  options?: {
-    caseSensitive?: boolean
-  }
-}
+import type { RouteLike } from "../src/route"
 
 type PathOrChildren = string | [string, Array<PathOrChildren>]
 
 function createRoute(
   pathOrChildren: Array<PathOrChildren>,
   parentPath: string,
-): Array<TestRoute> {
+): Array<RouteLike> {
   return pathOrChildren.map((route) => {
     if (Array.isArray(route)) {
       const fullPath = joinPaths([parentPath, route[0]])
@@ -48,7 +37,7 @@ function createRoute(
   })
 }
 
-function createRouteTree(pathOrChildren: Array<PathOrChildren>): TestRoute {
+function createRouteTree(pathOrChildren: Array<PathOrChildren>): RouteLike {
   return {
     id: '__root__',
     fullPath: '',
