@@ -110,7 +110,10 @@ function sortRoutes<TRouteLike extends RouteLike>(
           nextSegment.value !== '/'
         ) {
           hasStaticAfter = true
-          return handleParam(segment, baseScore + STATIC_AFTER_DYNAMIC_BONUS_SCORE)
+          return handleParam(
+            segment,
+            baseScore + STATIC_AFTER_DYNAMIC_BONUS_SCORE,
+          )
         }
       }
 
