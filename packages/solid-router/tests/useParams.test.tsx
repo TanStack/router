@@ -24,6 +24,7 @@ test('useParams must return parsed result if applicable.', async () => {
     },
   ]
 
+  const mockedfn = vi.fn()
   const rootRoute = createRootRoute()
 
   const postsRoute = createRoute({
@@ -72,7 +73,7 @@ test('useParams must return parsed result if applicable.', async () => {
     path: '$postId',
     params: {
       parse: (params) => {
-        console.log()
+        mockedfn()
         return {
           ...params,
           postId: params.postId === 'one' ? '1' : '2',
@@ -163,7 +164,6 @@ test('useParams must return parsed result if applicable.', async () => {
   }
 
   window.history.replaceState({}, '', '/posts')
-  const consoleSpy = vi.spyOn(console, 'log')
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([
@@ -181,16 +181,16 @@ test('useParams must return parsed result if applicable.', async () => {
 
   expect(firstCategoryLink).toBeInTheDocument()
 
-  consoleSpy.mockClear()
+  mockedfn.mockClear()
   await waitFor(() => fireEvent.click(firstCategoryLink))
 
   const firstPostLink = await screen.findByTestId('post-one-link')
 
   expect(window.location.pathname).toBe('/posts/category_first')
   expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
-  expect(consoleSpy).toHaveBeenCalledTimes(1)
+  expect(mockedfn).toHaveBeenCalledTimes(1)
 
-  consoleSpy.mockClear()
+  mockedfn.mockClear()
   await waitFor(() => fireEvent.click(firstPostLink))
 
   const allCategoryLink = await screen.findByTestId('all-category-link')
@@ -211,10 +211,10 @@ test('useParams must return parsed result if applicable.', async () => {
   expect(renderedPost.category).toBe('one')
   expect(paramCategoryValue.textContent).toBe('one')
   expect(paramPostIdValue.textContent).toBe('1')
-  expect(consoleSpy).toHaveBeenCalledTimes(2)
+  expect(mockedfn).toHaveBeenCalledTimes(2)
   expect(allCategoryLink).toBeInTheDocument()
 
-  consoleSpy.mockClear()
+  mockedfn.mockClear()
   await waitFor(() => fireEvent.click(allCategoryLink))
 
   const secondPostLink = await screen.findByTestId('post-two-link')
@@ -222,9 +222,9 @@ test('useParams must return parsed result if applicable.', async () => {
   expect(window.location.pathname).toBe('/posts/category_all')
   expect(await screen.findByTestId('post-category-heading')).toBeInTheDocument()
   expect(secondPostLink).toBeInTheDocument()
-  expect(consoleSpy).toHaveBeenCalledTimes(2)
+  expect(mockedfn).toHaveBeenCalledTimes(2)
 
-  consoleSpy.mockClear()
+  mockedfn.mockClear()
   await waitFor(() => fireEvent.click(secondPostLink))
 
   paramCategoryValue = await screen.findByTestId('param_category_value')
@@ -244,5 +244,5 @@ test('useParams must return parsed result if applicable.', async () => {
   expect(renderedPost.category).toBe('two')
   expect(paramCategoryValue.textContent).toBe('all')
   expect(paramPostIdValue.textContent).toBe('2')
-  expect(consoleSpy).toHaveBeenCalledTimes(2)
+  expect(mockedfn).toHaveBeenCalledTimes(2)
 })
