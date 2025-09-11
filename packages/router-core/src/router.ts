@@ -1210,20 +1210,44 @@ export class RouterCore<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
-      const { usedParams, interpolatedPath } = interpolatePath({
+      const { interpolatedPath } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
       })
 
-      const matchId =
-        interpolatePath({
-          path: route.id,
-          params: routeParams,
-          leaveWildcards: true,
-          decodeCharMap: this.pathParamsDecodeCharMap,
-          parseCache: this.parsePathnameCache,
-        }).interpolatedPath + loaderDepsHash
+      const interpolatePathResult = interpolatePath({
+        path: route.id,
+        params: routeParams,
+        leaveWildcards: true,
+        decodeCharMap: this.pathParamsDecodeCharMap,
+        parseCache: this.parsePathnameCache,
+      })
+
+      const strictParams = interpolatePathResult.usedParams
+
+      let paramsError = parseErrors[index]
+
+      const strictParseParams =
+        route.options.params?.parse ?? route.options.parseParams
+
+      if (strictParseParams) {
+        try {
+          Object.assign(strictParams, strictParseParams(strictParams as any))
+        } catch (err: any) {
+          // any param errors should already have been dealt with above, if this
+          // somehow differs, let's report this in the same manner
+          if (!paramsError) {
+            paramsError = new PathParamError(err.message, {
+              cause: err,
+            })
+
+            if (opts?.throwOnError) {
+              throw paramsError
+            }
+          }
+        }
+      }
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -1231,6 +1255,8 @@ export class RouterCore<
 
       // Existing matches are matches that are already loaded along with
       // pending matches that are still loading
+      const matchId = interpolatePathResult.interpolatedPath + loaderDepsHash
+
       const existingMatch = this.getMatch(matchId)
 
       const previousMatch = this.state.matches.find(
@@ -1248,7 +1274,7 @@ export class RouterCore<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
-          _strictParams: usedParams,
+          _strictParams: strictParams,
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : replaceEqualDeep(existingMatch.search, preMatchSearch),
@@ -1270,7 +1296,7 @@ export class RouterCore<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
-          _strictParams: usedParams,
+          _strictParams: strictParams,
           pathname: joinPaths([this.basepath, interpolatedPath]),
           updatedAt: Date.now(),
           search: previousMatch
@@ -1281,7 +1307,7 @@ export class RouterCore<
           status,
           isFetching: false,
           error: undefined,
-          paramsError: parseErrors[index],
+          paramsError,
           __routeContext: undefined,
           _nonReactive: {
             loadPromise: createControlledPromise(),
