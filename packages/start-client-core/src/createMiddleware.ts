@@ -16,8 +16,8 @@ export function createMiddleware<
   TRegister extends Register,
   TType extends MiddlewareType,
 >(
-  options: {
-    type: TType
+  options?: {
+    type?: TType
   },
   __opts?: FunctionMiddlewareOptions<
     TRegister,
@@ -27,7 +27,6 @@ export function createMiddleware<
     undefined
   >,
 ): CreateMiddlewareResult<TRegister, TType> {
-  // const resolvedOptions = (__opts || options) as MiddlewareOptions<
   const resolvedOptions = {
     type: 'function',
     ...(__opts ||
@@ -74,7 +73,7 @@ export type MiddlewareType = 'request' | 'function'
 export type CreateMiddlewareResult<
   TRegister extends Register,
   TType extends MiddlewareType,
-> = 'function' extends TType ? FunctionMiddleware<TRegister> : RequestMiddleware
+> = 'request' extends TType ? RequestMiddleware : FunctionMiddleware<TRegister>
 
 export interface FunctionMiddleware<TRegister extends Register>
   extends FunctionMiddlewareAfterMiddleware<TRegister, unknown> {
