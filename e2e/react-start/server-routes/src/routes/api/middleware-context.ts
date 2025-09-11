@@ -1,4 +1,4 @@
-import { createServerFileRoute } from '@tanstack/react-start/server'
+import { createFileRoute } from '@tanstack/react-router'
 import { createMiddleware, json } from '@tanstack/react-start'
 
 const testParentMiddleware = createMiddleware({ type: 'request' }).server(
@@ -15,14 +15,17 @@ const testMiddleware = createMiddleware({ type: 'request' })
     return result
   })
 
-export const ServerRoute = createServerFileRoute('/api/middleware-context')
-  .middleware([testMiddleware])
-  .methods({
-    GET: ({ request, context }) => {
-      return json({
-        url: request.url,
-        context: context,
-        expectedContext: { testParent: true, test: true },
-      })
+export const Route = createFileRoute('/api/middleware-context')({
+  server: {
+    middleware: [testMiddleware],
+    handlers: {
+      GET: ({ request, context }) => {
+        return json({
+          url: request.url,
+          context: context,
+          expectedContext: { testParent: true, test: true },
+        })
+      },
     },
-  })
+  },
+})
