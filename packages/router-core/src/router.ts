@@ -1286,13 +1286,14 @@ export class RouterCore<
 
       // Existing matches are matches that are already loaded along with
       // pending matches that are still loading
-      const matchId = interpolatePath({
-        path: route.id,
-        params: routeParams,
-        leaveWildcards: true,
-        decodeCharMap: this.pathParamsDecodeCharMap,
-        parseCache: this.parsePathnameCache,
-      }).interpolatedPath + loaderDepsHash
+      const matchId =
+        interpolatePath({
+          path: route.id,
+          params: routeParams,
+          leaveWildcards: true,
+          decodeCharMap: this.pathParamsDecodeCharMap,
+          parseCache: this.parsePathnameCache,
+        }).interpolatedPath + loaderDepsHash
 
       const existingMatch = this.getMatch(matchId)
 
@@ -1300,8 +1301,7 @@ export class RouterCore<
         (d) => d.routeId === route.id,
       )
 
-      const strictParams =
-        existingMatch?._strictParams ?? usedParams
+      const strictParams = existingMatch?._strictParams ?? usedParams
 
       let paramsError: PathParamError | undefined = undefined
 
