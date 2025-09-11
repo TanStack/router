@@ -72,7 +72,7 @@ export function redirect<
     } catch {}
   }
 
-  const headers = new Headers(opts.headers || {})
+  const headers = new Headers(opts.headers)
   if (opts.href && headers.get('Location') === null) {
     headers.set('Location', opts.href)
   }

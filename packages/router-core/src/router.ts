@@ -1111,33 +1111,6 @@ export class RouterCore<
       return rootRouteId
     })()
 
-    const parseErrors = matchedRoutes.map((route) => {
-      let parsedParamsError
-
-      const parseParams =
-        route.options.params?.parse ?? route.options.parseParams
-
-      if (parseParams) {
-        try {
-          const parsedParams = parseParams(routeParams)
-          // Add the parsed params to the accumulated params bag
-          Object.assign(routeParams, parsedParams)
-        } catch (err: any) {
-          parsedParamsError = new PathParamError(err.message, {
-            cause: err,
-          })
-
-          if (opts?.throwOnError) {
-            throw parsedParamsError
-          }
-
-          return parsedParamsError
-        }
-      }
-
-      return
-    })
-
     const matches: Array<AnyRouteMatch> = []
 
     const getParentContext = (parentMatch?: AnyRouteMatch) => {
@@ -1210,20 +1183,19 @@ export class RouterCore<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
-      const { usedParams, interpolatedPath } = interpolatePath({
+      const { interpolatedPath } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
       })
 
-      const matchId =
-        interpolatePath({
-          path: route.id,
-          params: routeParams,
-          leaveWildcards: true,
-          decodeCharMap: this.pathParamsDecodeCharMap,
-          parseCache: this.parsePathnameCache,
-        }).interpolatedPath + loaderDepsHash
+      const interpolatePathResult = interpolatePath({
+        path: route.id,
+        params: routeParams,
+        leaveWildcards: true,
+        decodeCharMap: this.pathParamsDecodeCharMap,
+        parseCache: this.parsePathnameCache,
+      })
 
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
@@ -1231,11 +1203,42 @@ export class RouterCore<
 
       // Existing matches are matches that are already loaded along with
       // pending matches that are still loading
+      const matchId = interpolatePathResult.interpolatedPath + loaderDepsHash
+
       const existingMatch = this.getMatch(matchId)
 
       const previousMatch = this.state.matches.find(
         (d) => d.routeId === route.id,
       )
+
+      const strictParams =
+        existingMatch?._strictParams ?? interpolatePathResult.usedParams
+
+      let paramsError: PathParamError | undefined = undefined
+
+      if (!existingMatch) {
+        const strictParseParams =
+          route.options.params?.parse ?? route.options.parseParams
+
+        if (strictParseParams) {
+          try {
+            Object.assign(
+              strictParams,
+              strictParseParams(strictParams as Record<string, string>),
+            )
+          } catch (err: any) {
+            paramsError = new PathParamError(err.message, {
+              cause: err,
+            })
+
+            if (opts?.throwOnError) {
+              throw paramsError
+            }
+          }
+        }
+      }
+
+      Object.assign(routeParams, strictParams)
 
       const cause = previousMatch ? 'stay' : 'enter'
 
@@ -1248,7 +1251,7 @@ export class RouterCore<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
-          _strictParams: usedParams,
+          _strictParams: strictParams,
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : replaceEqualDeep(existingMatch.search, preMatchSearch),
@@ -1270,7 +1273,7 @@ export class RouterCore<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
-          _strictParams: usedParams,
+          _strictParams: strictParams,
           pathname: joinPaths([this.basepath, interpolatedPath]),
           updatedAt: Date.now(),
           search: previousMatch
@@ -1281,7 +1284,7 @@ export class RouterCore<
           status,
           isFetching: false,
           error: undefined,
-          paramsError: parseErrors[index],
+          paramsError,
           __routeContext: undefined,
           _nonReactive: {
             loadPromise: createControlledPromise(),
@@ -1414,50 +1417,44 @@ export class RouterCore<
         _buildLocation: true,
       })
 
+      // Now let's find the starting pathname
+      // This should default to the current location if no from is provided
       const lastMatch = last(allCurrentLocationMatches)!
 
-      // First let's find the starting pathname
-      // By default, start with the current location
-      let fromPath = this.resolvePathWithBase(lastMatch.fullPath, '.')
-      const toPath = dest.to
-        ? this.resolvePathWithBase(fromPath, `${dest.to}`)
-        : this.resolvePathWithBase(fromPath, '.')
+      // check that from path exists in the current route tree
+      // do this check only on navigations during test or development
+      if (
+        dest.from &&
+        process.env.NODE_ENV !== 'production' &&
+        dest._isNavigate
+      ) {
+        const allFromMatches = this.getMatchedRoutes(
+          dest.from,
+          undefined,
+        ).matchedRoutes
 
-      const routeIsChanging =
-        !!dest.to &&
-        !comparePaths(dest.to.toString(), fromPath) &&
-        !comparePaths(toPath, fromPath)
+        const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
+          return comparePaths(d.fullPath, dest.from!)
+        })
 
-      // If the route is changing we need to find the relative fromPath
-      if (dest.unsafeRelative === 'path') {
-        fromPath = currentLocation.pathname
-      } else if (routeIsChanging && dest.from) {
-        fromPath = dest.from
+        const matchedCurrent = findLast(allFromMatches, (d) => {
+          return comparePaths(d.fullPath, lastMatch.fullPath)
+        })
 
-        // do this check only on navigations during test or development
-        if (process.env.NODE_ENV !== 'production' && dest._isNavigate) {
-          const allFromMatches = this.getMatchedRoutes(
-            dest.from,
-            undefined,
-          ).matchedRoutes
-
-          const matchedFrom = findLast(allCurrentLocationMatches, (d) => {
-            return comparePaths(d.fullPath, fromPath)
-          })
-
-          const matchedCurrent = findLast(allFromMatches, (d) => {
-            return comparePaths(d.fullPath, currentLocation.pathname)
-          })
-
-          // for from to be invalid it shouldn't just be unmatched to currentLocation
-          // but the currentLocation should also be unmatched to from
-          if (!matchedFrom && !matchedCurrent) {
-            console.warn(`Could not find match for from: ${fromPath}`)
-          }
+        // for from to be invalid it shouldn't just be unmatched to currentLocation
+        // but the currentLocation should also be unmatched to from
+        if (!matchedFrom && !matchedCurrent) {
+          console.warn(`Could not find match for from: ${dest.from}`)
         }
       }
 
-      fromPath = this.resolvePathWithBase(fromPath, '.')
+      const defaultedFromPath =
+        dest.unsafeRelative === 'path'
+          ? currentLocation.pathname
+          : (dest.from ?? lastMatch.fullPath)
+
+      // ensure this includes the basePath if set
+      const fromPath = this.resolvePathWithBase(defaultedFromPath, '.')
 
       // From search should always use the current location
       const fromSearch = lastMatch.search
@@ -1465,6 +1462,7 @@ export class RouterCore<
       const fromParams = { ...lastMatch.params }
 
       // Resolve the next to
+      // ensure this includes the basePath if set
       const nextTo = dest.to
         ? this.resolvePathWithBase(fromPath, `${dest.to}`)
         : this.resolvePathWithBase(fromPath, '.')
@@ -1625,8 +1623,7 @@ export class RouterCore<
       }
 
       if (maskedNext) {
-        const maskedFinal = build(maskedDest)
-        next.maskedLocation = maskedFinal
+        next.maskedLocation = maskedNext
       }
 
       return next

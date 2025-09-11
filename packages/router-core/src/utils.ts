@@ -203,6 +203,8 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   return updater
 }
 
+const hasOwn = Object.prototype.hasOwnProperty
+
 /**
  * This function returns `prev` if `_next` is deeply equal.
  * If not, it will replace any deeply equal children of `b` with those of `a`.
@@ -218,57 +220,64 @@ export function replaceEqualDeep<T>(prev: any, _next: T): T {
 
   const array = isPlainArray(prev) && isPlainArray(next)
 
-  if (array || (isSimplePlainObject(prev) && isSimplePlainObject(next))) {
-    const prevItems = array
-      ? prev
-      : (Object.keys(prev) as Array<unknown>).concat(
-          Object.getOwnPropertySymbols(prev),
-        )
-    const prevSize = prevItems.length
-    const nextItems = array
-      ? next
-      : (Object.keys(next) as Array<unknown>).concat(
-          Object.getOwnPropertySymbols(next),
-        )
-    const nextSize = nextItems.length
-    const copy: any = array ? [] : {}
+  if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
 
-    let equalItems = 0
+  const prevItems = array ? prev : getEnumerableOwnKeys(prev)
+  if (!prevItems) return next
+  const nextItems = array ? next : getEnumerableOwnKeys(next)
+  if (!nextItems) return next
+  const prevSize = prevItems.length
+  const nextSize = nextItems.length
+  const copy: any = array ? new Array(nextSize) : {}
 
-    for (let i = 0; i < nextSize; i++) {
-      const key = array ? i : (nextItems[i] as any)
-      if (
-        ((!array && prevItems.includes(key)) || array) &&
-        prev[key] === undefined &&
-        next[key] === undefined
-      ) {
-        copy[key] = undefined
-        equalItems++
-      } else {
-        copy[key] = replaceEqualDeep(prev[key], next[key])
-        if (copy[key] === prev[key] && prev[key] !== undefined) {
-          equalItems++
-        }
-      }
+  let equalItems = 0
+
+  for (let i = 0; i < nextSize; i++) {
+    const key = array ? i : (nextItems[i] as any)
+    const p = prev[key]
+    const n = next[key]
+
+    if (p === n) {
+      copy[key] = p
+      if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++
+      continue
     }
 
-    return prevSize === nextSize && equalItems === prevSize ? prev : copy
+    if (
+      p === null ||
+      n === null ||
+      typeof p !== 'object' ||
+      typeof n !== 'object'
+    ) {
+      copy[key] = n
+      continue
+    }
+
+    const v = replaceEqualDeep(p, n)
+    copy[key] = v
+    if (v === p) equalItems++
   }
 
-  return next
+  return prevSize === nextSize && equalItems === prevSize ? prev : copy
 }
 
 /**
- * A wrapper around `isPlainObject` with additional checks to ensure that it is not
- * only a plain object, but also one that is "clone-friendly" (doesn't have any
- * non-enumerable properties).
+ * Equivalent to `Reflect.ownKeys`, but ensures that objects are "clone-friendly":
+ * will return false if object has any non-enumerable properties.
  */
-function isSimplePlainObject(o: any) {
-  return (
-    // all the checks from isPlainObject are more likely to hit so we perform them first
-    isPlainObject(o) &&
-    Object.getOwnPropertyNames(o).length === Object.keys(o).length
-  )
+function getEnumerableOwnKeys(o: object) {
+  const keys = []
+  const names = Object.getOwnPropertyNames(o)
+  for (const name of names) {
+    if (!Object.prototype.propertyIsEnumerable.call(o, name)) return false
+    keys.push(name)
+  }
+  const symbols = Object.getOwnPropertySymbols(o)
+  for (const symbol of symbols) {
+    if (!Object.prototype.propertyIsEnumerable.call(o, symbol)) return false
+    keys.push(symbol)
+  }
+  return keys
 }
 
 // Copied from: https://github.com/jonschlinkert/is-plain-object
@@ -306,14 +315,6 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
   return Array.isArray(value) && value.length === Object.keys(value).length
 }
 
-function getObjectKeys(obj: any, ignoreUndefined: boolean) {
-  let keys = Object.keys(obj)
-  if (ignoreUndefined) {
-    keys = keys.filter((key) => obj[key] !== undefined)
-  }
-  return keys
-}
-
 export function deepEqual(
   a: any,
   b: any,
@@ -327,23 +328,44 @@ export function deepEqual(
     return false
   }
 
-  if (isPlainObject(a) && isPlainObject(b)) {
-    const ignoreUndefined = opts?.ignoreUndefined ?? true
-    const aKeys = getObjectKeys(a, ignoreUndefined)
-    const bKeys = getObjectKeys(b, ignoreUndefined)
-
-    if (!opts?.partial && aKeys.length !== bKeys.length) {
-      return false
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false
+    for (let i = 0, l = a.length; i < l; i++) {
+      if (!deepEqual(a[i], b[i], opts)) return false
     }
-
-    return bKeys.every((key) => deepEqual(a[key], b[key], opts))
+    return true
   }
 
-  if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) {
-      return false
+  if (isPlainObject(a) && isPlainObject(b)) {
+    const ignoreUndefined = opts?.ignoreUndefined ?? true
+
+    if (opts?.partial) {
+      for (const k in b) {
+        if (!ignoreUndefined || b[k] !== undefined) {
+          if (!deepEqual(a[k], b[k], opts)) return false
+        }
+      }
+      return true
     }
-    return !a.some((item, index) => !deepEqual(item, b[index], opts))
+
+    let aCount = 0
+    if (!ignoreUndefined) {
+      aCount = Object.keys(a).length
+    } else {
+      for (const k in a) {
+        if (a[k] !== undefined) aCount++
+      }
+    }
+
+    let bCount = 0
+    for (const k in b) {
+      if (!ignoreUndefined || b[k] !== undefined) {
+        bCount++
+        if (bCount > aCount || !deepEqual(a[k], b[k], opts)) return false
+      }
+    }
+
+    return aCount === bCount
   }
 
   return false
@@ -443,7 +465,7 @@ export function shallow<T>(objA: T, objB: T) {
 
   for (const item of keysA) {
     if (
-      !Object.prototype.hasOwnProperty.call(objB, item) ||
+      !hasOwn.call(objB, item) ||
       !Object.is(objA[item as keyof T], objB[item as keyof T])
     ) {
       return false
