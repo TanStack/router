@@ -9,9 +9,9 @@
     "start": "vite start"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.131.38",
-    "@tanstack/solid-router-devtools": "^1.131.38",
-    "@tanstack/solid-start": "^1.131.38",
+    "@tanstack/solid-router": "^1.131.40",
+    "@tanstack/solid-router-devtools": "^1.131.40",
+    "@tanstack/solid-start": "^1.131.40",
     "solid-js": "^1.9.5",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",

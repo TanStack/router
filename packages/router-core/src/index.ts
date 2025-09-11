@@ -194,7 +194,8 @@ export type {
   ResolveRequiredParams,
   RootRoute,
 } from './route'
-
+export { processRouteTree } from './process-route-tree'
+export type { ProcessRouteTreeResult } from './process-route-tree'
 export {
   defaultSerializeError,
   getLocationChangeInfo,
@@ -203,7 +204,6 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-  processRouteTree,
   getMatchedRoutes,
 } from './router'
 export type {
@@ -244,7 +244,6 @@ export type {
   LoadRouteChunkFn,
   ClearCacheFn,
   CreateRouterFn,
-  ProcessRouteTreeResult,
 } from './router'
 
 export type {
