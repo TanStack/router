@@ -906,7 +906,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
     if (transformResult.result === 'no-route-export') {
       this.logger.warn(
-        `Route file "${result.cacheEntry?.node.filePath}" does not contain any route piece. This is likely a mistake.`,
+        `Route file "${node.fullPath}" does not contain any route piece. This is likely a mistake.`,
       )
       return null
     }
