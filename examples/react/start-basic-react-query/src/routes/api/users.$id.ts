@@ -3,7 +3,6 @@ import { json } from '@tanstack/react-start'
 import axios from 'redaxios'
 import type { User } from '../../utils/users'
 
-
 export const Route = createFileRoute('/api/users/$id')({
   server: {
     handlers: {
