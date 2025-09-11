@@ -1,3 +1,6 @@
+import { test } from 'vitest'
+
+test('dummy', () => {})
 /*
 import { expectTypeOf, test } from 'vitest'
 import { json } from '../../router-core/src/ssr/json'
