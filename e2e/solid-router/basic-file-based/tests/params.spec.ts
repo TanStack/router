@@ -129,3 +129,34 @@ test('ensure only applicable params are returned and updated with multiple param
   await expect(fooValue).toHaveText(JSON.stringify({ foo: 'foo' }))
   await expect(fooRenderCount).toHaveText('1')
 })
+
+test.describe('params operations + non-nested routes', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/params-ps/non-nested')
+  })
+
+  test('useParams must resolve non-nested path params', async ({ page }) => {
+    await page.waitForURL('/params-ps/non-nested')
+
+    const fooBarLink = page.getByTestId('l-to-non-nested-foo-bar')
+
+    await expect(fooBarLink).toHaveAttribute(
+      'href',
+      '/params-ps/non-nested/foo/bar',
+    )
+    await fooBarLink.click()
+    await page.waitForLoadState('networkidle')
+    const pagePathname = new URL(page.url()).pathname
+    expect(pagePathname).toBe('/params-ps/non-nested/foo/bar')
+
+    const fooParamsValue = page.getByTestId('foo-params-value')
+    const fooParamsText = await fooParamsValue.innerText()
+    const fooParamsObj = JSON.parse(fooParamsText)
+    expect(fooParamsObj).toEqual({ foo: 'foo' })
+
+    const paramsValue = page.getByTestId('foo-bar-params-value')
+    const paramsText = await paramsValue.innerText()
+    const paramsObj = JSON.parse(paramsText)
+    expect(paramsObj).toEqual({ foo: 'foo', bar: 'bar' })
+  })
+})
