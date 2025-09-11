@@ -194,12 +194,8 @@ export type {
   ResolveRequiredParams,
   RootRoute,
 } from './route'
-export {
-  processRouteTree
-} from './process-route-tree'
-export type {
-  ProcessRouteTreeResult,
-} from './process-route-tree'
+export { processRouteTree } from './process-route-tree'
+export type { ProcessRouteTreeResult } from './process-route-tree'
 export {
   defaultSerializeError,
   getLocationChangeInfo,
