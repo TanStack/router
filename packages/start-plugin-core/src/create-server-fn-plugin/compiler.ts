@@ -411,8 +411,7 @@ export class ServerFnCompiler {
                 )
               }
             }
-          }
-          else {
+          } else {
             return 'None'
           }
         }
