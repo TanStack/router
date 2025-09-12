@@ -10,6 +10,9 @@
 'package: history':
   - changed-files:
       - any-glob-to-any-file: 'packages/history/**/*'
+'package: nitro-v2-vite-plugin':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/nitro-v2-vite-plugin/**/*'
 'package: react-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router/**/*'

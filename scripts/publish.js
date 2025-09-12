@@ -140,6 +140,10 @@ await publish({
       name: '@tanstack/router-utils',
       packageDir: 'packages/router-utils',
     },
+    {
+      name: '@tanstack/nitro-v2-vite-plugin',
+      packageDir: 'packages/nitro-v2-vite-plugin',
+    },
   ],
   branchConfigs: {
     main: {
