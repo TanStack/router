@@ -207,7 +207,7 @@ export const Route = createRootRoute({
   shellComponent: RootShell,
   component: RootComponent,
   errorComponent: () => <div>Error</div>,
-  notFoundComponent: () => <div>Not found</>,
+  notFoundComponent: () => <div>Not found</div>,
   ssr: false // or `defaultSsr: false` on the router
 })
 
