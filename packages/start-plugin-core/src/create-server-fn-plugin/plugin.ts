@@ -104,7 +104,12 @@ export function createServerFnPlugin(
               },
               resolveId: async (source: string, importer?: string) => {
                 const r = await this.resolve(source, importer)
-                return r ? cleanId(r.id) : null
+                if (r) {
+                  if (!r.external) {
+                    return cleanId(r.id)
+                  }
+                }
+                return null
               },
             })
             compilers[this.environment.name as ViteEnvironmentNames] = compiler

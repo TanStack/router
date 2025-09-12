@@ -38,7 +38,6 @@ interface ModuleInfo {
 
 export class ServerFnCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
-  private resolvedLibId!: string
   private initialized = false
   constructor(
     private options: {
@@ -74,7 +73,6 @@ export class ServerFnCompiler {
     })
     this.moduleCache.set(libId, rootModule)
     this.initialized = true
-    this.resolvedLibId = libId
   }
 
   public ingestModule({ code, id }: { code: string; id: string }) {
@@ -413,6 +411,9 @@ export class ServerFnCompiler {
                 )
               }
             }
+          }
+          else {
+            return 'None'
           }
         }
       }
