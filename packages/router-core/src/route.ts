@@ -393,6 +393,8 @@ export interface RouteTypes<
   in out TChildren,
   in out TFileRouteTypes,
   in out TSSR,
+  in out TServerMiddlewares,
+  in out THandlers,
 > {
   parentRoute: TParentRoute
   path: TPath
@@ -472,6 +474,8 @@ export type RouteAddChildrenFn<
   in out TLoaderFn,
   in out TFileRouteTypes,
   in out TSSR,
+  in out TServerMiddlewares,
+  in out THandlers,
 > = <const TNewChildren>(
   children: Constrain<
     TNewChildren,
@@ -493,7 +497,9 @@ export type RouteAddChildrenFn<
   TLoaderFn,
   TNewChildren,
   TFileRouteTypes,
-  TSSR
+  TSSR,
+  TServerMiddlewares,
+  THandlers
 >
 
 export type RouteAddFileChildrenFn<
@@ -512,6 +518,8 @@ export type RouteAddFileChildrenFn<
   in out TLoaderFn,
   in out TFileRouteTypes,
   in out TSSR,
+  in out TServerMiddlewares,
+  in out THandlers,
 > = <const TNewChildren>(
   children: TNewChildren,
 ) => Route<
@@ -530,7 +538,9 @@ export type RouteAddFileChildrenFn<
   TLoaderFn,
   TNewChildren,
   TFileRouteTypes,
-  TSSR
+  TSSR,
+  TServerMiddlewares,
+  THandlers
 >
 
 export type RouteAddFileTypesFn<
@@ -549,6 +559,8 @@ export type RouteAddFileTypesFn<
   TLoaderFn,
   TChildren,
   TSSR,
+  TServerMiddlewares,
+  THandlers,
 > = <TNewFileRouteTypes>() => Route<
   TRegister,
   TParentRoute,
@@ -565,7 +577,9 @@ export type RouteAddFileTypesFn<
   TLoaderFn,
   TChildren,
   TNewFileRouteTypes,
-  TSSR
+  TSSR,
+  TServerMiddlewares,
+  THandlers
 >
 
 export interface Route<
@@ -585,6 +599,8 @@ export interface Route<
   in out TChildren,
   in out TFileRouteTypes,
   in out TSSR,
+  in out TServerMiddlewares,
+  in out THandlers,
 > extends RouteExtensions<TId, TFullPath> {
   path: TPath
   parentRoute: TParentRoute
@@ -604,7 +620,9 @@ export interface Route<
     TLoaderFn,
     TChildren,
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   >
   options: RouteOptions<
     TRegister,
@@ -620,7 +638,9 @@ export interface Route<
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
   /** @internal */
@@ -645,7 +665,9 @@ export interface Route<
         TLoaderFn,
         TChildren,
         TFileRouteTypes,
-        TSSR
+        TSSR,
+        TServerMiddlewares,
+        THandlers
       >
     >
   >
@@ -687,7 +709,9 @@ export interface Route<
       TLoaderFn,
       TChildren,
       TFileRouteTypes,
-      TSSR
+      TSSR,
+      TServerMiddlewares,
+      THandlers
     >
   >
   addChildren: RouteAddChildrenFn<
@@ -705,7 +729,9 @@ export interface Route<
     TLoaderDeps,
     TLoaderFn,
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   >
   _addFileChildren: RouteAddFileChildrenFn<
     TRegister,
@@ -722,7 +748,9 @@ export interface Route<
     TLoaderDeps,
     TLoaderFn,
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   >
   _addFileTypes: RouteAddFileTypesFn<
     TRegister,
@@ -739,11 +767,15 @@ export interface Route<
     TLoaderDeps,
     TLoaderFn,
     TChildren,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   >
 }
 
 export type AnyRoute = Route<
+  any,
+  any,
   any,
   any,
   any,
@@ -781,6 +813,8 @@ export type RouteOptions<
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TSSR = unknown,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
 > = BaseRouteOptions<
   TRegister,
   TParentRoute,
@@ -794,7 +828,9 @@ export type RouteOptions<
   TRouterContext,
   TRouteContextFn,
   TBeforeLoadFn,
-  TSSR
+  TSSR,
+  TServerMiddlewares,
+  THandlers
 > &
   UpdatableRouteOptions<
     NoInfer<TParentRoute>,
@@ -829,13 +865,17 @@ export type BeforeLoadFn<
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
+  in out TServerMiddlewares,
+  in out THandlers,
 > = (
   ctx: BeforeLoadContextOptions<
     TParentRoute,
     TSearchValidator,
     TParams,
     TRouterContext,
-    TRouteContextFn
+    TRouteContextFn,
+    TServerMiddlewares,
+    THandlers
   >,
 ) => any
 
@@ -853,7 +893,44 @@ export type FileBaseRouteOptions<
   TBeforeLoadFn = AnyContext,
   TRemountDepsFn = AnyContext,
   TSSR = unknown,
-> = ParamsOptions<TPath, TParams> & {
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
+> = ParamsOptions<TPath, TParams> &
+  FilebaseRouteOptionsInterface<
+    TRegister,
+    TParentRoute,
+    TId,
+    TPath,
+    TSearchValidator,
+    TParams,
+    TLoaderDeps,
+    TLoaderFn,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TRemountDepsFn,
+    TSSR,
+    TServerMiddlewares,
+    THandlers
+  >
+
+export interface FilebaseRouteOptionsInterface<
+  TRegister extends Register,
+  TParentRoute extends AnyRoute = AnyRoute,
+  TId extends string = string,
+  TPath extends string = string,
+  TSearchValidator = undefined,
+  TParams = {},
+  TLoaderDeps extends Record<string, any> = {},
+  TLoaderFn = undefined,
+  TRouterContext = {},
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TRemountDepsFn = AnyContext,
+  TSSR = unknown,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
+> {
   validateSearch?: Constrain<TSearchValidator, AnyValidator, DefaultValidator>
 
   shouldReload?:
@@ -866,7 +943,9 @@ export type FileBaseRouteOptions<
           TLoaderDeps,
           TRouterContext,
           TRouteContextFn,
-          TBeforeLoadFn
+          TBeforeLoadFn,
+          TServerMiddlewares,
+          THandlers
         >,
       ) => any)
 
@@ -903,7 +982,9 @@ export type FileBaseRouteOptions<
         TSearchValidator,
         TParams,
         TRouterContext,
-        TRouteContextFn
+        TRouteContextFn,
+        TServerMiddlewares,
+        THandlers
       >,
     ) => ValidateSerializableLifecycleResult<
       TRegister,
@@ -939,7 +1020,9 @@ export type FileBaseRouteOptions<
         TLoaderDeps,
         TRouterContext,
         TRouteContextFn,
-        TBeforeLoadFn
+        TBeforeLoadFn,
+        TServerMiddlewares,
+        THandlers
       >,
     ) => ValidateSerializableLifecycleResult<
       TRegister,
@@ -964,6 +1047,8 @@ export type BaseRouteOptions<
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TSSR = unknown,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
 > = RoutePathOptions<TCustomId, TPath> &
   FileBaseRouteOptions<
     TRegister,
@@ -978,7 +1063,9 @@ export type BaseRouteOptions<
     TRouteContextFn,
     TBeforeLoadFn,
     AnyContext,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   > & {
     getParentRoute: () => TParentRoute
   }
@@ -1037,6 +1124,8 @@ export interface BeforeLoadContextOptions<
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
+  in out TServerMiddlewares,
+  in out THandlers,
 > extends ContextOptions<TParentRoute, TParams>,
     FullSearchSchemaOption<TParentRoute, TSearchValidator> {
   context: Expand<
@@ -1263,6 +1352,8 @@ export type RouteLoaderFn<
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
+  in out TServerMiddlewares = unknown,
+  in out THandlers = undefined,
 > = (
   match: LoaderFnContext<
     TParentRoute,
@@ -1271,7 +1362,9 @@ export type RouteLoaderFn<
     TLoaderDeps,
     TRouterContext,
     TRouteContextFn,
-    TBeforeLoadFn
+    TBeforeLoadFn,
+    TServerMiddlewares,
+    THandlers
   >,
 ) => any
 
@@ -1283,6 +1376,8 @@ export interface LoaderFnContext<
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
+  in out TServerMiddlewares = unknown,
+  in out THandlers = undefined,
 > {
   abortController: AbortController
   preload: boolean
@@ -1325,6 +1420,8 @@ export type RootRouteOptions<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
 > = Omit<
   RouteOptions<
     TRegister,
@@ -1340,7 +1437,9 @@ export type RootRouteOptions<
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   >,
   | 'path'
   | 'id'
@@ -1422,6 +1521,8 @@ export class BaseRoute<
   in out TChildren = unknown,
   in out TFileRouteTypes = unknown,
   in out TSSR = unknown,
+  in out TServerMiddlewares = unknown,
+  in out THandlers = undefined,
 > {
   isRoot: TParentRoute extends AnyRoute ? true : false
   options: RouteOptions<
@@ -1438,7 +1539,9 @@ export class BaseRoute<
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   >
 
   // The following properties are set up in this.init()
@@ -1486,7 +1589,9 @@ export class BaseRoute<
         TLoaderFn,
         TChildren,
         TFileRouteTypes,
-        TSSR
+        TSSR,
+        TServerMiddlewares,
+        THandlers
       >
     >
   >
@@ -1510,7 +1615,9 @@ export class BaseRoute<
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
-      TSSR
+      TSSR,
+      TServerMiddlewares,
+      THandlers
     >,
   ) {
     this.options = (options as any) || {}
@@ -1536,7 +1643,9 @@ export class BaseRoute<
     TLoaderFn,
     TChildren,
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   >
 
   init = (opts: { originalIndex: number }): void => {
@@ -1557,7 +1666,8 @@ export class BaseRoute<
           TRouterContext,
           TRouteContextFn,
           TBeforeLoadFn,
-          TSSR
+          TSSR,
+          TServerMiddlewares
         > &
           RoutePathOptionsIntersection<TCustomId, TPath>)
       | undefined
@@ -1633,7 +1743,9 @@ export class BaseRoute<
     TLoaderDeps,
     TLoaderFn,
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   > = (children) => {
     return this._addFileChildren(children) as any
   }
@@ -1653,7 +1765,9 @@ export class BaseRoute<
     TLoaderDeps,
     TLoaderFn,
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   > = (children) => {
     if (Array.isArray(children)) {
       this.children = children as TChildren
@@ -1681,7 +1795,9 @@ export class BaseRoute<
     TLoaderDeps,
     TLoaderFn,
     TChildren,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   > = () => {
     return this as any
   }
@@ -1717,7 +1833,9 @@ export class BaseRoute<
       TNewLoaderFn,
       TChildren,
       TFileRouteTypes,
-      TSSR
+      TSSR,
+      TServerMiddlewares,
+      THandlers
     >
   }
 
@@ -1756,7 +1874,9 @@ export class BaseRoute<
       TLoaderFn,
       TChildren,
       TFileRouteTypes,
-      TSSR
+      TSSR,
+      TServerMiddlewares,
+      THandlers
     >
   > = (lazyFn) => {
     this.lazyFn = lazyFn
@@ -1787,6 +1907,8 @@ export interface RootRoute<
   in out TChildren = unknown,
   in out TFileRouteTypes = unknown,
   in out TSSR = unknown,
+  in out TServerMiddlewares = unknown,
+  in out THandlers = undefined,
 > extends Route<
     TRegister,
     any, // TParentRoute
@@ -1803,7 +1925,9 @@ export interface RootRoute<
     TLoaderFn,
     TChildren, // TChildren
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   > {}
 
 export class BaseRootRoute<
@@ -1817,6 +1941,8 @@ export class BaseRootRoute<
   in out TChildren = unknown,
   in out TFileRouteTypes = unknown,
   in out TSSR = unknown,
+  in out TServerMiddlewares = unknown,
+  in out THandlers = undefined,
 > extends BaseRoute<
   TRegister,
   any, // TParentRoute
@@ -1833,7 +1959,9 @@ export class BaseRootRoute<
   TLoaderFn,
   TChildren, // TChildren
   TFileRouteTypes,
-  TSSR
+  TSSR,
+  TServerMiddlewares,
+  THandlers
 > {
   constructor(
     options?: RootRouteOptions<
@@ -1844,7 +1972,9 @@ export class BaseRootRoute<
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
-      TSSR
+      TSSR,
+      TServerMiddlewares,
+      THandlers
     >,
   ) {
     super(options as any)

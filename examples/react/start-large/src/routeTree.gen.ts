@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RelativeRouteImport } from './routes/relative'
 import { Route as LinkPropsRouteImport } from './routes/linkProps'
@@ -17,13 +15,8 @@ import { Route as AbsoluteRouteImport } from './routes/absolute'
 import { Route as SearchRouteRouteImport } from './routes/search/route'
 import { Route as ParamsRouteRouteImport } from './routes/params/route'
 import { Route as IndexRouteImport } from './routes/index'
-import {
-  Route as SearchSearchPlaceholderRouteImport,
-  ServerRoute as SearchSearchPlaceholderServerRouteImport,
-} from './routes/search/searchPlaceholder'
+import { Route as SearchSearchPlaceholderRouteImport } from './routes/search/searchPlaceholder'
 import { Route as ParamsParamsPlaceholderRouteImport } from './routes/params/$paramsPlaceholder'
-
-const rootServerRouteImport = createServerRootRoute()
 
 const RelativeRoute = RelativeRouteImport.update({
   id: '/relative',
@@ -65,12 +58,6 @@ const ParamsParamsPlaceholderRoute = ParamsParamsPlaceholderRouteImport.update({
   path: '/$paramsPlaceholder',
   getParentRoute: () => ParamsRouteRoute,
 } as any)
-const SearchSearchPlaceholderServerRoute =
-  SearchSearchPlaceholderServerRouteImport.update({
-    id: '/searchPlaceholder',
-    path: '/searchPlaceholder',
-    getParentRoute: () => rootServerRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -144,25 +131,6 @@ export interface RootRouteChildren {
   LinkPropsRoute: typeof LinkPropsRoute
   RelativeRoute: typeof RelativeRoute
 }
-export interface FileServerRoutesByFullPath {
-  '/search/searchPlaceholder': typeof SearchSearchPlaceholderServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/search/searchPlaceholder': typeof SearchSearchPlaceholderServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/search/searchPlaceholder': typeof SearchSearchPlaceholderServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/search/searchPlaceholder'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/search/searchPlaceholder'
-  id: '__root__' | '/search/searchPlaceholder'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -224,17 +192,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/search/searchPlaceholder': {
-      id: '/search/searchPlaceholder'
-      path: '/searchPlaceholder'
-      fullPath: '/search/searchPlaceholder'
-      preLoaderRoute: typeof SearchSearchPlaceholderServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-  }
-}
 
 interface ParamsRouteRouteChildren {
   ParamsParamsPlaceholderRoute: typeof ParamsParamsPlaceholderRoute
@@ -271,7 +228,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {}
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()

@@ -3,7 +3,4 @@ export const transformFuncs = [
   'createServerOnlyFn',
   'createClientOnlyFn',
   'createIsomorphicFn',
-  'createServerRoute',
-  'createServerFileRoute',
-  'createServerRootRoute',
 ] as const

@@ -182,6 +182,8 @@ export class Route<
     in out TChildren = unknown,
     in out TFileRouteTypes = unknown,
     in out TSSR = unknown,
+    in out TServerMiddlewares = unknown,
+    in out THandlers = undefined,
   >
   extends BaseRoute<
     TRegister,
@@ -199,7 +201,9 @@ export class Route<
     TLoaderFn,
     TChildren,
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    TServerMiddlewares,
+    THandlers
   >
   implements
     RouteCore<
@@ -218,7 +222,9 @@ export class Route<
       TLoaderFn,
       TChildren,
       TFileRouteTypes,
-      TSSR
+      TSSR,
+      TServerMiddlewares,
+      THandlers
     >
 {
   /**
@@ -239,7 +245,9 @@ export class Route<
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
-      TSSR
+      TSSR,
+      TServerMiddlewares,
+      THandlers
     >,
   ) {
     super(options)
@@ -321,6 +329,7 @@ export function createRoute<
   TLoaderFn = undefined,
   TChildren = unknown,
   TSSR = unknown,
+  const TServerMiddlewares = unknown,
 >(
   options: RouteOptions<
     TRegister,
@@ -336,7 +345,8 @@ export function createRoute<
     AnyContext,
     TRouteContextFn,
     TBeforeLoadFn,
-    TSSR
+    TSSR,
+    TServerMiddlewares
   >,
 ): Route<
   TRegister,
@@ -353,7 +363,8 @@ export function createRoute<
   TLoaderDeps,
   TLoaderFn,
   TChildren,
-  TSSR
+  TSSR,
+  TServerMiddlewares
 > {
   return new Route<
     TRegister,
@@ -370,11 +381,17 @@ export function createRoute<
     TLoaderDeps,
     TLoaderFn,
     TChildren,
-    TSSR
-  >(options)
+    TSSR,
+    TServerMiddlewares
+  >(
+    // TODO: Help us TypeChris, you're our only hope!
+    options as any,
+  )
 }
 
 export type AnyRootRoute = RootRoute<
+  any,
+  any,
   any,
   any,
   any,
@@ -395,6 +412,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
     TSSR = unknown,
+    TServerMiddlewares = unknown,
   >(
     options?: RootRouteOptions<
       TRegister,
@@ -404,7 +422,8 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
-      TSSR
+      TSSR,
+      TServerMiddlewares
     >,
   ) => {
     return createRootRoute<
@@ -415,7 +434,8 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
-      TSSR
+      TSSR,
+      TServerMiddlewares
     >(options as any)
   }
 }
@@ -436,6 +456,7 @@ export class RootRoute<
     in out TChildren = unknown,
     in out TFileRouteTypes = unknown,
     in out TSSR = unknown,
+    in out TServerMiddlewares = unknown,
   >
   extends BaseRootRoute<
     TRegister,
@@ -447,7 +468,8 @@ export class RootRoute<
     TLoaderFn,
     TChildren,
     TFileRouteTypes,
-    TSSR
+    TSSR,
+    TServerMiddlewares
   >
   implements
     RootRouteCore<
@@ -460,7 +482,8 @@ export class RootRoute<
       TLoaderFn,
       TChildren,
       TFileRouteTypes,
-      TSSR
+      TSSR,
+      TServerMiddlewares
     >
 {
   /**
@@ -475,7 +498,8 @@ export class RootRoute<
       TBeforeLoadFn,
       TLoaderDeps,
       TLoaderFn,
-      TSSR
+      TSSR,
+      TServerMiddlewares
     >,
   ) {
     super(options)
@@ -544,6 +568,7 @@ export function createRootRoute<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
+  const TServerMiddlewares = unknown,
 >(
   options?: RootRouteOptions<
     TRegister,
@@ -553,7 +578,8 @@ export function createRootRoute<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TSSR
+    TSSR,
+    TServerMiddlewares
   >,
 ): RootRoute<
   TRegister,
@@ -565,7 +591,8 @@ export function createRootRoute<
   TLoaderFn,
   unknown,
   unknown,
-  TSSR
+  TSSR,
+  TServerMiddlewares
 > {
   return new RootRoute<
     TRegister,
@@ -577,7 +604,8 @@ export function createRootRoute<
     TLoaderFn,
     unknown,
     unknown,
-    TSSR
+    TSSR,
+    TServerMiddlewares
   >(options)
 }
 
@@ -621,6 +649,7 @@ export class NotFoundRoute<
   TLoaderFn = undefined,
   TChildren = unknown,
   TSSR = unknown,
+  TServerMiddlewares = unknown,
 > extends Route<
   TRegister,
   TParentRoute,
@@ -636,7 +665,8 @@ export class NotFoundRoute<
   TLoaderDeps,
   TLoaderFn,
   TChildren,
-  TSSR
+  TSSR,
+  TServerMiddlewares
 > {
   constructor(
     options: Omit<
@@ -654,7 +684,8 @@ export class NotFoundRoute<
         TRouterContext,
         TRouteContextFn,
         TBeforeLoadFn,
-        TSSR
+        TSSR,
+        TServerMiddlewares
       >,
       | 'caseSensitive'
       | 'parseParams'

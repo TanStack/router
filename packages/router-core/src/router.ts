@@ -299,6 +299,9 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/router-context)
    */
   context?: InferRouterContext<TRouteTree>
+
+  additionalContext?: any
+
   /**
    * A function that will be called when the router is dehydrated.
    *

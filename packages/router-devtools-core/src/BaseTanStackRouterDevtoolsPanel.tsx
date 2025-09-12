@@ -113,7 +113,9 @@ function RouteComp({
         {},
         undefined,
         any,
-        FileRouteTypes
+        FileRouteTypes,
+        unknown,
+        undefined
       >,
       MakeRouteMatchUnion
     >

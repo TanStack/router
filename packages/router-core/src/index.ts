@@ -192,6 +192,7 @@ export type {
   ResolveOptionalParams,
   ResolveRequiredParams,
   RootRoute,
+  FilebaseRouteOptionsInterface,
 } from './route'
 
 export {

@@ -8,14 +8,10 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MergeServerFnMiddlewareContextRouteImport } from './routes/merge-server-fn-middleware-context'
 import { Route as IndexRouteImport } from './routes/index'
-import { ServerRoute as ApiMiddlewareContextServerRouteImport } from './routes/api/middleware-context'
-
-const rootServerRouteImport = createServerRootRoute()
+import { Route as ApiMiddlewareContextRouteImport } from './routes/api/middleware-context'
 
 const MergeServerFnMiddlewareContextRoute =
   MergeServerFnMiddlewareContextRouteImport.update({
@@ -28,58 +24,47 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiMiddlewareContextServerRoute =
-  ApiMiddlewareContextServerRouteImport.update({
-    id: '/api/middleware-context',
-    path: '/api/middleware-context',
-    getParentRoute: () => rootServerRouteImport,
-  } as any)
+const ApiMiddlewareContextRoute = ApiMiddlewareContextRouteImport.update({
+  id: '/api/middleware-context',
+  path: '/api/middleware-context',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/merge-server-fn-middleware-context': typeof MergeServerFnMiddlewareContextRoute
+  '/api/middleware-context': typeof ApiMiddlewareContextRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/merge-server-fn-middleware-context': typeof MergeServerFnMiddlewareContextRoute
+  '/api/middleware-context': typeof ApiMiddlewareContextRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/merge-server-fn-middleware-context': typeof MergeServerFnMiddlewareContextRoute
+  '/api/middleware-context': typeof ApiMiddlewareContextRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/merge-server-fn-middleware-context'
+  fullPaths:
+    | '/'
+    | '/merge-server-fn-middleware-context'
+    | '/api/middleware-context'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/merge-server-fn-middleware-context'
-  id: '__root__' | '/' | '/merge-server-fn-middleware-context'
+  to: '/' | '/merge-server-fn-middleware-context' | '/api/middleware-context'
+  id:
+    | '__root__'
+    | '/'
+    | '/merge-server-fn-middleware-context'
+    | '/api/middleware-context'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MergeServerFnMiddlewareContextRoute: typeof MergeServerFnMiddlewareContextRoute
-}
-export interface FileServerRoutesByFullPath {
-  '/api/middleware-context': typeof ApiMiddlewareContextServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/api/middleware-context': typeof ApiMiddlewareContextServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/api/middleware-context': typeof ApiMiddlewareContextServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/middleware-context'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/middleware-context'
-  id: '__root__' | '/api/middleware-context'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  ApiMiddlewareContextServerRoute: typeof ApiMiddlewareContextServerRoute
+  ApiMiddlewareContextRoute: typeof ApiMiddlewareContextRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -98,16 +83,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
     '/api/middleware-context': {
       id: '/api/middleware-context'
       path: '/api/middleware-context'
       fullPath: '/api/middleware-context'
-      preLoaderRoute: typeof ApiMiddlewareContextServerRouteImport
-      parentRoute: typeof rootServerRouteImport
+      preLoaderRoute: typeof ApiMiddlewareContextRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -115,13 +96,8 @@ declare module '@tanstack/react-start/server' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MergeServerFnMiddlewareContextRoute: MergeServerFnMiddlewareContextRoute,
+  ApiMiddlewareContextRoute: ApiMiddlewareContextRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  ApiMiddlewareContextServerRoute: ApiMiddlewareContextServerRoute,
-}
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()

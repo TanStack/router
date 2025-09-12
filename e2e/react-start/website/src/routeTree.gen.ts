@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LibraryRouteImport } from './routes/_library'
 import { Route as LibraryIndexRouteImport } from './routes/_library.index'
@@ -19,11 +17,9 @@ import { Route as LibraryProjectVersionIndexRouteImport } from './routes/_librar
 import { Route as ProjectVersionDocsIndexRouteImport } from './routes/$project.$version.docs.index'
 import { Route as ProjectVersionDocsFrameworkFrameworkRouteImport } from './routes/$project.$version.docs.framework.$framework'
 import { Route as ProjectVersionDocsFrameworkFrameworkIndexRouteImport } from './routes/$project.$version.docs.framework.$framework.index'
+import { Route as ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRouteImport } from './routes/$project.$version.docs.framework.$framework.{$}[.]md'
 import { Route as ProjectVersionDocsFrameworkFrameworkSplatRouteImport } from './routes/$project.$version.docs.framework.$framework.$'
 import { Route as ProjectVersionDocsFrameworkFrameworkExamplesSplatRouteImport } from './routes/$project.$version.docs.framework.$framework.examples.$'
-import { ServerRoute as ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRouteImport } from './routes/$project.$version.docs.framework.$framework.{$}[.]md'
-
-const rootServerRouteImport = createServerRootRoute()
 
 const LibraryRoute = LibraryRouteImport.update({
   id: '/_library',
@@ -67,6 +63,12 @@ const ProjectVersionDocsFrameworkFrameworkIndexRoute =
     path: '/',
     getParentRoute: () => ProjectVersionDocsFrameworkFrameworkRoute,
   } as any)
+const ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute =
+  ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRouteImport.update({
+    id: '/{$}.md',
+    path: '/{$}.md',
+    getParentRoute: () => ProjectVersionDocsFrameworkFrameworkRoute,
+  } as any)
 const ProjectVersionDocsFrameworkFrameworkSplatRoute =
   ProjectVersionDocsFrameworkFrameworkSplatRouteImport.update({
     id: '/$',
@@ -79,14 +81,6 @@ const ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute =
     path: '/examples/$',
     getParentRoute: () => ProjectVersionDocsFrameworkFrameworkRoute,
   } as any)
-const ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRoute =
-  ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRouteImport.update(
-    {
-      id: '/$project/$version/docs/framework/$framework/{$}.md',
-      path: '/$project/$version/docs/framework/$framework/{$}.md',
-      getParentRoute: () => rootServerRouteImport,
-    } as any,
-  )
 
 export interface FileRoutesByFullPath {
   '/$project': typeof ProjectIndexRoute
@@ -95,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/$project/$version': typeof LibraryProjectVersionIndexRoute
   '/$project/$version/docs/framework/$framework': typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
   '/$project/$version/docs/framework/$framework/$': typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
+  '/$project/$version/docs/framework/$framework/{$}.md': typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute
   '/$project/$version/docs/framework/$framework/': typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
   '/$project/$version/docs/framework/$framework/examples/$': typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute
 }
@@ -104,6 +99,7 @@ export interface FileRoutesByTo {
   '/$project/$version/docs': typeof ProjectVersionDocsIndexRoute
   '/$project/$version': typeof LibraryProjectVersionIndexRoute
   '/$project/$version/docs/framework/$framework/$': typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
+  '/$project/$version/docs/framework/$framework/{$}.md': typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute
   '/$project/$version/docs/framework/$framework': typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
   '/$project/$version/docs/framework/$framework/examples/$': typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute
 }
@@ -117,6 +113,7 @@ export interface FileRoutesById {
   '/_library/$project/$version/': typeof LibraryProjectVersionIndexRoute
   '/$project/$version/docs/framework/$framework': typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
   '/$project/$version/docs/framework/$framework/$': typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
+  '/$project/$version/docs/framework/$framework/{$}.md': typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute
   '/$project/$version/docs/framework/$framework/': typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
   '/$project/$version/docs/framework/$framework/examples/$': typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute
 }
@@ -129,6 +126,7 @@ export interface FileRouteTypes {
     | '/$project/$version'
     | '/$project/$version/docs/framework/$framework'
     | '/$project/$version/docs/framework/$framework/$'
+    | '/$project/$version/docs/framework/$framework/{$}.md'
     | '/$project/$version/docs/framework/$framework/'
     | '/$project/$version/docs/framework/$framework/examples/$'
   fileRoutesByTo: FileRoutesByTo
@@ -138,6 +136,7 @@ export interface FileRouteTypes {
     | '/$project/$version/docs'
     | '/$project/$version'
     | '/$project/$version/docs/framework/$framework/$'
+    | '/$project/$version/docs/framework/$framework/{$}.md'
     | '/$project/$version/docs/framework/$framework'
     | '/$project/$version/docs/framework/$framework/examples/$'
   id:
@@ -150,6 +149,7 @@ export interface FileRouteTypes {
     | '/_library/$project/$version/'
     | '/$project/$version/docs/framework/$framework'
     | '/$project/$version/docs/framework/$framework/$'
+    | '/$project/$version/docs/framework/$framework/{$}.md'
     | '/$project/$version/docs/framework/$framework/'
     | '/$project/$version/docs/framework/$framework/examples/$'
   fileRoutesById: FileRoutesById
@@ -159,27 +159,6 @@ export interface RootRouteChildren {
   ProjectIndexRoute: typeof ProjectIndexRoute
   ProjectVersionDocsIndexRoute: typeof ProjectVersionDocsIndexRoute
   ProjectVersionDocsFrameworkFrameworkRoute: typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
-}
-export interface FileServerRoutesByFullPath {
-  '/$project/$version/docs/framework/$framework/{$}.md': typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/$project/$version/docs/framework/$framework/{$}.md': typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/$project/$version/docs/framework/$framework/{$}.md': typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/$project/$version/docs/framework/$framework/{$}.md'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/$project/$version/docs/framework/$framework/{$}.md'
-  id: '__root__' | '/$project/$version/docs/framework/$framework/{$}.md'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRoute: typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -240,6 +219,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkIndexRouteImport
       parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRoute
     }
+    '/$project/$version/docs/framework/$framework/{$}.md': {
+      id: '/$project/$version/docs/framework/$framework/{$}.md'
+      path: '/{$}.md'
+      fullPath: '/$project/$version/docs/framework/$framework/{$}.md'
+      preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRouteImport
+      parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRoute
+    }
     '/$project/$version/docs/framework/$framework/$': {
       id: '/$project/$version/docs/framework/$framework/$'
       path: '/$'
@@ -253,17 +239,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/$project/$version/docs/framework/$framework/examples/$'
       preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRouteImport
       parentRoute: typeof ProjectVersionDocsFrameworkFrameworkRoute
-    }
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/$project/$version/docs/framework/$framework/{$}.md': {
-      id: '/$project/$version/docs/framework/$framework/{$}.md'
-      path: '/$project/$version/docs/framework/$framework/{$}.md'
-      fullPath: '/$project/$version/docs/framework/$framework/{$}.md'
-      preLoaderRoute: typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRouteImport
-      parentRoute: typeof rootServerRouteImport
     }
   }
 }
@@ -295,6 +270,7 @@ const LibraryRouteWithChildren =
 
 interface ProjectVersionDocsFrameworkFrameworkRouteChildren {
   ProjectVersionDocsFrameworkFrameworkSplatRoute: typeof ProjectVersionDocsFrameworkFrameworkSplatRoute
+  ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute: typeof ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute
   ProjectVersionDocsFrameworkFrameworkIndexRoute: typeof ProjectVersionDocsFrameworkFrameworkIndexRoute
   ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute: typeof ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute
 }
@@ -303,6 +279,8 @@ const ProjectVersionDocsFrameworkFrameworkRouteChildren: ProjectVersionDocsFrame
   {
     ProjectVersionDocsFrameworkFrameworkSplatRoute:
       ProjectVersionDocsFrameworkFrameworkSplatRoute,
+    ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute:
+      ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdRoute,
     ProjectVersionDocsFrameworkFrameworkIndexRoute:
       ProjectVersionDocsFrameworkFrameworkIndexRoute,
     ProjectVersionDocsFrameworkFrameworkExamplesSplatRoute:
@@ -324,10 +302,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRoute:
-    ProjectVersionDocsFrameworkFrameworkChar123Char125DotmdServerRoute,
-}
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()
