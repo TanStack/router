@@ -208,7 +208,7 @@ export const Route = createRootRoute({
   component: RootComponent,
   errorComponent: () => <div>Error</div>,
   notFoundComponent: () => <div>Not found</div>,
-  ssr: false // or `defaultSsr: false` on the router
+  ssr: false, // or `defaultSsr: false` on the router
 })
 
 function RootShell({ children }: { children: React.ReactNode }) {
