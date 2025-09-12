@@ -24,7 +24,7 @@ For applications that do not require SSR for either SEO, crawlers, or performanc
 
 ## Pure SPA
 
-SPA mode does not mean there is no frontend server; it's just a different way for the client to interact with your frontend (i.e., TanSatck Start) server. If you need to do an SPA with no frontend server, then [TanStack Router](https://tanstack.com/router/latest) will be a better fit for your project.
+SPA mode does not mean there is no frontend server; it's just a different way for the client to interact with your frontend (i.e., TanStack Start) server. If you need to do an SPA with no frontend server, then [TanStack Router](https://tanstack.com/router/latest) will be a better fit for your project.
 
 ## How does it work?
 
