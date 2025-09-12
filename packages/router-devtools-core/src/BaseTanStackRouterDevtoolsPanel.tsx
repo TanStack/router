@@ -611,7 +611,19 @@ export const BaseTanStackRouterDevtoolsPanel =
         ) : null}
         {hasSearch() ? (
           <div class={styles().fourthContainer}>
-            <div class={styles().detailsHeader}>Search Params</div>
+            <div class={styles().detailsHeader}>
+              <span>Search Params</span>
+              {typeof navigator !== 'undefined' ? (
+                <span style="margin-left: 0.5rem;">
+                  <CopyButton
+                    getValue={() => {
+                      const search = routerState().location.search
+                      return JSON.stringify(search)
+                    }}
+                  />
+                </span>
+              ) : null}
+            </div>
             <div class={styles().detailsContent}>
               <Explorer
                 value={locationSearchValue}
@@ -628,5 +640,38 @@ export const BaseTanStackRouterDevtoolsPanel =
       </div>
     )
   }
+
+function CopyButton({ getValue }: { getValue: () => string }) {
+  const [copied, setCopied] = useLocalStorage(
+    'tanstackRouterDevtoolsCopiedSearch',
+    false,
+  )
+
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+  const handleCopy = () => {
+    if (typeof navigator !== 'undefined') {
+      try {
+        const value = getValue()
+        navigator.clipboard.writeText(value)
+        setCopied(true)
+        if (timeoutId) clearTimeout(timeoutId)
+        timeoutId = setTimeout(() => setCopied(false), 2500)
+      } catch (e) {
+        console.error('TanStack Router Devtools: Failed to copy', e)
+      }
+    }
+  }
+
+  return (
+    <button
+      style="cursor: pointer;"
+      onClick={handleCopy}
+      aria-label="Copy value to clipboard"
+    >
+      {copied() ? '✅' : '📋'}
+    </button>
+  )
+}
 
 export default BaseTanStackRouterDevtoolsPanel
