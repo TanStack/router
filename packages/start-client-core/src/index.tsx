@@ -83,3 +83,5 @@ export {
   TSS_SERVER_FUNCTION,
   X_TSS_SERIALIZED,
 } from './constants'
+
+export { getRouterInstance } from './getRouterInstance'

@@ -9,6 +9,7 @@ export {
   createClientOnlyFn,
   json,
   createClientRpc,
+  getRouterInstance,
 } from '@tanstack/start-client-core'
 export {
   type DehydratedRouter,
