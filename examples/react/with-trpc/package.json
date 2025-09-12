@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.131.41",
-    "@tanstack/react-router-devtools": "^1.131.41",
+    "@tanstack/react-router-devtools": "^1.131.42",
     "@tanstack/router-plugin": "^1.131.41",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",

@@ -13,7 +13,7 @@
     "@tanstack/solid-query": "^5.71.9",
     "@tanstack/solid-query-devtools": "^5.71.9",
     "@tanstack/solid-router": "^1.131.41",
-    "@tanstack/solid-router-devtools": "^1.131.41",
+    "@tanstack/solid-router-devtools": "^1.131.42",
     "solid-js": "^1.9.5",
     "redaxios": "^0.5.1",
     "postcss": "^8.5.1",
