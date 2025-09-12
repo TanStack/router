@@ -1,3 +1,4 @@
+console.warn("[tanstack-router] These exports from \"useStateDestructure.tsx\" will not be code-split and will increase your bundle size:\n- VersionIndex\nFor the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.");
 import * as React from 'react';
 import { CgCornerUpLeft, CgSpinner } from 'react-icons/cg';
 import { FaBolt, FaBook, FaCheckCircle, FaCogs, FaDiscord, FaGithub, FaTshirt, FaTwitter } from 'react-icons/fa';
