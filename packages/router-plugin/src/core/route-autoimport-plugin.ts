@@ -3,17 +3,17 @@ import babel from '@babel/core'
 import * as template from '@babel/template'
 import { getConfig } from './config'
 import { debug } from './utils'
-import type { Config } from './config'
+import type { ConfigInput } from './config'
 import type { UnpluginFactory } from 'unplugin'
 
 /**
  * This plugin adds imports for createFileRoute and createLazyFileRoute to the file route.
  */
 export const unpluginRouteAutoImportFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  ConfigInput | undefined
 > = (options = {}) => {
   let ROOT: string = process.cwd()
-  let userConfig = options as Config
+  let userConfig = options
 
   return {
     name: 'tanstack-router:autoimport',
