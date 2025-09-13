@@ -78,9 +78,33 @@ This means that it creates three separate lazy-loaded chunks for each route. Res
 
 For automatic code splitting to work, there are some rules in-place to make sure that this process can reliably and predictably happen.
 
-1. **Do not export route properties**: Route properties like `component`, `loader`, etc., should not be exported from the route file. Exporting these properties results in them being bundled into the main application bundle, which means that they will not be code-split.
+#### Do not export route properties
 
-2. **That's it!** There are no other restrictions. You can use any other JavaScript or TypeScript features in your route files as you normally would. If you run into any issues, please [open an issue](https://github.com/tanstack/router/issues) on GitHub.
+Route properties like `component`, `loader`, etc., should not be exported from the route file. Exporting these properties results in them being bundled into the main application bundle, which means that they will not be code-split.
+
+```tsx
+import { createRoute } from '@tanstack/react-router'
+
+export const Route = createRoute('/posts')({
+  // ...
+  notFoundComponent: PostsNotFoundComponent,
+})
+
+// ❌ Do NOT do this!
+// Exporting the notFoundComponent will prevent it from being code-split
+// and will be included in the main bundle.
+export function PostsNotFoundComponent() {
+  // ❌
+  // ...
+}
+
+function PostsNotFoundComponent() {
+  // ✅
+  // ...
+}
+```
+
+**That's it!** There are no other restrictions. You can use any other JavaScript or TypeScript features in your route files as you normally would. If you run into any issues, please [open an issue](https://github.com/tanstack/router/issues) on GitHub.
 
 ## Granular control
 
