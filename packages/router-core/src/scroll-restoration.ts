@@ -346,7 +346,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
 }
 
 /**
- * @internal
+ * @private
  * Handles hash-based scrolling after navigation completes.
  * To be used in framework-specific <Transitioner> components during the onResolved event.
  *
