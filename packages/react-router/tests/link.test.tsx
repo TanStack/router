@@ -4683,6 +4683,117 @@ describe('createLink', () => {
     const button3 = await screen.findByText('active: no - foo: no - Button3')
     expect(button3.getAttribute('overrideMeIfYouWant')).toBe('Button3')
   })
+
+  it('should respect target attribute set by custom component', async () => {
+    const CustomLinkWithTarget = React.forwardRef<
+      HTMLAnchorElement,
+      { href?: string; children?: React.ReactNode }
+    >((props, ref) => (
+      <a ref={ref} {...props} target="_blank" rel="noopener noreferrer" />
+    ))
+
+    const CreatedCustomLink = createLink(CustomLinkWithTarget)
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index</h1>
+          <CreatedCustomLink to="/posts">
+            Posts (should open in new tab)
+          </CreatedCustomLink>
+        </>
+      ),
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const originalOpen = window.open
+    const openMock = vi.fn()
+    window.open = openMock
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', {
+      name: 'Posts (should open in new tab)',
+    })
+
+    expect(postsLink).toHaveAttribute('target', '_blank')
+    expect(postsLink).toHaveAttribute('rel', 'noopener noreferrer')
+
+    fireEvent.click(postsLink)
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/')
+    })
+
+    await expect(
+      screen.findByRole('heading', { name: 'Posts' }),
+    ).rejects.toThrow()
+
+    window.open = originalOpen
+  })
+
+  it('should allow override of target prop even when custom component sets it', async () => {
+    const CustomLinkWithDefaultTarget = React.forwardRef<
+      HTMLAnchorElement,
+      { href?: string; children?: React.ReactNode; target?: string }
+    >((props, ref) => <a ref={ref} target="_blank" {...props} />)
+
+    const CreatedCustomLink = createLink(CustomLinkWithDefaultTarget)
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index</h1>
+          <CreatedCustomLink to="/posts" target="_self">
+            Posts (should navigate internally)
+          </CreatedCustomLink>
+        </>
+      ),
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', {
+      name: 'Posts (should navigate internally)',
+    })
+
+    expect(postsLink).toHaveAttribute('target', '_self')
+
+    fireEvent.click(postsLink)
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/posts')
+    })
+
+    await screen.findByRole('heading', { name: 'Posts' })
+  })
 })
 
 describe('search middleware', () => {
