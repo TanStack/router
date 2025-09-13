@@ -1,4 +1,3 @@
-console.warn("These exports from \"retain-exports-loader.tsx?component---loader---notFoundComponent---pendingComponent\" are not being code-split and will increase your bundle size: \n- loaderFn\nThese should either have their export statements removed or be imported from another file that is not a route.");
 import * as React from 'react';
 import { Outlet } from '@tanstack/react-router';
 import { importedComponent as ImportedComponent } from '../../shared/imported';
