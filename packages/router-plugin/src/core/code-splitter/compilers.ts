@@ -254,12 +254,13 @@ export function compileCodeSplitReferenceRoute(
                           // since they are already being imported
                           // and need to be retained in the compiled file
                           const isExported = hasExport(ast, value)
+                          if (isExported) {
+                            knownExportedIdents.add(value.name)
+                          }
                           shouldSplit = !isExported
 
                           if (shouldSplit) {
                             removeIdentifierLiteral(path, value)
-                          } else {
-                            knownExportedIdents.add(value.name)
                           }
                         }
 
@@ -325,12 +326,13 @@ export function compileCodeSplitReferenceRoute(
                           // since they are already being imported
                           // and need to be retained in the compiled file
                           const isExported = hasExport(ast, value)
+                          if (isExported) {
+                            knownExportedIdents.add(value.name)
+                          }
                           shouldSplit = !isExported
 
                           if (shouldSplit) {
                             removeIdentifierLiteral(path, value)
-                          } else {
-                            knownExportedIdents.add(value.name)
                           }
                         }
 
