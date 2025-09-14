@@ -1,4 +1,8 @@
-import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
+import {
+  ErrorComponent,
+  useLocation,
+  createFileRoute,
+} from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { NotFound } from '~/components/NotFound'
 import { getDocument } from '~/server/document'
@@ -28,6 +32,7 @@ function PostErrorComponent({ error }: ErrorComponentProps) {
 }
 
 function Page() {
+  const pathname = useLocation({ select: (s) => s.pathname })
   const post = Route.useLoaderData()
 
   return (
@@ -39,6 +44,11 @@ function Page() {
         {post.title}
       </h4>
       <div className="text-sm">{post.content}</div>
+      <p className="py-2">
+        <a href={pathname + '.md'} className="underline text-blue-500">
+          View Raw Content
+        </a>
+      </p>
     </div>
   )
 }

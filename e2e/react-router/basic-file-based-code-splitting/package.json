@@ -8,7 +8,9 @@
     "build": "vite build && tsc --noEmit",
     "serve": "vite preview",
     "start": "vite",
-    "test:e2e": "playwright test --project=chromium"
+    "test:e2e:verbose-routes:true": "rm -rf port*.txt; VERBOSE_FILE_ROUTES=1 playwright test --project=chromium",
+    "test:e2e:verbose-routes:false": "rm -rf port*.txt; VERBOSE_FILE_ROUTES=0 playwright test --project=chromium",
+    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:verbose-routes:true && pnpm run test:e2e:verbose-routes:false"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -27,6 +29,6 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.1.0"
+    "vite": "^6.3.5"
   }
 }

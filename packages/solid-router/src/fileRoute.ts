@@ -28,6 +28,7 @@ import type {
   RouteIds,
   RouteLoaderFn,
   UpdatableRouteOptions,
+  UseNavigateResult,
 } from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
@@ -41,8 +42,13 @@ export function createFileRoute<
   TFullPath extends
     RouteConstraints['TFullPath'] = FileRoutesByPath[TFilePath]['fullPath'],
 >(
-  path: TFilePath,
+  path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
+  if (typeof path === 'object') {
+    return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
+      silent: true,
+    }).createRoute(path) as any
+  }
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
   }).createRoute
@@ -63,7 +69,7 @@ export class FileRoute<
   silent?: boolean
 
   constructor(
-    public path: TFilePath,
+    public path?: TFilePath,
     _opts?: { silent: boolean },
   ) {
     this.silent = _opts?.silent
@@ -159,6 +165,18 @@ export function FileRouteLoader<
   return (loaderFn) => loaderFn as any
 }
 
+declare module '@tanstack/router-core' {
+  export interface LazyRoute<in out TRoute extends AnyRoute> {
+    useMatch: UseMatchRoute<TRoute['id']>
+    useRouteContext: UseRouteContextRoute<TRoute['id']>
+    useSearch: UseSearchRoute<TRoute['id']>
+    useParams: UseParamsRoute<TRoute['id']>
+    useLoaderDeps: UseLoaderDepsRoute<TRoute['id']>
+    useLoaderData: UseLoaderDataRoute<TRoute['id']>
+    useNavigate: () => UseNavigateResult<TRoute['fullPath']>
+  }
+}
+
 export class LazyRoute<TRoute extends AnyRoute> {
   options: {
     id: string
@@ -208,7 +226,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
     return useLoaderData({ ...opts, from: this.options.id } as any)
   }
 
-  useNavigate = () => {
+  useNavigate = (): UseNavigateResult<TRoute['fullPath']> => {
     const router = useRouter()
     return useNavigate({ from: router.routesById[this.options.id].fullPath })
   }
@@ -229,6 +247,10 @@ export function createLazyRoute<
 export function createLazyFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
->(id: TFilePath) {
+>(id: TFilePath): (opts: LazyRouteOptions) => LazyRoute<TRoute> {
+  if (typeof id === 'object') {
+    return new LazyRoute<TRoute>(id) as any
+  }
+
   return (opts: LazyRouteOptions) => new LazyRoute<TRoute>({ id, ...opts })
 }

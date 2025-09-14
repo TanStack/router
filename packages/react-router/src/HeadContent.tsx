@@ -17,9 +17,11 @@ export const useTags = () => {
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
-    ;[...routeMeta].reverse().forEach((metas) => {
-      ;[...metas].reverse().forEach((m) => {
-        if (!m) return
+    for (let i = routeMeta.length - 1; i >= 0; i--) {
+      const metas = routeMeta[i]!
+      for (let j = metas.length - 1; j >= 0; j--) {
+        const m = metas[j]
+        if (!m) continue
 
         if (m.title) {
           if (!title) {
@@ -32,7 +34,7 @@ export const useTags = () => {
           const attribute = m.name ?? m.property
           if (attribute) {
             if (metaByAttribute[attribute]) {
-              return
+              continue
             } else {
               metaByAttribute[attribute] = true
             }
@@ -45,8 +47,8 @@ export const useTags = () => {
             },
           })
         }
-      })
-    })
+      }
+    }
 
     if (title) {
       resultMeta.push(title)
@@ -58,8 +60,8 @@ export const useTags = () => {
   }, [routeMeta])
 
   const links = useRouterState({
-    select: (state) =>
-      state.matches
+    select: (state) => {
+      const constructed = state.matches
         .map((match) => match.links!)
         .filter(Boolean)
         .flat(1)
@@ -68,7 +70,30 @@ export const useTags = () => {
           attrs: {
             ...link,
           },
-        })) as Array<RouterManagedTag>,
+        })) satisfies Array<RouterManagedTag>
+
+      const manifest = router.ssr?.manifest
+
+      // These are the assets extracted from the ViteManifest
+      // using the `startManifestPlugin`
+      const assets = state.matches
+        .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
+        .filter(Boolean)
+        .flat(1)
+        .filter((asset) => asset.tag === 'link')
+        .map(
+          (asset) =>
+            ({
+              tag: 'link',
+              attrs: {
+                ...asset.attrs,
+                suppressHydrationWarning: true,
+              },
+            }) satisfies RouterManagedTag,
+        )
+
+      return [...constructed, ...assets]
+    },
     structuralSharing: true as any,
   })
 
@@ -97,6 +122,21 @@ export const useTags = () => {
     structuralSharing: true as any,
   })
 
+  const styles = useRouterState({
+    select: (state) =>
+      (
+        state.matches
+          .map((match) => match.styles!)
+          .flat(1)
+          .filter(Boolean) as Array<RouterManagedTag>
+      ).map(({ children, ...attrs }) => ({
+        tag: 'style',
+        attrs,
+        children,
+      })),
+    structuralSharing: true as any,
+  })
+
   const headScripts = useRouterState({
     select: (state) =>
       (
@@ -119,6 +159,7 @@ export const useTags = () => {
       ...meta,
       ...preloadMeta,
       ...links,
+      ...styles,
       ...headScripts,
     ] as Array<RouterManagedTag>,
     (d) => {

@@ -13,7 +13,6 @@ Code splitting and lazy loading is a powerful technique for improving the bundle
 TanStack Router separates code into two categories:
 
 - **Critical Route Configuration** - The code that is required to render the current route and kick off the data loading process as early as possible.
-
   - Path Parsing/Serialization
   - Search Param Validation
   - Loaders, Before Load
@@ -81,11 +80,11 @@ To enable automatic code-splitting, you just need to add the following to the co
 // vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({
   plugins: [
-    TanStackRouterVite({
+    tanstackRouter({
       // ...
       autoCodeSplitting: true,
     }),
@@ -217,7 +216,7 @@ If you are using code-based routing, you can still code-split your routes using 
 Create a lazy route using the `createLazyRoute` function.
 
 ```tsx
-// src/posts.tsx
+// src/posts.lazy.tsx
 export const Route = createLazyRoute('/posts')({
   component: MyComponent,
 })

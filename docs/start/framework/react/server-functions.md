@@ -7,8 +7,8 @@ title: Server Functions
 
 Server functions allow you to specify logic that can be invoked almost anywhere (even the client), but run **only** on the server. In fact, they are not so different from an API Route, but with a few key differences:
 
-- They do not have stable public URL
-- They can be called from anywhere in your application, including loaders, hooks, components, etc., but cannot be called from API Routes.
+- They do not have stable public URL.
+- They can be called from anywhere in your application, including loaders, hooks, components, server routes etc.
 
 However, they are similar to regular API Routes in that:
 
@@ -96,9 +96,6 @@ response?: 'data' | 'full' | 'raw'
 - From server-side code
 - From client-side code
 - From other server functions
-
-> [!WARNING]
-> Server functions cannot be called from API Routes. If you need to share business logic between server functions and API Routes, extract the shared logic into utility functions that can be imported by both.
 
 ## Accepting Parameters
 

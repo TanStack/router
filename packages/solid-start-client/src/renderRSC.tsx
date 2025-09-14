@@ -1,6 +1,6 @@
 // TODO: RSCs
 // // @ts-expect-error
-// import * as reactDom from '@vinxi/react-server-dom/client'
+// import * as reactDom from 'react-server-dom/client'
 // import { isValidElement } from 'solid-js'
 import invariant from 'tiny-invariant'
 import type * as Solid from 'solid-js'

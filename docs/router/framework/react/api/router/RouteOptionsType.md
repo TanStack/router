@@ -124,15 +124,16 @@ type beforeLoad = (
 ```tsx
 type loader = (
   opts: RouteMatch & {
-    search: TFullSearchSchema
     abortController: AbortController
-    preload: boolean
-    params: TAllParams
+    cause: 'preload' | 'enter' | 'stay'
     context: TAllContext
+    deps: TLoaderDeps
     location: ParsedLocation
+    params: TAllParams
+    preload: boolean
+    parentMatchPromise: Promise<MakeRouteMatchFromRoute<TParentRoute>>
     navigate: NavigateFn<AnyRoute> // @deprecated
-    buildLocation: BuildLocationFn<AnyRoute>
-    cause: 'enter' | 'stay'
+    route: AnyRoute
   },
 ) => Promise<TLoaderData> | TLoaderData | void
 ```
@@ -142,6 +143,7 @@ type loader = (
 - This async function is called when a route is matched and passed the route's match object. If an error is thrown here, the route will be put into an error state and the error will be thrown during render. If thrown during a navigation, the navigation will be canceled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TLoaderData` object, that object will be stored on the route match until the route match is no longer active. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
+- Deps must be returned by your `loaderDeps` function in order to appear.
 
 > 🚧 `opts.navigate` has been deprecated and will be removed in the next major release. Use `throw redirect({ to: '/somewhere' })` instead. Read more about the `redirect` function [here](../redirectFunction.md).
 
@@ -292,9 +294,75 @@ interface RemountDepsOptions<
 - The return value needs to be JSON serializable.
 - By default, a route component will not be remounted if it stays active after a navigation.
 
-Example:  
+Example:
 If you want to configure to remount a route component upon `params` change, use:
 
 ```tsx
 remountDeps: ({ params }) => params
 ```
+
+### `headers` method
+
+- Type:
+
+```tsx
+type headers = (opts: {
+  matches: Array<RouteMatch>
+  match: RouteMatch
+  params: TAllParams
+  loaderData?: TLoaderData
+}) => Promise<Record<string, string>> | Record<string, string>
+```
+
+- Optional
+- Allows you to specify custom HTTP headers to be sent when this route is rendered during SSR. The function receives the current match context and should return a plain object of header name/value pairs.
+
+### `head` method
+
+- Type:
+
+```tsx
+type head = (ctx: {
+  matches: Array<RouteMatch>
+  match: RouteMatch
+  params: TAllParams
+  loaderData?: TLoaderData
+}) =>
+  | Promise<{
+      links?: RouteMatch['links']
+      scripts?: RouteMatch['headScripts']
+      meta?: RouteMatch['meta']
+      styles?: RouteMatch['styles']
+    }>
+  | {
+      links?: RouteMatch['links']
+      scripts?: RouteMatch['headScripts']
+      meta?: RouteMatch['meta']
+      styles?: RouteMatch['styles']
+    }
+```
+
+- Optional
+- Returns additional elements to inject into the document `<head>` for this route. Use it to add route-level SEO metadata, preload links, inline styles, or custom scripts.
+
+### `scripts` method
+
+- Type:
+
+```tsx
+type scripts = (ctx: {
+  matches: Array<RouteMatch>
+  match: RouteMatch
+  params: TAllParams
+  loaderData?: TLoaderData
+}) => Promise<RouteMatch['scripts']> | RouteMatch['scripts']
+```
+
+- Optional
+- A shorthand helper to return only `<script>` elements. Equivalent to returning the `scripts` field from the `head` method.
+
+### `codeSplitGroupings` property
+
+- Type: `Array<Array<'loader' | 'component' | 'pendingComponent' | 'notFoundComponent' | 'errorComponent'>>`
+- Optional
+- Fine-grained control over how the router groups lazy-loaded pieces of a route into chunks. Each inner array represents a group of assets that will be placed into the same bundle during code-splitting.

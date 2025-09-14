@@ -14,16 +14,16 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const { navigate } = useRouter()
+  const router = useRouter()
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      return navigate({
-        from: _defaultOpts?.from,
+      return router.navigate({
         ...options,
+        from: options.from ?? _defaultOpts?.from,
       })
     },
-    [_defaultOpts?.from, navigate],
+    [_defaultOpts?.from, router],
   ) as UseNavigateResult<TDefaultFrom>
 }
 
@@ -35,6 +35,7 @@ export function Navigate<
   const TMaskTo extends string = '',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
   const router = useRouter()
+  const navigate = useNavigate()
 
   const previousPropsRef = React.useRef<NavigateOptions<
     TRouter,
@@ -45,11 +46,9 @@ export function Navigate<
   > | null>(null)
   React.useEffect(() => {
     if (previousPropsRef.current !== props) {
-      router.navigate({
-        ...props,
-      })
+      navigate(props)
       previousPropsRef.current = props
     }
-  }, [router, props])
+  }, [router, props, navigate])
   return null
 }

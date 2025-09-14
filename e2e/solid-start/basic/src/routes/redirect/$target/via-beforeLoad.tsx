@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/solid-router'
+import { redirect, createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/redirect/$target/via-beforeLoad')({
   beforeLoad: ({
@@ -9,8 +9,7 @@ export const Route = createFileRoute('/redirect/$target/via-beforeLoad')({
       case 'internal':
         throw redirect({ to: '/posts', reloadDocument })
       case 'external':
-        const href = externalHost ?? 'http://example.com'
-        throw redirect({ href })
+        throw redirect({ href: externalHost })
     }
   },
   component: () => <div>{Route.fullPath}</div>,

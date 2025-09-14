@@ -1,17 +1,27 @@
 import React from 'react'
-import { afterEach, describe, expect, it, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 
 import {
   RouterProvider,
+  createBrowserHistory,
   createRootRoute,
   createRoute,
   createRouter,
   getRouteApi,
   notFound,
 } from '../src'
+import type { RouterHistory } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
@@ -163,7 +173,7 @@ describe('onEnter event', () => {
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, context: { foo: 'bar' }, history })
 
     await router.load()
 
@@ -184,7 +194,7 @@ describe('onEnter event', () => {
       },
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree, context: { foo: 'bar' } })
+    const router = createRouter({ routeTree, context: { foo: 'bar' }, history })
 
     render(<RouterProvider router={router} />)
 
@@ -216,7 +226,7 @@ describe('route.head', () => {
       component: () => <div>Index</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
@@ -256,7 +266,7 @@ describe('route.head', () => {
       component: () => <div>Index</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
@@ -367,7 +377,7 @@ describe('route.head', () => {
       component: () => <div>Index</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
@@ -397,7 +407,7 @@ describe('route.head', () => {
       component: () => <div>Index</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
@@ -424,7 +434,7 @@ describe('route.head', () => {
       component: () => <div>Index</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
@@ -454,7 +464,7 @@ describe('route.head', () => {
       component: () => <div>Index</div>,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({ routeTree })
+    const router = createRouter({ routeTree, history })
     render(<RouterProvider router={router} />)
     const indexElem = await screen.findByText('Index')
     expect(indexElem).toBeInTheDocument()
@@ -463,6 +473,103 @@ describe('route.head', () => {
     expect(linksState).toEqual([
       [{ href: 'root.css' }, { href: 'root2.css' }],
       [{ href: 'index.css' }],
+    ])
+  })
+
+  test('styles', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        styles: [
+          {
+            media: 'all and (min-width: 200px)',
+            children: '.inline-div { color: blue; }',
+          },
+        ],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        styles: [
+          {
+            media: 'all and (min-width: 100px)',
+            children: '.inline-div { background-color: yellow; }',
+          },
+        ],
+      }),
+      component: () => <div className="inline-div">Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, history })
+    render(<RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    const stylesState = router.state.matches.map((m) => m.styles)
+    expect(stylesState).toEqual([
+      [
+        {
+          media: 'all and (min-width: 200px)',
+          children: '.inline-div { color: blue; }',
+        },
+      ],
+      [
+        {
+          media: 'all and (min-width: 100px)',
+          children: '.inline-div { background-color: yellow; }',
+        },
+      ],
+    ])
+  })
+
+  test('styles w/loader', async () => {
+    const rootRoute = createRootRoute({
+      head: () => ({
+        styles: [
+          {
+            media: 'all and (min-width: 200px)',
+            children: '.inline-div { color: blue; }',
+          },
+        ],
+      }),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      head: () => ({
+        styles: [
+          {
+            media: 'all and (min-width: 100px)',
+            children: '.inline-div { background-color: yellow; }',
+          },
+        ],
+      }),
+      loader: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      },
+      component: () => <div className="inline-div">Index</div>,
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, history })
+    render(<RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+
+    const stylesState = router.state.matches.map((m) => m.styles)
+    expect(stylesState).toEqual([
+      [
+        {
+          media: 'all and (min-width: 200px)',
+          children: '.inline-div { color: blue; }',
+        },
+      ],
+      [
+        {
+          media: 'all and (min-width: 100px)',
+          children: '.inline-div { background-color: yellow; }',
+        },
+      ],
     ])
   })
 })

@@ -179,44 +179,24 @@ test('server function can correctly send and receive headers', async ({
   await page.goto('/headers')
 
   await page.waitForLoadState('networkidle')
-  // console.log(await page.getByTestId('test-headers-result').textContent())
-  await expect(page.getByTestId('test-headers-result')).toContainText(`{
-  "accept": "application/json",
-  "accept-encoding": "gzip, deflate, br, zstd",
-  "accept-language": "en-US",
-  "connection": "keep-alive",
-  "content-type": "application/json",
-  "host": "localhost:${PORT}",
-  "sec-ch-ua": "\\"Chromium\\";v=\\"136\\", \\"HeadlessChrome\\";v=\\"136\\", \\"Not.A/Brand\\";v=\\"99\\"",
-  "sec-ch-ua-mobile": "?0",
-  "sec-ch-ua-platform": "\\"Windows\\"",
-  "sec-fetch-dest": "document",
-  "sec-fetch-mode": "navigate",
-  "sec-fetch-site": "none",
-  "sec-fetch-user": "?1",
-  "upgrade-insecure-requests": "1",
-  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.7103.25 Safari/537.36"
-}`)
+  let headers = JSON.parse(
+    await page.getByTestId('initial-headers-result').innerText(),
+  )
+  expect(headers['host']).toBe(`localhost:${PORT}`)
+  expect(headers['user-agent']).toContain('Mozilla/5.0')
+  expect(headers['sec-fetch-mode']).toBe('navigate')
 
   await page.getByTestId('test-headers-btn').click()
-  await page.waitForLoadState('networkidle')
+  await page.waitForSelector('[data-testid="updated-headers-result"]')
 
-  await expect(page.getByTestId('test-headers-result')).toContainText(`{
-  "host": "localhost:${PORT}",
-  "connection": "keep-alive",
-  "sec-ch-ua-platform": "\\"Windows\\"",
-  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.7103.25 Safari/537.36",
-  "accept": "application/json",
-  "sec-ch-ua": "\\"Chromium\\";v=\\"136\\", \\"HeadlessChrome\\";v=\\"136\\", \\"Not.A/Brand\\";v=\\"99\\"",
-  "content-type": "application/json",
-  "sec-ch-ua-mobile": "?0",
-  "accept-language": "en-US",
-  "sec-fetch-site": "same-origin",
-  "sec-fetch-mode": "cors",
-  "sec-fetch-dest": "empty",
-  "referer": "http://localhost:${PORT}/headers",
-  "accept-encoding": "gzip, deflate, br, zstd"
-}`)
+  headers = JSON.parse(
+    await page.getByTestId('updated-headers-result').innerText(),
+  )
+
+  expect(headers['host']).toBe(`localhost:${PORT}`)
+  expect(headers['user-agent']).toContain('Mozilla/5.0')
+  expect(headers['sec-fetch-mode']).toBe('cors')
+  expect(headers['referer']).toBe(`http://localhost:${PORT}/headers`)
 })
 
 test('Direct POST submitting FormData to a Server function returns the correct message', async ({
@@ -334,4 +314,61 @@ test('raw response', async ({ page }) => {
   await page.waitForLoadState('networkidle')
 
   await expect(page.getByTestId('response')).toContainText(expectedValue)
+})
+;[{ mode: 'js' }, { mode: 'no-js' }].forEach(({ mode }) => {
+  test(`Server function can redirect when sending formdata: mode = ${mode}`, async ({
+    page,
+  }) => {
+    await page.goto('/formdata-redirect?mode=' + mode)
+
+    await page.waitForLoadState('networkidle')
+    const expected =
+      (await page
+        .getByTestId('expected-submit-post-formdata-server-fn-result')
+        .textContent()) || ''
+    expect(expected).not.toBe('')
+
+    await page.getByTestId('test-submit-post-formdata-fn-calls-btn').click()
+
+    await page.waitForLoadState('networkidle')
+
+    await expect(
+      page.getByTestId('formdata-redirect-target-name'),
+    ).toContainText(expected)
+
+    expect(page.url().endsWith(`/formdata-redirect/target/${expected}`))
+  })
+})
+
+test.describe('middleware', () => {
+  test.describe('client middleware should have access to router context via the router instance', () => {
+    async function runTest(page: Page) {
+      await page.waitForLoadState('networkidle')
+
+      const expected =
+        (await page.getByTestId('expected-server-fn-result').textContent()) ||
+        ''
+      expect(expected).not.toBe('')
+
+      await page.getByTestId('btn-serverFn').click()
+      await page.waitForLoadState('networkidle')
+      await expect(page.getByTestId('serverFn-loader-result')).toContainText(
+        expected,
+      )
+      await expect(page.getByTestId('serverFn-client-result')).toContainText(
+        expected,
+      )
+    }
+
+    test('direct visit', async ({ page }) => {
+      await page.goto('/middleware/client-middleware-router')
+      await runTest(page)
+    })
+
+    test('client navigation', async ({ page }) => {
+      await page.goto('/middleware')
+      await page.getByTestId('client-middleware-router-link').click()
+      await runTest(page)
+    })
+  })
 })

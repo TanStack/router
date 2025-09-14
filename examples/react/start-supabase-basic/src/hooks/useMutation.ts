@@ -25,9 +25,9 @@ export function useMutation<TVariables, TData, TError = Error>(opts: {
         setError(undefined)
         setData(data)
         return data
-      } catch (err: any) {
+      } catch (err) {
         setStatus('error')
-        setError(err)
+        setError(err as TError)
       }
     },
     [opts.fn],

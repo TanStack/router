@@ -40,6 +40,8 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   }) => string
   replacer: ReplacerFn
   // devSplitImporter: string
+  filename: string
+  root: string
 }
 
 function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
@@ -49,6 +51,7 @@ function buildDirectiveSplitParam(opts: CompileDirectivesOpts) {
 export function compileDirectives(opts: CompileDirectivesOpts): {
   compiledResult: GeneratorResult
   directiveFnsById: Record<string, DirectiveFn>
+  isDirectiveSplitParam: boolean
 } {
   const directiveSplitParam = buildDirectiveSplitParam(opts)
   const isDirectiveSplitParam = opts.filename.includes(directiveSplitParam)
@@ -60,20 +63,8 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
     directiveSplitParam,
   })
 
-  const directiveFnsByFunctionName = Object.fromEntries(
-    Object.entries(directiveFnsById).map(([, fn]) => [fn.functionName, fn]),
-  )
-
   // Add runtime code if there are directives
   if (Object.keys(directiveFnsById).length > 0) {
-    // // Add a vite import to the top of the file
-    // ast.program.body.unshift(
-    //   babel.types.importDeclaration(
-    //     [babel.types.importDefaultSpecifier(babel.types.identifier('vite'))],
-    //     babel.types.stringLiteral('vite'),
-    //   ),
-    // )
-
     if (opts.getRuntimeCode) {
       const runtimeImport = babel.template.statement(
         opts.getRuntimeCode({ directiveFnsById }),
@@ -93,7 +84,7 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
     ast.program.body.push(
       babel.types.exportNamedDeclaration(
         undefined,
-        Object.values(directiveFnsByFunctionName).map((fn) =>
+        Object.values(directiveFnsById).map((fn) =>
           babel.types.exportSpecifier(
             babel.types.identifier(fn.functionName),
             babel.types.identifier(fn.functionName),
@@ -114,6 +105,7 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
   return {
     compiledResult,
     directiveFnsById,
+    isDirectiveSplitParam,
   }
 }
 
@@ -230,6 +222,8 @@ export function findDirectives(
     directiveLabel: string
     replacer?: ReplacerFn
     directiveSplitParam: string
+    filename: string
+    root: string
   },
 ): Record<string, DirectiveFn> {
   const directiveFnsById: Record<string, DirectiveFn> = {}
