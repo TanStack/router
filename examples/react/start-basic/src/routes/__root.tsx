@@ -69,7 +69,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <nav className="p-2 flex gap-2 text-lg">
+        <nav className="p-2 flex gap-2 text-lg" aria-label="Main">
           <Link
             to="/"
             activeProps={{
