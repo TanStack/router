@@ -210,7 +210,6 @@ export type {
   ViewTransitionOptions,
   TrailingSlashOption,
   Register,
-  DefaultRegister,
   AdditionalRegister,
   MetaRegister,
   AnyRouter,
@@ -250,6 +249,7 @@ export type {
   ProcessRouteTreeResult,
   SSROption,
   DefaultRegister,
+  RegisteredConfig,
 } from './router'
 
 export * from './config'
@@ -426,6 +426,7 @@ export type {
   SerializerExtensions,
   ValidateSerializable,
   RegisteredSerializableInput,
+  RegisteredSerializationAdapters,
 } from './ssr/serializer/transformer'
 
 export {

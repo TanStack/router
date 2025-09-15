@@ -99,16 +99,22 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type InjectedHtmlEntry = Promise<string>
 
-type FindRouter<TKeys extends keyof MetaRegister = keyof MetaRegister> =
-  TKeys extends any
-    ? Register[MetaRegister[TKeys]] extends never
-      ? never
-      : Register[MetaRegister[TKeys]]
-    : never
+type FindMetaRegister<
+  TLookup,
+  TKeys extends keyof MetaRegister = keyof MetaRegister,
+> = TKeys extends TLookup
+  ? Register[MetaRegister[TKeys]] extends never
+    ? never
+    : Register[MetaRegister[TKeys]]
+  : never
 
-export type RegisteredRouter = [FindRouter] extends [never]
+export type RegisteredRouter = [FindMetaRegister<'router'>] extends [never]
   ? Register['router']
-  : FindRouter['~types']['router']
+  : FindMetaRegister<'router'>['~types']['router']
+
+export type RegisteredConfig = [FindMetaRegister<'config'>] extends [never]
+  ? Register['config']
+  : FindMetaRegister<'config'>['~types']['config']
 
 export interface AdditionalRegister {}
 
