@@ -91,7 +91,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-4">
               <div>
                 <Link to="/" className="block leading-tight">
-                  <div className="font-black text-2xl text-white">Trellaux</div>
+                  <div className="font-black text-2xl text-white">Trellaux - Test</div>
                   <div className="text-slate-500">a TanStack Demo</div>
                 </Link>
               </div>
