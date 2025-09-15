@@ -495,7 +495,7 @@ export const getServerTime = createServerFn({
 })
 ```
 
-This also allows fro streaming responses among other things:
+This also allows for streaming responses among other things:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
