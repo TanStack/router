@@ -18,8 +18,8 @@ import {
   GenericQueryCtx,
   GenericDatabaseReader,
   GenericDatabaseWriter,
-} from 'convex/server'
-import type { DataModel } from './dataModel.js'
+} from "convex/server";
+import type { DataModel } from "./dataModel.js";
 
 /**
  * Define a query in this Convex app's public API.
@@ -29,7 +29,7 @@ import type { DataModel } from './dataModel.js'
  * @param func - The query function. It receives a {@link QueryCtx} as its first argument.
  * @returns The wrapped query. Include this as an `export` to name it and make it accessible.
  */
-export declare const query: QueryBuilder<DataModel, 'public'>
+export declare const query: QueryBuilder<DataModel, "public">;
 
 /**
  * Define a query that is only accessible from other Convex functions (but not from the client).
@@ -39,7 +39,7 @@ export declare const query: QueryBuilder<DataModel, 'public'>
  * @param func - The query function. It receives a {@link QueryCtx} as its first argument.
  * @returns The wrapped query. Include this as an `export` to name it and make it accessible.
  */
-export declare const internalQuery: QueryBuilder<DataModel, 'internal'>
+export declare const internalQuery: QueryBuilder<DataModel, "internal">;
 
 /**
  * Define a mutation in this Convex app's public API.
@@ -49,7 +49,7 @@ export declare const internalQuery: QueryBuilder<DataModel, 'internal'>
  * @param func - The mutation function. It receives a {@link MutationCtx} as its first argument.
  * @returns The wrapped mutation. Include this as an `export` to name it and make it accessible.
  */
-export declare const mutation: MutationBuilder<DataModel, 'public'>
+export declare const mutation: MutationBuilder<DataModel, "public">;
 
 /**
  * Define a mutation that is only accessible from other Convex functions (but not from the client).
@@ -59,7 +59,7 @@ export declare const mutation: MutationBuilder<DataModel, 'public'>
  * @param func - The mutation function. It receives a {@link MutationCtx} as its first argument.
  * @returns The wrapped mutation. Include this as an `export` to name it and make it accessible.
  */
-export declare const internalMutation: MutationBuilder<DataModel, 'internal'>
+export declare const internalMutation: MutationBuilder<DataModel, "internal">;
 
 /**
  * Define an action in this Convex app's public API.
@@ -72,7 +72,7 @@ export declare const internalMutation: MutationBuilder<DataModel, 'internal'>
  * @param func - The action. It receives an {@link ActionCtx} as its first argument.
  * @returns The wrapped action. Include this as an `export` to name it and make it accessible.
  */
-export declare const action: ActionBuilder<DataModel, 'public'>
+export declare const action: ActionBuilder<DataModel, "public">;
 
 /**
  * Define an action that is only accessible from other Convex functions (but not from the client).
@@ -80,7 +80,7 @@ export declare const action: ActionBuilder<DataModel, 'public'>
  * @param func - The function. It receives an {@link ActionCtx} as its first argument.
  * @returns The wrapped function. Include this as an `export` to name it and make it accessible.
  */
-export declare const internalAction: ActionBuilder<DataModel, 'internal'>
+export declare const internalAction: ActionBuilder<DataModel, "internal">;
 
 /**
  * Define an HTTP action.
@@ -92,7 +92,7 @@ export declare const internalAction: ActionBuilder<DataModel, 'internal'>
  * @param func - The function. It receives an {@link ActionCtx} as its first argument.
  * @returns The wrapped function. Import this function from `convex/http.js` and route it to hook it up.
  */
-export declare const httpAction: HttpActionBuilder
+export declare const httpAction: HttpActionBuilder;
 
 /**
  * A set of services for use within Convex query functions.
@@ -103,7 +103,7 @@ export declare const httpAction: HttpActionBuilder
  * This differs from the {@link MutationCtx} because all of the services are
  * read-only.
  */
-export type QueryCtx = GenericQueryCtx<DataModel>
+export type QueryCtx = GenericQueryCtx<DataModel>;
 
 /**
  * A set of services for use within Convex mutation functions.
@@ -111,7 +111,7 @@ export type QueryCtx = GenericQueryCtx<DataModel>
  * The mutation context is passed as the first argument to any Convex mutation
  * function run on the server.
  */
-export type MutationCtx = GenericMutationCtx<DataModel>
+export type MutationCtx = GenericMutationCtx<DataModel>;
 
 /**
  * A set of services for use within Convex action functions.
@@ -119,7 +119,7 @@ export type MutationCtx = GenericMutationCtx<DataModel>
  * The action context is passed as the first argument to any Convex action
  * function run on the server.
  */
-export type ActionCtx = GenericActionCtx<DataModel>
+export type ActionCtx = GenericActionCtx<DataModel>;
 
 /**
  * An interface to read from the database within Convex query functions.
@@ -128,7 +128,7 @@ export type ActionCtx = GenericActionCtx<DataModel>
  * document by its {@link Id}, or {@link DatabaseReader.query}, which starts
  * building a query.
  */
-export type DatabaseReader = GenericDatabaseReader<DataModel>
+export type DatabaseReader = GenericDatabaseReader<DataModel>;
 
 /**
  * An interface to read from and write to the database within Convex mutation
@@ -139,4 +139,4 @@ export type DatabaseReader = GenericDatabaseReader<DataModel>
  * your data in an inconsistent state. See [the Convex Guide](https://docs.convex.dev/understanding/convex-fundamentals/functions#atomicity-and-optimistic-concurrency-control)
  * for the guarantees Convex provides your functions.
  */
-export type DatabaseWriter = GenericDatabaseWriter<DataModel>
+export type DatabaseWriter = GenericDatabaseWriter<DataModel>;
