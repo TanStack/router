@@ -4,7 +4,6 @@ import {
   createMemoryHistory,
   parseHref,
 } from '@tanstack/history'
-import invariant from 'tiny-invariant'
 import {
   createControlledPromise,
   deepEqual,
@@ -13,19 +12,14 @@ import {
   last,
   replaceEqualDeep,
 } from './utils'
+import { processRouteTree } from './process-route-tree'
 import {
-  SEGMENT_TYPE_OPTIONAL_PARAM,
-  SEGMENT_TYPE_PARAM,
-  SEGMENT_TYPE_PATHNAME,
-  SEGMENT_TYPE_WILDCARD,
   cleanPath,
   interpolatePath,
   joinPaths,
   matchPathname,
-  parsePathname,
   resolvePath,
   trimPath,
-  trimPathLeft,
   trimPathRight,
 } from './path'
 import { isNotFound } from './not-found'
@@ -35,7 +29,7 @@ import { rootRouteId } from './root'
 import { isRedirect, redirect } from './redirect'
 import { createLRUCache } from './lru-cache'
 import { loadMatches, loadRouteChunk, routeNeedsPreload } from './load-matches'
-import type { ParsePathnameCache, Segment } from './path'
+import type { ParsePathnameCache } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
@@ -59,6 +53,7 @@ import type {
   AnyRouteWithContext,
   MakeRemountDepsOptionsUnion,
   RouteContextOptions,
+  RouteLike,
   RouteMask,
   SearchMiddleware,
 } from './route'
@@ -1111,33 +1106,6 @@ export class RouterCore<
       return rootRouteId
     })()
 
-    const parseErrors = matchedRoutes.map((route) => {
-      let parsedParamsError
-
-      const parseParams =
-        route.options.params?.parse ?? route.options.parseParams
-
-      if (parseParams) {
-        try {
-          const parsedParams = parseParams(routeParams)
-          // Add the parsed params to the accumulated params bag
-          Object.assign(routeParams, parsedParams)
-        } catch (err: any) {
-          parsedParamsError = new PathParamError(err.message, {
-            cause: err,
-          })
-
-          if (opts?.throwOnError) {
-            throw parsedParamsError
-          }
-
-          return parsedParamsError
-        }
-      }
-
-      return
-    })
-
     const matches: Array<AnyRouteMatch> = []
 
     const getParentContext = (parentMatch?: AnyRouteMatch) => {
@@ -1210,12 +1178,18 @@ export class RouterCore<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
-      const { usedParams, interpolatedPath } = interpolatePath({
+      const { interpolatedPath, usedParams } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
         decodeCharMap: this.pathParamsDecodeCharMap,
       })
 
+      // Waste not, want not. If we already have a match for this route,
+      // reuse it. This is important for layout routes, which might stick
+      // around between navigation actions that only change leaf routes.
+
+      // Existing matches are matches that are already loaded along with
+      // pending matches that are still loading
       const matchId =
         interpolatePath({
           path: route.id,
@@ -1225,17 +1199,39 @@ export class RouterCore<
           parseCache: this.parsePathnameCache,
         }).interpolatedPath + loaderDepsHash
 
-      // Waste not, want not. If we already have a match for this route,
-      // reuse it. This is important for layout routes, which might stick
-      // around between navigation actions that only change leaf routes.
-
-      // Existing matches are matches that are already loaded along with
-      // pending matches that are still loading
       const existingMatch = this.getMatch(matchId)
 
       const previousMatch = this.state.matches.find(
         (d) => d.routeId === route.id,
       )
+
+      const strictParams = existingMatch?._strictParams ?? usedParams
+
+      let paramsError: PathParamError | undefined = undefined
+
+      if (!existingMatch) {
+        const strictParseParams =
+          route.options.params?.parse ?? route.options.parseParams
+
+        if (strictParseParams) {
+          try {
+            Object.assign(
+              strictParams,
+              strictParseParams(strictParams as Record<string, string>),
+            )
+          } catch (err: any) {
+            paramsError = new PathParamError(err.message, {
+              cause: err,
+            })
+
+            if (opts?.throwOnError) {
+              throw paramsError
+            }
+          }
+        }
+      }
+
+      Object.assign(routeParams, strictParams)
 
       const cause = previousMatch ? 'stay' : 'enter'
 
@@ -1248,7 +1244,7 @@ export class RouterCore<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
-          _strictParams: usedParams,
+          _strictParams: strictParams,
           search: previousMatch
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : replaceEqualDeep(existingMatch.search, preMatchSearch),
@@ -1270,7 +1266,7 @@ export class RouterCore<
           params: previousMatch
             ? replaceEqualDeep(previousMatch.params, routeParams)
             : routeParams,
-          _strictParams: usedParams,
+          _strictParams: strictParams,
           pathname: joinPaths([this.basepath, interpolatedPath]),
           updatedAt: Date.now(),
           search: previousMatch
@@ -1281,7 +1277,7 @@ export class RouterCore<
           status,
           isFetching: false,
           error: undefined,
-          paramsError: parseErrors[index],
+          paramsError,
           __routeContext: undefined,
           _nonReactive: {
             loadPromise: createControlledPromise(),
@@ -2378,229 +2374,6 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   }
 
   return {}
-}
-
-interface RouteLike {
-  id: string
-  isRoot?: boolean
-  path?: string
-  fullPath: string
-  rank?: number
-  parentRoute?: RouteLike
-  children?: Array<RouteLike>
-  options?: {
-    caseSensitive?: boolean
-  }
-}
-
-export type ProcessRouteTreeResult<TRouteLike extends RouteLike> = {
-  routesById: Record<string, TRouteLike>
-  routesByPath: Record<string, TRouteLike>
-  flatRoutes: Array<TRouteLike>
-}
-
-const REQUIRED_PARAM_BASE_SCORE = 0.5
-const OPTIONAL_PARAM_BASE_SCORE = 0.4
-const WILDCARD_PARAM_BASE_SCORE = 0.25
-const BOTH_PRESENCE_BASE_SCORE = 0.05
-const PREFIX_PRESENCE_BASE_SCORE = 0.02
-const SUFFIX_PRESENCE_BASE_SCORE = 0.01
-const PREFIX_LENGTH_SCORE_MULTIPLIER = 0.0002
-const SUFFIX_LENGTH_SCORE_MULTIPLIER = 0.0001
-
-function handleParam(segment: Segment, baseScore: number) {
-  if (segment.prefixSegment && segment.suffixSegment) {
-    return (
-      baseScore +
-      BOTH_PRESENCE_BASE_SCORE +
-      PREFIX_LENGTH_SCORE_MULTIPLIER * segment.prefixSegment.length +
-      SUFFIX_LENGTH_SCORE_MULTIPLIER * segment.suffixSegment.length
-    )
-  }
-
-  if (segment.prefixSegment) {
-    return (
-      baseScore +
-      PREFIX_PRESENCE_BASE_SCORE +
-      PREFIX_LENGTH_SCORE_MULTIPLIER * segment.prefixSegment.length
-    )
-  }
-
-  if (segment.suffixSegment) {
-    return (
-      baseScore +
-      SUFFIX_PRESENCE_BASE_SCORE +
-      SUFFIX_LENGTH_SCORE_MULTIPLIER * segment.suffixSegment.length
-    )
-  }
-
-  return baseScore
-}
-
-export function processRouteTree<TRouteLike extends RouteLike>({
-  routeTree,
-  initRoute,
-}: {
-  routeTree: TRouteLike
-  initRoute?: (route: TRouteLike, index: number) => void
-}): ProcessRouteTreeResult<TRouteLike> {
-  const routesById = {} as Record<string, TRouteLike>
-  const routesByPath = {} as Record<string, TRouteLike>
-
-  const recurseRoutes = (childRoutes: Array<TRouteLike>) => {
-    childRoutes.forEach((childRoute, i) => {
-      initRoute?.(childRoute, i)
-
-      const existingRoute = routesById[childRoute.id]
-
-      invariant(
-        !existingRoute,
-        `Duplicate routes found with id: ${String(childRoute.id)}`,
-      )
-
-      routesById[childRoute.id] = childRoute
-
-      if (!childRoute.isRoot && childRoute.path) {
-        const trimmedFullPath = trimPathRight(childRoute.fullPath)
-        if (
-          !routesByPath[trimmedFullPath] ||
-          childRoute.fullPath.endsWith('/')
-        ) {
-          routesByPath[trimmedFullPath] = childRoute
-        }
-      }
-
-      const children = childRoute.children as Array<TRouteLike>
-
-      if (children?.length) {
-        recurseRoutes(children)
-      }
-    })
-  }
-
-  recurseRoutes([routeTree])
-
-  const scoredRoutes: Array<{
-    child: TRouteLike
-    trimmed: string
-    parsed: ReadonlyArray<Segment>
-    index: number
-    scores: Array<number>
-    hasStaticAfter: boolean
-    optionalParamCount: number
-  }> = []
-
-  const routes: Array<TRouteLike> = Object.values(routesById)
-
-  routes.forEach((d, i) => {
-    if (d.isRoot || !d.path) {
-      return
-    }
-
-    const trimmed = trimPathLeft(d.fullPath)
-    let parsed = parsePathname(trimmed)
-
-    // Removes the leading slash if it is not the only remaining segment
-    let skip = 0
-    while (parsed.length > skip + 1 && parsed[skip]?.value === '/') {
-      skip++
-    }
-    if (skip > 0) parsed = parsed.slice(skip)
-
-    let optionalParamCount = 0
-    let hasStaticAfter = false
-    const scores = parsed.map((segment, index) => {
-      if (segment.value === '/') {
-        return 0.75
-      }
-
-      let baseScore: number | undefined = undefined
-      if (segment.type === SEGMENT_TYPE_PARAM) {
-        baseScore = REQUIRED_PARAM_BASE_SCORE
-      } else if (segment.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
-        baseScore = OPTIONAL_PARAM_BASE_SCORE
-        optionalParamCount++
-      } else if (segment.type === SEGMENT_TYPE_WILDCARD) {
-        baseScore = WILDCARD_PARAM_BASE_SCORE
-      }
-
-      if (baseScore) {
-        // if there is any static segment (that is not an index) after a required / optional param,
-        // we will boost this param so it ranks higher than a required/optional param without a static segment after it
-        // JUST FOR SORTING, NOT FOR MATCHING
-        for (let i = index + 1; i < parsed.length; i++) {
-          const nextSegment = parsed[i]!
-          if (
-            nextSegment.type === SEGMENT_TYPE_PATHNAME &&
-            nextSegment.value !== '/'
-          ) {
-            hasStaticAfter = true
-            return handleParam(segment, baseScore + 0.2)
-          }
-        }
-
-        return handleParam(segment, baseScore)
-      }
-
-      return 1
-    })
-
-    scoredRoutes.push({
-      child: d,
-      trimmed,
-      parsed,
-      index: i,
-      scores,
-      optionalParamCount,
-      hasStaticAfter,
-    })
-  })
-
-  const flatRoutes = scoredRoutes
-    .sort((a, b) => {
-      const minLength = Math.min(a.scores.length, b.scores.length)
-
-      // Sort by segment-by-segment score comparison ONLY for the common prefix
-      for (let i = 0; i < minLength; i++) {
-        if (a.scores[i] !== b.scores[i]) {
-          return b.scores[i]! - a.scores[i]!
-        }
-      }
-
-      // If all common segments have equal scores, then consider length and specificity
-      if (a.scores.length !== b.scores.length) {
-        // If different number of optional parameters, fewer optional parameters wins (more specific)
-        // only if both or none of the routes has static segments after the params
-        if (a.optionalParamCount !== b.optionalParamCount) {
-          if (a.hasStaticAfter === b.hasStaticAfter) {
-            return a.optionalParamCount - b.optionalParamCount
-          } else if (a.hasStaticAfter && !b.hasStaticAfter) {
-            return -1
-          } else if (!a.hasStaticAfter && b.hasStaticAfter) {
-            return 1
-          }
-        }
-
-        // If same number of optional parameters, longer path wins (for static segments)
-        return b.scores.length - a.scores.length
-      }
-
-      // Sort by min available parsed value for alphabetical ordering
-      for (let i = 0; i < minLength; i++) {
-        if (a.parsed[i]!.value !== b.parsed[i]!.value) {
-          return a.parsed[i]!.value > b.parsed[i]!.value ? 1 : -1
-        }
-      }
-
-      // Sort by original index
-      return a.index - b.index
-    })
-    .map((d, i) => {
-      d.child.rank = i
-      return d.child
-    })
-
-  return { routesById, routesByPath, flatRoutes }
 }
 
 export function getMatchedRoutes<TRouteLike extends RouteLike>({
