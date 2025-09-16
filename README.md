@@ -134,6 +134,14 @@ A full‑stack framework built on Router, designed for server rendering, streami
 </tr>
 </table>
 
+<div align="center">
+<img src="./media/partner_logo.svg" alt="Router & you?" height="65">
+<p>
+We're looking for TanStack Router & Start Partners to join our mission! Partner with us to push the boundaries of TanStack Router & Start and build amazing things together.
+</p>
+<a href="mailto:partners@tanstack.com?subject=TanStack Router & Start Partnership"><b>LET'S CHAT</b></a>
+</div>
+
 ## Explore the TanStack Ecosystem
 
 - <a href="https://github.com/tanstack/config"><b>TanStack Config</b></a> – Tooling for JS/TS packages
