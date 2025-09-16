@@ -11,7 +11,7 @@ import type {
 import type {
   AnyRequestMiddleware,
   AssignAllServerContext,
-} from '@tanstack/start-client-core'
+} from './createMiddleware'
 
 declare module '@tanstack/router-core' {
   interface FilebaseRouteOptionsInterface<
@@ -382,18 +382,15 @@ export type ResolveAllServerContext<
       AssignAllServerContext<TServerMiddlewares, {}>
     >
 
-export type RouteMethod = (typeof RouteMethods)[number]
-
-export const RouteMethods = [
-  'ALL',
-  'GET',
-  'POST',
-  'PUT',
-  'PATCH',
-  'DELETE',
-  'OPTIONS',
-  'HEAD',
-] as const
+export type RouteMethod =
+  | 'ALL'
+  | 'GET'
+  | 'POST'
+  | 'PUT'
+  | 'PATCH'
+  | 'DELETE'
+  | 'OPTIONS'
+  | 'HEAD'
 
 export type RouteMethodHandlerFn<
   TParentRoute extends AnyRoute,
