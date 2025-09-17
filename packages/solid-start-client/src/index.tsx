@@ -3,12 +3,11 @@ export {
   createIsomorphicFn,
   createServerFn,
   createMiddleware,
-  registerGlobalMiddleware,
-  globalMiddleware,
   createServerOnlyFn,
   createClientOnlyFn,
   json,
   createClientRpc,
+  createStart,
 } from '@tanstack/start-client-core'
 export {
   type DehydratedRouter,
@@ -52,6 +51,8 @@ export {
   type FunctionMiddlewareServerFnOptions,
   type FunctionMiddlewareServerNextFn,
   type FunctionServerResultWithContext,
+  type StartEntry,
+  type Register,
 } from '@tanstack/start-client-core'
 export { StartClient } from './StartClient'
 export { useServerFn } from './useServerFn'

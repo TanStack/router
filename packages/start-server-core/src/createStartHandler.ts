@@ -22,6 +22,7 @@ import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionS
 import type {
   RouteMethod,
   RouteMethodHandlerFn,
+  StartEntry,
 } from '@tanstack/start-client-core'
 import type { RequestHandler } from './request-response'
 import type {
@@ -34,7 +35,7 @@ import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 
 type TODO = any
 
-export type CustomizeStartHandler<TRouter extends AnyRouter> = (
+export type CustomizeStartHandler<TRouter extends AnyRouter = AnyRouter> = (
   cb: HandlerCallback<TRouter>,
 ) => RequestHandler
 
@@ -51,66 +52,82 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
   return headers
 }
 
-export function createStartHandler<TRouter extends AnyRouter>({
-  createRouter,
-}: {
-  createRouter: () => Awaitable<TRouter>
-}): CustomizeStartHandler<TRouter> {
+export function createStartHandler(
+  cb: HandlerCallback<AnyRouter>,
+): RequestHandler {
+  if (!process.env.TSS_SERVER_FN_BASE) {
+    throw new Error(
+      'tanstack/start-server-core: TSS_SERVER_FN_BASE must be defined in your environment for createStartHandler()',
+    )
+  }
+  // TODO do we remove this?
+  const APP_BASE = process.env.TSS_APP_BASE || '/'
+  // Add trailing slash to sanitise user defined TSS_SERVER_FN_BASE
+  const serverFnBase = joinPaths([
+    APP_BASE,
+    trimPath(process.env.TSS_SERVER_FN_BASE),
+    '/',
+  ])
   let startRoutesManifest: Manifest | null = null
+  let startEntry: StartEntry | null = null
 
-  return (cb) => {
-    const originalFetch = globalThis.fetch
+  const originalFetch = globalThis.fetch
 
-    const startRequestResolver: RequestHandler = async (request) => {
-      function getOrigin() {
-        const originHeader = request.headers.get('Origin')
-        if (originHeader) {
-          return originHeader
-        }
-        try {
-          return new URL(request.url).origin
-        } catch (_) {}
-        return 'http://localhost'
+  const startRequestResolver: RequestHandler = async (request, requestOpts) => {
+    function getOrigin() {
+      const originHeader = request.headers.get('Origin')
+      if (originHeader) {
+        return originHeader
+      }
+      try {
+        return new URL(request.url).origin
+      } catch (_) {}
+      return 'http://localhost'
+    }
+
+    // Patching fetch function to use our request resolver
+    // if the input starts with `/` which is a common pattern for
+    // client-side routing.
+    // When we encounter similar requests, we can assume that the
+    // user wants to use the same origin as the current request.
+    globalThis.fetch = async function (input, init) {
+      function resolve(url: URL, requestOptions: RequestInit | undefined) {
+        const fetchRequest = new Request(url, requestOptions)
+        return startRequestResolver(fetchRequest, requestOpts)
       }
 
-      // Patching fetch function to use our request resolver
-      // if the input starts with `/` which is a common pattern for
-      // client-side routing.
-      // When we encounter similar requests, we can assume that the
-      // user wants to use the same origin as the current request.
-      globalThis.fetch = async function (input, init) {
-        function resolve(url: URL, requestOptions: RequestInit | undefined) {
-          const fetchRequest = new Request(url, requestOptions)
-          return startRequestResolver(fetchRequest)
-        }
-
-        if (typeof input === 'string' && input.startsWith('/')) {
-          // e.g: fetch('/api/data')
-          const url = new URL(input, getOrigin())
-          return resolve(url, init)
-        } else if (
-          typeof input === 'object' &&
-          'url' in input &&
-          typeof input.url === 'string' &&
-          input.url.startsWith('/')
-        ) {
-          // e.g: fetch(new Request('/api/data'))
-          const url = new URL(input.url, getOrigin())
-          return resolve(url, init)
-        }
-
-        // If not, it should just use the original fetch
-        return originalFetch(input, init)
+      if (typeof input === 'string' && input.startsWith('/')) {
+        // e.g: fetch('/api/data')
+        const url = new URL(input, getOrigin())
+        return resolve(url, init)
+      } else if (
+        typeof input === 'object' &&
+        'url' in input &&
+        typeof input.url === 'string' &&
+        input.url.startsWith('/')
+      ) {
+        // e.g: fetch(new Request('/api/data'))
+        const url = new URL(input.url, getOrigin())
+        return resolve(url, init)
       }
 
-      const url = new URL(request.url)
-      const href = url.href.replace(url.origin, '')
+      // If not, it should just use the original fetch
+      return originalFetch(input, init)
+    }
 
-      // TODO do we remove this?
-      const APP_BASE = process.env.TSS_APP_BASE || '/'
+    const url = new URL(request.url)
+    const href = url.href.replace(url.origin, '')
 
+    if (startEntry === null) {
+      // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+      startEntry = await import('tanstack-start-entry')
+    }
+
+    let router: AnyRouter | null = null
+    const getRouter = async () => {
+      if (router) return router
       // TODO how does this work with base path? does the router need to be configured the same as APP_BASE?
-      const router = await createRouter()
+      router = await startEntry!.getRouter()
 
       // Update the client-side router with the history
       const isPrerendering = process.env.TSS_PRERENDERING === 'true'
@@ -140,146 +157,123 @@ export function createStartHandler<TRouter extends AnyRouter>({
         serializationAdapters,
         origin,
       })
+      return router
+    }
 
-      // TODO make all this one big middleware chain
-      // 1. global request middlewares
-      // 2. serverFunctionMiddleware, will handle the request if the request path matches
-      //  => invoke server function and pass in context from global request middlewares
-      // 3. server routes
-      // 4. render router
-      const response = await runWithStartContext({ router }, async () => {
-        try {
-          if (!process.env.TSS_SERVER_FN_BASE) {
-            throw new Error(
-              'tanstack/start-server-core: TSS_SERVER_FN_BASE must be defined in your environment for createStartHandler()',
-            )
-          }
+    const start = await startEntry!.getStart?.()
 
-          // First, let's attempt to handle server functions
-          // Add trailing slash to sanitise user defined TSS_SERVER_FN_BASE
-          const serverFnBase = joinPaths([
-            APP_BASE,
-            trimPath(process.env.TSS_SERVER_FN_BASE),
-            '/',
-          ])
-          if (href.startsWith(serverFnBase)) {
-            return await handleServerAction({ request })
-          }
+    const requestHandlerMiddleware = handlerToMiddleware(
+      async ({ context }) => {
+        const response = await runWithStartContext(
+          {
+            getRouter,
+            start,
+            contextAfterGlobalMiddlewares: context,
+          },
+          async () => {
+            try {
+              // First, let's attempt to handle server functions
+              if (href.startsWith(serverFnBase)) {
+                // TODO run request middlewares first
+                return await handleServerAction({
+                  request,
+                  context: requestOpts?.context,
+                })
+              }
 
-          const executeRouter = async ({
-            serverContext,
-          }: {
-            serverContext: any
-          }) => {
-            const requestAcceptHeader = request.headers.get('Accept') || '*/*'
-            const splitRequestAcceptHeader = requestAcceptHeader.split(',')
+              const executeRouter = async ({
+                serverContext,
+              }: {
+                serverContext: any
+              }) => {
+                const requestAcceptHeader =
+                  request.headers.get('Accept') || '*/*'
+                const splitRequestAcceptHeader = requestAcceptHeader.split(',')
 
-            const supportedMimeTypes = ['*/*', 'text/html']
-            const isRouterAcceptSupported = supportedMimeTypes.some(
-              (mimeType) =>
-                splitRequestAcceptHeader.some((acceptedMimeType) =>
-                  acceptedMimeType.trim().startsWith(mimeType),
-                ),
-            )
+                const supportedMimeTypes = ['*/*', 'text/html']
+                const isRouterAcceptSupported = supportedMimeTypes.some(
+                  (mimeType) =>
+                    splitRequestAcceptHeader.some((acceptedMimeType) =>
+                      acceptedMimeType.trim().startsWith(mimeType),
+                    ),
+                )
 
-            if (!isRouterAcceptSupported) {
-              return json(
-                {
-                  error: 'Only HTML requests are supported here',
-                },
-                {
-                  status: 500,
-                },
-              )
-            }
+                if (!isRouterAcceptSupported) {
+                  return json(
+                    {
+                      error: 'Only HTML requests are supported here',
+                    },
+                    {
+                      status: 500,
+                    },
+                  )
+                }
 
-            // if the startRoutesManifest is not loaded yet, load it once
-            if (startRoutesManifest === null) {
-              startRoutesManifest = await getStartManifest({
-                basePath: APP_BASE,
+                // if the startRoutesManifest is not loaded yet, load it once
+                if (startRoutesManifest === null) {
+                  startRoutesManifest = await getStartManifest({
+                    basePath: APP_BASE,
+                  })
+                }
+                const router = await getRouter()
+                attachRouterServerSsrUtils(router, startRoutesManifest)
+
+                router.update({ additionalContext: { serverContext } })
+                await router.load()
+
+                // If there was a redirect, skip rendering the page at all
+                if (router.state.redirect) {
+                  return router.state.redirect
+                }
+
+                await router.serverSsr!.dehydrate()
+
+                const responseHeaders = getStartResponseHeaders({ router })
+                const response = await cb({
+                  request,
+                  router,
+                  responseHeaders,
+                })
+
+                return response
+              }
+
+              const response = await handleServerRoutes({
+                getRouter,
+                request,
+                executeRouter,
               })
+
+              return response
+            } catch (err) {
+              if (err instanceof Response) {
+                return err
+              }
+
+              throw err
             }
+          },
+        )
+        return response
+      },
+    )
 
-            attachRouterServerSsrUtils(router, startRoutesManifest)
+    const flattenedMiddlewares = start?.requestMiddleware
+      ? flattenMiddlewares(start.requestMiddleware)
+      : []
+    const middlewares = flattenedMiddlewares.map((d) => d.options.server)
+    const ctx = await executeMiddleware(
+      [...middlewares, requestHandlerMiddleware],
+      {
+        request,
+        context: requestOpts?.context || {},
+      },
+    )
 
-            router.update({ additionalContext: { serverContext } })
-            await router.load()
+    const response: Response = ctx.response
 
-            // If there was a redirect, skip rendering the page at all
-            if (router.state.redirect) {
-              return router.state.redirect
-            }
-
-            await router.serverSsr!.dehydrate()
-
-            const responseHeaders = getStartResponseHeaders({ router })
-            const response = await cb({
-              request,
-              router,
-              responseHeaders,
-            })
-
-            return response
-          }
-
-          const response = await handleServerRoutes({
-            router,
-            request,
-            executeRouter,
-          })
-
-          return response
-        } catch (err) {
-          if (err instanceof Response) {
-            return err
-          }
-
-          throw err
-        }
-      })
-
-      if (isRedirect(response)) {
-        if (isResolvedRedirect(response)) {
-          if (request.headers.get('x-tsr-redirect') === 'manual') {
-            return json(
-              {
-                ...response.options,
-                isSerializedRedirect: true,
-              },
-              {
-                headers: response.headers,
-              },
-            )
-          }
-          return response
-        }
-        if (
-          response.options.to &&
-          typeof response.options.to === 'string' &&
-          !response.options.to.startsWith('/')
-        ) {
-          throw new Error(
-            `Server side redirects must use absolute paths via the 'href' or 'to' options. The redirect() method's "to" property accepts an internal path only. Use the "href" property to provide an external URL. Received: ${JSON.stringify(response.options)}`,
-          )
-        }
-
-        if (
-          ['params', 'search', 'hash'].some(
-            (d) => typeof (response.options as any)[d] === 'function',
-          )
-        ) {
-          throw new Error(
-            `Server side redirects must use static search, params, and hash values and do not support functional values. Received functional values for: ${Object.keys(
-              response.options,
-            )
-              .filter((d) => typeof (response.options as any)[d] === 'function')
-              .map((d) => `"${d}"`)
-              .join(', ')}`,
-          )
-        }
-
-        const redirect = router.resolveRedirect(response)
-
+    if (isRedirect(response)) {
+      if (isResolvedRedirect(response)) {
         if (request.headers.get('x-tsr-redirect') === 'manual') {
           return json(
             {
@@ -291,23 +285,63 @@ export function createStartHandler<TRouter extends AnyRouter>({
             },
           )
         }
-
-        return redirect
+        return response
+      }
+      if (
+        response.options.to &&
+        typeof response.options.to === 'string' &&
+        !response.options.to.startsWith('/')
+      ) {
+        throw new Error(
+          `Server side redirects must use absolute paths via the 'href' or 'to' options. The redirect() method's "to" property accepts an internal path only. Use the "href" property to provide an external URL. Received: ${JSON.stringify(response.options)}`,
+        )
       }
 
-      return response
+      if (
+        ['params', 'search', 'hash'].some(
+          (d) => typeof (response.options as any)[d] === 'function',
+        )
+      ) {
+        throw new Error(
+          `Server side redirects must use static search, params, and hash values and do not support functional values. Received functional values for: ${Object.keys(
+            response.options,
+          )
+            .filter((d) => typeof (response.options as any)[d] === 'function')
+            .map((d) => `"${d}"`)
+            .join(', ')}`,
+        )
+      }
+
+      const router = await getRouter()
+      const redirect = router.resolveRedirect(response)
+
+      if (request.headers.get('x-tsr-redirect') === 'manual') {
+        return json(
+          {
+            ...response.options,
+            isSerializedRedirect: true,
+          },
+          {
+            headers: response.headers,
+          },
+        )
+      }
+
+      return redirect
     }
 
-    return requestHandler(startRequestResolver)
+    return response
   }
+
+  return requestHandler(startRequestResolver)
 }
 
 async function handleServerRoutes({
-  router,
+  getRouter,
   request,
   executeRouter,
 }: {
-  router: AnyRouter
+  getRouter: () => Awaitable<AnyRouter>
   request: Request
   executeRouter: ({
     serverContext,
@@ -315,6 +349,7 @@ async function handleServerRoutes({
     serverContext: any
   }) => Promise<Response>
 }) {
+  const router = await getRouter()
   let url = new URL(request.url)
   url = executeRewriteInput(router.rewrite, url)
   const pathname = url.pathname
@@ -421,7 +456,7 @@ function throwIfMayNotDefer() {
 }
 function handlerToMiddleware(
   handler: RouteMethodHandlerFn<AnyRoute, any, any, any, any>,
-  mayDefer: boolean,
+  mayDefer: boolean = false,
 ) {
   if (mayDefer) {
     return handler as TODO

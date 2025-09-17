@@ -56,6 +56,12 @@
         "default": "./dist/esm/plugin/vite.js"
       }
     },
+    "./server-entry": {
+      "import": {
+        "types": "./dist/default-entry/esm/server.d.ts",
+        "default": "./dist/default-entry/esm/server.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

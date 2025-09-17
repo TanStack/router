@@ -17,5 +17,6 @@ export default mergeConfig(
     srcDir: './src',
     entry: './src/index.tsx',
     cjs: false,
+    externalDeps: ['tanstack-start-entry'],
   }),
 )

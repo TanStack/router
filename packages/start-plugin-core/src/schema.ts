@@ -115,14 +115,13 @@ const pageSchema = pageBaseSchema.extend({
 const tanstackStartOptionsSchema = z
   .object({
     srcDirectory: z.string().optional().default('src'),
-    router: z
+    start: z
       .object({
-        // TODO this will move to 'start' once we have `createStart`
         entry: z.string().optional(),
       })
-      .and(tsrConfig.optional().default({}))
       .optional()
       .default({}),
+    router: tsrConfig.optional().default({}),
     client: z
       .object({
         entry: z.string().optional(),

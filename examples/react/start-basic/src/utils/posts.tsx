@@ -1,5 +1,5 @@
 import { notFound } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createMiddleware, createServerFn } from '@tanstack/react-start'
 
 export type PostType = {
   id: string
@@ -7,9 +7,29 @@ export type PostType = {
   body: string
 }
 
-export const fetchPost = createServerFn()
+const mw = createMiddleware({ type: 'function' })
+  .client(async ({ next, context }) => {
+    console.log('Client middleware!', context)
+    const result = await next({
+      sendContext: {
+        clientMiddlewareValue: 123,
+      },
+    })
+    console.log('Client middleware after next!', result)
+    return result
+  })
+  .server(async ({ next, context }) => {
+    return next({
+      context: {
+        hello: 'from the server middleware!',
+      },
+    })
+  })
+export const fetchPost = createServerFn({ method: 'POST' })
+  .middleware([mw])
   .validator((d: string) => d)
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    console.log('Request context:', context)
     console.info(`Fetching post with id ${data}...`)
     const res = await fetch(
       `https://jsonplaceholder.typicode.com/posts/${data}`,

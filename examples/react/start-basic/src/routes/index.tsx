@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { Foo } from '~/Foo'
 
 export const Route = createFileRoute('/')({
   server: {
@@ -40,6 +41,9 @@ export const Route = createFileRoute('/')({
     ctx.serverContext
   },
   component: Home,
+  loader: () => {
+    return new Foo('hello')
+  },
 })
 
 function Home() {

@@ -247,6 +247,7 @@ export type {
   ProcessRouteTreeResult,
   SSROption,
   DefaultRegister,
+  AdditionalRegister,
 } from './router'
 
 export * from './config'

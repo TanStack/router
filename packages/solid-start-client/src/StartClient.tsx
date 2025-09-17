@@ -1,28 +1,24 @@
 import { Await, HeadContent, RouterProvider } from '@tanstack/solid-router'
-import { hydrate } from '@tanstack/start-client-core'
+import { hydrateStart } from '@tanstack/start-client-core'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 
-let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
+let hydrationPromise: Promise<AnyRouter> | undefined
 
 const Dummy = (props: { children?: JSXElement }) => <>{props.children}</>
 
-export function StartClient(props: { router: AnyRouter }) {
+export function StartClient() {
   if (!hydrationPromise) {
-    if (!props.router.state.matches.length) {
-      hydrationPromise = hydrate(props.router)
-    } else {
-      hydrationPromise = Promise.resolve()
-    }
+    hydrationPromise = hydrateStart()
   }
   return (
     <Await
       promise={hydrationPromise}
-      children={() => (
+      children={(router) => (
         <Dummy>
           <Dummy>
             <RouterProvider
-              router={props.router}
+              router={router}
               InnerWrap={(props) => (
                 <Dummy>
                   <Dummy>
