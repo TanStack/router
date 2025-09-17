@@ -21,7 +21,11 @@ export function createRequestHandler<TRouter extends AnyRouter>({
   return async (cb) => {
     const router = createRouter()
 
-    attachRouterServerSsrUtils(router, await getRouterManifest?.())
+    attachRouterServerSsrUtils({
+      router,
+      nonce: undefined,
+      manifest: await getRouterManifest?.(),
+    })
 
     const url = new URL(request.url, 'http://localhost')
 

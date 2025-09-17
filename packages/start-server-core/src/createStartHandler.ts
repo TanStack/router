@@ -216,7 +216,11 @@ export function createStartHandler(
                   })
                 }
                 const router = await getRouter()
-                attachRouterServerSsrUtils(router, startRoutesManifest)
+                attachRouterServerSsrUtils({
+                  router,
+                  nonce: serverContext.nonce,
+                  manifest: startRoutesManifest,
+                })
 
                 router.update({ additionalContext: { serverContext } })
                 await router.load()
