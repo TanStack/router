@@ -80,58 +80,93 @@ A full‑stack framework built on Router, designed for server rendering, streami
 
 ## Partners
 
+
 <table align="center">
-<tr>
-<td>
-<a href="https://www.coderabbit.ai/?via=tanstack&dub_id=aCcEEdAOqqutX6OS">
-<img src="https://tanstack.com/assets/coderabbit-light-DVMJ2jHi.svg" height="40" alt="Code Rabbit"/>
-</a>
-</td>
-<td>
-<a href="https://www.cloudflare.com?utm_source=tanstack">
-<img src="https://tanstack.com/assets/cloudflare-black-CPufaW0B.svg" height="70" alt="Cloudflare"/>
-</a>
-</td>
-<td>
-<a href="https://netlify.com?utm_source=tanstack">
-<img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/netlify.svg" height="70" alt="Netlify"/>
-</a>
-</td>
-</tr>
-<tr>
-<td>
-<a href="https://neon.tech?utm_source=tanstack">
-<img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="60" alt="Neon"/>
-</a>
-</td>
-<td>
-<a href="https://go.clerk.com/wOwHtuJ">
-<img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="50" alt="Clerk"/>
-</a>
-</td>
-<td>
-<a href="https://convex.dev?utm_source=tanstack">
-<img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="40" alt="Convex"/>
-</a>
-</td>
-</tr>
-<tr>
-<td>
-<a href="https://sentry.io?utm_source=tanstack">
-<img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="50" alt="Sentry"/>
-</a>
-</td>
-<td>
-<a href="https://www.prisma.io?utm_source=tanstack&via=tanstack">
-<img src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" height="60" alt="Prisma"/>
-</a>
-</td>
-<td>
-<a href="https://strapi.link/tanstack-start">
-<img src="https://tanstack.com/assets/strapi-light-6x7linao.svg" height="50" alt="Strapi"/>
-</a>
-</td>
-</tr>
+  <tr>
+    <td>
+        <a href="https://www.coderabbit.ai/?via=tanstack&dub_id=aCcEEdAOqqutX6OS">
+			<picture>
+			  <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/coderabbit-dark-CMcuvjEy.svg" height="40" />
+			  <source media="(prefers-color-scheme: light)" srcset="https://tanstack.com/assets/coderabbit-light-DVMJ2jHi.svg" height="40" />
+			  <img src="https://tanstack.com/assets/coderabbit-dark-CMcuvjEy.svg" height="40" alt="CodeRabbit" />
+			</picture>        
+		</a>
+    </td>
+    <td padding="20">
+      <a href="https://www.cloudflare.com?utm_source=tanstack">
+         <picture>
+    		  <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/cloudflare-white-DQDB7UaL.svg" height="60" />
+    		  <source media="(prefers-color-scheme: light)" srcset="https://tanstack.com/assets/cloudflare-black-CPufaW0B.svg" height="60" />
+    		  <img src="https://tanstack.com/assets/cloudflare-black-CPufaW0B.svg" height="60" alt="Cloudflare" />
+    		</picture>
+      </a>
+    </td>
+    <td>
+      <a href="https://netlify.com?utm_source=tanstack">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-dark.svg" height="70"/>
+        <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/netlify.svg" height="70"/>
+        <img src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-dark.svg" height="70" alt="Netlify" />
+      </picture>
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://neon.tech?utm_source=tanstack">
+         <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-dark.svg" height="70"/>
+        <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="70"/>
+        <img src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-dark.svg" height="70" alt="Neon" />
+      </a>
+    </td>
+    <td>
+      <a href="https://go.clerk.com/wOwHtuJ">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/clerk-logo-dark-CRE22T_2.svg" height="40"/>
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/clerk.svg" height="40"/>
+          <img src="https://tanstack.com/assets/clerk-logo-dark-CRE22T_2.svg" height="40" alt="Clerk" />
+        </picture>
+      </a>
+    </td>
+    <td>
+      <a href="https://convex.dev?utm_source=tanstack">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-white.svg" height="30"/>
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="30"/>
+          <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/convex.svg" height="30" alt="Convex" />
+        </picture>
+      </a>
+    </td>
+  </tr>
+    <tr>
+    <td>
+      <a href="https://sentry.io?utm_source=tanstack">
+        <picture>
+           <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/sentry-wordmark-light.svg" height="50"/>
+          <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="50"/>
+          <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/sentry.svg" height="50" alt="Sentry" />
+        </picture>
+      </a>
+    </td>
+    <td>
+      <a href="https://www.prisma.io?utm_source=tanstack&via=tanstack">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/prisma-dark-DwgDxLwn.svg" height="50"/>
+          <source media="(prefers-color-scheme: light)" srcset="https://tanstack.com/assets/prisma-light-Cloa3Onm.svg" height="50"/>
+          <img src="https://tanstack.com/assets/prisma-dark-DwgDxLwn.svg" height="50" alt="Prisma" />
+        </picture>
+      </a>
+    </td>
+    <td>
+      <a href="https://strapi.link/tanstack-start">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="https://tanstack.com/assets/strapi-dark-CQ84tQTk.svg" height="40"/>
+          <source media="(prefers-color-scheme: light)" srcset="https://tanstack.com/assets/strapi-light-6x7linao.svg" height="40"/>
+          <img src="https://tanstack.com/assets/strapi-dark-CQ84tQTk.svg" height="40" alt="Strapi" />
+        </picture>
+      </a>
+    </td>
+  </tr>
 </table>
 
 <div align="center">
