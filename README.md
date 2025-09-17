@@ -114,10 +114,12 @@ A full‑stack framework built on Router, designed for server rendering, streami
   <tr>
     <td>
       <a href="https://neon.tech?utm_source=tanstack">
-         <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-dark.svg" height="70"/>
-        <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="70"/>
-        <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="70" alt="Neon" />
-      </a>
+		  <picture>
+	        <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-dark.svg" height="50"/>
+	        <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="50"/>
+	        <img src="https://raw.githubusercontent.com/tannerlinsley/files/master/partners/neon.svg" height="50" alt="Neon" />
+		  </picture>
+	  </a>
     </td>
     <td>
       <a href="https://go.clerk.com/wOwHtuJ">
