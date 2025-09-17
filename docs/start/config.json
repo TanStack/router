@@ -30,8 +30,20 @@
               "to": "framework/react/build-from-scratch"
             },
             {
-              "label": "Learn the Basics",
-              "to": "framework/react/learn-the-basics"
+              "label": "Routing",
+              "to": "framework/react/routing"
+            },
+            {
+              "label": "Execution Model",
+              "to": "framework/react/execution-model"
+            },
+            {
+              "label": "Code Execution Patterns",
+              "to": "framework/react/code-execution-patterns"
+            },
+            {
+              "label": "Environment Variables",
+              "to": "framework/react/environment-variables"
             },
             {
               "label": "Server Functions",
@@ -58,8 +70,24 @@
               "to": "framework/react/spa-mode"
             },
             {
+              "label": "Static Prerendering",
+              "to": "framework/react/static-prerendering"
+            },
+            {
+              "label": "Server Entry Point",
+              "to": "framework/react/server-entry-point"
+            },
+            {
+              "label": "Client Entry Point",
+              "to": "framework/react/client-entry-point"
+            },
+            {
               "label": "Hosting",
               "to": "framework/react/hosting"
+            },
+            {
+              "label": "Authentication Overview",
+              "to": "framework/react/authentication-overview"
             },
             {
               "label": "Authentication",
@@ -72,10 +100,6 @@
             {
               "label": "Observability",
               "to": "framework/react/observability"
-            },
-            {
-              "label": "Static Prerendering",
-              "to": "framework/react/static-prerendering"
             },
             {
               "label": "Path Aliases",
@@ -111,8 +135,20 @@
               "to": "framework/solid/build-from-scratch"
             },
             {
-              "label": "Learn the Basics",
-              "to": "framework/solid/learn-the-basics"
+              "label": "Routing",
+              "to": "framework/solid/routing"
+            },
+            {
+              "label": "Execution Model",
+              "to": "framework/solid/execution-model"
+            },
+            {
+              "label": "Code Execution Patterns",
+              "to": "framework/solid/code-execution-patterns"
+            },
+            {
+              "label": "Environment Variables",
+              "to": "framework/solid/environment-variables"
             },
             {
               "label": "Server Functions",
@@ -139,8 +175,24 @@
               "to": "framework/solid/spa-mode"
             },
             {
+              "label": "Static Prerendering",
+              "to": "framework/solid/static-prerendering"
+            },
+            {
+              "label": "Server Entry Point",
+              "to": "framework/solid/server-entry-point"
+            },
+            {
+              "label": "Client Entry Point",
+              "to": "framework/solid/client-entry-point"
+            },
+            {
               "label": "Hosting",
               "to": "framework/solid/hosting"
+            },
+            {
+              "label": "Authentication Overview",
+              "to": "framework/solid/authentication-overview"
             },
             {
               "label": "Authentication",
@@ -155,16 +207,12 @@
               "to": "framework/solid/observability"
             },
             {
-              "label": "Static Prerendering",
-              "to": "framework/solid/static-prerendering"
+              "label": "Path Aliases",
+              "to": "framework/solid/path-aliases"
             },
             {
               "label": "Tailwind CSS Integration",
               "to": "framework/solid/tailwind-integration"
-            },
-            {
-              "label": "Path Aliases",
-              "to": "framework/solid/path-aliases"
             }
           ]
         }
@@ -240,6 +288,15 @@
             {
               "label": "Reading and Writing a File",
               "to": "framework/react/reading-writing-file"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Reading and Writing a File",
+              "to": "framework/solid/reading-writing-file"
             }
           ]
         }

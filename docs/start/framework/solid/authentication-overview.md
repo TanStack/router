@@ -1,5 +1,5 @@
 ---
-ref: docs/start/framework/react/quick-start.md
+ref: docs/start/framework/react/authentication-overview.md
 replace:
   {
     '@tanstack/react-start': '@tanstack/solid-start',

@@ -1,5 +1,6 @@
 ---
-title: How to Use Environment Variables
+id: environment-variables
+title: Environment Variables
 ---
 
 Learn how to securely configure and use environment variables in your TanStack Start application across different contexts (server functions, client code, and build processes).
@@ -375,21 +376,9 @@ for (const key of requiredClientEnv) {
 **Solutions**:
 
 1. **Add correct prefix**: Use `VITE_` prefix (e.g. `VITE_MY_VARIABLE`)
-   Vite's default prefix may be changed in the config:
-   ```ts
-   // vite.config.ts
-   export const config = {
-     // ...rest of your config
-     envPrefix: 'MYPREFIX_', // this means `MYPREFIX_MY_VARIABLE` is the new correct way
-   }
-   ```
 2. **Restart development server** after adding new variables
 3. **Check file location**: `.env` file must be in project root
 4. **Verify bundler configuration**: Ensure variables are properly injected
-5. **Verify variable**:
-
-- **In dev**: is in correct `.env` file or environment
-- **For prod**: is in correct `.env` file or current environment **_at bundle time_**. That's right, `VITE_`-prefixed variables are replaced in a macro-like fashion at bundle time, and will _never_ be read at runtime on your server. This is a common mistake, so make sure this is not your case.
 
 **Example**:
 
@@ -407,20 +396,13 @@ npm run build
 VITE_API_KEY=abc123 npm run build
 ```
 
-### Runtime Client Environment Variables at Runtime in Production
+### Runtime Client Environment Variables in Production
 
-**Problem**: If `VITE_` variables are replaced at bundle time only, how to make runtime variables available on the client ?
+**Problem**: If `VITE_` variables are replaced at bundle time only, how to make runtime variables available on the client?
 
 **Solutions**:
 
 Pass variables from the server down to the client:
-
-1. Add your variable to the correct `env.` file
-2. Create an endpoint on your server to read the value from the client
-
-**Example**:
-
-Using Tanstack Start server functions:
 
 ```tsx
 const getRuntimeVar = createServerFn({ method: 'GET' }).handler(() => {
@@ -483,14 +465,9 @@ interface ImportMetaEnv {
 2. Validate required variables at build time
 3. Use deployment-specific `.env` files
 
-## Common Next Steps
-
-<!-- [Set Up Authentication](./setup-authentication.md) - Use environment variables for auth providers -->
-<!-- [Deploy to Production](./deploy-to-production.md) - Configure environment variables for different hosting platforms -->
-<!-- [Set Up Database](./setup-database.md) - Configure database connections with environment variables -->
-
 ## Related Resources
 
-- [TanStack Start Server Functions](../server-functions.md) - Learn more about server-side code
-- [TanStack Start Hosting](../hosting.md) - Platform-specific environment variable configuration
+- [Code Execution Patterns](./code-execution-patterns.md) - Learn about server vs client code execution
+- [Server Functions](./server-functions.md) - Learn more about server-side code
+- [Hosting](./hosting.md) - Platform-specific environment variable configuration
 - [Vite Environment Variables](https://vitejs.dev/guide/env-and-mode.html) - Official Vite documentation

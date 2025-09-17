@@ -1,8 +1,9 @@
 ---
-title: How to Write Isomorphic, Client-Only, and Server-Only Code
+id: execution-model
+title: Execution Model
 ---
 
-This guide covers TanStack Start's execution model and APIs for controlling where code runs.
+Understanding where code runs is fundamental to building TanStack Start applications. This guide explains TanStack Start's execution model and how to control where your code executes.
 
 ## Core Principle: Isomorphic by Default
 
@@ -27,13 +28,29 @@ export const Route = createFileRoute('/products')({
 })
 ```
 
-**Important**: Route `loader`s are isomorphic - they run on both server and client.
+> **Critical Understanding**: Route `loader`s are isomorphic - they run on both server and client, not just the server.
 
----
+## The Execution Boundary
 
-## When You Need Execution Constraints
+TanStack Start applications run in two environments:
 
-### Server-Only APIs
+### Server Environment
+
+- **Node.js runtime** with access to file system, databases, environment variables
+- **During SSR** - Initial page renders on server
+- **API requests** - Server functions execute server-side
+- **Build time** - Static generation and pre-rendering
+
+### Client Environment
+
+- **Browser runtime** with access to DOM, localStorage, user interactions
+- **After hydration** - Client takes over after initial server render
+- **Navigation** - Route loaders run client-side during navigation
+- **User interactions** - Event handlers, form submissions, etc.
+
+## Execution Control APIs
+
+### Server-Only Execution
 
 | API                      | Use Case                  | Client Behavior           |
 | ------------------------ | ------------------------- | ------------------------- |
@@ -55,7 +72,7 @@ const updateUser = createServerFn({ method: 'POST' })
 const getEnvVar = createServerOnlyFn(() => process.env.DATABASE_URL)
 ```
 
-### Client-Only APIs
+### Client-Only Execution
 
 | API                      | Use Case                        | Server Behavior  |
 | ------------------------ | ------------------------------- | ---------------- |
@@ -92,52 +109,13 @@ const getDeviceInfo = createIsomorphicFn()
   .client(() => ({ type: 'client', userAgent: navigator.userAgent }))
 ```
 
----
-
-## Key Distinctions
-
-### `createServerFn()` vs `createServerOnlyFn()`
-
-```tsx
-// createServerFn: RPC pattern - server execution, client callable
-const fetchUser = createServerFn().handler(async () => await db.users.find())
-
-// Usage from client component:
-const user = await fetchUser() // ✅ Network request
-
-// createServerOnlyFn: Crashes if called from client
-const getSecret = createServerOnlyFn(() => process.env.SECRET)
-
-// Usage from client:
-const secret = getSecret() // ❌ Throws error
-```
-
-### Manual Environment Detection vs APIs
-
-```tsx
-// Manual: You handle the logic
-function logMessage(msg: string) {
-  if (typeof window === 'undefined') {
-    console.log(`[SERVER]: ${msg}`)
-  } else {
-    console.log(`[CLIENT]: ${msg}`)
-  }
-}
-
-// API: Framework handles it
-const logMessage = createIsomorphicFn()
-  .server((msg) => console.log(`[SERVER]: ${msg}`))
-  .client((msg) => console.log(`[CLIENT]: ${msg}`))
-```
-
----
-
-## Common Patterns
+## Architectural Patterns
 
 ### Progressive Enhancement
 
+Build components that work without JavaScript and enhance with client-side functionality:
+
 ```tsx
-// Component works without JS, enhanced with JS
 function SearchForm() {
   const [query, setQuery] = useState('')
 
@@ -171,9 +149,25 @@ const storage = createIsomorphicFn()
   })
 ```
 
----
+### RPC vs Direct Function Calls
 
-## Common Problems
+Understanding when to use server functions vs server-only functions:
+
+```tsx
+// createServerFn: RPC pattern - server execution, client callable
+const fetchUser = createServerFn().handler(async () => await db.users.find())
+
+// Usage from client component:
+const user = await fetchUser() // ✅ Network request
+
+// createServerOnlyFn: Crashes if called from client
+const getSecret = createServerOnlyFn(() => process.env.SECRET)
+
+// Usage from client:
+const secret = getSecret() // ❌ Throws error
+```
+
+## Common Anti-Patterns
 
 ### Environment Variable Exposure
 
@@ -228,26 +222,86 @@ function CurrentTime() {
 }
 ```
 
----
+## Manual vs API-Driven Environment Detection
 
-## Production Checklist
+```tsx
+// Manual: You handle the logic
+function logMessage(msg: string) {
+  if (typeof window === 'undefined') {
+    console.log(`[SERVER]: ${msg}`)
+  } else {
+    console.log(`[CLIENT]: ${msg}`)
+  }
+}
 
-- [ ] **Bundle Analysis**: Verify server-only code isn't in client bundle
-- [ ] **Environment Variables**: Ensure secrets use `createServerOnlyFn()` or `createServerFn()`
-- [ ] **Loader Logic**: Remember loaders are isomorphic, not server-only
-- [ ] **ClientOnly Fallbacks**: Provide appropriate fallbacks to prevent layout shift
-- [ ] **Error Boundaries**: Handle server/client execution errors gracefully
+// API: Framework handles it
+const logMessage = createIsomorphicFn()
+  .server((msg) => console.log(`[SERVER]: ${msg}`))
+  .client((msg) => console.log(`[CLIENT]: ${msg}`))
+```
 
----
+## Architecture Decision Framework
 
-## Related Resources
+**Choose Server-Only when:**
 
-- [TanStack Start Server Functions Guide](../server-functions.md)
-- [TanStack Start Middleware Guide](../middleware.md)
-- [TanStack Router SSR Guide](../../../router/framework/react/how-to/setup-ssr.md)
+- Accessing sensitive data (environment variables, secrets)
+- File system operations
+- Database connections
+- External API keys
 
-<!-- Next Steps (commented until guides exist)
-- [How to Create Basic Server Functions](./create-basic-server-functions.md)
-- [How to Write Type-Safe Server Functions](./write-type-safe-server-functions.md)
-- [How to Use Server Function Middleware](./use-server-function-middleware.md)
--->
+**Choose Client-Only when:**
+
+- DOM manipulation
+- Browser APIs (localStorage, geolocation)
+- User interaction handling
+- Analytics/tracking
+
+**Choose Isomorphic when:**
+
+- Data formatting/transformation
+- Business logic
+- Shared utilities
+- Route loaders (they're isomorphic by nature)
+
+## Security Considerations
+
+### Bundle Analysis
+
+Always verify server-only code isn't included in client bundles:
+
+```bash
+# Analyze client bundle
+npm run build
+# Check dist/client for any server-only imports
+```
+
+### Environment Variable Strategy
+
+- **Client-exposed**: Use `VITE_` prefix for client-accessible variables
+- **Server-only**: Access via `createServerOnlyFn()` or `createServerFn()`
+- **Never expose**: Database URLs, API keys, secrets
+
+### Error Boundaries
+
+Handle server/client execution errors gracefully:
+
+```tsx
+function ErrorBoundary({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundaryComponent
+      fallback={<div>Something went wrong</div>}
+      onError={(error) => {
+        if (typeof window === 'undefined') {
+          console.error('[SERVER ERROR]:', error)
+        } else {
+          console.error('[CLIENT ERROR]:', error)
+        }
+      }}
+    >
+      {children}
+    </ErrorBoundaryComponent>
+  )
+}
+```
+
+Understanding TanStack Start's execution model is crucial for building secure, performant, and maintainable applications. The isomorphic-by-default approach provides flexibility while the execution control APIs give you precise control when needed.
