@@ -80,7 +80,6 @@ A full‑stack framework built on Router, designed for server rendering, streami
 
 ## Partners
 
-
 <table align="center">
   <tr>
     <td>
