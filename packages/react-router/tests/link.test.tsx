@@ -4711,7 +4711,7 @@ describe('createLink', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/posts',
-      component: () => <h1>Posts</h1>,
+      component: () => <h1 data-testid="posts-heading">Posts</h1>,
     })
 
     const router = createRouter({
@@ -4738,9 +4738,7 @@ describe('createLink', () => {
       expect(router.state.location.pathname).toBe('/')
     })
 
-    await expect(
-      screen.findByRole('heading', { name: 'Posts' }),
-    ).rejects.toThrow()
+    await expect(screen.findByTestId('posts-heading')).rejects.toThrow()
 
     window.open = originalOpen
   })
@@ -4770,7 +4768,7 @@ describe('createLink', () => {
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/posts',
-      component: () => <h1>Posts</h1>,
+      component: () => <h1 data-testid="posts-heading">Posts</h1>,
     })
 
     const router = createRouter({
@@ -4792,7 +4790,8 @@ describe('createLink', () => {
       expect(router.state.location.pathname).toBe('/posts')
     })
 
-    await screen.findByRole('heading', { name: 'Posts' })
+    const postsHeading = await screen.findByTestId('posts-heading')
+    expect(postsHeading).toBeInTheDocument()
   })
 })
 
