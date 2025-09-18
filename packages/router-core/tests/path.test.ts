@@ -432,6 +432,12 @@ describe('interpolatePath', () => {
         params: { _splat: 'sean/cassiere' },
         result: '/users/sean/cassiere',
       },
+      {
+        name: 'should interpolate the non-nested path',
+        path: '/users/$id_',
+        params: { id: '123' },
+        result: '/users/123',
+      },
     ])('$name', ({ path, params, decodeCharMap, result }) => {
       expect(
         interpolatePath({

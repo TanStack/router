@@ -218,7 +218,8 @@ export const parsePathname = (
   return parsed
 }
 
-const PARAM_RE = /^\$.{1,}$/ // $paramName
+const PARAM_RE = /^\$.{1,}(?<!_)$/ // $paramName
+const PARAM_NON_NESTED_RE = /^\$.{1,}_$/ // $paramName_
 const PARAM_W_CURLY_BRACES_RE = /^(.*?)\{(\$[a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix{$paramName}suffix
 const OPTIONAL_PARAM_W_CURLY_BRACES_RE =
   /^(.*?)\{-(\$[a-zA-Z_$][a-zA-Z0-9_$]*)\}(.*)$/ // prefix{-$paramName}suffix
@@ -311,6 +312,17 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
       // Check for bare parameter format: $paramName (without curly braces)
       if (PARAM_RE.test(part)) {
         const paramName = part.substring(1)
+        return {
+          type: SEGMENT_TYPE_PARAM,
+          value: '$' + paramName,
+          prefixSegment: undefined,
+          suffixSegment: undefined,
+        }
+      }
+
+      // Check for non-nested bare parameter format: $paramName_ (without curly braces)
+      if (PARAM_NON_NESTED_RE.test(part)) {
+        const paramName = part.slice(1, -1)
         return {
           type: SEGMENT_TYPE_PARAM,
           value: '$' + paramName,
