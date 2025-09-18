@@ -20,6 +20,7 @@ import { handleServerAction } from './server-functions-handler'
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
 import type {
+  AnyStartConfigOptions,
   RouteMethod,
   RouteMethodHandlerFn,
   StartEntry,
@@ -139,10 +140,6 @@ export function createStartHandler(
         // the header is set by the prerender plugin
         isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
       }
-      // insert start specific default serialization adapters
-      const serializationAdapters = (
-        router.options.serializationAdapters ?? []
-      ).concat(ServerFunctionSerializationAdapter)
 
       // Create a history for the client-side router
       const history = createMemoryHistory({
@@ -154,13 +151,17 @@ export function createStartHandler(
         history,
         isShell,
         isPrerendering,
-        serializationAdapters,
+        serializationAdapters: start.serializationAdapters,
+        defaultSsr: start.defaultSsr,
         origin,
       })
       return router
     }
 
-    const start = await startEntry!.getStart?.()
+    const start: AnyStartConfigOptions = (await startEntry!.getStart?.()) || {}
+    start.serializationAdapters = start.serializationAdapters || []
+    // insert start specific default serialization adapters
+    start.serializationAdapters.push(ServerFunctionSerializationAdapter)
 
     const requestHandlerMiddleware = handlerToMiddleware(
       async ({ context }) => {
@@ -174,7 +175,6 @@ export function createStartHandler(
             try {
               // First, let's attempt to handle server functions
               if (href.startsWith(serverFnBase)) {
-                // TODO run request middlewares first
                 return await handleServerAction({
                   request,
                   context: requestOpts?.context,
@@ -420,15 +420,9 @@ async function handleServerRoutes({
 
   // eventually, execute the router
   middlewares.push(
-    handlerToMiddleware(
-      (ctx) => executeRouter({ serverContext: ctx.context }),
-      false,
-    ),
+    handlerToMiddleware((ctx) => executeRouter({ serverContext: ctx.context })),
   )
 
-  // TODO: This is starting to feel too much like a server function
-  // Do generalize the existing middleware execution? Or do we need to
-  // build a new middleware execution system for server routes?
   const ctx = await executeMiddleware(middlewares, {
     request,
     context: {},

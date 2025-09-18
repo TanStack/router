@@ -3,11 +3,11 @@ import invariant from 'tiny-invariant'
 import {
   TSS_FORMDATA_CONTEXT,
   X_TSS_SERIALIZED,
+  getDefaultSerovalPlugins,
 } from '@tanstack/start-client-core'
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
-import { getSerovalPlugins } from './serializer/getSerovalPlugins'
 
 function sanitizeBase(base: string | undefined) {
   if (!base) {
@@ -62,7 +62,7 @@ export const handleServerAction = async ({
   ]
 
   const contentType = request.headers.get('Content-Type')
-  const serovalPlugins = getSerovalPlugins()
+  const serovalPlugins = getDefaultSerovalPlugins()
 
   function parsePayload(payload: any) {
     const parsedPayload = fromJSON(payload, { plugins: serovalPlugins })

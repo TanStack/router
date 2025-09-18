@@ -86,7 +86,7 @@ export type * from './startEntry'
 export { hydrateStart } from './hydrateStart'
 
 export { createStart } from './createStart'
-
+export type { AnyStartConfig, AnyStartConfigOptions } from './createStart'
 export type { Register } from '@tanstack/router-core'
 
 export { getRouterInstance } from './getRouterInstance'
