@@ -18,11 +18,11 @@ This is the file that will dictate the behavior of TanStack Router used within S
 from the default [preloading functionality](/router/latest/docs/framework/solid/guide/preloading) to [caching staleness](/router/latest/docs/framework/solid/guide/data-loading).
 
 ```tsx
-// app/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/solid-router'
+// src/start.tsx
+import { createRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
+export function getRouter() {
   const router = createTanStackRouter({
     routeTree,
     scrollRestoration: true,
@@ -33,7 +33,7 @@ export function createRouter() {
 
 declare module '@tanstack/solid-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>
+    router: ReturnType<typeof getRouter>
   }
 }
 ```
