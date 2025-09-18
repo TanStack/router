@@ -374,10 +374,11 @@ const intersectionObserverOptions: IntersectionObserverInit = {
 const composeHandlers =
   (handlers: Array<undefined | React.EventHandler<any>>) =>
   (e: React.SyntheticEvent) => {
-    handlers.filter(Boolean).forEach((handler) => {
+    for (const handler of handlers) {
+      if (!handler) continue
       if (e.defaultPrevented) return
-      handler!(e)
-    })
+      handler(e)
+    }
   }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
