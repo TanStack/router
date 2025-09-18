@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NestIndexRouteImport } from './routes/nest/index'
+import { Route as NestFooRouteImport } from './routes/nest/foo'
 
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
@@ -22,31 +24,49 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NestIndexRoute = NestIndexRouteImport.update({
+  id: '/nest/',
+  path: '/nest/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NestFooRoute = NestFooRouteImport.update({
+  id: '/nest/foo',
+  path: '/nest/foo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/nest/foo': typeof NestFooRoute
+  '/nest': typeof NestIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/nest/foo': typeof NestFooRoute
+  '/nest': typeof NestIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/nest/foo': typeof NestFooRoute
+  '/nest/': typeof NestIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about'
+  fullPaths: '/' | '/about' | '/nest/foo' | '/nest'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about'
-  id: '__root__' | '/' | '/about'
+  to: '/' | '/about' | '/nest/foo' | '/nest'
+  id: '__root__' | '/' | '/about' | '/nest/foo' | '/nest/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  NestFooRoute: typeof NestFooRoute
+  NestIndexRoute: typeof NestIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +85,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/nest/': {
+      id: '/nest/'
+      path: '/nest'
+      fullPath: '/nest'
+      preLoaderRoute: typeof NestIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nest/foo': {
+      id: '/nest/foo'
+      path: '/nest/foo'
+      fullPath: '/nest/foo'
+      preLoaderRoute: typeof NestFooRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  NestFooRoute: NestFooRoute,
+  NestIndexRoute: NestIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
