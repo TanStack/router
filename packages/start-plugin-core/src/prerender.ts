@@ -252,10 +252,18 @@ export async function writeBundleToDisk({
   bundle: Rollup.OutputBundle
   outDir: string
 }) {
+  const createdDirs = new Set<string>()
+
   for (const [fileName, asset] of Object.entries(bundle)) {
     const fullPath = path.join(outDir, fileName)
+    const dir = path.dirname(fullPath)
     const content = asset.type === 'asset' ? asset.source : asset.code
-    await fsp.mkdir(path.dirname(fullPath), { recursive: true })
+
+    if (!createdDirs.has(dir)) {
+      await fsp.mkdir(dir, { recursive: true })
+      createdDirs.add(dir)
+    }
+
     await fsp.writeFile(fullPath, content)
   }
 }
