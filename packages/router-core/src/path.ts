@@ -341,7 +341,7 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
               .split('%25')
               .map((segment) => decodeURI(segment))
               .join('%25')
-          : decodeURI(part),
+          : decodeURI(partToMatch),
       }
     }),
   )
