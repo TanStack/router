@@ -26,12 +26,7 @@ export async function serverFnFetcher(
   // If createServerFn was used to wrap the fetcher,
   // We need to handle the arguments differently
   if (isPlainObject(_first) && _first.method) {
-    const first = _first as FunctionMiddlewareClientFnOptions<
-      any,
-      any,
-      any,
-      any
-    > & {
+    const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
       headers: HeadersInit
     }
     const type = first.data instanceof FormData ? 'formData' : 'payload'
@@ -100,7 +95,7 @@ export async function serverFnFetcher(
 }
 
 async function serializePayload(
-  opts: FunctionMiddlewareClientFnOptions<any, any, any, any>,
+  opts: FunctionMiddlewareClientFnOptions<any, any, any>,
 ) {
   const payloadToSerialize: any = {}
   if (opts.data) {
@@ -121,7 +116,7 @@ async function serialize(data: any) {
 }
 
 async function getFetcherRequestOptions(
-  opts: FunctionMiddlewareClientFnOptions<any, any, any, any>,
+  opts: FunctionMiddlewareClientFnOptions<any, any, any>,
 ) {
   if (opts.method === 'POST') {
     if (opts.data instanceof FormData) {

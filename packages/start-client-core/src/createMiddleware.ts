@@ -1,12 +1,10 @@
 import type { AnyServerFn, ConstrainValidator, Method } from './createServerFn'
 import type {
-  AnyRouter,
   Assign,
   Constrain,
   Expand,
   IntersectAssign,
   Register,
-  RegisteredRouter,
   ResolveValidatorInput,
   ResolveValidatorOutput,
   ValidateSerializableInput,
@@ -510,7 +508,6 @@ export interface FunctionMiddlewareClient<
   TRegister extends Register,
   TMiddlewares,
   TValidator,
-  TRouter extends AnyRouter = RegisteredRouter,
 > {
   client: <TSendServerContext = undefined, TNewClientContext = undefined>(
     client: FunctionMiddlewareClientFn<
@@ -518,8 +515,7 @@ export interface FunctionMiddlewareClient<
       TMiddlewares,
       TValidator,
       TSendServerContext,
-      TNewClientContext,
-      TRouter
+      TNewClientContext
     >,
   ) => FunctionMiddlewareAfterClient<
     TRegister,
@@ -536,13 +532,11 @@ export type FunctionMiddlewareClientFn<
   TValidator,
   TSendContext,
   TClientContext,
-  TRouter extends AnyRouter = RegisteredRouter,
 > = (
   options: FunctionMiddlewareClientFnOptions<
     TRegister,
     TMiddlewares,
-    TValidator,
-    TRouter
+    TValidator
   >,
 ) => FunctionMiddlewareClientFnResult<
   TMiddlewares,
@@ -554,7 +548,6 @@ export interface FunctionMiddlewareClientFnOptions<
   in out TRegister extends Register,
   in out TMiddlewares,
   in out TValidator,
-  in out TRouter extends AnyRouter,
 > {
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
   context: Expand<AssignAllClientContextBeforeNext<TMiddlewares>>
@@ -564,7 +557,6 @@ export interface FunctionMiddlewareClientFnOptions<
   next: FunctionMiddlewareClientNextFn<TRegister, TMiddlewares>
   filename: string
   functionId: string
-  router: TRouter
 }
 
 export type FunctionMiddlewareClientFnResult<
