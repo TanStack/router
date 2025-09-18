@@ -40,6 +40,7 @@ import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/
 import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
+import { Route as NotFoundViaHeadRouteImport } from './routes/not-found/via-head'
 import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
@@ -176,6 +177,11 @@ const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
   path: '/via-loader',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
+const NotFoundViaHeadRoute = NotFoundViaHeadRouteImport.update({
+  id: '/via-head',
+  path: '/via-head',
+  getParentRoute: () => NotFoundRouteRoute,
+} as any)
 const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
   id: '/via-beforeLoad',
   path: '/via-beforeLoad',
@@ -278,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/users': typeof UsersRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
@@ -311,6 +318,7 @@ export interface FileRoutesByTo {
   '/stream': typeof StreamRoute
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/search-params/default': typeof SearchParamsDefaultRoute
@@ -349,6 +357,7 @@ export interface FileRoutesById {
   '/대한민국': typeof Char45824Char54620Char48124Char44397Route
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
+  '/not-found/via-head': typeof NotFoundViaHeadRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
   '/redirect/$target': typeof RedirectTargetRouteWithChildren
@@ -389,6 +398,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/대한민국'
     | '/not-found/via-beforeLoad'
+    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/redirect/$target'
@@ -422,6 +432,7 @@ export interface FileRouteTypes {
     | '/stream'
     | '/대한민국'
     | '/not-found/via-beforeLoad'
+    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/search-params/default'
@@ -459,6 +470,7 @@ export interface FileRouteTypes {
     | '/대한민국'
     | '/_layout/_layout-2'
     | '/not-found/via-beforeLoad'
+    | '/not-found/via-head'
     | '/not-found/via-loader'
     | '/posts/$postId'
     | '/redirect/$target'
@@ -633,6 +645,13 @@ declare module '@tanstack/react-router' {
       path: '/via-beforeLoad'
       fullPath: '/not-found/via-beforeLoad'
       preLoaderRoute: typeof NotFoundViaBeforeLoadRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
+    '/not-found/via-head': {
+      id: '/not-found/via-head'
+      path: '/via-head'
+      fullPath: '/not-found/via-head'
+      preLoaderRoute: typeof NotFoundViaHeadRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
     '/not-found/via-loader': {
@@ -916,6 +935,13 @@ declare module '@tanstack/react-start/server' {
       id: '/not-found/via-beforeLoad'
       path: '/via-beforeLoad'
       fullPath: '/not-found/via-beforeLoad'
+      preLoaderRoute: unknown
+      parentRoute: typeof rootServerRouteImport
+    }
+    '/not-found/via-head': {
+      id: '/not-found/via-head'
+      path: '/via-head'
+      fullPath: '/not-found/via-head'
       preLoaderRoute: unknown
       parentRoute: typeof rootServerRouteImport
     }
@@ -1345,6 +1371,23 @@ declare module './routes/not-found/via-beforeLoad' {
     unknown
   >
 }
+declare module './routes/not-found/via-head' {
+  const createFileRoute: CreateFileRoute<
+    '/not-found/via-head',
+    FileRoutesByPath['/not-found/via-head']['parentRoute'],
+    FileRoutesByPath['/not-found/via-head']['id'],
+    FileRoutesByPath['/not-found/via-head']['path'],
+    FileRoutesByPath['/not-found/via-head']['fullPath']
+  >
+
+  const createServerFileRoute: CreateServerFileRoute<
+    ServerFileRoutesByPath['/not-found/via-head']['parentRoute'],
+    ServerFileRoutesByPath['/not-found/via-head']['id'],
+    ServerFileRoutesByPath['/not-found/via-head']['path'],
+    ServerFileRoutesByPath['/not-found/via-head']['fullPath'],
+    unknown
+  >
+}
 declare module './routes/not-found/via-loader' {
   const createFileRoute: CreateFileRoute<
     '/not-found/via-loader',
@@ -1756,12 +1799,14 @@ declare module './routes/foo/$bar/$qux/_here/index' {
 
 interface NotFoundRouteRouteChildren {
   NotFoundViaBeforeLoadRoute: typeof NotFoundViaBeforeLoadRoute
+  NotFoundViaHeadRoute: typeof NotFoundViaHeadRoute
   NotFoundViaLoaderRoute: typeof NotFoundViaLoaderRoute
   NotFoundIndexRoute: typeof NotFoundIndexRoute
 }
 
 const NotFoundRouteRouteChildren: NotFoundRouteRouteChildren = {
   NotFoundViaBeforeLoadRoute: NotFoundViaBeforeLoadRoute,
+  NotFoundViaHeadRoute: NotFoundViaHeadRoute,
   NotFoundViaLoaderRoute: NotFoundViaLoaderRoute,
   NotFoundIndexRoute: NotFoundIndexRoute,
 }
