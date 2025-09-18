@@ -1073,11 +1073,31 @@ describe('non-nested paths', async () => {
         describe('wildcard (prefix + suffix)', () => {
           it.each([
             { name: 'regular top-level', to: '/$_', expected: '/$' },
-            { name: 'regular nested', to: '/params/wildcard_/$_', expected: '/params/wildcard/$', },
-            { name: 'with top-level prefix', to: '/prefix{$}_', expected: '/prefix{$}' },
-            { name: 'with nested prefix', to: '/params_/wildcard/prefix{$}_', expected: '/params/wildcard/prefix{$}' },
-            { name: 'with top-level suffix', to: '/{$}suffix_', expected: '/{$}suffix' },
-            { name: 'with nested suffix', to: '/params_/wildcard_/{$}suffix_', expected: '/params/wildcard/{$}suffix' },
+            {
+              name: 'regular nested',
+              to: '/params/wildcard_/$_',
+              expected: '/params/wildcard/$',
+            },
+            {
+              name: 'with top-level prefix',
+              to: '/prefix{$}_',
+              expected: '/prefix{$}',
+            },
+            {
+              name: 'with nested prefix',
+              to: '/params_/wildcard/prefix{$}_',
+              expected: '/params/wildcard/prefix{$}',
+            },
+            {
+              name: 'with top-level suffix',
+              to: '/{$}suffix_',
+              expected: '/{$}suffix',
+            },
+            {
+              name: 'with nested suffix',
+              to: '/params_/wildcard_/{$}suffix_',
+              expected: '/params/wildcard/{$}suffix',
+            },
             {
               name: 'with top-level prefix + suffix',
               to: '/prefix{$}suffix_',
@@ -1104,11 +1124,31 @@ describe('non-nested paths', async () => {
         describe('named (prefix + suffix)', () => {
           it.each([
             { name: 'regular top-level', to: '/$foo_', expected: '/$foo' },
-            { name: 'regular nested', to: '/params/named_/$foo_', expected: '/params/named/$foo' },
-            { name: 'with top-level prefix', to: '/prefix{$foo}_', expected: '/prefix{$foo}' },
-            { name: 'with nested prefix', to: '/params_/named/prefix{$foo}_', expected: '/params/named/prefix{$foo}' },
-            { name: 'with top-level suffix', to: '/{$foo}suffix_', expected: '/{$foo}suffix' },
-            { name: 'with nested suffix', to: '/params_/named_/{$foo}suffix_', expected: '/params/named/{$foo}suffix' },
+            {
+              name: 'regular nested',
+              to: '/params/named_/$foo_',
+              expected: '/params/named/$foo',
+            },
+            {
+              name: 'with top-level prefix',
+              to: '/prefix{$foo}_',
+              expected: '/prefix{$foo}',
+            },
+            {
+              name: 'with nested prefix',
+              to: '/params_/named/prefix{$foo}_',
+              expected: '/params/named/prefix{$foo}',
+            },
+            {
+              name: 'with top-level suffix',
+              to: '/{$foo}suffix_',
+              expected: '/{$foo}suffix',
+            },
+            {
+              name: 'with nested suffix',
+              to: '/params_/named_/{$foo}suffix_',
+              expected: '/params/named/{$foo}suffix',
+            },
             {
               name: 'with top-level prefix + suffix',
               to: '/prefix{$foo}suffix_',

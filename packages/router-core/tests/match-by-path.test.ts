@@ -197,7 +197,6 @@ describe('fuzzy path matching', () => {
   })
 })
 
-
 describe('non-nested paths', () => {
   describe('default path matching', () => {
     it.each([
@@ -220,7 +219,7 @@ describe('non-nested paths', () => {
       ['/a/1/b/2', '/a_/$id_/b_/$id_', { id: '2' }],
     ])('params %s => %s', (from, to, result) => {
       expect(
-        matchByPath( from, { to, caseSensitive: true, fuzzy: false }),
+        matchByPath(from, { to, caseSensitive: true, fuzzy: false }),
       ).toEqual(result)
     })
 
