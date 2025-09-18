@@ -265,8 +265,11 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
 
   segments.push(
     ...split.map((part): Segment => {
+      // strip tailing underscore for non-nested paths
+      const partToMatch = part.slice(-1) === '_' ? part.slice(0, -1) : part
+
       // Check for wildcard with curly braces: prefix{$}suffix
-      const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
+      const wildcardBracesMatch = partToMatch.match(WILDCARD_W_CURLY_BRACES_RE)
       if (wildcardBracesMatch) {
         const prefix = wildcardBracesMatch[1]
         const suffix = wildcardBracesMatch[2]
@@ -279,7 +282,7 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
       }
 
       // Check for optional parameter format: prefix{-$paramName}suffix
-      const optionalParamBracesMatch = part.match(
+      const optionalParamBracesMatch = partToMatch.match(
         OPTIONAL_PARAM_W_CURLY_BRACES_RE,
       )
       if (optionalParamBracesMatch) {
@@ -295,7 +298,7 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
       }
 
       // Check for the new parameter format: prefix{$paramName}suffix
-      const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
+      const paramBracesMatch = partToMatch.match(PARAM_W_CURLY_BRACES_RE)
       if (paramBracesMatch) {
         const prefix = paramBracesMatch[1]
         const paramName = paramBracesMatch[2]
@@ -309,8 +312,9 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
       }
 
       // Check for bare parameter format: $paramName (without curly braces)
-      if (PARAM_RE.test(part)) {
-        const paramName = part.substring(1)
+      if (PARAM_RE.test(partToMatch)) {
+        const paramName = partToMatch.substring(1)
+
         return {
           type: SEGMENT_TYPE_PARAM,
           value: '$' + paramName,
@@ -320,7 +324,7 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
       }
 
       // Check for bare wildcard: $ (without curly braces)
-      if (WILDCARD_RE.test(part)) {
+      if (WILDCARD_RE.test(partToMatch)) {
         return {
           type: SEGMENT_TYPE_WILDCARD,
           value: '$',
@@ -332,8 +336,8 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
       // Handle regular pathname segment
       return {
         type: SEGMENT_TYPE_PATHNAME,
-        value: part.includes('%25')
-          ? part
+        value: partToMatch.includes('%25')
+          ? partToMatch
               .split('%25')
               .map((segment) => decodeURI(segment))
               .join('%25')

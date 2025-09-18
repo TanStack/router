@@ -432,6 +432,12 @@ describe('interpolatePath', () => {
         params: { _splat: 'sean/cassiere' },
         result: '/users/sean/cassiere',
       },
+      {
+        name: 'should interpolate the non-nested path',
+        path: '/users/$id_',
+        params: { id: '123' },
+        result: '/users/123',
+      },
     ])('$name', ({ path, params, decodeCharMap, result }) => {
       expect(
         interpolatePath({
@@ -651,6 +657,14 @@ describe('matchPathname', () => {
         input: '/users/123',
         matchingOptions: {
           to: '/users/$id',
+        },
+        expectedMatchedParams: { id: '123' },
+      },
+      {
+        name: 'should match and return the non-nested named path params',
+        input: '/users/123',
+        matchingOptions: {
+          to: '/users/$id_',
         },
         expectedMatchedParams: { id: '123' },
       },
@@ -887,6 +901,15 @@ describe('parsePathname', () => {
       {
         name: 'should handle named params',
         to: '/foo/$bar',
+        expected: [
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
+          { type: SEGMENT_TYPE_PARAM, value: '$bar' },
+        ],
+      },
+      {
+        name: 'should handle non-nested named params',
+        to: '/foo/$bar_',
         expected: [
           { type: SEGMENT_TYPE_PATHNAME, value: '/' },
           { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
