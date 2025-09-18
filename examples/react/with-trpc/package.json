@@ -10,9 +10,9 @@
     "start": "NODE_ENV=production node dist/server/server.js"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.131.45",
-    "@tanstack/react-router-devtools": "^1.131.45",
-    "@tanstack/router-plugin": "^1.131.45",
+    "@tanstack/react-router": "^1.131.46",
+    "@tanstack/react-router-devtools": "^1.131.46",
+    "@tanstack/router-plugin": "^1.131.46",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
     "autoprefixer": "^10.4.20",
