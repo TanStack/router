@@ -218,11 +218,15 @@ export function useLinkProps<
 
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
+    // Check actual element's target attribute as fallback
+    const elementTarget = (e.currentTarget as HTMLAnchorElement).target
+    const effectiveTarget = target !== undefined ? target : elementTarget
+
     if (
       !disabled &&
       !isCtrlEvent(e) &&
       !e.defaultPrevented &&
-      (!target || target === '_self') &&
+      (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
@@ -374,10 +378,11 @@ const intersectionObserverOptions: IntersectionObserverInit = {
 const composeHandlers =
   (handlers: Array<undefined | React.EventHandler<any>>) =>
   (e: React.SyntheticEvent) => {
-    handlers.filter(Boolean).forEach((handler) => {
+    for (const handler of handlers) {
+      if (!handler) continue
       if (e.defaultPrevented) return
-      handler!(e)
-    })
+      handler(e)
+    }
   }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
