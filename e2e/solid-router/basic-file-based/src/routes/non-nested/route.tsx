@@ -20,6 +20,8 @@ function RouteComponent() {
           >
             /non-nested/baz/123
           </Link>
+        </li>
+        <li>
           <Link
             from={Route.fullPath}
             data-testid="l-to-non-nested-bazid-edit"
