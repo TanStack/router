@@ -218,11 +218,15 @@ export function useLinkProps<
 
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
+    // Check actual element's target attribute as fallback
+    const elementTarget = (e.currentTarget as HTMLAnchorElement).target
+    const effectiveTarget = target !== undefined ? target : elementTarget
+
     if (
       !disabled &&
       !isCtrlEvent(e) &&
       !e.defaultPrevented &&
-      (!target || target === '_self') &&
+      (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
