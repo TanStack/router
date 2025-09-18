@@ -16,6 +16,7 @@ import { Route as StreamRouteImport } from './routes/stream'
 import { Route as ScriptsRouteImport } from './routes/scripts'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as LinksRouteImport } from './routes/links'
+import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
@@ -72,6 +73,11 @@ const PostsRoute = PostsRouteImport.update({
 const LinksRoute = LinksRouteImport.update({
   id: '/links',
   path: '/links',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InlineScriptsRoute = InlineScriptsRouteImport.update({
+  id: '/inline-scripts',
+  path: '/inline-scripts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeferredRoute = DeferredRouteImport.update({
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/not-found': typeof NotFoundRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/deferred': typeof DeferredRoute
+  '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/scripts': typeof ScriptsRoute
@@ -265,6 +272,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/deferred': typeof DeferredRoute
+  '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
@@ -297,6 +305,7 @@ export interface FileRoutesById {
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
+  '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/scripts': typeof ScriptsRoute
@@ -333,6 +342,7 @@ export interface FileRouteTypes {
     | '/not-found'
     | '/search-params'
     | '/deferred'
+    | '/inline-scripts'
     | '/links'
     | '/posts'
     | '/scripts'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/deferred'
+    | '/inline-scripts'
     | '/links'
     | '/scripts'
     | '/stream'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/_layout'
     | '/deferred'
+    | '/inline-scripts'
     | '/links'
     | '/posts'
     | '/scripts'
@@ -431,6 +443,7 @@ export interface RootRouteChildren {
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
+  InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
   ScriptsRoute: typeof ScriptsRoute
@@ -500,6 +513,13 @@ declare module '@tanstack/solid-router' {
       path: '/links'
       fullPath: '/links'
       preLoaderRoute: typeof LinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inline-scripts': {
+      id: '/inline-scripts'
+      path: '/inline-scripts'
+      fullPath: '/inline-scripts'
+      preLoaderRoute: typeof InlineScriptsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/deferred': {
@@ -843,6 +863,7 @@ const rootRouteChildren: RootRouteChildren = {
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
+  InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
   ScriptsRoute: ScriptsRoute,
