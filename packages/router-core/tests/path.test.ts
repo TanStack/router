@@ -661,6 +661,14 @@ describe('matchPathname', () => {
         expectedMatchedParams: { id: '123' },
       },
       {
+        name: 'should match and return the non-nested named path params',
+        input: '/users/123',
+        matchingOptions: {
+          to: '/users/$id_',
+        },
+        expectedMatchedParams: { id: '123' },
+      },
+      {
         name: 'should match and return the the splat param',
         input: '/users/123',
         matchingOptions: {
@@ -893,6 +901,15 @@ describe('parsePathname', () => {
       {
         name: 'should handle named params',
         to: '/foo/$bar',
+        expected: [
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },
+          { type: SEGMENT_TYPE_PARAM, value: '$bar' },
+        ],
+      },
+      {
+        name: 'should handle non-nested named params',
+        to: '/foo/$bar_',
         expected: [
           { type: SEGMENT_TYPE_PATHNAME, value: '/' },
           { type: SEGMENT_TYPE_PATHNAME, value: 'foo' },

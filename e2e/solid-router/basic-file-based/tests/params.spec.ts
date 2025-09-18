@@ -145,7 +145,8 @@ test.describe('params operations + non-nested routes', () => {
       '/params-ps/non-nested/foo/bar',
     )
     await fooBarLink.click()
-    await page.waitForLoadState('networkidle')
+    await page.waitForURL('/params-ps/non-nested/foo/bar')
+
     const pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/params-ps/non-nested/foo/bar')
 
@@ -166,8 +167,8 @@ test.describe('params operations + non-nested routes', () => {
       '/params-ps/non-nested/foo2/bar2',
     )
     await foo2Bar2Link.click()
+    await page.waitForURL('/params-ps/non-nested/foo2/bar2')
     const pagePathname2 = new URL(page.url()).pathname
-    await page.waitForLoadState('networkidle')
     expect(pagePathname2).toBe('/params-ps/non-nested/foo2/bar2')
 
     const foo2ParamsValue = page.getByTestId('foo-params-value')
