@@ -46,6 +46,11 @@ function Script({
 }) {
   React.useEffect(() => {
     if (attrs?.src) {
+      const existingScript = document.querySelector(
+        `script[src="${attrs.src}"]`,
+      )
+      if (existingScript) return
+
       const script = document.createElement('script')
 
       for (const [key, value] of Object.entries(attrs)) {
