@@ -123,11 +123,9 @@ export function TanStackStartVitePluginCore(
           serverAlias = corePluginOpts.defaultEntryPaths.server
         }
         const entryAliasConfiguration: Record<
-          | (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS]
-          | 'tanstack-start-entry',
+          (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS],
           string
         > = {
-          'tanstack-start-entry': startFilePath,
           [ENTRY_POINTS.start]: startFilePath,
           [ENTRY_POINTS.client]: clientAlias,
           [ENTRY_POINTS.server]: serverAlias,

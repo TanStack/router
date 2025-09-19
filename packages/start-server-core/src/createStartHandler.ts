@@ -72,7 +72,7 @@ export function createStartHandler(
     if (startEntry === null) {
       console.log('Loading start entry...')
       // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-      startEntry = await import('tanstack-start-entry')
+      startEntry = await import('#tanstack-start-entry')
     }
     return startEntry as unknown as StartEntry
   }
