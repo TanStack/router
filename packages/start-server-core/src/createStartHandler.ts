@@ -72,6 +72,14 @@ export function createStartHandler(
   let startRoutesManifest: Manifest | null = null
   let startEntry: StartEntry | null = null
 
+  const getStartEntry = async (): Promise<StartEntry> => {
+    if (startEntry === null) {
+      // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+      startEntry = await import('tanstack-start-entry')
+    }
+    return startEntry as unknown as StartEntry
+  }
+
   const originalFetch = globalThis.fetch
 
   const startRequestResolver: RequestHandler = async (request, requestOpts) => {
@@ -82,7 +90,7 @@ export function createStartHandler(
       }
       try {
         return new URL(request.url).origin
-      } catch (_) {}
+      } catch {}
       return 'http://localhost'
     }
 
@@ -119,16 +127,11 @@ export function createStartHandler(
     const url = new URL(request.url)
     const href = url.href.replace(url.origin, '')
 
-    if (startEntry === null) {
-      // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-      startEntry = await import('tanstack-start-entry')
-    }
-
     let router: AnyRouter | null = null
     const getRouter = async () => {
       if (router) return router
       // TODO how does this work with base path? does the router need to be configured the same as APP_BASE?
-      router = await startEntry!.getRouter()
+      router = await (await getStartEntry()).getRouter()
 
       // Update the client-side router with the history
       const isPrerendering = process.env.TSS_PRERENDERING === 'true'
@@ -158,7 +161,8 @@ export function createStartHandler(
       return router
     }
 
-    const start: AnyStartConfigOptions = (await startEntry.getStart?.()) || {}
+    const start: AnyStartConfigOptions =
+      (await (await getStartEntry()).getStart?.()) || {}
     start.serializationAdapters = start.serializationAdapters || []
     // insert start specific default serialization adapters
     start.serializationAdapters.push(ServerFunctionSerializationAdapter)
