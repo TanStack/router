@@ -87,7 +87,6 @@ export function TanStackStartVitePluginCore(
           type: 'start entry',
           configuredEntry: startConfig.start.entry,
           defaultEntry: 'start',
-          root,
           resolvedSrcDirectory,
           required: true,
         })
@@ -96,7 +95,6 @@ export function TanStackStartVitePluginCore(
           type: 'client entry',
           configuredEntry: startConfig.client.entry,
           defaultEntry: 'client',
-          root,
           resolvedSrcDirectory,
           required: false,
         })
@@ -105,7 +103,6 @@ export function TanStackStartVitePluginCore(
           type: 'server entry',
           configuredEntry: startConfig.server.entry,
           defaultEntry: 'server',
-          root,
           resolvedSrcDirectory,
           required: false,
         })
@@ -126,7 +123,8 @@ export function TanStackStartVitePluginCore(
           serverAlias = corePluginOpts.defaultEntryPaths.server
         }
         const entryAliasConfiguration: Record<
-          (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS] | 'tanstack-start-entry',
+          | (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS]
+          | 'tanstack-start-entry',
           string
         > = {
           'tanstack-start-entry': startFilePath,
@@ -177,7 +175,7 @@ export function TanStackStartVitePluginCore(
             },
             [VITE_ENVIRONMENT_NAMES.server]: {
               consumer: 'server',
-             
+
               build: {
                 ssr: true,
                 rollupOptions: {
@@ -195,10 +193,10 @@ export function TanStackStartVitePluginCore(
               },
             },
           },
-     
+
           resolve: {
             noExternal: [
-               // ENTRY_POINTS.start,
+              // ENTRY_POINTS.start,
               '@tanstack/start**',
               `@tanstack/${corePluginOpts.framework}-start**`,
               ...crawlFrameworkPkgsResult.ssr.noExternal.sort(),
