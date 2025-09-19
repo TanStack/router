@@ -11,7 +11,11 @@ export default defineConfig({
     tsConfigPaths({
       projects: ['./tsconfig.json'],
     }),
-    tanstackStart(),
+    tanstackStart({
+      srcDirectory: 'src',
+      start: { entry: './start.tsx' },
+      server: { entry: './server.ts' },
+    }),
     viteReact(),
   ],
 })

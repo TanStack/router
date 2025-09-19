@@ -6,9 +6,9 @@ import {
 } from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
-import { getDefaultSerovalPlugins } from './serializer/getDefaultSerovalPlugins'
-import { TSS_FORMDATA_CONTEXT, X_TSS_SERIALIZED } from './constants'
-import type { FunctionMiddlewareClientFnOptions } from './createMiddleware'
+import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
+import { TSS_FORMDATA_CONTEXT, X_TSS_SERIALIZED } from '../constants'
+import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
 let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null

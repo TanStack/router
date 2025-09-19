@@ -6717,6 +6717,9 @@ importers:
 
   packages/react-start:
     dependencies:
+      '@tanstack/react-router':
+        specifier: workspace:*
+        version: link:../react-router
       '@tanstack/react-start-client':
         specifier: workspace:*
         version: link:../react-start-client
@@ -6726,6 +6729,9 @@ importers:
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
+      '@tanstack/start-client-core':
+        specifier: workspace:*
+        version: link:../start-client-core
       '@tanstack/start-plugin-core':
         specifier: workspace:*
         version: link:../start-plugin-core
@@ -7176,12 +7182,18 @@ importers:
 
   packages/solid-start:
     dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:*
+        version: link:../solid-router
       '@tanstack/solid-start-client':
         specifier: workspace:*
         version: link:../solid-start-client
       '@tanstack/solid-start-server':
         specifier: workspace:*
         version: link:../solid-start-server
+      '@tanstack/start-client-core':
+        specifier: workspace:*
+        version: link:../start-client-core
       '@tanstack/start-plugin-core':
         specifier: workspace:*
         version: link:../start-plugin-core

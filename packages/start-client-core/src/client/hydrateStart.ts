@@ -1,6 +1,6 @@
 import { hydrate } from '@tanstack/router-core/ssr/client'
 
-import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
+import { ServerFunctionSerializationAdapter } from './ServerFunctionSerializationAdapter'
 import type { AnyRouter, AnySerializationAdapter } from '@tanstack/router-core'
 import * as startEntry from '#tanstack-start-entry'
 

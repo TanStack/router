@@ -48,6 +48,12 @@
         "default": "./dist/esm/index.js"
       }
     },
+    "./client": {
+      "import": {
+        "types": "./dist/esm/client/index.d.ts",
+        "default": "./dist/esm/client/index.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "imports": {

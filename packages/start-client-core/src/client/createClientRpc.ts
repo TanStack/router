@@ -1,4 +1,4 @@
-import { TSS_SERVER_FUNCTION } from './constants'
+import { TSS_SERVER_FUNCTION } from '../constants'
 import { serverFnFetcher } from './serverFnFetcher'
 
 // make sure this get's hoisted

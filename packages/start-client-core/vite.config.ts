@@ -15,7 +15,11 @@ export default mergeConfig(
   config,
   tanstackViteConfig({
     srcDir: './src',
-    entry: ['./src/index.tsx', './src/fake-start-entry.ts'],
+    entry: [
+      './src/index.tsx',
+      './src/fake-start-entry.ts',
+      './src/client/index.ts',
+    ],
     cjs: false,
     externalDeps: ['#tanstack-start-entry'],
   }),
