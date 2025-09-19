@@ -8,9 +8,9 @@ import type { Connect, DevEnvironment, PluginOption } from 'vite'
 import type { TanStackStartOutputConfig } from '../schema'
 
 export function devServerPlugin({
-  startConfig,
+  getConfig,
 }: {
-  startConfig: TanStackStartOutputConfig
+  getConfig: () => { startConfig: TanStackStartOutputConfig }
 }): PluginOption {
   let isTest = false
 
@@ -48,6 +48,7 @@ export function devServerPlugin({
               `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
             )
           }
+          const { startConfig } = getConfig()
           const installMiddleware = startConfig.vite?.installDevServerMiddleware
           if (installMiddleware === false) {
             return
@@ -98,7 +99,10 @@ export function devServerPlugin({
               return sendNodeResponse(res, webRes)
             } catch (e) {
               console.error(e)
-              viteDevServer.ssrFixStacktrace(e as Error)
+              try {
+                viteDevServer.ssrFixStacktrace(e as Error)
+              } catch (_e) {
+              }
 
               if (
                 webReq.headers.get('content-type')?.includes('application/json')

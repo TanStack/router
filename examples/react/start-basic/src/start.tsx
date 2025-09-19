@@ -22,11 +22,9 @@ export function getRouter() {
 
 declare module '@tanstack/react-start' {
   interface Register {
-    router: Awaited<ReturnType<typeof getRouter>>
-    start: ReturnType<typeof getStart>
     server: {
       requestContext: {
-        hello1: string
+        hello1?: string
       }
     }
   }

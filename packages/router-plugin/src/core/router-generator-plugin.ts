@@ -12,7 +12,7 @@ const PLUGIN_NAME = 'unplugin:router-generator'
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
   Partial<Config> | undefined
 > = (options = {}) => {
-  const ROOT: string = process.cwd()
+  let ROOT: string = process.cwd()
   let userConfig = options as Config
   let generator: Generator
 
@@ -24,7 +24,10 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       : join(ROOT, userConfig.routesDirectory)
   }
 
-  const initConfigAndGenerator = () => {
+  const initConfigAndGenerator = (opts?: { root?: string }) => {
+    if (opts?.root) {
+      ROOT = opts.root
+    }
     userConfig = getConfig(options, ROOT)
     generator = new Generator({
       config: userConfig,
@@ -67,8 +70,8 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       })
     },
     vite: {
-      async configResolved() {
-        initConfigAndGenerator()
+      async configResolved(config) {
+        initConfigAndGenerator({ root: config.root })
         await generate()
       },
     },

@@ -1,5 +1,5 @@
 import { notFound } from '@tanstack/react-router'
-import { createMiddleware, createServerFn } from '@tanstack/react-start'
+import { createServerFn } from '@tanstack/react-start'
 
 export type PostType = {
   id: string
@@ -7,26 +7,8 @@ export type PostType = {
   body: string
 }
 
-const mw = createMiddleware({ type: 'function' })
-  .client(async ({ next, context }) => {
-    console.log('Client middleware!', context)
-    const result = await next({
-      sendContext: {
-        clientMiddlewareValue: 123,
-      },
-    })
-    console.log('Client middleware after next!', result)
-    return result
-  })
-  .server(async ({ next, context }) => {
-    return next({
-      context: {
-        hello: 'from the server middleware!',
-      },
-    })
-  })
+
 export const fetchPost = createServerFn({ method: 'POST' })
-  .middleware([mw])
   .validator((d: string) => d)
   .handler(async ({ data, context }) => {
     console.log('Request context:', context)

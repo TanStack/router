@@ -604,11 +604,15 @@ export function buildFileRoutesByPathInterface(opts: {
 }`
 }
 
-export function getImportPath(node: RouteNode, config: Config) {
+export function getImportPath(
+  node: RouteNode,
+  config: Config,
+  generatedRouteTreePath: string,
+): string {
   return replaceBackslash(
     removeExt(
       path.relative(
-        path.dirname(config.generatedRouteTree),
+        path.dirname(generatedRouteTreePath),
         path.resolve(config.routesDirectory, node.filePath),
       ),
       config.addExtensions,
@@ -619,9 +623,22 @@ export function getImportPath(node: RouteNode, config: Config) {
 export function getImportForRouteNode(
   node: RouteNode,
   config: Config,
+  generatedRouteTreePath: string,
+  root: string,
 ): ImportDeclaration {
+  let source = ''
+  if (config.importRoutesUsingAbsolutePaths) {
+    source = replaceBackslash(
+      removeExt(
+        path.resolve(root, config.routesDirectory, node.filePath),
+        config.addExtensions,
+      ),
+    )
+  } else {
+    source = `./${getImportPath(node, config, generatedRouteTreePath)}`
+  }
   return {
-    source: `./${getImportPath(node, config)}`,
+    source,
     specifiers: [
       {
         imported: 'Route',

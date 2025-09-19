@@ -1,11 +1,14 @@
 import path from 'node:path'
 import { z } from 'zod'
-import { configSchema, getConfig } from '@tanstack/router-generator'
+import { configSchema, getConfig } from '@tanstack/router-plugin'
 
-const tsrConfig = configSchema.omit({ autoCodeSplitting: true }).partial()
+const tsrConfig = configSchema
+  .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
+  .partial()
 
 export function parseStartConfig(
-  opts?: z.input<typeof tanstackStartOptionsSchema>,
+  opts: z.input<typeof tanstackStartOptionsSchema>,
+  root: string,
 ) {
   const options = tanstackStartOptionsSchema.parse(opts)
 
@@ -22,11 +25,14 @@ export function parseStartConfig(
     ...options,
     router: {
       ...options.router,
-      ...getConfig({
-        ...options.router,
-        routesDirectory,
-        generatedRouteTree,
-      }),
+      ...getConfig(
+        {
+          ...options.router,
+          routesDirectory,
+          generatedRouteTree,
+        },
+        root,
+      ),
     },
   }
 }
