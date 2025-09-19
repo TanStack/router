@@ -20,7 +20,6 @@ import {
   updateSession as h3_updateSession,
   useSession as h3_useSession,
 } from 'h3'
-import type { Register } from '@tanstack/router-core'
 import type {
   RequestHeaderMap,
   RequestHeaderName,
@@ -38,37 +37,12 @@ import type {
   SessionUpdate,
 } from './session'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
+import type { RequestHandler } from './request-handler'
 
 interface StartEvent {
   h3Event: H3Event
 }
 const eventStorage = new AsyncLocalStorage<StartEvent>()
-
-type MirrorProp<
-  TSource,
-  TKey extends keyof TSource,
-  TNewName extends string,
-> = undefined extends TSource[TKey]
-  ? { [P in TNewName]?: TSource[TKey] }
-  : { [P in TNewName]: TSource[TKey] }
-
-export interface RequestOptions
-  extends MirrorProp<Register['server'], 'requestContext', 'context'> {
-  nonce?: string
-}
-// Utility type: true if T has any required keys, else false
-type HasRequired<T> = keyof T extends never
-  ? false
-  : {
-        [K in keyof T]-?: undefined extends T[K] ? never : K
-      }[keyof T] extends never
-    ? false
-    : true
-
-export type RequestHandler =
-  HasRequired<RequestOptions> extends true
-    ? (request: Request, opts: RequestOptions) => Promise<Response> | Response
-    : (request: Request, opts?: RequestOptions) => Promise<Response> | Response
 
 export type { ResponseHeaderName, RequestHeaderName }
 

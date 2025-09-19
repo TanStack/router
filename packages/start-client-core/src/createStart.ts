@@ -84,15 +84,11 @@ export const createStart = <
 export type AnyStartConfig = StartConfig<any, any, any, any>
 export type AnyStartConfigOptions = StartConfigOptions<any, any, any, any>
 declare module '@tanstack/router-core' {
-  interface Register {
+  interface DefaultRegister {
     configKey: 'start'
-    ssr: true
-  }
-  interface AdditionalRegister {
-    start: AnyStartConfig
-
     server: {
       requestContext?: undefined
+      nonce?: string
     }
   }
 }

@@ -99,12 +99,10 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type InjectedHtmlEntry = Promise<string>
 
-export interface AdditionalRegister {}
-
 export type RegisterConfigKey = Register extends { configKey: infer TKey }
   ? TKey
   : 'config'
-export interface DefaultRegister extends AdditionalRegister {
+export interface DefaultRegister {
   router: AnyRouter
   config: AnyRouterConfig
   ssr: SSROption

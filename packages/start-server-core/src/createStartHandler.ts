@@ -25,7 +25,7 @@ import type {
   RouteMethodHandlerFn,
   StartEntry,
 } from '@tanstack/start-client-core'
-import type { RequestHandler } from './request-response'
+import type { RequestHandler } from './request-handler'
 import type {
   AnyRoute,
   AnyRouter,
@@ -35,10 +35,6 @@ import type {
 import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 
 type TODO = any
-
-export type CustomizeStartHandler<TRouter extends AnyRouter = AnyRouter> = (
-  cb: HandlerCallback<TRouter>,
-) => RequestHandler
 
 function getStartResponseHeaders(opts: { router: AnyRouter }) {
   const headers = mergeHeaders(
