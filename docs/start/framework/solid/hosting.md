@@ -44,20 +44,29 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 
 ### Netlify
 
-Set the `target` value to `netlify` in your `vite.config.ts` file.
+Install and add the [`@netlify/vite-plugin-tanstack-start`](https://www.npmjs.com/package/@netlify/vite-plugin-tanstack-start) plugin, which configures your build for Netlify deployment and provides full Netlify production platform emulation in local dev.
 
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import netlify from '@netlify/vite-plugin-tanstack-start'
+import viteSolid from 'vite-plugin-solid'
 
 export default defineConfig({
-  plugins: [tanstackStart({ target: 'netlify' }), viteSolid({ ssr: true })],
+  plugins: [tanstackStart(), netlify(), viteSolid({ ssr: true })],
 })
 ```
 
-Deploy your application to Netlify using their one-click deployment process, and you're ready to go!
+Add a `netlify.toml` file to your project root:
+
+```toml
+[build]
+  command = "vite build"
+  publish = "dist/client"
+```
+
+Deploy your application using their one-click deployment process, and you're ready to go!
 
 ### Vercel
 
