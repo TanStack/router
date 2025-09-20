@@ -1,4 +1,3 @@
-import type { StartConfig } from './createStart'
 import type { AnyServerFn, ConstrainValidator, Method } from './createServerFn'
 import type {
   AnyContext,
@@ -15,9 +14,11 @@ import type {
 export function createMiddleware<
   TRegister extends Register,
   TType extends MiddlewareType,
+  TGlobal extends boolean = false,
 >(
   options?: {
     type?: TType
+    global?: TGlobal
   },
   __opts?: FunctionMiddlewareOptions<
     TRegister,
@@ -26,7 +27,7 @@ export function createMiddleware<
     undefined,
     undefined
   >,
-): CreateMiddlewareResult<TRegister, TType> {
+): CreateMiddlewareResult<TRegister, TType, TGlobal> {
   const resolvedOptions = {
     type: 'request',
     ...(__opts ||
@@ -65,7 +66,7 @@ export function createMiddleware<
         Object.assign(resolvedOptions, { server }),
       ) as any
     },
-  } as unknown as CreateMiddlewareResult<TRegister, TType>
+  } as unknown as CreateMiddlewareResult<TRegister, TType, TGlobal>
 }
 
 export type MiddlewareType = 'request' | 'function'
@@ -73,7 +74,10 @@ export type MiddlewareType = 'request' | 'function'
 export type CreateMiddlewareResult<
   TRegister extends Register,
   TType extends MiddlewareType,
-> = 'request' extends TType ? RequestMiddleware : FunctionMiddleware<TRegister>
+  TGlobal,
+> = 'request' extends TType
+  ? RequestMiddleware<TGlobal>
+  : FunctionMiddleware<TRegister>
 
 export interface FunctionMiddleware<TRegister extends Register>
   extends FunctionMiddlewareAfterMiddleware<TRegister, unknown> {
@@ -289,56 +293,88 @@ export type AssignAllServerSendContext<
       TSendContext
     >
 
-export type GetAllGlobalServerRequestContext = Assign<
-  Register extends { server: { requestContext: infer TRequestContext } }
-    ? TRequestContext
-    : AnyContext,
-  Register extends {
-    start: StartConfig<any, any, infer TRequestMiddleware, any>
-  }
-    ? AssignAllMiddleware<TRequestMiddleware, 'allServerContext'>
-    : AnyContext
->
-
-export type GetAllGlobalServerFnContext = Assign<
-  GetAllGlobalServerRequestContext,
-  Register extends {
-    start: StartConfig<any, any, any, infer TFunctionMiddleware>
-  }
-    ? AssignAllMiddleware<TFunctionMiddleware, 'allServerContext'>
-    : AnyContext
->
-
-/**
- * Recursively resolve the server context type produced by a sequence of middleware
- */
 export type AssignAllServerRequestContext<
   TMiddlewares,
   TSendContext = undefined,
   TServerContext = undefined,
+  TGlobal = undefined,
 > = Assign<
-  GetAllGlobalServerRequestContext,
-  unknown extends TSendContext
-    ? Assign<TSendContext, TServerContext>
-    : Assign<
-        AssignAllMiddleware<TMiddlewares, 'allServerContext'>,
-        Assign<TSendContext, TServerContext>
-      >
+  // Fetch Request Context
+  GlobalFetchRequestContext,
+  Assign<
+    // GlobalServerRequestContext, // TODO: This enabled global middleware
+    // type inference, but creates a circular types issue. No idea how to fix this.
+    AnyContext,
+    __AssignAllServerRequestContext<TMiddlewares, TSendContext, TServerContext>
+  >
 >
+
+export type GlobalFetchRequestContext = Register extends {
+  server: { requestContext: infer TRequestContext }
+}
+  ? TRequestContext
+  : AnyContext
+
+export type GlobalServerRequestContext = Register extends {
+  start: {
+    '~types': {
+      requestMiddlewares: infer TRequestMiddlewares
+    }
+  }
+}
+  ? AssignAllMiddleware<TRequestMiddlewares, 'allServerContext'>
+  : AnyContext
+
+type __AssignAllServerRequestContext<
+  TMiddlewares,
+  TSendContext = undefined,
+  TServerContext = undefined,
+> = unknown extends TSendContext
+  ? Assign<TSendContext, TServerContext>
+  : Assign<
+      AssignAllMiddleware<TMiddlewares, 'allServerContext'>,
+      Assign<TSendContext, TServerContext>
+    >
 
 export type AssignAllServerFnContext<
   TMiddlewares,
   TSendContext = undefined,
   TServerContext = undefined,
 > = Assign<
-  GetAllGlobalServerFnContext,
-  unknown extends TSendContext
-    ? Assign<TSendContext, TServerContext>
-    : Assign<
-        AssignAllMiddleware<TMiddlewares, 'allServerContext'>,
-        Assign<TSendContext, TServerContext>
-      >
+  GlobalFetchRequestContext,
+  Assign<
+    // GlobalServerRequestContext, // TODO: This enabled global middleware
+    // type inference, but creates a circular types issue. No idea how to fix this.
+    AnyContext,
+    Assign<
+      // GlobalServerFnContext, // TODO: This enabled global middleware
+      // type inference, but creates a circular types issue. No idea how to fix this.
+      AnyContext,
+      __AssignAllServerFnContext<TMiddlewares, TSendContext, TServerContext>
+    >
+  >
 >
+
+type GlobalServerFnContext = Register extends {
+  start: {
+    '~types': {
+      functionMiddlewares: infer TFunctionMiddlewares
+    }
+  }
+}
+  ? AssignAllMiddleware<TFunctionMiddlewares, 'allServerContext'>
+  : AnyContext
+
+type __AssignAllServerFnContext<
+  TMiddlewares,
+  TSendContext = undefined,
+  TServerContext = undefined,
+> = unknown extends TSendContext
+  ? Assign<TSendContext, TServerContext>
+  : Assign<
+      AssignAllMiddleware<TMiddlewares, 'allServerContext'>,
+      Assign<TSendContext, TServerContext>
+    >
 
 export type AssignAllClientSendContext<
   TMiddlewares,
@@ -660,17 +696,21 @@ export interface FunctionMiddlewareAfterValidator<
     >,
     FunctionMiddlewareClient<TRegister, TMiddlewares, TValidator> {}
 
-export interface RequestMiddleware
-  extends RequestMiddlewareAfterMiddleware<undefined> {
+export interface RequestMiddleware<TGlobal>
+  extends RequestMiddlewareAfterMiddleware<undefined, TGlobal> {
   middleware: <const TMiddlewares = undefined>(
     middlewares: Constrain<TMiddlewares, ReadonlyArray<AnyRequestMiddleware>>,
-  ) => RequestMiddlewareAfterMiddleware<TMiddlewares>
+  ) => RequestMiddlewareAfterMiddleware<TMiddlewares, TGlobal>
 }
 
-export type AnyRequestMiddleware = RequestMiddlewareWithTypes<any, any>
+export type AnyRequestMiddleware = RequestMiddlewareWithTypes<any, any, any>
 
-export interface RequestMiddlewareWithTypes<TMiddlewares, TServerContext> {
-  _types: RequestMiddlewareTypes<TMiddlewares, TServerContext>
+export interface RequestMiddlewareWithTypes<
+  TMiddlewares,
+  TServerContext,
+  TGlobal,
+> {
+  _types: RequestMiddlewareTypes<TMiddlewares, TServerContext, TGlobal>
   options: RequestMiddlewareOptions<TMiddlewares, TServerContext>
 }
 
@@ -681,25 +721,26 @@ export interface RequestMiddlewareOptions<
   middleware?: TMiddlewares
   server?: RequestServerFn<TMiddlewares, TServerContext>
 }
-export interface RequestMiddlewareTypes<TMiddlewares, TServerContext> {
+export interface RequestMiddlewareTypes<TMiddlewares, TServerContext, TGlobal> {
   type: 'request'
   middlewares: TMiddlewares
   serverContext: TServerContext
   allServerContext: AssignAllServerRequestContext<
     TMiddlewares,
     undefined,
-    TServerContext
+    TServerContext,
+    TGlobal
   >
 }
 
-export interface RequestMiddlewareAfterMiddleware<TMiddlewares>
-  extends RequestMiddlewareWithTypes<TMiddlewares, undefined>,
-    RequestMiddlewareServer<TMiddlewares> {}
+export interface RequestMiddlewareAfterMiddleware<TMiddlewares, TGlobal>
+  extends RequestMiddlewareWithTypes<TMiddlewares, undefined, TGlobal>,
+    RequestMiddlewareServer<TMiddlewares, TGlobal> {}
 
-export interface RequestMiddlewareServer<TMiddlewares> {
+export interface RequestMiddlewareServer<TMiddlewares, TGlobal> {
   server: <TServerContext = undefined>(
     fn: RequestServerFn<TMiddlewares, TServerContext>,
-  ) => RequestMiddlewareAfterServer<TMiddlewares, TServerContext>
+  ) => RequestMiddlewareAfterServer<TMiddlewares, TServerContext, TGlobal>
 }
 
 export type RequestServerFn<TMiddlewares, TServerContext> = (
@@ -734,5 +775,8 @@ export interface RequestServerResult<TMiddlewares, TServerContext> {
   response: Response
 }
 
-export interface RequestMiddlewareAfterServer<TMiddlewares, TServerContext>
-  extends RequestMiddlewareWithTypes<TMiddlewares, TServerContext> {}
+export interface RequestMiddlewareAfterServer<
+  TMiddlewares,
+  TServerContext,
+  TGlobal,
+> extends RequestMiddlewareWithTypes<TMiddlewares, TServerContext, TGlobal> {}
