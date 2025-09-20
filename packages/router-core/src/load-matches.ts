@@ -406,23 +406,31 @@ const executeBeforeLoad = (
 
   const { search, params, cause } = match
   const preload = resolvePreload(inner, matchId)
-  const beforeLoadFnContext: BeforeLoadContextOptions<any, any, any, any, any> =
-    {
-      search,
-      abortController,
-      params,
-      preload,
-      context,
-      location: inner.location,
-      navigate: (opts: any) =>
-        inner.router.navigate({
-          ...opts,
-          _fromLocation: inner.location,
-        }),
-      buildLocation: inner.router.buildLocation,
-      cause: preload ? 'preload' : cause,
-      matches: inner.matches,
-    }
+  const beforeLoadFnContext: BeforeLoadContextOptions<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  > = {
+    search,
+    abortController,
+    params,
+    preload,
+    context,
+    location: inner.location,
+    navigate: (opts: any) =>
+      inner.router.navigate({
+        ...opts,
+        _fromLocation: inner.location,
+      }),
+    buildLocation: inner.router.buildLocation,
+    cause: preload ? 'preload' : cause,
+    matches: inner.matches,
+    ...inner.router.options.additionalContext,
+  }
 
   const updateContext = (beforeLoadContext: any) => {
     if (beforeLoadContext === undefined) {
@@ -487,13 +495,13 @@ const handleBeforeLoad = (
     return queueExecution()
   }
 
+  const execute = () => executeBeforeLoad(inner, matchId, index, route)
+
   const queueExecution = () => {
     if (shouldSkipLoader(inner, matchId)) return
     const result = preBeforeLoadSetup(inner, matchId, route)
     return isPromise(result) ? result.then(execute) : execute()
   }
-
-  const execute = () => executeBeforeLoad(inner, matchId, index, route)
 
   return serverSsr()
 }
@@ -571,6 +579,7 @@ const getLoaderContext = (
       }),
     cause: preload ? 'preload' : cause,
     route,
+    ...inner.router.options.additionalContext,
   }
 }
 

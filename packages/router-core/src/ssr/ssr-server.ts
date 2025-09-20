@@ -48,12 +48,18 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   return dehydratedMatch
 }
 
-export function attachRouterServerSsrUtils(
-  router: AnyRouter,
-  manifest: Manifest | undefined,
-) {
+export function attachRouterServerSsrUtils({
+  router,
+  nonce,
+  manifest,
+}: {
+  router: AnyRouter
+  nonce: string | undefined
+  manifest: Manifest | undefined
+}) {
   router.ssr = {
     manifest,
+    nonce,
   }
   let initialScriptSent = false
   const getInitialScript = () => {

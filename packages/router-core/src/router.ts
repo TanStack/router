@@ -99,6 +99,9 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type InjectedHtmlEntry = Promise<string>
 
+export type RegisterConfigKey = Register extends { configKey: infer TKey }
+  ? TKey
+  : 'config'
 export interface DefaultRegister {
   router: AnyRouter
   config: AnyRouterConfig
@@ -299,6 +302,9 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/router-context)
    */
   context?: InferRouterContext<TRouteTree>
+
+  additionalContext?: any
+
   /**
    * A function that will be called when the router is dehydrated.
    *
@@ -605,7 +611,7 @@ export type RouterConstructorOptions<
     TRouterHistory,
     TDehydrated
   >,
-  'context'
+  'context' | 'serializationAdapters' | 'defaultSsr'
 > &
   RouterContextOptions<TRouteTree>
 
@@ -2402,6 +2408,7 @@ export class RouterCore<
 
   ssr?: {
     manifest: Manifest | undefined
+    nonce?: string
   }
 
   serverSsr?: ServerSsr

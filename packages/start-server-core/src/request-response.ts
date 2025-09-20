@@ -37,21 +37,22 @@ import type {
   SessionUpdate,
 } from './session'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
+import type { RequestHandler } from './request-handler'
 
 interface StartEvent {
   h3Event: H3Event
 }
 const eventStorage = new AsyncLocalStorage<StartEvent>()
 
-export type RequestHandler = (request: Request) => Promise<Response> | Response
-
 export type { ResponseHeaderName, RequestHeaderName }
 
 export function requestHandler(handler: RequestHandler) {
-  return (request: Request): Promise<Response> | Response => {
+  return (request: Request, requestOpts: any): Promise<Response> | Response => {
     const h3Event = new H3Event(request)
 
-    const response = eventStorage.run({ h3Event }, () => handler(request))
+    const response = eventStorage.run({ h3Event }, () =>
+      handler(request, requestOpts),
+    )
     return h3_toResponse(response, h3Event)
   }
 }

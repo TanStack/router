@@ -1,32 +1,41 @@
 import path from 'node:path'
 import { z } from 'zod'
-import { configSchema, getConfig } from '@tanstack/router-generator'
+import { configSchema, getConfig } from '@tanstack/router-plugin'
 
-const tsrConfig = configSchema.omit({ autoCodeSplitting: true }).partial()
+const tsrConfig = configSchema
+  .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
+  .partial()
 
 export function parseStartConfig(
-  opts?: z.input<typeof tanstackStartOptionsSchema>,
+  opts: z.input<typeof tanstackStartOptionsSchema>,
+  root: string,
 ) {
   const options = tanstackStartOptionsSchema.parse(opts)
 
   const srcDirectory = options.srcDirectory
 
-  const routesDirectory =
-    options.router.routesDirectory ?? path.join(srcDirectory, 'routes')
+  const routesDirectory = path.resolve(
+    srcDirectory,
+    options.router.routesDirectory ?? 'routes',
+  )
 
-  const generatedRouteTree =
-    options.router.generatedRouteTree ??
-    path.join(srcDirectory, 'routeTree.gen.ts')
+  const generatedRouteTree = path.resolve(
+    srcDirectory,
+    options.router.generatedRouteTree ?? 'routeTree.gen.ts',
+  )
 
   return {
     ...options,
     router: {
       ...options.router,
-      ...getConfig({
-        ...options.router,
-        routesDirectory,
-        generatedRouteTree,
-      }),
+      ...getConfig(
+        {
+          ...options.router,
+          routesDirectory,
+          generatedRouteTree,
+        },
+        root,
+      ),
     },
   }
 }
@@ -115,14 +124,13 @@ const pageSchema = pageBaseSchema.extend({
 const tanstackStartOptionsSchema = z
   .object({
     srcDirectory: z.string().optional().default('src'),
-    router: z
+    start: z
       .object({
-        // TODO this will move to 'start' once we have `createStart`
         entry: z.string().optional(),
       })
-      .and(tsrConfig.optional().default({}))
       .optional()
       .default({}),
+    router: tsrConfig.optional().default({}),
     client: z
       .object({
         entry: z.string().optional(),

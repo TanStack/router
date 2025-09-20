@@ -7,9 +7,10 @@ export type PostType = {
   body: string
 }
 
-export const fetchPost = createServerFn()
+export const fetchPost = createServerFn({ method: 'POST' })
   .validator((d: string) => d)
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    console.log('Request context:', context)
     console.info(`Fetching post with id ${data}...`)
     const res = await fetch(
       `https://jsonplaceholder.typicode.com/posts/${data}`,

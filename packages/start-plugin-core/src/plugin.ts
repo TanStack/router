@@ -20,7 +20,10 @@ import {
 import { postServerBuild } from './post-server-build'
 import { createServerFnPlugin } from './create-server-fn-plugin/plugin'
 import type { ViteEnvironmentNames } from './constants'
-import type { TanStackStartInputConfig } from './schema'
+import type {
+  TanStackStartInputConfig,
+  TanStackStartOutputConfig,
+} from './schema'
 import type { PluginOption } from 'vite'
 import type { CompileStartFrameworkOptions } from './start-compiler-plugin/compilers'
 
@@ -36,7 +39,22 @@ export function TanStackStartVitePluginCore(
   corePluginOpts: TanStackStartVitePluginCoreOptions,
   startPluginOpts: TanStackStartInputConfig,
 ): Array<PluginOption> {
-  const startConfig = parseStartConfig(startPluginOpts)
+  const resolvedStartConfig = {
+    root: '',
+    startFilePath: '',
+    srcDirectory: '',
+  }
+
+  let startConfig: TanStackStartOutputConfig | null
+  function getConfig() {
+    if (!resolvedStartConfig.root) {
+      throw new Error(`Cannot get config before root is resolved`)
+    }
+    if (!startConfig) {
+      startConfig = parseStartConfig(startPluginOpts, resolvedStartConfig.root)
+    }
+    return { startConfig, resolvedStartConfig }
+  }
 
   const capturedBundle: Partial<
     Record<ViteEnvironmentNames, vite.Rollup.OutputBundle>
@@ -51,11 +69,7 @@ export function TanStackStartVitePluginCore(
   }
 
   return [
-    tanStackStartRouter({
-      ...startConfig.router,
-      target: corePluginOpts.framework,
-      autoCodeSplitting: true,
-    }),
+    tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
     {
       name: 'tanstack-start-core:config',
       async config(viteConfig, { command }) {
@@ -63,21 +77,24 @@ export function TanStackStartVitePluginCore(
         globalThis.TSS_APP_BASE = viteAppBase
 
         const root = viteConfig.root || process.cwd()
-        const resolvedSrcDirectory = join(root, startConfig.srcDirectory)
+        resolvedStartConfig.root = root
 
-        const routerFilePath = resolveEntry({
-          type: 'router entry',
-          configuredEntry: startConfig.router.entry,
-          defaultEntry: 'router',
-          root,
+        const { startConfig } = getConfig()
+        const resolvedSrcDirectory = join(root, startConfig.srcDirectory)
+        resolvedStartConfig.srcDirectory = resolvedSrcDirectory
+
+        const startFilePath = resolveEntry({
+          type: 'start entry',
+          configuredEntry: startConfig.start.entry,
+          defaultEntry: 'start',
           resolvedSrcDirectory,
           required: true,
         })
+        resolvedStartConfig.startFilePath = startFilePath
         const clientEntryPath = resolveEntry({
           type: 'client entry',
           configuredEntry: startConfig.client.entry,
           defaultEntry: 'client',
-          root,
           resolvedSrcDirectory,
           required: false,
         })
@@ -86,7 +103,6 @@ export function TanStackStartVitePluginCore(
           type: 'server entry',
           configuredEntry: startConfig.server.entry,
           defaultEntry: 'server',
-          root,
           resolvedSrcDirectory,
           required: false,
         })
@@ -99,6 +115,7 @@ export function TanStackStartVitePluginCore(
         } else {
           clientAlias = corePluginOpts.defaultEntryPaths.client
         }
+
         let serverAlias: string
         if (serverEntryPath) {
           serverAlias = vite.normalizePath(path.resolve(root, serverEntryPath))
@@ -109,24 +126,10 @@ export function TanStackStartVitePluginCore(
           (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS],
           string
         > = {
-          [ENTRY_POINTS.router]: routerFilePath,
+          [ENTRY_POINTS.start]: startFilePath,
           [ENTRY_POINTS.client]: clientAlias,
           [ENTRY_POINTS.server]: serverAlias,
         }
-
-        // TODO
-        /* const nitroOutputPublicDir = await (async () => {
-          // Create a dummy nitro app to get the resolved public output path
-          const dummyNitroApp = await createNitro({
-            preset: startConfig.target,
-            compatibilityDate: '2024-12-01',
-          })
-
-          const nitroOutputPublicDir = dummyNitroApp.options.output.publicDir
-          await dummyNitroApp.close()
-
-          return nitroOutputPublicDir
-        })()*/
 
         const startPackageName =
           `@tanstack/${corePluginOpts.framework}-start` as const
@@ -170,6 +173,7 @@ export function TanStackStartVitePluginCore(
             },
             [VITE_ENVIRONMENT_NAMES.server]: {
               consumer: 'server',
+
               build: {
                 ssr: true,
                 rollupOptions: {
@@ -187,8 +191,10 @@ export function TanStackStartVitePluginCore(
               },
             },
           },
+
           resolve: {
             noExternal: [
+              // ENTRY_POINTS.start,
               '@tanstack/start**',
               `@tanstack/${corePluginOpts.framework}-start**`,
               ...crawlFrameworkPkgsResult.ssr.noExternal.sort(),
@@ -262,7 +268,7 @@ export function TanStackStartVitePluginCore(
     startManifestPlugin({
       getClientBundle: () => getBundle(VITE_ENVIRONMENT_NAMES.client),
     }),
-    devServerPlugin({ startConfig }),
+    devServerPlugin({ getConfig }),
     {
       name: 'tanstack-start:core:capture-bundle',
       applyToEnvironment(e) {

@@ -136,12 +136,12 @@ from the default [preloading functionality](/router/latest/docs/framework/solid/
 > You won't have a `routeTree.gen.ts` file yet. This file will be generated when you run TanStack Start for the first time.
 
 ```tsx
-// src/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/solid-router'
+// src/start.tsx
+import { createRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
@@ -151,7 +151,7 @@ export function createRouter() {
 
 declare module '@tanstack/solid-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>
+    router: ReturnType<typeof getRouter>
   }
 }
 ```

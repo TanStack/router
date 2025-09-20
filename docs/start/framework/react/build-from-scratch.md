@@ -137,12 +137,12 @@ from the default [preloading functionality](/router/latest/docs/framework/react/
 > You won't have a `routeTree.gen.ts` file yet. This file will be generated when you run TanStack Start for the first time.
 
 ```tsx
-// src/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+// src/start.tsx
+import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
@@ -152,7 +152,7 @@ export function createRouter() {
 
 declare module '@tanstack/react-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>
+    router: ReturnType<typeof getRouter>
   }
 }
 ```

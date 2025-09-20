@@ -24,7 +24,6 @@ export function resolveEntry<
   configuredEntry?: string
   defaultEntry: string
   resolvedSrcDirectory: string
-  root: string
   required: TRequired
 }): TReturn {
   let resolveOptions: ResolveModuleOptions
@@ -38,7 +37,7 @@ export function resolveEntry<
   } else {
     resolveOptions = {
       baseName: opts.configuredEntry,
-      from: opts.root,
+      from: opts.resolvedSrcDirectory,
     }
   }
 

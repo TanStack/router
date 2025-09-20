@@ -1,5 +1,4 @@
 export { createStartHandler } from './createStartHandler'
-export type { CustomizeStartHandler } from './createStartHandler'
 
 export {
   attachRouterServerSsrUtils,
@@ -14,49 +13,10 @@ export { handleServerAction } from './server-functions-handler'
 
 export * from './request-response'
 
-export {
-  createServerRoute,
-  createServerFileRoute,
-  createServerRootRoute,
-} from './serverRoute'
-export type {
-  CreateServerFileRoute,
-  ServerFileRoutesByPath,
-  ServerRouteOptions,
-  ServerRouteManifest,
-  ServerRouteAddFileChildrenFn,
-  ServerRouteMethodBuilderOptions,
-  AnyServerRouteWithTypes,
-  ServerRouteWithTypes,
-  ServerRouteTypes,
-  ResolveAllServerContext,
-  AnyServerRoute,
-  ServerRoute,
-  ServerRouteMiddleware,
-  ServerRouteAfterMiddleware,
-  ServerRouteMethods,
-  ServerRouteMethodsOptions,
-  ServerRouteMethodsRecord,
-  ServerRouteMethodRecordValue,
-  ServerRouteVerb,
-  ServerRouteMethodHandlerFn,
-  ServerRouteMethodHandlerCtx,
-  MergeMethodMiddlewares,
-  AssignAllMethodContext,
-  AnyRouteMethodsBuilder,
-  ServerRouteMethodBuilder,
-  ServerRouteMethodBuilderWithTypes,
-  ServerRouteMethodBuilderTypes,
-  ServerRouteMethodBuilderMiddleware,
-  ServerRouteMethodBuilderAfterMiddleware,
-  ServerRouteMethodBuilderHandler,
-  ServerRouteMethodBuilderAfterHandler,
-  ServerRouteMethod,
-  ServerRouteAfterMethods,
-} from './serverRoute'
-
 export * from './virtual-modules'
 
 export { HEADERS } from './constants'
 
 export { createServerRpc } from './createServerRpc'
+
+export type { RequestHandler, RequestOptions } from './request-handler'

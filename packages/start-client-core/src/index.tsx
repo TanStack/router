@@ -33,7 +33,6 @@ export {
   type FunctionClientResultWithContext,
   type AssignAllClientContextBeforeNext,
   type AssignAllMiddleware,
-  type AssignAllServerContext,
   type FunctionMiddlewareAfterValidator,
   type FunctionMiddlewareClientFn,
   type FunctionMiddlewareServerFnResult,
@@ -43,10 +42,6 @@ export {
   type FunctionServerResultWithContext,
   type AnyRequestMiddleware,
 } from './createMiddleware'
-export {
-  registerGlobalMiddleware,
-  globalMiddleware,
-} from './registerGlobalMiddleware'
 export type {
   CompiledFetcherFnOptions,
   CompiledFetcherFn,
@@ -69,17 +64,23 @@ export type {
 export {
   applyMiddleware,
   execValidator,
-  serverFnBaseToMiddleware,
   flattenMiddlewares,
   executeMiddleware,
 } from './createServerFn'
-
-export { createClientRpc } from './createClientRpc'
-
-export { getDefaultSerovalPlugins } from './serializer/getDefaultSerovalPlugins'
 
 export {
   TSS_FORMDATA_CONTEXT,
   TSS_SERVER_FUNCTION,
   X_TSS_SERIALIZED,
 } from './constants'
+
+export type * from './serverRoute'
+
+export type * from './startEntry'
+
+export { createStart } from './createStart'
+export type { AnyStartConfig, AnyStartConfigOptions } from './createStart'
+export type { Register } from '@tanstack/router-core'
+
+export { getRouterInstance } from './getRouterInstance'
+export { getDefaultSerovalPlugins } from './getDefaultSerovalPlugins'

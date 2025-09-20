@@ -30,12 +30,12 @@
     "build": "vite build"
   },
   "type": "module",
-  "types": "dist/esm/client.d.ts",
+  "types": "dist/esm/index.d.ts",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/esm/client.d.ts",
-        "default": "./dist/esm/client.js"
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
       }
     },
     "./client": {
@@ -56,6 +56,12 @@
         "default": "./dist/esm/plugin/vite.js"
       }
     },
+    "./server-entry": {
+      "import": {
+        "types": "./dist/default-entry/esm/server.d.ts",
+        "default": "./dist/default-entry/esm/server.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -70,6 +76,8 @@
     "@tanstack/solid-start-client": "workspace:*",
     "@tanstack/solid-start-server": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/start-client-core": "workspace:*",
     "pathe": "^2.0.3"
   },
   "devDependencies": {

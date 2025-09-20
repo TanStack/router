@@ -1,11 +1,10 @@
 import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
-import { globalMiddleware } from './registerGlobalMiddleware'
 
-import { getRouterInstance } from './getRouterInstance'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
+import { getServerContextAfterGlobalMiddlewares } from './getServerContextAfterGlobalMiddlewares'
+import { getStartInstance } from './getStartInstance'
 import type {
-  AnyRouter,
   AnyValidator,
   Constrain,
   Expand,
@@ -21,7 +20,7 @@ import type { JsonResponse } from '@tanstack/router-core/ssr/client'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
-  AssignAllServerContext,
+  AssignAllServerFnContext,
   FunctionMiddlewareClientFnResult,
   FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
@@ -132,7 +131,6 @@ export function createServerFn<
             headers: opts?.headers,
             signal: opts?.signal,
             context: {},
-            router: getRouterInstance(),
           }).then((d) => {
             if (d.error) throw d.error
             return d.result
@@ -144,9 +142,15 @@ export function createServerFn<
           // The extracted function on the server-side calls
           // this function
           __executeServer: async (opts: any, signal: AbortSignal) => {
+            const serverContextAfterGlobalMiddlewares =
+              getServerContextAfterGlobalMiddlewares()
             const ctx = {
               ...extractedFn,
               ...opts,
+              context: {
+                ...serverContextAfterGlobalMiddlewares,
+                ...opts.context,
+              },
               signal,
             }
 
@@ -180,8 +184,9 @@ export async function executeMiddleware(
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
+  const globalMiddlewares = getStartInstance().functionMiddleware || []
   const flattenedMiddlewares = flattenMiddlewares([
-    ...globalMiddleware,
+    ...globalMiddlewares,
     ...middlewares,
   ])
 
@@ -243,7 +248,6 @@ export type CompiledFetcherFnOptions = {
   headers?: HeadersInit
   signal?: AbortSignal
   context?: any
-  // router?: AnyRouter
 }
 
 export type Fetcher<
@@ -337,7 +341,7 @@ export type ServerFn<
 export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
   method: TMethod
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
-  context: Expand<AssignAllServerContext<TMiddlewares>>
+  context: Expand<AssignAllServerFnContext<TMiddlewares, {}>>
   signal: AbortSignal
 }
 
@@ -562,7 +566,7 @@ export interface ServerFnTypes<
   middlewares: TMiddlewares
   validator: TValidator
   response: TResponse
-  allServerContext: AssignAllServerContext<TMiddlewares>
+  allServerContext: AssignAllServerFnContext<TMiddlewares>
   allInput: IntersectAllValidatorInputs<TMiddlewares, TValidator>
   allOutput: IntersectAllValidatorOutputs<TMiddlewares, TValidator>
 }
@@ -601,7 +605,6 @@ export type ServerFnMiddlewareOptions = {
   sendContext?: any
   context?: any
   functionId: string
-  router?: AnyRouter
 }
 
 export type ServerFnMiddlewareResult = ServerFnMiddlewareOptions & {
@@ -683,7 +686,7 @@ export function execValidator(
   throw new Error('Invalid validator type!')
 }
 
-export function serverFnBaseToMiddleware(
+function serverFnBaseToMiddleware(
   options: ServerFnBaseOptions<any, any, any, any, any>,
 ): AnyFunctionMiddleware {
   return {
