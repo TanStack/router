@@ -235,7 +235,12 @@ Optional parameters create flexible URL patterns:
 
 - `/posts/{-$category}` matches both `/posts` and `/posts/tech`
 - `/posts/{-$category}/{-$slug}` matches `/posts`, `/posts/tech`, and `/posts/tech/hello-world`
+- `/posts/{-$category}/{-$slug}/list` matches `/posts/list`, `/posts/tech/list`, and `/posts/tech/hello-world/list`
 - `/users/$id/{-$tab}` matches `/users/123` and `/users/123/settings`
+- `/users/{-$category}/$id/{-$tab}` matches `/users/123`, `/users/admin/123` and `/users/admin/123/settings`
+- `/users/{-$category}/$id/$slug/{-$tab}` matches `/users/123/slug`, `/users/admin/123/slug` and `/users/admin/123/slug/settings`
+- `/users/{-$category}/$id/{-$tab}/$slug` matches `/users/123/slug`, `/users/admin/123/slug` and `/users/admin/123/settings/slug`
+- `/users/{-$category}/$id/edit/{-$tab}` matches `/users/123/edit`, `/users/admin/123/edit`, `/users/123/edit/settings` and `/users/admin/123/edit/settings`
 
 When an optional parameter is not present in the URL, its value will be `undefined` in your route handlers and components.
 
