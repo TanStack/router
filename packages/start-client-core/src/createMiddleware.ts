@@ -1,5 +1,6 @@
 import type { AnyServerFn, ConstrainValidator, Method } from './createServerFn'
 import type {
+  AnyContext,
   Assign,
   Constrain,
   Expand,
@@ -453,7 +454,14 @@ export interface FunctionMiddlewareServerFnOptions<
   in out TServerSendContext,
 > {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
-  context: Expand<AssignAllServerContext<TMiddlewares, TServerSendContext>>
+  context: Expand<
+    Assign<
+      Register extends { server: { requestContext: infer TRequestContext } }
+        ? TRequestContext
+        : AnyContext,
+      AssignAllServerContext<TMiddlewares, TServerSendContext>
+    >
+  >
   next: FunctionMiddlewareServerNextFn<
     TRegister,
     TMiddlewares,
