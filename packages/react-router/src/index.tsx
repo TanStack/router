@@ -192,7 +192,6 @@ export type {
   AnyRouteMatch,
   RouteContextFn,
   RouteContextOptions,
-  BeforeLoadFn,
   BeforeLoadContextOptions,
   ContextOptions,
   RouteOptions,

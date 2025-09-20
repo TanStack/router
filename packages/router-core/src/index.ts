@@ -174,7 +174,6 @@ export type {
   RouteLoaderFn,
   LoaderFnContext,
   RouteContextFn,
-  BeforeLoadFn,
   ContextOptions,
   RouteContextOptions,
   BeforeLoadContextOptions,

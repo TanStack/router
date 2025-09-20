@@ -42,6 +42,7 @@ export {
   type FunctionServerResultWithContext,
   type AnyRequestMiddleware,
 } from './createMiddleware'
+export { createUnsafeMiddleware } from './createUnsafeMiddleware'
 export type {
   CompiledFetcherFnOptions,
   CompiledFetcherFn,

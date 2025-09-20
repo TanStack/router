@@ -8,7 +8,6 @@ import type {
   RouteConstraints,
   UpdatableRouteOptions,
 } from './route'
-import type { Register } from './router'
 import type { AnyValidator } from './validators'
 
 export interface FileRouteTypes {
@@ -34,7 +33,7 @@ export interface FileRoutesByPath {
 }
 
 export interface FileRouteOptions<
-  TRegister extends Register,
+  TRegister,
   TFilePath extends string,
   TParentRoute extends AnyRoute,
   TId extends RouteConstraints['TId'],
@@ -86,7 +85,7 @@ export type CreateFileRoute<
   TPath extends RouteConstraints['TPath'],
   TFullPath extends RouteConstraints['TFullPath'],
 > = <
-  TRegister extends Register = Register,
+  TRegister = unknown,
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
   TRouteContextFn = AnyContext,

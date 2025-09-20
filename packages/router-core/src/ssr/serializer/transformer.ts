@@ -1,7 +1,11 @@
 import { createPlugin } from 'seroval'
 import { GLOBAL_TSR } from '../constants'
 import type { Plugin, SerovalNode } from 'seroval'
-import type { Register, RegisterConfigKey, SSROption } from '../../router'
+import type {
+  GetRegisteredConfigKey,
+  RegisteredProperty,
+  SSROption,
+} from '../../router'
 import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
 
@@ -151,12 +155,12 @@ export function makeSerovalPlugin<TInput, TOutput>(
   })
 }
 
-export type ValidateSerializableInput<
-  TRegister extends Register,
+export type ValidateSerializableInput<TRegister, T> = ValidateSerializable<
   T,
-> = ValidateSerializable<T, RegisteredSerializableInput<TRegister>>
+  RegisteredSerializableInput<TRegister>
+>
 
-export type RegisteredSerializableInput<TRegister extends Register> =
+export type RegisteredSerializableInput<TRegister> =
   | (unknown extends RegisteredSerializationAdapters<TRegister>
       ? never
       : RegisteredSerializationAdapters<TRegister> extends ReadonlyArray<AnySerializationAdapter>
@@ -164,13 +168,22 @@ export type RegisteredSerializableInput<TRegister extends Register> =
         : never)
   | Serializable
 
-export type RegisteredSerializationAdapters<TRegister extends Register> =
-  TRegister[RegisterConfigKey]['~types']['serializationAdapters']
+export type RegisteredSerializationAdapters<TRegister> = RegisteredType<
+  TRegister,
+  'serializationAdapters'
+>
 
-export type ValidateSerializableInputResult<
-  TRegister extends Register,
-  T,
-> = ValidateSerializableResult<T, RegisteredSerializableInput<TRegister>>
+type RegisteredType<TRegister, TKey> =
+  RegisteredProperty<TRegister, GetRegisteredConfigKey<TRegister>> extends {
+    '~types': infer TTypes
+  }
+    ? TKey extends keyof TTypes
+      ? TTypes[TKey]
+      : unknown
+    : unknown
+
+export type ValidateSerializableInputResult<TRegister, T> =
+  ValidateSerializableResult<T, RegisteredSerializableInput<TRegister>>
 
 export type ValidateSerializableResult<T, TSerializable> =
   T extends TSerializable
@@ -181,29 +194,30 @@ export type ValidateSerializableResult<T, TSerializable> =
         ? ReadableStream
         : { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
 
-export type RegisteredSSROption<TRegister extends Register> =
-  unknown extends TRegister[RegisterConfigKey]['~types']['defaultSsr']
+export type RegisteredSSROption<TRegister> =
+  unknown extends RegisteredType<TRegister, 'defaultSsr'>
     ? SSROption
-    : TRegister[RegisterConfigKey]['~types']['defaultSsr']
+    : RegisteredType<TRegister, 'defaultSsr'>
 
 export type ValidateSerializableLifecycleResult<
-  TRegister extends Register,
+  TRegister,
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
-> = false extends TRegister['ssr']
-  ? any
-  : ValidateSerializableLifecycleResultSSR<
-        TRegister,
-        TParentRoute,
-        TSSR,
-        TFn
-      > extends infer TInput
-    ? TInput
-    : never
+> =
+  false extends RegisteredProperty<TRegister, 'ssr'>
+    ? any
+    : ValidateSerializableLifecycleResultSSR<
+          TRegister,
+          TParentRoute,
+          TSSR,
+          TFn
+        > extends infer TInput
+      ? TInput
+      : never
 
 export type ValidateSerializableLifecycleResultSSR<
-  TRegister extends Register,
+  TRegister,
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,

@@ -31,6 +31,7 @@ import type {
   AnyRouter,
   Awaitable,
   Manifest,
+  Register,
 } from '@tanstack/router-core'
 import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 
@@ -49,9 +50,9 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
   return headers
 }
 
-export function createStartHandler(
+export function createStartHandler<TRegister = Register>(
   cb: HandlerCallback<AnyRouter>,
-): RequestHandler {
+): RequestHandler<TRegister> {
   if (!process.env.TSS_SERVER_FN_BASE) {
     throw new Error(
       'tanstack/start-server-core: TSS_SERVER_FN_BASE must be defined in your environment for createStartHandler()',
@@ -79,7 +80,10 @@ export function createStartHandler(
 
   const originalFetch = globalThis.fetch
 
-  const startRequestResolver: RequestHandler = async (request, requestOpts) => {
+  const startRequestResolver: RequestHandler<Register> = async (
+    request,
+    requestOpts,
+  ) => {
     function getOrigin() {
       const originHeader = request.headers.get('Origin')
       if (originHeader) {
@@ -273,7 +277,7 @@ export function createStartHandler(
       [...middlewares, requestHandlerMiddleware],
       {
         request,
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
         context: requestOpts?.context || {},
       },
     )
@@ -457,7 +461,7 @@ function throwIfMayNotDefer() {
   throw new Error('Internal Server Error')
 }
 function handlerToMiddleware(
-  handler: RouteMethodHandlerFn<AnyRoute, any, any, any, any>,
+  handler: RouteMethodHandlerFn<any, AnyRoute, any, any, any, any>,
   mayDefer: boolean = false,
 ) {
   if (mayDefer) {

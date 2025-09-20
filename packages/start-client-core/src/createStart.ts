@@ -1,12 +1,8 @@
+import type { AnySerializationAdapter, SSROption } from '@tanstack/router-core'
 import type {
-  AnySerializationAdapter,
-  Register,
-  SSROption,
-} from '@tanstack/router-core'
-import type {
-  AnyFunctionMiddleware,
-  AnyRequestMiddleware,
-} from './createMiddleware'
+  AnyUnsafeFunctionMiddleware,
+  AnyUnsafeRequestMiddleware,
+} from './createUnsafeMiddleware'
 
 export interface StartConfigOptions<
   in out TSerializationAdapters,
@@ -55,8 +51,10 @@ export const createStart = <
   const TSerializationAdapters extends
     ReadonlyArray<AnySerializationAdapter> = [],
   TDefaultSsr extends SSROption = SSROption,
-  const TRequestMiddlewares extends ReadonlyArray<AnyRequestMiddleware> = [],
-  const TFunctionMiddlewares extends ReadonlyArray<AnyFunctionMiddleware> = [],
+  const TRequestMiddlewares extends
+    ReadonlyArray<AnyUnsafeRequestMiddleware> = [],
+  const TFunctionMiddlewares extends
+    ReadonlyArray<AnyUnsafeFunctionMiddleware> = [],
 >(
   options: StartConfigOptions<
     TSerializationAdapters,
@@ -91,5 +89,3 @@ declare module '@tanstack/router-core' {
     }
   }
 }
-
-export type RegisteredRequestContext = Register['server']['requestContext']

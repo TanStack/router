@@ -99,9 +99,12 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type InjectedHtmlEntry = Promise<string>
 
-export type RegisterConfigKey = Register extends { configKey: infer TKey }
+export type GetRegisteredConfigKey<TRegister> = TRegister extends {
+  configKey: infer TKey
+}
   ? TKey
   : 'config'
+
 export interface DefaultRegister {
   router: AnyRouter
   config: AnyRouterConfig
@@ -112,7 +115,17 @@ export interface Register extends DefaultRegister {
   // router: Router
 }
 
-export type RegisteredRouter = Register['router']
+export type RegisteredProperty<
+  TRegister,
+  TKey,
+  TDefault = unknown,
+> = TKey extends keyof TRegister ? TRegister[TKey] : TDefault
+
+export type RegisteredRouter<TRegister = Register> = RegisteredProperty<
+  TRegister,
+  'router',
+  AnyRouter
+>
 
 export type DefaultRemountDepsFn<TRouteTree extends AnyRoute> = (
   opts: MakeRemountDepsOptionsUnion<TRouteTree>,

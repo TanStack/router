@@ -77,7 +77,7 @@ export class FileRoute<
   }
 
   createRoute = <
-    TRegister extends Register = Register,
+    TRegister = unknown,
     TSearchValidator = undefined,
     TParams = ResolveParams<TPath>,
     TRouteContextFn = AnyContext,
@@ -162,6 +162,7 @@ export function FileRouteLoader<
   loaderFn: Constrain<
     TLoaderFn,
     RouteLoaderFn<
+      Register,
       TRoute['parentRoute'],
       TRoute['types']['id'],
       TRoute['types']['params'],
