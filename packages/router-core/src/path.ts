@@ -611,6 +611,11 @@ function isMatch(
 ): boolean {
   let baseIndex = 0
   let routeIndex = 0
+  let processedOptionals = 0
+  let skippedOptionals = 0
+  const optionalCount = routeSegments.filter(
+    (seg) => seg.type === SEGMENT_TYPE_OPTIONAL_PARAM,
+  ).length
 
   while (baseIndex < baseSegments.length || routeIndex < routeSegments.length) {
     const baseSegment = baseSegments[baseIndex]
@@ -796,33 +801,102 @@ function isMatch(
           // For optional params without prefix/suffix, we need to check if the current
           // base segment should match this optional param or a later route segment
 
-          // Look ahead to see if there's a later route segment that matches the current base segment
           let shouldMatchOptional = true
+          const remainingOptionals = optionalCount - processedOptionals - 1 > 0
+
+          // consider last route segment might be index route and any prior optionals that was not matched
+          const routeSegmentLength =
+            (routeSegments.slice(-1)[0]?.value === '/'
+              ? routeSegments.length - 1
+              : routeSegments.length) - skippedOptionals
+
+          // Look ahead to see if there's a later route segment that matches the current base segment
           for (
             let lookAhead = routeIndex + 1;
             lookAhead < routeSegments.length;
             lookAhead++
           ) {
             const futureRouteSegment = routeSegments[lookAhead]
-            if (
-              futureRouteSegment?.type === SEGMENT_TYPE_PATHNAME &&
-              futureRouteSegment.value === baseSegment.value
-            ) {
-              // The current base segment matches a future pathname segment,
-              // so we should skip this optional parameter
-              shouldMatchOptional = false
+
+            // where the next segment is a required path name, we can break early.
+            // either the current base segment matches a future pathname segment,
+            // in which case we should skip this optional parameter,
+            // or the url is invalid and we should bail out
+            if (futureRouteSegment?.type === SEGMENT_TYPE_PATHNAME) {
+              if (
+                caseSensitive
+                  ? futureRouteSegment.value === baseSegment.value
+                  : futureRouteSegment.value.toLowerCase() ===
+                    baseSegment.value.toLowerCase()
+              ) {
+                // so we should skip this optional parameter
+                shouldMatchOptional = false
+              }
               break
             }
 
-            // If we encounter a required param or wildcard, stop looking ahead
+            // where consecutive optional params are used, we can break early.
+            // preference is given to the first optional param
+            if (futureRouteSegment?.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
+              break
+            }
+
+            // this if is not required for the rest of the logic, but it's useful to know what type of future segment we're looking at'
             if (
               futureRouteSegment?.type === SEGMENT_TYPE_PARAM ||
               futureRouteSegment?.type === SEGMENT_TYPE_WILDCARD
             ) {
-              if (baseSegments.length < routeSegments.length) {
-                shouldMatchOptional = false
+              const followingRouteSegment = routeSegments[lookAhead + 1]
+
+              let isMatchedFurtherDown = false
+
+              // since we know there are remaining optionals, we look to the segment following the next.
+              // if further segments are required paths, then we can possibly match further optionals based on the url pattern. to do this, we match the remaining paths
+              // if all that follows are wildcards/required params and/or optionals params we continue matching on a first-case basis, and optionals further down are unmatched.
+              if (
+                remainingOptionals &&
+                followingRouteSegment &&
+                (followingRouteSegment.type === SEGMENT_TYPE_PATHNAME ||
+                  (followingRouteSegment.type === SEGMENT_TYPE_OPTIONAL_PARAM &&
+                    followingRouteSegment.prefixSegment) ||
+                  followingRouteSegment.suffixSegment)
+              ) {
+                const remainingRouteSegments = routeSegments.slice(
+                  lookAhead + 1,
+                )
+
+                const remainingRouteSegmentLength =
+                  remainingRouteSegments.slice(-1)[0]?.value === '/'
+                    ? remainingRouteSegments.length - 1
+                    : remainingRouteSegments.length
+
+                const remainingBaseSegments = baseSegments.slice(lookAhead)
+
+                isMatchedFurtherDown =
+                  remainingRouteSegmentLength ===
+                    remainingBaseSegments.length &&
+                  isMatch(
+                    remainingBaseSegments,
+                    remainingRouteSegments,
+                    params,
+                    fuzzy,
+                    caseSensitive,
+                  )
               }
-              break
+
+              if (
+                !remainingOptionals ||
+                // remaining length excluding remaining optionals and matched optionals
+                routeSegmentLength + skippedOptionals - optionalCount ===
+                  baseSegments.length ||
+                // is matched further down
+                isMatchedFurtherDown
+              ) {
+                if (baseSegments.length < routeSegmentLength) {
+                  shouldMatchOptional = false
+                }
+                break
+              }
             }
           }
 
@@ -836,7 +910,11 @@ function isMatch(
         if (matched) {
           params[routeSegment.value.substring(1)] = _paramValue
           baseIndex++
+        } else {
+          skippedOptionals++
         }
+
+        processedOptionals++
 
         routeIndex++
         continue
