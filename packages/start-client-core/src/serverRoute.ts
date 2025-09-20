@@ -10,7 +10,7 @@ import type {
 } from '@tanstack/router-core'
 import type {
   AnyRequestMiddleware,
-  AssignAllServerContext,
+  AssignAllServerRequestContext,
 } from './createMiddleware'
 
 declare module '@tanstack/router-core' {
@@ -79,8 +79,13 @@ declare module '@tanstack/router-core' {
   > {
     serverContext?: Expand<
       Assign<
-        ResolveAllServerContext<TParentRoute, TServerMiddlewares>,
-        ExtractHandlersContext<THandlers>
+        Register extends { server: { requestContext: infer TRequestContext } }
+          ? TRequestContext
+          : AnyContext,
+        Assign<
+          ResolveAllServerContext<TParentRoute, TServerMiddlewares>,
+          ExtractHandlersContext<THandlers>
+        >
       >
     >
   }
@@ -98,8 +103,13 @@ declare module '@tanstack/router-core' {
   > {
     serverContext?: Expand<
       Assign<
-        ResolveAllServerContext<TParentRoute, TServerMiddlewares>,
-        ExtractHandlersContext<THandlers>
+        Register extends { server: { requestContext: infer TRequestContext } }
+          ? TRequestContext
+          : AnyContext,
+        Assign<
+          ResolveAllServerContext<TParentRoute, TServerMiddlewares>,
+          ExtractHandlersContext<THandlers>
+        >
       >
     >
   }
@@ -376,10 +386,10 @@ export type ResolveAllServerContext<
   TParentRoute extends AnyRoute,
   TServerMiddlewares,
 > = unknown extends TParentRoute
-  ? AssignAllServerContext<TServerMiddlewares, {}>
+  ? AssignAllServerRequestContext<TServerMiddlewares, {}>
   : Assign<
       TParentRoute['types']['allServerContext'],
-      AssignAllServerContext<TServerMiddlewares, {}>
+      AssignAllServerRequestContext<TServerMiddlewares, {}>
     >
 
 export type RouteMethod =
@@ -426,7 +436,16 @@ export interface RouteMethodHandlerCtx<
   in out TMethodMiddlewares,
 > {
   context: Expand<
-    AssignAllMethodContext<TParentRoute, TServerMiddlewares, TMethodMiddlewares>
+    Assign<
+      Register extends { server: { requestContext: infer TRequestContext } }
+        ? TRequestContext
+        : AnyContext,
+      AssignAllMethodContext<
+        TParentRoute,
+        TServerMiddlewares,
+        TMethodMiddlewares
+      >
+    >
   >
   request: Request
   params: Expand<ResolveParams<TFullPath>>

@@ -20,7 +20,7 @@ import type { JsonResponse } from '@tanstack/router-core/ssr/client'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
-  AssignAllServerContext,
+  AssignAllServerFnContext,
   FunctionMiddlewareClientFnResult,
   FunctionMiddlewareServerFnResult,
   IntersectAllValidatorInputs,
@@ -341,7 +341,7 @@ export type ServerFn<
 export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
   method: TMethod
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
-  context: Expand<AssignAllServerContext<TMiddlewares>>
+  context: Expand<AssignAllServerFnContext<TMiddlewares, {}>>
   signal: AbortSignal
 }
 
@@ -566,7 +566,7 @@ export interface ServerFnTypes<
   middlewares: TMiddlewares
   validator: TValidator
   response: TResponse
-  allServerContext: AssignAllServerContext<TMiddlewares>
+  allServerContext: AssignAllServerFnContext<TMiddlewares>
   allInput: IntersectAllValidatorInputs<TMiddlewares, TValidator>
   allOutput: IntersectAllValidatorOutputs<TMiddlewares, TValidator>
 }

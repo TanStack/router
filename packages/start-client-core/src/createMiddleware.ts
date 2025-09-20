@@ -1,3 +1,4 @@
+import type { StartConfig } from './createStart'
 import type { AnyServerFn, ConstrainValidator, Method } from './createServerFn'
 import type {
   AnyContext,
@@ -162,7 +163,7 @@ export interface FunctionMiddlewareTypes<
     TMiddlewares,
     TServerSendContext
   >
-  allServerContext: AssignAllServerContext<
+  allServerContext: AssignAllServerFnContext<
     TMiddlewares,
     TServerSendContext,
     TServerContext
@@ -288,19 +289,56 @@ export type AssignAllServerSendContext<
       TSendContext
     >
 
+export type GetAllGlobalServerRequestContext = Assign<
+  Register extends { server: { requestContext: infer TRequestContext } }
+    ? TRequestContext
+    : AnyContext,
+  Register extends {
+    start: StartConfig<any, any, infer TRequestMiddleware, any>
+  }
+    ? AssignAllMiddleware<TRequestMiddleware, 'allServerContext'>
+    : AnyContext
+>
+
+export type GetAllGlobalServerFnContext = Assign<
+  GetAllGlobalServerRequestContext,
+  Register extends {
+    start: StartConfig<any, any, any, infer TFunctionMiddleware>
+  }
+    ? AssignAllMiddleware<TFunctionMiddleware, 'allServerContext'>
+    : AnyContext
+>
+
 /**
  * Recursively resolve the server context type produced by a sequence of middleware
  */
-export type AssignAllServerContext<
+export type AssignAllServerRequestContext<
   TMiddlewares,
   TSendContext = undefined,
   TServerContext = undefined,
-> = unknown extends TSendContext
-  ? Assign<TSendContext, TServerContext>
-  : Assign<
-      AssignAllMiddleware<TMiddlewares, 'allServerContext'>,
-      Assign<TSendContext, TServerContext>
-    >
+> = Assign<
+  GetAllGlobalServerRequestContext,
+  unknown extends TSendContext
+    ? Assign<TSendContext, TServerContext>
+    : Assign<
+        AssignAllMiddleware<TMiddlewares, 'allServerContext'>,
+        Assign<TSendContext, TServerContext>
+      >
+>
+
+export type AssignAllServerFnContext<
+  TMiddlewares,
+  TSendContext = undefined,
+  TServerContext = undefined,
+> = Assign<
+  GetAllGlobalServerFnContext,
+  unknown extends TSendContext
+    ? Assign<TSendContext, TServerContext>
+    : Assign<
+        AssignAllMiddleware<TMiddlewares, 'allServerContext'>,
+        Assign<TSendContext, TServerContext>
+      >
+>
 
 export type AssignAllClientSendContext<
   TMiddlewares,
@@ -397,23 +435,6 @@ export type FunctionMiddlewareServerFn<
   TSendContext
 >
 
-export interface RequestMiddlewareServerFnOptions<
-  in out TRegister extends Register,
-  in out TMiddlewares,
-  in out TServerSendContext,
-> {
-  request: Request
-  context: Expand<AssignAllServerContext<TMiddlewares, TServerSendContext>>
-  next: FunctionMiddlewareServerNextFn<
-    TRegister,
-    TMiddlewares,
-    TServerSendContext
-  >
-  response: Response
-  method: Method
-  signal: AbortSignal
-}
-
 export type FunctionMiddlewareServerNextFn<
   TRegister extends Register,
   TMiddlewares,
@@ -442,7 +463,7 @@ export type FunctionServerResultWithContext<
     sendContext: TSendContext
   }
   context: Expand<
-    AssignAllServerContext<TMiddlewares, TServerSendContext, TServerContext>
+    AssignAllServerFnContext<TMiddlewares, TServerSendContext, TServerContext>
   >
   sendContext: Expand<AssignAllClientSendContext<TMiddlewares, TSendContext>>
 }
@@ -454,14 +475,7 @@ export interface FunctionMiddlewareServerFnOptions<
   in out TServerSendContext,
 > {
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
-  context: Expand<
-    Assign<
-      Register extends { server: { requestContext: infer TRequestContext } }
-        ? TRequestContext
-        : AnyContext,
-      AssignAllServerContext<TMiddlewares, TServerSendContext>
-    >
-  >
+  context: Expand<AssignAllServerFnContext<TMiddlewares, TServerSendContext>>
   next: FunctionMiddlewareServerNextFn<
     TRegister,
     TMiddlewares,
@@ -671,7 +685,7 @@ export interface RequestMiddlewareTypes<TMiddlewares, TServerContext> {
   type: 'request'
   middlewares: TMiddlewares
   serverContext: TServerContext
-  allServerContext: AssignAllServerContext<
+  allServerContext: AssignAllServerRequestContext<
     TMiddlewares,
     undefined,
     TServerContext
@@ -695,7 +709,7 @@ export type RequestServerFn<TMiddlewares, TServerContext> = (
 export interface RequestServerOptions<TMiddlewares> {
   request: Request
   pathname: string
-  context: AssignAllServerContext<TMiddlewares>
+  context: Expand<AssignAllServerRequestContext<TMiddlewares>>
   next: RequestServerNextFn<TMiddlewares>
 }
 
@@ -715,7 +729,7 @@ export interface RequestServerResult<TMiddlewares, TServerContext> {
   request: Request
   pathname: string
   context: Expand<
-    AssignAllServerContext<TMiddlewares, undefined, TServerContext>
+    AssignAllServerRequestContext<TMiddlewares, undefined, TServerContext>
   >
   response: Response
 }
