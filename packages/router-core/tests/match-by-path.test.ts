@@ -52,10 +52,15 @@ describe('default path matching', () => {
     ['/a/1', '/a/{-$id}', { id: '1' }],
     ['/a', '/a/{-$id}', {}],
     ['/a/1/b', '/a/{-$id}/b', { id: '1' }],
+    ['/a/1/b', '/a/{-$id}/b/', { id: '1' }],
     ['/a/b', '/a/{-$id}/b', {}],
+    ['/a/b', '/a/{-$id}/b/', {}],
     ['/a/1/b/2', '/a/{-$id}/b/{-$other}', { id: '1', other: '2' }],
+    ['/a/1/b/2', '/a/{-$id}/b/{-$other}/', { id: '1', other: '2' }],
     ['/a/b/2', '/a/{-$id}/b/{-$other}', { other: '2' }],
+    ['/a/b/2', '/a/{-$id}/b/{-$other}/', { other: '2' }],
     ['/a/1/b', '/a/{-$id}/b/{-$other}', { id: '1' }],
+    ['/a/1/b', '/a/{-$id}/b/{-$other}/', { id: '1' }],
     ['/a/b', '/a/{-$id}/b/{-$other}', {}],
     ['/a/1/b/2', '/a/{-$id}/b/{-$id}', { id: '2' }],
   ])('optional %s => %s', (from, to, result) => {
@@ -70,6 +75,189 @@ describe('default path matching', () => {
     ['/a', '/a/$', { _splat: '', '*': '' }],
     ['/a/b/c', '/a/$/foo', { _splat: 'b/c', '*': 'b/c' }],
   ])('wildcard %s => %s', (from, to, result) => {
+    expect(
+      matchByPath('/', from, { to, caseSensitive: true, fuzzy: false }),
+    ).toEqual(result)
+  })
+
+  it.each([
+    ['/a/1/b/2', '/a/{-$id}/b/$other', { id: '1', other: '2' }],
+    ['/a/1/b/2', '/a/{-$id}/b/$other/', { id: '1', other: '2' }],
+    ['/a/1/b/2/c', '/a/{-$id}/b/$other/c', { id: '1', other: '2' }],
+    ['/a/1/b/2/c', '/a/{-$id}/b/$other/c/', { id: '1', other: '2' }],
+    [
+      '/a/1/b/2/c/3',
+      '/a/{-$id}/b/$other/c/$d',
+      { id: '1', other: '2', d: '3' },
+    ],
+    [
+      '/a/1/b/2/c/3',
+      '/a/{-$id}/b/$other/c/$d/',
+      { id: '1', other: '2', d: '3' },
+    ],
+
+    ['/a/1/2/3/c', '/a/{-$id}/$other/{-$d}/c', { id: '1', other: '2', d: '3' }],
+    [
+      '/a/1/2/3/c',
+      '/a/{-$id}/$other/{-$d}/c/',
+      { id: '1', other: '2', d: '3' },
+    ],
+    ['/a/2', '/a/{-$id}/$other/{-$d}', { other: '2' }],
+    ['/a/2', '/a/{-$id}/$other/{-$d}/', { other: '2' }],
+    ['/a/2/c', '/a/{-$id}/$other/{-$d}/c', { other: '2' }],
+    ['/a/2/c', '/a/{-$id}/$other/{-$d}/c/', { other: '2' }],
+    ['/a/1/2', '/a/{-$id}/$other/{-$d}', { id: '1', other: '2' }],
+    ['/a/1/2', '/a/{-$id}/$other/{-$d}/', { id: '1', other: '2' }],
+    ['/a/2/e', '/a/{-$id}/$other/{-$d}/$e', { other: '2', e: 'e' }],
+    ['/a/2/e', '/a/{-$id}/$other/{-$d}/$e/', { other: '2', e: 'e' }],
+    ['/a/1/2/e', '/a/{-$id}/$other/{-$d}/$e', { id: '1', other: '2', e: 'e' }],
+    ['/a/1/2/e', '/a/{-$id}/$other/{-$d}/$e/', { id: '1', other: '2', e: 'e' }],
+    [
+      '/a/1/2/d/e',
+      '/a/{-$id}/$other/{-$d}/$e',
+      { id: '1', other: '2', d: 'd', e: 'e' },
+    ],
+    [
+      '/a/1/2/d/e',
+      '/a/{-$id}/$other/{-$d}/$e/',
+      { id: '1', other: '2', d: 'd', e: 'e' },
+    ],
+    ['/a/1/2/c', '/a/{-$id}/$other/{-$d}/c', { id: '1', other: '2' }],
+    ['/a/1/2/c', '/a/{-$id}/$other/{-$d}/c/', { id: '1', other: '2' }],
+    ['/a/1/2/c', '/a/{-$id}/$other/c/{-$d}', { id: '1', other: '2' }],
+    ['/a/1/2/c', '/a/{-$id}/$other/c/{-$d}/', { id: '1', other: '2' }],
+    ['/a/1/2/c/3', '/a/{-$id}/$other/c/{-$d}', { id: '1', other: '2', d: '3' }],
+    [
+      '/a/1/2/c/3',
+      '/a/{-$id}/$other/c/{-$d}/',
+      { id: '1', other: '2', d: '3' },
+    ],
+    ['/a/2/c/3', '/a/{-$id}/$other/c/{-$d}', { other: '2', d: '3' }],
+    ['/a/2/c/3', '/a/{-$id}/$other/c/{-$d}/', { other: '2', d: '3' }],
+    ['/a/2/c', '/a/{-$id}/$other/c/{-$d}', { other: '2' }],
+    ['/a/2/c', '/a/{-$id}/$other/c/{-$d}/', { other: '2' }],
+    ['/a/1/2/c', '/a/{-$id}/$other/$c/{-$d}', { id: '1', other: '2', c: 'c' }],
+    ['/a/1/2/c', '/a/{-$id}/$other/$c/{-$d}/', { id: '1', other: '2', c: 'c' }],
+    [
+      '/a/1/2/c/3',
+      '/a/{-$id}/$other/$c/{-$d}',
+      { id: '1', other: '2', c: 'c', d: '3' },
+    ],
+    [
+      '/a/1/2/c/3',
+      '/a/{-$id}/$other/$c/{-$d}/',
+      { id: '1', other: '2', c: 'c', d: '3' },
+    ],
+    [
+      '/a/1/2/c/e',
+      '/a/{-$id}/$other/$c/e/{-$d}',
+      { id: '1', other: '2', c: 'c' },
+    ],
+    [
+      '/a/1/2/c/e',
+      '/a/{-$id}/$other/$c/e/{-$d}/',
+      { id: '1', other: '2', c: 'c' },
+    ],
+    [
+      '/a/1/2/c/e/3',
+      '/a/{-$id}/$other/$c/e/{-$d}',
+      { id: '1', other: '2', c: 'c', d: '3' },
+    ],
+    [
+      '/a/1/2/c/e/3',
+      '/a/{-$id}/$other/$c/e/{-$d}/',
+      { id: '1', other: '2', c: 'c', d: '3' },
+    ],
+    [
+      '/a/1/b/2/c/3',
+      '/a/{-$id}/b/$other/c/{-$d}',
+      { id: '1', other: '2', d: '3' },
+    ],
+    [
+      '/a/1/b/2/c/3',
+      '/a/{-$id}/b/$other/c/{-$d}/',
+      { id: '1', other: '2', d: '3' },
+    ],
+    [
+      '/a/1/b/2/c/3/4',
+      '/a/{-$id}/b/$other/c/{-$d}/$e',
+      { id: '1', other: '2', d: '3', e: '4' },
+    ],
+    [
+      '/a/1/b/2/c/3/4',
+      '/a/{-$id}/b/$other/c/{-$d}/$e/',
+      { id: '1', other: '2', d: '3', e: '4' },
+    ],
+    ['/a/b/2', '/a/{-$id}/b/$other', { other: '2' }],
+    ['/a/b/2', '/a/{-$id}/b/$other/', { other: '2' }],
+    ['/a/b/2/c', '/a/{-$id}/b/$other/c', { other: '2' }],
+    ['/a/b/2/c', '/a/{-$id}/b/$other/c/', { other: '2' }],
+    ['/a/b/2/c/3', '/a/{-$id}/b/$other/c/$d', { other: '2', d: '3' }],
+    ['/a/b/2/c/3', '/a/{-$id}/b/$other/c/$d/', { other: '2', d: '3' }],
+    ['/a/b/2/c/3', '/a/{-$id}/b/$other/c/{-$d}', { other: '2', d: '3' }],
+    ['/a/b/2/c/3', '/a/{-$id}/b/$other/c/{-$d}/', { other: '2', d: '3' }],
+    [
+      '/a/b/2/c/3/4',
+      '/a/{-$id}/b/$other/c/{-$d}/$e',
+      { other: '2', d: '3', e: '4' },
+    ],
+    [
+      '/a/b/2/c/3/4',
+      '/a/{-$id}/b/$other/c/{-$d}/$e/',
+      { other: '2', d: '3', e: '4' },
+    ],
+    ['/a/1/b/2/c', '/a/{-$id}/b/$other/c/{-$d}', { id: '1', other: '2' }],
+    ['/a/1/b/2/c', '/a/{-$id}/b/$other/c/{-$d}/', { id: '1', other: '2' }],
+    [
+      '/a/1/b/2/c/4',
+      '/a/{-$id}/b/$other/c/{-$d}/$e',
+      { id: '1', other: '2', e: '4' },
+    ],
+    [
+      '/a/1/b/2/c/4',
+      '/a/{-$id}/b/$other/c/{-$d}/$e/',
+      { id: '1', other: '2', e: '4' },
+    ],
+    ['/a/b/2/c', '/a/{-$id}/b/$other/c/{-$d}', { other: '2' }],
+    ['/a/b/2/c', '/a/{-$id}/b/$other/c/{-$d}/', { other: '2' }],
+    ['/a/b/2/c/4', '/a/{-$id}/b/$other/c/{-$d}/$e', { other: '2', e: '4' }],
+    ['/a/b/2/c/4', '/a/{-$id}/b/$other/c/{-$d}/$e/', { other: '2', e: '4' }],
+    [
+      '/a/2/c/3',
+      '/a/{-$id}/$other/c{-$cid}/{-$d}',
+      { cid: '', other: '2', d: '3' },
+    ],
+    [
+      '/a/2/c4/3',
+      '/a/{-$id}/$other/c{-$cid}/{-$d}/',
+      { other: '2', cid: '4', d: '3' },
+    ],
+  ])('complex optional usage %s => %s', (from, to, result) => {
+    expect(
+      matchByPath('/', from, { to, caseSensitive: true, fuzzy: false }),
+    ).toEqual(result)
+  })
+
+  it.each([
+    ['/a/2', '/a/{-$id}/{-$other}', { id: '2' }],
+    ['/a/2', '/a/{-$id}/{-$other}/', { id: '2' }],
+    ['/a/2/b', '/a/{-$id}/{-$other}/b', { id: '2' }],
+    ['/a/2/b', '/a/{-$id}/{-$other}/b/', { id: '2' }],
+    ['/a/2/b/c', '/a/{-$id}/{-$other}/b/{-$d}/c', { id: '2' }],
+    ['/a/2/b/c', '/a/{-$id}/{-$other}/b/{-$d}/c/', { id: '2' }],
+    ['/a/2/b/3/c', '/a/{-$id}/{-$other}/b/{-$d}/c', { id: '2', d: '3' }],
+    ['/a/2/b/3/c', '/a/{-$id}/{-$other}/b/{-$d}/c/', { id: '2', d: '3' }],
+    [
+      '/a/2/b/3/c/4',
+      '/a/{-$id}/{-$other}/b/{-$d}/c/$e',
+      { id: '2', d: '3', e: '4' },
+    ],
+    [
+      '/a/2/b/3/c/4',
+      '/a/{-$id}/{-$other}/b/{-$d}/c/$e/',
+      { id: '2', d: '3', e: '4' },
+    ],
+  ])('consecutive optionals %s => %s', (from, to, result) => {
     expect(
       matchByPath('/', from, { to, caseSensitive: true, fuzzy: false }),
     ).toEqual(result)
@@ -110,11 +298,11 @@ describe('case insensitive path matching', () => {
     ['/a/1', '/A/{-$id}', { id: '1' }],
     ['/a', '/A/{-$id}', {}],
     ['/a/1/b', '/A/{-$id}/B', { id: '1' }],
-    // ['/a/b', '/A/{-$id}/B', {}],
+    ['/a/b', '/A/{-$id}/B', {}],
     ['/a/1/b/2', '/A/{-$id}/B/{-$other}', { id: '1', other: '2' }],
-    // ['/a/b/2', '/A/{-$id}/B/{-$other}', { other: '2' }],
+    ['/a/b/2', '/A/{-$id}/B/{-$other}', { other: '2' }],
     ['/a/1/b', '/A/{-$id}/B/{-$other}', { id: '1' }],
-    // ['/a/b', '/A/{-$id}/B/{-$other}', {}],
+    ['/a/b', '/A/{-$id}/B/{-$other}', {}],
     ['/a/1/b/2', '/A/{-$id}/B/{-$id}', { id: '2' }],
   ])('optional %s => %s', (from, to, result) => {
     expect(
@@ -128,6 +316,81 @@ describe('case insensitive path matching', () => {
     ['/a', '/A/$', { _splat: '', '*': '' }],
     ['/a/b/c', '/A/$/foo', { _splat: 'b/c', '*': 'b/c' }],
   ])('wildcard %s => %s', (from, to, result) => {
+    expect(
+      matchByPath('/', from, { to, caseSensitive: false, fuzzy: false }),
+    ).toEqual(result)
+  })
+
+  it.each([
+    ['/a/1/b/2', '/A/{-$id}/B/$other', { id: '1', other: '2' }],
+    ['/a/1/b/2', '/A/{-$id}/B/$other/', { id: '1', other: '2' }],
+    ['/a/1/b/2/c', '/A/{-$id}/B/$other/C', { id: '1', other: '2' }],
+    ['/a/1/b/2/c', '/A/{-$id}/B/$other/C/', { id: '1', other: '2' }],
+    [
+      '/a/1/b/2/c/3',
+      '/A/{-$id}/B/$other/C/$d',
+      { id: '1', other: '2', d: '3' },
+    ],
+    [
+      '/a/1/b/2/c/3',
+      '/A/{-$id}/B/$other/C/$d/',
+      { id: '1', other: '2', d: '3' },
+    ],
+    [
+      '/a/1/b/2/c/3',
+      '/A/{-$id}/B/$other/C/{-$d}',
+      { id: '1', other: '2', d: '3' },
+    ],
+    [
+      '/a/1/b/2/c/3',
+      '/A/{-$id}/B/$other/C/{-$d}/',
+      { id: '1', other: '2', d: '3' },
+    ],
+    [
+      '/a/1/b/2/c/3/4',
+      '/A/{-$id}/B/$other/C/{-$d}/$e',
+      { id: '1', other: '2', d: '3', e: '4' },
+    ],
+    [
+      '/a/1/b/2/c/3/4',
+      '/A/{-$id}/B/$other/C/{-$d}/$e/',
+      { id: '1', other: '2', d: '3', e: '4' },
+    ],
+    ['/a/b/2', '/A/{-$id}/B/$other', { other: '2' }],
+    ['/a/b/2', '/A/{-$id}/B/$other/', { other: '2' }],
+    ['/a/b/2/c', '/A/{-$id}/B/$other/C', { other: '2' }],
+    ['/a/b/2/c', '/A/{-$id}/B/$other/C/', { other: '2' }],
+    ['/a/b/2/c/3', '/A/{-$id}/B/$other/C/$d', { other: '2', d: '3' }],
+    ['/a/b/2/c/3', '/A/{-$id}/B/$other/C/$d/', { other: '2', d: '3' }],
+    ['/a/b/2/c/3', '/A/{-$id}/B/$other/C/{-$d}', { other: '2', d: '3' }],
+    ['/a/b/2/c/3', '/A/{-$id}/B/$other/C/{-$d}/', { other: '2', d: '3' }],
+    [
+      '/a/b/2/c/3/4',
+      '/A/{-$id}/B/$other/C/{-$d}/$e',
+      { other: '2', d: '3', e: '4' },
+    ],
+    [
+      '/a/b/2/c/3/4',
+      '/A/{-$id}/B/$other/C/{-$d}/$e/',
+      { other: '2', d: '3', e: '4' },
+    ],
+    ['/a/1/b/2/c', '/A/{-$id}/B/$other/C/{-$d}', { id: '1', other: '2' }],
+    ['/a/1/b/2/c', '/A/{-$id}/B/$other/C/{-$d}/', { id: '1', other: '2' }],
+    [
+      '/a/1/b/2/c/4',
+      '/A/{-$id}/B/$other/C/{-$d}/$e',
+      { id: '1', other: '2', e: '4' },
+    ],
+    [
+      '/a/1/b/2/c/4',
+      '/A/{-$id}/B/$other/C/{-$d}/$e/',
+      { id: '1', other: '2', e: '4' },
+    ],
+    ['/a/b/2/c', '/A/{-$id}/B/$other/C/{-$d}', { other: '2' }],
+    ['/a/b/2/c', '/A/{-$id}/B/$other/C/{-$d}/', { other: '2' }],
+    ['/a/b/2/c/4', '/A/{-$id}/B/$other/C/{-$d}/$e', { other: '2', e: '4' }],
+    ['/a/b/2/c/4', '/A/{-$id}/B/$other/C/{-$d}/$e/', { other: '2', e: '4' }],
+  ])('optional preceding wildcard %s => %s', (from, to, result) => {
     expect(
       matchByPath('/', from, { to, caseSensitive: false, fuzzy: false }),
     ).toEqual(result)
