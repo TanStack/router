@@ -838,6 +838,12 @@ function isMatch(
             // where consecutive optional params are used, we can break early.
             // preference is given to the first optional param
             if (futureRouteSegment?.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
+              if (
+                routeSegmentLength - optionalCount + processedOptionals >=
+                baseSegments.length
+              ) {
+                shouldMatchOptional = false
+              }
               break
             }
 
@@ -858,8 +864,8 @@ function isMatch(
                 followingRouteSegment &&
                 (followingRouteSegment.type === SEGMENT_TYPE_PATHNAME ||
                   (followingRouteSegment.type === SEGMENT_TYPE_OPTIONAL_PARAM &&
-                    followingRouteSegment.prefixSegment) ||
-                  followingRouteSegment.suffixSegment)
+                    (followingRouteSegment.prefixSegment ||
+                      followingRouteSegment.suffixSegment)))
               ) {
                 const remainingRouteSegments = routeSegments.slice(
                   lookAhead + 1,

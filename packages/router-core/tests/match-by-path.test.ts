@@ -257,6 +257,30 @@ describe('default path matching', () => {
       '/a/{-$id}/{-$other}/b/{-$d}/c/$e/',
       { id: '2', d: '3', e: '4' },
     ],
+    ['/a/b/c', '/a/{-$id}/{-$other}/$b/{-$d}/c', { b: 'b' }],
+    ['/a/b/c', '/a/{-$id}/{-$other}/$b/{-$d}/c/', { b: 'b' }],
+    ['/a/1/b/c', '/a/{-$id}/{-$other}/$b/{-$d}/c', { id: '1', b: 'b' }],
+    ['/a/1/b/c', '/a/{-$id}/{-$other}/$b/{-$d}/c/', { id: '1', b: 'b' }],
+    [
+      '/a/1/other/b/c',
+      '/a/{-$id}/{-$other}/$b/{-$d}/c',
+      { id: '1', other: 'other', b: 'b' },
+    ],
+    [
+      '/a/1/other/b/c',
+      '/a/{-$id}/{-$other}/$b/{-$d}/c/',
+      { id: '1', other: 'other', b: 'b' },
+    ],
+    [
+      '/a/1/other/b/d/c',
+      '/a/{-$id}/{-$other}/$b/{-$d}/c',
+      { id: '1', other: 'other', b: 'b', d: 'd' },
+    ],
+    [
+      '/a/1/other/b/d/c',
+      '/a/{-$id}/{-$other}/$b/{-$d}/c/',
+      { id: '1', other: 'other', b: 'b', d: 'd' },
+    ],
   ])('consecutive optionals %s => %s', (from, to, result) => {
     expect(
       matchByPath('/', from, { to, caseSensitive: true, fuzzy: false }),
