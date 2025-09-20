@@ -426,3 +426,42 @@ Middleware functionality is tree-shaken based on the environment for each bundle
 
 - On the server, nothing is tree-shaken, so all code used in middleware will be included in the server bundle.
 - On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. If `validateClient` is set to `true`, the client-side validation code will be included in the client bundle, otherwise `data` validation code will also be removed.
+
+## Handling Errors
+
+Middlewares can handle errors thrown by server functions or other middlewares by using a try...catch block and throwing a `Response` object.
+This will cause the error to bubble-up the middleware chain and ultimately return the response to the client.
+
+Ideally, this middleware would be one of the first middlewares in the chain, to catch all subsequent errors.
+
+```tsx
+const errorHandlingMiddleware = createMiddleware({ type: 'function' }).server(
+  async ({ next }) => {
+    try {
+      const result = await next()
+      // Optionally do something with the result here
+      return result
+    } catch (error) {
+      if (/* Custom logic here */) {
+        // maybeReportError(error)
+        throw json({
+          status: 400,
+          message: 'Bad Request',
+        })
+
+        // Or
+        throw new Response('Bad Request', {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+      }
+
+      // If the error is not part of the custom logic, it should be handled by the next middleware in the chain
+      // If the error is not handled by any other middleware, it will be captured by the server-functions-handler, and the error will be serialized and returned to the client
+      throw error
+    }
+  },
+)
+```
