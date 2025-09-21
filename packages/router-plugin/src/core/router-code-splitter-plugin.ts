@@ -20,7 +20,8 @@ import { decodeIdentifier } from './code-splitter/path-ids'
 import { debug } from './utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
-import type { Config } from './config'
+import type { Config, ConfigInput } from './config'
+
 import type {
   UnpluginContextMeta,
   UnpluginFactory,
@@ -48,7 +49,7 @@ class FoundPluginInBeforeCode extends Error {
     externalPlugin: BannedBeforeExternalPlugin,
     pluginFramework: string,
   ) {
-    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin/${pluginFramework}'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again: 
+    super(`We detected that the '${externalPlugin.pkg}' was passed before '@tanstack/router-plugin/${pluginFramework}'. Please make sure that '@tanstack/router-plugin' is passed before '${externalPlugin.pkg}' and try again:
 e.g.
 plugins: [
   tanstackRouter(), // Place this before ${externalPlugin.usage}
@@ -61,7 +62,7 @@ plugins: [
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  ConfigInput | undefined
 > = (options = {}, { framework }) => {
   let ROOT: string = process.cwd()
   let userConfig = options as Config
