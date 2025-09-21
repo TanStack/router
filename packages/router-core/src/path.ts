@@ -814,11 +814,6 @@ function isMatch(
               ? routeSegments.length - 1
               : routeSegments.length) - routeIndex
 
-          const routeSegmentLength =
-            (routeSegments.slice(-1)[0]?.value === '/'
-              ? routeSegments.length - 1
-              : routeSegments.length) - routeIndex
-
           // Look ahead to see if there's a later route segment that matches the current base segment
           for (
             let lookAhead = routeIndex + 1;
