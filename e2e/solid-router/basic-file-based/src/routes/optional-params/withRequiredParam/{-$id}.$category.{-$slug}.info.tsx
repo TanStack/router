@@ -11,7 +11,7 @@ function RouteComponent() {
   return (
     <>
       <div data-testid="withRequiredParam-heading">
-        Hello "/optional-params/-$id/$category/-$slug/info"! aaaa
+        Hello "/optional-params/-$id/$category/-$slug/info"!
       </div>
       <div>
         params:{' '}

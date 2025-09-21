@@ -591,7 +591,7 @@ describe('non-nested paths', () => {
       ['/a/1/b', '/A_/{-$id}_/B_', { id: '1' }],
       ['/a/1/b/2', '/A_/{-$id}_/B_/{-$other}_', { id: '1', other: '2' }],
       ['/a/1/b', '/A_/{-$id}_/B_/{-$other}_', { id: '1' }],
-      ['/a/1/b/2', '/A_/{-$id}_/B/{-$id}_', { id: '2' }],
+      ['/a/1/b/2', '/A_/{-$id}_/B_/{-$id}_', { id: '2' }],
     ])('optional %s => %s', (from, to, result) => {
       expect(
         matchByPath('/', from, { to, caseSensitive: false, fuzzy: false }),

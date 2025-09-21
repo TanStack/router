@@ -821,7 +821,7 @@ function isMatch(
             // where the next segment is a required path name, we can break early.
             // either the current base segment matches a future pathname segment,
             // in which case we should skip this optional parameter,
-            // or the url is invalid and we should bail out
+            // or the url is invalid, and we should return undefined
             if (futureRouteSegment?.type === SEGMENT_TYPE_PATHNAME) {
               if (
                 caseSensitive
