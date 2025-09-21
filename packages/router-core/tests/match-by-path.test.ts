@@ -414,7 +414,7 @@ describe('case insensitive path matching', () => {
     ['/a/b/2/c', '/A/{-$id}/B/$other/C/{-$d}/', { other: '2' }],
     ['/a/b/2/c/4', '/A/{-$id}/B/$other/C/{-$d}/$e', { other: '2', e: '4' }],
     ['/a/b/2/c/4', '/A/{-$id}/B/$other/C/{-$d}/$e/', { other: '2', e: '4' }],
-  ])('optional preceding wildcard %s => %s', (from, to, result) => {
+  ])('complex optional usage %s => %s', (from, to, result) => {
     expect(
       matchByPath('/', from, { to, caseSensitive: false, fuzzy: false }),
     ).toEqual(result)
