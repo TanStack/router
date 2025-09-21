@@ -348,10 +348,22 @@ describe('interpolatePath', () => {
         result: '/users/123',
       },
       {
+        name: 'should interpolate the path',
+        path: '/users/$id',
+        params: { id: '123_' },
+        result: '/users/123_',
+      },
+      {
         name: 'should interpolate the path with multiple params',
         path: '/users/$id/$name',
         params: { id: '123', name: 'tanner' },
         result: '/users/123/tanner',
+      },
+      {
+        name: 'should interpolate the path with multiple params',
+        path: '/users/$id/$name',
+        params: { id: '123_', name: 'tanner' },
+        result: '/users/123_/tanner',
       },
       {
         name: 'should interpolate the path with extra params',
@@ -511,6 +523,12 @@ describe('interpolatePath', () => {
         to: '/{$foo}.suffix',
         params: { foo: 'bar' },
         result: '/bar.suffix',
+      },
+      {
+        name: 'with suffix',
+        to: '/{$foo}.suffix',
+        params: { foo: 'bar_' },
+        result: '/bar_.suffix',
       },
       {
         name: 'with prefix and suffix',
@@ -781,6 +799,16 @@ describe('matchPathname', () => {
         },
       },
       {
+        name: 'regular',
+        input: '/docs/foo_',
+        matchingOptions: {
+          to: '/docs/$bar',
+        },
+        expectedMatchedParams: {
+          bar: 'foo_',
+        },
+      },
+      {
         name: 'regular curly braces',
         input: '/docs/foo',
         matchingOptions: {
@@ -788,6 +816,16 @@ describe('matchPathname', () => {
         },
         expectedMatchedParams: {
           bar: 'foo',
+        },
+      },
+      {
+        name: 'with prefix',
+        input: '/docs/prefixfoo_',
+        matchingOptions: {
+          to: '/docs/prefix{$bar}',
+        },
+        expectedMatchedParams: {
+          bar: 'foo_',
         },
       },
       {
