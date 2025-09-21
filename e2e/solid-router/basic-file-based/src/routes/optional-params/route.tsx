@@ -210,46 +210,48 @@ function RouteComponent() {
         <li>
           <div>Required Param in between optional path params</div>
           <div class="ml-5">
-            <li>
-              <Link
-                data-testid="l-to-withRequiredParam-category"
-                to="/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info"
-                params={{
-                  id: undefined,
-                  slug: undefined,
-                  category: 'category',
-                }}
-              >
-                /optionals/withRequiredParam/category/info
-              </Link>{' '}
-            </li>
-            <li>
-              <Link
-                data-testid="l-to-withRequiredParam-id-category"
-                to="/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info"
-                params={{ id: 'id', slug: undefined, category: 'category' }}
-              >
-                /optionals/withRequiredParam/id1/category/info
-              </Link>{' '}
-            </li>
-            <li>
-              <Link
-                data-testid="l-to-withRequiredParam-category-slug"
-                to="/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info"
-                params={{ id: undefined, slug: 'slug', category: 'category' }}
-              >
-                /optionals/withRequiredParam/category/slug/info
-              </Link>{' '}
-            </li>
-            <li>
-              <Link
-                data-testid="l-to-withRequiredParam-id-category-slug"
-                to="/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info"
-                params={{ id: 'id', slug: 'slug', category: 'category' }}
-              >
-                /optionals/withRequiredParam/id1/category/slug/info
-              </Link>
-            </li>
+            <ul>
+              <li>
+                <Link
+                  data-testid="l-to-withRequiredParam-category"
+                  to="/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info"
+                  params={{
+                    id: undefined,
+                    slug: undefined,
+                    category: 'category',
+                  }}
+                >
+                  /optionals/withRequiredParam/category/info
+                </Link>{' '}
+              </li>
+              <li>
+                <Link
+                  data-testid="l-to-withRequiredParam-id-category"
+                  to="/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info"
+                  params={{ id: 'id', slug: undefined, category: 'category' }}
+                >
+                  /optionals/withRequiredParam/id1/category/info
+                </Link>{' '}
+              </li>
+              <li>
+                <Link
+                  data-testid="l-to-withRequiredParam-category-slug"
+                  to="/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info"
+                  params={{ id: undefined, slug: 'slug', category: 'category' }}
+                >
+                  /optionals/withRequiredParam/category/slug/info
+                </Link>{' '}
+              </li>
+              <li>
+                <Link
+                  data-testid="l-to-withRequiredParam-id-category-slug"
+                  to="/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info"
+                  params={{ id: 'id', slug: 'slug', category: 'category' }}
+                >
+                  /optionals/withRequiredParam/id1/category/slug/info
+                </Link>
+              </li>
+            </ul>
           </div>
         </li>
       </ul>
