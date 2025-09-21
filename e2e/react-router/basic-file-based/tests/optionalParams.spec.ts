@@ -48,7 +48,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await singlePathLink.click()
     await page.waitForURL('/optional-params/single/path')
     pagePathname = new URL(page.url()).pathname
-    expect(pagePathname).toBe('/optional-params/single/paht')
+    expect(pagePathname).toBe('/optional-params/single/path')
     await expect(page.getByTestId('single-path-heading')).toBeVisible()
   })
 
