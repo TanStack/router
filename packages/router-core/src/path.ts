@@ -809,10 +809,15 @@ function isMatch(
           const remainingOptionals = optionalCount - processedOptionals - 1 > 0
 
           // consider last route segment might be index route and any prior optionals that was not matched
+          const remainingRouteSegmentLength =
+            (routeSegments.slice(-1)[0]?.value === '/'
+              ? routeSegments.length - 1
+              : routeSegments.length) - routeIndex
+
           const routeSegmentLength =
             (routeSegments.slice(-1)[0]?.value === '/'
               ? routeSegments.length - 1
-              : routeSegments.length) - skippedOptionals
+              : routeSegments.length) - routeIndex
 
           // Look ahead to see if there's a later route segment that matches the current base segment
           for (
@@ -825,7 +830,7 @@ function isMatch(
             // where the next segment is a required path name, we can break early.
             // either the current base segment matches a future pathname segment,
             // in which case we should skip this optional parameter,
-            // or the url is invalid, and we should return undefined
+            // or the url is invalid
             if (futureRouteSegment?.type === SEGMENT_TYPE_PATHNAME) {
               if (
                 caseSensitive
@@ -843,8 +848,10 @@ function isMatch(
             // preference is given to the first optional param
             if (futureRouteSegment?.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
               if (
-                routeSegmentLength - optionalCount + processedOptionals >=
-                baseSegments.length
+                remainingRouteSegmentLength -
+                  optionalCount +
+                  processedOptionals >=
+                baseSegments.length - baseIndex
               ) {
                 shouldMatchOptional = false
               }
@@ -896,13 +903,17 @@ function isMatch(
 
               if (
                 !remainingOptionals ||
-                // remaining length excluding remaining optionals and matched optionals
-                routeSegmentLength + skippedOptionals - optionalCount ===
-                  baseSegments.length ||
-                // is matched further down
+                // remaining required segments equals remaining base segments
+                remainingRouteSegmentLength -
+                  (optionalCount - processedOptionals) ===
+                  baseSegments.length - baseIndex ||
+                // matched by probe further down
                 isMatchedFurtherDown
               ) {
-                if (baseSegments.length < routeSegmentLength) {
+                if (
+                  baseSegments.length - baseIndex <
+                  remainingRouteSegmentLength
+                ) {
                   shouldMatchOptional = false
                 }
                 break
