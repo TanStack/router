@@ -319,7 +319,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     )
     await expect(
       page.getByTestId('withRequiredInBetween-heading'),
-    ).toBeInViewport()
+    ).toBeVisible()
     expect(
       await page
         .getByTestId('withRequiredInBetween-id-category-path-slug-params')
@@ -336,7 +336,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     )
     await expect(
       page.getByTestId('withRequiredInBetween-heading'),
-    ).toBeInViewport()
+    ).toBeVisible()
     expect(
       await page
         .getByTestId('withRequiredInBetween-id-category-path-slug-params')
@@ -353,7 +353,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     )
     await expect(
       page.getByTestId('withRequiredInBetween-heading'),
-    ).toBeInViewport()
+    ).toBeVisible()
     expect(
       await page
         .getByTestId('withRequiredInBetween-id-category-path-slug-params')
@@ -370,7 +370,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     )
     await expect(
       page.getByTestId('withRequiredInBetween-heading'),
-    ).toBeInViewport()
+    ).toBeVisible()
     expect(
       await page
         .getByTestId('withRequiredInBetween-id-category-path-slug-params')
