@@ -21,6 +21,7 @@ import { Route as ComponentTypesTestRouteImport } from './routes/component-types
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
+import { Route as OptionalParamsRouteRouteImport } from './routes/optional-params/route'
 import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
@@ -73,14 +74,21 @@ import { Route as RelativeUseNavigateNestedIndexRouteImport } from './routes/rel
 import { Route as RelativeLinkWithSearchIndexRouteImport } from './routes/relative/link/with-search/index'
 import { Route as RelativeLinkPathIndexRouteImport } from './routes/relative/link/path/index'
 import { Route as RelativeLinkNestedIndexRouteImport } from './routes/relative/link/nested/index'
+import { Route as OptionalParamsSimpleChar123IdChar125IndexRouteImport } from './routes/optional-params/simple/{-$id}.index'
 import { Route as ParamsPsNonNestedFooBarRouteImport } from './routes/params-ps/non-nested/$foo_/$bar'
+import { Route as OptionalParamsSimpleChar123IdChar125PathRouteImport } from './routes/optional-params/simple/{-$id}.path'
 import { Route as NonNestedBazBazidEditRouteImport } from './routes/non-nested/baz_.$bazid.edit'
 import { Route as ParamsPsNamedFooBarRouteRouteImport } from './routes/params-ps/named/$foo/$bar.route'
 import { Route as RelativeUseNavigatePathPathIndexRouteImport } from './routes/relative/useNavigate/path/$path/index'
 import { Route as RelativeUseNavigateNestedDeepIndexRouteImport } from './routes/relative/useNavigate/nested/deep/index'
 import { Route as RelativeLinkPathPathIndexRouteImport } from './routes/relative/link/path/$path/index'
 import { Route as RelativeLinkNestedDeepIndexRouteImport } from './routes/relative/link/nested/deep/index'
+import { Route as OptionalParamsWithIndexChar123IdChar125CategoryIndexRouteImport } from './routes/optional-params/withIndex/{-$id}.$category.index'
 import { Route as ParamsPsNamedFooBarBazRouteImport } from './routes/params-ps/named/$foo/$bar.$baz'
+import { Route as OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRouteImport } from './routes/optional-params/withIndex/{-$id}.$category.path.index'
+import { Route as OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRouteImport } from './routes/optional-params/withRequiredParam/{-$id}.$category.{-$slug}.info'
+import { Route as OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125RouteImport } from './routes/optional-params/withRequiredInBetween/{-$id}.$category.path.{-$slug}'
+import { Route as OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRouteImport } from './routes/optional-params/consecutive/{-$id}.{-$slug}.$category.info'
 
 const groupRouteImport = createFileRoute('/(group)')()
 
@@ -136,6 +144,11 @@ const LayoutRoute = LayoutRouteImport.update({
 const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
   id: '/search-params',
   path: '/search-params',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OptionalParamsRouteRoute = OptionalParamsRouteRouteImport.update({
+  id: '/optional-params',
+  path: '/optional-params',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NonNestedRouteRoute = NonNestedRouteRouteImport.update({
@@ -415,11 +428,23 @@ const RelativeLinkNestedIndexRoute = RelativeLinkNestedIndexRouteImport.update({
   path: '/nested/',
   getParentRoute: () => RelativeLinkRouteRoute,
 } as any)
+const OptionalParamsSimpleChar123IdChar125IndexRoute =
+  OptionalParamsSimpleChar123IdChar125IndexRouteImport.update({
+    id: '/simple/{-$id}/',
+    path: '/simple/{-$id}/',
+    getParentRoute: () => OptionalParamsRouteRoute,
+  } as any)
 const ParamsPsNonNestedFooBarRoute = ParamsPsNonNestedFooBarRouteImport.update({
   id: '/$bar',
   path: '/$bar',
   getParentRoute: () => ParamsPsNonNestedFooRouteRoute,
 } as any)
+const OptionalParamsSimpleChar123IdChar125PathRoute =
+  OptionalParamsSimpleChar123IdChar125PathRouteImport.update({
+    id: '/simple/{-$id}/path',
+    path: '/simple/{-$id}/path',
+    getParentRoute: () => OptionalParamsRouteRoute,
+  } as any)
 const NonNestedBazBazidEditRoute = NonNestedBazBazidEditRouteImport.update({
   id: '/baz_/$bazid/edit',
   path: '/baz/$bazid/edit',
@@ -455,15 +480,52 @@ const RelativeLinkNestedDeepIndexRoute =
     path: '/nested/deep/',
     getParentRoute: () => RelativeLinkRouteRoute,
   } as any)
+const OptionalParamsWithIndexChar123IdChar125CategoryIndexRoute =
+  OptionalParamsWithIndexChar123IdChar125CategoryIndexRouteImport.update({
+    id: '/withIndex/{-$id}/$category/',
+    path: '/withIndex/{-$id}/$category/',
+    getParentRoute: () => OptionalParamsRouteRoute,
+  } as any)
 const ParamsPsNamedFooBarBazRoute = ParamsPsNamedFooBarBazRouteImport.update({
   id: '/$baz',
   path: '/$baz',
   getParentRoute: () => ParamsPsNamedFooBarRouteRoute,
 } as any)
+const OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRoute =
+  OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRouteImport.update({
+    id: '/withIndex/{-$id}/$category/path/',
+    path: '/withIndex/{-$id}/$category/path/',
+    getParentRoute: () => OptionalParamsRouteRoute,
+  } as any)
+const OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRoute =
+  OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRouteImport.update(
+    {
+      id: '/withRequiredParam/{-$id}/$category/{-$slug}/info',
+      path: '/withRequiredParam/{-$id}/$category/{-$slug}/info',
+      getParentRoute: () => OptionalParamsRouteRoute,
+    } as any,
+  )
+const OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125Route =
+  OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125RouteImport.update(
+    {
+      id: '/withRequiredInBetween/{-$id}/$category/path/{-$slug}',
+      path: '/withRequiredInBetween/{-$id}/$category/path/{-$slug}',
+      getParentRoute: () => OptionalParamsRouteRoute,
+    } as any,
+  )
+const OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRoute =
+  OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRouteImport.update(
+    {
+      id: '/consecutive/{-$id}/{-$slug}/$category/info',
+      path: '/consecutive/{-$id}/{-$slug}/$category/info',
+      getParentRoute: () => OptionalParamsRouteRoute,
+    } as any,
+  )
 
 export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
   '/non-nested': typeof NonNestedRouteRouteWithChildren
+  '/optional-params': typeof OptionalParamsRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
@@ -517,7 +579,9 @@ export interface FileRoutesByFullPath {
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
   '/non-nested/baz/$bazid/edit': typeof NonNestedBazBazidEditRoute
+  '/optional-params/simple/{-$id}/path': typeof OptionalParamsSimpleChar123IdChar125PathRoute
   '/params-ps/non-nested/$foo/$bar': typeof ParamsPsNonNestedFooBarRoute
+  '/optional-params/simple/{-$id}': typeof OptionalParamsSimpleChar123IdChar125IndexRoute
   '/relative/link/nested': typeof RelativeLinkNestedIndexRoute
   '/relative/link/path': typeof RelativeLinkPathIndexRoute
   '/relative/link/with-search': typeof RelativeLinkWithSearchIndexRoute
@@ -525,14 +589,20 @@ export interface FileRoutesByFullPath {
   '/relative/useNavigate/path': typeof RelativeUseNavigatePathIndexRoute
   '/relative/useNavigate/with-search': typeof RelativeUseNavigateWithSearchIndexRoute
   '/params-ps/named/$foo/$bar/$baz': typeof ParamsPsNamedFooBarBazRoute
+  '/optional-params/withIndex/{-$id}/$category': typeof OptionalParamsWithIndexChar123IdChar125CategoryIndexRoute
   '/relative/link/nested/deep': typeof RelativeLinkNestedDeepIndexRoute
   '/relative/link/path/$path': typeof RelativeLinkPathPathIndexRoute
   '/relative/useNavigate/nested/deep': typeof RelativeUseNavigateNestedDeepIndexRoute
   '/relative/useNavigate/path/$path': typeof RelativeUseNavigatePathPathIndexRoute
+  '/optional-params/consecutive/{-$id}/{-$slug}/$category/info': typeof OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRoute
+  '/optional-params/withRequiredInBetween/{-$id}/$category/path/{-$slug}': typeof OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125Route
+  '/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info': typeof OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRoute
+  '/optional-params/withIndex/{-$id}/$category/path': typeof OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof groupLayoutRouteWithChildren
   '/non-nested': typeof NonNestedRouteRouteWithChildren
+  '/optional-params': typeof OptionalParamsRouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
@@ -583,7 +653,9 @@ export interface FileRoutesByTo {
   '/redirect/$target': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
   '/non-nested/baz/$bazid/edit': typeof NonNestedBazBazidEditRoute
+  '/optional-params/simple/{-$id}/path': typeof OptionalParamsSimpleChar123IdChar125PathRoute
   '/params-ps/non-nested/$foo/$bar': typeof ParamsPsNonNestedFooBarRoute
+  '/optional-params/simple/{-$id}': typeof OptionalParamsSimpleChar123IdChar125IndexRoute
   '/relative/link/nested': typeof RelativeLinkNestedIndexRoute
   '/relative/link/path': typeof RelativeLinkPathIndexRoute
   '/relative/link/with-search': typeof RelativeLinkWithSearchIndexRoute
@@ -591,15 +663,21 @@ export interface FileRoutesByTo {
   '/relative/useNavigate/path': typeof RelativeUseNavigatePathIndexRoute
   '/relative/useNavigate/with-search': typeof RelativeUseNavigateWithSearchIndexRoute
   '/params-ps/named/$foo/$bar/$baz': typeof ParamsPsNamedFooBarBazRoute
+  '/optional-params/withIndex/{-$id}/$category': typeof OptionalParamsWithIndexChar123IdChar125CategoryIndexRoute
   '/relative/link/nested/deep': typeof RelativeLinkNestedDeepIndexRoute
   '/relative/link/path/$path': typeof RelativeLinkPathPathIndexRoute
   '/relative/useNavigate/nested/deep': typeof RelativeUseNavigateNestedDeepIndexRoute
   '/relative/useNavigate/path/$path': typeof RelativeUseNavigatePathPathIndexRoute
+  '/optional-params/consecutive/{-$id}/{-$slug}/$category/info': typeof OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRoute
+  '/optional-params/withRequiredInBetween/{-$id}/$category/path/{-$slug}': typeof OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125Route
+  '/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info': typeof OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRoute
+  '/optional-params/withIndex/{-$id}/$category/path': typeof OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/non-nested': typeof NonNestedRouteRouteWithChildren
+  '/optional-params': typeof OptionalParamsRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
@@ -657,7 +735,9 @@ export interface FileRoutesById {
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
   '/non-nested/baz_/$bazid/edit': typeof NonNestedBazBazidEditRoute
+  '/optional-params/simple/{-$id}/path': typeof OptionalParamsSimpleChar123IdChar125PathRoute
   '/params-ps/non-nested/$foo_/$bar': typeof ParamsPsNonNestedFooBarRoute
+  '/optional-params/simple/{-$id}/': typeof OptionalParamsSimpleChar123IdChar125IndexRoute
   '/relative/link/nested/': typeof RelativeLinkNestedIndexRoute
   '/relative/link/path/': typeof RelativeLinkPathIndexRoute
   '/relative/link/with-search/': typeof RelativeLinkWithSearchIndexRoute
@@ -665,16 +745,22 @@ export interface FileRoutesById {
   '/relative/useNavigate/path/': typeof RelativeUseNavigatePathIndexRoute
   '/relative/useNavigate/with-search/': typeof RelativeUseNavigateWithSearchIndexRoute
   '/params-ps/named/$foo/$bar/$baz': typeof ParamsPsNamedFooBarBazRoute
+  '/optional-params/withIndex/{-$id}/$category/': typeof OptionalParamsWithIndexChar123IdChar125CategoryIndexRoute
   '/relative/link/nested/deep/': typeof RelativeLinkNestedDeepIndexRoute
   '/relative/link/path/$path/': typeof RelativeLinkPathPathIndexRoute
   '/relative/useNavigate/nested/deep/': typeof RelativeUseNavigateNestedDeepIndexRoute
   '/relative/useNavigate/path/$path/': typeof RelativeUseNavigatePathPathIndexRoute
+  '/optional-params/consecutive/{-$id}/{-$slug}/$category/info': typeof OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRoute
+  '/optional-params/withRequiredInBetween/{-$id}/$category/path/{-$slug}': typeof OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125Route
+  '/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info': typeof OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRoute
+  '/optional-params/withIndex/{-$id}/$category/path/': typeof OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/non-nested'
+    | '/optional-params'
     | '/search-params'
     | '/anchor'
     | '/component-types-test'
@@ -728,7 +814,9 @@ export interface FileRouteTypes {
     | '/redirect/$target/'
     | '/params-ps/named/$foo/$bar'
     | '/non-nested/baz/$bazid/edit'
+    | '/optional-params/simple/{-$id}/path'
     | '/params-ps/non-nested/$foo/$bar'
+    | '/optional-params/simple/{-$id}'
     | '/relative/link/nested'
     | '/relative/link/path'
     | '/relative/link/with-search'
@@ -736,14 +824,20 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/path'
     | '/relative/useNavigate/with-search'
     | '/params-ps/named/$foo/$bar/$baz'
+    | '/optional-params/withIndex/{-$id}/$category'
     | '/relative/link/nested/deep'
     | '/relative/link/path/$path'
     | '/relative/useNavigate/nested/deep'
     | '/relative/useNavigate/path/$path'
+    | '/optional-params/consecutive/{-$id}/{-$slug}/$category/info'
+    | '/optional-params/withRequiredInBetween/{-$id}/$category/path/{-$slug}'
+    | '/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info'
+    | '/optional-params/withIndex/{-$id}/$category/path'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/non-nested'
+    | '/optional-params'
     | '/anchor'
     | '/component-types-test'
     | '/editing-a'
@@ -794,7 +888,9 @@ export interface FileRouteTypes {
     | '/redirect/$target'
     | '/params-ps/named/$foo/$bar'
     | '/non-nested/baz/$bazid/edit'
+    | '/optional-params/simple/{-$id}/path'
     | '/params-ps/non-nested/$foo/$bar'
+    | '/optional-params/simple/{-$id}'
     | '/relative/link/nested'
     | '/relative/link/path'
     | '/relative/link/with-search'
@@ -802,14 +898,20 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/path'
     | '/relative/useNavigate/with-search'
     | '/params-ps/named/$foo/$bar/$baz'
+    | '/optional-params/withIndex/{-$id}/$category'
     | '/relative/link/nested/deep'
     | '/relative/link/path/$path'
     | '/relative/useNavigate/nested/deep'
     | '/relative/useNavigate/path/$path'
+    | '/optional-params/consecutive/{-$id}/{-$slug}/$category/info'
+    | '/optional-params/withRequiredInBetween/{-$id}/$category/path/{-$slug}'
+    | '/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info'
+    | '/optional-params/withIndex/{-$id}/$category/path'
   id:
     | '__root__'
     | '/'
     | '/non-nested'
+    | '/optional-params'
     | '/search-params'
     | '/_layout'
     | '/anchor'
@@ -867,7 +969,9 @@ export interface FileRouteTypes {
     | '/redirect/$target/'
     | '/params-ps/named/$foo/$bar'
     | '/non-nested/baz_/$bazid/edit'
+    | '/optional-params/simple/{-$id}/path'
     | '/params-ps/non-nested/$foo_/$bar'
+    | '/optional-params/simple/{-$id}/'
     | '/relative/link/nested/'
     | '/relative/link/path/'
     | '/relative/link/with-search/'
@@ -875,15 +979,21 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/path/'
     | '/relative/useNavigate/with-search/'
     | '/params-ps/named/$foo/$bar/$baz'
+    | '/optional-params/withIndex/{-$id}/$category/'
     | '/relative/link/nested/deep/'
     | '/relative/link/path/$path/'
     | '/relative/useNavigate/nested/deep/'
     | '/relative/useNavigate/path/$path/'
+    | '/optional-params/consecutive/{-$id}/{-$slug}/$category/info'
+    | '/optional-params/withRequiredInBetween/{-$id}/$category/path/{-$slug}'
+    | '/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info'
+    | '/optional-params/withIndex/{-$id}/$category/path/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NonNestedRouteRoute: typeof NonNestedRouteRouteWithChildren
+  OptionalParamsRouteRoute: typeof OptionalParamsRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
@@ -996,6 +1106,13 @@ declare module '@tanstack/react-router' {
       path: '/search-params'
       fullPath: '/search-params'
       preLoaderRoute: typeof SearchParamsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/optional-params': {
+      id: '/optional-params'
+      path: '/optional-params'
+      fullPath: '/optional-params'
+      preLoaderRoute: typeof OptionalParamsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/non-nested': {
@@ -1362,12 +1479,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RelativeLinkNestedIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
+    '/optional-params/simple/{-$id}/': {
+      id: '/optional-params/simple/{-$id}/'
+      path: '/simple/{-$id}'
+      fullPath: '/optional-params/simple/{-$id}'
+      preLoaderRoute: typeof OptionalParamsSimpleChar123IdChar125IndexRouteImport
+      parentRoute: typeof OptionalParamsRouteRoute
+    }
     '/params-ps/non-nested/$foo_/$bar': {
       id: '/params-ps/non-nested/$foo_/$bar'
       path: '/$bar'
       fullPath: '/params-ps/non-nested/$foo/$bar'
       preLoaderRoute: typeof ParamsPsNonNestedFooBarRouteImport
       parentRoute: typeof ParamsPsNonNestedFooRouteRoute
+    }
+    '/optional-params/simple/{-$id}/path': {
+      id: '/optional-params/simple/{-$id}/path'
+      path: '/simple/{-$id}/path'
+      fullPath: '/optional-params/simple/{-$id}/path'
+      preLoaderRoute: typeof OptionalParamsSimpleChar123IdChar125PathRouteImport
+      parentRoute: typeof OptionalParamsRouteRoute
     }
     '/non-nested/baz_/$bazid/edit': {
       id: '/non-nested/baz_/$bazid/edit'
@@ -1411,12 +1542,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RelativeLinkNestedDeepIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
+    '/optional-params/withIndex/{-$id}/$category/': {
+      id: '/optional-params/withIndex/{-$id}/$category/'
+      path: '/withIndex/{-$id}/$category'
+      fullPath: '/optional-params/withIndex/{-$id}/$category'
+      preLoaderRoute: typeof OptionalParamsWithIndexChar123IdChar125CategoryIndexRouteImport
+      parentRoute: typeof OptionalParamsRouteRoute
+    }
     '/params-ps/named/$foo/$bar/$baz': {
       id: '/params-ps/named/$foo/$bar/$baz'
       path: '/$baz'
       fullPath: '/params-ps/named/$foo/$bar/$baz'
       preLoaderRoute: typeof ParamsPsNamedFooBarBazRouteImport
       parentRoute: typeof ParamsPsNamedFooBarRouteRoute
+    }
+    '/optional-params/withIndex/{-$id}/$category/path/': {
+      id: '/optional-params/withIndex/{-$id}/$category/path/'
+      path: '/withIndex/{-$id}/$category/path'
+      fullPath: '/optional-params/withIndex/{-$id}/$category/path'
+      preLoaderRoute: typeof OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRouteImport
+      parentRoute: typeof OptionalParamsRouteRoute
+    }
+    '/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info': {
+      id: '/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info'
+      path: '/withRequiredParam/{-$id}/$category/{-$slug}/info'
+      fullPath: '/optional-params/withRequiredParam/{-$id}/$category/{-$slug}/info'
+      preLoaderRoute: typeof OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRouteImport
+      parentRoute: typeof OptionalParamsRouteRoute
+    }
+    '/optional-params/withRequiredInBetween/{-$id}/$category/path/{-$slug}': {
+      id: '/optional-params/withRequiredInBetween/{-$id}/$category/path/{-$slug}'
+      path: '/withRequiredInBetween/{-$id}/$category/path/{-$slug}'
+      fullPath: '/optional-params/withRequiredInBetween/{-$id}/$category/path/{-$slug}'
+      preLoaderRoute: typeof OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125RouteImport
+      parentRoute: typeof OptionalParamsRouteRoute
+    }
+    '/optional-params/consecutive/{-$id}/{-$slug}/$category/info': {
+      id: '/optional-params/consecutive/{-$id}/{-$slug}/$category/info'
+      path: '/consecutive/{-$id}/{-$slug}/$category/info'
+      fullPath: '/optional-params/consecutive/{-$id}/{-$slug}/$category/info'
+      preLoaderRoute: typeof OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRouteImport
+      parentRoute: typeof OptionalParamsRouteRoute
     }
   }
 }
@@ -1446,6 +1612,36 @@ const NonNestedRouteRouteChildren: NonNestedRouteRouteChildren = {
 const NonNestedRouteRouteWithChildren = NonNestedRouteRoute._addFileChildren(
   NonNestedRouteRouteChildren,
 )
+
+interface OptionalParamsRouteRouteChildren {
+  OptionalParamsSimpleChar123IdChar125PathRoute: typeof OptionalParamsSimpleChar123IdChar125PathRoute
+  OptionalParamsSimpleChar123IdChar125IndexRoute: typeof OptionalParamsSimpleChar123IdChar125IndexRoute
+  OptionalParamsWithIndexChar123IdChar125CategoryIndexRoute: typeof OptionalParamsWithIndexChar123IdChar125CategoryIndexRoute
+  OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRoute: typeof OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRoute
+  OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125Route: typeof OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125Route
+  OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRoute: typeof OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRoute
+  OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRoute: typeof OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRoute
+}
+
+const OptionalParamsRouteRouteChildren: OptionalParamsRouteRouteChildren = {
+  OptionalParamsSimpleChar123IdChar125PathRoute:
+    OptionalParamsSimpleChar123IdChar125PathRoute,
+  OptionalParamsSimpleChar123IdChar125IndexRoute:
+    OptionalParamsSimpleChar123IdChar125IndexRoute,
+  OptionalParamsWithIndexChar123IdChar125CategoryIndexRoute:
+    OptionalParamsWithIndexChar123IdChar125CategoryIndexRoute,
+  OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRoute:
+    OptionalParamsConsecutiveChar123IdChar125Char123SlugChar125CategoryInfoRoute,
+  OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125Route:
+    OptionalParamsWithRequiredInBetweenChar123IdChar125CategoryPathChar123SlugChar125Route,
+  OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRoute:
+    OptionalParamsWithRequiredParamChar123IdChar125CategoryChar123SlugChar125InfoRoute,
+  OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRoute:
+    OptionalParamsWithIndexChar123IdChar125CategoryPathIndexRoute,
+}
+
+const OptionalParamsRouteRouteWithChildren =
+  OptionalParamsRouteRoute._addFileChildren(OptionalParamsRouteRouteChildren)
 
 interface SearchParamsRouteRouteChildren {
   SearchParamsDefaultRoute: typeof SearchParamsDefaultRoute
@@ -1653,6 +1849,7 @@ const ParamsPsNamedFooRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NonNestedRouteRoute: NonNestedRouteRouteWithChildren,
+  OptionalParamsRouteRoute: OptionalParamsRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,
