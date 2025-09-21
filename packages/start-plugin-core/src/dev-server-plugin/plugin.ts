@@ -10,23 +10,9 @@ declare global {
 }
 
 export function devServerPlugin(): Plugin {
-  // let config: UserConfig
-  let isTest = false
-
   return {
     name: 'start-dev-ssr-plugin',
-    config(userConfig, { mode }) {
-      // config = userConfig
-      isTest = isTest ? isTest : mode === 'test'
-      // see https://vite.dev/config/shared-options.html#apptype
-      // this will prevent vite from injecting middlewares that we don't want
-      userConfig.appType = 'custom'
-    },
     async configureServer(viteDevServer) {
-      if (isTest) {
-        return
-      }
-
       // Extract the scripts that Vite plugins would inject into the initial HTML
       const templateHtml = `<html><head></head><body></body></html>`
       const transformedHtml = await viteDevServer.transformIndexHtml(
