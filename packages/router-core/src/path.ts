@@ -759,12 +759,16 @@ function isMatch(
         // Optional parameters can be missing - don't fail the match
         if (!baseSegment) {
           // No base segment for optional param - skip this route segment
+          processedOptionals++
+
           routeIndex++
           continue
         }
 
         if (baseSegment.value === '/') {
           // Skip slash segments for optional params
+          processedOptionals++
+
           routeIndex++
           continue
         }
@@ -876,7 +880,7 @@ function isMatch(
                     ? remainingRouteSegments.length - 1
                     : remainingRouteSegments.length
 
-                const remainingBaseSegments = baseSegments.slice(lookAhead)
+                const remainingBaseSegments = baseSegments.slice(baseIndex + 1)
 
                 isMatchedFurtherDown =
                   remainingRouteSegmentLength ===
@@ -884,7 +888,7 @@ function isMatch(
                   isMatch(
                     remainingBaseSegments,
                     remainingRouteSegments,
-                    params,
+                    { ...params },
                     fuzzy,
                     caseSensitive,
                   )
