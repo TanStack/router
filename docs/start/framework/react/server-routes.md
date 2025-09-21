@@ -12,9 +12,13 @@ Here's what a simple server route looks like:
 ```ts
 // routes/hello.ts
 
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ request }) => {
-    return new Response('Hello, World!')
+export const Route = createFileRoute('/hello')({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        return new Response('Hello, World!')
+      },
+    },
   },
 })
 ```
@@ -26,14 +30,15 @@ Because server routes can be defined in the same directory as your app routes, y
 ```tsx
 // routes/hello.tsx
 
-export const ServerRoute = createServerFileRoute().methods({
-  POST: async ({ request }) => {
-    const body = await request.json()
-    return new Response(JSON.stringify({ message: `Hello, ${body.name}!` }))
-  },
-})
-
 export const Route = createFileRoute('/hello')({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const body = await request.json()
+        return new Response(JSON.stringify({ message: `Hello, ${body.name}!` }))
+      },
+    },
+  },
   component: HelloComponent,
 })
 
@@ -64,7 +69,7 @@ function HelloComponent() {
 
 ## File Route Conventions
 
-Server routes in TanStack Start, follow the same file-based routing conventions as TanStack Router. This means that each file in your `routes` directory with a `ServerRoute` export will be treated as an API route. Here are a few examples:
+Server routes in TanStack Start, follow the same file-based routing conventions as TanStack Router. This means that each file in your `routes` directory with a `Route` export will be treated as an API route. Here are a few examples:
 
 - `/routes/users.ts` will create an API route at `/users`
 - `/routes/users.index.ts` will **also** create an API route at `/users` (but will error if duplicate methods are defined)
@@ -107,16 +112,20 @@ If you need to customize the server handler, you can do so by creating a custom 
 
 ## Defining a Server Route
 
-Server routes are created by exporting a `ServerRoute` from a route file. The `ServerRoute` export should be created by calling the `createServerFileRoute` function. The resulting builder object can then be used to:
+Server routes are created by exporting a `Route` from a route file. The `Route` export should be created by calling the `createFileRoute` function. The resulting builder object can then be used to:
 
 - Add route-level middleware
 - Define handlers for each HTTP method
 
 ```ts
 // routes/hello.ts
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ request }) => {
-    return new Response('Hello, World! from ' + request.url)
+export const Route = createFileRoute('/hello')({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        return new Response('Hello, World! from ' + request.url)
+      },
+    },
   },
 })
 ```
@@ -134,9 +143,13 @@ For simple use cases, you can provide a handler function directly to the method.
 
 ```ts
 // routes/hello.ts
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ request }) => {
-    return new Response('Hello, World! from ' + request.url)
+export const Route = createFileRoute('/hello')({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        return new Response('Hello, World! from ' + request.url)
+      },
+    },
   },
 })
 ```
@@ -147,10 +160,15 @@ For more complex use cases, you can provide a handler function via the method bu
 
 ```tsx
 // routes/hello.ts
-export const ServerRoute = createServerFileRoute().methods((api) => ({
-  GET: api.middleware([loggerMiddleware]).handler(async ({ request }) => {
-    return new Response('Hello, World! from ' + request.url)
-  }),
+// TODO: Check if this still exists
+export const Route = createFileRoute('/api/hello-world')((api) => ({
+  server: {
+    handlers: {
+      GET: api.middleware([loggerMiddleware]).handler(async ({ request }) => {
+        return new Response('Hello, World! from ' + request.url)
+      }),
+    },
+  },
 }))
 ```
 
@@ -170,10 +188,14 @@ Server routes support dynamic path parameters in the same way as TanStack Router
 
 ```ts
 // routes/users/$id.ts
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ params }) => {
-    const { id } = params
-    return new Response(`User ID: ${id}`)
+export const Route = createFileRoute('/users/$id')({
+  server: {
+    handlers: {
+      GET: async ({ params }) => {
+        const { id } = params
+        return new Response(`User ID: ${id}`)
+      },
+    },
   },
 })
 
@@ -185,10 +207,14 @@ You can also have multiple dynamic path parameters in a single route. For exampl
 
 ```ts
 // routes/users/$id/posts/$postId.ts
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ params }) => {
-    const { id, postId } = params
-    return new Response(`User ID: ${id}, Post ID: ${postId}`)
+export const Route = createFileRoute('/users/$id/posts/$postId')({
+  server: {
+    handlers: {
+      GET: async ({ params }) => {
+        const { id, postId } = params
+        return new Response(`User ID: ${id}, Post ID: ${postId}`)
+      },
+    },
   },
 })
 
@@ -202,10 +228,14 @@ Server routes also support wildcard parameters at the end of the path, which are
 
 ```ts
 // routes/file/$.ts
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ params }) => {
-    const { _splat } = params
-    return new Response(`File: ${_splat}`)
+export const Route = createFileRoute('/file/')({
+  server: {
+    handlers: {
+      GET: async ({ params }) => {
+        const { _splat } = params
+        return new Response(`File: ${_splat}`)
+      },
+    },
   },
 })
 
@@ -219,10 +249,14 @@ To handle POST requests,you can add a `POST` handler to the route object. The ha
 
 ```ts
 // routes/hello.ts
-export const ServerRoute = createServerFileRoute().methods({
-  POST: async ({ request }) => {
-    const body = await request.json()
-    return new Response(`Hello, ${body.name}!`)
+export const Route = createFileRoute('/hello')({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        const body = await request.json()
+        return new Response(`Hello, ${body.name}!`)
+      },
+    },
   },
 })
 
@@ -242,13 +276,17 @@ When returning JSON using a Response object, this is a common pattern:
 
 ```ts
 // routes/hello.ts
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ request }) => {
-    return new Response(JSON.stringify({ message: 'Hello, World!' }), {
-      headers: {
-        'Content-Type': 'application/json',
+export const Route = createFileRoute('/hello')({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        return new Response(JSON.stringify({ message: 'Hello, World!' }), {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
       },
-    })
+    },
   },
 })
 
@@ -264,9 +302,13 @@ Or you can use the `json` helper function to automatically set the `Content-Type
 // routes/hello.ts
 import { json } from '@tanstack/react-start'
 
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ request }) => {
-    return json({ message: 'Hello, World!' })
+export const Route = createFileRoute('/hello')({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        return json({ message: 'Hello, World!' })
+      },
+    },
   },
 })
 
@@ -284,15 +326,19 @@ You can set the status code of the response by either:
   // routes/hello.ts
   import { json } from '@tanstack/react-start'
 
-  export const ServerRoute = createServerFileRoute().methods({
-    GET: async ({ request, params }) => {
-      const user = await findUser(params.id)
-      if (!user) {
-        return new Response('User not found', {
-          status: 404,
-        })
-      }
-      return json(user)
+  export const Route = createFileRoute('/hello')({
+    server: {
+      handlers: {
+        GET: async ({ request, params }) => {
+          const user = await findUser(params.id)
+          if (!user) {
+            return new Response('User not found', {
+              status: 404,
+            })
+          }
+          return json(user)
+        },
+      },
     },
   })
   ```
@@ -304,14 +350,18 @@ You can set the status code of the response by either:
   import { json } from '@tanstack/react-start'
   import { setResponseStatus } from '@tanstack/react-start/server'
 
-  export const ServerRoute = createServerFileRoute().methods({
-    GET: async ({ request, params }) => {
-      const user = await findUser(params.id)
-      if (!user) {
-        setResponseStatus(404)
-        return new Response('User not found')
-      }
-      return json(user)
+  export const Route = createFileRoute('/hello')({
+    server: {
+      handlers: {
+        GET: async ({ request, params }) => {
+          const user = await findUser(params.id)
+          if (!user) {
+            setResponseStatus(404)
+            return new Response('User not found')
+          }
+          return json(user)
+        },
+      },
     },
   })
   ```
@@ -326,13 +376,17 @@ Sometimes you may need to set headers in the response. You can do this by either
 
   ```ts
   // routes/hello.ts
-  export const ServerRoute = createServerFileRoute().methods({
-    GET: async ({ request }) => {
-      return new Response('Hello, World!', {
-        headers: {
-          'Content-Type': 'text/plain',
+  export const Route = createFileRoute('/hello')({
+    server: {
+      handlers: {
+        GET: async ({ request }) => {
+          return new Response('Hello, World!', {
+            headers: {
+              'Content-Type': 'text/plain',
+            },
+          })
         },
-      })
+      },
     },
   })
 
@@ -346,12 +400,16 @@ Sometimes you may need to set headers in the response. You can do this by either
   // routes/hello.ts
   import { setResponseHeaders } from '@tanstack/react-start/server'
 
-  export const ServerRoute = createServerFileRoute().methods({
-    GET: async ({ request }) => {
-      setResponseHeaders({
-        'Content-Type': 'text/plain',
-      })
-      return new Response('Hello, World!')
+  export const Route = createFileRoute('/api/hello-world')({
+    server: {
+      handlers: {
+        GET: async ({ request }) => {
+          setResponseHeaders({
+            'Content-Type': 'text/plain',
+          })
+          return new Response('Hello, World!')
+        },
+      },
     },
   })
   ```
