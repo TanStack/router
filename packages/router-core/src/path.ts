@@ -612,7 +612,7 @@ function isMatch(
   let baseIndex = 0
   let routeIndex = 0
   let processedOptionals = 0
-  let skippedOptionals = 0
+
   const optionalCount = routeSegments.filter(
     (seg) => seg.type === SEGMENT_TYPE_OPTIONAL_PARAM,
   ).length
@@ -814,6 +814,10 @@ function isMatch(
               ? routeSegments.length - 1
               : routeSegments.length) - routeIndex
 
+          const remainingRequiredRouteSegmentCount =
+            remainingRouteSegmentLength - (optionalCount - processedOptionals)
+          const remainingBaseSegmentCount = baseSegments.length - baseIndex
+
           // Look ahead to see if there's a later route segment that matches the current base segment
           for (
             let lookAhead = routeIndex + 1;
@@ -843,10 +847,7 @@ function isMatch(
             // preference is given to the first optional param
             if (futureRouteSegment?.type === SEGMENT_TYPE_OPTIONAL_PARAM) {
               if (
-                remainingRouteSegmentLength -
-                  optionalCount +
-                  processedOptionals >=
-                baseSegments.length - baseIndex
+                remainingRequiredRouteSegmentCount >= remainingBaseSegmentCount
               ) {
                 shouldMatchOptional = false
               }
@@ -899,16 +900,12 @@ function isMatch(
               if (
                 !remainingOptionals ||
                 // remaining required segments equals remaining base segments
-                remainingRouteSegmentLength -
-                  (optionalCount - processedOptionals) ===
-                  baseSegments.length - baseIndex ||
+                remainingRequiredRouteSegmentCount ===
+                  remainingBaseSegmentCount ||
                 // matched by probe further down
                 isMatchedFurtherDown
               ) {
-                if (
-                  baseSegments.length - baseIndex <
-                  remainingRouteSegmentLength
-                ) {
+                if (remainingBaseSegmentCount < remainingRouteSegmentLength) {
                   shouldMatchOptional = false
                 }
                 break
@@ -926,8 +923,6 @@ function isMatch(
         if (matched) {
           params[routeSegment.value.substring(1)] = _paramValue
           baseIndex++
-        } else {
-          skippedOptionals++
         }
 
         processedOptionals++
