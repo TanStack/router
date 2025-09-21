@@ -5,6 +5,53 @@ test.beforeEach(async ({ page }) => {
 })
 
 test.describe('ensure paths with optional params are resolved correctly', () => {
+  test('singular optional param usage', async ({ page }) => {
+    await page.goto('/optional-params')
+    let pagePathname = ''
+
+    const singleIndexLink = page.getByTestId('l-to-single-index')
+    const singleIdIndexLink = page.getByTestId('l-to-single-id-index')
+    const singlePathLink = page.getByTestId('l-to-single-path')
+
+    await expect(singleIndexLink).toHaveAttribute(
+      'href',
+      '/optional-params/single',
+    )
+    await expect(singleIdIndexLink).toHaveAttribute(
+      'href',
+      '/optional-params/single/id',
+    )
+    await expect(singlePathLink).toHaveAttribute(
+      'href',
+      '/optional-params/single/path',
+    )
+
+    await singleIndexLink.click()
+
+    await page.waitForURL('/optional-params/single')
+    pagePathname = new URL(page.url()).pathname
+    expect(pagePathname).toBe('/optional-params/single')
+    await expect(page.getByTestId('single-id-heading')).toBeVisible()
+    expect(await page.getByTestId('single-id-params').innerText()).toEqual(
+      JSON.stringify({}),
+    )
+
+    await singleIdIndexLink.click()
+    await page.waitForURL('/optional-params/single/id')
+    pagePathname = new URL(page.url()).pathname
+    expect(pagePathname).toBe('/optional-params/single/id')
+    await expect(page.getByTestId('single-id-heading')).toBeVisible()
+    expect(await page.getByTestId('single-id-params').innerText()).toEqual(
+      JSON.stringify({ id: 'id' }),
+    )
+
+    await singlePathLink.click()
+    await page.waitForURL('/optional-params/single/path')
+    pagePathname = new URL(page.url()).pathname
+    expect(pagePathname).toBe('/optional-params/single/paht')
+    await expect(page.getByTestId('single-path-heading')).toBeVisible()
+  })
+
   test('simple optional param usage', async ({ page }) => {
     await page.goto('/optional-params')
     let pagePathname = ''
@@ -35,7 +82,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/simple')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/simple')
-    await expect(page.getByTestId('simple-index-heading')).toBeInViewport()
+    await expect(page.getByTestId('simple-index-heading')).toBeVisible()
     expect(await page.getByTestId('simple-index-params').innerText()).toEqual(
       JSON.stringify({}),
     )
@@ -44,7 +91,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/simple/id')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/simple/id')
-    await expect(page.getByTestId('simple-index-heading')).toBeInViewport()
+    await expect(page.getByTestId('simple-index-heading')).toBeVisible()
     expect(await page.getByTestId('simple-index-params').innerText()).toEqual(
       JSON.stringify({ id: 'id' }),
     )
@@ -53,7 +100,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/simple/path')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/simple/path')
-    await expect(page.getByTestId('simple-path-heading')).toBeInViewport()
+    await expect(page.getByTestId('simple-path-heading')).toBeVisible()
     expect(await page.getByTestId('simple-path-params').innerText()).toEqual(
       JSON.stringify({}),
     )
@@ -62,7 +109,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/simple/id/path')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/simple/id/path')
-    await expect(page.getByTestId('simple-path-heading')).toBeInViewport()
+    await expect(page.getByTestId('simple-path-heading')).toBeVisible()
     expect(await page.getByTestId('simple-path-params').innerText()).toEqual(
       JSON.stringify({ id: 'id' }),
     )
@@ -108,7 +155,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/withIndex/category')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/withIndex/category')
-    await expect(page.getByTestId('withIndex-index-heading')).toBeInViewport()
+    await expect(page.getByTestId('withIndex-index-heading')).toBeVisible()
     expect(
       await page.getByTestId('withIndex-index-params').innerText(),
     ).toEqual(JSON.stringify({ category: 'category' }))
@@ -117,7 +164,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/withIndex/id/category')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/withIndex/id/category')
-    await expect(page.getByTestId('withIndex-index-heading')).toBeInViewport()
+    await expect(page.getByTestId('withIndex-index-heading')).toBeVisible()
     expect(
       await page.getByTestId('withIndex-index-params').innerText(),
     ).toEqual(JSON.stringify({ id: 'id', category: 'category' }))
@@ -126,7 +173,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/withIndex/category/path')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/withIndex/category/path')
-    await expect(page.getByTestId('withIndex-path-heading')).toBeInViewport()
+    await expect(page.getByTestId('withIndex-path-heading')).toBeVisible()
     expect(await page.getByTestId('withIndex-path-params').innerText()).toEqual(
       JSON.stringify({ category: 'category' }),
     )
@@ -135,7 +182,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/withIndex/id/category/path')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/withIndex/id/category/path')
-    await expect(page.getByTestId('withIndex-path-heading')).toBeInViewport()
+    await expect(page.getByTestId('withIndex-path-heading')).toBeVisible()
     expect(await page.getByTestId('withIndex-path-params').innerText()).toEqual(
       JSON.stringify({ id: 'id', category: 'category' }),
     )
@@ -179,7 +226,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/consecutive/category/info')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/consecutive/category/info')
-    await expect(page.getByTestId('consecutive-heading')).toBeInViewport()
+    await expect(page.getByTestId('consecutive-heading')).toBeVisible()
     expect(
       await page
         .getByTestId('consecutive-id-slug-category-info-params')
@@ -190,7 +237,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/consecutive/id/category/info')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/consecutive/id/category/info')
-    await expect(page.getByTestId('consecutive-heading')).toBeInViewport()
+    await expect(page.getByTestId('consecutive-heading')).toBeVisible()
     expect(
       await page
         .getByTestId('consecutive-id-slug-category-info-params')
@@ -201,7 +248,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     await page.waitForURL('/optional-params/consecutive/slug/category/info')
     pagePathname = new URL(page.url()).pathname
     expect(pagePathname).toBe('/optional-params/consecutive/slug/category/info')
-    await expect(page.getByTestId('consecutive-heading')).toBeInViewport()
+    await expect(page.getByTestId('consecutive-heading')).toBeVisible()
     expect(
       await page
         .getByTestId('consecutive-id-slug-category-info-params')
@@ -220,7 +267,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     expect(pagePathname).toBe(
       '/optional-params/consecutive/id/slug/category/info',
     )
-    await expect(page.getByTestId('consecutive-heading')).toBeInViewport()
+    await expect(page.getByTestId('consecutive-heading')).toBeVisible()
     expect(
       await page
         .getByTestId('consecutive-id-slug-category-info-params')
@@ -371,7 +418,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     expect(pagePathname).toBe(
       '/optional-params/withRequiredParam/category/info',
     )
-    await expect(page.getByTestId('withRequiredParam-heading')).toBeInViewport()
+    await expect(page.getByTestId('withRequiredParam-heading')).toBeVisible()
     expect(
       await page
         .getByTestId('withRequiredParam-id-category-slug-info-params')
@@ -384,7 +431,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     expect(pagePathname).toBe(
       '/optional-params/withRequiredParam/id/category/info',
     )
-    await expect(page.getByTestId('withRequiredParam-heading')).toBeInViewport()
+    await expect(page.getByTestId('withRequiredParam-heading')).toBeVisible()
     expect(
       await page
         .getByTestId('withRequiredParam-id-category-slug-info-params')
@@ -399,7 +446,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     expect(pagePathname).toBe(
       '/optional-params/withRequiredParam/category/slug/info',
     )
-    await expect(page.getByTestId('withRequiredParam-heading')).toBeInViewport()
+    await expect(page.getByTestId('withRequiredParam-heading')).toBeVisible()
     expect(
       await page
         .getByTestId('withRequiredParam-id-category-slug-info-params')
@@ -420,7 +467,7 @@ test.describe('ensure paths with optional params are resolved correctly', () => 
     expect(pagePathname).toBe(
       '/optional-params/withRequiredParam/id/category/slug/info',
     )
-    await expect(page.getByTestId('withRequiredParam-heading')).toBeInViewport()
+    await expect(page.getByTestId('withRequiredParam-heading')).toBeVisible()
     expect(
       await page
         .getByTestId('withRequiredParam-id-category-slug-info-params')

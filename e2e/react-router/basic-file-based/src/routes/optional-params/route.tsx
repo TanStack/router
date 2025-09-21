@@ -10,6 +10,42 @@ function RouteComponent() {
       <h3 className="pb-2">optional path params</h3>
       <ul className="grid mb-2">
         <li>
+          <div>single optional only</div>
+          <div className="ml-5">
+            <ul>
+              <li>
+                <Link
+                  data-testid="l-to-single-index"
+                  to="/optional-params/single/{-$id}"
+                  params={{
+                    id: undefined,
+                  }}
+                >
+                  /optionals/single
+                </Link>{' '}
+              </li>
+              <li>
+                <Link
+                  data-testid="l-to-single-id-index"
+                  to="/optional-params/single/{-$id}"
+                  params={{ id: 'id' }}
+                >
+                  /optionals/single/id
+                </Link>{' '}
+              </li>
+              <li>
+                <Link
+                  data-testid="l-to-single-path"
+                  to="/optional-params/single/path"
+                >
+                  /optionals/single/path
+                </Link>{' '}
+              </li>
+            </ul>
+          </div>
+          <hr />
+        </li>
+        <li>
           <div>simple optional path param usage</div>
           <div className="ml-5">
             <ul>
