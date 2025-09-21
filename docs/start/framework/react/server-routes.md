@@ -156,18 +156,27 @@ export const Route = createFileRoute('/hello')({
 
 ### Providing a handler function via the method builder object
 
-For more complex use cases, you can provide a handler function via the method builder object. This allows you to add middleware to the method.
+For more complex use cases, you can provide a function to `server.handlers`. That function receives a `createHandlers` function which you can use to specify each handler method along with its corresponding middleware. This allows you to add specific middleware on a per-method basis.
 
 ```tsx
 // routes/hello.ts
-// TODO: Check if this still exists
-export const Route = createFileRoute('/api/hello-world')((api) => ({
+export const Route = createFileRoute('/hello')((api) => ({
   server: {
-    handlers: {
-      GET: api.middleware([loggerMiddleware]).handler(async ({ request }) => {
-        return new Response('Hello, World! from ' + request.url)
+    handlers: ({ createHandlers }) =>
+      createHandlers({
+        GET: {
+          middleware: [loggerMiddleware],
+          handler: async ({ request }) => {
+            return new Response('Hello, World! from ' + request.url)
+          },
+        },
+        POST: {
+          middleware: [authMiddleware],
+          handler: async ({ request }) => {
+            return new Response('Hello, World! from ' + request.url)
+          },
+        },
       }),
-    },
   },
 }))
 ```
@@ -400,7 +409,7 @@ Sometimes you may need to set headers in the response. You can do this by either
   // routes/hello.ts
   import { setResponseHeaders } from '@tanstack/react-start/server'
 
-  export const Route = createFileRoute('/api/hello-world')({
+  export const Route = createFileRoute('/hello')({
     server: {
       handlers: {
         GET: async ({ request }) => {
