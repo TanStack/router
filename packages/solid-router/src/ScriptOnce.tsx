@@ -13,7 +13,7 @@ export function ScriptOnce({
   }
   return (
     <script
-      nonce={router.ssr?.nonce}
+      nonce={router.options.ssr?.nonce}
       class="$tsr"
       innerHTML={[children].filter(Boolean).join('\n') + ';$_TSR.c()'}
     />

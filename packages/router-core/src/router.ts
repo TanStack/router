@@ -476,6 +476,9 @@ export interface RouterOptions<
    */
   rewrite?: LocationRewrite
   origin?: string
+  ssr?: {
+    nonce?: string
+  }
 }
 
 export type LocationRewrite = {
@@ -2418,7 +2421,6 @@ export class RouterCore<
 
   ssr?: {
     manifest: Manifest | undefined
-    nonce?: string
   }
 
   serverSsr?: ServerSsr
