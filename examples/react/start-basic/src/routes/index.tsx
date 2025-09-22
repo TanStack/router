@@ -1,129 +1,69 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { startInstance } from '~/start'
-
-export const testServerMw = startInstance
-  .createMiddleware()
-  .server(({ next, context }) => {
-    context.fromFetch
-    //      ^?
-
-    return next({
-      context: {
-        fromTestServerMw: true,
-      },
-    })
-  })
-
-export const testFnMw = startInstance
-  .createMiddleware({ type: 'function' })
-  .middleware([testServerMw])
-  .server(({ next, context }) => {
-    context.fromFetch
-    //      ^?
-    context.fromTestServerMw
-    //      ^?
-
-    return next({
-      context: {
-        fromTestFnMw: true,
-      },
-    })
-  })
-
-export const testGetMiddleware = startInstance
-  .createMiddleware()
-  .server(({ next, context }) => {
-    return next({
-      context: {
-        fromGetMiddleware: true,
-      },
-    })
-  })
+import { Test } from '~/start'
 
 export const Route = createFileRoute('/')({
-  server: {
-    middleware: [testServerMw],
-    handlers: {
-      GET: ({ context, next }) => {
-        context.fromFetch
-        //      ^?
-        context.fromServerMw
-        //      ^?
-        context.fromTestServerMw
-        //      ^?
-        return next({
-          context: {
-            fromGet: true,
-          },
-        })
-      },
-      POST: ({ context, next }) => {
-        context.fromFetch
-        context.fromServerMw
-        context.fromTestServerMw
-        return next({
-          context: {
-            fromPost: true,
-          },
-        })
-      },
-    },
-  },
-  //   handlers: ({ createHandlers }) =>
-  //     createHandlers({
-  //       GET: {
-  //         middleware: [testGetMiddleware],
-  //         handler: ({ context, next }) => {
-  //           context.fromFetch
-  //           //      ^?
-  //           context.fromServerMw
-  //           //      ^?
-  //           context.fromTestServerMw
-  //           //      ^?
-  //           context.fromGetMiddleware
-  //           //      ^?
-  //           return next({
-  //             context: {
-  //               fromGet: true,
-  //               fromPost: false,
-  //             },
-  //           })
+  // server: {
+  //   handlers: {
+  //     GET: ({ context, next }) => {
+  //       context.fromFetch
+  //       //      ^?
+  //       context.fromServerMw
+  //       //      ^?
+  //       context.fromIndexServerMw
+  //       //      ^?
+  //       return next({
+  //         context: {
+  //           fromGet: true,
   //         },
-  //       },
-  //       POST: {
-  //         handler: ({ context, next }) => {
-  //           return next({
-  //             context: {
-  //               fromGet: true,
-  //               fromPost: false,
-  //             },
-  //           })
+  //       })
+  //     },
+  //     POST: ({ context, next }) => {
+  //       context.fromFetch
+  //       context.fromServerMw
+  //       context.fromIndexServerMw
+  //       return next({
+  //         context: {
+  //           fromPost: true,
   //         },
-  //       },
-  //     }),
+  //       })
+  //     },
+  //   },
+  //   // handlers: ({ createHandlers }) =>
+  //   //   createHandlers({
+  //   //     GET: {
+  //   //       middleware: [testGetMiddleware],
+  //   //       handler: ({ context, next }) => {
+  //   //         context.fromFetch
+  //   //         //      ^?
+  //   //         context.fromServerMw
+  //   //         //      ^?
+  //   //         context.fromIndexServerMw
+  //   //         //      ^?
+  //   //         context.fromGetMiddleware
+  //   //         //      ^?
+  //   //         return next({
+  //   //           context: {
+  //   //             fromGet: true,
+  //   //             fromPost: false,
+  //   //           },
+  //   //         })
+  //   //       },
+  //   //     },
+  //   //     POST: {
+  //   //       handler: ({ next }) => {
+  //   //         return next({
+  //   //           context: {
+  //   //             fromGet: false,
+  //   //             fromPost: true,
+  //   //           },
+  //   //         })
+  //   //       },
+  //   //     },
+  //   //   }),
+  //   test: (test) => {},
   // },
-  beforeLoad: ({ serverContext }) => {
-    serverContext?.fromFetch
-    //             ^?
-    serverContext?.fromServerMw
-    //             ^?
-    serverContext?.fromTestServerMw
-    //             ^?
-    serverContext?.fromGet
-    //             ^?
-    return {}
-  },
-  // ssr: false,
-  loader: ({ serverContext }) => {
-    serverContext?.fromFetch
-    //             ^?
-    serverContext?.fromServerMw
-    //             ^?
-    serverContext?.fromTestServerMw
-    //             ^?
-    serverContext?.fromPost
-    //             ^?
-    return new Test()
+  loader: () => {
+    return new Test('test')
   },
   component: Home,
 })
@@ -134,8 +74,4 @@ function Home() {
       <h3>Welcome Home!!!</h3>
     </div>
   )
-}
-
-class Test {
-  constructor() {}
 }

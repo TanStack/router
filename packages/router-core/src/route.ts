@@ -1400,7 +1400,7 @@ export interface DefaultRootRouteOptionsExtensions {
 export interface RootRouteOptionsExtensions
   extends DefaultRootRouteOptionsExtensions {}
 
-export type RootRouteOptions<
+export interface RootRouteOptions<
   TRegister = unknown,
   TSearchValidator = undefined,
   TRouterContext = {},
@@ -1411,34 +1411,34 @@ export type RootRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
-> = Omit<
-  RouteOptions<
-    TRegister,
-    any, // TParentRoute
-    RootRouteId, // TId
-    RootRouteId, // TCustomId
-    '', // TFullPath
-    '', // TPath
-    TSearchValidator,
-    {}, // TParams
-    TLoaderDeps,
-    TLoaderFn,
-    TRouterContext,
-    TRouteContextFn,
-    TBeforeLoadFn,
-    TSSR,
-    TServerMiddlewares,
-    THandlers
-  >,
-  | 'path'
-  | 'id'
-  | 'getParentRoute'
-  | 'caseSensitive'
-  | 'parseParams'
-  | 'stringifyParams'
-  | 'params'
-> &
-  RootRouteOptionsExtensions
+> extends Omit<
+      RouteOptions<
+        TRegister,
+        any, // TParentRoute
+        RootRouteId, // TId
+        RootRouteId, // TCustomId
+        '', // TFullPath
+        '', // TPath
+        TSearchValidator,
+        {}, // TParams
+        TLoaderDeps,
+        TLoaderFn,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn,
+        TSSR,
+        TServerMiddlewares,
+        THandlers
+      >,
+      | 'path'
+      | 'id'
+      | 'getParentRoute'
+      | 'caseSensitive'
+      | 'parseParams'
+      | 'stringifyParams'
+      | 'params'
+    >,
+    RootRouteOptionsExtensions {}
 
 export type RouteConstraints = {
   TParentRoute: AnyRoute

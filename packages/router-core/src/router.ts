@@ -36,6 +36,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
+import type { AnyRouterConfig } from './config'
 import type { ParsePathnameCache, Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
@@ -105,13 +106,14 @@ export type GetRegisteredConfigKey<TRegister> = TRegister extends {
   ? TKey
   : 'config'
 
-// export interface DefaultRegister {
-//   router: AnyRouter
-//   config: AnyRouterConfig
-//   // ssr: boolean
-// }
+export interface DefaultRegister {
+  configKey: undefined
+  router: AnyRouter
+  config: AnyRouterConfig
+  ssr: undefined
+}
 
-export interface Register {
+export interface Register extends DefaultRegister {
   // router: Router
 }
 

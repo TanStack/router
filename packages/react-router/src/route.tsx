@@ -21,6 +21,7 @@ import type {
   ErrorComponentProps,
   NotFoundError,
   NotFoundRouteProps,
+  Register,
   RegisteredRouter,
   ResolveFullPath,
   ResolveId,
@@ -404,7 +405,7 @@ export type AnyRootRoute = RootRoute<
 
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
-    TRegister = unknown,
+    TRegister = Register,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TSearchValidator = undefined,
@@ -456,6 +457,7 @@ export class RootRoute<
     in out TFileRouteTypes = unknown,
     in out TSSR = unknown,
     in out TServerMiddlewares = unknown,
+    in out THandlers = undefined,
   >
   extends BaseRootRoute<
     TRegister,
@@ -468,7 +470,8 @@ export class RootRoute<
     TChildren,
     TFileRouteTypes,
     TSSR,
-    TServerMiddlewares
+    TServerMiddlewares,
+    THandlers
   >
   implements
     RootRouteCore<
@@ -482,7 +485,8 @@ export class RootRoute<
       TChildren,
       TFileRouteTypes,
       TSSR,
-      TServerMiddlewares
+      TServerMiddlewares,
+      THandlers
     >
 {
   /**
@@ -498,7 +502,8 @@ export class RootRoute<
       TLoaderDeps,
       TLoaderFn,
       TSSR,
-      TServerMiddlewares
+      TServerMiddlewares,
+      THandlers
     >,
   ) {
     super(options)
@@ -559,7 +564,7 @@ export class RootRoute<
 }
 
 export function createRootRoute<
-  TRegister = unknown,
+  TRegister = Register,
   TSearchValidator = undefined,
   TRouterContext = {},
   TRouteContextFn = AnyContext,
@@ -568,6 +573,7 @@ export function createRootRoute<
   TLoaderFn = undefined,
   TSSR = unknown,
   const TServerMiddlewares = unknown,
+  THandlers = undefined,
 >(
   options?: RootRouteOptions<
     TRegister,
@@ -578,7 +584,8 @@ export function createRootRoute<
     TLoaderDeps,
     TLoaderFn,
     TSSR,
-    TServerMiddlewares
+    TServerMiddlewares,
+    THandlers
   >,
 ): RootRoute<
   TRegister,
@@ -591,7 +598,8 @@ export function createRootRoute<
   unknown,
   unknown,
   TSSR,
-  TServerMiddlewares
+  TServerMiddlewares,
+  THandlers
 > {
   return new RootRoute<
     TRegister,
@@ -604,7 +612,8 @@ export function createRootRoute<
     unknown,
     unknown,
     TSSR,
-    TServerMiddlewares
+    TServerMiddlewares,
+    THandlers
   >(options)
 }
 
