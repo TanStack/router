@@ -36,7 +36,6 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
-import type { AnyRouterConfig } from './config'
 import type { ParsePathnameCache, Segment } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
@@ -100,16 +99,9 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type InjectedHtmlEntry = Promise<string>
 
-export type GetRegisteredConfigKey<TRegister> = TRegister extends {
-  configKey: infer TKey
-}
-  ? TKey
-  : 'config'
-
 export interface DefaultRegister {
-  configKey: undefined
   router: AnyRouter
-  config: AnyRouterConfig
+  // config: AnyRouterConfig
   ssr: undefined
 }
 
@@ -128,6 +120,18 @@ export type RegisteredRouter<TRegister = Register> = RegisteredProperty<
   'router',
   AnyRouter
 >
+
+export type RegisteredConfigType<TRegister, TKey> = TRegister extends {
+  config: infer TConfig
+}
+  ? TConfig extends {
+      '~types': infer TTypes
+    }
+    ? TKey extends keyof TTypes
+      ? TTypes[TKey]
+      : unknown
+    : unknown
+  : unknown
 
 export type DefaultRemountDepsFn<TRouteTree extends AnyRoute> = (
   opts: MakeRemountDepsOptionsUnion<TRouteTree>,

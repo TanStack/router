@@ -443,13 +443,11 @@ import type * as startSetup from './start.tsx'
 type MaybeStartInstance = typeof startSetup extends {
   startInstance: { getOptions: () => any }
 }
-  ? { start: Awaited<ReturnType<typeof startSetup.startInstance.getOptions>> }
+  ? { config: Awaited<ReturnType<typeof startSetup.startInstance.getOptions>> }
   : {}
 
 declare module '@tanstack/react-start' {
   interface Register extends MaybeStartInstance {
-    configKey: 'start'
     router: Awaited<ReturnType<typeof startSetup.getRouter>>
-    ssr: true
   }
 }
