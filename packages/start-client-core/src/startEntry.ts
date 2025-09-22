@@ -1,7 +1,10 @@
 import type { AnyRouter, Awaitable } from '@tanstack/router-core'
-import type { AnyStartInstance } from './createStart'
+import type { AnyStartInstance } from './createStart.js'
 
 export interface StartEntry {
-  getRouter: () => Awaitable<AnyRouter>
   startInstance: AnyStartInstance | undefined
+}
+
+export interface RouterEntry {
+  getRouter: () => Awaitable<AnyRouter>
 }

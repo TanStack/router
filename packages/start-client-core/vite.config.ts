@@ -21,6 +21,6 @@ export default mergeConfig(
       './src/client/index.ts',
     ],
     cjs: false,
-    externalDeps: ['#tanstack-start-entry'],
+    externalDeps: ['#tanstack-start-entry', '#tanstack-router-entry'],
   }),
 )

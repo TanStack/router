@@ -1,10 +1,13 @@
+import { createMiddleware } from './createMiddleware'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
+  AssignAllServerRequestContext,
   CreateMiddlewareFn,
 } from './createMiddleware'
 import type {
   AnySerializationAdapter,
+  Expand,
   Register,
   SSROption,
 } from '@tanstack/router-core'
@@ -49,6 +52,7 @@ export interface StartInstance<
         TFunctionMiddlewares
       >
   createMiddleware: CreateMiddlewareFn<Register>
+  context?: Expand<AssignAllServerRequestContext<Register, []>>
 }
 
 export interface StartInstanceTypes<
@@ -100,11 +104,10 @@ export const createStart = <
   return {
     getOptions: async () => {
       const options = await getOptions()
-      return {
-        serializationAdapters: options.serializationAdapters,
-        defaultSsr: options.defaultSsr,
-      }
+      return options
     },
+    createMiddleware: createMiddleware as any,
+    context: {} as any,
   } as StartInstance<
     TSerializationAdapters,
     TDefaultSsr,

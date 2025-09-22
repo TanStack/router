@@ -130,7 +130,13 @@ const tanstackStartOptionsSchema = z
       })
       .optional()
       .default({}),
-    router: tsrConfig.optional().default({}),
+    router: z
+      .object({
+        entry: z.string().optional(),
+      })
+      .and(tsrConfig.optional().default({}))
+      .optional()
+      .default({}),
     client: z
       .object({
         entry: z.string().optional(),

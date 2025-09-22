@@ -102,6 +102,7 @@ async function serializePayload(
     payloadToSerialize['data'] = opts.data
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (opts.context && Object.keys(opts.context).length > 0) {
     payloadToSerialize['context'] = opts.context
   }

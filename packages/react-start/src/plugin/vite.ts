@@ -18,6 +18,7 @@ const defaultEntryDir = path.resolve(
 const defaultEntryPaths = {
   client: path.resolve(defaultEntryDir, 'client'),
   server: path.resolve(defaultEntryDir, 'server'),
+  start: path.resolve(defaultEntryDir, 'start'),
 }
 
 const isInsideRouterMonoRepo =

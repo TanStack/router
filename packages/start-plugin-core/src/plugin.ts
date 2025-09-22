@@ -32,21 +32,34 @@ export interface TanStackStartVitePluginCoreOptions {
   defaultEntryPaths: {
     client: string
     server: string
+    start: string
   }
 }
 
+export interface ResolvedStartConfig {
+  root: string
+  startFilePath: string | undefined
+  routerFilePath: string
+  srcDirectory: string
+}
+
+export type GetConfigFn = () => {
+  startConfig: TanStackStartOutputConfig
+  resolvedStartConfig: ResolvedStartConfig
+}
 export function TanStackStartVitePluginCore(
   corePluginOpts: TanStackStartVitePluginCoreOptions,
   startPluginOpts: TanStackStartInputConfig,
 ): Array<PluginOption> {
-  const resolvedStartConfig = {
+  const resolvedStartConfig: ResolvedStartConfig = {
     root: '',
-    startFilePath: '',
+    startFilePath: undefined,
+    routerFilePath: '',
     srcDirectory: '',
   }
 
   let startConfig: TanStackStartOutputConfig | null
-  function getConfig() {
+  const getConfig: GetConfigFn = () => {
     if (!resolvedStartConfig.root) {
       throw new Error(`Cannot get config before root is resolved`)
     }
@@ -88,9 +101,19 @@ export function TanStackStartVitePluginCore(
           configuredEntry: startConfig.start.entry,
           defaultEntry: 'start',
           resolvedSrcDirectory,
-          required: true,
+          required: false,
         })
         resolvedStartConfig.startFilePath = startFilePath
+
+        const routerFilePath = resolveEntry({
+          type: 'router entry',
+          configuredEntry: startConfig.router.entry,
+          defaultEntry: 'router',
+          resolvedSrcDirectory,
+          required: true,
+        })
+        resolvedStartConfig.routerFilePath = routerFilePath
+
         const clientEntryPath = resolveEntry({
           type: 'client entry',
           configuredEntry: startConfig.client.entry,
@@ -122,11 +145,20 @@ export function TanStackStartVitePluginCore(
         } else {
           serverAlias = corePluginOpts.defaultEntryPaths.server
         }
+
+        let startAlias: string
+        if (startFilePath) {
+          startAlias = vite.normalizePath(path.resolve(root, startFilePath))
+        } else {
+          startAlias = corePluginOpts.defaultEntryPaths.start
+        }
+
         const entryAliasConfiguration: Record<
           (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS],
           string
         > = {
-          [ENTRY_POINTS.start]: startFilePath,
+          [ENTRY_POINTS.start]: startAlias,
+          [ENTRY_POINTS.router]: routerFilePath,
           [ENTRY_POINTS.client]: clientAlias,
           [ENTRY_POINTS.server]: serverAlias,
         }
