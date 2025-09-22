@@ -24,6 +24,7 @@ describe('default path matching', () => {
     ['/a/1', '/a/$id', { id: '1' }],
     ['/a/1/b', '/a/$id/b', { id: '1' }],
     ['/a/1/b/2', '/a/$id/b/$other', { id: '1', other: '2' }],
+    ['/a/1_/b/2', '/a/$id/b/$other', { id: '1_', other: '2' }],
     ['/a/1/b/2', '/a/$id/b/$id', { id: '2' }],
   ])('params %s => %s', (from, to, result) => {
     expect(
@@ -110,12 +111,14 @@ describe('case insensitive path matching', () => {
     ['/a/1', '/A/{-$id}', { id: '1' }],
     ['/a', '/A/{-$id}', {}],
     ['/a/1/b', '/A/{-$id}/B', { id: '1' }],
+    ['/a/1_/b', '/A/{-$id}/B', { id: '1_' }],
     // ['/a/b', '/A/{-$id}/B', {}],
     ['/a/1/b/2', '/A/{-$id}/B/{-$other}', { id: '1', other: '2' }],
     // ['/a/b/2', '/A/{-$id}/B/{-$other}', { other: '2' }],
     ['/a/1/b', '/A/{-$id}/B/{-$other}', { id: '1' }],
     // ['/a/b', '/A/{-$id}/B/{-$other}', {}],
     ['/a/1/b/2', '/A/{-$id}/B/{-$id}', { id: '2' }],
+    ['/a/1/b/2_', '/A/{-$id}/B/{-$id}', { id: '2_' }],
   ])('optional %s => %s', (from, to, result) => {
     expect(
       matchByPath('/', from, { to, caseSensitive: false, fuzzy: false }),
@@ -201,12 +204,12 @@ describe('fuzzy path matching', () => {
 describe('non-nested paths', () => {
   describe('default path matching', () => {
     it.each([
-      ['/', '/a_', '/a_', {}],
-      ['/', '/a_/b_', '/a_/b_', {}],
-      ['/', '/a_', '/a_/', {}],
-      ['/', '/a_/', '/a_/', {}],
-      ['/', '/a_/', '/a_', undefined],
-      ['/', '/b_', '/a_', undefined],
+      ['/', '/a', '/a_', {}],
+      ['/', '/a/b', '/a_/b_', {}],
+      ['/', '/a', '/a_/', {}],
+      ['/', '/a/', '/a_/', {}],
+      ['/', '/a/', '/a_', undefined],
+      ['/', '/b', '/a_', undefined],
     ])('static %s %s => %s', (base, from, to, result) => {
       expect(
         matchByPath(base, from, { to, caseSensitive: true, fuzzy: false }),
@@ -217,6 +220,7 @@ describe('non-nested paths', () => {
       ['/a/1', '/a_/$id_', { id: '1' }],
       ['/a/1/b', '/a_/$id_/b_', { id: '1' }],
       ['/a/1/b/2', '/a_/$id_/b_/$other_', { id: '1', other: '2' }],
+      ['/a/1_/b/2', '/a_/$id_/b_/$other_', { id: '1_', other: '2' }],
       ['/a/1/b/2', '/a_/$id_/b_/$id_', { id: '2' }],
     ])('params %s => %s', (from, to, result) => {
       expect(

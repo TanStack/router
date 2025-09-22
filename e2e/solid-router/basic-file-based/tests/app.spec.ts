@@ -296,38 +296,3 @@ test('Should remount deps when remountDeps does change ', async ({ page }) => {
     'Page component mounts: 2',
   )
 })
-
-test('Should not nest non-nested paths', async ({ page }) => {
-  await page.goto('/non-nested')
-  await page.waitForURL('/non-nested')
-  const nonNestedPathHeading = page.getByTestId('non-nested-path-heading')
-  const bazIdLink = page.getByTestId('l-to-non-nested-bazid')
-  const bazIdEditLink = page.getByTestId('l-to-non-nested-bazid-edit')
-
-  await expect(nonNestedPathHeading).toBeInViewport()
-  await expect(bazIdLink).toHaveAttribute('href', '/non-nested/baz/123')
-  await expect(bazIdEditLink).toHaveAttribute(
-    'href',
-    '/non-nested/baz/456/edit',
-  )
-
-  await bazIdLink.click()
-  await page.waitForURL('/non-nested/baz/123')
-  const bazHeading = page.getByTestId('non-nested-baz-heading')
-  const bazIdHeading = page.getByTestId('non-nested-bazid-heading')
-  const bazIdParam = page.getByTestId('non-nested-bazid-param')
-  await expect(nonNestedPathHeading).toBeInViewport()
-  await expect(bazHeading).toBeInViewport()
-  await expect(bazIdHeading).toBeInViewport()
-  await expect(bazIdParam).toContainText(JSON.stringify({ bazid: '123' }))
-
-  await bazIdEditLink.click()
-  await page.waitForURL('/non-nested/baz/456/edit')
-  const bazIdEditHeading = page.getByTestId('non-nested-bazid-edit-heading')
-  const bazIdEditParam = page.getByTestId('non-nested-bazid-edit-param')
-  await expect(nonNestedPathHeading).toBeInViewport()
-  await expect(bazHeading).toBeHidden()
-  await expect(bazIdHeading).toBeHidden()
-  await expect(bazIdEditHeading).toBeInViewport()
-  await expect(bazIdEditParam).toContainText(JSON.stringify({ bazid: '456' }))
-})
