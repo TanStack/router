@@ -24,7 +24,10 @@ export type CreateMiddlewareFn<TRegister> = <TType extends MiddlewareType>(
   >,
 ) => CreateMiddlewareResult<TRegister, TType>
 
-export const createMiddleware: CreateMiddlewareFn<{}> = (options, __opts) => {
+export const createMiddleware: CreateMiddlewareFn<AnyContext> = (
+  options,
+  __opts,
+) => {
   const resolvedOptions = {
     type: 'request',
     ...(__opts || options),
@@ -287,11 +290,12 @@ export type AssignAllServerRequestContext<
   TServerContext = undefined,
 > = Assign<
   // Fetch Request Context
-  GlobalFetchRequestContext<TRegister>,
+  // GlobalFetchRequestContext<TRegister>,
+  AnyContext,
   Assign<
-    GlobalServerRequestContext<TRegister>, // TODO: This enabled global middleware
+    // GlobalServerRequestContext<TRegister>, // TODO: This enabled global middleware
     // type inference, but creates a circular types issue. No idea how to fix this.
-    // AnyContext,
+    AnyContext,
     __AssignAllServerRequestContext<TMiddlewares, TSendContext, TServerContext>
   >
 >
