@@ -21,7 +21,6 @@ import type {
   ErrorComponentProps,
   NotFoundError,
   NotFoundRouteProps,
-  Register,
   RegisteredRouter,
   ResolveFullPath,
   ResolveId,

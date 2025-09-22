@@ -30,14 +30,35 @@ export const testFnMw = startInstance
 export const Route = createFileRoute('/')({
   server: {
     middleware: [testServerMw],
-    handlers: {
-      GET: ({ context, next }) => {
-        context.fromFetch
-        context.fromServerMw
-        context.fromTestServerMw
-        return next({})
-      },
-    },
+    // handlers: {
+    //   GET: ({ context, next }) => {
+    //     context.fromFetch
+    //     context.fromServerMw
+    //     context.fromTestServerMw
+    //     return next()
+    //   },
+    // },
+  },
+  beforeLoad: ({ serverContext }) => {
+    serverContext?.fromFetch
+    //             ^?
+    serverContext?.fromServerMw
+    //             ^?
+    serverContext?.fromTestServerMw
+    //             ^?
+
+    return {}
+  },
+  // ssr: false,
+  loader: ({ serverContext }) => {
+    serverContext?.fromFetch
+    //             ^?
+    serverContext?.fromServerMw
+    //             ^?
+    serverContext?.fromTestServerMw
+    //             ^?
+
+    return new Test()
   },
   component: Home,
 })
@@ -48,4 +69,8 @@ function Home() {
       <h3>Welcome Home!!!</h3>
     </div>
   )
+}
+
+class Test {
+  constructor() {}
 }

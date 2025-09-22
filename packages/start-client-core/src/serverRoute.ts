@@ -85,13 +85,8 @@ declare module '@tanstack/router-core' {
   > {
     serverContext?: Expand<
       Assign<
-        TRegister extends { server: { requestContext: infer TRequestContext } }
-          ? TRequestContext
-          : AnyContext,
-        Assign<
-          ResolveAllServerContext<TRegister, TParentRoute, TServerMiddlewares>,
-          ExtractHandlersContext<THandlers>
-        >
+        ResolveAllServerContext<TRegister, TParentRoute, TServerMiddlewares>,
+        ExtractHandlersContext<THandlers>
       >
     >
   }
@@ -110,13 +105,8 @@ declare module '@tanstack/router-core' {
   > {
     serverContext?: Expand<
       Assign<
-        TRegister extends { server: { requestContext: infer TRequestContext } }
-          ? TRequestContext
-          : AnyContext,
-        Assign<
-          ResolveAllServerContext<TRegister, TParentRoute, TServerMiddlewares>,
-          ExtractHandlersContext<THandlers>
-        >
+        ResolveAllServerContext<TRegister, TParentRoute, TServerMiddlewares>,
+        ExtractHandlersContext<THandlers>
       >
     >
   }
@@ -464,14 +454,14 @@ export type RouteMethodHandlerFn<
   | RouteMethodResult<TServerSendContext>
   | Promise<RouteMethodResult<TServerSendContext>>
 
-export type RouteMethodResult<TServerFn> =
+export type RouteMethodResult<TContext> =
   | Response
   | undefined
-  | RouteMethodNextResult<TServerFn>
+  | RouteMethodNextResult<TContext>
 
-export type RouteMethodNextResult<TServerFn> = {
+export type RouteMethodNextResult<TContext> = {
   isNext: true
-  context: TServerFn
+  context: TContext
 }
 
 export interface RouteMethodHandlerCtx<
@@ -497,7 +487,7 @@ export interface RouteMethodHandlerCtx<
   request: Request
   params: Expand<ResolveParams<TFullPath>>
   pathname: TFullPath
-  next: <TContext>(options: {
+  next: <const TContext>(options?: {
     context?: TContext
   }) => RouteMethodNextResult<TContext>
 }
