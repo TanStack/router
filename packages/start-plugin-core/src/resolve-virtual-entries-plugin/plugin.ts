@@ -53,7 +53,10 @@ export function resolveVirtualEntriesPlugin(
           )
             ? startConfig.serverEntryPath
             : vite.normalizePath(
-                path.resolve(resolvedConfig.root, startConfig.serverEntryPath),
+                path.resolve(
+                  startConfig.root || resolvedConfig.root,
+                  startConfig.serverEntryPath,
+                ),
               )
 
           return opts.getVirtualServerRootHandler({
