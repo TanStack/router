@@ -17,7 +17,7 @@ import {
   cleanPath,
   interpolatePath,
   matchPathname,
-  parsePathname,
+  parseRoutePathSegments,
   resolvePath,
   trimPath,
   trimPathLeft,
@@ -2601,7 +2601,7 @@ export function processRouteTree<TRouteLike extends RouteLike>({
     }
 
     const trimmed = trimPathLeft(d.fullPath)
-    let parsed = parsePathname(trimmed)
+    let parsed = parseRoutePathSegments(trimmed)
 
     // Removes the leading slash if it is not the only remaining segment
     let skip = 0

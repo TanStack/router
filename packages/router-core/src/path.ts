@@ -154,8 +154,8 @@ export function resolvePath({
   trailingSlash = 'never',
   parseCache,
 }: ResolvePathOptions) {
-  let baseSegments = parsePathname(base, parseCache).slice()
-  const toSegments = parsePathname(to, parseCache)
+  let baseSegments = parseBasePathSegments(base, parseCache).slice()
+  const toSegments = parseRoutePathSegments(to, parseCache)
 
   if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
     baseSegments.pop()
@@ -200,14 +200,26 @@ export function resolvePath({
 }
 
 export type ParsePathnameCache = LRUCache<string, ReadonlyArray<Segment>>
+
+export const parseBasePathSegments = (
+  pathname?: string,
+  cache?: ParsePathnameCache,
+): ReadonlyArray<Segment> => parsePathname(pathname, cache, true)
+
+export const parseRoutePathSegments = (
+  pathname?: string,
+  cache?: ParsePathnameCache,
+): ReadonlyArray<Segment> => parsePathname(pathname, cache, false)
+
 export const parsePathname = (
   pathname?: string,
   cache?: ParsePathnameCache,
+  basePathValues?: boolean,
 ): ReadonlyArray<Segment> => {
   if (!pathname) return []
   const cached = cache?.get(pathname)
   if (cached) return cached
-  const parsed = baseParsePathname(pathname)
+  const parsed = baseParsePathname(pathname, basePathValues)
   cache?.set(pathname, parsed)
   return parsed
 }
@@ -237,7 +249,10 @@ const WILDCARD_W_CURLY_BRACES_RE = /^(.*?)\{\$\}(.*)$/ // prefix{$}suffix
  * - `/foo/[$]{$foo} - Dynamic route with a static prefix of `$`
  * - `/foo/{$foo}[$]` - Dynamic route with a static suffix of `$`
  */
-function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
+function baseParsePathname(
+  pathname: string,
+  basePathValues?: boolean,
+): ReadonlyArray<Segment> {
   pathname = cleanPath(pathname)
 
   const segments: Array<Segment> = []
@@ -260,7 +275,8 @@ function baseParsePathname(pathname: string): ReadonlyArray<Segment> {
   segments.push(
     ...split.map((part): Segment => {
       // strip tailing underscore for non-nested paths
-      const partToMatch = part.slice(-1) === '_' ? part.slice(0, -1) : part
+      const partToMatch =
+        !basePathValues && part.slice(-1) === '_' ? part.slice(0, -1) : part
 
       // Check for wildcard with curly braces: prefix{$}suffix
       const wildcardBracesMatch = partToMatch.match(WILDCARD_W_CURLY_BRACES_RE)
@@ -373,7 +389,7 @@ export function interpolatePath({
   decodeCharMap,
   parseCache,
 }: InterpolatePathOptions): InterPolatePathResult {
-  const interpolatedPathSegments = parsePathname(path, parseCache)
+  const interpolatedPathSegments = parseRoutePathSegments(path, parseCache)
 
   function encodeParam(key: string): any {
     const value = params[key]
@@ -518,11 +534,11 @@ export function matchByPath(
   const stringTo = to as string
 
   // Parse the from and to
-  const baseSegments = parsePathname(
+  const baseSegments = parseBasePathSegments(
     from.startsWith('/') ? from : `/${from}`,
     parseCache,
   )
-  const routeSegments = parsePathname(
+  const routeSegments = parseRoutePathSegments(
     stringTo.startsWith('/') ? stringTo : `/${stringTo}`,
     parseCache,
   )

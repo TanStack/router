@@ -12,23 +12,17 @@ function RouteComponent() {
       </h3>
       <ul class="grid mb-2">
         <li>
-          <Link
-            from={Route.fullPath}
-            data-testid="l-to-non-nested-bazid"
-            to="./baz/$bazid"
-            params={{ bazid: '123' }}
-          >
-            /non-nested/baz/123
+          <Link from={Route.fullPath} data-testid="l-to-named" to="./named">
+            To named param tests
           </Link>
-        </li>
-        <li>
-          <Link
-            from={Route.fullPath}
-            data-testid="l-to-non-nested-bazid-edit"
-            to="./baz/$bazid/edit"
-            params={{ bazid: '456' }}
-          >
-            /non-nested/baz/456/edit
+          <Link from={Route.fullPath} data-testid="l-to-prefix" to="./prefix">
+            To prefix param tests
+          </Link>
+          <Link from={Route.fullPath} data-testid="l-to-suffix" to="./suffix">
+            To suffix param tests
+          </Link>
+          <Link from={Route.fullPath} data-testid="l-to-path" to="./path">
+            To path tests
           </Link>
         </li>
       </ul>
