@@ -303,13 +303,13 @@ export type ServerFnReturnType<TRegister, TResponse> =
 
 export type ServerFn<TRegister, TMethod, TMiddlewares, TValidator, TResponse> =
   (
-    ctx: ServerFnCtx<TMethod, TMiddlewares, TValidator>,
+    ctx: ServerFnCtx<TRegister, TMethod, TMiddlewares, TValidator>,
   ) => ServerFnReturnType<TRegister, TResponse>
 
-export interface ServerFnCtx<TMethod, TMiddlewares, TValidator> {
+export interface ServerFnCtx<TRegister, TMethod, TMiddlewares, TValidator> {
   method: TMethod
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
-  context: Expand<AssignAllServerFnContext<TMiddlewares, {}>>
+  context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
   signal: AbortSignal
 }
 
@@ -675,6 +675,7 @@ function serverFnBaseToMiddleware(
           ...ctx,
           result,
         } as any) as unknown as FunctionMiddlewareServerFnResult<
+          any,
           any,
           any,
           any,
