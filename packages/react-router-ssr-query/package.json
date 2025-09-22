@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router-ssr-query",
-  "version": "1.131.49",
+  "version": "1.131.50",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
