@@ -18,6 +18,7 @@ declare module '@tanstack/react-start' {
 // @manuel
 export const serverMw = createMiddleware().server(({ next, context }) => {
   context.fromFetch
+  //      ^?
 
   return next({
     context: {
@@ -30,6 +31,7 @@ export const fnMw = createMiddleware({ type: 'function' })
   .middleware([serverMw])
   .server(({ next, context }) => {
     context.fromFetch
+    //      ^?
 
     return next({
       context: {
