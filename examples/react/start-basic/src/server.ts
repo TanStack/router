@@ -6,6 +6,6 @@ console.log("[server-entry]: using custom server entry in 'src/server.ts'")
 
 export default {
   fetch(request: Request) {
-    return handler.fetch(request, { context: { hello1: 'world' } })
+    return handler.fetch(request, { context: { fromFetch: true } })
   },
 }

@@ -8,14 +8,16 @@ export async function hydrateStart(): Promise<AnyRouter> {
   const router = await startEntry.getRouter()
 
   let serializationAdapters: Array<AnySerializationAdapter>
-  if (startEntry.getStart) {
-    const start = await startEntry.getStart()
-    window.__TSS_START_INSTANCE__ = start
-    serializationAdapters = start.serializationAdapters
-    router.options.defaultSsr = start.defaultSsr
+  if (startEntry.startInstance) {
+    const startOptions = await startEntry.startInstance.getOptions()
+    window.__TSS_START_OPTIONS__ = startOptions
+    serializationAdapters = startOptions.serializationAdapters
+    router.options.defaultSsr = startOptions.defaultSsr
   } else {
     serializationAdapters = []
-    window.__TSS_START_INSTANCE__ = { serializationAdapters }
+    window.__TSS_START_OPTIONS__ = {
+      serializationAdapters,
+    }
   }
 
   serializationAdapters.push(ServerFunctionSerializationAdapter)

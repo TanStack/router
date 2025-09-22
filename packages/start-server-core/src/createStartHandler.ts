@@ -20,7 +20,7 @@ import { handleServerAction } from './server-functions-handler'
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
 import type {
-  AnyStartConfigOptions,
+  AnyStartInstanceOptions,
   RouteMethod,
   RouteMethodHandlerFn,
   StartEntry,
@@ -157,25 +157,26 @@ export function createStartHandler<TRegister = Register>(
         isPrerendering,
         origin,
         ...{
-          defaultSsr: start.defaultSsr,
-          serializationAdapters: start.serializationAdapters,
+          defaultSsr: startOptions.defaultSsr,
+          serializationAdapters: startOptions.serializationAdapters,
         },
       })
       return router
     }
 
-    const start: AnyStartConfigOptions =
-      (await (await getStartEntry()).getStart?.()) || {}
-    start.serializationAdapters = start.serializationAdapters || []
+    const startOptions: AnyStartInstanceOptions =
+      (await (await getStartEntry()).startInstance?.getOptions()) || {}
+    startOptions.serializationAdapters =
+      startOptions.serializationAdapters || []
     // insert start specific default serialization adapters
-    start.serializationAdapters.push(ServerFunctionSerializationAdapter)
+    startOptions.serializationAdapters.push(ServerFunctionSerializationAdapter)
 
     const requestHandlerMiddleware = handlerToMiddleware(
       async ({ context }) => {
         const response = await runWithStartContext(
           {
             getRouter,
-            start,
+            startOptions,
             contextAfterGlobalMiddlewares: context,
           },
           async () => {
@@ -269,8 +270,8 @@ export function createStartHandler<TRegister = Register>(
       },
     )
 
-    const flattenedMiddlewares = start.requestMiddleware
-      ? flattenMiddlewares(start.requestMiddleware)
+    const flattenedMiddlewares = startOptions.requestMiddleware
+      ? flattenMiddlewares(startOptions.requestMiddleware)
       : []
     const middlewares = flattenedMiddlewares.map((d) => d.options.server)
     const ctx = await executeMiddleware(

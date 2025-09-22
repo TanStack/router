@@ -3,11 +3,12 @@ import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getServerContextAfterGlobalMiddlewares } from './getServerContextAfterGlobalMiddlewares'
-import { getStartInstance } from './getStartInstance'
+import { getStartOptions } from './getStartOptions'
 import type {
   AnyValidator,
   Constrain,
   Expand,
+  Register,
   RegisteredSerializableInput,
   ResolveValidatorInput,
   ValidateSerializable,
@@ -28,8 +29,7 @@ import type {
 
 type TODO = any
 
-export function createServerFn<
-  TRegister,
+export type CreateServerFn<TRegister> = <
   TMethod extends Method,
   TResponse = unknown,
   TMiddlewares = undefined,
@@ -45,20 +45,22 @@ export function createServerFn<
     TMiddlewares,
     TValidator
   >,
-): ServerFnBuilder<TRegister, TMethod> {
+) => ServerFnBuilder<TRegister, TMethod>
+
+export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
   const resolvedOptions = (__opts || options || {}) as ServerFnBaseOptions<
-    TRegister,
-    TMethod,
-    TResponse,
-    TMiddlewares,
-    TValidator
+    any,
+    any,
+    any,
+    any,
+    any
   >
 
   if (typeof resolvedOptions.method === 'undefined') {
-    resolvedOptions.method = 'GET' as TMethod
+    resolvedOptions.method = 'GET' as Method
   }
 
-  const res: ServerFnBuilder<TRegister, TMethod> = {
+  const res: ServerFnBuilder<Register, Method> = {
     options: resolvedOptions as any,
     middleware: (middleware) => {
       // multiple calls to `middleware()` merge the middlewares with the previously supplied ones
@@ -79,33 +81,21 @@ export function createServerFn<
         ...resolvedOptions,
         middleware: newMiddleware,
       }
-      const res = createServerFn<
-        TRegister,
-        TMethod,
-        TResponse,
-        TMiddlewares,
-        TValidator
-      >(undefined, newOptions) as any
+      const res = createServerFn(undefined, newOptions) as any
       res[TSS_SERVER_FUNCTION_FACTORY] = true
       return res
     },
     validator: (validator) => {
       const newOptions = { ...resolvedOptions, validator: validator as any }
-      return createServerFn<
-        TRegister,
-        TMethod,
-        TResponse,
-        TMiddlewares,
-        TValidator
-      >(undefined, newOptions) as any
+      return createServerFn(undefined, newOptions) as any
     },
     handler: (...args) => {
       // This function signature changes due to AST transformations
       // in the babel plugin. We need to cast it to the correct
       // function signature post-transformation
       const [extractedFn, serverFn] = args as unknown as [
-        CompiledFetcherFn<TRegister, TResponse>,
-        ServerFn<TRegister, TMethod, TMiddlewares, TValidator, TResponse>,
+        CompiledFetcherFn<Register, any>,
+        ServerFn<Register, Method, any, any, any>,
       ]
 
       // Keep the original function around so we can use it
@@ -165,8 +155,8 @@ export function createServerFn<
         },
       ) as any
     },
-  } as ServerFnBuilder<TRegister, TMethod>
-  const fun = (options?: { method?: TMethod }) => {
+  } as ServerFnBuilder<Register, Method>
+  const fun = (options?: { method?: Method }) => {
     return {
       ...res,
       options: {
@@ -175,7 +165,7 @@ export function createServerFn<
       },
     }
   }
-  return Object.assign(fun, res)
+  return Object.assign(fun, res) as any
 }
 
 export async function executeMiddleware(
@@ -183,7 +173,7 @@ export async function executeMiddleware(
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
-  const globalMiddlewares = getStartInstance().functionMiddleware || []
+  const globalMiddlewares = getStartOptions().functionMiddleware || []
   const flattenedMiddlewares = flattenMiddlewares([
     ...globalMiddlewares,
     ...middlewares,
@@ -509,7 +499,7 @@ export interface ServerFnWithTypes<
   in out TValidator,
   in out TResponse,
 > {
-  _types: ServerFnTypes<TMethod, TMiddlewares, TValidator, TResponse>
+  _types: ServerFnTypes<TRegister, TMethod, TMiddlewares, TValidator, TResponse>
   options: ServerFnBaseOptions<
     TRegister,
     TMethod,
@@ -523,6 +513,7 @@ export interface ServerFnWithTypes<
 export type AnyServerFn = ServerFnWithTypes<any, any, any, any, any>
 
 export interface ServerFnTypes<
+  in out TRegister,
   in out TMethod extends Method,
   in out TMiddlewares,
   in out TValidator,
@@ -532,7 +523,7 @@ export interface ServerFnTypes<
   middlewares: TMiddlewares
   validator: TValidator
   response: TResponse
-  allServerContext: AssignAllServerFnContext<TMiddlewares>
+  allServerContext: AssignAllServerFnContext<TRegister, TMiddlewares>
   allInput: IntersectAllValidatorInputs<TMiddlewares, TValidator>
   allOutput: IntersectAllValidatorOutputs<TMiddlewares, TValidator>
 }

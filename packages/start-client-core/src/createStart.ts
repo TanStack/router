@@ -1,10 +1,15 @@
-import type { AnySerializationAdapter, SSROption } from '@tanstack/router-core'
 import type {
-  AnyUnsafeFunctionMiddleware,
-  AnyUnsafeRequestMiddleware,
-} from './createUnsafeMiddleware'
+  AnyFunctionMiddleware,
+  AnyRequestMiddleware,
+  CreateMiddlewareFn,
+} from './createMiddleware'
+import type {
+  AnySerializationAdapter,
+  Register,
+  SSROption,
+} from '@tanstack/router-core'
 
-export interface StartConfigOptions<
+export interface StartInstanceOptions<
   in out TSerializationAdapters,
   in out TDefaultSsr,
   in out TRequestMiddlewares,
@@ -16,26 +21,37 @@ export interface StartConfigOptions<
   functionMiddleware?: TFunctionMiddlewares
 }
 
-export interface StartConfig<
+export interface StartInstance<
   in out TSerializationAdapters,
   in out TDefaultSsr,
   in out TRequestMiddlewares,
   in out TFunctionMiddlewares,
-> extends StartConfigOptions<
-    TSerializationAdapters,
-    TDefaultSsr,
-    TRequestMiddlewares,
-    TFunctionMiddlewares
-  > {
-  '~types': StartConfigTypes<
+> {
+  '~types': StartInstanceTypes<
     TSerializationAdapters,
     TDefaultSsr,
     TRequestMiddlewares,
     TFunctionMiddlewares
   >
+  getOptions: () =>
+    | Promise<
+        StartInstanceOptions<
+          TSerializationAdapters,
+          TDefaultSsr,
+          TRequestMiddlewares,
+          TFunctionMiddlewares
+        >
+      >
+    | StartInstanceOptions<
+        TSerializationAdapters,
+        TDefaultSsr,
+        TRequestMiddlewares,
+        TFunctionMiddlewares
+      >
+  createMiddleware: CreateMiddlewareFn<Register>
 }
 
-export interface StartConfigTypes<
+export interface StartInstanceTypes<
   in out TSerializationAdapters,
   in out TDefaultSsr,
   in out TRequestMiddlewares,
@@ -51,27 +67,39 @@ export const createStart = <
   const TSerializationAdapters extends
     ReadonlyArray<AnySerializationAdapter> = [],
   TDefaultSsr extends SSROption = SSROption,
-  const TRequestMiddlewares extends
-    ReadonlyArray<AnyUnsafeRequestMiddleware> = [],
-  const TFunctionMiddlewares extends
-    ReadonlyArray<AnyUnsafeFunctionMiddleware> = [],
+  const TRequestMiddlewares extends ReadonlyArray<AnyRequestMiddleware> = [],
+  const TFunctionMiddlewares extends ReadonlyArray<AnyFunctionMiddleware> = [],
 >(
-  options: StartConfigOptions<
-    TSerializationAdapters,
-    TDefaultSsr,
-    TRequestMiddlewares,
-    TFunctionMiddlewares
-  >,
-): StartConfig<
+  getOptions: () =>
+    | Promise<
+        StartInstanceOptions<
+          TSerializationAdapters,
+          TDefaultSsr,
+          TRequestMiddlewares,
+          TFunctionMiddlewares
+        >
+      >
+    | StartInstanceOptions<
+        TSerializationAdapters,
+        TDefaultSsr,
+        TRequestMiddlewares,
+        TFunctionMiddlewares
+      >,
+): StartInstance<
   TSerializationAdapters,
   TDefaultSsr,
   TRequestMiddlewares,
   TFunctionMiddlewares
 > => {
   return {
-    serializationAdapters: options.serializationAdapters,
-    defaultSsr: options.defaultSsr,
-  } as StartConfig<
+    getOptions: async () => {
+      const options = await getOptions()
+      return {
+        serializationAdapters: options.serializationAdapters,
+        defaultSsr: options.defaultSsr,
+      }
+    },
+  } as StartInstance<
     TSerializationAdapters,
     TDefaultSsr,
     TRequestMiddlewares,
@@ -79,8 +107,8 @@ export const createStart = <
   >
 }
 
-export type AnyStartConfig = StartConfig<any, any, any, any>
-export type AnyStartConfigOptions = StartConfigOptions<any, any, any, any>
+export type AnyStartInstance = StartInstance<any, any, any, any>
+export type AnyStartInstanceOptions = StartInstanceOptions<any, any, any, any>
 declare module '@tanstack/router-core' {
   interface DefaultRegister {
     configKey: 'start'

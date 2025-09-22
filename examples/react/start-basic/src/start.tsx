@@ -1,41 +1,56 @@
+import { createMiddleware, createStart } from '@tanstack/react-start'
+
 import { createRouter } from '@tanstack/react-router'
-import {
-  createMiddleware,
-  createStart,
-  createUnsafeMiddleware,
-} from '@tanstack/react-start'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
 
+declare module '@tanstack/react-start' {
+  interface Register {
+    server: {
+      requestContext: {
+        fromFetch: boolean
+      }
+    }
+  }
+}
+
+export const serverMw = createMiddleware().server(({ next, context }) => {
+  context.fromFetch
+
+  return next({
+    context: {
+      fromServerMw: true,
+    },
+  })
+})
+
+export const fnMw = createMiddleware({ type: 'function' })
+  .middleware([serverMw])
+  .server(({ next, context }) => {
+    context.fromFetch
+
+    return next({
+      context: {
+        fromFnMw: true,
+      },
+    })
+  })
+
+export const startInstance = createStart(() => {
+  return {
+    serializationAdapters: [],
+    // requestMiddleware: [serverMw],
+    // functionMiddleware: [fnMw],
+  }
+})
+
 export function getRouter() {
-  const router = createRouter({
+  return createRouter({
     routeTree,
     defaultPreload: 'intent',
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,
     scrollRestoration: true,
   })
-
-  return router
 }
-
-const requestMiddleware = createUnsafeMiddleware().server(({ next }) => {
-  return next({
-    context: {
-      fromGlobalReqMiddleware: true,
-    },
-  })
-})
-
-export function getStart() {
-  return createStart({
-    requestMiddleware: [requestMiddleware],
-  })
-}
-
-createMiddleware().server(({ next, context }) => {
-  context.fromGlobalReqMiddleware
-  //      ^?
-  return next()
-})

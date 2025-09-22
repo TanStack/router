@@ -1,4 +1,4 @@
 export default {
   getRouter: () => {},
-  getStart: () => {},
+  startInstance: () => {},
 }
