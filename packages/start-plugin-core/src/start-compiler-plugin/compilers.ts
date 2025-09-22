@@ -8,7 +8,6 @@ import {
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import { transformFuncs } from './constants'
 import { handleCreateIsomorphicFnCallExpression } from './isomorphicFn'
-import { handleCreateMiddlewareCallExpression } from './middleware'
 import {
   handleCreateClientOnlyFnCallExpression,
   handleCreateServerOnlyFnCallExpression,
@@ -24,11 +23,6 @@ export function compileStartOutputFactory(
 ) {
   return function compileStartOutput(opts: CompileOptions): GeneratorResult {
     const identifiers: Identifiers = {
-      createMiddleware: {
-        name: 'createMiddleware',
-        handleCallExpression: handleCreateMiddlewareCallExpression,
-        paths: [],
-      },
       createServerOnlyFn: {
         name: 'createServerOnlyFn',
         handleCallExpression: handleCreateServerOnlyFnCallExpression,

@@ -1,19 +1,14 @@
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { ServerFnCompiler } from './compiler'
+import type { CompileStartFrameworkOptions } from '../start-compiler-plugin/compilers'
 import type { ViteEnvironmentNames } from '../constants'
 import type { PluginOption } from 'vite'
-import type { CompileStartFrameworkOptions } from '../start-compiler-plugin/compilers'
 
 function cleanId(id: string): string {
   return id.split('?')[0]!
 }
 
-export function createServerFnPlugin(
-  framework: CompileStartFrameworkOptions,
-): PluginOption {
-  const libName = `@tanstack/${framework}-start`
-  const rootExport = 'createServerFn'
-
+export function createServerFnPlugin(framework: CompileStartFrameworkOptions,): PluginOption {
   const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
 
   const compilers: Partial<Record<ViteEnvironmentNames, ServerFnCompiler>> = {}
@@ -55,8 +50,8 @@ export function createServerFnPlugin(
             exclude: new RegExp(`${SERVER_FN_LOOKUP}$`),
           },
           code: {
-            // only scan files that mention `.handler(`
-            include: [/\.handler\(/],
+            // only scan files that mention `.handler(` | `.server(` | `.client(`
+            include: [/\.handler\(/, /\.server\(/, /\.client\(/],
           },
         },
         async handler(code, id) {
@@ -76,8 +71,21 @@ export function createServerFnPlugin(
 
             compiler = new ServerFnCompiler({
               env,
-              libName,
-              rootExport,
+              lookupConfigurations: [
+                {
+                  libName: `@tanstack/${framework}-start`,
+                  rootExport: 'createMiddleware',
+                },
+
+                {
+                  libName: `@tanstack/${framework}-start`,
+                  rootExport: 'createServerFn',
+                },
+                {
+                  libName: `@tanstack/${framework}-start`,
+                  rootExport: 'createStart',
+                },
+              ],
               loadModule: async (id: string) => {
                 if (this.environment.mode === 'build') {
                   const loaded = await this.load({ id })
