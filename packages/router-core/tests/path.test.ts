@@ -1168,7 +1168,7 @@ describe('non-nested paths', async () => {
   describe('resolvePath', () => {
     describe.each([
       ['/', '/', '/a_', '/a'],
-      ['/', '/', 'a/', '/a'],
+      ['/', '/', 'a_/', '/a'],
       ['/', '/', '/a_/b_', '/a/b'],
       ['/', 'a', 'b_', '/a/b'],
       ['/a/b', 'c', '/a/b/c_', '/a/b/c'],
@@ -1361,7 +1361,7 @@ describe('non-nested paths', async () => {
             },
             {
               name: 'with nested prefix + suffix',
-              to: '/params/named/prefix{$foo}suffix',
+              to: '/params_/named_/prefix{$foo}suffix_',
               expected: '/params/named/prefix{$foo}suffix',
             },
           ])('$name', ({ to, expected }) => {

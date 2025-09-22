@@ -9,7 +9,7 @@ function RouteComponent() {
   return (
     <div>
       <div data-testid="non-nested-prefix-baz-bar-heading">
-        Hello non-nested wildcard bar
+        Hello non-nested prefix bar
       </div>
       <div data-testid="non-nested-prefix-baz-bar-param">
         {JSON.stringify(params())}
