@@ -6,7 +6,7 @@ import {
 } from '@tanstack/router-core'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
-import { getClientSerovalPlugins } from './serializer/getClientSerovalPlugins'
+import { getDefaultSerovalPlugins } from './serializer/getDefaultSerovalPlugins'
 import { TSS_FORMDATA_CONTEXT, X_TSS_SERIALIZED } from './constants'
 import type { FunctionMiddlewareClientFnOptions } from './createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
@@ -19,7 +19,7 @@ export async function serverFnFetcher(
   handler: (url: string, requestInit: RequestInit) => Promise<Response>,
 ) {
   if (!serovalPlugins) {
-    serovalPlugins = getClientSerovalPlugins()
+    serovalPlugins = getDefaultSerovalPlugins()
   }
   const _first = args[0]
 
