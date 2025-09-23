@@ -14,9 +14,3 @@ export function getRouter() {
 
   return router
 }
-
-declare module '@tanstack/solid-router' {
-  interface Register {
-    router: ReturnType<typeof getRouter>
-  }
-}
