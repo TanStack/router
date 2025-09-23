@@ -47,6 +47,7 @@ export interface FileRouteOptions<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
+  TMiddlewares = unknown,
 > extends FileBaseRouteOptions<
       TRegister,
       TParentRoute,
@@ -60,7 +61,8 @@ export interface FileRouteOptions<
       TRouteContextFn,
       TBeforeLoadFn,
       AnyContext,
-      TSSR
+      TSSR,
+      TMiddlewares
     >,
     UpdatableRouteOptions<
       TParentRoute,
@@ -90,6 +92,7 @@ export type CreateFileRoute<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
+  TMiddlewares = unknown,
 >(
   options?: FileRouteOptions<
     TRegister,
@@ -104,7 +107,8 @@ export type CreateFileRoute<
     TBeforeLoadFn,
     TLoaderDeps,
     TLoaderFn,
-    TSSR
+    TSSR,
+    TMiddlewares
   >,
 ) => Route<
   TRegister,
@@ -122,7 +126,8 @@ export type CreateFileRoute<
   TLoaderFn,
   unknown,
   unknown,
-  TSSR
+  TSSR,
+  TMiddlewares
 >
 
 export type LazyRouteOptions = Pick<

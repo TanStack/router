@@ -86,6 +86,7 @@ export class FileRoute<
     TLoaderFn = undefined,
     TChildren = unknown,
     TSSR = unknown,
+    TMiddlewares = unknown,
   >(
     options?: FileBaseRouteOptions<
       TRegister,
@@ -130,7 +131,8 @@ export class FileRoute<
     TLoaderFn,
     TChildren,
     unknown,
-    TSSR
+    TSSR,
+    TMiddlewares
   > => {
     warning(
       this.silent,
