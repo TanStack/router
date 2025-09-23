@@ -1,7 +1,7 @@
 import { createPlugin } from 'seroval'
 import { GLOBAL_TSR } from '../constants'
 import type { Plugin, SerovalNode } from 'seroval'
-import type { Register, RegisteredConfigType, SSROption } from '../../router'
+import type { RegisteredConfigType, SSROption } from '../../router'
 import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
 
@@ -191,7 +191,7 @@ export type ValidateSerializableLifecycleResult<
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
-> = false extends Register['ssr']
+> = false extends (TRegister extends { ssr: infer TSSR } ? TSSR : never)
   ? any
   : ValidateSerializableLifecycleResultSSR<
         TRegister,

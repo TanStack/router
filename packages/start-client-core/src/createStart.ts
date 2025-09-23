@@ -117,7 +117,7 @@ export type AnyStartInstance = StartInstance<any, any, any, any>
 export type AnyStartInstanceOptions = StartInstanceOptions<any, any, any, any>
 
 declare module '@tanstack/router-core' {
-  interface DefaultRegister {
+  interface Register {
     ssr: true
   }
 }

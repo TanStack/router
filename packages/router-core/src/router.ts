@@ -99,27 +99,18 @@ export type ControllablePromise<T = any> = Promise<T> & {
 
 export type InjectedHtmlEntry = Promise<string>
 
-export interface DefaultRegister {
-  router: AnyRouter
-  // config: AnyRouterConfig
-  ssr: undefined
+export interface Register {
+  // Lots of things on here like...
+  // router
+  // config
+  // ssr
 }
 
-export interface Register extends DefaultRegister {
-  // router: Router
+export type RegisteredRouter<TRegister = Register> = TRegister extends {
+  router: infer TRouter
 }
-
-export type RegisteredProperty<
-  TRegister,
-  TKey,
-  TDefault = unknown,
-> = TKey extends keyof TRegister ? TRegister[TKey] : TDefault
-
-export type RegisteredRouter<TRegister = Register> = RegisteredProperty<
-  TRegister,
-  'router',
-  AnyRouter
->
+  ? TRouter
+  : AnyRouter
 
 export type RegisteredConfigType<TRegister, TKey> = TRegister extends {
   config: infer TConfig

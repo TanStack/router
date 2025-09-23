@@ -60,7 +60,7 @@ export class Test {
 
 export const startInstance = createStart(() => {
   return {
-    // defaultSsr: false,
+    defaultSsr: false,
     serializationAdapters: [
       // serializeClass
     ],
