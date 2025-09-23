@@ -7,7 +7,6 @@ export type PostType = {
   body: string
 }
 
-
 export const fetchPost = createServerFn({ method: 'POST' })
   .validator((d: string) => d)
   .handler(async ({ data, context }) => {
