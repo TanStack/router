@@ -404,11 +404,12 @@ async function handleServerRoutes(opts: {
     if (server) {
       if (server.handlers) {
         const handlers =
-          typeof server.handlers === 'function'
-            ? server.handlers({
-                createHandlers: (d) => d as any,
-              })
-            : server.handlers
+          // typeof server.handlers === 'function'
+          //   ? server.handlers({
+          //       createHandlers: (d) => d,
+          //     })
+          //   :
+          server.handlers
 
         const requestMethod = opts.request.method.toLowerCase()
 
@@ -433,17 +434,17 @@ async function handleServerRoutes(opts: {
             if (typeof handler === 'function') {
               middlewares.push(handlerToMiddleware(handler))
             } else {
-              const { middleware } = handler
-              if (middleware && middleware.length) {
-                middlewares.push(
-                  ...flattenMiddlewares(middleware as TODO).map(
-                    (d) => d.options.server,
-                  ),
-                )
-              }
-              if (handler.handler) {
-                middlewares.push(handlerToMiddleware(handler.handler))
-              }
+              // const { middleware } = handler
+              // if (middleware && middleware.length) {
+              //   middlewares.push(
+              //     ...flattenMiddlewares(middleware as TODO).map(
+              //       (d) => d.options.server,
+              //     ),
+              //   )
+              // }
+              // if (handler.handler) {
+              //   middlewares.push(handlerToMiddleware(handler.handler))
+              // }
             }
           }
         }

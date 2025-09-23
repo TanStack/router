@@ -183,6 +183,7 @@ export class Route<
     in out TFileRouteTypes = unknown,
     in out TSSR = unknown,
     in out TServerMiddlewares = unknown,
+    in out THandlers = undefined,
   >
   extends BaseRoute<
     TRegister,
@@ -201,7 +202,8 @@ export class Route<
     TChildren,
     TFileRouteTypes,
     TSSR,
-    TServerMiddlewares
+    TServerMiddlewares,
+    THandlers
   >
   implements
     RouteCore<
@@ -221,7 +223,8 @@ export class Route<
       TChildren,
       TFileRouteTypes,
       TSSR,
-      TServerMiddlewares
+      TServerMiddlewares,
+      THandlers
     >
 {
   /**
@@ -243,7 +246,8 @@ export class Route<
       TRouteContextFn,
       TBeforeLoadFn,
       TSSR,
-      TServerMiddlewares
+      TServerMiddlewares,
+      THandlers
     >,
   ) {
     super(options)
