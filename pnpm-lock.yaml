@@ -2012,46 +2012,6 @@ importers:
         specifier: ^2.11.8
         version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
 
-  e2e/solid-router/basic-scroll-restoration:
-    dependencies:
-      '@tanstack/solid-router':
-        specifier: workspace:^
-        version: link:../../../packages/solid-router
-      '@tanstack/solid-router-devtools':
-        specifier: workspace:^
-        version: link:../../../packages/solid-router-devtools
-      '@tanstack/solid-virtual':
-        specifier: ^3.13.0
-        version: 3.13.0(solid-js@1.9.5)
-      autoprefixer:
-        specifier: ^10.4.20
-        version: 10.4.20(postcss@8.5.3)
-      postcss:
-        specifier: ^8.5.1
-        version: 8.5.3
-      redaxios:
-        specifier: ^0.5.1
-        version: 0.5.1
-      solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
-      tailwindcss:
-        specifier: ^3.4.17
-        version: 3.4.17
-    devDependencies:
-      '@playwright/test':
-        specifier: ^1.52.0
-        version: 1.52.0
-      '@tanstack/router-e2e-utils':
-        specifier: workspace:^
-        version: link:../../e2e-utils
-      vite:
-        specifier: ^7.1.1
-        version: 7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
-      vite-plugin-solid:
-        specifier: ^2.11.8
-        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.1(@types/node@22.13.4)(jiti@2.5.1)(lightningcss@1.29.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
-
   e2e/solid-router/basic-solid-query:
     dependencies:
       '@tanstack/solid-query':
@@ -10649,11 +10609,6 @@ packages:
     peerDependencies:
       solid-js: ^1.6.0
 
-  '@tanstack/solid-virtual@3.13.0':
-    resolution: {integrity: sha512-F9DCB+wqshQWYInhg778086ozsnhkOasW7r3KNxLZoCiD+eEshQ2rakO/J6lleUuxNDU9/sQJRBwADWaB4GyzQ==}
-    peerDependencies:
-      solid-js: ^1.3.0
-
   '@tanstack/store@0.7.0':
     resolution: {integrity: sha512-CNIhdoUsmD2NolYuaIs8VfWM467RK6oIBAW4nPEKZhg1smZ+/CwtCdpURgp7nxSqOaV9oKkzdWD80+bC66F/Jg==}
 
@@ -19234,11 +19189,6 @@ snapshots:
   '@tanstack/solid-store@0.7.0(solid-js@1.9.5)':
     dependencies:
       '@tanstack/store': 0.7.0
-      solid-js: 1.9.5
-
-  '@tanstack/solid-virtual@3.13.0(solid-js@1.9.5)':
-    dependencies:
-      '@tanstack/virtual-core': 3.13.0
       solid-js: 1.9.5
 
   '@tanstack/store@0.7.0': {}
