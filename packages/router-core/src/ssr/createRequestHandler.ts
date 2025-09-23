@@ -23,7 +23,6 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 
     attachRouterServerSsrUtils({
       router,
-      nonce: undefined,
       manifest: await getRouterManifest?.(),
     })
 

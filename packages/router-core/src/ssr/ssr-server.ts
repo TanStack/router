@@ -50,16 +50,13 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
 
 export function attachRouterServerSsrUtils({
   router,
-  nonce,
   manifest,
 }: {
   router: AnyRouter
-  nonce: string | undefined
   manifest: Manifest | undefined
 }) {
   router.ssr = {
     manifest,
-    nonce,
   }
   let initialScriptSent = false
   const getInitialScript = () => {
@@ -87,7 +84,7 @@ export function attachRouterServerSsrUtils({
     injectScript: (getScript) => {
       return router.serverSsr!.injectHtml(async () => {
         const script = await getScript()
-        return `<script class='$tsr'>${getInitialScript()}${script};$_TSR.c()</script>`
+        return `<script ${router.options.ssr?.nonce ? `nonce='${router.options.ssr.nonce}'` : ''} class='$tsr'>${getInitialScript()}${script};$_TSR.c()</script>`
       })
     },
     dehydrate: async () => {
