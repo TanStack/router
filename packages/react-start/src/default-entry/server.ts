@@ -4,9 +4,10 @@ import {
 } from '@tanstack/react-start/server'
 import type { RequestHandler } from '@tanstack/react-start/server'
 
-// Providing `RequestHandler` from `@tanstack/react-start/server` is required so that the output types don't import it from `@tanstack/start-server-core`
-const fetch: RequestHandler = createStartHandler(defaultStreamHandler)
+const fetch = createStartHandler(defaultStreamHandler)
 
 export default {
-  fetch,
+  // Providing `RequestHandler` from `@tanstack/react-start/server` is required so that the output types don't import it from `@tanstack/start-server-core`
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+  fetch: fetch as RequestHandler,
 }

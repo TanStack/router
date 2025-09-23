@@ -4,9 +4,10 @@ import {
 } from '@tanstack/solid-start/server'
 import type { RequestHandler } from '@tanstack/solid-start/server'
 
-// Providing `RequestHandler` from `@tanstack/solid-start/server` is required so that the output types don't import it from `@tanstack/solid-server-core`
-const fetch: RequestHandler = createStartHandler(defaultStreamHandler)
+const fetch = createStartHandler(defaultStreamHandler)
 
 export default {
-  fetch,
+  // Providing `RequestHandler` from `@tanstack/solid-start/server` is required so that the output types don't import it from `@tanstack/start-server-core`
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+  fetch: fetch as RequestHandler,
 }

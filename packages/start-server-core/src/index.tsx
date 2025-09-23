@@ -1,5 +1,4 @@
 export { createStartHandler } from './createStartHandler'
-export type { CustomizeStartHandler } from './createStartHandler'
 
 export {
   attachRouterServerSsrUtils,
@@ -19,3 +18,5 @@ export * from './virtual-modules'
 export { HEADERS } from './constants'
 
 export { createServerRpc } from './createServerRpc'
+
+export type { RequestHandler, RequestOptions } from './request-handler'
