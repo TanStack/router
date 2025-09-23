@@ -19,7 +19,10 @@ import { handleServerAction } from './server-functions-handler'
 
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
-import type { RouteMethod, RouteMethodHandlerFn } from './serverRoute'
+import type {
+  RouteMethod,
+  RouteMethodHandlerFn,
+} from '@tanstack/start-client-core'
 import type { RequestHandler } from './request-response'
 import type {
   AnyRoute,
@@ -28,7 +31,6 @@ import type {
   Manifest,
 } from '@tanstack/router-core'
 import type { HandlerCallback } from '@tanstack/router-core/ssr/server'
-import './serverRoute'
 
 type TODO = any
 

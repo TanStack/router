@@ -1,5 +1,3 @@
-import './serverRoute'
-
 export { createStartHandler } from './createStartHandler'
 export type { CustomizeStartHandler } from './createStartHandler'
 
@@ -15,21 +13,6 @@ export type { HandlerCallback } from '@tanstack/router-core/ssr/server'
 export { handleServerAction } from './server-functions-handler'
 
 export * from './request-response'
-export type {
-  ResolveAllServerContext,
-  RouteMethod,
-  RouteMethodHandlerFn,
-  MergeMethodMiddlewares,
-  AssignAllMethodContext,
-  RouteMethods,
-  CreateHandlersFn,
-  CreateMethodFnOpts,
-  RouteMethodHandler,
-  RouteMethodHandlerCtx,
-  RouteServerOptions,
-  RouteMethodBuilderOptions,
-  HandlersFnOpts,
-} from './serverRoute'
 
 export * from './virtual-modules'
 
