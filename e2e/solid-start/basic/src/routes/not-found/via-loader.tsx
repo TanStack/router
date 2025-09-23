@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { notFound, createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/not-found/via-loader')({

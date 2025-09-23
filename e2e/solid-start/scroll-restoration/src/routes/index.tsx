@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as Solid from 'solid-js'
 import { Link, linkOptions, createFileRoute } from '@tanstack/solid-router'
 

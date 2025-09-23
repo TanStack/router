@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { Link, createFileRoute, linkOptions } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/')({

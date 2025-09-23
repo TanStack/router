@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/solid-router'
 import { createIsomorphicFn, createServerFn } from '@tanstack/solid-start'
 import { createSignal } from 'solid-js'

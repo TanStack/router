@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { Outlet, createFileRoute } from '@tanstack/solid-router'
 import { getProject } from '~/server/projects'
 import { seo } from '~/utils/seo'

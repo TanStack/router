@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/solid-router'
 import { createServerFn, useServerFn } from '@tanstack/solid-start'
 import { setResponseStatus } from '@tanstack/solid-start/server'

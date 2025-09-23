@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 import { fetchPosts } from '../utils/posts'
 
