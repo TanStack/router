@@ -100,6 +100,10 @@ export const unpluginRouteAutoImportFactory: UnpluginFactory<
         ROOT = config.root
         initUserConfig()
       },
+      // this check may only happen after config is resolved, so we use applyToEnvironment (apply is too early)
+      applyToEnvironment() {
+        return userConfig.verboseFileRoutes === false
+      },
     },
 
     rspack() {
