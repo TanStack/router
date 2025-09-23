@@ -1,5 +1,9 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { createMiddleware, createServerFn, getRouterInstance } from '@tanstack/react-start'
+import {
+  createMiddleware,
+  createServerFn,
+  getRouterInstance,
+} from '@tanstack/react-start'
 import React from 'react'
 
 const middleware = createMiddleware({ type: 'function' }).client(
