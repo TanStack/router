@@ -1,3 +1,8 @@
+---
+id: middleware
+title: Middleware
+---
+
 ## What is Middleware?
 
 Middleware allows you to customize the behavior of both server routes like GET/POST/etc (including requests to SSR your application) and server functions created with `createServerFn`. Middleware is composable and can even depend on other middleware to create a chain of operations that are executed hierarchically and in order.
