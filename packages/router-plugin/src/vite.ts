@@ -5,7 +5,7 @@ import { unpluginRouterCodeSplitterFactory } from './core/router-code-splitter-p
 import { unpluginRouterGeneratorFactory } from './core/router-generator-plugin'
 import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
 import { unpluginRouteAutoImportFactory } from './core/route-autoimport-plugin'
-import type { Config, getConfig } from './core/config'
+import type { Config, getConfig, CodeSplittingOptions } from './core/config'
 
 const tanstackRouterAutoImport = createVitePlugin(
   unpluginRouteAutoImportFactory,
@@ -62,4 +62,4 @@ export {
   tanstackRouter,
 }
 
-export type { Config }
+export type { Config, CodeSplittingOptions }
