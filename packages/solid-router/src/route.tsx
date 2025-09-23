@@ -20,7 +20,6 @@ import type {
   ErrorComponentProps,
   NotFoundError,
   NotFoundRouteProps,
-  Register,
   RegisteredRouter,
   ResolveFullPath,
   ResolveId,
@@ -153,7 +152,7 @@ export class RouteApi<
 }
 
 export class Route<
-    in out TRegister extends Register = Register,
+    in out TRegister = unknown,
     in out TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
     in out TPath extends RouteConstraints['TPath'] = '/',
     in out TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -294,7 +293,7 @@ export class Route<
 }
 
 export function createRoute<
-  TRegister extends Register = Register,
+  TRegister = unknown,
   TParentRoute extends RouteConstraints['TParentRoute'] = AnyRoute,
   TPath extends RouteConstraints['TPath'] = '/',
   TFullPath extends RouteConstraints['TFullPath'] = ResolveFullPath<
@@ -389,7 +388,7 @@ export type AnyRootRoute = RootRoute<
 
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
-    TRegister extends Register = Register,
+    TRegister = unknown,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TSearchValidator = undefined,
@@ -430,7 +429,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-    in out TRegister extends Register = Register,
+    in out TRegister = unknown,
     in out TSearchValidator = undefined,
     in out TRouterContext = {},
     in out TRouteContextFn = AnyContext,
@@ -565,7 +564,7 @@ export type ErrorRouteComponent = AsyncRouteComponent<ErrorComponentProps>
 export type NotFoundRouteComponent = RouteTypes<NotFoundRouteProps>['component']
 
 export class NotFoundRoute<
-  TRegister extends Register,
+  TRegister,
   TParentRoute extends AnyRootRoute,
   TRouterContext = AnyContext,
   TRouteContextFn = AnyContext,
@@ -629,7 +628,7 @@ export class NotFoundRoute<
 }
 
 export function createRootRoute<
-  TRegister extends Register = Register,
+  TRegister = unknown,
   TSearchValidator = undefined,
   TRouterContext = {},
   TRouteContextFn = AnyContext,

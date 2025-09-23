@@ -1,13 +1,14 @@
-import type { Register } from '@tanstack/router-core'
-
 type BaseContext = {
   nonce?: string
 }
 
-export type RequestOptions =
-  Register['server']['requestContext'] extends undefined
-    ? { context?: Register['server']['requestContext'] & BaseContext }
-    : { context: Register['server']['requestContext'] & BaseContext }
+export type RequestOptions<TRegister> = TRegister extends {
+  server: { requestContext: infer TRequestContext }
+}
+  ? TRequestContext extends undefined
+    ? { context?: TRequestContext & BaseContext }
+    : { context: TRequestContext & BaseContext }
+  : { context?: BaseContext }
 
 // Utility type: true if T has any required keys, else false
 type HasRequired<T> = keyof T extends never
@@ -18,7 +19,13 @@ type HasRequired<T> = keyof T extends never
     ? false
     : true
 
-export type RequestHandler =
-  HasRequired<RequestOptions> extends true
-    ? (request: Request, opts: RequestOptions) => Promise<Response> | Response
-    : (request: Request, opts?: RequestOptions) => Promise<Response> | Response
+export type RequestHandler<TRegister = unknown> =
+  HasRequired<RequestOptions<TRegister>> extends true
+    ? (
+        request: Request,
+        opts: RequestOptions<TRegister>,
+      ) => Promise<Response> | Response
+    : (
+        request: Request,
+        opts?: RequestOptions<TRegister>,
+      ) => Promise<Response> | Response

@@ -46,7 +46,9 @@ const eventStorage = new AsyncLocalStorage<StartEvent>()
 
 export type { ResponseHeaderName, RequestHeaderName }
 
-export function requestHandler(handler: RequestHandler) {
+export function requestHandler<TRegister = unknown>(
+  handler: RequestHandler<TRegister>,
+) {
   return (request: Request, requestOpts: any): Promise<Response> | Response => {
     const h3Event = new H3Event(request)
 
