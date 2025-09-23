@@ -14,7 +14,7 @@ Static server functions are server functions that are executed at build time and
 import { createServerFn } from '@tanstack/react-start'
 import { staticFunctionMiddleware } from '@tanstack/start-static-server-functions'
 
-const myServerFn = createServerFn({ method: 'GET' })..middleware([staticFunctionMiddleware]).handler(async () => {
+const myServerFn = createServerFn({ method: 'GET' }).middleware([staticFunctionMiddleware]).handler(async () => {
   return 'Hello, world!'
 })
 ```
