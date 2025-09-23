@@ -1,3 +1,4 @@
+import type { Register } from './router'
 import type {
   AnyContext,
   AnyPathParams,
@@ -85,7 +86,7 @@ export type CreateFileRoute<
   TPath extends RouteConstraints['TPath'],
   TFullPath extends RouteConstraints['TFullPath'],
 > = <
-  TRegister = unknown,
+  TRegister = Register,
   TSearchValidator = undefined,
   TParams = ResolveParams<TPath>,
   TRouteContextFn = AnyContext,

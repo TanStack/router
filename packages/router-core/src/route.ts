@@ -15,7 +15,7 @@ import type {
 } from './Matches'
 import type { RootRouteId } from './root'
 import type { ParseRoute, RouteById, RoutePaths } from './routeInfo'
-import type { AnyRouter, RegisteredRouter, SSROption } from './router'
+import type { AnyRouter, Register, RegisteredRouter, SSROption } from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
   Assign,
@@ -1494,7 +1494,7 @@ export type NotFoundRouteProps = {
 }
 
 export class BaseRoute<
-  in out TRegister,
+  in out TRegister = Register,
   in out TParentRoute extends AnyRoute = AnyRoute,
   in out TPath extends string = '/',
   in out TFullPath extends string = ResolveFullPath<TParentRoute, TPath>,
@@ -1922,7 +1922,7 @@ export interface RootRoute<
   > {}
 
 export class BaseRootRoute<
-  in out TRegister,
+  in out TRegister = Register,
   in out TSearchValidator = undefined,
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,

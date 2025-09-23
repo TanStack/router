@@ -204,17 +204,16 @@ export type ValidateSerializableLifecycleResult<
   TParentRoute extends AnyRoute,
   TSSR,
   TFn,
-> =
-  false extends RegisteredProperty<TRegister, 'ssr'>
-    ? any
-    : ValidateSerializableLifecycleResultSSR<
-          TRegister,
-          TParentRoute,
-          TSSR,
-          TFn
-        > extends infer TInput
-      ? TInput
-      : never
+> = false extends (TRegister extends { ssr: infer T } ? T : false)
+  ? any
+  : ValidateSerializableLifecycleResultSSR<
+        TRegister,
+        TParentRoute,
+        TSSR,
+        TFn
+      > extends infer TInput
+    ? TInput
+    : never
 
 export type ValidateSerializableLifecycleResultSSR<
   TRegister,

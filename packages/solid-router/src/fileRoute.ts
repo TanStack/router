@@ -77,7 +77,7 @@ export class FileRoute<
   }
 
   createRoute = <
-    TRegister = unknown,
+    TRegister = Register,
     TSearchValidator = undefined,
     TParams = ResolveParams<TPath>,
     TRouteContextFn = AnyContext,

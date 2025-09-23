@@ -1,6 +1,7 @@
 import { hydrate } from '@tanstack/router-core/ssr/client'
 
 import { ServerFunctionSerializationAdapter } from './ServerFunctionSerializationAdapter'
+import type { AnyStartInstanceOptions } from '../createStart'
 import type { AnyRouter, AnySerializationAdapter } from '@tanstack/router-core'
 import * as startEntry from '#tanstack-start-entry'
 
@@ -17,7 +18,7 @@ export async function hydrateStart(): Promise<AnyRouter> {
     serializationAdapters = []
     window.__TSS_START_OPTIONS__ = {
       serializationAdapters,
-    }
+    } as AnyStartInstanceOptions
   }
 
   serializationAdapters.push(ServerFunctionSerializationAdapter)

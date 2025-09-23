@@ -245,7 +245,6 @@ export type {
   CreateRouterFn,
   ProcessRouteTreeResult,
   SSROption,
-  DefaultRegister,
 } from './router'
 
 export * from './config'

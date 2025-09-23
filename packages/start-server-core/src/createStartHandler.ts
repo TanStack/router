@@ -165,7 +165,8 @@ export function createStartHandler<TRegister = Register>(
     }
 
     const startOptions: AnyStartInstanceOptions =
-      (await (await getStartEntry()).startInstance?.getOptions()) || {}
+      (await (await getStartEntry()).startInstance?.getOptions()) ||
+      ({} as AnyStartInstanceOptions)
     startOptions.serializationAdapters =
       startOptions.serializationAdapters || []
     // insert start specific default serialization adapters

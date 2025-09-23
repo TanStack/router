@@ -90,7 +90,7 @@ import type {
   AnySerializationAdapter,
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
-import type { AnyRouterConfig } from './config'
+// import type { AnyRouterConfig } from './config'
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -105,13 +105,13 @@ export type GetRegisteredConfigKey<TRegister> = TRegister extends {
   ? TKey
   : 'config'
 
-export interface DefaultRegister {
-  router: AnyRouter
-  config: AnyRouterConfig
-  ssr: SSROption
-}
+// export interface DefaultRegister {
+//   router: AnyRouter
+//   config: AnyRouterConfig
+//   // ssr: boolean
+// }
 
-export interface Register extends DefaultRegister {
+export interface Register {
   // router: Router
 }
 

@@ -15,6 +15,12 @@ export interface StartInstanceOptions<
   in out TRequestMiddlewares,
   in out TFunctionMiddlewares,
 > {
+  '~types'?: StartInstanceTypes<
+    TSerializationAdapters,
+    TDefaultSsr,
+    TRequestMiddlewares,
+    TFunctionMiddlewares
+  >
   serializationAdapters?: TSerializationAdapters
   defaultSsr?: TDefaultSsr
   requestMiddleware?: TRequestMiddlewares
@@ -27,12 +33,6 @@ export interface StartInstance<
   in out TRequestMiddlewares,
   in out TFunctionMiddlewares,
 > {
-  '~types': StartInstanceTypes<
-    TSerializationAdapters,
-    TDefaultSsr,
-    TRequestMiddlewares,
-    TFunctionMiddlewares
-  >
   getOptions: () =>
     | Promise<
         StartInstanceOptions<
@@ -109,11 +109,10 @@ export const createStart = <
 
 export type AnyStartInstance = StartInstance<any, any, any, any>
 export type AnyStartInstanceOptions = StartInstanceOptions<any, any, any, any>
+
 declare module '@tanstack/router-core' {
-  interface DefaultRegister {
+  interface Register {
     configKey: 'start'
-    server: {
-      requestContext?: undefined
-    }
+    ssr: true
   }
 }

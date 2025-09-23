@@ -1,3 +1,4 @@
+import type { StartInstanceOptions } from './createStart'
 import type { AnyServerFn, ConstrainValidator, Method } from './createServerFn'
 import type {
   AnyContext,
@@ -290,33 +291,28 @@ export type AssignAllServerRequestContext<
   TServerContext = undefined,
 > = Assign<
   // Fetch Request Context
-  GlobalFetchRequestContext<TRegister>,
+  GlobalFetchRequestContext,
   // AnyContext,
   Assign<
-    // GlobalServerRequestContext<TRegister>, // TODO: This enabled global middleware
+    GlobalServerRequestContext<TRegister>, // TODO: This enabled global middleware
     // type inference, but creates a circular types issue. No idea how to fix this.
-    AnyContext,
+    // AnyContext,
     __AssignAllServerRequestContext<TMiddlewares, TSendContext, TServerContext>
   >
 >
 
 // export type GlobalFetchRequestContext<TRegister> = AnyContext
-export type GlobalFetchRequestContext<TRegister> = Register extends {
+export type GlobalFetchRequestContext = Register extends {
   server: { requestContext: infer TRequestContext }
 }
   ? TRequestContext
   : AnyContext
 
-export type GlobalServerRequestContext<TRegister> = AnyContext
-// export type GlobalServerRequestContext<TRegister> = TRegister extends {
-//   start: {
-//     '~types': {
-//       requestMiddleware: infer TRequestMiddlewares
-//     }
-//   }
-// }
-//   ? AssignAllMiddleware<TRequestMiddlewares, 'allServerContext'>
-//   : AnyContext
+export type GlobalServerRequestContext<TRegister> = TRegister extends {
+  start: StartInstanceOptions<any, any, infer TRequestMiddlewares, any>
+}
+  ? AssignAllMiddleware<TRequestMiddlewares, 'allServerContext'>
+  : AnyContext
 
 type __AssignAllServerRequestContext<
   TMiddlewares,
@@ -335,29 +331,25 @@ export type AssignAllServerFnContext<
   TSendContext = undefined,
   TServerContext = undefined,
 > = Assign<
-  GlobalFetchRequestContext<TRegister>,
+  GlobalFetchRequestContext,
   Assign<
     GlobalServerRequestContext<TRegister>, // TODO: This enabled global middleware
     // type inference, but creates a circular types issue. No idea how to fix this.
     // AnyContext,
     Assign<
-      // GlobalServerFnContext, // TODO: This enabled global middleware
+      GlobalServerFnContext<TRegister>, // TODO: This enabled global middleware
       // type inference, but creates a circular types issue. No idea how to fix this.
-      AnyContext,
+      // AnyContext,/
       __AssignAllServerFnContext<TMiddlewares, TSendContext, TServerContext>
     >
   >
 >
 
-// type GlobalServerFnContext = Register extends {
-//   start: {
-//     '~types': {
-//       functionMiddlewares: infer TFunctionMiddlewares
-//     }
-//   }
-// }
-//   ? AssignAllMiddleware<TFunctionMiddlewares, 'allServerContext'>
-//   : AnyContext
+type GlobalServerFnContext<TRegister> = TRegister extends {
+  start: StartInstanceOptions<any, any, any, infer TFunctionMiddlewares>
+}
+  ? AssignAllMiddleware<TFunctionMiddlewares, 'allServerContext'>
+  : AnyContext
 
 type __AssignAllServerFnContext<
   TMiddlewares,
