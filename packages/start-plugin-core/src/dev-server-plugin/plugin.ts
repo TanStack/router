@@ -196,7 +196,7 @@ export function devServerPlugin({
 function prepareError(req: Connect.IncomingMessage, error: unknown) {
   const e = error as Error
   return {
-    message: `An error occured while server rendering ${req.url}:\n\n\t${
+    message: `An error occurred while server rendering ${req.url}:\n\n\t${
       typeof e === 'string' ? e : e.message
     } `,
     stack: typeof e === 'string' ? '' : e.stack,
