@@ -460,6 +460,7 @@ Sometimes you may need to set headers in the response. You can do this by either
 
 > > > > > > > 582e8c7a1 (docs: Start overhaul)
 > > > > > > > export const Route = createFileRoute('/hello')({
+
     server: {
       handlers: {
         GET: async ({ request }) => {
