@@ -1,12 +1,5 @@
 import { createMiddleware, createStart } from '@tanstack/react-start'
-
-import {
-  createRouter,
-  createSerializationAdapter,
-} from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
-import { NotFound } from './components/NotFound'
+import { createSerializationAdapter } from '@tanstack/react-router'
 import type { Register } from '@tanstack/react-router'
 
 declare module '@tanstack/react-start' {
@@ -24,9 +17,12 @@ export const serverMw = createMiddleware().server(({ next, context }) => {
   context.fromFetch
   //      ^?
 
+  const nonce = Math.random().toString(16).slice(2, 10)
+  console.log('nonce', nonce)
   return next({
     context: {
       fromServerMw: true,
+      nonce,
     },
   })
 })
@@ -60,10 +56,8 @@ export class Test {
 
 export const startInstance = createStart(() => {
   return {
-    defaultSsr: false,
-    serializationAdapters: [
-      // serializeClass
-    ],
+    defaultSsr: true,
+    serializationAdapters: [serializeClass],
     requestMiddleware: [serverMw],
     functionMiddleware: [fnMw],
   }
@@ -118,13 +112,3 @@ startInstance.createMiddleware().server(({ next, context }) => {
     },
   })
 })
-
-export function getRouter() {
-  return createRouter({
-    routeTree,
-    defaultPreload: 'intent',
-    defaultErrorComponent: DefaultCatchBoundary,
-    defaultNotFoundComponent: () => <NotFound />,
-    scrollRestoration: true,
-  })
-}

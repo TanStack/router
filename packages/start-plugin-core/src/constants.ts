@@ -16,4 +16,5 @@ export const ENTRY_POINTS = {
   server: 'virtual:tanstack-start-server-request-entry',
   // the start entry point must always be provided by the user
   start: '#tanstack-start-entry',
+  router: '#tanstack-router-entry',
 } as const

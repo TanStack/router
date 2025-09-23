@@ -59,6 +59,9 @@
   "imports": {
     "#tanstack-start-entry": {
       "default": "./dist/esm/fake-start-entry.js"
+    },
+    "#tanstack-router-entry": {
+      "default": "./dist/esm/fake-start-entry.js"
     }
   },
   "sideEffects": false,

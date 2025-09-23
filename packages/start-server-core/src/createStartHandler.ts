@@ -23,6 +23,7 @@ import type {
   AnyStartInstanceOptions,
   RouteMethod,
   RouteMethodHandlerFn,
+  RouterEntry,
   StartEntry,
 } from '@tanstack/start-client-core'
 import type { RequestHandler } from './request-handler'
@@ -68,14 +69,23 @@ export function createStartHandler<TRegister = Register>(
   ])
   let startRoutesManifest: Manifest | null = null
   let startEntry: StartEntry | null = null
-
-  const getStartEntry = async (): Promise<StartEntry> => {
+  let routerEntry: RouterEntry | null = null
+  const getEntries = async (): Promise<{
+    startEntry: StartEntry
+    routerEntry: RouterEntry
+  }> => {
+    if (routerEntry === null) {
+      // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
+      routerEntry = await import('#tanstack-router-entry')
+    }
     if (startEntry === null) {
-      console.log('Loading start entry...')
       // @ts-ignore when building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
       startEntry = await import('#tanstack-start-entry')
     }
-    return startEntry as unknown as StartEntry
+    return {
+      startEntry: startEntry as unknown as StartEntry,
+      routerEntry: routerEntry as unknown as RouterEntry,
+    }
   }
 
   const originalFetch = globalThis.fetch
@@ -132,7 +142,7 @@ export function createStartHandler<TRegister = Register>(
     const getRouter = async () => {
       if (router) return router
       // TODO how does this work with base path? does the router need to be configured the same as APP_BASE?
-      router = await (await getStartEntry()).getRouter()
+      router = await (await getEntries()).routerEntry.getRouter()
 
       // Update the client-side router with the history
       const isPrerendering = process.env.TSS_PRERENDERING === 'true'
@@ -165,7 +175,7 @@ export function createStartHandler<TRegister = Register>(
     }
 
     const startOptions: AnyStartInstanceOptions =
-      (await (await getStartEntry()).startInstance?.getOptions()) ||
+      (await (await getEntries()).startEntry.startInstance?.getOptions()) ||
       ({} as AnyStartInstanceOptions)
     startOptions.serializationAdapters =
       startOptions.serializationAdapters || []
@@ -174,6 +184,10 @@ export function createStartHandler<TRegister = Register>(
 
     const requestHandlerMiddleware = handlerToMiddleware(
       async ({ context }) => {
+        const startInstance = (await getEntries()).startEntry.startInstance
+        if (startInstance) {
+          startInstance.context = context
+        }
         const response = await runWithStartContext(
           {
             getRouter,
@@ -227,7 +241,6 @@ export function createStartHandler<TRegister = Register>(
                 const router = await getRouter()
                 attachRouterServerSsrUtils({
                   router,
-                  nonce: serverContext.nonce,
                   manifest: startRoutesManifest,
                 })
 

@@ -15,11 +15,8 @@ import type {
   RouteNode,
 } from '@tanstack/router-generator'
 import type { DevEnvironment, Plugin, PluginOption } from 'vite'
-import type {
-  TanStackStartInputConfig,
-  TanStackStartOutputConfig,
-} from '../schema'
-import type { TanStackStartVitePluginCoreOptions } from '../plugin'
+import type { TanStackStartInputConfig } from '../schema'
+import type { GetConfigFn, TanStackStartVitePluginCoreOptions } from '../plugin'
 
 function isServerOnlyNode(node: RouteNode | undefined) {
   if (!node?.createFileRouteProps) {
@@ -33,49 +30,63 @@ function isServerOnlyNode(node: RouteNode | undefined) {
 
 function moduleDeclaration({
   startFilePath,
+  routerFilePath,
   corePluginOpts,
   generatedRouteTreePath,
 }: {
-  startFilePath: string
+  startFilePath: string | undefined
+  routerFilePath: string
   corePluginOpts: TanStackStartVitePluginCoreOptions
   generatedRouteTreePath: string
 }): string {
-  let relativePath = path.relative(
-    path.dirname(generatedRouteTreePath),
-    startFilePath,
+  function getImportPath(absolutePath: string) {
+    let relativePath = path.relative(
+      path.dirname(generatedRouteTreePath),
+      absolutePath,
+    )
+
+    if (!relativePath.startsWith('.')) {
+      relativePath = './' + relativePath
+    }
+
+    // convert to POSIX-style for ESM imports (important on Windows)
+    relativePath = relativePath.split(path.sep).join('/')
+    return relativePath
+  }
+
+  const result: Array<string> = [
+    `import type { getRouter } from '${getImportPath(routerFilePath)}'`,
+  ]
+  if (startFilePath) {
+    result.push(
+      `import type { startInstance } from '${getImportPath(startFilePath)}'`,
+    )
+  }
+  // make sure we import something from start to get the server route declaration merge
+  else {
+    result.push(
+      `import type { createStart } from '@tanstack/${corePluginOpts.framework}-start'`,
+    )
+  }
+  result.push(
+    `declare module '@tanstack/${corePluginOpts.framework}-start' {
+  interface Register {
+    router: Awaited<ReturnType<typeof getRouter>>`,
   )
-
-  if (!relativePath.startsWith('.')) {
-    relativePath = './' + relativePath
+  if (startFilePath) {
+    result.push(
+      `    config: Awaited<ReturnType<typeof startInstance.getOptions>>`,
+    )
   }
+  result.push(`  }
+}`)
 
-  // convert to POSIX-style for ESM imports (important on Windows)
-  relativePath = relativePath.split(path.sep).join('/')
-
-  return `
-import type { createStart } from '@tanstack/${corePluginOpts.framework}-start'
-import type * as startSetup from '${relativePath}'
-
-type MaybeStartInstance = typeof startSetup extends { startInstance: { getOptions: () => any } }
-  ? { config: Awaited<ReturnType<typeof startSetup.startInstance.getOptions>> }
-  : {}
-
-declare module '@tanstack/${corePluginOpts.framework}-start' {
-  interface Register extends MaybeStartInstance {
-    router: Awaited<ReturnType<typeof startSetup.getRouter>>
-  }
-}`
+  return result.join('\n')
 }
 
 export function tanStackStartRouter(
   startPluginOpts: TanStackStartInputConfig,
-  getConfig: () => {
-    startConfig: TanStackStartOutputConfig
-    resolvedStartConfig: {
-      root: string
-      startFilePath: string
-    }
-  },
+  getConfig: GetConfigFn,
   corePluginOpts: TanStackStartVitePluginCoreOptions,
 ): Array<PluginOption> {
   const getGeneratedRouteTreePath = () => {
@@ -132,6 +143,7 @@ export function tanStackStartRouter(
         generatedRouteTreePath: getGeneratedRouteTreePath(),
         corePluginOpts,
         startFilePath: resolvedStartConfig.startFilePath,
+        routerFilePath: resolvedStartConfig.routerFilePath,
       }),
       ...(routeTreeFileFooter ?? []),
     ]
