@@ -22,7 +22,7 @@ const router = createRouter()
 hydrateRoot(
   document,
   <StrictMode>
-    <StartClient router={router} />
+    <StartClient />
   </StrictMode>,
 )
 ```
@@ -48,7 +48,7 @@ hydrateRoot(
   document,
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <StartClient router={router} />
+      <StartClient />
     </QueryClientProvider>
   </StrictMode>,
 )
@@ -72,7 +72,7 @@ hydrateRoot(
   document,
   <StrictMode>
     <ErrorBoundary>
-      <StartClient router={router} />
+      <StartClient />
     </ErrorBoundary>
   </StrictMode>,
 )
@@ -94,7 +94,7 @@ const router = createRouter()
 const App = (
   <>
     {import.meta.env.DEV && <div>Development Mode</div>}
-    <StartClient router={router} />
+    <StartClient />
   </>
 )
 
