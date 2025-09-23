@@ -50,6 +50,11 @@
     },
     "./package.json": "./package.json"
   },
+  "imports": {
+    "#tanstack-start-entry": {
+      "default": "./dist/esm/fake-start-entry.js"
+    }
+  },
   "sideEffects": false,
   "files": [
     "dist",

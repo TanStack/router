@@ -1,14 +1,3 @@
-/*
-what is this plugin doing, especially compared to one already existing in the @tanstack/router-plugin package?
-
-it configures:
-1. the generator to generate both the render-route-tree as well as the server-route-tree
-2. the code-splitter plugin, so it could possibly be enabled per environment (e.g. disable on the server)
-3. the auto import plugin for both environments
-4. the route tree client plugin, which removes the server part from the generated route tree
-5. the virtual route tree plugin, which provides the route tree to the server
-*/
-
 import {
   tanStackRouterCodeSplitter,
   tanstackRouterAutoImport,
@@ -20,13 +9,17 @@ import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { routesManifestPlugin } from './generator-plugins/routes-manifest-plugin'
 import { pruneServerOnlySubtrees } from './pruneServerOnlySubtrees'
 import { SERVER_PROP } from './constants'
-import type { Config } from '@tanstack/router-plugin'
 import type {
   Generator,
   GeneratorPlugin,
   RouteNode,
 } from '@tanstack/router-generator'
-import type { DevEnvironment, PluginOption } from 'vite'
+import type { DevEnvironment, Plugin, PluginOption } from 'vite'
+import type {
+  TanStackStartInputConfig,
+  TanStackStartOutputConfig,
+} from '../schema'
+import type { TanStackStartVitePluginCoreOptions } from '../plugin'
 
 function isServerOnlyNode(node: RouteNode | undefined) {
   if (!node?.createFileRouteProps) {
@@ -38,10 +31,57 @@ function isServerOnlyNode(node: RouteNode | undefined) {
   )
 }
 
-export function tanStackStartRouter(config: Config): Array<PluginOption> {
-  const generatedRouteTreePath = normalizePath(
-    path.resolve(config.generatedRouteTree),
+function moduleDeclaration({
+  startFilePath,
+  corePluginOpts,
+  generatedRouteTreePath,
+}: {
+  startFilePath: string
+  corePluginOpts: TanStackStartVitePluginCoreOptions
+  generatedRouteTreePath: string
+}): string {
+  let relativePath = path.relative(
+    path.dirname(generatedRouteTreePath),
+    startFilePath,
   )
+
+  if (!relativePath.startsWith('.')) {
+    relativePath = './' + relativePath
+  }
+
+  // convert to POSIX-style for ESM imports (important on Windows)
+  relativePath = relativePath.split(path.sep).join('/')
+
+  return `
+import type { createStart } from '@tanstack/${corePluginOpts.framework}-start'
+import type * as startSetup from '${relativePath}'
+
+type MaybeGetStart = typeof startSetup extends { getStart: (...args: any) => any }
+  ? { start: Awaited<ReturnType<typeof startSetup.getStart>> }
+  : {}
+
+declare module '@tanstack/${corePluginOpts.framework}-start' {
+  interface Register extends MaybeGetStart {
+    router: Awaited<ReturnType<typeof startSetup.getRouter>>
+  }
+}`
+}
+
+export function tanStackStartRouter(
+  startPluginOpts: TanStackStartInputConfig,
+  getConfig: () => {
+    startConfig: TanStackStartOutputConfig
+    resolvedStartConfig: {
+      root: string
+      startFilePath: string
+    }
+  },
+  corePluginOpts: TanStackStartVitePluginCoreOptions,
+): Array<PluginOption> {
+  const getGeneratedRouteTreePath = () => {
+    const { startConfig } = getConfig()
+    return path.resolve(startConfig.router.generatedRouteTree)
+  }
 
   let clientEnvironment: DevEnvironment | null = null
   function invalidate() {
@@ -50,7 +90,7 @@ export function tanStackStartRouter(config: Config): Array<PluginOption> {
     }
 
     const mod = clientEnvironment.moduleGraph.getModuleById(
-      generatedRouteTreePath,
+      getGeneratedRouteTreePath(),
     )
     if (mod) {
       clientEnvironment.moduleGraph.invalidateModule(mod)
@@ -72,53 +112,93 @@ export function tanStackStartRouter(config: Config): Array<PluginOption> {
     },
   }
 
-  return [
-    {
-      name: 'tanstack-start:route-tree-client-plugin',
-      enforce: 'pre',
-      applyToEnvironment: (env) => env.name === VITE_ENVIRONMENT_NAMES.client,
-      configureServer(server) {
-        clientEnvironment = server.environments[VITE_ENVIRONMENT_NAMES.client]
+  let routeTreeFileFooter: Array<string> | null = null
+
+  function getRouteTreeFileFooter() {
+    if (routeTreeFileFooter) {
+      return routeTreeFileFooter
+    }
+    const { startConfig, resolvedStartConfig } = getConfig()
+    const ogRouteTreeFileFooter = startConfig.router.routeTreeFileFooter
+    if (ogRouteTreeFileFooter) {
+      if (Array.isArray(ogRouteTreeFileFooter)) {
+        routeTreeFileFooter = ogRouteTreeFileFooter
+      } else {
+        routeTreeFileFooter = ogRouteTreeFileFooter()
+      }
+    }
+    routeTreeFileFooter = [
+      moduleDeclaration({
+        generatedRouteTreePath: getGeneratedRouteTreePath(),
+        corePluginOpts,
+        startFilePath: resolvedStartConfig.startFilePath,
+      }),
+      ...(routeTreeFileFooter ?? []),
+    ]
+    return routeTreeFileFooter
+  }
+
+  const clientTreePlugin = {
+    name: 'tanstack-start:route-tree-client-plugin',
+    enforce: 'pre',
+    applyToEnvironment: (env) => env.name === VITE_ENVIRONMENT_NAMES.client,
+    configureServer(server) {
+      clientEnvironment = server.environments[VITE_ENVIRONMENT_NAMES.client]
+    },
+    options() {
+      clientTreePlugin.load.filter = {
+        id: normalizePath(getGeneratedRouteTreePath()),
+      }
+    },
+    load: {
+      filter: {
+        // id : startPluginOpts?.router?.generatedRouteTree
+        /* we set this in the options hook since we need to wait for vite's configResolved Hook*/
       },
-      load: {
-        filter: { id: generatedRouteTreePath },
-        async handler() {
-          if (!generatorInstance) {
-            throw new Error('Generator instance not initialized')
-          }
-          const crawlingResult = await generatorInstance.getCrawlingResult()
-          if (!crawlingResult) {
-            throw new Error('Crawling result not available')
-          }
-          const prunedAcc = pruneServerOnlySubtrees(crawlingResult)
-          const acc = {
-            ...crawlingResult.acc,
-            ...prunedAcc,
-          }
-          const buildResult = generatorInstance.buildRouteTree({
-            ...crawlingResult,
-            acc,
-            config: {
-              disableTypes: true,
-              enableRouteTreeFormatting: false,
-            },
-          })
-          return buildResult.routeTreeContent
-        },
+      async handler(code, id) {
+        // TODO optimize this!
+        if (id !== normalizePath(getGeneratedRouteTreePath())) {
+          return null
+        }
+        if (!generatorInstance) {
+          throw new Error('Generator instance not initialized')
+        }
+        const crawlingResult = await generatorInstance.getCrawlingResult()
+        if (!crawlingResult) {
+          throw new Error('Crawling result not available')
+        }
+        const prunedAcc = pruneServerOnlySubtrees(crawlingResult)
+        const acc = {
+          ...crawlingResult.acc,
+          ...prunedAcc,
+        }
+        const buildResult = generatorInstance.buildRouteTree({
+          ...crawlingResult,
+          acc,
+          config: {
+            // importRoutesUsingAbsolutePaths: true,
+            // addExtensions: true,
+            disableTypes: true,
+            enableRouteTreeFormatting: false,
+            routeTreeFileHeader: [],
+            routeTreeFileFooter: [],
+          },
+        })
+        return { code: buildResult.routeTreeContent, map: null }
       },
     },
+  } satisfies Plugin
+  return [
+    clientTreePlugin,
     tanstackRouterGenerator({
-      ...config,
-      routeTreeFileFooter: [
-        `import type { createStart } from  '@tanstack/${config.target}-start'`,
-        ...config.routeTreeFileFooter,
-      ],
+      ...startPluginOpts?.router,
+      routeTreeFileFooter: getRouteTreeFileFooter,
       plugins: [clientTreeGeneratorPlugin, routesManifestPlugin()],
     }),
     tanStackRouterCodeSplitter({
-      ...config,
+      ...startPluginOpts?.router,
       codeSplittingOptions: {
-        ...config.codeSplittingOptions,
+        ...startPluginOpts?.router?.codeSplittingOptions,
         deleteNodes: ['ssr', 'server'],
         addHmr: true,
       },
@@ -127,15 +207,15 @@ export function tanStackStartRouter(config: Config): Array<PluginOption> {
       },
     }),
     tanStackRouterCodeSplitter({
-      ...config,
+      ...startPluginOpts?.router,
       codeSplittingOptions: {
-        ...config.codeSplittingOptions,
+        ...startPluginOpts?.router?.codeSplittingOptions,
         addHmr: false,
       },
       plugin: {
         vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
       },
     }),
-    tanstackRouterAutoImport(config),
+    tanstackRouterAutoImport(startPluginOpts?.router),
   ]
 }

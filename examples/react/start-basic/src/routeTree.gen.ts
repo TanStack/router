@@ -438,3 +438,16 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { createStart } from '@tanstack/react-start'
+import type * as startSetup from './start.tsx'
+
+type MaybeGetStart = typeof startSetup extends {
+  getStart: (...args: any) => any
+}
+  ? { start: Awaited<ReturnType<typeof startSetup.getStart>> }
+  : {}
+
+declare module '@tanstack/react-start' {
+  interface Register extends MaybeGetStart {
+    router: Awaited<ReturnType<typeof startSetup.getRouter>>
+  }
+}

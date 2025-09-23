@@ -23,23 +23,6 @@ const defaultEntryPaths = {
 const isInsideRouterMonoRepo =
   path.basename(path.resolve(currentDir, '../../../../')) === 'packages'
 
-function hasRootExport(
-  exportsField?: Record<string, unknown> | string,
-): boolean {
-  if (!exportsField) return false
-
-  if (typeof exportsField === 'string') {
-    // shorthand form: "exports": "./index.js"
-    return true
-  }
-
-  if (typeof exportsField === 'object') {
-    return '.' in exportsField
-  }
-
-  return false
-}
-
 export function tanstackStart(
   options?: TanStackStartInputConfig,
 ): Array<PluginOption> {
