@@ -8,6 +8,7 @@ export {
   json,
   createClientRpc,
   createStart,
+  getRouterInstance,
 } from '@tanstack/start-client-core'
 export {
   type DehydratedRouter,
