@@ -4,6 +4,7 @@ import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
+import type { Register } from '@tanstack/react-start'
 
 declare module '@tanstack/react-start' {
   interface Register {
@@ -15,6 +16,15 @@ declare module '@tanstack/react-start' {
   }
 }
 
+type test = Register extends {
+  server: {
+    requestContext: infer TRequestContext
+  }
+}
+  ? TRequestContext
+  : never
+
+// @manuel
 export const serverMw = createMiddleware().server(({ next, context }) => {
   context.fromFetch
 

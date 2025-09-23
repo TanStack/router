@@ -24,10 +24,7 @@ export type CreateMiddlewareFn<TRegister> = <TType extends MiddlewareType>(
   >,
 ) => CreateMiddlewareResult<TRegister, TType>
 
-export const createMiddleware: CreateMiddlewareFn<Register> = (
-  options,
-  __opts,
-) => {
+export const createMiddleware: CreateMiddlewareFn<{}> = (options, __opts) => {
   const resolvedOptions = {
     type: 'request',
     ...(__opts || options),
@@ -304,10 +301,10 @@ export type AssignAllServerRequestContext<
 >
 
 // export type GlobalFetchRequestContext<TRegister> = AnyContext
-export type GlobalFetchRequestContext<TRegister> = TRegister extends {
+export type GlobalFetchRequestContext<TRegister> = Register extends {
   server: { requestContext: infer TRequestContext }
 }
-  ? TRequestContext & { test: true }
+  ? TRequestContext
   : AnyContext
 
 export type GlobalServerRequestContext<TRegister> = AnyContext
@@ -352,15 +349,15 @@ export type AssignAllServerFnContext<
   >
 >
 
-type GlobalServerFnContext = Register extends {
-  start: {
-    '~types': {
-      functionMiddlewares: infer TFunctionMiddlewares
-    }
-  }
-}
-  ? AssignAllMiddleware<TFunctionMiddlewares, 'allServerContext'>
-  : AnyContext
+// type GlobalServerFnContext = Register extends {
+//   start: {
+//     '~types': {
+//       functionMiddlewares: infer TFunctionMiddlewares
+//     }
+//   }
+// }
+//   ? AssignAllMiddleware<TFunctionMiddlewares, 'allServerContext'>
+//   : AnyContext
 
 type __AssignAllServerFnContext<
   TMiddlewares,
