@@ -154,9 +154,11 @@ export function createStartHandler(
         history,
         isShell,
         isPrerendering,
-        serializationAdapters: start.serializationAdapters,
-        defaultSsr: start.defaultSsr,
         origin,
+        ...{
+          defaultSsr: start.defaultSsr,
+          serializationAdapters: start.serializationAdapters,
+        },
       })
       return router
     }
