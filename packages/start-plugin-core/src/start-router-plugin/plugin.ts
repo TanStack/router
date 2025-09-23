@@ -208,6 +208,7 @@ export function tanStackStartRouter(
     clientTreePlugin,
     tanstackRouterGenerator({
       ...startPluginOpts?.router,
+      target: corePluginOpts.framework,
       routeTreeFileFooter: getRouteTreeFileFooter,
       plugins: [clientTreeGeneratorPlugin, routesManifestPlugin()],
     }),

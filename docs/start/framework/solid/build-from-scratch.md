@@ -220,7 +220,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .validator((d: number) => d)
+  .inputValidator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
     await fs.promises.writeFile(filePath, `${count + data}`)

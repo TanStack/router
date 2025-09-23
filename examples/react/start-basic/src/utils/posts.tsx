@@ -8,7 +8,7 @@ export type PostType = {
 }
 
 export const fetchPost = createServerFn({ method: 'POST' })
-  .validator((d: string) => d)
+  .inputValidator((d: string) => d)
   .handler(async ({ data, context }) => {
     console.log('Request context:', context)
     console.info(`Fetching post with id ${data}...`)

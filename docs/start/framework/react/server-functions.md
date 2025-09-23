@@ -110,7 +110,7 @@ import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn({
   method: 'GET',
 })
-  .validator((data: string) => data)
+  .inputValidator((data: string) => data)
   .handler(async (ctx) => {
     return `Hello, ${ctx.data}!`
   })
@@ -124,7 +124,7 @@ greet({
 
 Server functions can be configured to validate their input data at runtime, while adding type safety. This is useful for ensuring the input is of the correct type before executing the server function, and providing more friendly error messages.
 
-This is done with the `validator` method. It will accept whatever input is passed to the server function. The value (and type) you return from this function will become the input passed to the actual server function handler.
+This is done with the `inputValidator` method. It will accept whatever input is passed to the server function. The value (and type) you return from this function will become the input passed to the actual server function handler.
 
 Validators also integrate seamlessly with external validators, if you want to use something like Zod.
 
@@ -140,7 +140,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((person: unknown): Person => {
+  .inputValidator((person: unknown): Person => {
     if (typeof person !== 'object' || person === null) {
       throw new Error('Person must be an object')
     }
@@ -170,7 +170,7 @@ const Person = z.object({
 })
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((person: unknown) => {
+  .inputValidator((person: unknown) => {
     return Person.parse(person)
   })
   .handler(async (ctx) => {
@@ -186,7 +186,7 @@ greet({
 
 ## Type Safety
 
-Since server-functions cross the network boundary, it's important to ensure the data being passed to them is not only the right type, but also validated at runtime. This is especially important when dealing with user input, as it can be unpredictable. To ensure developers validate their I/O data, types are reliant on validation. The return type of the `validator` function will be the input to the server function's handler.
+Since server-functions cross the network boundary, it's important to ensure the data being passed to them is not only the right type, but also validated at runtime. This is especially important when dealing with user input, as it can be unpredictable. To ensure developers validate their I/O data, types are reliant on validation. The return type of the `inputValidator` function will be the input to the server function's handler.
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
@@ -196,7 +196,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((person: unknown): Person => {
+  .inputValidator((person: unknown): Person => {
     if (typeof person !== 'object' || person === null) {
       throw new Error('Person must be an object')
     }
@@ -223,7 +223,7 @@ function test() {
 
 ## Inference
 
-Server functions infer their input, and output types based on the input to the `validator`, and return value of `handler` functions, respectively. In fact, the `validator` you define can even have its own separate input/output types, which can be useful if your validator performs transformations on the input data.
+Server functions infer their input, and output types based on the input to the `inputValidator`, and return value of `handler` functions, respectively. In fact, the `inputValidator` you define can even have its own separate input/output types, which can be useful if your input validator performs transformations on the input data.
 
 To illustrate this, let's take a look at an example using the `zod` validation library:
 
@@ -236,7 +236,7 @@ const transactionSchema = z.object({
 })
 
 const createTransaction = createServerFn()
-  .validator(transactionSchema)
+  .inputValidator(transactionSchema)
   .handler(({ data }) => {
     return data.amount // Returns a number
   })
@@ -250,7 +250,7 @@ createTransaction({
 
 ## Non-Validated Inference
 
-While we highly recommend using a validation library to validate your network I/O data, you may, for whatever reason _not_ want to validate your data, but still have type safety. To do this, provide type information to the server function using an identity function as the `validator`, that types the input, and or output to the correct types:
+While we highly recommend using a validation library to validate your network I/O data, you may, for whatever reason _not_ want to validate your data, but still have type safety. To do this, provide type information to the server function using an identity function as the `inputValidator`, that types the input, and or output to the correct types:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
@@ -260,7 +260,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((d: Person) => d)
+  .inputValidator((d: Person) => d)
   .handler(async (ctx) => {
     return `Hello, ${ctx.data.name}!`
   })
@@ -285,7 +285,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((data: Person) => data)
+  .inputValidator((data: Person) => data)
   .handler(async ({ data }) => {
     return `Hello, ${data.name}! You are ${data.age} years old.`
   })
@@ -306,7 +306,7 @@ Server functions can accept `FormData` objects as parameters
 import { createServerFn } from '@tanstack/react-start'
 
 export const greetUser = createServerFn({ method: 'POST' })
-  .validator((data) => {
+  .inputValidator((data) => {
     if (!(data instanceof FormData)) {
       throw new Error('Invalid form data')
     }
@@ -831,7 +831,7 @@ To do this, we can utilize the `url` property of the server function:
 
 ```ts
 const yourFn = createServerFn({ method: 'POST' })
-  .validator((formData) => {
+  .inputValidator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')
     }
@@ -874,7 +874,7 @@ server function:
 
 ```tsx
 const yourFn = createServerFn({ method: 'POST' })
-  .validator((formData) => {
+  .inputValidator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')
     }
@@ -952,7 +952,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .validator((formData) => {
+  .inputValidator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')
     }

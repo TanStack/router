@@ -18,7 +18,7 @@ export function handleCreateMiddleware(
 
   const callExpressionPaths = {
     middleware: null as babel.NodePath<t.CallExpression> | null,
-    validator: null as babel.NodePath<t.CallExpression> | null,
+    inputValidator: null as babel.NodePath<t.CallExpression> | null,
     client: null as babel.NodePath<t.CallExpression> | null,
     server: null as babel.NodePath<t.CallExpression> | null,
   }
@@ -41,20 +41,23 @@ export function handleCreateMiddleware(
     },
   })
 
-  if (callExpressionPaths.validator) {
-    const innerInputExpression = callExpressionPaths.validator.node.arguments[0]
+  if (callExpressionPaths.inputValidator) {
+    const innerInputExpression =
+      callExpressionPaths.inputValidator.node.arguments[0]
 
     if (!innerInputExpression) {
       throw new Error(
-        'createMiddleware().validator() must be called with a validator!',
+        'createMiddleware().inputValidator() must be called with a validator!',
       )
     }
 
     // If we're on the client, remove the validator call expression
     if (opts.env === 'client') {
-      if (t.isMemberExpression(callExpressionPaths.validator.node.callee)) {
-        callExpressionPaths.validator.replaceWith(
-          callExpressionPaths.validator.node.callee.object,
+      if (
+        t.isMemberExpression(callExpressionPaths.inputValidator.node.callee)
+      ) {
+        callExpressionPaths.inputValidator.replaceWith(
+          callExpressionPaths.inputValidator.node.callee.object,
         )
       }
     }

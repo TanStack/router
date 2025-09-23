@@ -16,14 +16,14 @@ export function handleCreateServerFn(
   // the validator, handler, and middleware methods. Check to make sure they
   // are children of the createServerFn call expression.
 
-  const validMethods = ['middleware', 'validator', 'handler'] as const
+  const validMethods = ['middleware', 'inputValidator', 'handler'] as const
   type ValidMethods = (typeof validMethods)[number]
   const callExpressionPaths: Record<
     ValidMethods,
     babel.NodePath<t.CallExpression> | null
   > = {
     middleware: null,
-    validator: null,
+    inputValidator: null,
     handler: null,
   }
 
@@ -59,20 +59,23 @@ export function handleCreateServerFn(
     },
   })
 
-  if (callExpressionPaths.validator) {
-    const innerInputExpression = callExpressionPaths.validator.node.arguments[0]
+  if (callExpressionPaths.inputValidator) {
+    const innerInputExpression =
+      callExpressionPaths.inputValidator.node.arguments[0]
 
     if (!innerInputExpression) {
       throw new Error(
-        'createServerFn().validator() must be called with a validator!',
+        'createServerFn().inputValidator() must be called with a validator!',
       )
     }
 
     // If we're on the client, remove the validator call expression
     if (opts.env === 'client') {
-      if (t.isMemberExpression(callExpressionPaths.validator.node.callee)) {
-        callExpressionPaths.validator.replaceWith(
-          callExpressionPaths.validator.node.callee.object,
+      if (
+        t.isMemberExpression(callExpressionPaths.inputValidator.node.callee)
+      ) {
+        callExpressionPaths.inputValidator.replaceWith(
+          callExpressionPaths.inputValidator.node.callee.object,
         )
       }
     }

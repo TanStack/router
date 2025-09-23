@@ -39,10 +39,10 @@ export const createMiddleware: CreateMiddlewareFn<{}> = (options, __opts) => {
         Object.assign(resolvedOptions, { middleware }),
       ) as any
     },
-    validator: (validator: any) => {
+    inputValidator: (inputValidator: any) => {
       return createMiddleware(
         {} as any,
-        Object.assign(resolvedOptions, { validator }),
+        Object.assign(resolvedOptions, { inputValidator }),
       ) as any
     },
     client: (client: any) => {
@@ -102,7 +102,7 @@ export interface FunctionMiddlewareAfterMiddleware<TRegister, TMiddlewares>
 export interface FunctionMiddlewareWithTypes<
   TRegister,
   TMiddlewares,
-  TValidator,
+  TInputValidator,
   TServerContext,
   TServerSendContext,
   TClientContext,
@@ -111,7 +111,7 @@ export interface FunctionMiddlewareWithTypes<
   _types: FunctionMiddlewareTypes<
     TRegister,
     TMiddlewares,
-    TValidator,
+    TInputValidator,
     TServerContext,
     TServerSendContext,
     TClientContext,
@@ -120,7 +120,7 @@ export interface FunctionMiddlewareWithTypes<
   options: FunctionMiddlewareOptions<
     TRegister,
     TMiddlewares,
-    TValidator,
+    TInputValidator,
     TServerContext,
     TClientContext
   >
@@ -129,7 +129,7 @@ export interface FunctionMiddlewareWithTypes<
 export interface FunctionMiddlewareTypes<
   in out TRegister,
   in out TMiddlewares,
-  in out TValidator,
+  in out TInputValidator,
   in out TServerContext,
   in out TServerSendContext,
   in out TClientContext,
@@ -137,10 +137,10 @@ export interface FunctionMiddlewareTypes<
 > {
   type: 'function'
   middlewares: TMiddlewares
-  input: ResolveValidatorInput<TValidator>
-  allInput: IntersectAllValidatorInputs<TMiddlewares, TValidator>
-  output: ResolveValidatorOutput<TValidator>
-  allOutput: IntersectAllValidatorOutputs<TMiddlewares, TValidator>
+  input: ResolveValidatorInput<TInputValidator>
+  allInput: IntersectAllValidatorInputs<TMiddlewares, TInputValidator>
+  output: ResolveValidatorOutput<TInputValidator>
+  allOutput: IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>
   clientContext: TClientContext
   allClientContextBeforeNext: AssignAllClientContextBeforeNext<
     TMiddlewares,
@@ -168,20 +168,20 @@ export interface FunctionMiddlewareTypes<
     TMiddlewares,
     TClientSendContext
   >
-  validator: TValidator
+  inputValidator: TInputValidator
 }
 
 /**
  * Recursively resolve the input type produced by a sequence of middleware
  */
-export type IntersectAllValidatorInputs<TMiddlewares, TValidator> =
-  unknown extends TValidator
-    ? TValidator
-    : TValidator extends undefined
+export type IntersectAllValidatorInputs<TMiddlewares, TInputValidator> =
+  unknown extends TInputValidator
+    ? TInputValidator
+    : TInputValidator extends undefined
       ? IntersectAllMiddleware<TMiddlewares, 'allInput'>
       : IntersectAssign<
           IntersectAllMiddleware<TMiddlewares, 'allInput'>,
-          ResolveValidatorInput<TValidator>
+          ResolveValidatorInput<TInputValidator>
         >
 
 export type IntersectAllMiddleware<
@@ -220,14 +220,14 @@ export type AnyFunctionMiddleware = FunctionMiddlewareWithTypes<
 /**
  * Recursively merge the output type produced by a sequence of middleware
  */
-export type IntersectAllValidatorOutputs<TMiddlewares, TValidator> =
-  unknown extends TValidator
-    ? TValidator
-    : TValidator extends undefined
+export type IntersectAllValidatorOutputs<TMiddlewares, TInputValidator> =
+  unknown extends TInputValidator
+    ? TInputValidator
+    : TInputValidator extends undefined
       ? IntersectAllMiddleware<TMiddlewares, 'allOutput'>
       : IntersectAssign<
           IntersectAllMiddleware<TMiddlewares, 'allOutput'>,
-          ResolveValidatorOutput<TValidator>
+          ResolveValidatorOutput<TInputValidator>
         >
 
 /**
@@ -375,23 +375,23 @@ export type AssignAllClientSendContext<
 export interface FunctionMiddlewareOptions<
   in out TRegister,
   in out TMiddlewares,
-  in out TValidator,
+  in out TInputValidator,
   in out TServerContext,
   in out TClientContext,
 > {
   middleware?: TMiddlewares
-  validator?: ConstrainValidator<TRegister, 'GET', TValidator>
+  inputValidator?: ConstrainValidator<TRegister, 'GET', TInputValidator>
   client?: FunctionMiddlewareClientFn<
     TRegister,
     TMiddlewares,
-    TValidator,
+    TInputValidator,
     TServerContext,
     TClientContext
   >
   server?: FunctionMiddlewareServerFn<
     TRegister,
     TMiddlewares,
-    TValidator,
+    TInputValidator,
     TServerContext,
     unknown,
     unknown
@@ -412,7 +412,7 @@ export type FunctionMiddlewareClientNextFn<TRegister, TMiddlewares> = <
 export interface FunctionMiddlewareServer<
   TRegister,
   TMiddlewares,
-  TValidator,
+  TInputValidator,
   TServerSendContext,
   TClientContext,
 > {
@@ -420,7 +420,7 @@ export interface FunctionMiddlewareServer<
     server: FunctionMiddlewareServerFn<
       TRegister,
       TMiddlewares,
-      TValidator,
+      TInputValidator,
       TServerSendContext,
       TNewServerContext,
       TSendContext
@@ -428,7 +428,7 @@ export interface FunctionMiddlewareServer<
   ) => FunctionMiddlewareAfterServer<
     TRegister,
     TMiddlewares,
-    TValidator,
+    TInputValidator,
     TNewServerContext,
     TServerSendContext,
     TClientContext,
@@ -439,7 +439,7 @@ export interface FunctionMiddlewareServer<
 export type FunctionMiddlewareServerFn<
   TRegister,
   TMiddlewares,
-  TValidator,
+  TInputValidator,
   TServerSendContext,
   TNewServerContext,
   TSendContext,
@@ -447,7 +447,7 @@ export type FunctionMiddlewareServerFn<
   options: FunctionMiddlewareServerFnOptions<
     TRegister,
     TMiddlewares,
-    TValidator,
+    TInputValidator,
     TServerSendContext
   >,
 ) => FunctionMiddlewareServerFnResult<
@@ -501,10 +501,10 @@ export type FunctionServerResultWithContext<
 export interface FunctionMiddlewareServerFnOptions<
   in out TRegister,
   in out TMiddlewares,
-  in out TValidator,
+  in out TInputValidator,
   in out TServerSendContext,
 > {
-  data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TValidator>>
+  data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>>
   context: Expand<
     AssignAllServerFnContext<TRegister, TMiddlewares, TServerSendContext>
   >
@@ -546,7 +546,7 @@ export type FunctionMiddlewareServerFnResult<
 export interface FunctionMiddlewareAfterServer<
   TRegister,
   TMiddlewares,
-  TValidator,
+  TInputValidator,
   TServerContext,
   TServerSendContext,
   TClientContext,
@@ -554,26 +554,30 @@ export interface FunctionMiddlewareAfterServer<
 > extends FunctionMiddlewareWithTypes<
     TRegister,
     TMiddlewares,
-    TValidator,
+    TInputValidator,
     TServerContext,
     TServerSendContext,
     TClientContext,
     TClientSendContext
   > {}
 
-export interface FunctionMiddlewareClient<TRegister, TMiddlewares, TValidator> {
+export interface FunctionMiddlewareClient<
+  TRegister,
+  TMiddlewares,
+  TInputValidator,
+> {
   client: <TSendServerContext = undefined, TNewClientContext = undefined>(
     client: FunctionMiddlewareClientFn<
       TRegister,
       TMiddlewares,
-      TValidator,
+      TInputValidator,
       TSendServerContext,
       TNewClientContext
     >,
   ) => FunctionMiddlewareAfterClient<
     TRegister,
     TMiddlewares,
-    TValidator,
+    TInputValidator,
     TSendServerContext,
     TNewClientContext
   >
@@ -582,14 +586,14 @@ export interface FunctionMiddlewareClient<TRegister, TMiddlewares, TValidator> {
 export type FunctionMiddlewareClientFn<
   TRegister,
   TMiddlewares,
-  TValidator,
+  TInputValidator,
   TSendContext,
   TClientContext,
 > = (
   options: FunctionMiddlewareClientFnOptions<
     TRegister,
     TMiddlewares,
-    TValidator
+    TInputValidator
   >,
 ) => FunctionMiddlewareClientFnResult<
   TMiddlewares,
@@ -600,9 +604,9 @@ export type FunctionMiddlewareClientFn<
 export interface FunctionMiddlewareClientFnOptions<
   in out TRegister,
   in out TMiddlewares,
-  in out TValidator,
+  in out TInputValidator,
 > {
-  data: Expand<IntersectAllValidatorInputs<TMiddlewares, TValidator>>
+  data: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
   context: Expand<AssignAllClientContextBeforeNext<TMiddlewares>>
   sendContext: Expand<AssignAllServerSendContext<TMiddlewares>>
   method: Method
@@ -640,13 +644,13 @@ export type FunctionClientResultWithContext<
 export interface FunctionMiddlewareAfterClient<
   TRegister,
   TMiddlewares,
-  TValidator,
+  TInputValidator,
   TServerSendContext,
   TClientContext,
 > extends FunctionMiddlewareWithTypes<
       TRegister,
       TMiddlewares,
-      TValidator,
+      TInputValidator,
       undefined,
       TServerSendContext,
       TClientContext,
@@ -655,25 +659,25 @@ export interface FunctionMiddlewareAfterClient<
     FunctionMiddlewareServer<
       TRegister,
       TMiddlewares,
-      TValidator,
+      TInputValidator,
       TServerSendContext,
       TClientContext
     > {}
 
 export interface FunctionMiddlewareValidator<TRegister, TMiddlewares> {
-  validator: <TNewValidator>(
-    input: ConstrainValidator<TRegister, 'GET', TNewValidator>,
+  inputValidator: <TNewValidator>(
+    inputValidator: ConstrainValidator<TRegister, 'GET', TNewValidator>,
   ) => FunctionMiddlewareAfterValidator<TRegister, TMiddlewares, TNewValidator>
 }
 
 export interface FunctionMiddlewareAfterValidator<
   TRegister,
   TMiddlewares,
-  TValidator,
+  TInputValidator,
 > extends FunctionMiddlewareWithTypes<
       TRegister,
       TMiddlewares,
-      TValidator,
+      TInputValidator,
       undefined,
       undefined,
       undefined,
@@ -682,11 +686,11 @@ export interface FunctionMiddlewareAfterValidator<
     FunctionMiddlewareServer<
       TRegister,
       TMiddlewares,
-      TValidator,
+      TInputValidator,
       undefined,
       undefined
     >,
-    FunctionMiddlewareClient<TRegister, TMiddlewares, TValidator> {}
+    FunctionMiddlewareClient<TRegister, TMiddlewares, TInputValidator> {}
 
 export interface RequestMiddleware<TRegister>
   extends RequestMiddlewareAfterMiddleware<TRegister, undefined> {

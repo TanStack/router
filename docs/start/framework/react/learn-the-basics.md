@@ -199,7 +199,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .validator((d: number) => d)
+  .inputValidator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
     await fs.promises.writeFile(filePath, `${count + data}`)
@@ -269,7 +269,7 @@ import { z } from 'zod'
 
 const getUserById = createServerFn({ method: 'GET' })
   // Always validate data sent to the function, here we use Zod
-  .validator(z.string())
+  .inputValidator(z.string())
   // The handler function is where you perform the server-side logic
   .handler(async ({ data }) => {
     return db.query.users.findFirst({ where: eq(users.id, data) })
@@ -302,7 +302,7 @@ const UserSchema = z.object({
 export type User = z.infer<typeof UserSchema>
 
 export const updateUser = createServerFn({ method: 'POST' })
-  .validator(UserSchema)
+  .inputValidator(UserSchema)
   .handler(({ data }) => dbUpdateUser(data))
 
 // Somewhere else in your application

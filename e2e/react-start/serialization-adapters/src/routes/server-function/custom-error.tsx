@@ -7,7 +7,7 @@ import { CustomError } from '~/CustomError'
 
 const schema = z.object({ hello: z.string() })
 const serverFnThrowing = createServerFn()
-  .validator(schema)
+  .inputValidator(schema)
   .handler(async ({ data }) => {
     if (data.hello === 'world') {
       return 'Hello, world!'

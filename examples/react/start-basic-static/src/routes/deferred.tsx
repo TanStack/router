@@ -5,14 +5,14 @@ import { staticFunctionMiddleware } from '@tanstack/start-static-server-function
 
 const personServerFn = createServerFn({ method: 'GET' })
   .middleware([staticFunctionMiddleware])
-  .validator((d: string) => d)
+  .inputValidator((d: string) => d)
   .handler(({ data: name }) => {
     return { name, randomNumber: Math.floor(Math.random() * 100) }
   })
 
 const slowServerFn = createServerFn({ method: 'GET' })
   .middleware([staticFunctionMiddleware])
-  .validator((d: string) => d)
+  .inputValidator((d: string) => d)
   .handler(async ({ data: name }) => {
     await new Promise((r) => setTimeout(r, 1000))
     return { name, randomNumber: Math.floor(Math.random() * 100) }

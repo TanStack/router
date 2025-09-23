@@ -45,7 +45,7 @@ import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 
 // RPC: Server execution, callable from client
 const updateUser = createServerFn({ method: 'POST' })
-  .validator((data: UserData) => data)
+  .inputValidator((data: UserData) => data)
   .handler(async ({ data }) => {
     // Only runs on server, but client can call it
     return await db.users.update(data)

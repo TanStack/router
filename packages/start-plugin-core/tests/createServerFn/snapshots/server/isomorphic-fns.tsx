@@ -8,7 +8,7 @@ const getServerEnv = createServerFn().handler((opts, signal) => {
   return getServerEnv.__executeServer(opts, signal);
 }, () => getEnv());
 const getEcho = createIsomorphicFn().server((input: string) => 'server received ' + input).client(input => 'client received ' + input);
-const getServerEcho = createServerFn().validator((input: string) => input).handler((opts, signal) => {
+const getServerEcho = createServerFn().inputValidator((input: string) => input).handler((opts, signal) => {
   "use server";
 
   return getServerEcho.__executeServer(opts, signal);

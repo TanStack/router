@@ -9,15 +9,15 @@ test('createServeMiddleware removes middleware after middleware,', () => {
 
   expectTypeOf(middleware).toHaveProperty('middleware')
   expectTypeOf(middleware).toHaveProperty('server')
-  expectTypeOf(middleware).toHaveProperty('validator')
+  expectTypeOf(middleware).toHaveProperty('inputValidator')
 
   const middlewareAfterMiddleware = middleware.middleware([])
 
-  expectTypeOf(middlewareAfterMiddleware).toHaveProperty('validator')
+  expectTypeOf(middlewareAfterMiddleware).toHaveProperty('inputValidator')
   expectTypeOf(middlewareAfterMiddleware).toHaveProperty('server')
   expectTypeOf(middlewareAfterMiddleware).not.toHaveProperty('middleware')
 
-  const middlewareAfterInput = middleware.validator(() => {})
+  const middlewareAfterInput = middleware.inputValidator(() => {})
 
   expectTypeOf(middlewareAfterInput).toHaveProperty('server')
   expectTypeOf(middlewareAfterInput).not.toHaveProperty('middleware')
@@ -252,7 +252,7 @@ test('createMiddleware merges client context and sends to the server', () => {
 
 test('createMiddleware merges input', () => {
   const middleware1 = createMiddleware({ type: 'function' })
-    .validator(() => {
+    .inputValidator(() => {
       return {
         a: 'a',
       } as const
@@ -264,7 +264,7 @@ test('createMiddleware merges input', () => {
 
   const middleware2 = createMiddleware({ type: 'function' })
     .middleware([middleware1])
-    .validator(() => {
+    .inputValidator(() => {
       return {
         b: 'b',
       } as const
@@ -276,7 +276,7 @@ test('createMiddleware merges input', () => {
 
   createMiddleware({ type: 'function' })
     .middleware([middleware2])
-    .validator(() => ({ c: 'c' }) as const)
+    .inputValidator(() => ({ c: 'c' }) as const)
     .server(({ next, data }) => {
       expectTypeOf(data).toEqualTypeOf<{
         readonly a: 'a'
@@ -579,7 +579,7 @@ test('createMiddleware sendContext cannot send a function', () => {
 })
 
 test('createMiddleware cannot validate function', () => {
-  const validator = createMiddleware({ type: 'function' }).validator<
+  const validator = createMiddleware({ type: 'function' }).inputValidator<
     (input: { func: () => 'string' }) => { output: 'string' }
   >
 
@@ -595,7 +595,7 @@ test('createMiddleware cannot validate function', () => {
 })
 
 test('createMiddleware can validate Date', () => {
-  const validator = createMiddleware({ type: 'function' }).validator<
+  const validator = createMiddleware({ type: 'function' }).inputValidator<
     (input: Date) => { output: 'string' }
   >
 
@@ -607,7 +607,7 @@ test('createMiddleware can validate Date', () => {
 })
 
 test('createMiddleware can validate FormData', () => {
-  const validator = createMiddleware({ type: 'function' }).validator<
+  const validator = createMiddleware({ type: 'function' }).inputValidator<
     (input: FormData) => { output: 'string' }
   >
 
@@ -623,7 +623,7 @@ test('createMiddleware can validate FormData', () => {
 })
 
 test('createMiddleware merging from parent with undefined validator', () => {
-  const middleware1 = createMiddleware({ type: 'function' }).validator(
+  const middleware1 = createMiddleware({ type: 'function' }).inputValidator(
     (input: { test: string }) => input.test,
   )
 
@@ -638,7 +638,7 @@ test('createMiddleware merging from parent with undefined validator', () => {
 
 test('createMiddleware validator infers unknown for default input type', () => {
   createMiddleware({ type: 'function' })
-    .validator((input) => {
+    .inputValidator((input) => {
       expectTypeOf(input).toEqualTypeOf<unknown>()
 
       if (typeof input === 'number') return 'success' as const

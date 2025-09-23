@@ -21,25 +21,25 @@ export const Route = createFileRoute('/consistent')({
 })
 
 const cons_getFn1 = createServerFn()
-  .validator((d: { username: string }) => d)
+  .inputValidator((d: { username: string }) => d)
   .handler(({ data }) => {
     return { payload: data }
   })
 
 const cons_serverGetFn1 = createServerFn()
-  .validator((d: { username: string }) => d)
+  .inputValidator((d: { username: string }) => d)
   .handler(async ({ data }) => {
     return cons_getFn1({ data })
   })
 
 const cons_postFn1 = createServerFn({ method: 'POST' })
-  .validator((d: { username: string }) => d)
+  .inputValidator((d: { username: string }) => d)
   .handler(({ data }) => {
     return { payload: data }
   })
 
 const cons_serverPostFn1 = createServerFn({ method: 'POST' })
-  .validator((d: { username: string }) => d)
+  .inputValidator((d: { username: string }) => d)
   .handler(({ data }) => {
     return cons_postFn1({ data })
   })

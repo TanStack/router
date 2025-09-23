@@ -265,7 +265,7 @@ import { v4 as uuidv4 } from 'uuid' // Add this import
 import type { Joke, JokesData } from '../types'
 
 export const addJoke = createServerFn({ method: 'POST' })
-  .validator((data: { question: string; answer: string }) => {
+  .inputValidator((data: { question: string; answer: string }) => {
     // Validate input data
     if (!data.question || !data.question.trim()) {
       throw new Error('Joke question is required')
@@ -308,7 +308,7 @@ export const addJoke = createServerFn({ method: 'POST' })
 In this code:
 
 - We are using `createServerFn` to create server functions that run on the server but can be called from the client. This server function is used to write data to the file.
-- We are going to first use `validator` to validate the input data. This is a good practice to ensure that the data we are receiving is in the correct format.
+- We are going to first use `inputValidator` to validate the input data. This is a good practice to ensure that the data we are receiving is in the correct format.
 - We are going to perform the actual write operation in the `handler` function.
 - `getJokes` reads the jokes from our JSON file.
 - `addJoke` validates the input data and adds a new joke to our file.

@@ -8,7 +8,7 @@ import { staticFunctionMiddleware } from '@tanstack/start-static-server-function
 
 const fetchUser = createServerFn({ method: 'GET' })
   .middleware([staticFunctionMiddleware])
-  .validator((d: string) => d)
+  .inputValidator((d: string) => d)
   .handler(async ({ data: userId }) => {
     return axios
       .get<User>('https://jsonplaceholder.typicode.com/users/' + userId)
