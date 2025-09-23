@@ -67,60 +67,7 @@ TanStack Start is not for you if:
 
 TanStack works closely with our partners to provide the best possible developer experience while also providing solutions that work anywhere and are vetted by industry experts. Each of our partners plays a unique role in the TanStack ecosystem:
 
-- **Netlify**
-  <a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-dark.svg" style="height: 90px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg" style="height: 90px;">
-    <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg" style="height: 90px;">
-  </picture>
-  </a>
-  The leading hosting platform for web applications that provides a fast, secure, and reliable environment for deploying your web applications. We work closely with Netlify to ensure that TanStack Start applications not only deploy seamlessly to their platform, but also implement best practices for performance, security, and reliability regardless of where you end up deploying.
-- **Neon**
-  <a href="https://neon.tech?utm_source=tanstack" alt="Neon Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-dark.svg" style="height: 60px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-light.svg" style="height: 60px;">
-  <img alt="Neon logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-light.svg" style="height: 60px;">
-  </picture>
-  </a>
-  A serverless, autoscaling Postgres solution purpose-built for modern full-stack apps. Neon offers rich integration opportunities with TanStack Start, including server functions and database-backed routing. Together, we’re simplifying the database experience for developers using TanStack.
-- **Clerk**
-  <a href="https://go.clerk.com/wOwHtuJ" alt="Clerk Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-dark.svg" style="height: 40px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-light.svg" style="height: 40px;">
-  <img alt="Clerk logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-light.svg" style="height: 40px;">
-  </picture>
-  </a>
-  The best possible authentication experience for modern web applications, including TanStack Start applications. Clerk provides TanStack Start users with first-class integrations and solutions to auth and collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in auth best practices.
-- **Convex**
-  <a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-white.svg" style="height: 40px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-color.svg" style="height: 40px;">
-  <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-color.svg" style="height: 40px;">
-  </picture>
-  </a>
-  A serverless database platform that integrates seamlessly with TanStack Start. Convex is designed to simplify the process of managing your application's data and provides a real-time, scalable, and transactional data backend that works well with TanStack Start applications. Convex also collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in database best practices.
-- **Sentry**
-  <a href="https://sentry.io?utm_source=tanstack" alt='Sentry Logo'>
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/sentry-wordmark-light.svg" style="height: 60px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/sentry-wordmark-dark.svg" style="height: 60px;">
-  <img alt="Sentry logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/sentry-wordmark-light.svg" style="height: 60px;">
-  </picture>
-  </a>
-  A powerful, full-featured observability platform that integrates seamlessly with TanStack Start. Sentry helps developers monitor and fix crashes in real-time and provides insights into your application's performance and error tracking. Sentry collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in observability best practices.
-- **Prisma**
-  <a href="https://prisma.io?utm_source=tanstack&via=tanstack" alt="Prisma Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-dark.svg" style="height: 60px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" style="height: 60px;">
-  <img alt="Prisma logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" style="height: 60px;">
-  </picture>
-  </a>
-  Skip the database setup, get to building. Prisma Postgres provisions production-ready Postgres databases in seconds—no resource config, no infrastructure planning, no late-night "why is my connection pool maxed out?" debugging sessions. Just connect your TanStack app and start building features that matter.
+<iframe src="https://tanstack.com/partners-embed" style="aspect-ratio: 1/1; width: 100%;"></iframe>
 
 ## Ready to get started?
 
