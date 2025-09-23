@@ -11,6 +11,8 @@ export const Route = createFileRoute('/relative/link')({
 })
 
 function RouteComponent() {
+  const navigate = useNavigate()
+
   createEffect(() => {
     console.log('navigate')
   })

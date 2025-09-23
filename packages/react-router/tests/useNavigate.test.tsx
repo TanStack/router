@@ -2518,6 +2518,24 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
     })
 
+    test('should navigate to a parent link based on active location', async () => {
+      const router = setupRouter()
+
+      render(<RouterProvider router={router} />)
+
+      await act(async () => {
+        history.push(`${basepath}/param/foo/a/b`)
+      })
+
+      const relativeLink = await screen.findByTestId('link-to-previous')
+
+      // Click the link and ensure the new location
+      fireEvent.click(relativeLink)
+      await router.latestLoadPromise
+
+      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+    })
+
     test('should navigate to same route with different params', async () => {
       const router = setupRouter()
 

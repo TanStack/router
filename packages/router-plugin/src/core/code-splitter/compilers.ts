@@ -84,7 +84,8 @@ function addSplitSearchParamToFilename(
   const params = new URLSearchParams()
   params.append(tsrSplit, createIdentifier(grouping))
 
-  return `${bareFilename}?${params.toString()}`
+  const result = `${bareFilename}?${params.toString()}`
+  return result
 }
 
 function removeSplitSearchParamFromFilename(filename: string) {
@@ -115,6 +116,8 @@ export function compileCodeSplitReferenceRoute(
   const ast = parseAst(opts)
 
   const refIdents = findReferencedIdentifiers(ast)
+
+  const knownExportedIdents = new Set<string>()
 
   function findIndexForSplitNode(str: string) {
     return opts.codeSplitGroupings.findIndex((group) =>
@@ -251,6 +254,9 @@ export function compileCodeSplitReferenceRoute(
                           // since they are already being imported
                           // and need to be retained in the compiled file
                           const isExported = hasExport(ast, value)
+                          if (isExported) {
+                            knownExportedIdents.add(value.name)
+                          }
                           shouldSplit = !isExported
 
                           if (shouldSplit) {
@@ -320,6 +326,9 @@ export function compileCodeSplitReferenceRoute(
                           // since they are already being imported
                           // and need to be retained in the compiled file
                           const isExported = hasExport(ast, value)
+                          if (isExported) {
+                            knownExportedIdents.add(value.name)
+                          }
                           shouldSplit = !isExported
 
                           if (shouldSplit) {
@@ -409,6 +418,26 @@ export function compileCodeSplitReferenceRoute(
   })
 
   deadCodeElimination(ast, refIdents)
+
+  // if there are exported identifiers, then we need to add a warning
+  // to the file to let the user know that the exported identifiers
+  // will not in the split file but in the original file, therefore
+  // increasing the bundle size
+  if (knownExportedIdents.size > 0) {
+    const warningMessage = createNotExportableMessage(
+      opts.filename,
+      knownExportedIdents,
+    )
+    console.warn(warningMessage)
+
+    // append this warning to the file using a template
+    if (process.env.NODE_ENV !== 'production') {
+      const warningTemplate = template.statement(
+        `console.warn(${JSON.stringify(warningMessage)})`,
+      )()
+      ast.program.body.unshift(warningTemplate)
+    }
+  }
 
   return generateFromAst(ast, {
     sourceMaps: true,
@@ -712,28 +741,6 @@ export function compileCodeSplitVirtualRoute(
 
   deadCodeElimination(ast, refIdents)
 
-  // if there are exported identifiers, then we need to add a warning
-  // to the file to let the user know that the exported identifiers
-  // will not in the split file but in the original file, therefore
-  // increasing the bundle size
-  if (knownExportedIdents.size > 0) {
-    const list = Array.from(knownExportedIdents).reduce((str, ident) => {
-      str += `\n- ${ident}`
-      return str
-    }, '')
-
-    const warningMessage = `These exports from "${opts.filename}" are not being code-split and will increase your bundle size: ${list}\nThese should either have their export statements removed or be imported from another file that is not a route.`
-    console.warn(warningMessage)
-
-    // append this warning to the file using a template
-    if (process.env.NODE_ENV !== 'production') {
-      const warningTemplate = template.statement(
-        `console.warn(${JSON.stringify(warningMessage)})`,
-      )()
-      ast.program.body.unshift(warningTemplate)
-    }
-  }
-
   return generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
@@ -835,6 +842,21 @@ export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
   })
 
   return { groupings: codeSplitGroupings }
+}
+
+function createNotExportableMessage(
+  filename: string,
+  idents: Set<string>,
+): string {
+  const list = Array.from(idents).map((d) => `- ${d}`)
+
+  const message = [
+    `[tanstack-router] These exports from "${filename}" will not be code-split and will increase your bundle size:`,
+    ...list,
+    'For the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.',
+  ].join('\n')
+
+  return message
 }
 
 function getImportSpecifierAndPathFromLocalName(

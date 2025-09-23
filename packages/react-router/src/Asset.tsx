@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
 interface ScriptAttrs {
@@ -44,8 +45,26 @@ function Script({
   attrs?: ScriptAttrs
   children?: string
 }) {
+  const router = useRouter()
+
   React.useEffect(() => {
     if (attrs?.src) {
+      const normSrc = (() => {
+        try {
+          const base = document.baseURI || window.location.href
+          return new URL(attrs.src, base).href
+        } catch {
+          return attrs.src
+        }
+      })()
+      const existingScript = Array.from(
+        document.querySelectorAll('script[src]'),
+      ).find((el) => (el as HTMLScriptElement).src === normSrc)
+
+      if (existingScript) {
+        return
+      }
+
       const script = document.createElement('script')
 
       for (const [key, value] of Object.entries(attrs)) {
@@ -71,6 +90,27 @@ function Script({
     }
 
     if (typeof children === 'string') {
+      const typeAttr =
+        typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
+      const nonceAttr =
+        typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
+      const existingScript = Array.from(
+        document.querySelectorAll('script:not([src])'),
+      ).find((el) => {
+        if (!(el instanceof HTMLScriptElement)) return false
+        const sType = el.getAttribute('type') ?? 'text/javascript'
+        const sNonce = el.getAttribute('nonce') ?? undefined
+        return (
+          el.textContent === children &&
+          sType === typeAttr &&
+          sNonce === nonceAttr
+        )
+      })
+
+      if (existingScript) {
+        return
+      }
+
       const script = document.createElement('script')
       script.textContent = children
 
@@ -100,6 +140,10 @@ function Script({
 
     return undefined
   }, [attrs, children])
+
+  if (!router.isServer) {
+    return null
+  }
 
   if (attrs?.src && typeof attrs.src === 'string') {
     return <script {...attrs} suppressHydrationWarning />

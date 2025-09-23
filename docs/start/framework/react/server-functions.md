@@ -84,9 +84,6 @@ By default, server functions use `GET` if not specified.
 - From client-side code
 - From other server functions
 
-> [!WARNING]
-> Server functions cannot be called from API Routes. If you need to share business logic between server functions and API Routes, extract the shared logic into utility functions that can be imported by both.
-
 ## Accepting Parameters
 
 Server functions accept a single parameter, which can be a variety of types:

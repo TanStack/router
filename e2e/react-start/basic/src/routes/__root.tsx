@@ -142,6 +142,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             Scripts
           </Link>{' '}
           <Link
+            to="/inline-scripts"
+            activeProps={{
+              className: 'font-bold',
+            }}
+          >
+            Inline Scripts
+          </Link>{' '}
+          <Link
             to="/deferred"
             activeProps={{
               className: 'font-bold',

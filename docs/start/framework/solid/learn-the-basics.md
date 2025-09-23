@@ -99,7 +99,7 @@ import { createRouter } from './router'
 
 const router = createRouter()
 
-hydrate(() => <StartClient router={router} />, document)
+hydrate(() => <StartClient router={router} />, document.body)
 ```
 
 This enables us to kick off client-side routing once the user's initial server request has fulfilled.

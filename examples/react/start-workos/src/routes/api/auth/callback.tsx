@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { getConfig } from '../authkit/ssr/config';
-import { saveSession } from '../authkit/ssr/session';
-import { getWorkOS } from '../authkit/ssr/workos';
+import { createFileRoute } from '@tanstack/react-start';
+import { getConfig } from '../../../authkit/ssr/config';
+import { saveSession } from '../../../authkit/ssr/session';
+import { getWorkOS } from '../../../authkit/ssr/workos';
 
-export const Route = createFileRoute('/callback')({
+export const Route = createFileRoute('/api/auth/callback')({
   server: {
     handlers: {
       GET: async ({ request }) => {

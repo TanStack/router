@@ -79,6 +79,28 @@ Convex's declarative data model and automatic conflict resolution ensure that yo
 - To learn more about Convex, visit the [Convex website](https://convex.dev?utm_source=tanstack)
 - To sign up, visit the [Convex dashboard](https://dashboard.convex.dev/signup?utm_source=tanstack)
 
+## What is Prisma Postgres?
+
+<a href="https://www.prisma.io?utm_source=tanstack&via=tanstack" alt="Prisma Logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-dark.svg" width="280">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" width="280">
+    <img alt="Prisma logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" width="280">
+  </picture>
+</a>
+
+Instant Postgres, Zero Setup: Get a production-ready Postgres database in seconds, then dive straight back into code. We handle connections, scaling, and turning knobs so your flow never breaks. Blends perfectly with TanStack Start.
+
+- Edge-optimized: Local region routing means lower latency and fewer hops. Even complex queries are one fast round trip.
+- Fits your stack: Works with your frameworks, libraries, and tools for a smooth DX.
+- Web UI: A hosted interface to inspect, manage, and query data with your team.
+- Auto-scaling: Grows from zero to millions of users without cold starts or manual tuning.
+- Unikernel isolation: Each DB runs as its own unikernel for security, speed, and efficiency.
+  <br />
+  <br />
+- To learn more about Prisma Postgres, visit the [Prisma website](https://www.prisma.io?utm_source=tanstack&via=tanstack)
+- To sign up, visit the [Prisma Console](https://console.prisma.io/sign-up?utm_source=tanstack&via=tanstack)
+
 ## Documentation & APIs
 
 Documentation for integrating different databases with TanStack Start is coming soon! In the meantime, keep an eye on our examples and guide to learn how to fully leverage your data layer across your TanStack Start application.

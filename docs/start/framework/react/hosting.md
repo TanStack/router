@@ -36,6 +36,7 @@ When a TanStack Start application is being deployed, the `target` value in the T
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
 - [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
+- [`railway`](#railway): Deploy to Railway
 - [`node-server`](#nodejs): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
 - ... and more to come!
@@ -119,6 +120,41 @@ directory = "./.output/public"
 ```
 
 Deploy your application to Cloudflare Workers using their one-click deployment process, and you're ready to go!
+
+### Railway
+
+Railway automatically detects Build and Start commands when building and deploying to a service.
+
+Set the `target` value to `node-server` in your `vite.config.ts` file.
+
+```ts
+// vite.config.ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [tanstackStart({ target: 'node-server' })],
+})
+```
+
+Ensure `build` and `start` npm scripts are present in your `package.json` file:
+
+```json
+    "build": "vite build",
+    "start": "node .output/server/index.mjs"
+```
+
+Then you can run the following command to build your application:
+
+```sh
+npm run build
+```
+
+You can start your application by running:
+
+```sh
+npm run start
+```
 
 ### Node.js
 

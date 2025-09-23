@@ -1,5 +1,5 @@
 ---
-title: Installation with Vite
+title: Installation with Esbuild
 ---
 
 [//]: # 'BundlerConfiguration'

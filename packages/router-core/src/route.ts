@@ -1973,3 +1973,16 @@ export class BaseRootRoute<
 }
 
 //
+
+export interface RouteLike {
+  id: string
+  isRoot?: boolean
+  path?: string
+  fullPath: string
+  rank?: number
+  parentRoute?: RouteLike
+  children?: Array<RouteLike>
+  options?: {
+    caseSensitive?: boolean
+  }
+}
