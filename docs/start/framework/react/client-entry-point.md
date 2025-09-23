@@ -12,47 +12,19 @@ Getting our html to the client is only half the battle. Once there, we need to h
 
 ```tsx
 // src/client.tsx
-import { StartClient } from '@tanstack/react-start'
+import { StartClient } from '@tanstack/react-start/client'
 import { StrictMode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
-import { createRouter } from './router'
-
-const router = createRouter()
 
 hydrateRoot(
   document,
   <StrictMode>
-    <StartClient router={router} />
+    <StartClient />
   </StrictMode>,
 )
 ```
 
 This enables us to kick off client-side routing once the user's initial server request has fulfilled.
-
-## Custom Client Configuration
-
-You can customize the client entry point to add global providers, error boundaries, or other client-specific setup:
-
-```tsx
-// src/client.tsx
-import { StartClient } from '@tanstack/react-start'
-import { StrictMode } from 'react'
-import { hydrateRoot } from 'react-dom/client'
-import { createRouter } from './router'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-
-const router = createRouter()
-const queryClient = new QueryClient()
-
-hydrateRoot(
-  document,
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <StartClient router={router} />
-    </QueryClientProvider>
-  </StrictMode>,
-)
-```
 
 ## Error Handling
 
@@ -60,19 +32,16 @@ You can wrap your client entry point with error boundaries to handle client-side
 
 ```tsx
 // src/client.tsx
-import { StartClient } from '@tanstack/react-start'
+import { StartClient } from '@tanstack/react-start/client'
 import { StrictMode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
-import { createRouter } from './router'
 import { ErrorBoundary } from './components/ErrorBoundary'
-
-const router = createRouter()
 
 hydrateRoot(
   document,
   <StrictMode>
     <ErrorBoundary>
-      <StartClient router={router} />
+      <StartClient />
     </ErrorBoundary>
   </StrictMode>,
 )
@@ -84,17 +53,14 @@ You may want different behavior in development vs production:
 
 ```tsx
 // src/client.tsx
-import { StartClient } from '@tanstack/react-start'
+import { StartClient } from '@tanstack/react-start/client'
 import { StrictMode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
-import { createRouter } from './router'
-
-const router = createRouter()
 
 const App = (
   <>
     {import.meta.env.DEV && <div>Development Mode</div>}
-    <StartClient router={router} />
+    <StartClient />
   </>
 )
 

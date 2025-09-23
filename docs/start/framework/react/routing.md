@@ -21,25 +21,18 @@ Here, you can configure everything from the default [preloading functionality](/
 
 ```tsx
 // src/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-// You must export a createRouter function that
+// You must export a getRouter function that
 // returns a new router instance each time
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
 
   return router
-}
-
-// You must register your router instance with TanStack Router's type system
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: ReturnType<typeof createRouter>
-  }
 }
 ```
 

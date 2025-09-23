@@ -227,12 +227,6 @@ export function getRouter() {
 
   return router
 }
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: ReturnType<typeof getRouter>
-  }
-}
 ```
 
 > 🧠 Here you can configure everything from the default [preloading functionality](/router/latest/docs/framework/react/guide/preloading) to [caching staleness](/router/latest/docs/framework/react/guide/data-loading).

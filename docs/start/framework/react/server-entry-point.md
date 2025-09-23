@@ -12,18 +12,12 @@ This is done via the `src/server.ts` file.
 
 ```tsx
 // src/server.ts
-import {
-  createStartHandler,
-  defaultStreamHandler,
-} from '@tanstack/react-start/server'
-import { createRouter } from './router'
-
-const fetch = createStartHandler({
-  createRouter,
-})(defaultStreamHandler)
+import handler from '@tanstack/react-start/server-entry'
 
 export default {
-  fetch,
+  fetch(request: Request) {
+    return handler.fetch(request)
+  },
 }
 ```
 
@@ -39,9 +33,6 @@ export default {
 
 Whether we are statically generating our app or serving it dynamically, the `server.ts` file is the entry point for doing all SSR-related work.
 
-- It's important that a new router is created for each request. This ensures that any data handled by the router is unique to the request.
-- The `defaultStreamHandler` function is used to render our application to a stream, allowing us to take advantage of streaming HTML to the client. (This is the default handler, but you can also use other handlers like `defaultRenderHandler`, or even build your own)
-
 ## Custom Server Handlers
 
 You can create custom server handlers to modify how your application is rendered:
@@ -52,7 +43,6 @@ import {
   createStartHandler,
   defaultStreamHandler,
 } from '@tanstack/react-start/server'
-import { createRouter } from './router'
 
 // Custom handler example
 const customHandler = (request, response) => {
@@ -60,9 +50,7 @@ const customHandler = (request, response) => {
   return defaultStreamHandler(request, response)
 }
 
-const fetch = createStartHandler({
-  createRouter,
-})(customHandler)
+const fetch = createStartHandler(customHandler)
 
 export default {
   fetch,

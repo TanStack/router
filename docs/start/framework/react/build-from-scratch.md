@@ -149,12 +149,6 @@ export function getRouter() {
 
   return router
 }
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: ReturnType<typeof getRouter>
-  }
-}
 ```
 
 ## The Root of Your Application
