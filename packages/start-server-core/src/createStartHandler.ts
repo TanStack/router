@@ -394,18 +394,21 @@ async function handleServerRoutes(opts: {
     // TODO: Error handling? What happens when its `throw redirect()` vs `throw new Error()`?
 
     const middlewares = flattenMiddlewares(
-      matchedRoutes.flatMap((r) => r.options.middleware).filter(Boolean),
+      matchedRoutes
+        .flatMap((r) => r.options.server?.middleware)
+        .filter(Boolean),
     ).map((d) => d.options.server)
 
-    if (serverTreeResult.foundRoute?.options.methods) {
+    if (serverTreeResult.foundRoute?.options.server?.methods) {
       const method = Object.keys(
-        serverTreeResult.foundRoute.options.methods,
+        serverTreeResult.foundRoute.options.server.methods,
       ).find(
         (method) => method.toLowerCase() === opts.request.method.toLowerCase(),
       )
 
       if (method) {
-        const handler = serverTreeResult.foundRoute.options.methods[method]
+        const handler =
+          serverTreeResult.foundRoute.options.server.methods[method]
         if (handler) {
           if (typeof handler === 'function') {
             middlewares.push(handlerToMiddleware(handler) as TODO)
