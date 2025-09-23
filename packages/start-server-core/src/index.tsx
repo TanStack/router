@@ -16,25 +16,22 @@ export { handleServerAction } from './server-functions-handler'
 
 export * from './request-response'
 export type {
-  RouteMethodBuilderOptions,
   ResolveAllServerContext,
-  RouteMethodsOptions,
-  RouteMethodsRecord,
-  RouteMethodRecordValue,
   RouteVerb,
   RouteMethodHandlerFn,
-  RouteMethodHandlerCtx,
   MergeMethodMiddlewares,
   AssignAllMethodContext,
-  AnyRouteMethodsBuilder,
-  RouteMethodBuilder,
-  RouteMethodBuilderWithTypes,
-  RouteMethodBuilderTypes,
-  RouteMethodBuilderMiddleware,
-  RouteMethodBuilderAfterMiddleware,
-  RouteMethodBuilderHandler,
-  RouteMethodBuilderAfterHandler,
-  RouteMethod,
+  RouteVerbs,
+  CreateMethodFn,
+  CreateMethodFnOpts,
+  RouteMethodBuilderResult,
+  RouteMethodHandler,
+  RouteMethodHandlerCtx,
+  RouteMethodWithMiddleware,
+  RouteServerOptions,
+  RouteMethodBuilderOptions,
+  RouteMethodsOrOptionsRecord,
+  RouteMethodsRecord,
 } from './serverRoute'
 
 export * from './virtual-modules'

@@ -19,20 +19,34 @@ const rootMiddleware = createMiddleware({ type: 'request' }).server(
   },
 )
 
+const postMiddleware = createMiddleware({ type: 'request' }).server(
+  async ({ next }) => {
+    return next({ context: { postMiddleware: true } })
+  },
+)
+
 export const Route = createRootRoute({
   server: {
     middleware: [rootMiddleware],
-    methods: {
+    methods: (withMiddleware) => ({
       GET: ({ context }) => {
         context.rootMiddleware
-        //      ^?
       },
-    },
+      POST: withMiddleware({
+        middleware: [postMiddleware],
+        handler: ({ context }) => {
+          context.rootMiddleware
+          context.postMiddleware
+        },
+      }),
+    }),
   },
   beforeLoad: (ctx) => {
     ctx.serverContext?.rootMiddleware
     //                 ^?
-    return
+    return {
+      rootMiddleware: true,
+    }
   },
   head: () => ({
     meta: [
