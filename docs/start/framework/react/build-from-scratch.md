@@ -58,13 +58,15 @@ npm i @tanstack/react-start @tanstack/react-router vite
 You'll also need React:
 
 ```shell
-npm i react react-dom
+npm i react react-dom @vitejs/plugin-react
 ```
+
+Alternatively, you can also use `@vitejs/plugin-react-oxc` or `@vitejs/plugin-react-swc`.
 
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths @vitejs/plugin-react
+npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths
 ```
 
 ## Update Configuration Files
@@ -84,9 +86,6 @@ We'll then update our `package.json` to use Vite's CLI and set `"type": "module"
 
 Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 
-> [!NOTE]
-> TanStack Start will stop auto-configuring React/Solid Vite plugins. You’ll get full control - choose `@vitejs/plugin-react`, `@vitejs/plugin-react-oxc`, etc. Set `customViteReactPlugin: true` to opt in to this feature right now!
-
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
@@ -100,7 +99,8 @@ export default defineConfig({
   },
   plugins: [
     tsConfigPaths(),
-    tanstackStart({ customViteReactPlugin: true }),
+    tanstackStart(),
+    // react's vite plugin must come after start's vite plugin
     viteReact(),
   ],
 })
@@ -137,12 +137,12 @@ from the default [preloading functionality](/router/latest/docs/framework/react/
 > You won't have a `routeTree.gen.ts` file yet. This file will be generated when you run TanStack Start for the first time.
 
 ```tsx
-// src/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+// src/start.tsx
+import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
@@ -152,7 +152,7 @@ export function createRouter() {
 
 declare module '@tanstack/react-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>
+    router: ReturnType<typeof getRouter>
   }
 }
 ```
@@ -238,7 +238,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .validator((d: number) => d)
+  .inputValidator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
     await fs.promises.writeFile(filePath, `${count + data}`)

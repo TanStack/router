@@ -103,7 +103,6 @@ export {
   parsePathname,
   interpolatePath,
   matchPathname,
-  removeBasepath,
   matchByPath,
 } from './path'
 export type { Segment } from './path'
@@ -175,7 +174,6 @@ export type {
   RouteLoaderFn,
   LoaderFnContext,
   RouteContextFn,
-  BeforeLoadFn,
   ContextOptions,
   RouteContextOptions,
   BeforeLoadContextOptions,
@@ -193,6 +191,7 @@ export type {
   ResolveOptionalParams,
   ResolveRequiredParams,
   RootRoute,
+  FilebaseRouteOptionsInterface,
 } from './route'
 export { processRouteTree } from './process-route-tree'
 export type { ProcessRouteTreeResult } from './process-route-tree'
@@ -244,7 +243,10 @@ export type {
   LoadRouteChunkFn,
   ClearCacheFn,
   CreateRouterFn,
+  SSROption,
 } from './router'
+
+export * from './config'
 
 export type {
   MatchLocation,
@@ -272,8 +274,6 @@ export {
   isPlainObject,
   isPlainArray,
   deepEqual,
-  escapeJSON,
-  shallow,
   createControlledPromise,
   isModuleNotFoundError,
 } from './utils'
@@ -411,3 +411,29 @@ export type {
   ValidateUseSearchResult,
   ValidateUseParamsResult,
 } from './typePrimitives'
+
+export type {
+  AnySerializationAdapter,
+  SerializationAdapter,
+  ValidateSerializableInput,
+  ValidateSerializableInputResult,
+  SerializerExtensions,
+  ValidateSerializable,
+  RegisteredSerializableInput,
+} from './ssr/serializer/transformer'
+
+export {
+  createSerializationAdapter,
+  makeSerovalPlugin,
+  makeSsrSerovalPlugin,
+} from './ssr/serializer/transformer'
+
+export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
+
+export {
+  rewriteBasepath,
+  composeRewrites,
+  executeRewriteInput,
+  executeRewriteOutput,
+} from './rewrite'
+export type { LocationRewrite, LocationRewriteFunction } from './router'

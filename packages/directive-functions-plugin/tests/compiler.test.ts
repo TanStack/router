@@ -825,12 +825,14 @@ describe('server function compilation', () => {
     expect(client.compiledResult.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib-client";
       const generator_1 = createClientRpc("test_ts--generator_1");
-      const generator = generator_1;"`)
+      const generator = generator_1;"
+    `)
 
     expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
       "import { createSsrRpc } from "my-rpc-lib-server";
       const generator_1 = createSsrRpc("test_ts--generator_1");
-      const generator = generator_1;"`)
+      const generator = generator_1;"
+    `)
 
     expect(server.compiledResult.code).toMatchInlineSnapshot(`
       "import { createServerRpc } from "my-rpc-lib-server";
@@ -839,7 +841,8 @@ describe('server function compilation', () => {
         return 'hello world';
       });
       const generator = generator_1;
-      export { generator_1 };"`)
+      export { generator_1 };"
+    `)
   })
   test('async generator function', () => {
     const code = `
@@ -864,12 +867,14 @@ describe('server function compilation', () => {
     expect(client.compiledResult.code).toMatchInlineSnapshot(`
       "import { createClientRpc } from "my-rpc-lib-client";
       const asyncGenerator_1 = createClientRpc("test_ts--asyncGenerator_1");
-      const asyncGenerator = asyncGenerator_1;"`)
+      const asyncGenerator = asyncGenerator_1;"
+    `)
 
     expect(ssr.compiledResult.code).toMatchInlineSnapshot(`
       "import { createSsrRpc } from "my-rpc-lib-server";
       const asyncGenerator_1 = createSsrRpc("test_ts--asyncGenerator_1");
-      const asyncGenerator = asyncGenerator_1;"`)
+      const asyncGenerator = asyncGenerator_1;"
+    `)
 
     expect(server.compiledResult.code).toMatchInlineSnapshot(`
       "import { createServerRpc } from "my-rpc-lib-server";
@@ -878,6 +883,7 @@ describe('server function compilation', () => {
         return 'hello world';
       });
       const asyncGenerator = asyncGenerator_1;
-      export { asyncGenerator_1 };"`)
+      export { asyncGenerator_1 };"
+    `)
   })
 })

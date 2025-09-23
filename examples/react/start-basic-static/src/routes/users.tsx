@@ -2,9 +2,11 @@ import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 import axios from 'redaxios'
 import { createServerFn } from '@tanstack/react-start'
 import type { User } from '../utils/users'
+import { staticFunctionMiddleware } from '@tanstack/start-static-server-functions'
 
-const fetchUsers = createServerFn({ method: 'GET', type: 'static' }).handler(
-  async () => {
+const fetchUsers = createServerFn({ method: 'GET' })
+  .middleware([staticFunctionMiddleware])
+  .handler(async () => {
     console.info('Fetching users...')
     const res = await axios.get<Array<User>>(
       'https://jsonplaceholder.typicode.com/users',
@@ -13,8 +15,7 @@ const fetchUsers = createServerFn({ method: 'GET', type: 'static' }).handler(
     return res.data
       .slice(0, 10)
       .map((u) => ({ id: u.id, name: u.name, email: u.email }))
-  },
-)
+  })
 
 export const Route = createFileRoute('/users')({
   loader: async () => fetchUsers(),

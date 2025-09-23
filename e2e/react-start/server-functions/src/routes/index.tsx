@@ -83,7 +83,10 @@ function Home() {
           </Link>
         </li>
         <li>
-          <Link to="/middleware">Server Functions Middlware E2E tests</Link>
+          <Link to="/middleware">Server Functions Middleware E2E tests</Link>
+        </li>
+        <li>
+          <Link to="/factory">Server Functions Factory E2E tests</Link>
         </li>
       </ul>
     </div>

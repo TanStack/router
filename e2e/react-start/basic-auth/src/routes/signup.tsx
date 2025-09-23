@@ -9,7 +9,7 @@ import { useAppSession } from '~/utils/session'
 export const signupFn = createServerFn({
   method: 'POST',
 })
-  .validator(
+  .inputValidator(
     (data: { email: string; password: string; redirectUrl?: string }) => data,
   )
   .handler(async ({ data: payload }) => {
