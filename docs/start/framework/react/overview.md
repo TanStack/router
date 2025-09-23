@@ -3,6 +3,11 @@ id: overview
 title: TanStack Start Overview
 ---
 
+> [!NOTE]
+> TanStack Start is currently in the **Release Candidate** stage! This means it is considered feature-complete and its API is considered stable.
+> **This does not mean it is bug-free or without issues, which is why we invite you to try it out and provide feedback!**
+> The road to v1 will likely be a quick one, so don't wait too long to try it out!
+
 TanStack Start is a full-stack React framework powered by TanStack Router. It provides a full-document SSR, streaming, server functions, bundling, and more. Thanks to [Vite](https://vite.dev/), it's ready to develop and deploy to any hosting provider or runtime you want!
 
 ## Dependencies
