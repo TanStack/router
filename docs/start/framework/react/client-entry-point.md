@@ -12,7 +12,7 @@ Getting our html to the client is only half the battle. Once there, we need to h
 
 ```tsx
 // src/client.tsx
-import { StartClient } from '@tanstack/react-start'
+import { StartClient } from '@tanstack/react-start/client'
 import { StrictMode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
 import { createRouter } from './router'
@@ -35,7 +35,7 @@ You can customize the client entry point to add global providers, error boundari
 
 ```tsx
 // src/client.tsx
-import { StartClient } from '@tanstack/react-start'
+import { StartClient } from '@tanstack/react-start/client'
 import { StrictMode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
 import { createRouter } from './router'
@@ -60,7 +60,7 @@ You can wrap your client entry point with error boundaries to handle client-side
 
 ```tsx
 // src/client.tsx
-import { StartClient } from '@tanstack/react-start'
+import { StartClient } from '@tanstack/react-start/client'
 import { StrictMode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
 import { createRouter } from './router'
@@ -84,7 +84,7 @@ You may want different behavior in development vs production:
 
 ```tsx
 // src/client.tsx
-import { StartClient } from '@tanstack/react-start'
+import { StartClient } from '@tanstack/react-start/client'
 import { StrictMode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
 import { createRouter } from './router'
