@@ -9,20 +9,14 @@ import type { GeneratorPlugin } from '@tanstack/router-generator'
 export function routesManifestPlugin(): GeneratorPlugin {
   return {
     name: 'routes-manifest-plugin',
-    onRouteTreesChanged: ({ routeTrees, rootRouteNode }) => {
-      const routeTree = routeTrees.find((tree) => tree.exportName === 'Route')
-      if (!routeTree) {
-        throw new Error(
-          'No route tree found with export name "Route". Please ensure your routes are correctly defined.',
-        )
-      }
+    onRouteTreeChanged: ({ routeTree, rootRouteNode, routeNodes }) => {
       const routesManifest = {
         [rootRouteId]: {
           filePath: rootRouteNode.fullPath,
-          children: routeTree.acc.routeTree.map((d) => d.routePath),
+          children: routeTree.map((d) => d.routePath),
         },
         ...Object.fromEntries(
-          routeTree.acc.routeNodes.map((d) => {
+          routeNodes.map((d) => {
             const filePathId = d.routePath
 
             return [

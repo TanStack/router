@@ -2,7 +2,7 @@ import path from 'node:path'
 import * as fsp from 'node:fs/promises'
 import { existsSync, mkdirSync } from 'node:fs'
 import crypto from 'node:crypto'
-import { deepEqual, rootRouteId } from '@tanstack/router-core'
+import { rootRouteId } from '@tanstack/router-core'
 import { logging } from './logger'
 import {
   isVirtualConfigFile,
@@ -15,16 +15,18 @@ import {
   buildImportString,
   buildRouteTreeConfig,
   checkFileExists,
+  checkRouteFullPathUniqueness,
   createRouteNodesByFullPath,
   createRouteNodesById,
   createRouteNodesByTo,
   determineNodePath,
   findParent,
   format,
+  getImportForRouteNode,
+  getImportPath,
   getResolvedRouteNodeVariableName,
   hasParentRoute,
   isRouteNodeValidForAugmentation,
-  lowerCaseFirstChar,
   mergeImportDeclarations,
   multiSortBy,
   removeExt,
@@ -39,11 +41,7 @@ import {
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
 import { transform } from './transform/transform'
-import { defaultGeneratorPlugin } from './plugin/default-generator-plugin'
-import type {
-  GeneratorPlugin,
-  GeneratorPluginWithTransform,
-} from './plugin/types'
+import type { GeneratorPlugin } from './plugin/types'
 import type { TargetTemplate } from './template'
 import type {
   FsRouteType,
@@ -55,7 +53,6 @@ import type {
 } from './types'
 import type { Config } from './config'
 import type { Logger } from './logger'
-import type { TransformPlugin } from './transform/types'
 
 interface fs {
   stat: (
@@ -149,11 +146,17 @@ interface GeneratorCacheEntry {
 }
 
 interface RouteNodeCacheEntry extends GeneratorCacheEntry {
-  exports: Array<string>
   routeId: string
+  node: RouteNode
 }
 
 type GeneratorRouteNodeCache = Map</** filePath **/ string, RouteNodeCacheEntry>
+
+interface CrawlingResult {
+  rootRouteNode: RouteNode
+  routeFileResult: Array<RouteNode>
+  acc: HandleNodeAccumulator
+}
 
 export class Generator {
   /**
@@ -171,6 +174,7 @@ export class Generator {
 
   private routeTreeFileCache: GeneratorCacheEntry | undefined
 
+  private crawlingResult: CrawlingResult | undefined
   public config: Config
   public targetTemplate: TargetTemplate
 
@@ -182,11 +186,8 @@ export class Generator {
   private generatedRouteTreePath: string
   private runPromise: Promise<void> | undefined
   private fileEventQueue: Array<GeneratorEvent> = []
-  private plugins: Array<GeneratorPlugin> = [defaultGeneratorPlugin()]
-  private pluginsWithTransform: Array<GeneratorPluginWithTransform> = []
-  // this is just a cache for the transform plugins since we need them for each route file that is to be processed
-  private transformPlugins: Array<TransformPlugin> = []
-  private routeGroupPatternRegex = /\(.+\)/g
+  private plugins: Array<GeneratorPlugin> = []
+  private static routeGroupPatternRegex = /\(.+\)/g
   private physicalDirectories: Array<string> = []
 
   constructor(opts: { config: Config; root: string; fs?: fs }) {
@@ -199,17 +200,10 @@ export class Generator {
 
     this.routesDirectoryPath = this.getRoutesDirectoryPath()
     this.plugins.push(...(opts.config.plugins || []))
-    this.plugins.forEach((plugin) => {
-      if ('transformPlugin' in plugin) {
-        if (this.pluginsWithTransform.find((p) => p.name === plugin.name)) {
-          throw new Error(
-            `Plugin with name "${plugin.name}" is already registered for export ${plugin.transformPlugin.exportName}!`,
-          )
-        }
-        this.pluginsWithTransform.push(plugin)
-        this.transformPlugins.push(plugin.transformPlugin)
-      }
-    })
+
+    for (const plugin of this.plugins) {
+      plugin.init?.({ generator: this })
+    }
   }
 
   private getGeneratedRouteTreePath() {
@@ -295,12 +289,7 @@ export class Generator {
         }
 
         try {
-          const start = performance.now()
           await this.generatorInternal()
-          const end = performance.now()
-          this.logger.info(
-            `Generated route tree in ${Math.round(end - start)}ms`,
-          )
         } catch (err) {
           const errArray = !Array.isArray(err) ? [err] : err
 
@@ -351,7 +340,7 @@ export class Generator {
     }
     this.physicalDirectories = physicalDirectories
 
-    writeRouteTreeFile = await this.handleRootNode(rootRouteNode)
+    await this.handleRootNode(rootRouteNode)
 
     const preRouteNodes = multiSortBy(beforeRouteNodes, [
       (d) => (d.routePath === '/' ? -1 : 1),
@@ -390,21 +379,28 @@ export class Generator {
 
     const routeFileResult = routeFileAllResult.flatMap((result) => {
       if (result.status === 'fulfilled' && result.value !== null) {
-        return result.value
+        if (result.value.shouldWriteTree) {
+          writeRouteTreeFile = true
+        }
+        return result.value.node
       }
       return []
     })
 
-    routeFileResult.forEach((result) => {
-      if (!result.node.exports?.length) {
-        this.logger.warn(
-          `Route file "${result.cacheEntry.fileContent}" does not export any route piece. This is likely a mistake.`,
-        )
-      }
-    })
-    if (routeFileResult.find((r) => r.shouldWriteTree)) {
-      writeRouteTreeFile = true
+    // reset children in case we re-use a node from the cache
+    routeFileResult.forEach((r) => (r.children = undefined))
+
+    const acc: HandleNodeAccumulator = {
+      routeTree: [],
+      routeNodes: [],
+      routePiecesByPath: {},
     }
+
+    for (const node of routeFileResult) {
+      Generator.handleNode(node, acc)
+    }
+
+    this.crawlingResult = { rootRouteNode, routeFileResult, acc }
 
     // this is the first time the generator runs, so read in the route tree file if it exists yet
     if (!this.routeTreeFileCache) {
@@ -440,10 +436,14 @@ export class Generator {
     if (!writeRouteTreeFile) {
       // only needs to be done if no other changes have been detected yet
       // compare shadowCache and cache to identify deleted routes
-      for (const fullPath of this.routeNodeCache.keys()) {
-        if (!this.routeNodeShadowCache.has(fullPath)) {
-          writeRouteTreeFile = true
-          break
+      if (this.routeNodeCache.size !== this.routeNodeShadowCache.size) {
+        writeRouteTreeFile = true
+      } else {
+        for (const fullPath of this.routeNodeCache.keys()) {
+          if (!this.routeNodeShadowCache.has(fullPath)) {
+            writeRouteTreeFile = true
+            break
+          }
         }
       }
     }
@@ -453,11 +453,13 @@ export class Generator {
       return
     }
 
-    let routeTreeContent = this.buildRouteTreeFileContent(
+    const buildResult = this.buildRouteTree({
       rootRouteNode,
-      preRouteNodes,
+      acc,
       routeFileResult,
-    )
+    })
+    let routeTreeContent = buildResult.routeTreeContent
+
     routeTreeContent = this.config.enableRouteTreeFormatting
       ? await format(routeTreeContent, this.config)
       : routeTreeContent
@@ -499,6 +501,14 @@ export class Generator {
       }
     }
 
+    this.plugins.map((plugin) => {
+      return plugin.onRouteTreeChanged?.({
+        routeTree: buildResult.routeTree,
+        routeNodes: buildResult.routeNodes,
+        acc,
+        rootRouteNode,
+      })
+    })
     this.swapCaches()
   }
 
@@ -507,127 +517,110 @@ export class Generator {
     this.routeNodeShadowCache = new Map()
   }
 
-  private buildRouteTreeFileContent(
-    rootRouteNode: RouteNode,
-    preRouteNodes: Array<RouteNode>,
-    routeFileResult: Array<{
-      cacheEntry: RouteNodeCacheEntry
-      node: RouteNode
-    }>,
-  ) {
-    const getImportForRouteNode = (node: RouteNode, exportName: string) => {
-      if (node.exports?.includes(exportName)) {
-        return {
-          source: `./${this.getImportPath(node)}`,
-          specifiers: [
-            {
-              imported: exportName,
-              local: `${node.variableName}${exportName}Import`,
-            },
-          ],
-        } satisfies ImportDeclaration
+  public buildRouteTree(opts: {
+    rootRouteNode: RouteNode
+    acc: HandleNodeAccumulator
+    routeFileResult: Array<RouteNode>
+    config?: Partial<Config>
+  }) {
+    const config = { ...this.config, ...(opts.config || {}) }
+
+    const { rootRouteNode, acc } = opts
+
+    const sortedRouteNodes = multiSortBy(acc.routeNodes, [
+      (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
+      (d) => d.routePath?.split('/').length,
+      (d) => (d.routePath?.endsWith(config.indexToken) ? -1 : 1),
+      (d) => d,
+    ])
+
+    const routeImports = sortedRouteNodes
+      .filter((d) => !d.isVirtual)
+      .flatMap((node) => getImportForRouteNode(node, config))
+
+    const virtualRouteNodes = sortedRouteNodes
+      .filter((d) => d.isVirtual)
+      .map((node) => {
+        return `const ${
+          node.variableName
+        }RouteImport = createFileRoute('${node.routePath}')()`
+      })
+
+    const imports: Array<ImportDeclaration> = []
+    if (acc.routeNodes.some((n) => n.isVirtual)) {
+      imports.push({
+        specifiers: [{ imported: 'createFileRoute' }],
+        source: this.targetTemplate.fullPkg,
+      })
+    }
+    if (config.verboseFileRoutes === false) {
+      const typeImport: ImportDeclaration = {
+        specifiers: [],
+        source: this.targetTemplate.fullPkg,
+        importKind: 'type',
       }
-      return undefined
+      if (
+        sortedRouteNodes.some(
+          (d) =>
+            isRouteNodeValidForAugmentation(d) && d._fsRouteType !== 'lazy',
+        )
+      ) {
+        typeImport.specifiers.push({ imported: 'CreateFileRoute' })
+      }
+      if (
+        sortedRouteNodes.some(
+          (node) =>
+            acc.routePiecesByPath[node.routePath!]?.lazy &&
+            isRouteNodeValidForAugmentation(node),
+        )
+      ) {
+        typeImport.specifiers.push({ imported: 'CreateLazyFileRoute' })
+      }
+
+      if (typeImport.specifiers.length > 0) {
+        typeImport.specifiers.push({ imported: 'FileRoutesByPath' })
+        imports.push(typeImport)
+      }
     }
 
-    const buildRouteTreeForExport = (plugin: GeneratorPluginWithTransform) => {
-      const exportName = plugin.transformPlugin.exportName
-      const acc: HandleNodeAccumulator = {
-        routeTree: [],
-        routeNodes: [],
-        routePiecesByPath: {},
-      }
-      for (const node of preRouteNodes) {
-        if (node.exports?.includes(plugin.transformPlugin.exportName)) {
-          this.handleNode(node, acc)
-        }
-      }
+    const routeTreeConfig = buildRouteTreeConfig(
+      acc.routeTree,
+      config.disableTypes,
+    )
 
-      const sortedRouteNodes = multiSortBy(acc.routeNodes, [
-        (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
-        (d) => d.routePath?.split('/').length,
-        (d) => (d.routePath?.endsWith(this.config.indexToken) ? -1 : 1),
-        (d) => d,
-      ])
+    const createUpdateRoutes = sortedRouteNodes.map((node) => {
+      const loaderNode = acc.routePiecesByPath[node.routePath!]?.loader
+      const componentNode = acc.routePiecesByPath[node.routePath!]?.component
+      const errorComponentNode =
+        acc.routePiecesByPath[node.routePath!]?.errorComponent
+      const pendingComponentNode =
+        acc.routePiecesByPath[node.routePath!]?.pendingComponent
+      const lazyComponentNode = acc.routePiecesByPath[node.routePath!]?.lazy
 
-      const pluginConfig = plugin.config({
-        generator: this,
-        rootRouteNode,
-        sortedRouteNodes,
-      })
-
-      const routeImports = sortedRouteNodes
-        .filter((d) => !d.isVirtual)
-        .flatMap((node) => getImportForRouteNode(node, exportName) ?? [])
-
-      const hasMatchingRouteFiles =
-        acc.routeNodes.length > 0 || rootRouteNode.exports?.includes(exportName)
-
-      const virtualRouteNodes = sortedRouteNodes
-        .filter((d) => d.isVirtual)
-        .map((node) => {
-          return `const ${
-            node.variableName
-          }${exportName}Import = ${plugin.createVirtualRouteCode({ node })}`
-        })
-      if (
-        !rootRouteNode.exports?.includes(exportName) &&
-        pluginConfig.virtualRootRoute
-      ) {
-        virtualRouteNodes.unshift(
-          `const ${rootRouteNode.variableName}${exportName}Import = ${plugin.createRootRouteCode()}`,
-        )
-      }
-
-      const imports = plugin.imports({
-        sortedRouteNodes,
-        acc,
-        generator: this,
-        rootRouteNode,
-      })
-
-      const routeTreeConfig = buildRouteTreeConfig(
-        acc.routeTree,
-        exportName,
-        this.config.disableTypes,
-      )
-
-      const createUpdateRoutes = sortedRouteNodes.map((node) => {
-        const loaderNode = acc.routePiecesByPath[node.routePath!]?.loader
-        const componentNode = acc.routePiecesByPath[node.routePath!]?.component
-        const errorComponentNode =
-          acc.routePiecesByPath[node.routePath!]?.errorComponent
-        const pendingComponentNode =
-          acc.routePiecesByPath[node.routePath!]?.pendingComponent
-        const lazyComponentNode = acc.routePiecesByPath[node.routePath!]?.lazy
-
-        return [
-          [
-            `const ${node.variableName}${exportName} = ${node.variableName}${exportName}Import.update({
+      return [
+        [
+          `const ${node.variableName}Route = ${node.variableName}RouteImport.update({
             ${[
               `id: '${node.path}'`,
               !node.isNonPath ? `path: '${node.cleanedPath}'` : undefined,
-              `getParentRoute: () => ${findParent(node, exportName)}`,
+              `getParentRoute: () => ${findParent(node)}`,
             ]
               .filter(Boolean)
               .join(',')}
-          }${this.config.disableTypes ? '' : 'as any'})`,
-            loaderNode
-              ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
-                  removeExt(
-                    path.relative(
-                      path.dirname(this.config.generatedRouteTree),
-                      path.resolve(
-                        this.config.routesDirectory,
-                        loaderNode.filePath,
-                      ),
-                    ),
-                    this.config.addExtensions,
+          }${config.disableTypes ? '' : 'as any'})`,
+          loaderNode
+            ? `.updateLoader({ loader: lazyFn(() => import('./${replaceBackslash(
+                removeExt(
+                  path.relative(
+                    path.dirname(config.generatedRouteTree),
+                    path.resolve(config.routesDirectory, loaderNode.filePath),
                   ),
-                )}'), 'loader') })`
-              : '',
-            componentNode || errorComponentNode || pendingComponentNode
-              ? `.update({
+                  config.addExtensions,
+                ),
+              )}'), 'loader') })`
+            : '',
+          componentNode || errorComponentNode || pendingComponentNode
+            ? `.update({
                 ${(
                   [
                     ['component', componentNode],
@@ -642,171 +635,141 @@ export class Generator {
                     }: lazyRouteComponent(() => import('./${replaceBackslash(
                       removeExt(
                         path.relative(
-                          path.dirname(this.config.generatedRouteTree),
-                          path.resolve(
-                            this.config.routesDirectory,
-                            d[1]!.filePath,
-                          ),
+                          path.dirname(config.generatedRouteTree),
+                          path.resolve(config.routesDirectory, d[1]!.filePath),
                         ),
-                        this.config.addExtensions,
+                        config.addExtensions,
                       ),
                     )}'), '${d[0]}')`
                   })
                   .join('\n,')}
               })`
-              : '',
-            lazyComponentNode
-              ? `.lazy(() => import('./${replaceBackslash(
-                  removeExt(
-                    path.relative(
-                      path.dirname(this.config.generatedRouteTree),
-                      path.resolve(
-                        this.config.routesDirectory,
-                        lazyComponentNode.filePath,
-                      ),
+            : '',
+          lazyComponentNode
+            ? `.lazy(() => import('./${replaceBackslash(
+                removeExt(
+                  path.relative(
+                    path.dirname(config.generatedRouteTree),
+                    path.resolve(
+                      config.routesDirectory,
+                      lazyComponentNode.filePath,
                     ),
-                    this.config.addExtensions,
                   ),
-                )}').then((d) => d.${exportName}))`
-              : '',
-          ].join(''),
-        ].join('\n\n')
-      })
+                  config.addExtensions,
+                ),
+              )}').then((d) => d.Route))`
+            : '',
+        ].join(''),
+      ].join('\n\n')
+    })
 
-      let fileRoutesByPathInterfacePerPlugin = ''
-      let fileRoutesByFullPathPerPlugin = ''
+    let fileRoutesByPathInterface = ''
+    let fileRoutesByFullPath = ''
 
-      if (!this.config.disableTypes && hasMatchingRouteFiles) {
-        fileRoutesByFullPathPerPlugin = [
-          `export interface File${exportName}sByFullPath {
+    if (!config.disableTypes) {
+      fileRoutesByFullPath = [
+        `export interface FileRoutesByFullPath {
 ${[...createRouteNodesByFullPath(acc.routeNodes).entries()]
   .filter(([fullPath]) => fullPath)
   .map(([fullPath, routeNode]) => {
-    return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode, exportName)}`
+    return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
 }`,
-          `export interface File${exportName}sByTo {
+        `export interface FileRoutesByTo {
 ${[...createRouteNodesByTo(acc.routeNodes).entries()]
   .filter(([to]) => to)
   .map(([to, routeNode]) => {
-    return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode, exportName)}`
+    return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
 }`,
-          `export interface File${exportName}sById {
-'${rootRouteId}': typeof root${exportName}Import,
+        `export interface FileRoutesById {
+'${rootRouteId}': typeof rootRouteImport,
 ${[...createRouteNodesById(acc.routeNodes).entries()].map(([id, routeNode]) => {
-  return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode, exportName)}`
+  return `'${id}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
 })}
 }`,
-          `export interface File${exportName}Types {
-file${exportName}sByFullPath: File${exportName}sByFullPath
+        `export interface FileRouteTypes {
+fileRoutesByFullPath: FileRoutesByFullPath
 fullPaths: ${
-            acc.routeNodes.length > 0
-              ? [...createRouteNodesByFullPath(acc.routeNodes).keys()]
-                  .filter((fullPath) => fullPath)
-                  .map((fullPath) => `'${fullPath}'`)
-                  .join('|')
-              : 'never'
-          }
-file${exportName}sByTo: File${exportName}sByTo
+          acc.routeNodes.length > 0
+            ? [...createRouteNodesByFullPath(acc.routeNodes).keys()]
+                .filter((fullPath) => fullPath)
+                .map((fullPath) => `'${fullPath}'`)
+                .join('|')
+            : 'never'
+        }
+fileRoutesByTo: FileRoutesByTo
 to: ${
-            acc.routeNodes.length > 0
-              ? [...createRouteNodesByTo(acc.routeNodes).keys()]
-                  .filter((to) => to)
-                  .map((to) => `'${to}'`)
-                  .join('|')
-              : 'never'
-          }
+          acc.routeNodes.length > 0
+            ? [...createRouteNodesByTo(acc.routeNodes).keys()]
+                .filter((to) => to)
+                .map((to) => `'${to}'`)
+                .join('|')
+            : 'never'
+        }
 id: ${[`'${rootRouteId}'`, ...[...createRouteNodesById(acc.routeNodes).keys()].map((id) => `'${id}'`)].join('|')}
-file${exportName}sById: File${exportName}sById
+fileRoutesById: FileRoutesById
 }`,
-          `export interface Root${exportName}Children {
-${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${getResolvedRouteNodeVariableName(child, exportName)}`).join(',')}
+        `export interface RootRouteChildren {
+${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`).join(',')}
 }`,
-        ].join('\n')
+      ].join('\n')
 
-        fileRoutesByPathInterfacePerPlugin = buildFileRoutesByPathInterface({
-          ...plugin.moduleAugmentation({ generator: this }),
-          routeNodes:
-            this.config.verboseFileRoutes !== false
-              ? sortedRouteNodes
-              : [
-                  ...routeFileResult.map(({ node }) => node),
-                  ...sortedRouteNodes.filter((d) => d.isVirtual),
-                ],
-          exportName,
-        })
-      }
+      fileRoutesByPathInterface = buildFileRoutesByPathInterface({
+        module: this.targetTemplate.fullPkg,
+        interfaceName: 'FileRoutesByPath',
+        routeNodes: sortedRouteNodes,
+      })
+    }
 
-      let routeTree = ''
-      if (hasMatchingRouteFiles) {
-        routeTree = [
-          `const root${exportName}Children${this.config.disableTypes ? '' : `: Root${exportName}Children`} = {
+    const routeTree = [
+      `const rootRouteChildren${config.disableTypes ? '' : `: RootRouteChildren`} = {
   ${acc.routeTree
     .map(
       (child) =>
-        `${child.variableName}${exportName}: ${getResolvedRouteNodeVariableName(child, exportName)}`,
+        `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`,
     )
     .join(',')}
 }`,
-          `export const ${lowerCaseFirstChar(exportName)}Tree = root${exportName}Import._addFileChildren(root${exportName}Children)${this.config.disableTypes ? '' : `._addFileTypes<File${exportName}Types>()`}`,
-        ].join('\n')
-      }
+      `export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)${config.disableTypes ? '' : `._addFileTypes<FileRouteTypes>()`}`,
+    ].join('\n')
 
-      return {
-        routeImports,
-        sortedRouteNodes,
-        acc,
-        virtualRouteNodes,
-        routeTreeConfig,
-        routeTree,
-        imports,
-        createUpdateRoutes,
-        fileRoutesByFullPathPerPlugin,
-        fileRoutesByPathInterfacePerPlugin,
-      }
-    }
-
-    const routeTrees = this.pluginsWithTransform.map((plugin) => ({
-      exportName: plugin.transformPlugin.exportName,
-      ...buildRouteTreeForExport(plugin),
-    }))
-
-    this.plugins.map((plugin) => {
-      return plugin.onRouteTreesChanged?.({
-        routeTrees,
-        rootRouteNode,
-        generator: this,
-      })
-    })
-
-    let mergedImports = mergeImportDeclarations(
-      routeTrees.flatMap((d) => d.imports),
+    checkRouteFullPathUniqueness(
+      sortedRouteNodes.filter(
+        (d) => d.children === undefined && 'lazy' !== d._fsRouteType,
+      ),
+      config,
     )
-    if (this.config.disableTypes) {
+
+    let mergedImports = mergeImportDeclarations(imports)
+    if (config.disableTypes) {
       mergedImports = mergedImports.filter((d) => d.importKind !== 'type')
     }
 
     const importStatements = mergedImports.map(buildImportString)
 
     let moduleAugmentation = ''
-    if (this.config.verboseFileRoutes === false && !this.config.disableTypes) {
-      moduleAugmentation = routeFileResult
-        .map(({ node }) => {
+    if (config.verboseFileRoutes === false && !config.disableTypes) {
+      moduleAugmentation = opts.routeFileResult
+        .map((node) => {
           const getModuleDeclaration = (routeNode?: RouteNode) => {
             if (!isRouteNodeValidForAugmentation(routeNode)) {
               return ''
             }
-            const moduleAugmentation = this.pluginsWithTransform
-              .map((plugin) => {
-                return plugin.routeModuleAugmentation({
-                  routeNode,
-                })
-              })
-              .filter(Boolean)
-              .join('\n')
+            let moduleAugmentation = ''
+            if (routeNode._fsRouteType === 'lazy') {
+              moduleAugmentation = `const createLazyFileRoute: CreateLazyFileRoute<FileRoutesByPath['${routeNode.routePath}']['preLoaderRoute']>`
+            } else {
+              moduleAugmentation = `const createFileRoute: CreateFileRoute<'${routeNode.routePath}',
+                  FileRoutesByPath['${routeNode.routePath}']['parentRoute'],
+                  FileRoutesByPath['${routeNode.routePath}']['id'],
+                  FileRoutesByPath['${routeNode.routePath}']['path'],
+                  FileRoutesByPath['${routeNode.routePath}']['fullPath']
+                >
+              `
+            }
 
-            return `declare module './${this.getImportPath(routeNode)}' {
+            return `declare module './${getImportPath(routeNode, config)}' {
                       ${moduleAugmentation}
                     }`
           }
@@ -815,47 +778,32 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
         .join('\n')
     }
 
-    const routeImports = routeTrees.flatMap((t) => t.routeImports)
-    const rootRouteImports = this.pluginsWithTransform.flatMap(
-      (p) =>
-        getImportForRouteNode(rootRouteNode, p.transformPlugin.exportName) ??
-        [],
-    )
-    if (rootRouteImports.length > 0) {
-      routeImports.unshift(...rootRouteImports)
-    }
+    const rootRouteImport = getImportForRouteNode(rootRouteNode, config)
+    routeImports.unshift(rootRouteImport)
+
     const routeTreeContent = [
-      ...this.config.routeTreeFileHeader,
+      ...config.routeTreeFileHeader,
       `// This file was automatically generated by TanStack Router.
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.`,
       [...importStatements].join('\n'),
       mergeImportDeclarations(routeImports).map(buildImportString).join('\n'),
-      routeTrees.flatMap((t) => t.virtualRouteNodes).join('\n'),
-      routeTrees.flatMap((t) => t.createUpdateRoutes).join('\n'),
-
-      routeTrees.map((t) => t.fileRoutesByFullPathPerPlugin).join('\n'),
-      routeTrees.map((t) => t.fileRoutesByPathInterfacePerPlugin).join('\n'),
+      virtualRouteNodes.join('\n'),
+      createUpdateRoutes.join('\n'),
+      fileRoutesByFullPath,
+      fileRoutesByPathInterface,
       moduleAugmentation,
-      routeTrees.flatMap((t) => t.routeTreeConfig).join('\n'),
-      routeTrees.map((t) => t.routeTree).join('\n'),
-      ...this.config.routeTreeFileFooter,
+      routeTreeConfig.join('\n'),
+      routeTree,
+      ...config.routeTreeFileFooter,
     ]
       .filter(Boolean)
       .join('\n\n')
-    return routeTreeContent
-  }
-
-  private getImportPath(node: RouteNode) {
-    return replaceBackslash(
-      removeExt(
-        path.relative(
-          path.dirname(this.config.generatedRouteTree),
-          path.resolve(this.config.routesDirectory, node.filePath),
-        ),
-        this.config.addExtensions,
-      ),
-    )
+    return {
+      routeTreeContent,
+      routeTree: acc.routeTree,
+      routeNodes: acc.routeNodes,
+    }
   }
 
   private async processRouteNodeFile(node: RouteNode): Promise<{
@@ -866,13 +814,14 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     const result = await this.isRouteFileCacheFresh(node)
 
     if (result.status === 'fresh') {
-      node.exports = result.cacheEntry.exports
       return {
-        node,
-        shouldWriteTree: result.exportsChanged,
+        node: result.cacheEntry.node,
+        shouldWriteTree: false,
         cacheEntry: result.cacheEntry,
       }
     }
+
+    const previousCacheEntry = result.cacheEntry
 
     const existingRouteFile = await this.fs.readFile(node.fullPath)
     if (existingRouteFile === 'file-not-existing') {
@@ -882,16 +831,18 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     const updatedCacheEntry: RouteNodeCacheEntry = {
       fileContent: existingRouteFile.fileContent,
       mtimeMs: existingRouteFile.stat.mtimeMs,
-      exports: [],
       routeId: node.routePath ?? '$$TSR_NO_ROUTE_PATH_ASSIGNED$$',
+      node,
     }
 
     const escapedRoutePath = node.routePath?.replaceAll('$', '$$') ?? ''
 
     let shouldWriteRouteFile = false
+    let shouldWriteTree = false
     // now we need to either scaffold the file or transform it
     if (!existingRouteFile.fileContent) {
       shouldWriteRouteFile = true
+      shouldWriteTree = true
       // Creating a new lazy route file
       if (node._fsRouteType === 'lazy') {
         const tLazyRouteTemplate = this.targetTemplate.lazyRoute
@@ -910,7 +861,6 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
             tsrExportEnd: tLazyRouteTemplate.imports.tsrExportEnd(),
           },
         )
-        updatedCacheEntry.exports = ['Route']
       } else if (
         // Creating a new normal route file
         (['layout', 'static'] satisfies Array<FsRouteType>).some(
@@ -938,33 +888,40 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
             tsrExportEnd: tRouteTemplate.imports.tsrExportEnd(),
           },
         )
-        updatedCacheEntry.exports = ['Route']
       } else {
         return null
       }
-    } else {
-      // transform the file
-      const transformResult = await transform({
-        source: updatedCacheEntry.fileContent,
-        ctx: {
-          target: this.config.target,
-          routeId: escapedRoutePath,
-          lazy: node._fsRouteType === 'lazy',
-          verboseFileRoutes: !(this.config.verboseFileRoutes === false),
-        },
-        plugins: this.transformPlugins,
-      })
+    }
+    // transform the file
+    const transformResult = await transform({
+      source: updatedCacheEntry.fileContent,
+      ctx: {
+        target: this.config.target,
+        routeId: escapedRoutePath,
+        lazy: node._fsRouteType === 'lazy',
+        verboseFileRoutes: !(this.config.verboseFileRoutes === false),
+      },
+      node,
+    })
 
-      if (transformResult.result === 'error') {
-        throw new Error(
-          `Error transforming route file ${node.fullPath}: ${transformResult.error}`,
-        )
-      }
-      updatedCacheEntry.exports = transformResult.exports
-      if (transformResult.result === 'modified') {
-        updatedCacheEntry.fileContent = transformResult.output
-        shouldWriteRouteFile = true
-      }
+    if (transformResult.result === 'no-route-export') {
+      this.logger.warn(
+        `Route file "${result.cacheEntry?.node.filePath}" does not contain any route piece. This is likely a mistake.`,
+      )
+      return null
+    }
+    if (transformResult.result === 'error') {
+      throw new Error(
+        `Error transforming route file ${node.fullPath}: ${transformResult.error}`,
+      )
+    }
+    if (transformResult.result === 'modified') {
+      updatedCacheEntry.fileContent = transformResult.output
+      shouldWriteRouteFile = true
+    }
+
+    for (const plugin of this.plugins) {
+      plugin.afterTransform?.({ node, prevNode: previousCacheEntry?.node })
     }
 
     // file was changed
@@ -981,11 +938,6 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     }
 
     this.routeNodeShadowCache.set(node.fullPath, updatedCacheEntry)
-    node.exports = updatedCacheEntry.exports
-    const shouldWriteTree = !deepEqual(
-      result.cacheEntry?.exports,
-      updatedCacheEntry.exports,
-    )
     return {
       node,
       shouldWriteTree,
@@ -1113,7 +1065,6 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     | {
         status: 'fresh'
         cacheEntry: RouteNodeCacheEntry
-        exportsChanged: boolean
       }
     | { status: 'stale'; cacheEntry?: RouteNodeCacheEntry }
   > {
@@ -1125,7 +1076,6 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
       this.routeNodeShadowCache.set(node.fullPath, fileChangedCache.cacheEntry)
       return {
         status: 'fresh',
-        exportsChanged: false,
         cacheEntry: fileChangedCache.cacheEntry,
       }
     }
@@ -1146,24 +1096,9 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
 
     if (shadowCacheFileChange.result === false) {
       // shadow cache has latest file state already
-      // compare shadowCache against cache to determine whether exports changed
-      // if they didn't, cache is fresh
       if (fileChangedCache.result === true) {
-        if (
-          deepEqual(
-            fileChangedCache.cacheEntry.exports,
-            shadowCacheFileChange.cacheEntry.exports,
-          )
-        ) {
-          return {
-            status: 'fresh',
-            exportsChanged: false,
-            cacheEntry: shadowCacheFileChange.cacheEntry,
-          }
-        }
         return {
           status: 'fresh',
-          exportsChanged: true,
           cacheEntry: shadowCacheFileChange.cacheEntry,
         }
       }
@@ -1181,9 +1116,7 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     const result = await this.isRouteFileCacheFresh(node)
 
     if (result.status === 'fresh') {
-      node.exports = result.cacheEntry.exports
       this.routeNodeShadowCache.set(node.fullPath, result.cacheEntry)
-      return result.exportsChanged
     }
     const rootNodeFile = await this.fs.readFile(node.fullPath)
     if (rootNodeFile === 'file-not-existing') {
@@ -1193,8 +1126,8 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
     const updatedCacheEntry: RouteNodeCacheEntry = {
       fileContent: rootNodeFile.fileContent,
       mtimeMs: rootNodeFile.stat.mtimeMs,
-      exports: [],
       routeId: node.routePath ?? '$$TSR_NO_ROOT_ROUTE_PATH_ASSIGNED$$',
+      node,
     }
 
     // scaffold the root route
@@ -1224,28 +1157,15 @@ ${acc.routeTree.map((child) => `${child.variableName}${exportName}: typeof ${get
       updatedCacheEntry.mtimeMs = stats.mtimeMs
     }
 
-    const rootRouteExports: Array<string> = []
-    for (const plugin of this.pluginsWithTransform) {
-      const exportName = plugin.transformPlugin.exportName
-      // TODO we need to parse instead of just string match
-      // otherwise a commented out export will still be detected
-      if (rootNodeFile.fileContent.includes(`export const ${exportName}`)) {
-        rootRouteExports.push(exportName)
-      }
-    }
-
-    updatedCacheEntry.exports = rootRouteExports
-    node.exports = rootRouteExports
     this.routeNodeShadowCache.set(node.fullPath, updatedCacheEntry)
-
-    const shouldWriteTree = !deepEqual(
-      result.cacheEntry?.exports,
-      rootRouteExports,
-    )
-    return shouldWriteTree
   }
 
-  private handleNode(node: RouteNode, acc: HandleNodeAccumulator) {
+  public async getCrawlingResult(): Promise<CrawlingResult | undefined> {
+    await this.runPromise
+    return this.crawlingResult
+  }
+
+  private static handleNode(node: RouteNode, acc: HandleNodeAccumulator) {
     // Do not remove this as we need to set the lastIndex to 0 as it
     // is necessary to reset the regex's index when using the global flag
     // otherwise it might not match the next time it's used

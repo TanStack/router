@@ -2,24 +2,20 @@ import { parseAst } from '@tanstack/router-utils'
 import { parse, print, types, visit } from 'recast'
 import { SourceMapConsumer } from 'source-map'
 import { mergeImportDeclarations } from '../utils'
+import { ensureStringArgument } from './utils'
 import type { ImportDeclaration } from '../types'
 import type { RawSourceMap } from 'source-map'
-import type {
-  TransformOptions,
-  TransformPlugin,
-  TransformResult,
-} from './types'
+import type { TransformOptions, TransformResult } from './types'
 
 const b = types.builders
 
 export async function transform({
   ctx,
   source,
-  plugins,
+  node,
 }: TransformOptions): Promise<TransformResult> {
   let appliedChanges = false as boolean
   let ast: types.namedTypes.File
-  const foundExports: Array<string> = []
   try {
     ast = parse(source, {
       sourceFileName: 'output.ts',
@@ -44,41 +40,77 @@ export async function transform({
 
   const preferredQuote = detectPreferredQuoteStyle(ast)
 
-  const registeredExports = new Map</* export name */ string, TransformPlugin>()
-
-  for (const plugin of plugins ?? []) {
-    const exportName = plugin.exportName
-    if (registeredExports.has(exportName)) {
+  let routeExportHandled = false as boolean
+  function onExportFound(decl: types.namedTypes.VariableDeclarator) {
+    if (decl.init?.type === 'CallExpression') {
+      const callExpression = decl.init
+      const firstArgument = callExpression.arguments[0]
+      if (firstArgument) {
+        if (firstArgument.type === 'ObjectExpression') {
+          const staticProperties = firstArgument.properties.flatMap((p) => {
+            if (p.type === 'ObjectProperty' && p.key.type === 'Identifier') {
+              return p.key.name
+            }
+            return []
+          })
+          node.createFileRouteProps = new Set(staticProperties)
+        }
+      }
+      let identifier: types.namedTypes.Identifier | undefined
+      // `const Route = createFileRoute({ ... })`
+      if (callExpression.callee.type === 'Identifier') {
+        identifier = callExpression.callee
+        if (ctx.verboseFileRoutes) {
+          // we need to add the string literal via another CallExpression
+          callExpression.callee = b.callExpression(identifier, [
+            b.stringLiteral(ctx.routeId),
+          ])
+          appliedChanges = true
+        }
+      }
+      // `const Route = createFileRoute('/path')({ ... })`
+      else if (
+        callExpression.callee.type === 'CallExpression' &&
+        callExpression.callee.callee.type === 'Identifier'
+      ) {
+        identifier = callExpression.callee.callee
+        if (!ctx.verboseFileRoutes) {
+          // we need to remove the route id
+          callExpression.callee = identifier
+          appliedChanges = true
+        } else {
+          // check if the route id is correct
+          appliedChanges = ensureStringArgument(
+            callExpression.callee,
+            ctx.routeId,
+            ctx.preferredQuote,
+          )
+        }
+      }
+      if (identifier === undefined) {
+        throw new Error(
+          `expected identifier to be present in ${ctx.routeId} for export "Route"`,
+        )
+      }
+      if (identifier.name === 'createFileRoute' && ctx.lazy) {
+        identifier.name = 'createLazyFileRoute'
+        appliedChanges = true
+      } else if (identifier.name === 'createLazyFileRoute' && !ctx.lazy) {
+        identifier.name = 'createFileRoute'
+        appliedChanges = true
+      }
+    } else {
       throw new Error(
-        `Export ${exportName} is already registered by plugin ${registeredExports.get(exportName)?.name}`,
+        `expected "Route" export to be initialized by a CallExpression`,
       )
     }
-    registeredExports.set(exportName, plugin)
-  }
-
-  function onExportFound(
-    decl: types.namedTypes.VariableDeclarator,
-    exportName: string,
-    plugin: TransformPlugin,
-  ) {
-    const pluginAppliedChanges = plugin.onExportFound({
-      decl,
-      ctx: { ...ctx, preferredQuote },
-    })
-    if (pluginAppliedChanges) {
-      appliedChanges = true
-    }
-
-    // export is handled, remove it from the registered exports
-    registeredExports.delete(exportName)
-    // store the export so we can later return it once the file is transformed
-    foundExports.push(exportName)
+    routeExportHandled = true
   }
 
   const program: types.namedTypes.Program = ast.program
-  // first pass: find registered exports
+  // first pass: find Route export
   for (const n of program.body) {
-    if (registeredExports.size > 0 && n.type === 'ExportNamedDeclaration') {
+    if (n.type === 'ExportNamedDeclaration') {
       // direct export of a variable declaration, e.g. `export const Route = createFileRoute('/path')`
       if (n.declaration?.type === 'VariableDeclaration') {
         const decl = n.declaration.declarations[0]
@@ -87,9 +119,8 @@ export async function transform({
           decl.type === 'VariableDeclarator' &&
           decl.id.type === 'Identifier'
         ) {
-          const plugin = registeredExports.get(decl.id.name)
-          if (plugin) {
-            onExportFound(decl, decl.id.name, plugin)
+          if (decl.id.name === 'Route') {
+            onExportFound(decl)
           }
         }
       }
@@ -97,8 +128,7 @@ export async function transform({
       else if (n.declaration === null && n.specifiers) {
         for (const spec of n.specifiers) {
           if (typeof spec.exported.name === 'string') {
-            const plugin = registeredExports.get(spec.exported.name)
-            if (plugin) {
+            if (spec.exported.name === 'Route') {
               const variableName = spec.local?.name || spec.exported.name
               // find the matching variable declaration by iterating over the top-level declarations
               for (const decl of program.body) {
@@ -112,7 +142,7 @@ export async function transform({
                     variable.id.type === 'Identifier' &&
                     variable.id.name === variableName
                   ) {
-                    onExportFound(variable, spec.exported.name, plugin)
+                    onExportFound(variable)
                     break
                   }
                 }
@@ -121,6 +151,15 @@ export async function transform({
           }
         }
       }
+    }
+    if (routeExportHandled) {
+      break
+    }
+  }
+
+  if (!routeExportHandled) {
+    return {
+      result: 'no-route-export',
     }
   }
 
@@ -132,16 +171,44 @@ export async function transform({
     banned: [],
   }
 
-  for (const plugin of plugins ?? []) {
-    const exportName = plugin.exportName
-    if (foundExports.includes(exportName)) {
-      const pluginImports = plugin.imports(ctx)
-      if (pluginImports.required) {
-        imports.required.push(...pluginImports.required)
-      }
-      if (pluginImports.banned) {
-        imports.banned.push(...pluginImports.banned)
-      }
+  const targetModule = `@tanstack/${ctx.target}-router`
+  if (ctx.verboseFileRoutes === false) {
+    imports.banned = [
+      {
+        source: targetModule,
+        specifiers: [
+          { imported: 'createLazyFileRoute' },
+          { imported: 'createFileRoute' },
+        ],
+      },
+    ]
+  } else {
+    if (ctx.lazy) {
+      imports.required = [
+        {
+          source: targetModule,
+          specifiers: [{ imported: 'createLazyFileRoute' }],
+        },
+      ]
+      imports.banned = [
+        {
+          source: targetModule,
+          specifiers: [{ imported: 'createFileRoute' }],
+        },
+      ]
+    } else {
+      imports.required = [
+        {
+          source: targetModule,
+          specifiers: [{ imported: 'createFileRoute' }],
+        },
+      ]
+      imports.banned = [
+        {
+          source: targetModule,
+          specifiers: [{ imported: 'createLazyFileRoute' }],
+        },
+      ]
     }
   }
 
@@ -289,7 +356,6 @@ export async function transform({
 
   if (!appliedChanges) {
     return {
-      exports: foundExports,
       result: 'not-modified',
     }
   }
@@ -310,7 +376,6 @@ export async function transform({
   }
   return {
     result: 'modified',
-    exports: foundExports,
     output: transformedCode,
   }
 }

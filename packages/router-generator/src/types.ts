@@ -12,7 +12,7 @@ export type RouteNode = {
   isVirtual?: boolean
   children?: Array<RouteNode>
   parent?: RouteNode
-  exports?: Array<string>
+  createFileRouteProps?: Set<string>
 }
 
 export interface GetRouteNodesResult {

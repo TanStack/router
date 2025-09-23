@@ -9,8 +9,6 @@ export async function loadVirtualModule<TId extends keyof VirtualModules>(
   id: TId,
 ): Promise<VirtualModules[TId]> {
   switch (id) {
-    case VIRTUAL_MODULES.routeTree:
-      return (await import('tanstack-start-route-tree:v')) as any
     case VIRTUAL_MODULES.startManifest:
       return (await import('tanstack-start-manifest:v')) as any
     case VIRTUAL_MODULES.serverFnManifest:
