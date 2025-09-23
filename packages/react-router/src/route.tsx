@@ -325,7 +325,7 @@ export function createRoute<
   TLoaderFn = undefined,
   TChildren = unknown,
   TSSR = unknown,
-  TServerMiddlewares = unknown,
+  const TServerMiddlewares = unknown,
 >(
   options: RouteOptions<
     TRegister,
@@ -564,7 +564,7 @@ export function createRootRoute<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
-  TServerMiddlewares = unknown,
+  const TServerMiddlewares = unknown,
 >(
   options?: RootRouteOptions<
     TRegister,

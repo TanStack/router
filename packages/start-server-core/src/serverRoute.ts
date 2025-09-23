@@ -76,6 +76,25 @@ declare module '@tanstack/router-core' {
     in out TServerMiddlewares,
   > {
     middlewares: TServerMiddlewares
+    allServerContext: ResolveAllServerContext<TParentRoute, TServerMiddlewares>
+  }
+
+  interface BeforeLoadContextOptions<
+    in out TParentRoute extends AnyRoute,
+    in out TSearchValidator,
+    in out TParams,
+    in out TRouterContext,
+    in out TRouteContextFn,
+    in out TServerMiddlewares,
+  > {
+    serverContext?: ResolveAllServerContext<TParentRoute, TServerMiddlewares>
+    // serverContext?: AssignAllServerContext<TServerMiddlewares, {}>
+    // serverContext?: TServerMiddlewares extends [infer TMiddleware]
+    //   ? TMiddleware extends AnyRequestMiddleware
+    //     ? Assign<undefined, TMiddleware['_types']['allServerContext']>
+    //     : 1
+    //   : 2
+    // serverContext?: TServerMiddlewares
   }
 }
 
@@ -147,10 +166,10 @@ export type ResolveAllServerContext<
   TParentRoute extends AnyRoute,
   TServerMiddlewares,
 > = unknown extends TParentRoute
-  ? AssignAllServerContext<TServerMiddlewares>
+  ? AssignAllServerContext<TServerMiddlewares, {}>
   : Assign<
       TParentRoute['types']['allServerContext'],
-      AssignAllServerContext<TServerMiddlewares>
+      AssignAllServerContext<TServerMiddlewares, {}>
     >
 
 export type RouteMethodsOptions<
