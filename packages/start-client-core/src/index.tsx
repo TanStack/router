@@ -33,7 +33,6 @@ export {
   type FunctionClientResultWithContext,
   type AssignAllClientContextBeforeNext,
   type AssignAllMiddleware,
-  type AssignAllServerContext,
   type FunctionMiddlewareAfterValidator,
   type FunctionMiddlewareClientFn,
   type FunctionMiddlewareServerFnResult,

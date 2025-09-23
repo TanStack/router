@@ -24,20 +24,39 @@ declare module '@tanstack/react-start' {
   interface Register {
     server: {
       requestContext: {
-        hello1?: string
+        fromRequest?: string
       }
     }
   }
 }
 
-const someMw = createMiddleware({ type: 'function' }).server(({ next }) => {
-  return next({
-    context: { serverMiddlewareValue: 'hello from the server middleware!' },
-  })
-})
+// const someReqMw = createMiddleware().server(({ next, context }) => {
+//   context?.fromRequest
+//   return next({
+//     context: { fromGlobalReqMiddleware: 'hello from the request middleware!' },
+//   })
+// })
 
-const someReqMw = createMiddleware().server(({ next }) => {
-  return next({ context: { requestMw: 'hello from the request middleware!' } })
+const someMw = createMiddleware({ type: 'function' }).server(
+  ({ next, context }) => {
+    context?.fromRequest
+    return next({
+      context: { fromGlobalFnMiddleware: 'hello from the server middleware!' },
+    })
+  },
+)
+
+// createMiddleware().server(({ next, context }) => {
+//   context.fromRequest
+//   context.fromGlobalReqMiddleware
+//   return next()
+// })
+
+createMiddleware({ type: 'function' }).server(({ next, context }) => {
+  context.fromRequest
+  context.fromGlobalReqMiddleware
+  context.fromGlobalFnMiddleware
+  return next()
 })
 
 const fooAdapter = createSerializationAdapter({
@@ -51,7 +70,7 @@ export function getStart() {
   return createStart({
     defaultSsr: true,
     serializationAdapters: [fooAdapter],
-    requestMiddleware: [someReqMw],
-    functionMiddleware: [someMw],
+    // requestMiddleware: [someReqMw],
+    // functionMiddleware: [someMw],
   })
 }
