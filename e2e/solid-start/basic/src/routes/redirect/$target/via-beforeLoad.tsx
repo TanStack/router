@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { redirect, createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/redirect/$target/via-beforeLoad')({

@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { Link, createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/redirect/$target/serverFn/')({

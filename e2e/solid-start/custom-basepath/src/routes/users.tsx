@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 import axios from 'redaxios'
 import type { User } from '~/utils/users'

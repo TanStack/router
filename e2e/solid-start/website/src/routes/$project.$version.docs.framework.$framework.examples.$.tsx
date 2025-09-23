@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/solid-router'
 import { NotFound } from '~/components/NotFound'
 import { capitalize, seo } from '~/utils/seo'

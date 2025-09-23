@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { createFileRoute } from '@tanstack/react-router'
 import { json } from '@tanstack/solid-start'
 import type { User } from '~/utils/users'
 

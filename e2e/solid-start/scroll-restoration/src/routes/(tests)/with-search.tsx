@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/solid-router'
 import { z } from 'zod'
 import { zodValidator } from '@tanstack/zod-adapter'

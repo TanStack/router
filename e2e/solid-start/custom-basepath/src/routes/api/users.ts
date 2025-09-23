@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/solid-router'
 import { createMiddleware, json } from '@tanstack/solid-start'
 import type { User } from '~/utils/users'

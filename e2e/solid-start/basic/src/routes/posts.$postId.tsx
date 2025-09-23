@@ -1,4 +1,3 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { ErrorComponent, Link, createFileRoute } from '@tanstack/solid-router'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 
