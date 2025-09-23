@@ -4,15 +4,15 @@ title: Build a Project from Scratch
 ---
 
 > [!NOTE]
-> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Learn the Basics](../learn-the-basics.md) guide.
+> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](../routing) guide.
 
 _So you want to build a TanStack Start project from scratch?_
 
 This guide will help you build a **very** basic TanStack Start web application. Together, we will use TanStack Start to:
 
-- Serve an index page...
-- Which displays a counter...
-- With a button to increment the counter persistently.
+- Serve an index page
+- Display a counter
+- Increment the counter on the server and client
 
 [Here is what that will look like](https://stackblitz.com/github/tanstack/router/tree/main/examples/react/start-counter)
 

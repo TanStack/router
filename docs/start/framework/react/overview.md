@@ -5,70 +5,40 @@ title: TanStack Start Overview
 
 TanStack Start is a full-stack React framework powered by TanStack Router. It provides a full-document SSR, streaming, server functions, bundling, and more. Thanks to [Vite](https://vite.dev/), it's ready to develop and deploy to any hosting provider or runtime you want!
 
-## Router or Start?
+## Dependencies
 
-TanStack Router is a powerful, type-safe, and full-featured routing system for React applications. It is designed to handle the beefiest of full-stack routing requirements with ease. TanStack Start builds on top of Router's type system to provide type-safe full-stack APIs that keep you in the fast lane.
+TanStack Start is built on two key technologies:
 
-What you get with TanStack Router:
+- **[TanStack Router](https://tanstack.com/router)**: A type-safe router for building web applications with advanced features like nested routing, search params, and data loading
+- **[Vite](https://vite.dev/)**: A modern build tool that provides fast development with hot module replacement and optimized production builds
 
-- 100% inferred TypeScript support
-- Typesafe navigation
-- Nested Routing and pathless layout routes
-- Built-in Route Loaders w/ SWR Caching
-- Designed for client-side data caches (TanStack Query, SWR, etc.)
-- Automatic route prefetching
-- Asynchronous route elements and error boundaries
-- File-based Route Generation
-- Typesafe JSON-first Search Params state management APIs
-- Path and Search Parameter Schema Validation
-- Search Param Navigation APIs
-- Custom Search Param parser/serializer support
-- Search param middleware
-- Route matching/loading middleware
+## Should I use TanStack Start or just TanStack Router?
 
-What you get with TanStack Start:
+90% of any framework usually comes down to the router, and TanStack Start is no different. **TanStack Start relies 100% on TanStack Router for its routing system.** In addition to TanStack Router's amazing features, Start enables even more powerful features:
 
-- Full-document SSR
-- Streaming
-- Server Functions / RPCs
-- Bundling
-- Deployment
-- Full-Stack Type Safety
+- **Full-document SSR** - Server-side rendering for better performance and SEO
+- **Streaming** - Progressive page loading for improved user experience
+- **Server Routes & API Routes** - Build backend endpoints alongside your frontend
+- **Server Functions** - Type-safe RPCs between client and server
+- **Middleware & Context** - Powerful request/response handling and data injection
+- **Full-Stack Bundling** - Optimized builds for both client and server code
+- **Universal Deployment** - Deploy to any Vite-compatible hosting provider
+- **End-to-End Type Safety** - Full TypeScript support across the entire stack
 
-**In summary, use TanStack Router for client-side routing and TanStack Start for full-stack routing.**
+That said, if you **know with certainty** that you will not need any of the above features, then you may want to consider using TanStack Router alone, which is still a powerful and type-safe SPA routing upgrade over other routers and frameworks.
 
-## How does it work?
+## Are there limitations?
 
-TanStack Start uses [Vite](https://vitejs.dev/) to bundle and deploy your application and empowers amazing features like:
+The only relevant limitation is that TanStack Start does not currently support React Server Components, **but we are actively working on integration and expect to support them in the near future.**
 
-- Provide a unified API for SSR, streaming, and hydration
-- Extract server-only code from your client-side code (e.g. server functions)
-- Bundle your application for deployment to any hosting provider
-
-## When should I use it?
-
-TanStack Start is perfect for you if you want to build a full-stack React application with the following requirements:
-
-- Full-document SSR & Hydration
-- Streaming
-- Server Functions / RPCs
-- Full-Stack Type Safety
-- Robust Routing
-- Rich Client-Side Interactivity
-
-## When might I not want to use it?
-
-TanStack Start is not for you if:
-
-- Your goal is a server-rendered site with zero JS or minimal client-side interactivity
-- You're looking for a React-Server-Component-first framework. (We'll support RSCs soon in our own awesome flavor!)
+Otherwise, TanStack Start provides the same capability as other full-stack frameworks like Next.js, Remix, etc, with even more features and a more powerful developer experience.
 
 ## How is TanStack Start funded?
 
-TanStack works closely with our partners to provide the best possible developer experience while also providing solutions that work anywhere and are vetted by industry experts. Each of our partners plays a unique role in the TanStack ecosystem:
+TanStack is 100% open source, free to use, and always will be. It is built and maintained by an extremely talented and dedicated community of developers and software engineers. TanStack.com (also open source) is owned by TanStack LLC, a privately held company, 100% bootstrapped and self-funded. We are not venture-backed and have never sought investors. To support the development of TanStack Start and other TanStack libraries, TanStack.com partners with [these amazing companies](https://tanstack.com/partners?status=active&libraries=%5B%22start%22%5D) who offer both financial support and resources to help us continue to build the best possible developer experience for the web community:
 
-<iframe src="https://tanstack.com/partners-embed" style="aspect-ratio: 1/1; width: 100%;"></iframe>
+<iframe src="https://tanstack.com/partners-embed" style="aspect-ratio: 1/2; width: 100%;"></iframe>
 
 ## Ready to get started?
 
-Proceed to the next page to learn how to install TanStack Start and create your first app!
+Go to the next page to learn how to install TanStack Start and create your first app!
