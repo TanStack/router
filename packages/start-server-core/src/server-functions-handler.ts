@@ -19,7 +19,13 @@ function sanitizeBase(base: string | undefined) {
   return base.replace(/^\/|\/$/g, '')
 }
 
-export const handleServerAction = async ({ request }: { request: Request }) => {
+export const handleServerAction = async ({
+  request,
+  context,
+}: {
+  request: Request
+  context: any
+}) => {
   const controller = new AbortController()
   const signal = controller.signal
   const abort = () => controller.abort()
@@ -60,7 +66,7 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
 
   function parsePayload(payload: any) {
     const parsedPayload = fromJSON(payload, { plugins: serovalPlugins })
-    return parsedPayload
+    return parsedPayload as any
   }
 
   const response = await (async () => {
@@ -82,12 +88,15 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
           formData.delete(TSS_FORMDATA_CONTEXT)
 
           const params = {
-            context: {} as any,
+            context,
             data: formData,
           }
           if (typeof serializedContext === 'string') {
             try {
-              params.context = parsePayload(JSON.parse(serializedContext))
+              const parsedContext = JSON.parse(serializedContext)
+              if (typeof parsedContext === 'object' && parsedContext) {
+                params.context = { ...context, ...parsedContext }
+              }
             } catch {}
           }
 
@@ -103,8 +112,8 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
           // By default the payload is the search params
           let payload: any = search.payload
           // If there's a payload, we should try to parse it
-          payload = payload ? await parsePayload(JSON.parse(payload)) : payload
-
+          payload = payload ? parsePayload(JSON.parse(payload)) : payload
+          payload.context = { ...context, ...payload.context }
           // Send it through!
           return await action(payload, signal)
         }
@@ -120,9 +129,10 @@ export const handleServerAction = async ({ request }: { request: Request }) => {
         const jsonPayload = await request.json()
 
         // If this POST request was created by createServerFn,
-        // its payload will be the only argument
+        // its payload  will be the only argument
         if (isCreateServerFn) {
-          const payload = await parsePayload(jsonPayload)
+          const payload = parsePayload(jsonPayload)
+          payload.context = { ...payload.context, ...context }
           return await action(payload, signal)
         }
 

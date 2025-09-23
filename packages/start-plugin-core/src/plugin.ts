@@ -65,10 +65,10 @@ export function TanStackStartVitePluginCore(
         const root = viteConfig.root || process.cwd()
         const resolvedSrcDirectory = join(root, startConfig.srcDirectory)
 
-        const routerFilePath = resolveEntry({
-          type: 'router entry',
-          configuredEntry: startConfig.router.entry,
-          defaultEntry: 'router',
+        const startFilePath = resolveEntry({
+          type: 'start entry',
+          configuredEntry: startConfig.start.entry,
+          defaultEntry: 'start',
           root,
           resolvedSrcDirectory,
           required: true,
@@ -109,7 +109,7 @@ export function TanStackStartVitePluginCore(
           (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS],
           string
         > = {
-          [ENTRY_POINTS.router]: routerFilePath,
+          [ENTRY_POINTS.start]: startFilePath,
           [ENTRY_POINTS.client]: clientAlias,
           [ENTRY_POINTS.server]: serverAlias,
         }

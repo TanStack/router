@@ -1,8 +1,13 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { AnyRouter } from '@tanstack/router-core'
+import type { AnyRouter, Awaitable } from '@tanstack/router-core'
 
 export interface StartStorageContext {
-  router: AnyRouter
+  getRouter: () => Awaitable<AnyRouter>
+
+  // TODO type this properly
+  start: /* AnyStartConfig*/ any
+
+  contextAfterGlobalMiddlewares: any
 }
 
 const startStorage = new AsyncLocalStorage<StartStorageContext>()

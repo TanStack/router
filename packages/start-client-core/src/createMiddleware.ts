@@ -28,7 +28,7 @@ export function createMiddleware<
   >,
 ): CreateMiddlewareResult<TRegister, TType> {
   const resolvedOptions = {
-    type: 'function',
+    type: 'request',
     ...(__opts ||
       (options as FunctionMiddlewareOptions<
         TRegister,

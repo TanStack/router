@@ -109,6 +109,10 @@ export function tanStackStartRouter(config: Config): Array<PluginOption> {
     },
     tanstackRouterGenerator({
       ...config,
+      routeTreeFileFooter: [
+        `import type { createStart } from  '@tanstack/${config.target}-start'`,
+        ...config.routeTreeFileFooter,
+      ],
       plugins: [clientTreeGeneratorPlugin, routesManifestPlugin()],
     }),
     tanStackRouterCodeSplitter({
