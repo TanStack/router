@@ -479,10 +479,6 @@ const globalMiddleware2 = createMiddleware({ type: 'function' }).server(
   },
 )
 
-registerGlobalMiddleware({
-  middleware: [globalMiddleware1, globalMiddleware2],
-})
-
 const a = createMiddleware({ type: 'function' }).server(async ({ next }) => {
   console.log('a')
   return next()
