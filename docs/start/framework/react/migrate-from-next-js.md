@@ -211,16 +211,16 @@ Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
 
 ### 6. Are we migrated yet?
 
-Before you can run the development server, you need to create a router file that will define the behavior of TanStack Router within TanStack Start.
+Before you can run the development server, you need to create a file that will define the behavior of TanStack Router within TanStack Start.
 
-- `src/router.tsx`
+- `src/start.tsx`
 
 ```tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
@@ -230,7 +230,7 @@ export function createRouter() {
 
 declare module '@tanstack/react-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>
+    router: ReturnType<typeof getRouter>
   }
 }
 ```
