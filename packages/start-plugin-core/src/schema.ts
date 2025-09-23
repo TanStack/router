@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
+import type { TanStackStartVitePluginCoreOptions } from './plugin'
 
 const tsrConfig = configSchema
   .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
@@ -8,6 +9,7 @@ const tsrConfig = configSchema
 
 export function parseStartConfig(
   opts: z.input<typeof tanstackStartOptionsSchema>,
+  corePluginOpts: TanStackStartVitePluginCoreOptions,
   root: string,
 ) {
   const options = tanstackStartOptionsSchema.parse(opts)
@@ -36,6 +38,7 @@ export function parseStartConfig(
         },
         root,
       ),
+      target: corePluginOpts.framework,
     },
   }
 }

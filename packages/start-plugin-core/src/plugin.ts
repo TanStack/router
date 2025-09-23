@@ -64,7 +64,11 @@ export function TanStackStartVitePluginCore(
       throw new Error(`Cannot get config before root is resolved`)
     }
     if (!startConfig) {
-      startConfig = parseStartConfig(startPluginOpts, resolvedStartConfig.root)
+      startConfig = parseStartConfig(
+        startPluginOpts,
+        corePluginOpts,
+        resolvedStartConfig.root,
+      )
     }
     return { startConfig, resolvedStartConfig }
   }
