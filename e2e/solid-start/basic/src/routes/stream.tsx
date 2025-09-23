@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { Await, createFileRoute } from '@tanstack/solid-router'
 import { createEffect, createSignal } from 'solid-js'
 

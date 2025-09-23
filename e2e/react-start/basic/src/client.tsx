@@ -6,7 +6,6 @@ import { StartClient } from '@tanstack/react-start/client'
 
 console.log("[client-entry]: using custom client entry in 'src/client.tsx'")
 
-
 startTransition(() => {
   hydrateRoot(
     document,

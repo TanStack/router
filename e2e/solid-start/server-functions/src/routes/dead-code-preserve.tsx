@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/solid-router'
 import * as fs from 'node:fs'
 import { createServerFn } from '@tanstack/solid-start'

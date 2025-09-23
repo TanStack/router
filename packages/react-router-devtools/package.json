@@ -62,7 +62,8 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-devtools-core": "workspace:*"
+    "@tanstack/router-devtools-core": "workspace:*",
+    "vite": "^7.1.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

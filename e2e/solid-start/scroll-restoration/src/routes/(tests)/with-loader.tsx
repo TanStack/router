@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/solid-router'
 import { sleep } from 'src/utils/posts'
 import { ScrollBlock } from '../-components/scroll-block'

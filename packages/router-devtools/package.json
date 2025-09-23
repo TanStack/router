@@ -62,9 +62,10 @@
     "node": ">=12"
   },
   "dependencies": {
+    "@tanstack/react-router-devtools": "workspace:*",
     "clsx": "^2.1.1",
     "goober": "^2.1.16",
-    "@tanstack/react-router-devtools": "workspace:*"
+    "vite": "^7.1.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
