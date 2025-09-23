@@ -112,29 +112,15 @@ declare module '@tanstack/router-core' {
   }
 }
 
-type ExtractHandlersContext<THandlers> =
-  THandlers extends Record<
-    string,
-    RouteMethodHandlerFn<any, any, any, any, any, any>
-  >
-    ? THandlers extends Record<string, infer TRouteMethodHandler>
-      ? UnionToIntersection<
-          TRouteMethodHandler extends RouteMethodHandlerFn<
-            any,
-            any,
-            any,
-            any,
-            any,
-            any
-          >
-            ? ReturnType<TRouteMethodHandler> extends RouteMethodNextResult<
-                infer TContext
-              >
-              ? TContext
-              : undefined
-            : undefined
-        >
-      : undefined
+type ExtractHandlersContext<THandlers> = THandlers extends (
+  ...args: any
+) => CustomHandlerFunctionsRecord<any, any, any, any, any, infer TServerContext>
+  ? UnionToIntersection<TServerContext>
+  : THandlers extends Record<
+        string,
+        RouteMethodHandler<any, any, any, any, any, infer TServerContext>
+      >
+    ? UnionToIntersection<TServerContext>
     : undefined
 
 export interface RouteServerOptions<
@@ -155,55 +141,38 @@ export interface RouteServerOptions<
     ReadonlyArray<AnyRequestMiddleware>
   >
 
-  // handlers?: Constrain<
-  //   THandlers,
-  //   Partial<
-  //     Record<
-  //       RouteMethod,
-  //       RouteMethodHandlerFn<TParentRoute, TPath, TServerMiddlewares, any, any>
-  //     >
-  //   >
-  // >
-  handlers?:
-    | Constrain<
-        THandlers,
-        Partial<
-          Record<
-            RouteMethod,
-            RouteMethodHandlerFn<
-              TRegister,
-              TParentRoute,
-              TPath,
-              TServerMiddlewares,
-              any,
-              any
-            >
-          >
-        >
-      >
-    | Constrain<
-        THandlers,
-        (
-          opts: HandlersFnOpts<
+  handlers?: Constrain<
+    THandlers,
+    | Partial<
+        Record<
+          RouteMethod,
+          RouteMethodHandlerFn<
             TRegister,
             TParentRoute,
             TPath,
-            TServerMiddlewares
-          >,
-        ) => Partial<
-          Record<
-            RouteMethod,
-            RouteMethodHandler<
-              TRegister,
-              TParentRoute,
-              TPath,
-              TServerMiddlewares,
-              any,
-              any
-            >
+            TServerMiddlewares,
+            any,
+            any
           >
         >
       >
+    | ((
+        opts: HandlersFnOpts<
+          TRegister,
+          TParentRoute,
+          TPath,
+          TServerMiddlewares
+        >,
+      ) => CustomHandlerFunctionsRecord<
+        TRegister,
+        TParentRoute,
+        TPath,
+        TServerMiddlewares,
+        any,
+        any
+      >)
+  >
+  test?: (test: Expand<ExtractHandlersContext<THandlers>>) => void
 }
 
 declare const createHandlersSymbol: unique symbol
@@ -214,7 +183,7 @@ type CustomHandlerFunctionsRecord<
   TPath extends string,
   TServerMiddlewares,
   TMethodMiddlewares,
-  TServerFn,
+  TServerContext,
 > = {
   [createHandlersSymbol]: true
 } & Partial<
@@ -226,7 +195,7 @@ type CustomHandlerFunctionsRecord<
       TPath,
       TServerMiddlewares,
       TMethodMiddlewares,
-      TServerFn
+      TServerContext
     >
   >
 >
@@ -241,8 +210,7 @@ export interface HandlersFnOpts<
     TRegister,
     TParentRoute,
     TPath,
-    TServerMiddlewares,
-    any
+    TServerMiddlewares
   >
 }
 
@@ -251,7 +219,6 @@ export type CreateHandlersFn<
   TParentRoute extends AnyRoute,
   TPath extends string,
   TServerMiddlewares,
-  TServerFn,
 > = <
   const TMethodAllMiddlewares,
   const TMethodGetMiddlewares,
@@ -261,6 +228,7 @@ export type CreateHandlersFn<
   const TMethodDeleteMiddlewares,
   const TMethodOptionsMiddlewares,
   const TMethodHeadMiddlewares,
+  TServerContext,
 >(
   opts: CreateMethodFnOpts<
     TRegister,
@@ -275,7 +243,7 @@ export type CreateHandlersFn<
     TMethodDeleteMiddlewares,
     TMethodOptionsMiddlewares,
     TMethodHeadMiddlewares,
-    TServerFn
+    TServerContext
   >,
 ) => CustomHandlerFunctionsRecord<
   TRegister,
@@ -283,7 +251,7 @@ export type CreateHandlersFn<
   TPath,
   TServerMiddlewares,
   any,
-  any
+  TServerContext
 >
 
 export interface CreateMethodFnOpts<
@@ -299,7 +267,7 @@ export interface CreateMethodFnOpts<
   TMethodDeleteMiddlewares,
   TMethodOptionsMiddlewares,
   TMethodHeadMiddlewares,
-  TServerFn,
+  TServerContext,
 > {
   ALL?: RouteMethodHandler<
     TRegister,
@@ -307,7 +275,7 @@ export interface CreateMethodFnOpts<
     TPath,
     TServerMiddlewares,
     TMethodAllMiddlewares,
-    TServerFn
+    TServerContext
   >
   GET?: RouteMethodHandler<
     TRegister,
@@ -315,7 +283,7 @@ export interface CreateMethodFnOpts<
     TPath,
     TServerMiddlewares,
     TMethodGetMiddlewares,
-    TServerFn
+    TServerContext
   >
   POST?: RouteMethodHandler<
     TRegister,
@@ -323,7 +291,7 @@ export interface CreateMethodFnOpts<
     TPath,
     TServerMiddlewares,
     TMethodPostMiddlewares,
-    TServerFn
+    TServerContext
   >
   PUT?: RouteMethodHandler<
     TRegister,
@@ -331,7 +299,7 @@ export interface CreateMethodFnOpts<
     TPath,
     TServerMiddlewares,
     TMethodPutMiddlewares,
-    TServerFn
+    TServerContext
   >
   PATCH?: RouteMethodHandler<
     TRegister,
@@ -339,7 +307,7 @@ export interface CreateMethodFnOpts<
     TPath,
     TServerMiddlewares,
     TMethodPatchMiddlewares,
-    TServerFn
+    TServerContext
   >
   DELETE?: RouteMethodHandler<
     TRegister,
@@ -347,7 +315,7 @@ export interface CreateMethodFnOpts<
     TPath,
     TServerMiddlewares,
     TMethodDeleteMiddlewares,
-    TServerFn
+    TServerContext
   >
   OPTIONS?: RouteMethodHandler<
     TRegister,
@@ -355,7 +323,7 @@ export interface CreateMethodFnOpts<
     TPath,
     TServerMiddlewares,
     TMethodOptionsMiddlewares,
-    TServerFn
+    TServerContext
   >
   HEAD?: RouteMethodHandler<
     TRegister,
@@ -363,7 +331,7 @@ export interface CreateMethodFnOpts<
     TPath,
     TServerMiddlewares,
     TMethodHeadMiddlewares,
-    TServerFn
+    TServerContext
   >
 }
 
@@ -373,7 +341,7 @@ export type RouteMethodHandler<
   TPath extends string,
   TServerMiddlewares,
   TMethodMiddlewares,
-  TServerFn,
+  TServerContext,
 > =
   | RouteMethodHandlerFn<
       TRegister,
@@ -381,7 +349,7 @@ export type RouteMethodHandler<
       TPath,
       TServerMiddlewares,
       TMethodMiddlewares,
-      TServerFn
+      TServerContext
     >
   | RouteMethodBuilderOptions<
       TRegister,
@@ -389,7 +357,7 @@ export type RouteMethodHandler<
       TPath,
       TServerMiddlewares,
       TMethodMiddlewares,
-      TServerFn
+      TServerContext
     >
 
 export interface RouteMethodBuilderOptions<
@@ -441,7 +409,7 @@ export type RouteMethodHandlerFn<
   TFullPath extends string,
   TServerMiddlewares,
   TMethodMiddlewares,
-  TServerSendContext,
+  TServerContext,
 > = (
   ctx: RouteMethodHandlerCtx<
     TRegister,
@@ -451,8 +419,8 @@ export type RouteMethodHandlerFn<
     TMethodMiddlewares
   >,
 ) =>
-  | RouteMethodResult<TServerSendContext>
-  | Promise<RouteMethodResult<TServerSendContext>>
+  | RouteMethodResult<TServerContext>
+  | Promise<RouteMethodResult<TServerContext>>
 
 export type RouteMethodResult<TContext> =
   | Response
@@ -472,22 +440,17 @@ export interface RouteMethodHandlerCtx<
   in out TMethodMiddlewares,
 > {
   context: Expand<
-    Assign<
-      TRegister extends { server: { requestContext: infer TRequestContext } }
-        ? TRequestContext
-        : AnyContext,
-      AssignAllMethodContext<
-        TRegister,
-        TParentRoute,
-        TServerMiddlewares,
-        TMethodMiddlewares
-      >
+    AssignAllMethodContext<
+      TRegister,
+      TParentRoute,
+      TServerMiddlewares,
+      TMethodMiddlewares
     >
   >
   request: Request
   params: Expand<ResolveParams<TFullPath>>
   pathname: TFullPath
-  next: <const TContext>(options?: {
+  next: <TContext = undefined>(options?: {
     context?: TContext
   }) => RouteMethodNextResult<TContext>
 }
