@@ -1010,23 +1010,23 @@ describe('parsePathname', () => {
 describe('non-nested paths', async () => {
   describe('resolvePath', () => {
     describe.each([
-       [ '/', '/a_', '/a'],
-      [ '/', 'a_/', '/a'],
-      [ '/', '/a_/b_', '/a/b'],
-      [ 'a', 'b_', '/a/b'],
-      [ 'c', '/a/b/c_', '/a/b/c'],
-      [ '/', 'c_', '/a/b/c'],
-      [ '/', './c_', '/a/b/c'],
-      [ '/', 'a_/b_', '/a/b'],
-      [ '/', './a_/b_', '/a/b'],
-      [ '/a/b/c', 'd_', '/a/b/c/d'],
-      [ '/a/b/c', './d_', '/a/b/c/d'],
-      [ '/a/b/c', './../d_', '/a/b/d'],
-      [ '/a/b/c/d', './../d_', '/a/b/c/d'],
-      [ '/a/b/c', '../../d_', '/a/d'],
-      [ '/a/b/c', '../d_', '/a/b/d'],
-      [ '/', '/products-list_', '/products/products-list'],
-      ])('resolves correctly', (a, b, eq) => {
+      ['/', '/a_', '/a'],
+      ['/', 'a_/', '/a'],
+      ['/', '/a_/b_', '/a/b'],
+      ['/a', 'b_', '/a/b'],
+      ['/c', '/a/b/c_', '/a/b/c'],
+      ['/', 'c_', '/c'],
+      ['/', './c_', '/c'],
+      ['/', 'a_/b_', '/a/b'],
+      ['/', './a_/b_', '/a/b'],
+      ['/a/b/c', 'd_', '/a/b/c/d'],
+      ['/a/b/c', './d_', '/a/b/c/d'],
+      ['/a/b/c', './../d_', '/a/b/d'],
+      ['/a/b/c/d', './../d_', '/a/b/c/d'],
+      ['/a/b/c', '../../d_', '/a/d'],
+      ['/a/b/c', '../d_', '/a/b/d'],
+      ['/', '/products-list_', '/products-list'],
+    ])('resolves correctly', (a, b, eq) => {
       it(`${a} to ${b} === ${eq}`, () => {
         expect(resolvePath({ base: a, to: b })).toEqual(eq)
       })

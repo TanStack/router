@@ -1,6 +1,5 @@
 import { Store, batch } from '@tanstack/store'
 import { createBrowserHistory, parseHref } from '@tanstack/history'
-import invariant from 'tiny-invariant'
 import {
   createControlledPromise,
   deepEqual,
@@ -14,7 +13,6 @@ import {
   cleanPath,
   interpolatePath,
   matchPathname,
-  parseRoutePathSegments,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -32,7 +30,7 @@ import {
   executeRewriteOutput,
   rewriteBasepath,
 } from './rewrite'
-import type { ParsePathnameCache, Segment } from './path'
+import type { ParsePathnameCache } from './path'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {

@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-start';
+import { createFileRoute } from '@tanstack/react-router';
 import { getConfig } from '../../../authkit/ssr/config';
 import { saveSession } from '../../../authkit/ssr/session';
 import { getWorkOS } from '../../../authkit/ssr/workos';
