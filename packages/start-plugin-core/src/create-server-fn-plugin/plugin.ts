@@ -8,7 +8,9 @@ function cleanId(id: string): string {
   return id.split('?')[0]!
 }
 
-export function createServerFnPlugin(framework: CompileStartFrameworkOptions,): PluginOption {
+export function createServerFnPlugin(
+  framework: CompileStartFrameworkOptions,
+): PluginOption {
   const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
 
   const compilers: Partial<Record<ViteEnvironmentNames, ServerFnCompiler>> = {}
