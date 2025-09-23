@@ -158,7 +158,7 @@ export function createStartHandler(
       return router
     }
 
-    const start: AnyStartConfigOptions = (await startEntry!.getStart?.()) || {}
+    const start: AnyStartConfigOptions = (await startEntry.getStart?.()) || {}
     start.serializationAdapters = start.serializationAdapters || []
     // insert start specific default serialization adapters
     start.serializationAdapters.push(ServerFunctionSerializationAdapter)
@@ -262,7 +262,7 @@ export function createStartHandler(
       },
     )
 
-    const flattenedMiddlewares = start?.requestMiddleware
+    const flattenedMiddlewares = start.requestMiddleware
       ? flattenMiddlewares(start.requestMiddleware)
       : []
     const middlewares = flattenedMiddlewares.map((d) => d.options.server)
@@ -270,6 +270,7 @@ export function createStartHandler(
       [...middlewares, requestHandlerMiddleware],
       {
         request,
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         context: requestOpts?.context || {},
       },
     )
