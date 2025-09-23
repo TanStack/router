@@ -69,9 +69,9 @@ export function TanStackStartVitePluginCore(
   }
 
   return [
-    tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
     {
       name: 'tanstack-start-core:config',
+      enforce: 'pre',
       async config(viteConfig, { command }) {
         const viteAppBase = trimPathRight(viteConfig.base || '/')
         globalThis.TSS_APP_BASE = viteAppBase
@@ -244,9 +244,11 @@ export function TanStackStartVitePluginCore(
         }
       },
     },
-    createServerFnPlugin(corePluginOpts.framework),
+    tanStackStartRouter(startPluginOpts, getConfig, corePluginOpts),
     // N.B. TanStackStartCompilerPlugin must be before the TanStackServerFnPluginEnv
     startCompilerPlugin(corePluginOpts.framework),
+    createServerFnPlugin(corePluginOpts.framework),
+
     TanStackServerFnPluginEnv({
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module

@@ -138,28 +138,32 @@ export function tanStackStartRouter(
     return routeTreeFileFooter
   }
 
-  const clientTreePlugin = {
+  let resolvedGeneratedRouteTreePath: string | null = null
+  const clientTreePlugin: Plugin = {
     name: 'tanstack-start:route-tree-client-plugin',
     enforce: 'pre',
     applyToEnvironment: (env) => env.name === VITE_ENVIRONMENT_NAMES.client,
     configureServer(server) {
       clientEnvironment = server.environments[VITE_ENVIRONMENT_NAMES.client]
     },
-    options() {
-      clientTreePlugin.load.filter = {
-        id: normalizePath(getGeneratedRouteTreePath()),
+    config() {
+      type LoadObjectHook = Extract<
+        typeof clientTreePlugin.load,
+        { filter?: unknown }
+      >
+      resolvedGeneratedRouteTreePath = normalizePath(
+        getGeneratedRouteTreePath(),
+      )
+      ;(clientTreePlugin.load as LoadObjectHook).filter = {
+        id: { include: new RegExp(resolvedGeneratedRouteTreePath) },
       }
     },
+
     load: {
       filter: {
-        // id : startPluginOpts?.router?.generatedRouteTree
-        /* we set this in the options hook since we need to wait for vite's configResolved Hook*/
+        // this will be set in the config hook above since it relies on `config` hook being called first
       },
-      async handler(code, id) {
-        // TODO optimize this!
-        if (id !== normalizePath(getGeneratedRouteTreePath())) {
-          return null
-        }
+      async handler() {
         if (!generatorInstance) {
           throw new Error('Generator instance not initialized')
         }
@@ -187,7 +191,7 @@ export function tanStackStartRouter(
         return { code: buildResult.routeTreeContent, map: null }
       },
     },
-  } satisfies Plugin
+  }
   return [
     clientTreePlugin,
     tanstackRouterGenerator({
