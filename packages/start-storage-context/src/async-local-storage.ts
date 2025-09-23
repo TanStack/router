@@ -5,7 +5,7 @@ export interface StartStorageContext {
   getRouter: () => Awaitable<RegisteredRouter>
 
   // TODO type this properly
-  start: /* AnyStartConfig*/ any
+  startOptions: /* AnyStartInstanceOptions*/ any
 
   contextAfterGlobalMiddlewares: any
 }

@@ -42,7 +42,6 @@ export {
   type FunctionServerResultWithContext,
   type AnyRequestMiddleware,
 } from './createMiddleware'
-export { createUnsafeMiddleware } from './createUnsafeMiddleware'
 export type {
   CompiledFetcherFnOptions,
   CompiledFetcherFn,
@@ -80,7 +79,7 @@ export type * from './serverRoute'
 export type * from './startEntry'
 
 export { createStart } from './createStart'
-export type { AnyStartConfig, AnyStartConfigOptions } from './createStart'
+export type { AnyStartInstance, AnyStartInstanceOptions } from './createStart'
 export type { Register } from '@tanstack/router-core'
 
 export { getRouterInstance } from './getRouterInstance'

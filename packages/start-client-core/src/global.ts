@@ -1,8 +1,8 @@
-import type { AnyStartConfigOptions } from './createStart'
+import type { AnyStartInstanceOptions } from './createStart'
 
 declare global {
   interface Window {
-    __TSS_START_INSTANCE__?: AnyStartConfigOptions
+    __TSS_START_OPTIONS__?: AnyStartInstanceOptions
   }
 }
 
