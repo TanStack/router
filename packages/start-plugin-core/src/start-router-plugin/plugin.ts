@@ -206,32 +206,41 @@ export function tanStackStartRouter(
   }
   return [
     clientTreePlugin,
-    tanstackRouterGenerator({
-      ...startPluginOpts?.router,
-      target: corePluginOpts.framework,
-      routeTreeFileFooter: getRouteTreeFileFooter,
-      plugins: [clientTreeGeneratorPlugin, routesManifestPlugin()],
+    tanstackRouterGenerator(() => {
+      const routerConfig = getConfig().startConfig.router
+      return {
+        ...routerConfig,
+        target: corePluginOpts.framework,
+        routeTreeFileFooter: getRouteTreeFileFooter,
+        plugins: [clientTreeGeneratorPlugin, routesManifestPlugin()],
+      }
     }),
-    tanStackRouterCodeSplitter({
-      ...startPluginOpts?.router,
-      codeSplittingOptions: {
-        ...startPluginOpts?.router?.codeSplittingOptions,
-        deleteNodes: ['ssr', 'server'],
-        addHmr: true,
-      },
-      plugin: {
-        vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
-      },
+    tanStackRouterCodeSplitter(() => {
+      const routerConfig = getConfig().startConfig.router
+      return {
+        ...routerConfig,
+        codeSplittingOptions: {
+          ...routerConfig.codeSplittingOptions,
+          deleteNodes: ['ssr', 'server'],
+          addHmr: true,
+        },
+        plugin: {
+          vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
+        },
+      }
     }),
-    tanStackRouterCodeSplitter({
-      ...startPluginOpts?.router,
-      codeSplittingOptions: {
-        ...startPluginOpts?.router?.codeSplittingOptions,
-        addHmr: false,
-      },
-      plugin: {
-        vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
-      },
+    tanStackRouterCodeSplitter(() => {
+      const routerConfig = getConfig().startConfig.router
+      return {
+        ...routerConfig,
+        codeSplittingOptions: {
+          ...routerConfig.codeSplittingOptions,
+          addHmr: false,
+        },
+        plugin: {
+          vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
+        },
+      }
     }),
     tanstackRouterAutoImport(startPluginOpts?.router),
   ]

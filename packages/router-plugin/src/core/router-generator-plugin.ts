@@ -10,10 +10,10 @@ import type { Config } from './config'
 const PLUGIN_NAME = 'unplugin:router-generator'
 
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  Partial<Config | (() => Config)> | undefined
 > = (options = {}) => {
   let ROOT: string = process.cwd()
-  let userConfig = options as Config
+  let userConfig: Config
   let generator: Generator
 
   const routeGenerationDisabled = () =>
@@ -28,7 +28,11 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
     if (opts?.root) {
       ROOT = opts.root
     }
-    userConfig = getConfig(options, ROOT)
+    if (typeof options === 'function') {
+      userConfig = options()
+    } else {
+      userConfig = getConfig(options, ROOT)
+    }
     generator = new Generator({
       config: userConfig,
       root: ROOT,
