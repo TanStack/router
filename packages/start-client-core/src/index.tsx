@@ -84,3 +84,4 @@ export type { Register } from '@tanstack/router-core'
 
 export { getRouterInstance } from './getRouterInstance'
 export { getDefaultSerovalPlugins } from './getDefaultSerovalPlugins'
+export { getGlobalStartContext } from './getGlobalStartContext'

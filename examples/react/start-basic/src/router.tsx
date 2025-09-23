@@ -1,8 +1,8 @@
 import { createRouter } from '@tanstack/react-router'
+import { getGlobalStartContext } from '@tanstack/react-start'
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
-import { startInstance } from './start'
 
 export function getRouter() {
   const router = createRouter({
@@ -12,7 +12,7 @@ export function getRouter() {
     defaultNotFoundComponent: () => <NotFound />,
     scrollRestoration: true,
     ssr: {
-      nonce: startInstance.context?.nonce,
+      nonce: getGlobalStartContext()?.nonce,
     },
   })
   return router

@@ -184,10 +184,6 @@ export function createStartHandler<TRegister = Register>(
 
     const requestHandlerMiddleware = handlerToMiddleware(
       async ({ context }) => {
-        const startInstance = (await getEntries()).startEntry.startInstance
-        if (startInstance) {
-          startInstance.context = context
-        }
         const response = await runWithStartContext(
           {
             getRouter,
