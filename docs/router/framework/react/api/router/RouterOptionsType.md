@@ -136,6 +136,14 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Optional
 - The default `onCatch` handler for errors caught by the Router ErrorBoundary
 
+### `disableGlobalCatchBoundary` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `false`
+- When `true`, disables the global catch boundary that normally wraps all route matches. This allows unhandled errors to bubble up to top-level error handlers in the browser.
+- Useful for testing tools, error reporting services, and debugging scenarios.
+
 ### `defaultViewTransition` property
 
 - Type: `boolean | ViewTransitionOptions`
@@ -169,7 +177,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Type: `string`
 - Optional
 - Defaults to `/`
-- The basepath for then entire router. This is useful for mounting a router instance at a subpath.
+- The basepath for the entire router. This is useful for mounting a router instance at a subpath.
 
 ### `context` property
 

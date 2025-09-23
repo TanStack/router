@@ -84,7 +84,7 @@ Each route can only have a single handler file associated with it. So, if you ha
 
 ## Escaped Matching
 
-Just as with normal routes, server routes can match on escaped characters. For example, a file named `routes/users[.]json.ts` will create an API route at `/users[.]json`.
+Just as with normal routes, server routes can match on escaped characters. For example, a file named `routes/users[.]json.ts` will create an API route at `/users.json`.
 
 ## Pathless Layout Routes and Break-out Routes
 

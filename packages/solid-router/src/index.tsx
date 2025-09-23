@@ -16,8 +16,6 @@ export {
   matchPathname,
   removeBasepath,
   matchByPath,
-  encode,
-  decode,
   rootRouteId,
   defaultSerializeError,
   defaultParseSearch,
@@ -25,7 +23,6 @@ export {
   parseSearchWith,
   stringifySearchWith,
   escapeJSON, // SSR
-  pick,
   functionalUpdate,
   replaceEqualDeep,
   isPlainObject,

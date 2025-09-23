@@ -36,6 +36,7 @@ When a TanStack Start application is being deployed, the `target` value in the T
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
 - [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
+- [`railway`](#railway): Deploy to Railway
 - [`node-server`](#nodejs): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
 - ... and more to come!
@@ -80,7 +81,7 @@ When deploying to Cloudflare Workers, you'll need to complete a few extra steps 
 
 1. Update `vite.config.ts`
 
-Set the `target` value to `cloudflare-pages` in your `vite.config.ts` file.
+Set the `target` value to `cloudflare-module` in your `vite.config.ts` file.
 
 ```ts
 // vite.config.ts
@@ -97,12 +98,51 @@ export default defineConfig({
 ```toml
 # wrangler.toml
 name = "your-cloudflare-project-name"
-pages_build_output_dir = "./dist"
+main = "./.output/server/index.mjs"
+compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
-compatibility_date = "2024-11-13"
+
+[assets]
+binding = "ASSETS"
+directory = "./.output/public"
 ```
 
-Deploy your application to Cloudflare Pages using their one-click deployment process, and you're ready to go!
+Deploy your application to Cloudflare Workers using their one-click deployment process, and you're ready to go!
+
+### Railway
+
+Railway automatically detects Build and Start commands when building and deploying to a service.
+
+Set the `target` value to `node-server` in your `vite.config.ts` file.
+
+```ts
+// vite.config.ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [tanstackStart({ target: 'node-server' })],
+})
+```
+
+Ensure `build` and `start` npm scripts are present in your `package.json` file:
+
+```json
+    "build": "vite build",
+    "start": "node .output/server/index.mjs"
+```
+
+Then you can run the following command to build your application:
+
+```sh
+npm run build
+```
+
+You can start your application by running:
+
+```sh
+npm run start
+```
 
 ### Node.js
 

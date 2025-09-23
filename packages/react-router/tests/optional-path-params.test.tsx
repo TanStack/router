@@ -43,7 +43,7 @@ describe('React Router - Optional Path Parameters', () => {
       await act(() => router.load())
 
       const paramsElement = await screen.findByTestId('params')
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({})
+      expect(JSON.parse(paramsElement.textContent)).toEqual({})
     })
 
     it('should match route with one optional parameter', async () => {
@@ -71,7 +71,7 @@ describe('React Router - Optional Path Parameters', () => {
       await act(() => router.load())
 
       const paramsElement = await screen.findByTestId('params')
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({
+      expect(JSON.parse(paramsElement.textContent)).toEqual({
         category: 'tech',
       })
     })
@@ -101,7 +101,7 @@ describe('React Router - Optional Path Parameters', () => {
       await act(() => router.load())
 
       const paramsElement = await screen.findByTestId('params')
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({
+      expect(JSON.parse(paramsElement.textContent)).toEqual({
         category: 'tech',
         slug: 'hello-world',
       })
@@ -140,7 +140,7 @@ describe('React Router - Optional Path Parameters', () => {
         await act(() => router.load())
 
         const paramsElement = await screen.findByTestId('params')
-        expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
+        expect(JSON.parse(paramsElement.textContent)).toEqual(expectedParams)
       },
     )
 
@@ -223,6 +223,157 @@ describe('React Router - Optional Path Parameters', () => {
         )
       },
     )
+  })
+
+  describe('required and optional parameters on the same level', () => {
+    async function setupTestRouter() {
+      const rootRoute = createRootRoute()
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <div data-testid="index-route-component">
+              <h1>index</h1>
+              <Link
+                data-testid="reports-optional-param-link"
+                params={{ adminLevelId: 'asdf' }}
+                to="/admin-levels/{-$adminLevelId}/reports"
+              >
+                navigate to reports with optional param
+              </Link>
+            </div>
+          )
+        },
+      })
+
+      const adminLevelsRoutes = createRoute({
+        getParentRoute: () => rootRoute,
+
+        path: 'admin-levels',
+        component: () => (
+          <div data-testid="admin-levels-route-component">
+            <h1>admin-levels</h1>
+            <Outlet />
+          </div>
+        ),
+      })
+
+      const requiredParamRoute = createRoute({
+        getParentRoute: () => adminLevelsRoutes,
+        path: '$adminLevelId',
+        component: () => (
+          <div data-testid="admin-levels-route-required-param-route-component">
+            <h1>Required Param Route</h1>
+            <Outlet />
+          </div>
+        ),
+      })
+
+      const requiredParamIndexRoute = createRoute({
+        getParentRoute: () => requiredParamRoute,
+        path: '/',
+        component: () => (
+          <div data-testid="admin-levels-route-required-param-index-route-component">
+            <h1>Required Param Route Index</h1>
+          </div>
+        ),
+      })
+
+      const optionalParamRoute = createRoute({
+        getParentRoute: () => adminLevelsRoutes,
+        path: '{-$adminLevelId}',
+        component: () => (
+          <div data-testid="admin-levels-route-optional-param-route-component">
+            <h1>Optional Param Route</h1>
+            <Outlet />
+          </div>
+        ),
+      })
+
+      const reportsRoute = createRoute({
+        getParentRoute: () => optionalParamRoute,
+        path: 'reports',
+        component: () => (
+          <div data-testid="reports-route-component">
+            <h1>Reports</h1>
+            <Link
+              data-testid="navigate-to-required-param-link"
+              to="/admin-levels/$adminLevelId"
+              params={{ adminLevelId: 'asdf' }}
+            >
+              navigate to required param route
+            </Link>
+            <Outlet />
+          </div>
+        ),
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([
+          indexRoute,
+          adminLevelsRoutes.addChildren([
+            requiredParamRoute.addChildren([requiredParamIndexRoute]),
+            optionalParamRoute.addChildren([reportsRoute]),
+          ]),
+        ]),
+      })
+
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+      return router
+    }
+
+    it('direct visit', async () => {
+      window.history.replaceState({}, '', 'admin-levels/asdf')
+      await setupTestRouter()
+
+      expect(
+        await screen.findByTestId(
+          'admin-levels-route-required-param-route-component',
+        ),
+      ).toBeInTheDocument()
+      expect(
+        await screen.findByTestId(
+          'admin-levels-route-required-param-index-route-component',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    it('client-side navigation', async () => {
+      window.history.replaceState({}, '', '/')
+
+      await setupTestRouter()
+
+      expect(
+        await screen.findByTestId('index-route-component'),
+      ).toBeInTheDocument()
+      const reportsLink = await screen.findByTestId(
+        'reports-optional-param-link',
+      )
+      fireEvent.click(reportsLink)
+
+      expect(
+        await screen.findByTestId('reports-route-component'),
+      ).toBeInTheDocument()
+      const requiredParamLink = await screen.findByTestId(
+        'navigate-to-required-param-link',
+      )
+      fireEvent.click(requiredParamLink)
+
+      expect(
+        await screen.findByTestId(
+          'admin-levels-route-required-param-route-component',
+        ),
+      ).toBeInTheDocument()
+
+      expect(
+        await screen.findByTestId(
+          'admin-levels-route-required-param-index-route-component',
+        ),
+      ).toBeInTheDocument()
+    })
   })
 
   describe('Link component with optional parameters', () => {
@@ -349,7 +500,7 @@ describe('React Router - Optional Path Parameters', () => {
 
         await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
         const paramsElement = await screen.findByTestId('params')
-        expect(JSON.parse(paramsElement.textContent!)).toEqual({})
+        expect(JSON.parse(paramsElement.textContent)).toEqual({})
         expect(router.state.location.pathname).toBe('/posts')
       }
 
@@ -369,7 +520,7 @@ describe('React Router - Optional Path Parameters', () => {
 
         await expect(screen.findByText('Posts')).resolves.toBeInTheDocument()
         const updatedParamsElement = await screen.findByTestId('params')
-        expect(JSON.parse(updatedParamsElement.textContent!)).toEqual({
+        expect(JSON.parse(updatedParamsElement.textContent)).toEqual({
           category: 'tech',
         })
         expect(router.state.location.pathname).toBe('/posts/tech')
@@ -630,7 +781,7 @@ describe('React Router - Optional Path Parameters', () => {
           getParentRoute: () => postsRoute,
           path: '/{-$slug}',
           component: () => {
-            const { slug } = postsRoute.useParams()
+            const { slug } = postRoute.useParams()
             return (
               <div>
                 <h2>Post Detail</h2>
@@ -696,10 +847,10 @@ describe('React Router - Optional Path Parameters', () => {
       const paramsElement = await screen.findByTestId('params')
       const searchElement = await screen.findByTestId('search')
 
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({
+      expect(JSON.parse(paramsElement.textContent)).toEqual({
         category: 'tech',
       })
-      expect(JSON.parse(searchElement.textContent!)).toEqual({
+      expect(JSON.parse(searchElement.textContent)).toEqual({
         page: 2,
         sort: 'title',
       })
@@ -741,7 +892,71 @@ describe('React Router - Optional Path Parameters', () => {
         await act(() => router.load())
 
         const paramsElement = await screen.findByTestId('params')
-        expect(JSON.parse(paramsElement.textContent!)).toEqual(expectedParams)
+        expect(JSON.parse(paramsElement.textContent)).toEqual(expectedParams)
+      },
+    )
+
+    it.each([
+      {
+        path: '/chambres',
+        expected: {
+          rooms: 'chambres',
+          locale: 'undefined',
+        },
+      },
+      {
+        path: '/fr/chambres',
+        expected: {
+          rooms: 'chambres',
+          locale: 'fr',
+        },
+      },
+      {
+        path: '/rooms',
+        expected: {
+          rooms: 'rooms',
+          locale: 'undefined',
+        },
+      },
+      {
+        path: '/en/rooms',
+        expected: {
+          rooms: 'rooms',
+          locale: 'en',
+        },
+      },
+    ])(
+      'should handle routes with required param after optional param: $path',
+      async ({ path, expected }) => {
+        const rootRoute = createRootRoute()
+        const roomsRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/{-$locale}/$rooms',
+          component: () => {
+            const { locale, rooms } = roomsRoute.useParams()
+            return (
+              <div>
+                <h1>Rooms</h1>
+                <div data-testid="locale-param">{locale ?? 'undefined'}</div>
+                <div data-testid="rooms-param">{rooms ?? 'undefined'}</div>
+                <Outlet />
+              </div>
+            )
+          },
+        })
+
+        window.history.replaceState({}, '', path)
+
+        const router = createRouter({
+          routeTree: rootRoute.addChildren([roomsRoute]),
+        })
+
+        render(<RouterProvider router={router} />)
+        await act(() => router.load())
+        const roomsParam = await screen.findByTestId('rooms-param')
+        expect(roomsParam).toHaveTextContent(expected.rooms)
+        const localeParam = await screen.findByTestId('locale-param')
+        expect(localeParam).toHaveTextContent(expected.locale)
       },
     )
   })
@@ -786,8 +1001,8 @@ describe('React Router - Optional Path Parameters', () => {
       const paramsElement = await screen.findByTestId('params')
       const loaderDataElement = await screen.findByTestId('loader-data')
 
-      expect(JSON.parse(paramsElement.textContent!)).toEqual({})
-      expect(JSON.parse(loaderDataElement.textContent!)).toEqual({
+      expect(JSON.parse(paramsElement.textContent)).toEqual({})
+      expect(JSON.parse(loaderDataElement.textContent)).toEqual({
         category: 'all',
         data: 'Data for all',
       })

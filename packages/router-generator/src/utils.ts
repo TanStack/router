@@ -52,6 +52,8 @@ export function removeTrailingSlash(s: string) {
   return s.replace(/\/$/, '')
 }
 
+const BRACKET_CONTENT_RE = /\[(.*?)\]/g
+
 export function determineInitialRoutePath(routePath: string) {
   const DISALLOWED_ESCAPE_CHARS = new Set([
     '/',
@@ -73,7 +75,6 @@ export function determineInitialRoutePath(routePath: string) {
   // Escape any characters that in square brackets
   const escapedParts = parts.map((part) => {
     // Check if any disallowed characters are used in brackets
-    const BRACKET_CONTENT_RE = /\[(.*?)\]/g
 
     let match
     while ((match = BRACKET_CONTENT_RE.exec(part)) !== null) {
@@ -91,7 +92,7 @@ export function determineInitialRoutePath(routePath: string) {
 
     // Since this split segment is safe at this point, we can
     // remove the brackets and replace them with the content inside
-    return part.replace(/\[(.)\]/g, '$1')
+    return part.replace(BRACKET_CONTENT_RE, '$1')
   })
 
   // If the syntax for prefix/suffix is different, from the path

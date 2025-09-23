@@ -14,7 +14,7 @@ export const Route = createRootRoute({
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
     <>
-      <div class="p-2 flex gap-2 text-lg">
+      <div>
         <Link to="/">Index</Link>
         <Link to="/about">About</Link>
       </div>

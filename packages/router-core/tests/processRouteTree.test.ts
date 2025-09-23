@@ -1,26 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { getMatchedRoutes, processRouteTree } from '../src/router'
+import { processRouteTree } from '../src/process-route-tree'
+import { getMatchedRoutes } from '../src/router'
 import { joinPaths } from '../src'
-
-interface TestRoute {
-  id: string
-  isRoot?: boolean
-  path?: string
-  fullPath: string
-  rank?: number
-  parentRoute?: TestRoute
-  children?: Array<TestRoute>
-  options?: {
-    caseSensitive?: boolean
-  }
-}
+import type { RouteLike } from '../src/route'
 
 type PathOrChildren = string | [string, Array<PathOrChildren>]
 
 function createRoute(
   pathOrChildren: Array<PathOrChildren>,
   parentPath: string,
-): Array<TestRoute> {
+): Array<RouteLike> {
   return pathOrChildren.map((route) => {
     if (Array.isArray(route)) {
       const fullPath = joinPaths([parentPath, route[0]])
@@ -48,7 +37,7 @@ function createRoute(
   })
 }
 
-function createRouteTree(pathOrChildren: Array<PathOrChildren>): TestRoute {
+function createRouteTree(pathOrChildren: Array<PathOrChildren>): RouteLike {
   return {
     id: '__root__',
     fullPath: '',
@@ -420,6 +409,31 @@ describe('processRouteTree', () => {
       },
     ])(
       'static segment after param ranks param higher: $routes',
+      ({ routes, expected }) => {
+        const result = processRouteTree({ routeTree: createRouteTree(routes) })
+        expect(result.flatRoutes.map((r) => r.id)).toEqual(expected)
+      },
+    )
+
+    it.each([
+      {
+        routes: ['/f{$param}', '/foo{$param}'],
+        expected: ['/foo{$param}', '/f{$param}'],
+      },
+      {
+        routes: ['/{$param}r', '/{$param}bar'],
+        expected: ['/{$param}bar', '/{$param}r'],
+      },
+      {
+        routes: ['/f{$param}bar', '/foo{$param}r'],
+        expected: ['/foo{$param}r', '/f{$param}bar'],
+      },
+      {
+        routes: ['/foo{$param}r', '/f{$param}baaaaaar'], // very long suffix can "override" prefix
+        expected: ['/f{$param}baaaaaar', '/foo{$param}r'],
+      },
+    ])(
+      'length of prefix and suffix are considered in ranking: $routes',
       ({ routes, expected }) => {
         const result = processRouteTree({ routeTree: createRouteTree(routes) })
         expect(result.flatRoutes.map((r) => r.id)).toEqual(expected)

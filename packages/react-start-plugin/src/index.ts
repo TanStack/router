@@ -12,6 +12,23 @@ export type {
   WithReactPlugin,
 } from './schema'
 
+function hasRootExport(
+  exportsField?: Record<string, unknown> | string,
+): boolean {
+  if (!exportsField) return false
+
+  if (typeof exportsField === 'string') {
+    // shorthand form: "exports": "./index.js"
+    return true
+  }
+
+  if (typeof exportsField === 'object') {
+    return '.' in exportsField
+  }
+
+  return false
+}
+
 export function TanStackStartVitePlugin(
   opts?: TanStackStartInputConfig & WithReactPlugin,
 ): Array<PluginOption> {
@@ -55,7 +72,6 @@ export function TanStackStartVitePlugin(
               'react-dom',
               'react-dom/client',
               '@tanstack/react-router',
-              '@tanstack/react-store',
             ],
           },
         }
@@ -100,6 +116,15 @@ import { createRouter } from '${ctx.routerFilepath}';
 export default createStartHandler({
   createRouter,
 })(defaultStreamHandler);`
+        },
+        crawlPackages(opts) {
+          if (opts.name === '@tanstack/react-router-devtools') {
+            return 'exclude'
+          }
+          if (hasRootExport(opts.exports) && 'react' in opts.peerDependencies) {
+            return 'include'
+          }
+          return undefined
         },
       },
       options,

@@ -39,6 +39,8 @@ export type {
   RequiredToOptions,
 } from './link'
 
+export { componentTypes } from './load-matches'
+
 export type {
   RouteToPath,
   TrailingSlashOptionByRouter,
@@ -192,17 +194,16 @@ export type {
   ResolveRequiredParams,
   RootRoute,
 } from './route'
-
+export { processRouteTree } from './process-route-tree'
+export type { ProcessRouteTreeResult } from './process-route-tree'
 export {
   defaultSerializeError,
   getLocationChangeInfo,
   RouterCore,
-  componentTypes,
   lazyFn,
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-  processRouteTree,
   getMatchedRoutes,
 } from './router'
 export type {
@@ -243,7 +244,6 @@ export type {
   LoadRouteChunkFn,
   ClearCacheFn,
   CreateRouterFn,
-  ProcessRouteTreeResult,
 } from './router'
 
 export type {
@@ -268,7 +268,6 @@ export type { OptionalStructuralSharing } from './structuralSharing'
 export {
   last,
   functionalUpdate,
-  pick,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,

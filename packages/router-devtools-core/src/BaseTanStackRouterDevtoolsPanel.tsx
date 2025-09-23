@@ -1,7 +1,7 @@
 import { clsx as cx } from 'clsx'
 import { default as invariant } from 'tiny-invariant'
 import { interpolatePath, rootRouteId, trimPath } from '@tanstack/router-core'
-import { Show, createMemo } from 'solid-js'
+import { Show, createMemo, createSignal, onCleanup } from 'solid-js'
 import { useDevtoolsOnClose } from './context'
 import { useStyles } from './useStyles'
 import useLocalStorage from './useLocalStorage'
@@ -611,7 +611,19 @@ export const BaseTanStackRouterDevtoolsPanel =
         ) : null}
         {hasSearch() ? (
           <div class={styles().fourthContainer}>
-            <div class={styles().detailsHeader}>Search Params</div>
+            <div class={styles().detailsHeader}>
+              <span>Search Params</span>
+              {typeof navigator !== 'undefined' ? (
+                <span style="margin-left: 0.5rem;">
+                  <CopyButton
+                    getValue={() => {
+                      const search = routerState().location.search
+                      return JSON.stringify(search)
+                    }}
+                  />
+                </span>
+              ) : null}
+            </div>
             <div class={styles().detailsContent}>
               <Explorer
                 value={locationSearchValue}
@@ -628,5 +640,44 @@ export const BaseTanStackRouterDevtoolsPanel =
       </div>
     )
   }
+
+function CopyButton({ getValue }: { getValue: () => string }) {
+  const [copied, setCopied] = createSignal(false)
+
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+  const handleCopy = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      console.warn('TanStack Router Devtools: Clipboard API unavailable')
+      return
+    }
+    try {
+      const value = getValue()
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      if (timeoutId) clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => setCopied(false), 2500)
+    } catch (e) {
+      console.error('TanStack Router Devtools: Failed to copy', e)
+    }
+  }
+
+  onCleanup(() => {
+    if (timeoutId) clearTimeout(timeoutId)
+  })
+
+  return (
+    <button
+      type="button"
+      style="cursor: pointer;"
+      onClick={handleCopy}
+      aria-label="Copy value to clipboard"
+      title={copied() ? 'Copied!' : 'Copy'}
+    >
+      {copied() ? '✅' : '📋'}
+    </button>
+  )
+}
 
 export default BaseTanStackRouterDevtoolsPanel

@@ -12,7 +12,6 @@ import { useRouter } from './useRouter'
 
 import { useForwardedRef, useIntersectionObserver } from './utils'
 
-import { useMatch } from './useMatch'
 import type {
   AnyRouter,
   Constrain,
@@ -99,19 +98,18 @@ export function useLinkProps<
     structuralSharing: true as any,
   })
 
-  const from = useMatch({
-    strict: false,
-    select: (match) => options.from ?? match.fullPath,
-  })
+  const from = options.from
 
-  const next = React.useMemo(
-    () => router.buildLocation({ ...options, from } as any),
+  const _options = React.useMemo(
+    () => {
+      return { ...options, from }
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
       currentSearch,
-      options._fromLocation,
       from,
+      options._fromLocation,
       options.hash,
       options.to,
       options.search,
@@ -120,6 +118,11 @@ export function useLinkProps<
       options.mask,
       options.unsafeRelative,
     ],
+  )
+
+  const next = React.useMemo(
+    () => router.buildLocation({ ..._options } as any),
+    [router, _options],
   )
 
   const isExternal = type === 'external'
@@ -180,34 +183,12 @@ export function useLinkProps<
     },
   })
 
-  const doPreload = React.useCallback(
-    () => {
-      router.preloadRoute({ ...options, from } as any).catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      router,
-      options.to,
-      options._fromLocation,
-      from,
-      options.search,
-      options.hash,
-      options.params,
-      options.state,
-      options.mask,
-      options.unsafeRelative,
-      options.hashScrollIntoView,
-      options.href,
-      options.ignoreBlocker,
-      options.reloadDocument,
-      options.replace,
-      options.resetScroll,
-      options.viewTransition,
-    ],
-  )
+  const doPreload = React.useCallback(() => {
+    router.preloadRoute({ ..._options } as any).catch((err) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
+  }, [router, _options])
 
   const preloadViewportIoCallback = React.useCallback(
     (entry: IntersectionObserverEntry | undefined) => {
@@ -235,6 +216,44 @@ export function useLinkProps<
     }
   }, [disabled, doPreload, preload])
 
+  // The click handler
+  const handleClick = (e: React.MouseEvent) => {
+    // Check actual element's target attribute as fallback
+    const elementTarget = (e.currentTarget as HTMLAnchorElement).target
+    const effectiveTarget = target !== undefined ? target : elementTarget
+
+    if (
+      !disabled &&
+      !isCtrlEvent(e) &&
+      !e.defaultPrevented &&
+      (!effectiveTarget || effectiveTarget === '_self') &&
+      e.button === 0
+    ) {
+      e.preventDefault()
+
+      flushSync(() => {
+        setIsTransitioning(true)
+      })
+
+      const unsub = router.subscribe('onResolved', () => {
+        unsub()
+        setIsTransitioning(false)
+      })
+
+      // All is well? Navigate!
+      // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
+      router.navigate({
+        ..._options,
+        replace,
+        resetScroll,
+        hashScrollIntoView,
+        startTransition,
+        viewTransition,
+        ignoreBlocker,
+      })
+    }
+  }
+
   if (isExternal) {
     return {
       ...propsSafeToSpread,
@@ -251,41 +270,6 @@ export function useLinkProps<
       ...(onMouseEnter && { onMouseEnter }),
       ...(onMouseLeave && { onMouseLeave }),
       ...(onTouchStart && { onTouchStart }),
-    }
-  }
-
-  // The click handler
-  const handleClick = (e: React.MouseEvent) => {
-    if (
-      !disabled &&
-      !isCtrlEvent(e) &&
-      !e.defaultPrevented &&
-      (!target || target === '_self') &&
-      e.button === 0
-    ) {
-      e.preventDefault()
-
-      flushSync(() => {
-        setIsTransitioning(true)
-      })
-
-      const unsub = router.subscribe('onResolved', () => {
-        unsub()
-        setIsTransitioning(false)
-      })
-
-      // All is well? Navigate!
-      // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      return router.navigate({
-        ...options,
-        from,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
-      })
     }
   }
 
@@ -394,10 +378,11 @@ const intersectionObserverOptions: IntersectionObserverInit = {
 const composeHandlers =
   (handlers: Array<undefined | React.EventHandler<any>>) =>
   (e: React.SyntheticEvent) => {
-    handlers.filter(Boolean).forEach((handler) => {
+    for (const handler of handlers) {
+      if (!handler) continue
       if (e.defaultPrevented) return
-      handler!(e)
-    })
+      handler(e)
+    }
   }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements
