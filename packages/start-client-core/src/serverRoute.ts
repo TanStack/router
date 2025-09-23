@@ -46,6 +46,7 @@ declare module '@tanstack/router-core' {
   }
 
   interface RouteTypes<
+    in out TRegister,
     in out TParentRoute extends AnyRoute,
     in out TPath extends string,
     in out TFullPath extends string,
@@ -65,7 +66,11 @@ declare module '@tanstack/router-core' {
     in out THandlers,
   > {
     middleware: TServerMiddlewares
-    allServerContext: ResolveAllServerContext<TParentRoute, TServerMiddlewares>
+    allServerContext: ResolveAllServerContext<
+      TRegister,
+      TParentRoute,
+      TServerMiddlewares
+    >
   }
 
   interface BeforeLoadContextOptions<
@@ -84,7 +89,7 @@ declare module '@tanstack/router-core' {
           ? TRequestContext
           : AnyContext,
         Assign<
-          ResolveAllServerContext<TParentRoute, TServerMiddlewares>,
+          ResolveAllServerContext<TRegister, TParentRoute, TServerMiddlewares>,
           ExtractHandlersContext<THandlers>
         >
       >
@@ -109,7 +114,7 @@ declare module '@tanstack/router-core' {
           ? TRequestContext
           : AnyContext,
         Assign<
-          ResolveAllServerContext<TParentRoute, TServerMiddlewares>,
+          ResolveAllServerContext<TRegister, TParentRoute, TServerMiddlewares>,
           ExtractHandlersContext<THandlers>
         >
       >
@@ -420,13 +425,14 @@ export interface RouteMethodBuilderOptions<
 }
 
 export type ResolveAllServerContext<
+  TRegister,
   TParentRoute extends AnyRoute,
   TServerMiddlewares,
 > = unknown extends TParentRoute
-  ? AssignAllServerRequestContext<TServerMiddlewares, {}>
+  ? AssignAllServerRequestContext<TRegister, TServerMiddlewares, {}>
   : Assign<
       TParentRoute['types']['allServerContext'],
-      AssignAllServerRequestContext<TServerMiddlewares, {}>
+      AssignAllServerRequestContext<TRegister, TServerMiddlewares, {}>
     >
 
 export type RouteMethod =
@@ -481,6 +487,7 @@ export interface RouteMethodHandlerCtx<
         ? TRequestContext
         : AnyContext,
       AssignAllMethodContext<
+        TRegister,
         TParentRoute,
         TServerMiddlewares,
         TMethodMiddlewares
@@ -503,10 +510,12 @@ export type MergeMethodMiddlewares<TServerMiddlewares, TMethodMiddlewares> =
     : TMethodMiddlewares
 
 export type AssignAllMethodContext<
+  TRegister,
   TParentRoute extends AnyRoute,
   TServerMiddlewares,
   TMethodMiddlewares,
 > = ResolveAllServerContext<
+  TRegister,
   TParentRoute,
   MergeMethodMiddlewares<TServerMiddlewares, TMethodMiddlewares>
 >

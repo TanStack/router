@@ -656,7 +656,7 @@ test('createMiddleware with type request, no middleware or context', () => {
   createMiddleware({ type: 'request' }).server(async (options) => {
     expectTypeOf(options).toEqualTypeOf<{
       request: Request
-      next: RequestServerNextFn<undefined>
+      next: RequestServerNextFn<Register, undefined>
       pathname: string
       context: undefined
     }>()
@@ -678,7 +678,7 @@ test('createMiddleware with type request, no middleware with context', () => {
   createMiddleware({ type: 'request' }).server(async (options) => {
     expectTypeOf(options).toEqualTypeOf<{
       request: Request
-      next: RequestServerNextFn<undefined>
+      next: RequestServerNextFn<Register, undefined>
       pathname: string
       context: undefined
     }>()
@@ -701,7 +701,7 @@ test('createMiddleware with type request, middleware and context', () => {
     async (options) => {
       expectTypeOf(options).toEqualTypeOf<{
         request: Request
-        next: RequestServerNextFn<undefined>
+        next: RequestServerNextFn<Register, undefined>
         pathname: string
         context: undefined
       }>()
@@ -724,7 +724,7 @@ test('createMiddleware with type request, middleware and context', () => {
     .server(async (options) => {
       expectTypeOf(options).toEqualTypeOf<{
         request: Request
-        next: RequestServerNextFn<undefined>
+        next: RequestServerNextFn<Register, undefined>
         pathname: string
         context: { a: string }
       }>()

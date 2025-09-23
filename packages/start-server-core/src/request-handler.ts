@@ -19,7 +19,7 @@ type HasRequired<T> = keyof T extends never
     ? false
     : true
 
-export type RequestHandler<TRegister = unknown> =
+export type RequestHandler<TRegister> =
   HasRequired<RequestOptions<TRegister>> extends true
     ? (
         request: Request,

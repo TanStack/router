@@ -378,6 +378,7 @@ export type MakeRemountDepsOptionsUnion<
     : never
 
 export interface RouteTypes<
+  in out TRegister,
   in out TParentRoute extends AnyRoute,
   in out TPath extends string,
   in out TFullPath extends string,
@@ -606,6 +607,7 @@ export interface Route<
   parentRoute: TParentRoute
   children?: TChildren
   types: RouteTypes<
+    TRegister,
     TParentRoute,
     TPath,
     TFullPath,
@@ -1616,6 +1618,7 @@ export class BaseRoute<
   }
 
   types!: RouteTypes<
+    TRegister,
     TParentRoute,
     TPath,
     TFullPath,
