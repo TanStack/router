@@ -27,7 +27,7 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:build",
     "test:build": "exit 0; vitest",
-    "build": "vite build"
+    "build": "vite build && vite build -c vite.config.server-entry.ts"
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",
