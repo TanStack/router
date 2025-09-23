@@ -1,15 +1,14 @@
 import type { Register } from '@tanstack/router-core'
 
-type MirrorProp<
-  TSource,
-  TKey extends keyof TSource,
-  TNewName extends string,
-> = undefined extends TSource[TKey]
-  ? { [P in TNewName]?: TSource[TKey] }
-  : { [P in TNewName]: TSource[TKey] }
+type BaseContext = {
+  nonce?: string
+}
 
-export interface RequestOptions
-  extends MirrorProp<Register['server'], 'requestContext', 'context'> {}
+export type RequestOptions =
+  Register['server']['requestContext'] extends undefined
+    ? { context?: Register['server']['requestContext'] & BaseContext }
+    : { context: Register['server']['requestContext'] & BaseContext }
+
 // Utility type: true if T has any required keys, else false
 type HasRequired<T> = keyof T extends never
   ? false
