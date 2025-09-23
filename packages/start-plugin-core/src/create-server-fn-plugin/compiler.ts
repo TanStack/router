@@ -7,6 +7,7 @@ import {
   findReferencedIdentifiers,
 } from 'babel-dead-code-elimination'
 import { handleCreateServerFn } from './handleCreateServerFn'
+import { handleCreateMiddleware } from './handleCreateMiddleware'
 
 type Binding =
   | {
@@ -26,8 +27,16 @@ type ExportEntry =
   | { tag: 'Default'; name: string }
   | { tag: 'Namespace'; name: string; targetId: string } // for `export * as ns from './x'`
 
-type Kind = 'None' | 'Root' | 'Builder' | 'ServerFn'
+type Kind = 'None' | `Root` | `Builder` | LookupKind
 
+type LookupKind = 'ServerFn' | 'Middleware'
+
+const validLookupKinds: Array<LookupKind> = ['ServerFn', 'Middleware']
+const candidateCallIdentifier = ['handler', 'server', 'client']
+export type LookupConfig = {
+  libName: string
+  rootExport: string
+}
 interface ModuleInfo {
   id: string
   code: string
@@ -42,36 +51,50 @@ export class ServerFnCompiler {
   constructor(
     private options: {
       env: 'client' | 'server'
-      libName: string
-      rootExport: string
+      lookupConfigurations: Array<LookupConfig>
       loadModule: (id: string) => Promise<void>
       resolveId: (id: string, importer?: string) => Promise<string | null>
     },
   ) {}
 
   private async init(id: string) {
-    const libId = await this.options.resolveId(this.options.libName, id)
-    if (!libId) {
-      throw new Error(`could not resolve "${this.options.libName}"`)
-    }
-    // insert root binding
-    const rootModule = {
-      ast: null as any,
-      bindings: new Map(),
-      exports: new Map(),
-      code: '',
-      id: libId,
-    }
-    rootModule.exports.set(this.options.rootExport, {
-      tag: 'Normal',
-      name: this.options.rootExport,
-    })
-    rootModule.bindings.set(this.options.rootExport, {
-      type: 'var',
-      init: t.identifier(this.options.rootExport),
-      resolvedKind: 'Root',
-    })
-    this.moduleCache.set(libId, rootModule)
+    await Promise.all(
+      this.options.lookupConfigurations.map(async (config) => {
+        const libId = await this.options.resolveId(config.libName, id)
+        if (!libId) {
+          throw new Error(`could not resolve "${config.libName}"`)
+        }
+        let rootModule = this.moduleCache.get(libId)
+        if (!rootModule) {
+          // insert root binding
+          rootModule = {
+            ast: null as any,
+            bindings: new Map(),
+            exports: new Map(),
+            code: '',
+            id: libId,
+          }
+          this.moduleCache.set(libId, rootModule)
+        }
+
+        rootModule.exports.set(config.rootExport, {
+          tag: 'Normal',
+          name: config.rootExport,
+        })
+        rootModule.exports.set('*', {
+          tag: 'Namespace',
+          name: config.rootExport,
+          targetId: libId,
+        })
+        rootModule.bindings.set(config.rootExport, {
+          type: 'var',
+          init: t.identifier(config.rootExport),
+          resolvedKind: `Root` satisfies Kind,
+        })
+        this.moduleCache.set(libId, rootModule)
+      }),
+    )
+
     this.initialized = true
   }
 
@@ -170,30 +193,37 @@ export class ServerFnCompiler {
       await this.init(id)
     }
     const { bindings, ast } = this.ingestModule({ code, id })
-    const candidates = this.collectHandlerCandidates(bindings)
+    const candidates = this.collectCandidates(bindings)
     if (candidates.length === 0) {
-      // this hook will only be invoked if there is `.handler(` in the code,
+      // this hook will only be invoked if there is `.handler(` | `.server(` | `.client(` in the code,
       // so not discovering a handler candidate is rather unlikely, but maybe possible?
       return null
     }
 
     // let's find out which of the candidates are actually server functions
-    const toRewrite: Array<t.CallExpression> = []
+    const toRewrite: Array<{
+      callExpression: t.CallExpression
+      kind: LookupKind
+    }> = []
     for (const handler of candidates) {
       const kind = await this.resolveExprKind(handler, id)
-      if (kind === 'ServerFn') {
-        toRewrite.push(handler)
+      if (validLookupKinds.includes(kind as LookupKind)) {
+        toRewrite.push({ callExpression: handler, kind: kind as LookupKind })
       }
     }
     if (toRewrite.length === 0) {
       return null
     }
-    const pathsToRewrite: Array<babel.NodePath<t.CallExpression>> = []
+
+    const pathsToRewrite: Array<{
+      nodePath: babel.NodePath<t.CallExpression>
+      kind: LookupKind
+    }> = []
     babel.traverse(ast, {
       CallExpression(path) {
-        const found = toRewrite.findIndex((h) => path.node === h)
+        const found = toRewrite.findIndex((h) => path.node === h.callExpression)
         if (found !== -1) {
-          pathsToRewrite.push(path)
+          pathsToRewrite.push({ nodePath: path, kind: toRewrite[found]!.kind })
           // delete from toRewrite
           toRewrite.splice(found, 1)
         }
@@ -208,9 +238,13 @@ export class ServerFnCompiler {
 
     const refIdents = findReferencedIdentifiers(ast)
 
-    pathsToRewrite.map((p) =>
-      handleCreateServerFn(p, { env: this.options.env, code }),
-    )
+    pathsToRewrite.map((p) => {
+      if (p.kind === 'ServerFn') {
+        handleCreateServerFn(p.nodePath, { env: this.options.env, code })
+      } else {
+        handleCreateMiddleware(p.nodePath, { env: this.options.env })
+      }
+    })
 
     deadCodeElimination(ast, refIdents)
 
@@ -221,13 +255,13 @@ export class ServerFnCompiler {
     })
   }
 
-  // collects all `.handler(...)` CallExpressions at top-level
-  private collectHandlerCandidates(bindings: Map<string, Binding>) {
+  // collects all candidate CallExpressions at top-level
+  private collectCandidates(bindings: Map<string, Binding>) {
     const candidates: Array<t.CallExpression> = []
 
     for (const binding of bindings.values()) {
       if (binding.type === 'var') {
-        const handler = isHandlerCall(binding.init)
+        const handler = isCandidateCallExpression(binding.init)
         if (handler) {
           candidates.push(handler)
         }
@@ -276,12 +310,6 @@ export class ServerFnCompiler {
       const target = await this.options.resolveId(binding.source, fileId)
       if (!target) {
         return 'None'
-      }
-
-      if (binding.importedName === '*') {
-        throw new Error(
-          `should never get here, namespace imports are handled in resolveCalleeKind`,
-        )
       }
 
       const importedModule = await this.getModuleInfo(target)
@@ -336,11 +364,15 @@ export class ServerFnCompiler {
         fileId,
         visited,
       )
-      if (calleeKind === 'Root' || calleeKind === 'Builder') {
-        return 'Builder'
-      }
-      if (calleeKind === 'ServerFn') {
-        return 'ServerFn'
+      if (calleeKind !== 'None') {
+        if (calleeKind === `Root` || calleeKind === `Builder`) {
+          return `Builder`
+        }
+        for (const kind of validLookupKinds) {
+          if (calleeKind === kind) {
+            return kind
+          }
+        }
       }
     } else if (t.isMemberExpression(expr) && t.isIdentifier(expr.property)) {
       result = await this.resolveCalleeKind(expr.object, fileId, visited)
@@ -379,6 +411,16 @@ export class ServerFnCompiler {
         const base = await this.resolveExprKind(callee.object, fileId, visited)
         if (base === 'Root' || base === 'Builder') {
           return 'ServerFn'
+        }
+        return 'None'
+      } else if (
+        prop === 'client' ||
+        prop === 'server' ||
+        prop === 'createMiddleware'
+      ) {
+        const base = await this.resolveExprKind(callee.object, fileId, visited)
+        if (base === 'Root' || base === 'Builder' || base === 'Middleware') {
+          return 'Middleware'
         }
         return 'None'
       }
@@ -439,16 +481,16 @@ export class ServerFnCompiler {
   }
 }
 
-function isHandlerCall(
+function isCandidateCallExpression(
   node: t.Node | null | undefined,
 ): undefined | t.CallExpression {
   if (!t.isCallExpression(node)) return undefined
 
   const callee = node.callee
-  if (
-    !t.isMemberExpression(callee) ||
-    !t.isIdentifier(callee.property, { name: 'handler' })
-  ) {
+  if (!t.isMemberExpression(callee) || !t.isIdentifier(callee.property)) {
+    return undefined
+  }
+  if (!candidateCallIdentifier.includes(callee.property.name)) {
     return undefined
   }
 

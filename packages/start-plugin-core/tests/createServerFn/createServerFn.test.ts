@@ -14,11 +14,24 @@ async function compile(opts: {
 }) {
   const compiler = new ServerFnCompiler({
     ...opts,
-    libName: '@tanstack/react-start',
     loadModule: async (id) => {
       // do nothing in test
     },
-    rootExport: 'createServerFn',
+    lookupConfigurations: [
+      {
+        libName: `@tanstack/react-start`,
+        rootExport: 'createMiddleware',
+      },
+
+      {
+        libName: `@tanstack/react-start`,
+        rootExport: 'createServerFn',
+      },
+      {
+        libName: `@tanstack/react-start`,
+        rootExport: 'createStart',
+      },
+    ],
     resolveId: async (id) => {
       return id
     },

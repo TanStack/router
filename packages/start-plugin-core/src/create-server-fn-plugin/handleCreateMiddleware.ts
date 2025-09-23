@@ -1,12 +1,12 @@
 import * as t from '@babel/types'
-import { getRootCallExpression } from './utils'
+import { getRootCallExpression } from '../start-compiler-plugin/utils'
 import type * as babel from '@babel/core'
 
-import type { CompileOptions } from './compilers'
-
-export function handleCreateMiddlewareCallExpression(
+export function handleCreateMiddleware(
   path: babel.NodePath<t.CallExpression>,
-  opts: CompileOptions,
+  opts: {
+    env: 'client' | 'server'
+  },
 ) {
   const rootCallExpression = getRootCallExpression(path)
 
