@@ -19,7 +19,7 @@ Middleware allows you to customize the behavior of server functions created with
 
 ## Defining Middleware for Server Functions
 
-Middleware is defined using the `createMiddleware` function. This function returns a `Middleware` object that can be used to continue customizing the middleware with methods like `middleware`, `validator`, `server`, and `client`.
+Middleware is defined using the `createMiddleware` function. This function returns a `Middleware` object that can be used to continue customizing the middleware with methods like `middleware`, `inputValidator`, `server`, and `client`.
 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
@@ -54,7 +54,7 @@ const fn = createServerFn()
 Several methods are available to customize the middleware. If you are (hopefully) using TypeScript, the order of these methods is enforced by the type system to ensure maximum inference and type safety.
 
 - `middleware`: Add a middleware to the chain.
-- `validator`: Modify the data object before it is passed to this middleware and any nested middleware.
+- `inputValidator`: Modify the data object before it is passed to this middleware and any nested middleware.
 - `server`: Define server-side logic that the middleware will execute before any nested middleware and ultimately a server function, and also provide the result to the next middleware.
 - `client`: Define client-side logic that the middleware will execute before any nested middleware and ultimately the client-side RPC function (or the server-side function), and also provide the result to the next middleware.
 
@@ -73,9 +73,9 @@ const loggingMiddleware = createMiddleware({ type: 'function' }).middleware([
 
 Type-safe context and payload validation are also inherited from parent middlewares!
 
-## The `validator` method
+## The `inputValidator` method
 
-The `validator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this. Here is an example:
+The `inputValidator` method is used to modify the data object before it is passed to this middleware, nested middleware, and ultimately the server function. This method should receive a function that takes the data object and returns a validated (and optionally modified) data object. It's common to use a validation library like `zod` to do this. Here is an example:
 
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
@@ -87,7 +87,7 @@ const mySchema = z.object({
 })
 
 const workspaceMiddleware = createMiddleware({ type: 'function' })
-  .validator(zodValidator(mySchema))
+  .inputValidator(zodValidator(mySchema))
   .server(({ next, data }) => {
     console.log('Workspace ID:', data.workspaceId)
     return next()
@@ -148,21 +148,13 @@ const loggingMiddleware = createMiddleware({ type: 'function' })
 
 Despite server functions being mostly server-side bound operations, there is still plenty of client-side logic surrounding the outgoing RPC request from the client. This means that we can also define client-side logic in middleware that will execute on the client side around any nested middleware and ultimately the RPC function and its response to the client.
 
-## Client-side Payload Validation
-
-By default, middleware validation is only performed on the server to keep the client bundle size small. However, you may also choose to validate data on the client side by passing the `validateClient: true` option to the `createMiddleware` function. This will cause the data to be validated on the client side before being sent to the server, potentially saving a round trip.
-
-> Why can't I pass a different validation schema for the client?
->
-> The client-side validation schema is derived from the server-side schema. This is because the client-side validation schema is used to validate the data before it is sent to the server. If the client-side schema were different from the server-side schema, the server would receive data that it did not expect, which could lead to unexpected behavior.
-
 ```tsx
 import { createMiddleware } from '@tanstack/react-start'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
 
-const workspaceMiddleware = createMiddleware({ validateClient: true })
-  .validator(zodValidator(mySchema))
+const workspaceMiddleware = createMiddleware()
+  .inputValidator(zodValidator(mySchema))
   .server(({ next, data }) => {
     console.log('Workspace ID:', data.workspaceId)
     return next()
@@ -425,4 +417,4 @@ const fn = createServerFn()
 Middleware functionality is tree-shaken based on the environment for each bundle produced.
 
 - On the server, nothing is tree-shaken, so all code used in middleware will be included in the server bundle.
-- On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. If `validateClient` is set to `true`, the client-side validation code will be included in the client bundle, otherwise `data` validation code will also be removed.
+- On the client, all server-specific code is removed from the client bundle. This means any code used in the `server` method is always removed from the client bundle. `data` validation code will also be removed.

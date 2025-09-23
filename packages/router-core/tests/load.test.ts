@@ -7,9 +7,9 @@ import {
   notFound,
   redirect,
 } from '../src'
-import type { RouteOptions } from '../src'
+import type { RootRouteOptions } from '../src'
 
-type AnyRouteOptions = RouteOptions<any>
+type AnyRouteOptions = RootRouteOptions<any>
 type BeforeLoad = NonNullable<AnyRouteOptions['beforeLoad']>
 type Loader = NonNullable<AnyRouteOptions['loader']>
 
@@ -461,5 +461,5 @@ test('exec on stay (beforeLoad & loader)', async () => {
 })
 
 function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }

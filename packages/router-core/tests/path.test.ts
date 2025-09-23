@@ -7,95 +7,11 @@ import {
   interpolatePath,
   matchPathname,
   parsePathname,
-  removeBasepath,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
 } from '../src/path'
 import type { Segment as PathSegment } from '../src/path'
-
-describe('removeBasepath', () => {
-  it.each([
-    {
-      name: '`/` should leave pathname as-is',
-      basepath: '/',
-      pathname: '/path',
-      expected: '/path',
-    },
-    {
-      name: 'should return empty string if basepath is the same as pathname',
-      basepath: '/path',
-      pathname: '/path',
-      expected: '',
-    },
-    {
-      name: 'should remove basepath from the beginning of the pathname',
-      basepath: '/app',
-      pathname: '/app/path/app',
-      expected: '/path/app',
-    },
-    {
-      name: 'should remove multisegment basepath from the beginning of the pathname',
-      basepath: '/app/new',
-      pathname: '/app/new/path/app/new',
-      expected: '/path/app/new',
-    },
-    {
-      name: 'should remove basepath only in case it matches segments completely',
-      basepath: '/app',
-      pathname: '/application',
-      expected: '/application',
-    },
-    {
-      name: 'should remove multisegment basepath only in case it matches segments completely',
-      basepath: '/app/new',
-      pathname: '/app/new-application',
-      expected: '/app/new-application',
-    },
-  ])('$name', ({ basepath, pathname, expected }) => {
-    expect(removeBasepath(basepath, pathname)).toBe(expected)
-  })
-
-  describe('case sensitivity', () => {
-    describe('caseSensitive = true', () => {
-      it.each([
-        {
-          name: 'should not remove basepath from the beginning of the pathname',
-          basepath: '/app',
-          pathname: '/App/path/App',
-          expected: '/App/path/App',
-        },
-        {
-          name: 'should not remove basepath from the beginning of the pathname with multiple segments',
-          basepath: '/app/New',
-          pathname: '/App/New/path/App',
-          expected: '/App/New/path/App',
-        },
-      ])('$name', ({ basepath, pathname, expected }) => {
-        expect(removeBasepath(basepath, pathname, true)).toBe(expected)
-      })
-    })
-
-    describe('caseSensitive = false', () => {
-      it.each([
-        {
-          name: 'should remove basepath from the beginning of the pathname',
-          basepath: '/App',
-          pathname: '/app/path/app',
-          expected: '/path/app',
-        },
-        {
-          name: 'should remove multisegment basepath from the beginning of the pathname',
-          basepath: '/App/New',
-          pathname: '/app/new/path/app',
-          expected: '/path/app',
-        },
-      ])('$name', ({ basepath, pathname, expected }) => {
-        expect(removeBasepath(basepath, pathname, false)).toBe(expected)
-      })
-    })
-  })
-})
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
   'removeTrailingSlash with basepath $basepath',
@@ -168,47 +84,40 @@ describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
 
 describe('resolvePath', () => {
   describe.each([
-    ['/', '/', '/', '/'],
-    ['/', '/', '/a', '/a'],
-    ['/', '/', 'a/', '/a'],
-    ['/', '/', '/a/b', '/a/b'],
-    ['/', 'a', 'b', '/a/b'],
-    ['/a/b', 'c', '/a/b/c', '/a/b/c'],
-    ['/a/b', '/', 'c', '/a/b/c'],
-    ['/a/b', '/', './c', '/a/b/c'],
-    ['/', '/', 'a/b', '/a/b'],
-    ['/', '/', './a/b', '/a/b'],
-    ['/', '/a/b/c', 'd', '/a/b/c/d'],
-    ['/', '/a/b/c', './d', '/a/b/c/d'],
-    ['/', '/a/b/c', './../d', '/a/b/d'],
-    ['/', '/a/b/c/d', './../d', '/a/b/c/d'],
-    ['/', '/a/b/c', '../../d', '/a/d'],
-    ['/', '/a/b/c', '../d', '/a/b/d'],
-    ['/', '/a/b/c', '..', '/a/b'],
-    ['/', '/a/b/c', '../..', '/a'],
-    ['/', '/a/b/c', '../../..', '/'],
-    ['/', '/a/b/c/', '../../..', '/'],
-    ['/products', '/', '/products-list', '/products/products-list'],
-    ['/basepath', '/products', '.', '/basepath/products'],
-  ])('resolves correctly', (base, a, b, eq) => {
-    it(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
-      expect(resolvePath({ basepath: base, base: a, to: b })).toEqual(eq)
+    ['/', '/', '/'],
+    ['/', '/a', '/a'],
+    ['/', 'a/', '/a'],
+    ['/', '/a/b', '/a/b'],
+    ['/a', 'b', '/a/b'],
+    ['/', 'a/b', '/a/b'],
+    ['/', './a/b', '/a/b'],
+    ['/a/b/c', 'd', '/a/b/c/d'],
+    ['/a/b/c', './d', '/a/b/c/d'],
+    ['/a/b/c', './../d', '/a/b/d'],
+    ['/a/b/c/d', './../d', '/a/b/c/d'],
+    ['/a/b/c', '../../d', '/a/d'],
+    ['/a/b/c', '../d', '/a/b/d'],
+    ['/a/b/c', '..', '/a/b'],
+    ['/a/b/c', '../..', '/a'],
+    ['/a/b/c', '../../..', '/'],
+    ['/a/b/c/', '../../..', '/'],
+  ])('resolves correctly', (a, b, eq) => {
+    it(`${a} to ${b} === ${eq}`, () => {
+      expect(resolvePath({ base: a, to: b })).toEqual(eq)
     })
-    it(`Base: ${base} - ${a}/ to ${b} === ${eq} (trailing slash)`, () => {
-      expect(resolvePath({ basepath: base, base: a + '/', to: b })).toEqual(eq)
+    it(`${a}/ to ${b} === ${eq} (trailing slash)`, () => {
+      expect(resolvePath({ base: a + '/', to: b })).toEqual(eq)
     })
-    it(`Base: ${base} - ${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
-      expect(
-        resolvePath({ basepath: base, base: a + '/', to: b + '/' }),
-      ).toEqual(eq)
+    it(`${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
+      expect(resolvePath({ base: a + '/', to: b + '/' })).toEqual(eq)
     })
   })
+
   describe('trailingSlash', () => {
     describe(`'always'`, () => {
       it('keeps trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd/',
             trailingSlash: 'always',
@@ -218,7 +127,6 @@ describe('resolvePath', () => {
       it('adds trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd',
             trailingSlash: 'always',
@@ -230,7 +138,6 @@ describe('resolvePath', () => {
       it('removes trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd/',
             trailingSlash: 'never',
@@ -240,7 +147,6 @@ describe('resolvePath', () => {
       it('does not add trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd',
             trailingSlash: 'never',
@@ -252,7 +158,6 @@ describe('resolvePath', () => {
       it('keeps trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd/',
             trailingSlash: 'preserve',
@@ -262,7 +167,6 @@ describe('resolvePath', () => {
       it('does not add trailing slash', () => {
         expect(
           resolvePath({
-            basepath: '/',
             base: '/a/b/c',
             to: 'd',
             trailingSlash: 'preserve',
@@ -295,11 +199,9 @@ describe('resolvePath', () => {
           const candidate = base + trimPathLeft(to)
           expect(
             resolvePath({
-              basepath: '/',
               base,
               to: candidate,
               trailingSlash: 'never',
-              caseSensitive: false,
             }),
           ).toEqual(candidate)
         })
@@ -325,11 +227,9 @@ describe('resolvePath', () => {
           const candidate = base + trimPathLeft(to)
           expect(
             resolvePath({
-              basepath: '/',
               base,
               to: candidate,
               trailingSlash: 'never',
-              caseSensitive: false,
             }),
           ).toEqual(candidate)
         })
@@ -584,63 +484,6 @@ describe('interpolatePath', () => {
 })
 
 describe('matchPathname', () => {
-  describe('basepath matching', () => {
-    it.each([
-      {
-        name: 'should match when the input is the same as the basepath',
-        basepath: '/basepath',
-        input: '/basepath',
-        matchingOptions: {
-          to: '/',
-        },
-        expectedMatchedParams: {},
-      },
-      {
-        name: 'should match when the input starts with the basepath and `to` is set to the remaining',
-        basepath: '/basepath',
-        input: '/basepath/abc',
-        matchingOptions: {
-          to: '/abc',
-        },
-        expectedMatchedParams: {},
-      },
-      {
-        name: 'should not match when the input is `/` and does not start with the basepath',
-        basepath: '/basepath',
-        input: '/',
-        matchingOptions: {
-          to: '/',
-        },
-        expectedMatchedParams: undefined,
-      },
-      {
-        name: 'should not match when the input completely does not start with the basepath',
-        basepath: '/basepath',
-        input: '/abc',
-        matchingOptions: {
-          to: '/abc',
-        },
-        expectedMatchedParams: undefined,
-      },
-      {
-        name: 'should not match when the input only partially matches the basepath',
-        basepath: '/base',
-        input: '/basepath/abc',
-        matchingOptions: {
-          to: '/abc',
-        },
-        expectedMatchedParams: undefined,
-      },
-    ])(
-      '$name',
-      ({ basepath, input, matchingOptions, expectedMatchedParams }) => {
-        expect(matchPathname(basepath, input, matchingOptions)).toStrictEqual(
-          expectedMatchedParams,
-        )
-      },
-    )
-  })
-
   describe('path param(s) matching', () => {
     it.each([
       {
@@ -716,7 +559,7 @@ describe('matchPathname', () => {
         },
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
-      expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+      expect(matchPathname(input, matchingOptions)).toStrictEqual(
         expectedMatchedParams,
       )
     })
@@ -780,7 +623,7 @@ describe('matchPathname', () => {
         },
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
-      expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+      expect(matchPathname(input, matchingOptions)).toStrictEqual(
         expectedMatchedParams,
       )
     })
@@ -859,7 +702,7 @@ describe('matchPathname', () => {
         },
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
-      expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+      expect(matchPathname(input, matchingOptions)).toStrictEqual(
         expectedMatchedParams,
       )
     })
@@ -1167,35 +1010,31 @@ describe('parsePathname', () => {
 describe('non-nested paths', async () => {
   describe('resolvePath', () => {
     describe.each([
-      ['/', '/', '/a_', '/a'],
-      ['/', '/', 'a_/', '/a'],
-      ['/', '/', '/a_/b_', '/a/b'],
-      ['/', 'a', 'b_', '/a/b'],
-      ['/a/b', 'c', '/a/b/c_', '/a/b/c'],
-      ['/a/b', '/', 'c_', '/a/b/c'],
-      ['/a/b', '/', './c_', '/a/b/c'],
-      ['/', '/', 'a_/b_', '/a/b'],
-      ['/', '/', './a_/b_', '/a/b'],
-      ['/', '/a/b/c', 'd_', '/a/b/c/d'],
-      ['/', '/a/b/c', './d_', '/a/b/c/d'],
-      ['/', '/a/b/c', './../d_', '/a/b/d'],
-      ['/', '/a/b/c/d', './../d_', '/a/b/c/d'],
-      ['/', '/a/b/c', '../../d_', '/a/d'],
-      ['/', '/a/b/c', '../d_', '/a/b/d'],
-      ['/products', '/', '/products-list_', '/products/products-list'],
-    ])('resolves correctly', (base, a, b, eq) => {
-      it(`Base: ${base} - ${a} to ${b} === ${eq}`, () => {
-        expect(resolvePath({ basepath: base, base: a, to: b })).toEqual(eq)
+      ['/', '/a_', '/a'],
+      ['/', 'a_/', '/a'],
+      ['/', '/a_/b_', '/a/b'],
+      ['/a', 'b_', '/a/b'],
+      ['/c', '/a/b/c_', '/a/b/c'],
+      ['/', 'c_', '/c'],
+      ['/', './c_', '/c'],
+      ['/', 'a_/b_', '/a/b'],
+      ['/', './a_/b_', '/a/b'],
+      ['/a/b/c', 'd_', '/a/b/c/d'],
+      ['/a/b/c', './d_', '/a/b/c/d'],
+      ['/a/b/c', './../d_', '/a/b/d'],
+      ['/a/b/c/d', './../d_', '/a/b/c/d'],
+      ['/a/b/c', '../../d_', '/a/d'],
+      ['/a/b/c', '../d_', '/a/b/d'],
+      ['/', '/products-list_', '/products-list'],
+    ])('resolves correctly', (a, b, eq) => {
+      it(`${a} to ${b} === ${eq}`, () => {
+        expect(resolvePath({ base: a, to: b })).toEqual(eq)
       })
-      it(`Base: ${base} - ${a}/ to ${b} === ${eq} (trailing slash)`, () => {
-        expect(resolvePath({ basepath: base, base: a + '/', to: b })).toEqual(
-          eq,
-        )
+      it(`${a}/ to ${b} === ${eq} (trailing slash)`, () => {
+        expect(resolvePath({ base: a + '/', to: b })).toEqual(eq)
       })
-      it(`Base: ${base} - ${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
-        expect(
-          resolvePath({ basepath: base, base: a + '/', to: b + '/' }),
-        ).toEqual(eq)
+      it(`${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
+        expect(resolvePath({ base: a + '/', to: b + '/' })).toEqual(eq)
       })
     })
 
@@ -1204,7 +1043,6 @@ describe('non-nested paths', async () => {
         it('keeps trailing slash', () => {
           expect(
             resolvePath({
-              basepath: '/',
               base: '/a/b/c',
               to: 'd_/',
               trailingSlash: 'always',
@@ -1214,7 +1052,6 @@ describe('non-nested paths', async () => {
         it('adds trailing slash', () => {
           expect(
             resolvePath({
-              basepath: '/',
               base: '/a/b/c',
               to: 'd_',
               trailingSlash: 'always',
@@ -1227,7 +1064,6 @@ describe('non-nested paths', async () => {
         it('removes trailing slash', () => {
           expect(
             resolvePath({
-              basepath: '/',
               base: '/a/b/c',
               to: 'd_/',
               trailingSlash: 'never',
@@ -1237,7 +1073,6 @@ describe('non-nested paths', async () => {
         it('does not add trailing slash', () => {
           expect(
             resolvePath({
-              basepath: '/',
               base: '/a/b/c',
               to: 'd_',
               trailingSlash: 'never',
@@ -1250,7 +1085,6 @@ describe('non-nested paths', async () => {
         it('keeps trailing slash', () => {
           expect(
             resolvePath({
-              basepath: '/',
               base: '/a/b/c',
               to: 'd_/',
               trailingSlash: 'preserve',
@@ -1260,7 +1094,6 @@ describe('non-nested paths', async () => {
         it('does not add trailing slash', () => {
           expect(
             resolvePath({
-              basepath: '/',
               base: '/a/b/c',
               to: 'd_',
               trailingSlash: 'preserve',
@@ -1316,11 +1149,9 @@ describe('non-nested paths', async () => {
             const result = base + trimPathLeft(expected)
             expect(
               resolvePath({
-                basepath: '/',
                 base,
                 to: candidate,
                 trailingSlash: 'never',
-                caseSensitive: false,
               }),
             ).toEqual(result)
           })
@@ -1369,11 +1200,9 @@ describe('non-nested paths', async () => {
             const result = base + trimPathLeft(expected)
             expect(
               resolvePath({
-                basepath: '/',
                 base,
                 to: candidate,
                 trailingSlash: 'never',
-                caseSensitive: false,
               }),
             ).toEqual(result)
           })
@@ -1610,54 +1439,6 @@ describe('non-nested paths', async () => {
   })
 
   describe('matchPathname', () => {
-    describe('basepath matching', () => {
-      it.each([
-        {
-          name: 'should match when the input starts with the basepath and `to` is set to the remaining',
-          basepath: '/basepath',
-          input: '/basepath/abc',
-          matchingOptions: {
-            to: '/abc_',
-          },
-          expectedMatchedParams: {},
-        },
-        {
-          name: 'should not match when the input is `/` and does not start with the basepath',
-          basepath: '/basepath',
-          input: '/',
-          matchingOptions: {
-            to: '/',
-          },
-          expectedMatchedParams: undefined,
-        },
-        {
-          name: 'should not match when the input completely does not start with the basepath',
-          basepath: '/basepath',
-          input: '/abc',
-          matchingOptions: {
-            to: '/abc_',
-          },
-          expectedMatchedParams: undefined,
-        },
-        {
-          name: 'should not match when the input only partially matches the basepath',
-          basepath: '/base',
-          input: '/basepath/abc',
-          matchingOptions: {
-            to: '/abc_',
-          },
-          expectedMatchedParams: undefined,
-        },
-      ])(
-        '$name',
-        ({ basepath, input, matchingOptions, expectedMatchedParams }) => {
-          expect(matchPathname(basepath, input, matchingOptions)).toStrictEqual(
-            expectedMatchedParams,
-          )
-        },
-      )
-    })
-
     describe('path param(s) matching', () => {
       it.each([
         {
@@ -1733,7 +1514,7 @@ describe('non-nested paths', async () => {
           },
         },
       ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
-        expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+        expect(matchPathname(input, matchingOptions)).toStrictEqual(
           expectedMatchedParams,
         )
       })
@@ -1797,7 +1578,7 @@ describe('non-nested paths', async () => {
           },
         },
       ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
-        expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+        expect(matchPathname(input, matchingOptions)).toStrictEqual(
           expectedMatchedParams,
         )
       })
@@ -1856,7 +1637,7 @@ describe('non-nested paths', async () => {
           },
         },
       ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
-        expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+        expect(matchPathname(input, matchingOptions)).toStrictEqual(
           expectedMatchedParams,
         )
       })

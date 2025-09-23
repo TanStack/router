@@ -5,7 +5,8 @@ import type { AnyRouteMatch, MakeRouteMatch } from '../Matches'
 import type { AnyRouter } from '../router'
 import type { Manifest } from '../manifest'
 import type { RouteContextOptions } from '../route'
-import type { GLOBAL_TSR } from './ssr-server'
+import type { AnySerializationAdapter } from './serializer/transformer'
+import type { GLOBAL_TSR } from './constants'
 
 declare global {
   interface Window {
@@ -15,8 +16,15 @@ declare global {
 
 export interface TsrSsrGlobal {
   router?: DehydratedRouter
-  // clean scripts, shortened since this is sent for each streamed script
+  // clean scripts; shortened since this is sent for each streamed script
   c: () => void
+  // push script into buffer; shortened since this is sent for each streamed script as soon as the first custom transformer was invoked
+  p: (script: () => void) => void
+  buffer: Array<() => void>
+  // custom transformers, shortened since this is sent for each streamed value that needs a custom transformer
+  t?: Map<string, (value: any) => any>
+  // this flag indicates whether the transformers were initialized
+  initialized?: boolean
 }
 
 function hydrateMatch(
@@ -50,7 +58,26 @@ export interface DehydratedRouter {
 
 export async function hydrate(router: AnyRouter): Promise<any> {
   invariant(
-    window.$_TSR?.router,
+    window.$_TSR,
+    'Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
+  )
+
+  const serializationAdapters = router.options.serializationAdapters as
+    | Array<AnySerializationAdapter>
+    | undefined
+
+  if (serializationAdapters?.length) {
+    const fromSerializableMap = new Map()
+    serializationAdapters.forEach((adapter) => {
+      fromSerializableMap.set(adapter.key, adapter.fromSerializable)
+    })
+    window.$_TSR.t = fromSerializableMap
+    window.$_TSR.buffer.forEach((script) => script())
+  }
+  window.$_TSR.initialized = true
+
+  invariant(
+    window.$_TSR.router,
     'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
   )
 

@@ -61,7 +61,6 @@ import { createServerFn } from '@tanstack/react-start'
 
 export const getData = createServerFn({
   method: 'GET', // HTTP method to use
-  response: 'data', // Response handling mode
 }).handler(async () => {
   // Function implementation
 })
@@ -78,18 +77,6 @@ method?: 'GET' | 'POST'
 ```
 
 By default, server functions use `GET` if not specified.
-
-**`response`**
-
-Controls how responses are processed and returned:
-
-```tsx
-response?: 'data' | 'full' | 'raw'
-```
-
-- `'data'` (default): Automatically parses JSON responses and returns just the data
-- `'full'`: Returns a response object with result data, error information, and context
-- `'raw'`: Returns the raw Response object directly, enabling streaming responses and custom headers
 
 ## Where can I call server functions?
 
@@ -120,7 +107,7 @@ import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn({
   method: 'GET',
 })
-  .validator((data: string) => data)
+  .inputValidator((data: string) => data)
   .handler(async (ctx) => {
     return `Hello, ${ctx.data}!`
   })
@@ -134,7 +121,7 @@ greet({
 
 Server functions can be configured to validate their input data at runtime, while adding type safety. This is useful for ensuring the input is of the correct type before executing the server function, and providing more friendly error messages.
 
-This is done with the `validator` method. It will accept whatever input is passed to the server function. The value (and type) you return from this function will become the input passed to the actual server function handler.
+This is done with the `inputValidator` method. It will accept whatever input is passed to the server function. The value (and type) you return from this function will become the input passed to the actual server function handler.
 
 Validators also integrate seamlessly with external validators, if you want to use something like Zod.
 
@@ -150,7 +137,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((person: unknown): Person => {
+  .inputValidator((person: unknown): Person => {
     if (typeof person !== 'object' || person === null) {
       throw new Error('Person must be an object')
     }
@@ -180,7 +167,7 @@ const Person = z.object({
 })
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((person: unknown) => {
+  .inputValidator((person: unknown) => {
     return Person.parse(person)
   })
   .handler(async (ctx) => {
@@ -196,7 +183,7 @@ greet({
 
 ## Type Safety
 
-Since server-functions cross the network boundary, it's important to ensure the data being passed to them is not only the right type, but also validated at runtime. This is especially important when dealing with user input, as it can be unpredictable. To ensure developers validate their I/O data, types are reliant on validation. The return type of the `validator` function will be the input to the server function's handler.
+Since server-functions cross the network boundary, it's important to ensure the data being passed to them is not only the right type, but also validated at runtime. This is especially important when dealing with user input, as it can be unpredictable. To ensure developers validate their I/O data, types are reliant on validation. The return type of the `inputValidator` function will be the input to the server function's handler.
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
@@ -206,7 +193,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((person: unknown): Person => {
+  .inputValidator((person: unknown): Person => {
     if (typeof person !== 'object' || person === null) {
       throw new Error('Person must be an object')
     }
@@ -233,7 +220,7 @@ function test() {
 
 ## Inference
 
-Server functions infer their input, and output types based on the input to the `validator`, and return value of `handler` functions, respectively. In fact, the `validator` you define can even have its own separate input/output types, which can be useful if your validator performs transformations on the input data.
+Server functions infer their input, and output types based on the input to the `inputValidator`, and return value of `handler` functions, respectively. In fact, the `inputValidator` you define can even have its own separate input/output types, which can be useful if your input validator performs transformations on the input data.
 
 To illustrate this, let's take a look at an example using the `zod` validation library:
 
@@ -246,7 +233,7 @@ const transactionSchema = z.object({
 })
 
 const createTransaction = createServerFn()
-  .validator(transactionSchema)
+  .inputValidator(transactionSchema)
   .handler(({ data }) => {
     return data.amount // Returns a number
   })
@@ -260,7 +247,7 @@ createTransaction({
 
 ## Non-Validated Inference
 
-While we highly recommend using a validation library to validate your network I/O data, you may, for whatever reason _not_ want to validate your data, but still have type safety. To do this, provide type information to the server function using an identity function as the `validator`, that types the input, and or output to the correct types:
+While we highly recommend using a validation library to validate your network I/O data, you may, for whatever reason _not_ want to validate your data, but still have type safety. To do this, provide type information to the server function using an identity function as the `inputValidator`, that types the input, and or output to the correct types:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
@@ -270,7 +257,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((d: Person) => d)
+  .inputValidator((d: Person) => d)
   .handler(async (ctx) => {
     return `Hello, ${ctx.data.name}!`
   })
@@ -295,7 +282,7 @@ type Person = {
 }
 
 export const greet = createServerFn({ method: 'GET' })
-  .validator((data: Person) => data)
+  .inputValidator((data: Person) => data)
   .handler(async ({ data }) => {
     return `Hello, ${data.name}! You are ${data.age} years old.`
   })
@@ -316,7 +303,7 @@ Server functions can accept `FormData` objects as parameters
 import { createServerFn } from '@tanstack/react-start'
 
 export const greetUser = createServerFn({ method: 'POST' })
-  .validator((data) => {
+  .inputValidator((data) => {
     if (!(data instanceof FormData)) {
       throw new Error('Invalid form data')
     }
@@ -357,7 +344,7 @@ function Test() {
 
 ## Server Function Context
 
-In addition to the single parameter that server functions accept, you can also access server request context from within any server function using utilities from `@tanstack/react-start/server`. Under the hood, we use [Unjs](https://unjs.io/)'s `h3` package to perform cross-platform HTTP requests.
+In addition to the single parameter that server functions accept, you can also access server request context from within any server function using utilities from `@tanstack/react-start/server`.
 
 There are many context functions available to you for things like:
 
@@ -366,23 +353,20 @@ There are many context functions available to you for things like:
 - Accessing/setting sessions/cookies
 - Setting response status codes and status messages
 - Dealing with multi-part form data
-- Reading/Setting custom server context properties
-
-For a full list of available context functions, see all of the available [h3 Methods](https://h3.unjs.io/utils/request) or inspect the [@tanstack/start-server-core Source Code](https://github.com/TanStack/router/tree/main/packages/start-server-core/src).
 
 For starters, here are a few examples:
 
 ## Accessing the Request Context
 
-Let's use the `getWebRequest` function to access the request itself from within a server function:
+Let's use the `getRequest` function to access the request itself from within a server function:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
-import { getWebRequest } from '@tanstack/react-start/server'
+import { getRequest } from '@tanstack/react-start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
-    const request = getWebRequest()
+    const request = getRequest()
 
     console.log(request.method) // GET
 
@@ -393,15 +377,15 @@ export const getServerTime = createServerFn({ method: 'GET' }).handler(
 
 ## Accessing Headers
 
-Use the `getHeaders` function to access all headers from within a server function:
+Use the `getRequestHeaders` function to access all headers from within a server function:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
-import { getHeaders } from '@tanstack/react-start/server'
+import { getRequestHeaders } from '@tanstack/react-start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
-    console.log(getHeaders())
+    console.log(getRequestHeaders())
     // {
     //   "accept": "*/*",
     //   "accept-encoding": "gzip, deflate, br",
@@ -414,15 +398,15 @@ export const getServerTime = createServerFn({ method: 'GET' }).handler(
 )
 ```
 
-You can also access individual headers using the `getHeader` function:
+You can also access individual headers using the `getRequestHeader` function:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
-import { getHeader } from '@tanstack/react-start/server'
+import { getRequestHeader } from '@tanstack/react-start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
-    console.log(getHeader('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
+    console.log(getRequestHeader('User-Agent')) // Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3
   },
 )
 ```
@@ -463,15 +447,15 @@ By default, server functions assume that any non-Response object returned is eit
 
 ## Responding with Custom Headers
 
-To respond with custom headers, you can use the `setHeader` function:
+To respond with custom headers, you can use the `setResponseHeader` function:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
-import { setHeader } from '@tanstack/react-start/server'
+import { setResponseHeader } from '@tanstack/react-start/server'
 
 export const getServerTime = createServerFn({ method: 'GET' }).handler(
   async () => {
-    setHeader('X-Custom-Header', 'value')
+    setResponseHeader('X-Custom-Header', 'value')
     return new Date().toISOString()
   },
 )
@@ -495,28 +479,26 @@ export const getServerTime = createServerFn({ method: 'GET' }).handler(
 
 ## Returning Raw Response objects
 
-To return a raw Response object, return a Response object from the server function and set `response: 'raw'`:
+To return a raw Response object, return a Response object from the server function:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
 
 export const getServerTime = createServerFn({
   method: 'GET',
-  response: 'raw',
 }).handler(async () => {
   // Read a file from s3
   return fetch('https://example.com/time.txt')
 })
 ```
 
-The response: 'raw' option also allows for streaming responses among other things:
+This also allows for streaming responses among other things:
 
 ```tsx
 import { createServerFn } from '@tanstack/react-start'
 
 export const streamEvents = createServerFn({
   method: 'GET',
-  response: 'raw',
 }).handler(async ({ signal }) => {
   // Create a ReadableStream to send chunks of data
   const stream = new ReadableStream({
@@ -566,7 +548,7 @@ export const streamEvents = createServerFn({
 })
 ```
 
-The `response: 'raw'` option is particularly useful for:
+Returning raw responses is particularly useful for:
 
 - Streaming APIs where data is sent incrementally
 - Server-sent events
@@ -745,8 +727,6 @@ export const auth = createServerFn({ method: 'GET' }).handler(async () => {
 })
 ```
 
-> ⚠️ Do not use `@tanstack/react-start/server`'s `sendRedirect` function to send soft redirects from within server functions. This will send the redirect using the `Location` header and will force a full page hard navigation on the client.
-
 ## Redirect Headers
 
 You can also set custom headers on a redirect by passing a `headers` option:
@@ -848,7 +828,7 @@ To do this, we can utilize the `url` property of the server function:
 
 ```ts
 const yourFn = createServerFn({ method: 'POST' })
-  .validator((formData) => {
+  .inputValidator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')
     }
@@ -891,7 +871,7 @@ server function:
 
 ```tsx
 const yourFn = createServerFn({ method: 'POST' })
-  .validator((formData) => {
+  .inputValidator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')
     }
@@ -969,7 +949,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .validator((formData) => {
+  .inputValidator((formData) => {
     if (!(formData instanceof FormData)) {
       throw new Error('Invalid form data')
     }

@@ -18,12 +18,12 @@ This is the file that will dictate the behavior of TanStack Router used within S
 from the default [preloading functionality](/router/latest/docs/framework/react/guide/preloading) to [caching staleness](/router/latest/docs/framework/react/guide/data-loading).
 
 ```tsx
-// src/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+// src/start.tsx
+import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
@@ -33,7 +33,7 @@ export function createRouter() {
 
 declare module '@tanstack/react-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>
+    router: ReturnType<typeof getRouter>
   }
 }
 ```
@@ -49,7 +49,7 @@ The `routeTree.gen.ts` file is generated when you run TanStack Start (via `npm r
 > [!NOTE]
 > The server entry point is **optional** out of the box. If not provided, TanStack Start will automatically handle the server entry point for you using the below as a default.
 
-This is done via the `src/server.ts` file:
+This is done via the `src/server.ts` file.
 
 ```tsx
 // src/server.ts
@@ -59,9 +59,23 @@ import {
 } from '@tanstack/react-start/server'
 import { createRouter } from './router'
 
-export default createStartHandler({
+const fetch = createStartHandler({
   createRouter,
 })(defaultStreamHandler)
+
+export default {
+  fetch,
+}
+```
+
+The entry point must conform to the following interface:
+
+```tsx
+export default {
+  fetch(req: Request): Promise<Response> {
+    // ...
+  },
+}
 ```
 
 Whether we are statically generating our app or serving it dynamically, the `server.ts` file is the entry point for doing all SSR-related work.
@@ -185,7 +199,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .validator((d: number) => d)
+  .inputValidator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
     await fs.promises.writeFile(filePath, `${count + data}`)
@@ -255,7 +269,7 @@ import { z } from 'zod'
 
 const getUserById = createServerFn({ method: 'GET' })
   // Always validate data sent to the function, here we use Zod
-  .validator(z.string())
+  .inputValidator(z.string())
   // The handler function is where you perform the server-side logic
   .handler(async ({ data }) => {
     return db.query.users.findFirst({ where: eq(users.id, data) })
@@ -288,7 +302,7 @@ const UserSchema = z.object({
 export type User = z.infer<typeof UserSchema>
 
 export const updateUser = createServerFn({ method: 'POST' })
-  .validator(UserSchema)
+  .inputValidator(UserSchema)
   .handler(({ data }) => dbUpdateUser(data))
 
 // Somewhere else in your application

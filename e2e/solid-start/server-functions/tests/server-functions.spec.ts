@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from '@tanstack/router-e2e-utils'
 import { PORT } from '../playwright.config'
 import type { Page } from '@playwright/test'
 
@@ -11,16 +12,10 @@ test('invoking a server function with custom response status code', async ({
   await page.waitForLoadState('networkidle')
 
   const requestPromise = new Promise<void>((resolve) => {
-    page.on('response', async (response) => {
+    page.on('response', (response) => {
       expect(response.status()).toBe(225)
       expect(response.statusText()).toBe('hello')
-      expect(response.headers()['content-type']).toBe('application/json')
-      expect(await response.json()).toEqual(
-        expect.objectContaining({
-          result: { hello: 'world' },
-          context: {},
-        }),
-      )
+      expect(response.headers()['content-type']).toContain('application/json')
       resolve()
     })
   })
@@ -122,11 +117,11 @@ test('env-only functions can only be called on the server or client respectively
     'server got: hello',
   )
   await expect(page.getByTestId('server-on-client')).toContainText(
-    'serverEcho threw an error: serverOnly() functions can only be called on the server!',
+    'serverEcho threw an error: createServerOnlyFn() functions can only be called on the server!',
   )
 
   await expect(page.getByTestId('client-on-server')).toContainText(
-    'clientEcho threw an error: clientOnly() functions can only be called on the client!',
+    'clientEcho threw an error: createClientOnlyFn() functions can only be called on the client!',
   )
   await expect(page.getByTestId('client-on-client')).toContainText(
     'client got: hello',

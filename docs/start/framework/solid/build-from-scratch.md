@@ -59,7 +59,7 @@ npm i @tanstack/solid-start @tanstack/solid-router vite
 You'll also need Solid:
 
 ```shell
-npm i solid-js
+npm i solid-js vite-plugin-solid
 ```
 
 and some TypeScript:
@@ -85,9 +85,6 @@ We'll then update our `package.json` to use Vite's CLI and set `"type": "module"
 
 Then configure TanStack Start's Vite plugin in `vite.config.ts`:
 
-> [!NOTE]
-> TanStack Start will stop auto-configuring React/Solid Vite plugins. You’ll get full control - choose `vite-plugin-solid`. Set `customViteSolidPlugin: true` to opt in to this feature right now!
-
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
@@ -101,7 +98,8 @@ export default defineConfig({
   },
   plugins: [
     tsConfigPaths(),
-    tanstackStart({ customViteSolidPlugin: true }),
+    tanstackStart(),
+    // solid's vite plugin must come after start's vite plugin
     viteSolid({ ssr: true }),
   ],
 })
@@ -138,12 +136,12 @@ from the default [preloading functionality](/router/latest/docs/framework/solid/
 > You won't have a `routeTree.gen.ts` file yet. This file will be generated when you run TanStack Start for the first time.
 
 ```tsx
-// src/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/solid-router'
+// src/start.tsx
+import { createRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
@@ -153,7 +151,7 @@ export function createRouter() {
 
 declare module '@tanstack/solid-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>
+    router: ReturnType<typeof getRouter>
   }
 }
 ```
@@ -222,7 +220,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .validator((d: number) => d)
+  .inputValidator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
     await fs.promises.writeFile(filePath, `${count + data}`)

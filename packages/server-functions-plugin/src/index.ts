@@ -8,11 +8,7 @@ import type {
   ReplacerFn,
 } from '@tanstack/directive-functions-plugin'
 
-export type CreateRpcFn = (
-  functionId: string,
-  serverBase: string,
-  splitImportFn?: string,
-) => any
+export type CreateRpcFn = (functionId: string, splitImportFn?: string) => any
 
 export type ServerFnPluginOpts = {
   /**

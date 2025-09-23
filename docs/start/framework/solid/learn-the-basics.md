@@ -18,11 +18,11 @@ This is the file that will dictate the behavior of TanStack Router used within S
 from the default [preloading functionality](/router/latest/docs/framework/solid/guide/preloading) to [caching staleness](/router/latest/docs/framework/solid/guide/data-loading).
 
 ```tsx
-// app/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/solid-router'
+// src/start.tsx
+import { createRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
+export function getRouter() {
   const router = createTanStackRouter({
     routeTree,
     scrollRestoration: true,
@@ -33,7 +33,7 @@ export function createRouter() {
 
 declare module '@tanstack/solid-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>
+    router: ReturnType<typeof getRouter>
   }
 }
 ```
@@ -60,9 +60,23 @@ import {
 
 import { createRouter } from './router'
 
-export default createStartHandler({
+const fetch = createStartHandler({
   createRouter,
 })(defaultStreamHandler)
+
+export default {
+  fetch,
+}
+```
+
+The entry point must conform to the following interface:
+
+```tsx
+export default {
+  fetch(req: Request): Promise<Response> {
+    // ...
+  },
+}
 ```
 
 Whether we are statically generating our app or serving it dynamically, the `server.ts` file is the entry point for doing all SSR-related work.
@@ -161,7 +175,7 @@ const getCount = createServerFn({
 })
 
 const updateCount = createServerFn({ method: 'POST' })
-  .validator((d: number) => d)
+  .inputValidator((d: number) => d)
   .handler(async ({ data }) => {
     const count = await readCount()
     await fs.promises.writeFile(filePath, `${count + data}`)
@@ -231,7 +245,7 @@ import { z } from 'zod'
 
 const getUserById = createServerFn({ method: 'GET' })
   // Always validate data sent to the function, here we use Zod
-  .validator(z.string())
+  .inputValidator(z.string())
   // The handler function is where you perform the server-side logic
   .handler(async ({ data }) => {
     return db.query.users.findFirst({ where: eq(users.id, data) })
@@ -261,7 +275,7 @@ const UserSchema = z.object({
 })
 
 const updateUser = createServerFn({ method: 'POST' })
-  .validator(UserSchema)
+  .inputValidator(UserSchema)
   .handler(async ({ data }) => {
     return db
       .update(users)
