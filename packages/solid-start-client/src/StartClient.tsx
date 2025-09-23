@@ -1,5 +1,5 @@
 import { Await, HeadContent, RouterProvider } from '@tanstack/solid-router'
-import { hydrateStart } from '@tanstack/start-client-core'
+import { hydrateStart } from '@tanstack/start-client-core/client'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 

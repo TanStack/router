@@ -69,10 +69,6 @@ export {
   executeMiddleware,
 } from './createServerFn'
 
-export { createClientRpc } from './createClientRpc'
-
-export { getDefaultSerovalPlugins } from './serializer/getDefaultSerovalPlugins'
-
 export {
   TSS_FORMDATA_CONTEXT,
   TSS_SERVER_FUNCTION,
@@ -83,10 +79,9 @@ export type * from './serverRoute'
 
 export type * from './startEntry'
 
-export { hydrateStart } from './hydrateStart'
-
 export { createStart } from './createStart'
 export type { AnyStartConfig, AnyStartConfigOptions } from './createStart'
 export type { Register } from '@tanstack/router-core'
 
 export { getRouterInstance } from './getRouterInstance'
+export { getDefaultSerovalPlugins } from './getDefaultSerovalPlugins'

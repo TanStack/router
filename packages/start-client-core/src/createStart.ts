@@ -88,7 +88,6 @@ declare module '@tanstack/router-core' {
     configKey: 'start'
     server: {
       requestContext?: undefined
-      nonce?: string
     }
   }
 }

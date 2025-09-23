@@ -30,12 +30,12 @@
     "build": "vite build && vite build -c vite.config.server-entry.ts"
   },
   "type": "module",
-  "types": "dist/esm/client.d.ts",
+  "types": "dist/esm/index.d.ts",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/esm/client.d.ts",
-        "default": "./dist/esm/client.js"
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
       }
     },
     "./client": {
@@ -77,6 +77,8 @@
     "@tanstack/react-start-server": "workspace:*",
     "@tanstack/router-utils": "workspace:^",
     "@tanstack/start-plugin-core": "workspace:*",
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/start-client-core": "workspace:*",
     "pathe": "^2.0.3"
   },
   "peerDependencies": {

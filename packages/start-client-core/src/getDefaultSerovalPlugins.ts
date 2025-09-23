@@ -2,7 +2,7 @@ import {
   makeSerovalPlugin,
   defaultSerovalPlugins as routerDefaultSerovalPlugins,
 } from '@tanstack/router-core'
-import { getStartInstance } from '../getStartInstance'
+import { getStartInstance } from './getStartInstance'
 import type { AnySerializationAdapter } from '@tanstack/router-core'
 
 export function getDefaultSerovalPlugins() {
