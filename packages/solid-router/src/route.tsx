@@ -20,6 +20,7 @@ import type {
   ErrorComponentProps,
   NotFoundError,
   NotFoundRouteProps,
+  Register,
   RegisteredRouter,
   ResolveFullPath,
   ResolveId,
@@ -388,7 +389,7 @@ export type AnyRootRoute = RootRoute<
 
 export function createRootRouteWithContext<TRouterContext extends {}>() {
   return <
-    TRegister = unknown,
+    TRegister = Register,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TSearchValidator = undefined,
@@ -429,7 +430,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
 export const rootRouteWithContext = createRootRouteWithContext
 
 export class RootRoute<
-    in out TRegister = unknown,
+    in out TRegister = Register,
     in out TSearchValidator = undefined,
     in out TRouterContext = {},
     in out TRouteContextFn = AnyContext,
@@ -628,7 +629,7 @@ export class NotFoundRoute<
 }
 
 export function createRootRoute<
-  TRegister = unknown,
+  TRegister = Register,
   TSearchValidator = undefined,
   TRouterContext = {},
   TRouteContextFn = AnyContext,

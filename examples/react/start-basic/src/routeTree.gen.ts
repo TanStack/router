@@ -448,6 +448,8 @@ type MaybeStartInstance = typeof startSetup extends {
 
 declare module '@tanstack/react-start' {
   interface Register extends MaybeStartInstance {
+    configKey: 'start'
     router: Awaited<ReturnType<typeof startSetup.getRouter>>
+    ssr: true
   }
 }
