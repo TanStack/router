@@ -613,7 +613,7 @@ export type RouterConstructorOptions<
     TRouterHistory,
     TDehydrated
   >,
-  'context'
+  'context' | 'serializationAdapters' | 'defaultSsr'
 > &
   RouterContextOptions<TRouteTree>
 
