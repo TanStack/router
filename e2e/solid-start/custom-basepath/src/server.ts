@@ -1,14 +1,7 @@
-import {
-  createStartHandler,
-  defaultStreamHandler,
-} from '@tanstack/solid-start/server'
-
-import { createRouter } from './router'
-
-const fetch = createStartHandler({
-  createRouter,
-})(defaultStreamHandler)
+import handler from '@tanstack/solid-start/server-entry'
 
 export default {
-  fetch,
+  fetch(request: Request) {
+    return handler.fetch(request)
+  },
 }

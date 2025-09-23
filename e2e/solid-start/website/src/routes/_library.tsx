@@ -1,9 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
 import {
   Link,
   Outlet,
-  useLocation,
   createFileRoute,
+  useLocation,
 } from '@tanstack/solid-router'
 import { getProjects } from '~/server/projects'
 

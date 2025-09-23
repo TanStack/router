@@ -148,7 +148,7 @@ export interface RootRouteChildren {
   ProjectVersionDocsFrameworkFrameworkRoute: typeof ProjectVersionDocsFrameworkFrameworkRouteWithChildren
 }
 
-declare module '@tanstack/react-router' {
+declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
     '/_library': {
       id: '/_library'
@@ -281,10 +281,9 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.tsx'
+import type { createStart } from '@tanstack/solid-start'
 declare module '@tanstack/solid-start' {
   interface Register {
     router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

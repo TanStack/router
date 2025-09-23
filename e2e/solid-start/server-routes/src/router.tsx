@@ -1,8 +1,16 @@
-import { createStart } from '@tanstack/solid-start'
+import { createRouter } from '@tanstack/solid-router'
+import { routeTree } from './routeTree.gen'
+import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
+import { NotFound } from './components/NotFound'
 
-export const startInstance = createStart(() => {
-  return {
-    defaultSsr: true,
-    serializationAdapters: [],
-  }
-})
+export function getRouter() {
+  const router = createRouter({
+    routeTree,
+    defaultPreload: 'intent',
+    defaultErrorComponent: DefaultCatchBoundary,
+    defaultNotFoundComponent: () => <NotFound />,
+    scrollRestoration: true,
+  })
+
+  return router
+}
