@@ -47,7 +47,8 @@ export interface FileRouteOptions<
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TSSR = unknown,
-  TMiddlewares = unknown,
+  TServerMiddlewares = unknown,
+  TServerSendContext = undefined,
 > extends FileBaseRouteOptions<
       TRegister,
       TParentRoute,
@@ -62,7 +63,8 @@ export interface FileRouteOptions<
       TBeforeLoadFn,
       AnyContext,
       TSSR,
-      TMiddlewares
+      TServerMiddlewares,
+      TServerSendContext
     >,
     UpdatableRouteOptions<
       TParentRoute,
