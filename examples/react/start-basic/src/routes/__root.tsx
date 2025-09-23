@@ -6,48 +6,13 @@ import {
   createRootRoute,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { createMiddleware } from '@tanstack/react-start'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
 
-const rootMiddleware = createMiddleware({ type: 'request' }).server(
-  async ({ next }) => {
-    return next({ context: { rootMiddleware: true } })
-  },
-)
-
-const postMiddleware = createMiddleware({ type: 'request' }).server(
-  async ({ next }) => {
-    return next({ context: { postMiddleware: true } })
-  },
-)
-
 export const Route = createRootRoute({
-  server: {
-    middleware: [rootMiddleware],
-    methods: (withMiddleware) => ({
-      GET: ({ context }) => {
-        context.rootMiddleware
-      },
-      POST: withMiddleware({
-        middleware: [postMiddleware],
-        handler: ({ context }) => {
-          context.rootMiddleware
-          context.postMiddleware
-        },
-      }),
-    }),
-  },
-  beforeLoad: (ctx) => {
-    ctx.serverContext?.rootMiddleware
-    //                 ^?
-    return {
-      rootMiddleware: true,
-    }
-  },
   head: () => ({
     meta: [
       {
