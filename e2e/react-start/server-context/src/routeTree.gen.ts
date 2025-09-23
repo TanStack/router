@@ -8,17 +8,10 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
-import {
-  Route as FooRouteImport,
-  ServerRoute as FooServerRouteImport,
-} from './routes/foo'
+import { Route as FooRouteImport } from './routes/foo'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FooBarRouteImport } from './routes/foo/bar'
-
-const rootServerRouteImport = createServerRootRoute()
 
 const FooRoute = FooRouteImport.update({
   id: '/foo',
@@ -34,11 +27,6 @@ const FooBarRoute = FooBarRouteImport.update({
   id: '/bar',
   path: '/bar',
   getParentRoute: () => FooRoute,
-} as any)
-const FooServerRoute = FooServerRouteImport.update({
-  id: '/foo',
-  path: '/foo',
-  getParentRoute: () => rootServerRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -69,27 +57,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FooRoute: typeof FooRouteWithChildren
 }
-export interface FileServerRoutesByFullPath {
-  '/foo': typeof FooServerRouteWithChildren
-}
-export interface FileServerRoutesByTo {
-  '/foo': typeof FooServerRouteWithChildren
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/foo': typeof FooServerRouteWithChildren
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/foo'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/foo'
-  id: '__root__' | '/foo'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  FooServerRoute: typeof FooServerRouteWithChildren
-}
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
@@ -116,17 +83,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
-    '/foo': {
-      id: '/foo'
-      path: '/foo'
-      fullPath: '/foo'
-      preLoaderRoute: typeof FooServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-  }
-}
 
 interface FooRouteChildren {
   FooBarRoute: typeof FooBarRoute
@@ -138,14 +94,6 @@ const FooRouteChildren: FooRouteChildren = {
 
 const FooRouteWithChildren = FooRoute._addFileChildren(FooRouteChildren)
 
-interface FooServerRouteChildren {}
-
-const FooServerRouteChildren: FooServerRouteChildren = {}
-
-const FooServerRouteWithChildren = FooServerRoute._addFileChildren(
-  FooServerRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FooRoute: FooRouteWithChildren,
@@ -153,9 +101,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  FooServerRoute: FooServerRouteWithChildren,
-}
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()

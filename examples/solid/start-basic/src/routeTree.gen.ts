@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/solid-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as RedirectRouteImport } from './routes/redirect'
@@ -21,14 +19,12 @@ import { Route as UsersIndexRouteImport } from './routes/users.index'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as ApiUsersRouteImport } from './routes/api/users'
 import { Route as PathlessLayoutNestedLayoutRouteImport } from './routes/_pathlessLayout/_nested-layout'
 import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
+import { Route as ApiUsersUserIdRouteImport } from './routes/api/users.$userId'
 import { Route as PathlessLayoutNestedLayoutRouteBRouteImport } from './routes/_pathlessLayout/_nested-layout/route-b'
 import { Route as PathlessLayoutNestedLayoutRouteARouteImport } from './routes/_pathlessLayout/_nested-layout/route-a'
-import { ServerRoute as ApiUsersServerRouteImport } from './routes/api/users'
-import { ServerRoute as ApiUsersUserIdServerRouteImport } from './routes/api/users.$userId'
-
-const rootServerRouteImport = createServerRootRoute()
 
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
@@ -79,6 +75,11 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
   path: '/$postId',
   getParentRoute: () => PostsRoute,
 } as any)
+const ApiUsersRoute = ApiUsersRouteImport.update({
+  id: '/api/users',
+  path: '/api/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PathlessLayoutNestedLayoutRoute =
   PathlessLayoutNestedLayoutRouteImport.update({
     id: '/_nested-layout',
@@ -88,6 +89,11 @@ const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
   id: '/posts_/$postId/deep',
   path: '/posts/$postId/deep',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiUsersUserIdRoute = ApiUsersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => ApiUsersRoute,
 } as any)
 const PathlessLayoutNestedLayoutRouteBRoute =
   PathlessLayoutNestedLayoutRouteBRouteImport.update({
@@ -101,16 +107,6 @@ const PathlessLayoutNestedLayoutRouteARoute =
     path: '/route-a',
     getParentRoute: () => PathlessLayoutNestedLayoutRoute,
   } as any)
-const ApiUsersServerRoute = ApiUsersServerRouteImport.update({
-  id: '/api/users',
-  path: '/api/users',
-  getParentRoute: () => rootServerRouteImport,
-} as any)
-const ApiUsersUserIdServerRoute = ApiUsersUserIdServerRouteImport.update({
-  id: '/$userId',
-  path: '/$userId',
-  getParentRoute: () => ApiUsersServerRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -118,24 +114,28 @@ export interface FileRoutesByFullPath {
   '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
   '/users': typeof UsersRouteWithChildren
+  '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts/': typeof PostsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
   '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
+  '/api/users/$userId': typeof ApiUsersUserIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/deferred': typeof DeferredRoute
   '/redirect': typeof RedirectRoute
+  '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts': typeof PostsIndexRoute
   '/users': typeof UsersIndexRoute
   '/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
   '/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
+  '/api/users/$userId': typeof ApiUsersUserIdRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
 }
 export interface FileRoutesById {
@@ -147,12 +147,14 @@ export interface FileRoutesById {
   '/redirect': typeof RedirectRoute
   '/users': typeof UsersRouteWithChildren
   '/_pathlessLayout/_nested-layout': typeof PathlessLayoutNestedLayoutRouteWithChildren
+  '/api/users': typeof ApiUsersRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
   '/users/$userId': typeof UsersUserIdRoute
   '/posts/': typeof PostsIndexRoute
   '/users/': typeof UsersIndexRoute
   '/_pathlessLayout/_nested-layout/route-a': typeof PathlessLayoutNestedLayoutRouteARoute
   '/_pathlessLayout/_nested-layout/route-b': typeof PathlessLayoutNestedLayoutRouteBRoute
+  '/api/users/$userId': typeof ApiUsersUserIdRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
 }
 export interface FileRouteTypes {
@@ -163,24 +165,28 @@ export interface FileRouteTypes {
     | '/posts'
     | '/redirect'
     | '/users'
+    | '/api/users'
     | '/posts/$postId'
     | '/users/$userId'
     | '/posts/'
     | '/users/'
     | '/route-a'
     | '/route-b'
+    | '/api/users/$userId'
     | '/posts/$postId/deep'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/deferred'
     | '/redirect'
+    | '/api/users'
     | '/posts/$postId'
     | '/users/$userId'
     | '/posts'
     | '/users'
     | '/route-a'
     | '/route-b'
+    | '/api/users/$userId'
     | '/posts/$postId/deep'
   id:
     | '__root__'
@@ -191,12 +197,14 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/users'
     | '/_pathlessLayout/_nested-layout'
+    | '/api/users'
     | '/posts/$postId'
     | '/users/$userId'
     | '/posts/'
     | '/users/'
     | '/_pathlessLayout/_nested-layout/route-a'
     | '/_pathlessLayout/_nested-layout/route-b'
+    | '/api/users/$userId'
     | '/posts_/$postId/deep'
   fileRoutesById: FileRoutesById
 }
@@ -207,31 +215,8 @@ export interface RootRouteChildren {
   PostsRoute: typeof PostsRouteWithChildren
   RedirectRoute: typeof RedirectRoute
   UsersRoute: typeof UsersRouteWithChildren
+  ApiUsersRoute: typeof ApiUsersRouteWithChildren
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
-}
-export interface FileServerRoutesByFullPath {
-  '/api/users': typeof ApiUsersServerRouteWithChildren
-  '/api/users/$userId': typeof ApiUsersUserIdServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/api/users': typeof ApiUsersServerRouteWithChildren
-  '/api/users/$userId': typeof ApiUsersUserIdServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/api/users': typeof ApiUsersServerRouteWithChildren
-  '/api/users/$userId': typeof ApiUsersUserIdServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/users' | '/api/users/$userId'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/users' | '/api/users/$userId'
-  id: '__root__' | '/api/users' | '/api/users/$userId'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  ApiUsersServerRoute: typeof ApiUsersServerRouteWithChildren
 }
 
 declare module '@tanstack/solid-router' {
@@ -306,6 +291,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof PostsPostIdRouteImport
       parentRoute: typeof PostsRoute
     }
+    '/api/users': {
+      id: '/api/users'
+      path: '/api/users'
+      fullPath: '/api/users'
+      preLoaderRoute: typeof ApiUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_pathlessLayout/_nested-layout': {
       id: '/_pathlessLayout/_nested-layout'
       path: ''
@@ -320,6 +312,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof PostsPostIdDeepRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/users/$userId': {
+      id: '/api/users/$userId'
+      path: '/$userId'
+      fullPath: '/api/users/$userId'
+      preLoaderRoute: typeof ApiUsersUserIdRouteImport
+      parentRoute: typeof ApiUsersRoute
+    }
     '/_pathlessLayout/_nested-layout/route-b': {
       id: '/_pathlessLayout/_nested-layout/route-b'
       path: '/route-b'
@@ -333,24 +332,6 @@ declare module '@tanstack/solid-router' {
       fullPath: '/route-a'
       preLoaderRoute: typeof PathlessLayoutNestedLayoutRouteARouteImport
       parentRoute: typeof PathlessLayoutNestedLayoutRoute
-    }
-  }
-}
-declare module '@tanstack/solid-start/server' {
-  interface ServerFileRoutesByPath {
-    '/api/users': {
-      id: '/api/users'
-      path: '/api/users'
-      fullPath: '/api/users'
-      preLoaderRoute: typeof ApiUsersServerRouteImport
-      parentRoute: typeof rootServerRouteImport
-    }
-    '/api/users/$userId': {
-      id: '/api/users/$userId'
-      path: '/$userId'
-      fullPath: '/api/users/$userId'
-      preLoaderRoute: typeof ApiUsersUserIdServerRouteImport
-      parentRoute: typeof ApiUsersServerRoute
     }
   }
 }
@@ -409,16 +390,16 @@ const UsersRouteChildren: UsersRouteChildren = {
 
 const UsersRouteWithChildren = UsersRoute._addFileChildren(UsersRouteChildren)
 
-interface ApiUsersServerRouteChildren {
-  ApiUsersUserIdServerRoute: typeof ApiUsersUserIdServerRoute
+interface ApiUsersRouteChildren {
+  ApiUsersUserIdRoute: typeof ApiUsersUserIdRoute
 }
 
-const ApiUsersServerRouteChildren: ApiUsersServerRouteChildren = {
-  ApiUsersUserIdServerRoute: ApiUsersUserIdServerRoute,
+const ApiUsersRouteChildren: ApiUsersRouteChildren = {
+  ApiUsersUserIdRoute: ApiUsersUserIdRoute,
 }
 
-const ApiUsersServerRouteWithChildren = ApiUsersServerRoute._addFileChildren(
-  ApiUsersServerRouteChildren,
+const ApiUsersRouteWithChildren = ApiUsersRoute._addFileChildren(
+  ApiUsersRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
@@ -428,14 +409,9 @@ const rootRouteChildren: RootRouteChildren = {
   PostsRoute: PostsRouteWithChildren,
   RedirectRoute: RedirectRoute,
   UsersRoute: UsersRouteWithChildren,
+  ApiUsersRoute: ApiUsersRouteWithChildren,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  ApiUsersServerRoute: ApiUsersServerRouteWithChildren,
-}
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()
