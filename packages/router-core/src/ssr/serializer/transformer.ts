@@ -1,12 +1,7 @@
 import { createPlugin } from 'seroval'
 import { GLOBAL_TSR } from '../constants'
 import type { Plugin, SerovalNode } from 'seroval'
-import type {
-  GetRegisteredConfigKey,
-  Register,
-  RegisteredProperty,
-  SSROption,
-} from '../../router'
+import type { Register, RegisteredConfigType, SSROption } from '../../router'
 import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
 
@@ -169,19 +164,10 @@ export type RegisteredSerializableInput<TRegister> =
         : never)
   | Serializable
 
-export type RegisteredSerializationAdapters<TRegister> = RegisteredType<
+export type RegisteredSerializationAdapters<TRegister> = RegisteredConfigType<
   TRegister,
   'serializationAdapters'
 >
-
-type RegisteredType<TRegister, TKey> =
-  RegisteredProperty<TRegister, GetRegisteredConfigKey<TRegister>> extends {
-    '~types': infer TTypes
-  }
-    ? TKey extends keyof TTypes
-      ? TTypes[TKey]
-      : unknown
-    : unknown
 
 export type ValidateSerializableInputResult<TRegister, T> =
   ValidateSerializableResult<T, RegisteredSerializableInput<TRegister>>
@@ -196,9 +182,9 @@ export type ValidateSerializableResult<T, TSerializable> =
         : { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
 
 export type RegisteredSSROption<TRegister> =
-  unknown extends RegisteredType<TRegister, 'defaultSsr'>
+  unknown extends RegisteredConfigType<TRegister, 'defaultSsr'>
     ? SSROption
-    : RegisteredType<TRegister, 'defaultSsr'>
+    : RegisteredConfigType<TRegister, 'defaultSsr'>
 
 export type ValidateSerializableLifecycleResult<
   TRegister,

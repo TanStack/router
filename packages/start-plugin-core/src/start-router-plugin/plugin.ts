@@ -57,13 +57,12 @@ import type { createStart } from '@tanstack/${corePluginOpts.framework}-start'
 import type * as startSetup from '${relativePath}'
 
 type MaybeStartInstance = typeof startSetup extends { startInstance: { getOptions: () => any } }
-  ? { start: Awaited<ReturnType<typeof startSetup.startInstance.getOptions>> }
+  ? { config: Awaited<ReturnType<typeof startSetup.startInstance.getOptions>> }
   : {}
 
 declare module '@tanstack/${corePluginOpts.framework}-start' {
   interface Register extends MaybeStartInstance {
     router: Awaited<ReturnType<typeof startSetup.getRouter>>
-    ssr: true
   }
 }`
 }

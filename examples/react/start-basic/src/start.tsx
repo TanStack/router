@@ -7,12 +7,7 @@ import {
 import { routeTree } from './routeTree.gen'
 import { DefaultCatchBoundary } from './components/DefaultCatchBoundary'
 import { NotFound } from './components/NotFound'
-import type { SSROption } from '@tanstack/router-core'
-import type { Register } from '@tanstack/react-start'
-import type {
-  GetRegisteredConfigKey,
-  RegisteredProperty,
-} from '../../../../packages/router-core/dist/esm/router'
+import type { Register } from '@tanstack/react-router'
 
 declare module '@tanstack/react-start' {
   interface Register {
@@ -88,21 +83,28 @@ export const startInstance = createStart(() => {
 //     : unknown
 //   : unknown
 
-type RegisteredType<TRegister, TKey> =
-  RegisteredProperty<TRegister, GetRegisteredConfigKey<TRegister>> extends {
-    '~types': infer TTypes
-  }
-    ? TKey extends keyof TTypes
-      ? TTypes[TKey]
-      : unknown
+// export type RegisteredConfigType<TRegister, TKey> = TRegister extends Register
+//   ? TRegister['config'] extends {
+//       '~types': infer TTypes
+//     }
+//     ? TKey extends keyof TTypes
+//       ? TTypes[TKey]
+//       : unknown
+//     : unknown
+//   : unknown
+
+// type test = RegisteredSSROption<Register>
+// type test2 = RegisteredConfigType<Register, 'defaultSsr'>
+
+type test3 = Register extends {
+  config: infer TConfig
+}
+  ? TConfig extends {
+      '~types': infer TTypes
+    }
+    ? TTypes
     : unknown
-
-type RegisteredSSROption<TRegister> =
-  unknown extends RegisteredType<TRegister, 'defaultSsr'>
-    ? SSROption
-    : RegisteredType<TRegister, 'defaultSsr'>
-
-type test = RegisteredSSROption<Register>
+  : unknown
 
 startInstance.createMiddleware().server(({ next, context }) => {
   context.fromFetch

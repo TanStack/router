@@ -118,7 +118,6 @@ export type AnyStartInstanceOptions = StartInstanceOptions<any, any, any, any>
 
 declare module '@tanstack/router-core' {
   interface DefaultRegister {
-    configKey: 'start'
     ssr: true
   }
 }
