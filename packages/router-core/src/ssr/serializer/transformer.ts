@@ -30,8 +30,8 @@ export interface CreateSerializationAdapterOptions<TInput, TOutput> {
   fromSerializable: (value: TOutput) => TInput
 }
 
-export type ValidateSerializable<T, TSerializable> = T extends unknown
-  ? T extends ReadonlyArray<unknown>
+export type ValidateSerializable<T, TSerializable> =
+  T extends ReadonlyArray<unknown>
     ? ValidateSerializableArray<T, TSerializable>
     : T extends TSerializable
       ? T
@@ -45,8 +45,9 @@ export type ValidateSerializable<T, TSerializable> = T extends unknown
               ? ValidateSerializableSet<T, TSerializable>
               : T extends Map<any, any>
                 ? ValidateSerializableMap<T, TSerializable>
-                : { [K in keyof T]: ValidateSerializable<T[K], TSerializable> }
-  : never
+                : {
+                    [K in keyof T]: ValidateSerializable<T[K], TSerializable>
+                  }
 
 export type ValidateSerializablePromise<T, TSerializable> =
   T extends Promise<infer TAwaited>
@@ -71,30 +72,27 @@ export type ValidateSerializableMap<T, TSerializable> =
       >
     : never
 
-type ApplyArrayValidation<
-  TValue,
-  TSerializable,
-  TKind extends 'input' | 'result',
-> = TKind extends 'input'
-  ? ValidateSerializable<TValue, TSerializable>
-  : ValidateSerializableResult<TValue, TSerializable>
-
-type ValidateSerializableArrayCore<
-  T extends ReadonlyArray<unknown>,
-  TSerializable,
-  TKind extends 'input' | 'result',
-> = T extends any
-  ? number extends T['length']
-    ? T extends Array<infer U>
-      ? Array<ApplyArrayValidation<U, TSerializable, TKind>>
-      : ReadonlyArray<ApplyArrayValidation<T[number], TSerializable, TKind>>
-    : { [K in keyof T]: ApplyArrayValidation<T[K], TSerializable, TKind> }
-  : never
-
 type ValidateSerializableArray<
   T extends ReadonlyArray<unknown>,
   TSerializable,
-> = ValidateSerializableArrayCore<T, TSerializable, 'input'>
+> = number extends T['length']
+  ? T extends Array<infer U>
+    ? Array<ValidateSerializable<U, TSerializable>>
+    : ReadonlyArray<ValidateSerializable<T[number], TSerializable>>
+  : ValidateSerializableTuple<T, TSerializable>
+
+type ValidateSerializableTuple<
+  T extends ReadonlyArray<unknown>,
+  TSerializable,
+> = T extends readonly [infer THead, ...infer TTail]
+  ? readonly [
+      ValidateSerializable<THead, TSerializable>,
+      ...ValidateSerializableTuple<
+        TTail extends ReadonlyArray<unknown> ? TTail : [],
+        TSerializable
+      >,
+    ]
+  : T
 
 export type RegisteredReadableStream =
   unknown extends SerializerExtensions['ReadableStream']
@@ -199,26 +197,38 @@ export type RegisteredSerializationAdapters<TRegister> = RegisteredConfigType<
 export type ValidateSerializableInputResult<TRegister, T> =
   ValidateSerializableResult<T, RegisteredSerializableInput<TRegister>>
 
-export type ValidateSerializableResult<T, TSerializable> = T extends unknown
-  ? T extends ReadonlyArray<unknown>
+export type ValidateSerializableResult<T, TSerializable> =
+  T extends ReadonlyArray<unknown>
     ? ValidateSerializableResultArray<T, TSerializable>
     : T extends TSerializable
       ? T
-      : T extends (...args: Array<any>) => any
-        ? 'Function is not serializable'
-        : unknown extends SerializerExtensions['ReadableStream']
-          ? { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
-          : T extends SerializerExtensions['ReadableStream']
-            ? ReadableStream
-            : {
-                [K in keyof T]: ValidateSerializableResult<T[K], TSerializable>
-              }
-  : never
+      : unknown extends SerializerExtensions['ReadableStream']
+        ? { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
+        : T extends SerializerExtensions['ReadableStream']
+          ? ReadableStream
+          : { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
 
 type ValidateSerializableResultArray<
   T extends ReadonlyArray<unknown>,
   TSerializable,
-> = ValidateSerializableArrayCore<T, TSerializable, 'result'>
+> = number extends T['length']
+  ? T extends Array<infer U>
+    ? Array<ValidateSerializableResult<U, TSerializable>>
+    : ReadonlyArray<ValidateSerializableResult<T[number], TSerializable>>
+  : ValidateSerializableResultTuple<T, TSerializable>
+
+type ValidateSerializableResultTuple<
+  T extends ReadonlyArray<unknown>,
+  TSerializable,
+> = T extends readonly [infer THead, ...infer TTail]
+  ? readonly [
+      ValidateSerializableResult<THead, TSerializable>,
+      ...ValidateSerializableResultTuple<
+        TTail extends ReadonlyArray<unknown> ? TTail : [],
+        TSerializable
+      >,
+    ]
+  : T
 
 export type RegisteredSSROption<TRegister> =
   unknown extends RegisteredConfigType<TRegister, 'defaultSsr'>
