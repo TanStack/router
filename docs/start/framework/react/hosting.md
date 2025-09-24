@@ -16,9 +16,9 @@ However, since hosting is one of the most crucial aspects of your application's 
 > [!WARNING]
 > The page is still a work in progress. We'll keep updating this page with guides on deployment to different hosting providers soon!
 
-When a TanStack Start application is being deployed, the `target` value in the TanStack Start Vite plugin in the`vite.config.ts` file determines the deployment target. The deployment target can be set to one of the following values:
+Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice:
 
-- [`cloudflare-pages`](#cloudflare-workers): Deploy to Cloudflare Pages
+- [`cloudflare-workers`](#cloudflare-workers): Deploy to Cloudflare Workers
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
 - [`railway`](#nodejs--railway--docker): Deploy to Railway
@@ -26,8 +26,6 @@ When a TanStack Start application is being deployed, the `target` value in the T
 - [`node-server`](#nodejs--railway--docker): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
 - ... and more to come!
-
-Once you've chosen a deployment target, you can follow the deployment guidelines below to deploy your TanStack Start application to the hosting provider of your choice.
 
 ### Cloudflare Workers ⭐ _Official Partner_
 
@@ -45,7 +43,7 @@ When deploying to Cloudflare Workers, you'll need to complete a few extra steps 
 
 1. Update `vite.config.ts`
 
-Set the `target` value to `cloudflare-module` in your `vite.config.ts` file.
+Add the cloudflare plugin to your `vite.config.ts` file.
 
 ```ts
 // vite.config.ts
@@ -207,7 +205,7 @@ Make sure that your `react` and `react-dom` packages are set to version 19.0.0 o
 npm install react@rc react-dom@rc
 ```
 
-Set the `target` value to `bun` in your `vite.config.ts` file.
+Ensure your `vite.config.ts` file is correct.
 
 ```ts
 // vite.config.ts
