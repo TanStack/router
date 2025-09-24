@@ -5,6 +5,7 @@ import { logDiff } from '@tanstack/router-utils'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { normalizePath } from 'vite'
 import path from 'pathe'
+import { makeIdFiltersToMatchWithQuery} from '@rolldown/pluginutils'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { compileStartOutputFactory } from './compilers'
 import { transformFuncs } from './constants'
@@ -27,7 +28,6 @@ const require = createRequire(import.meta.url)
 function resolveRuntimeFiles(opts: { package: string; files: Array<string> }) {
   const pkgRoot = resolvePackage(opts.package)
   const basePath = path.join(pkgRoot, 'dist', 'esm')
-
   return opts.files.map((file) => normalizePath(path.join(basePath, file)))
 }
 
@@ -60,29 +60,28 @@ export function startCompilerPlugin(
             // we do not want to include them in the transformation
             // however, those packages (especially start-client-core ATM) also USE these functions
             // (namely `createIsomorphicFn` in `packages/start-client-core/src/getRouterInstance.ts`) and thus need to be transformed
-            ...resolveRuntimeFiles({
-              package: '@tanstack/start-client-core',
-              files: [
-                'index.js',
-                'createIsomorphicFn.js',
-                'envOnly.js',
-                'createServerFn.js',
-                'createMiddleware.js',
-                'serverFnFetcher.js',
-              ],
-            }),
-            ...resolveRuntimeFiles({
-              package: '@tanstack/start-server-core',
-              files: [
-                'index.js',
-                'server-functions-handler.js',
-                'serverRoute.js',
-              ],
-            }),
-            ...resolveRuntimeFiles({
-              package: `@tanstack/${framework}-start-client`,
-              files: ['index.js'],
-            }),
+            ...makeIdFiltersToMatchWithQuery([
+              ...resolveRuntimeFiles({
+                package: '@tanstack/start-client-core',
+                files: [
+                  'index.js',
+                  'createIsomorphicFn.js',
+                  'envOnly.js',
+                  'serverFnFetcher.js',
+                ],
+              }),
+              ...resolveRuntimeFiles({
+                package: '@tanstack/start-server-core',
+                files: [
+                  'index.js',
+                  'server-functions-handler.js',
+                ],
+              }),
+              ...resolveRuntimeFiles({
+                package: `@tanstack/${framework}-start-client`,
+                files: ['index.js'],
+              }),
+            ]),
           ],
         },
       },
