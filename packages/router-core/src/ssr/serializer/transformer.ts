@@ -31,10 +31,10 @@ export interface CreateSerializationAdapterOptions<TInput, TOutput> {
 }
 
 export type ValidateSerializable<T, TSerializable> = T extends unknown
-  ? T extends TSerializable
-    ? T
-    : T extends ReadonlyArray<unknown>
-      ? ValidateSerializableArray<T, TSerializable>
+  ? T extends ReadonlyArray<unknown>
+    ? ValidateSerializableArray<T, TSerializable>
+    : T extends TSerializable
+      ? T
       : T extends (...args: Array<any>) => any
         ? 'Function is not serializable'
         : T extends Promise<any>
@@ -83,23 +83,18 @@ type ValidateSerializableArrayCore<
   T extends ReadonlyArray<unknown>,
   TSerializable,
   TKind extends 'input' | 'result',
-> =
-  IsTuple<T> extends true
-    ? { [K in keyof T]: ApplyArrayValidation<T[K], TSerializable, TKind> }
-    : T extends Array<infer U>
+> = T extends any
+  ? number extends T['length']
+    ? T extends Array<infer U>
       ? Array<ApplyArrayValidation<U, TSerializable, TKind>>
       : ReadonlyArray<ApplyArrayValidation<T[number], TSerializable, TKind>>
+    : { [K in keyof T]: ApplyArrayValidation<T[K], TSerializable, TKind> }
+  : never
 
 type ValidateSerializableArray<
   T extends ReadonlyArray<unknown>,
   TSerializable,
 > = ValidateSerializableArrayCore<T, TSerializable, 'input'>
-
-type IsTuple<T extends ReadonlyArray<unknown>> = T extends readonly []
-  ? true
-  : T extends readonly [unknown, ...Array<unknown>]
-    ? true
-    : false
 
 export type RegisteredReadableStream =
   unknown extends SerializerExtensions['ReadableStream']
@@ -205,10 +200,10 @@ export type ValidateSerializableInputResult<TRegister, T> =
   ValidateSerializableResult<T, RegisteredSerializableInput<TRegister>>
 
 export type ValidateSerializableResult<T, TSerializable> = T extends unknown
-  ? T extends TSerializable
-    ? T
-    : T extends ReadonlyArray<unknown>
-      ? ValidateSerializableResultArray<T, TSerializable>
+  ? T extends ReadonlyArray<unknown>
+    ? ValidateSerializableResultArray<T, TSerializable>
+    : T extends TSerializable
+      ? T
       : unknown extends SerializerExtensions['ReadableStream']
         ? { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
         : T extends SerializerExtensions['ReadableStream']
