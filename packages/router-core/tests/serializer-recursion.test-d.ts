@@ -28,6 +28,30 @@ describe('ValidateSerializable array handling', () => {
     >().branded.toEqualTypeOf<InputReadonlyArray>()
   })
 
+  it('preserves recursive payloads wrapped in Promise for input validation', () => {
+    type Recursive = { value: number; next?: Recursive }
+    type InputPromise = Promise<Recursive>
+    expectTypeOf<
+      ValidateSerializable<InputPromise, Serializable>
+    >().branded.toEqualTypeOf<InputPromise>()
+  })
+
+  it('preserves recursive payloads wrapped in Promise<Array> for input validation', () => {
+    type Recursive = { value: number; children?: Array<Recursive> }
+    type InputPromiseArray = Promise<Array<Recursive>>
+    expectTypeOf<
+      ValidateSerializable<InputPromiseArray, Serializable>
+    >().branded.toEqualTypeOf<InputPromiseArray>()
+  })
+
+  it('preserves recursive payloads wrapped in ReadableStream for input validation', () => {
+    type Recursive = { value: number; next?: Recursive }
+    type InputStream = ReadableStream<Recursive>
+    expectTypeOf<
+      ValidateSerializable<InputStream, Serializable>
+    >().branded.toEqualTypeOf<InputStream>()
+  })
+
   it('should preserve recursive payload without infinite expansion', () => {
     type Result = Array<Result> | { [key: string]: Result }
     expectTypeOf<
