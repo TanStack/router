@@ -2,10 +2,32 @@ import { describe, expectTypeOf, it } from 'vitest'
 
 import type {
   Serializable,
+  ValidateSerializable,
   ValidateSerializableResult,
 } from '../src/ssr/serializer/transformer'
 
-describe('ValidateSerializableResult recursion', () => {
+describe('ValidateSerializable array handling', () => {
+  it('preserves nested array payloads for input validation', () => {
+    type Input = Array<{ value: string; nested: Array<{ id: number }> }>
+    expectTypeOf<
+      ValidateSerializable<Input, Serializable>
+    >().branded.toEqualTypeOf<Input>()
+  })
+
+  it('preserves tuple structure for input validation', () => {
+    type InputTuple = readonly [{ name: string }, { count: number }]
+    expectTypeOf<
+      ValidateSerializable<InputTuple, Serializable>
+    >().branded.toEqualTypeOf<InputTuple>()
+  })
+
+  it('preserves readonly array structure for input validation', () => {
+    type InputReadonlyArray = ReadonlyArray<{ value: string }>
+    expectTypeOf<
+      ValidateSerializable<InputReadonlyArray, Serializable>
+    >().branded.toEqualTypeOf<InputReadonlyArray>()
+  })
+
   it('should preserve recursive payload without infinite expansion', () => {
     type Result = Array<Result> | { [key: string]: Result }
     expectTypeOf<
@@ -16,7 +38,7 @@ describe('ValidateSerializableResult recursion', () => {
   it('should preserve recursive tuples without infinite expansion', () => {
     type ResultTuple = readonly [
       ReadonlyArray<ResultTuple>,
-      { [key: string]: ResultTuple }
+      { [key: string]: ResultTuple },
     ]
     expectTypeOf<
       ValidateSerializableResult<ResultTuple, Serializable>
