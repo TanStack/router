@@ -33,7 +33,7 @@ export interface CreateSerializationAdapterOptions<TInput, TOutput> {
 export type ValidateSerializable<T, TSerializable> = T extends unknown
   ? T extends TSerializable
     ? T
-    : T extends ReadonlyArray<any>
+    : T extends ReadonlyArray<unknown>
       ? ValidateSerializableArray<T, TSerializable>
       : T extends (...args: Array<any>) => any
         ? 'Function is not serializable'
@@ -80,7 +80,7 @@ type ApplyArrayValidation<
   : ValidateSerializableResult<TValue, TSerializable>
 
 type ValidateSerializableArrayCore<
-  T extends ReadonlyArray<any>,
+  T extends ReadonlyArray<unknown>,
   TSerializable,
   TKind extends 'input' | 'result',
 > =
@@ -91,13 +91,13 @@ type ValidateSerializableArrayCore<
       : ReadonlyArray<ApplyArrayValidation<T[number], TSerializable, TKind>>
 
 type ValidateSerializableArray<
-  T extends ReadonlyArray<any>,
+  T extends ReadonlyArray<unknown>,
   TSerializable,
 > = ValidateSerializableArrayCore<T, TSerializable, 'input'>
 
-type IsTuple<T extends ReadonlyArray<any>> = T extends readonly []
+type IsTuple<T extends ReadonlyArray<unknown>> = T extends readonly []
   ? true
-  : T extends readonly [any, ...infer _Rest]
+  : T extends readonly [unknown, ...Array<unknown>]
     ? true
     : false
 
@@ -207,7 +207,7 @@ export type ValidateSerializableInputResult<TRegister, T> =
 export type ValidateSerializableResult<T, TSerializable> = T extends unknown
   ? T extends TSerializable
     ? T
-    : T extends ReadonlyArray<any>
+    : T extends ReadonlyArray<unknown>
       ? ValidateSerializableResultArray<T, TSerializable>
       : unknown extends SerializerExtensions['ReadableStream']
         ? { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
@@ -217,7 +217,7 @@ export type ValidateSerializableResult<T, TSerializable> = T extends unknown
   : never
 
 type ValidateSerializableResultArray<
-  T extends ReadonlyArray<any>,
+  T extends ReadonlyArray<unknown>,
   TSerializable,
 > = ValidateSerializableArrayCore<T, TSerializable, 'result'>
 
