@@ -2259,9 +2259,9 @@ export class RouterCore<
   clearExpiredCache = () => {
     // This is where all of the garbage collection magic happens
     const filter = (d: MakeRouteMatch<TRouteTree>) => {
-      const route = this.looseRoutesById[d.routeId]!
+      const route = this.looseRoutesById[d.routeId]
 
-      if (!route.options.loader) {
+      if (!route?.options.loader) {
         return true
       }
 
