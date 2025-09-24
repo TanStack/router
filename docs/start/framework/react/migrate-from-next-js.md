@@ -55,13 +55,13 @@ rm postcss.config.* next.config.*
 TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
 
 ```sh
-npm i @tanstack/react-router @tanstack/react-start vite @vitejs/plugin-react
+npm i @tanstack/react-router @tanstack/react-start
 ```
 
 For Tailwind CSS and resolving imports using path aliases:
 
 ```sh
-npm i -D @tailwindcss/vite tailwindcss vite-tsconfig-paths
+npm i -D vite @vitejs/plugin-react @tailwindcss/vite tailwindcss vite-tsconfig-paths
 ```
 
 ### 3. Update Project Configuration
