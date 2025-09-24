@@ -160,6 +160,7 @@ fs.writeFileSync(
         lib: ['ESNext', 'DOM'],
         declaration: true,
         outDir: '../dist/llms',
+        strict: true,
       },
       include: ['./index.ts', './rules/*.ts'],
       exclude: ['node_modules', 'dist'],

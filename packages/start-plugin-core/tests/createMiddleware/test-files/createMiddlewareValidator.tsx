@@ -4,5 +4,5 @@ import { z } from 'zod'
 export const withUseServer = createMiddleware({
   id: 'test',
 })
-  .validator(z.number())
+  .inputValidator(z.number())
   .server(({ input }) => input + 1)

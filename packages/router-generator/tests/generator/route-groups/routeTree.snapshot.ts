@@ -8,8 +8,9 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute, createRootRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
+import { Route as rootRouteImport } from './routes/__root'
 import { Route as barBarRouteImport } from './routes/(bar)/_bar'
 import { Route as fooAsdfLayoutRouteImport } from './routes/(foo)/asdf/_layout'
 import { Route as barBarHelloRouteImport } from './routes/(bar)/_bar.hello'
@@ -19,7 +20,6 @@ import { Route as fooAsdfanotherGroupLayoutRouteImport } from './routes/(foo)/as
 import { Route as fooAsdfbarLayoutAboutRouteImport } from './routes/(foo)/asdf/(bar)/_layout.about'
 import { Route as fooAsdfanotherGroupLayoutBazRouteImport } from './routes/(foo)/asdf/(another-group)/_layout.baz'
 
-const rootRouteImport = createRootRoute()
 const barRouteImport = createFileRoute('/(bar)')()
 const fooAsdfRouteImport = createFileRoute('/(foo)/asdf')()
 const fooAsdfanotherGroupRouteImport = createFileRoute(

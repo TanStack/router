@@ -142,18 +142,18 @@ Customizing the HTML output of the SPA shell can be useful if you want to:
 - Provide a custom pending fallback component
 - Change literally anything about the shell's HTML, CSS, and JS
 
-To make this process simple, an `isShell` boolean can be found on the `router` instance:
+To make this process simple, an `isShell()` function can be found on the `router` instance:
 
 ```tsx
 // src/routes/root.tsx
 export default function Root() {
-  const isShell = useRouter().isShell
+  const isShell = useRouter().isShell()
 
   if (isShell) console.log('Rendering the shell!')
 }
 ```
 
-You can use this boolean to conditionally render different UI based on whether the current route is a shell or not, but keep in mind that after hydrating the shell, the router will immediately navigate to the first route and the `isShell` boolean will be `false`. **This could produce flashes of unstyled content if not handled properly.**
+You can use this boolean to conditionally render different UI based on whether the current route is a shell or not, but keep in mind that after hydrating the shell, the router will immediately navigate to the first route and `isShell()` will return `false`. **This could produce flashes of unstyled content if not handled properly.**
 
 ## Dynamic Data in your Shell
 

@@ -3,7 +3,11 @@ import {
   configSchema as generatorConfigSchema,
   getConfig as getGeneratorConfig,
 } from '@tanstack/router-generator'
-import type { RegisteredRouter, RouteIds } from '@tanstack/router-core'
+import type {
+  CreateFileRoute,
+  RegisteredRouter,
+  RouteIds,
+} from '@tanstack/router-core'
 import type { CodeSplitGroupings } from './constants'
 
 export const splitGroupingsSchema = z
@@ -55,18 +59,45 @@ export type CodeSplittingOptions = {
    * @default [['component'],['pendingComponent'],['errorComponent'],['notFoundComponent']]
    */
   defaultBehavior?: CodeSplitGroupings
+
+  /**
+   * The nodes that shall be deleted from the route.
+   * @default undefined
+   */
+  deleteNodes?: Array<DeletableNodes>
+
+  /**
+   * @default true
+   */
+  addHmr?: boolean
 }
 
 const codeSplittingOptionsSchema = z.object({
   splitBehavior: z.function().optional(),
   defaultBehavior: splitGroupingsSchema.optional(),
+  deleteNodes: z.array(z.string()).optional(),
+  addHmr: z.boolean().optional().default(true),
 })
+
+type FileRouteKeys = keyof (Parameters<
+  CreateFileRoute<any, any, any, any, any>
+>[0] & {})
+export type DeletableNodes = FileRouteKeys | (string & {})
 
 export const configSchema = generatorConfigSchema.extend({
   enableRouteGeneration: z.boolean().optional(),
   codeSplittingOptions: z
     .custom<CodeSplittingOptions>((v) => {
       return codeSplittingOptionsSchema.parse(v)
+    })
+    .optional(),
+  plugin: z
+    .object({
+      vite: z
+        .object({
+          environmentName: z.string().optional(),
+        })
+        .optional(),
     })
     .optional(),
 })

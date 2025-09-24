@@ -10,24 +10,24 @@
 'package: history':
   - changed-files:
       - any-glob-to-any-file: 'packages/history/**/*'
+'package: nitro-v2-vite-plugin':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/nitro-v2-vite-plugin/**/*'
 'package: react-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router/**/*'
 'package: react-router-devtools':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router-devtools/**/*'
-'package: react-router-with-query':
+'package: react-router-ssr-query':
   - changed-files:
-      - any-glob-to-any-file: 'packages/react-router-with-query/**/*'
+      - any-glob-to-any-file: 'packages/react-router-ssr-query/**/*'
 'package: react-start':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start/**/*'
 'package: react-start-client':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start-client/**/*'
-'package: react-start-plugin':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/react-start-plugin/**/*'
 'package: react-start-server':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-start-server/**/*'
@@ -49,6 +49,9 @@
 'package: router-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-plugin/**/*'
+'package: router-ssr-query-core':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/router-ssr-query-core/**/*'
 'package: router-utils':
   - changed-files:
       - any-glob-to-any-file: 'packages/router-utils/**/*'
@@ -70,9 +73,6 @@
 'package: solid-start-client':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-start-client/**/*'
-'package: solid-start-plugin':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/solid-start-plugin/**/*'
 'package: solid-start-server':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-start-server/**/*'
@@ -85,15 +85,12 @@
 'package: start-server-core':
   - changed-files:
       - any-glob-to-any-file: 'packages/start-server-core/**/*'
-'package: start-server-functions-client':
+'package: start-static-server-functions':
   - changed-files:
-      - any-glob-to-any-file: 'packages/start-server-functions-client/**/*'
-'package: start-server-functions-fetcher':
+      - any-glob-to-any-file: 'packages/start-static-server-functions/**/*'
+'package: start-storage-context':
   - changed-files:
-      - any-glob-to-any-file: 'packages/start-server-functions-fetcher/**/*'
-'package: start-server-functions-server':
-  - changed-files:
-      - any-glob-to-any-file: 'packages/start-server-functions-server/**/*'
+      - any-glob-to-any-file: 'packages/start-storage-context/**/*'
 'package: valibot-adapter':
   - changed-files:
       - any-glob-to-any-file: 'packages/valibot-adapter/**/*'

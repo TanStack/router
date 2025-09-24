@@ -13,6 +13,7 @@ export const renderRouterToString = async ({
 }) => {
   try {
     let html = ReactDOMServer.renderToString(children)
+    router.serverSsr!.setRenderFinished()
     const injectedHtml = await Promise.all(router.serverSsr!.injectedHtml).then(
       (htmls) => htmls.join(''),
     )

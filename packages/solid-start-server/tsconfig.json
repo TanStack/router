@@ -5,10 +5,5 @@
     "jsxImportSource": "solid-js",
     "module": "esnext"
   },
-  "include": [
-    "src",
-    "tests",
-    "vite.config.ts",
-    "../start-client/src/tsrScript.ts"
-  ]
+  "include": ["src", "tests", "vite.config.ts"]
 }

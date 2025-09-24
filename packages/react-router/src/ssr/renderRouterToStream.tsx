@@ -5,8 +5,8 @@ import {
   transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
-import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
+import type { ReadableStream } from 'node:stream/web'
 import type { ReactNode } from 'react'
 
 export const renderRouterToStream = async ({
@@ -56,8 +56,6 @@ export const renderRouterToStream = async ({
               },
             }),
         onError: (error, info) => {
-          if (error instanceof Error && error.message === 'ShellBoundaryError')
-            return
           console.error('Error in renderToPipeableStream:', error, info)
         },
       })

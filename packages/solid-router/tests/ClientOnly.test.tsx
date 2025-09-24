@@ -1,5 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { renderToString } from 'solid-js/web'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@solidjs/testing-library'
 import {
   RouterProvider,
@@ -45,15 +44,13 @@ function createTestRouter(initialHistory?: RouterHistory) {
 }
 
 describe('ClientOnly', () => {
-  it.skip('should render fallback during SSR', async () => {
-    const { router } = createTestRouter()
-    await router.load()
+  beforeEach(() => {
+    window.scrollTo = vi.fn()
+  })
 
-    // Initial render (SSR)
-    const html = renderToString(() => <RouterProvider router={router} />)
-
-    expect(html).include('Loading...')
-    expect(html).not.include('Client Only Content')
+  // Clear mocks after each test to prevent interference
+  afterEach(() => {
+    vi.clearAllMocks()
   })
 
   it('should render client content after hydration', async () => {
@@ -65,8 +62,8 @@ describe('ClientOnly', () => {
 
     render(() => <RouterProvider router={router} />)
 
-    expect(screen.getByText('Client Only Content')).toBeInTheDocument()
-    expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+    expect(await screen.findByTestId('client-only-content')).toBeInTheDocument()
+    expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
   })
 
   it('should handle navigation with client-only content', async () => {
@@ -79,11 +76,14 @@ describe('ClientOnly', () => {
     // Re-render after hydration
     render(() => <RouterProvider router={router} />)
 
+    // Content should be visible before navigation
+    expect(await screen.findByTestId('client-only-content')).toBeInTheDocument()
+
     // Navigate to a different route and back
     await router.navigate({ to: '/other' })
     await router.navigate({ to: '/' })
 
     // Content should still be visible after navigation
-    expect(screen.getByText('Client Only Content')).toBeInTheDocument()
+    expect(await screen.findByTestId('client-only-content')).toBeInTheDocument()
   })
 })

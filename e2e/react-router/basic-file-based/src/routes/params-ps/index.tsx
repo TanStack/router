@@ -1,5 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { Link } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/params-ps/')({
   component: RouteComponent,
@@ -66,6 +65,15 @@ function RouteComponent() {
             params={{ _splat: 'foo' }}
           >
             /params-ps/wildcard/{'{$}suffix'}
+          </Link>
+        </li>
+      </ul>
+      <hr />
+      <h3 className="pb-2">Non-nested path params</h3>
+      <ul className="grid mb-2">
+        <li>
+          <Link data-testid="l-to-non-nested" to="/params-ps/non-nested">
+            Non-nested
           </Link>
         </li>
       </ul>

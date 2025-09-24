@@ -32,7 +32,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <div>
           <Link to="/">Index</Link>
           <Link to="/about">About</Link>
         </div>

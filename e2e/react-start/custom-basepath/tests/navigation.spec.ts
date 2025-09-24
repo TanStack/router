@@ -32,3 +32,16 @@ test('Should change title on client side navigation', async ({ page }) => {
 
   await expect(page).toHaveTitle('Posts page')
 })
+
+test('Server function URLs correctly include app basepath', async ({
+  page,
+}) => {
+  await page.goto('/logout')
+
+  const form = page.locator('form')
+  const actionUrl = await form.getAttribute('action')
+
+  expect(actionUrl).toBe(
+    '/custom/basepath/_serverFn/src_routes_logout_tsx--logoutFn_createServerFn_handler',
+  )
+})

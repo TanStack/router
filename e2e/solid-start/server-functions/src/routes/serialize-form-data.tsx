@@ -11,8 +11,8 @@ const testValues = {
   __adder: 1,
 }
 
-export const greetUser = createServerFn()
-  .validator((data: FormData) => {
+export const greetUser = createServerFn({ method: 'POST' })
+  .inputValidator((data: FormData) => {
     if (!(data instanceof FormData)) {
       throw new Error('Invalid! FormData is required')
     }

@@ -1,6 +1,3 @@
-export { default as invariant } from 'tiny-invariant'
-export { default as warning } from 'tiny-warning'
-
 export {
   defer,
   TSR_DEFERRED_PROMISE,
@@ -14,37 +11,25 @@ export {
   parsePathname,
   interpolatePath,
   matchPathname,
-  removeBasepath,
   matchByPath,
-  encode,
-  decode,
   rootRouteId,
   defaultSerializeError,
   defaultParseSearch,
   defaultStringifySearch,
   parseSearchWith,
   stringifySearchWith,
-  escapeJSON, // SSR
-  pick,
   functionalUpdate,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,
   deepEqual,
-  shallow,
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
+  createSerializationAdapter,
 } from '@tanstack/router-core'
 
 export type {
-  TsrSerializer,
-  StartSerializer,
-  Serializable,
-  SerializerParse,
-  SerializerParseBy,
-  SerializerStringify,
-  SerializerStringifyBy,
   DeferredPromiseState,
   DeferredPromise,
   ParsedLocation,
@@ -92,10 +77,6 @@ export type {
   SearchSerializer,
   SearchParser,
   TrailingSlashOption,
-  ExtractedEntry,
-  ExtractedStream,
-  ExtractedPromise,
-  StreamState,
   Manifest,
   RouterManagedTag,
   ControlledPromise,
@@ -182,7 +163,6 @@ export type {
   AnyRouteMatch,
   RouteContextFn,
   RouteContextOptions,
-  BeforeLoadFn,
   BeforeLoadContextOptions,
   ContextOptions,
   RootRouteOptions,
@@ -206,10 +186,10 @@ export type {
   RouterConstructorOptions,
   ControllablePromise,
   InjectedHtmlEntry,
-  RouterErrorSerializer,
-  SerializerExtensions,
   CreateFileRoute,
   CreateLazyFileRoute,
+  AnySerializationAdapter,
+  SerializationAdapter,
 } from '@tanstack/router-core'
 
 export {
@@ -291,7 +271,6 @@ export {
 export type {
   AnyRootRoute,
   SolidNode,
-  SyncRouteComponent,
   AsyncRouteComponent,
   RouteComponent,
   ErrorRouteComponent,
@@ -373,3 +352,8 @@ export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent, useTags } from './HeadContent'
 export { Scripts } from './Scripts'
+export { rewriteBasepath, composeRewrites } from '@tanstack/router-core'
+export type {
+  LocationRewrite,
+  LocationRewriteFunction,
+} from '@tanstack/router-core'

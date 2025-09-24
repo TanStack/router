@@ -1,6 +1,5 @@
 import * as React from 'react'
 import { useRouter } from './useRouter'
-import { useMatch } from './useMatch'
 import type {
   AnyRouter,
   FromPathOption,
@@ -15,29 +14,16 @@ export function useNavigate<
 >(_defaultOpts?: {
   from?: FromPathOption<TRouter, TDefaultFrom>
 }): UseNavigateResult<TDefaultFrom> {
-  const { navigate, state } = useRouter()
-
-  // Just get the index of the current match to avoid rerenders
-  // as much as possible
-  const matchIndex = useMatch({
-    strict: false,
-    select: (match) => match.index,
-  })
+  const router = useRouter()
 
   return React.useCallback(
     (options: NavigateOptions) => {
-      const from =
-        options.from ??
-        _defaultOpts?.from ??
-        state.matches[matchIndex]!.fullPath
-
-      return navigate({
+      return router.navigate({
         ...options,
-        from,
+        from: options.from ?? _defaultOpts?.from,
       })
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [_defaultOpts?.from, navigate],
+    [_defaultOpts?.from, router],
   ) as UseNavigateResult<TDefaultFrom>
 }
 

@@ -39,6 +39,7 @@ export async function getRouteNodes(
 ): Promise<GetRouteNodesResult> {
   const { routeFilePrefix, routeFileIgnorePrefix, routeFileIgnorePattern } =
     config
+
   const logger = logging({ disabled: config.disableLogging })
   const routeFileIgnoreRegExp = new RegExp(routeFileIgnorePattern ?? '', 'g')
 
@@ -58,6 +59,13 @@ export async function getRouteNodes(
       }
 
       if (routeFilePrefix) {
+        if (routeFileIgnorePattern) {
+          return (
+            d.name.startsWith(routeFilePrefix) &&
+            !d.name.match(routeFileIgnoreRegExp)
+          )
+        }
+
         return d.name.startsWith(routeFilePrefix)
       }
 

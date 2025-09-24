@@ -15,7 +15,6 @@ import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
-import { useMatch } from './useMatch'
 import type {
   AnyRouter,
   Constrain,
@@ -115,43 +114,60 @@ export function useLinkProps<
     'unsafeRelative',
   ])
 
-  // If this link simply reloads the current route,
-  // make sure it has a new key so it will trigger a data refresh
-
-  // If this `to` is a valid external URL, return
-  // null for LinkUtils
-
-  const type: Solid.Accessor<'internal' | 'external'> = () => {
-    try {
-      new URL(`${local.to}`)
-      return 'external'
-    } catch {}
-    return 'internal'
-  }
-
   const currentSearch = useRouterState({
     select: (s) => s.location.searchStr,
   })
 
-  // when `from` is not supplied, use the route of the current match as the `from` location
-  // so relative routing works as expected
-  const from = useMatch({
-    strict: false,
-    select: (match) => options.from ?? match.fullPath,
-  })
+  const from = options.from
 
-  const _options = () => ({
-    ...options,
-    from: from(),
-  })
+  const _options = () => {
+    return {
+      ...options,
+      from,
+    }
+  }
 
   const next = Solid.createMemo(() => {
     currentSearch()
     return router.buildLocation(_options() as any)
   })
 
+  const hrefOption = Solid.createMemo(() => {
+    if (_options().disabled) {
+      return undefined
+    }
+    let href
+    const maskedLocation = next().maskedLocation
+    if (maskedLocation) {
+      href = maskedLocation.url
+    } else {
+      href = next().url
+    }
+    let external = false
+    if (router.origin) {
+      if (href.startsWith(router.origin)) {
+        href = href.replace(router.origin, '')
+      } else {
+        external = true
+      }
+    }
+    return { href, external }
+  })
+
+  const externalLink = Solid.createMemo(() => {
+    const _href = hrefOption()
+    if (_href?.external) {
+      return _href.href
+    }
+    try {
+      new URL(_options().to as any)
+      return _options().to
+    } catch {}
+    return undefined
+  })
+
   const preload = Solid.createMemo(() => {
-    if (_options().reloadDocument) {
+    if (_options().reloadDocument || externalLink()) {
       return false
     }
     return local.preload ?? router.options.defaultPreload
@@ -161,6 +177,7 @@ export function useLinkProps<
 
   const isActive = useRouterState({
     select: (s) => {
+      if (externalLink()) return false
       if (local.activeOptions?.exact) {
         const testExact = exactPathTest(
           s.location.pathname,
@@ -238,17 +255,12 @@ export function useLinkProps<
     }
   })
 
-  if (type() === 'external') {
+  if (externalLink()) {
     return Solid.mergeProps(
       propsSafeToSpread,
       {
         ref,
-        get type() {
-          return type()
-        },
-        get href() {
-          return local.to
-        },
+        href: externalLink,
       },
       Solid.splitProps(local, [
         'target',
@@ -268,11 +280,16 @@ export function useLinkProps<
 
   // The click handler
   const handleClick = (e: MouseEvent) => {
+    // Check actual element's target attribute as fallback
+    const elementTarget = (e.currentTarget as HTMLAnchorElement).target
+    const effectiveTarget =
+      local.target !== undefined ? local.target : elementTarget
+
     if (
       !local.disabled &&
       !isCtrlEvent(e) &&
       !e.defaultPrevented &&
-      (!local.target || local.target === '_self') &&
+      (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
@@ -286,7 +303,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      return router.navigate({
+      router.navigate({
         ..._options(),
         replace: local.replace,
         resetScroll: local.resetScroll,
@@ -384,24 +401,13 @@ export function useLinkProps<
     ...resolvedInactiveProps().style,
   })
 
-  const href = Solid.createMemo(() => {
-    const nextLocation = next()
-    const maskedLocation = nextLocation?.maskedLocation
-
-    return _options().disabled
-      ? undefined
-      : maskedLocation
-        ? router.history.createHref(maskedLocation.href)
-        : router.history.createHref(nextLocation?.href)
-  })
-
   return Solid.mergeProps(
     propsSafeToSpread,
     resolvedActiveProps,
     resolvedInactiveProps,
     () => {
       return {
-        href: href(),
+        href: hrefOption()?.href,
         ref: mergeRefs(setRef, _options().ref),
         onClick: composeEventHandlers([local.onClick, handleClick]),
         onFocus: composeEventHandlers([local.onFocus, handleFocus]),

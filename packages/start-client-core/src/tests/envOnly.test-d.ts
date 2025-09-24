@@ -1,5 +1,5 @@
 import { expectTypeOf, test } from 'vitest'
-import { clientOnly, serverOnly } from '../envOnly'
+import { createClientOnlyFn, createServerOnlyFn } from '../envOnly'
 
 const inputFn = () => 'output'
 
@@ -11,24 +11,24 @@ function overloadedFn(input: any) {
   return input
 }
 
-test("clientOnly returns the function it's given", () => {
-  const outputFn = clientOnly(inputFn)
+test("createClientOnlyFn returns the function it's given", () => {
+  const outputFn = createClientOnlyFn(inputFn)
   expectTypeOf(outputFn).toEqualTypeOf<typeof inputFn>()
 
-  const genericOutputFn = clientOnly(genericInputFn)
+  const genericOutputFn = createClientOnlyFn(genericInputFn)
   expectTypeOf(genericOutputFn).toEqualTypeOf<typeof genericInputFn>()
 
-  const overloadedOutputFn = clientOnly(overloadedFn)
+  const overloadedOutputFn = createClientOnlyFn(overloadedFn)
   expectTypeOf(overloadedOutputFn).toEqualTypeOf<typeof overloadedFn>()
 })
 
-test("serverOnly returns the function it's given", () => {
-  const outputFn = serverOnly(inputFn)
+test("createServerOnlyFn returns the function it's given", () => {
+  const outputFn = createServerOnlyFn(inputFn)
   expectTypeOf(outputFn).toEqualTypeOf<typeof inputFn>()
 
-  const genericOutputFn = serverOnly(genericInputFn)
+  const genericOutputFn = createServerOnlyFn(genericInputFn)
   expectTypeOf(genericOutputFn).toEqualTypeOf<typeof genericInputFn>()
 
-  const overloadedOutputFn = serverOnly(overloadedFn)
+  const overloadedOutputFn = createServerOnlyFn(overloadedFn)
   expectTypeOf(overloadedOutputFn).toEqualTypeOf<typeof overloadedFn>()
 })

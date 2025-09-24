@@ -1,20 +1,7 @@
 import { Dynamic } from 'solid-js/web'
 import { createResource } from 'solid-js'
-import { Outlet } from './Match'
-import { ClientOnly } from './ClientOnly'
+import { isModuleNotFoundError } from '@tanstack/router-core'
 import type { AsyncRouteComponent } from './route'
-
-// If the load fails due to module not found, it may mean a new version of
-// the build was deployed and the user's browser is still using an old version.
-// If this happens, the old version in the user's browser would have an outdated
-// URL to the lazy module.
-// In that case, we want to attempt one window refresh to get the latest.
-function isModuleNotFoundError(error: any): boolean {
-  return (
-    typeof error?.message === 'string' &&
-    /Failed to fetch dynamically imported module/.test(error.message)
-  )
-}
 
 export function lazyRouteComponent<
   T extends Record<string, any>,
@@ -22,7 +9,6 @@ export function lazyRouteComponent<
 >(
   importer: () => Promise<T>,
   exportName?: TKey,
-  ssr?: () => boolean,
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
@@ -31,10 +17,6 @@ export function lazyRouteComponent<
   let error: any
 
   const load = () => {
-    if (typeof document === 'undefined' && ssr?.() === false) {
-      comp = (() => null) as any
-      return Promise.resolve(comp)
-    }
     if (!loadPromise) {
       loadPromise = importer()
         .then((res) => {
@@ -54,6 +36,11 @@ export function lazyRouteComponent<
     // Now that we're out of preload and into actual render path,
     // throw the error if it was a module not found error during preload
     if (error) {
+      // If the load fails due to module not found, it may mean a new version of
+      // the build was deployed and the user's browser is still using an old version.
+      // If this happens, the old version in the user's browser would have an outdated
+      // URL to the lazy module.
+      // In that case, we want to attempt one window refresh to get the latest.
       if (isModuleNotFoundError(error)) {
         // We don't want an error thrown from preload in this case, because
         // there's nothing we want to do about module not found during preload.
@@ -94,13 +81,6 @@ export function lazyRouteComponent<
       return <>{compResource()}</>
     }
 
-    if (ssr?.() === false) {
-      return (
-        <ClientOnly fallback={<Outlet />}>
-          <Dynamic component={comp} {...props} />
-        </ClientOnly>
-      )
-    }
     return <Dynamic component={comp} {...props} />
   }
 

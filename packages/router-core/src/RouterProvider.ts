@@ -30,7 +30,7 @@ export type NavigateFn = <
   TMaskTo extends string = '',
 >(
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-) => Promise<void> | void
+) => Promise<void>
 
 export type BuildLocationFn = <
   TRouter extends RegisteredRouter,
@@ -42,5 +42,6 @@ export type BuildLocationFn = <
   opts: ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
     leaveParams?: boolean
     _includeValidateSearch?: boolean
+    _isNavigate?: boolean
   },
 ) => ParsedLocation

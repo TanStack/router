@@ -5,6 +5,7 @@ test('restore scroll positions by page, home pages top message should not displa
 }) => {
   // Step 1: Navigate to the home page
   await page.goto('/')
+  await page.waitForURL('/')
 
   await expect(page.locator('#greeting')).toContainText('Welcome Home!')
   await expect(page.locator('#top-message')).toBeInViewport()
@@ -21,6 +22,7 @@ test('restore scroll positions by page, home pages top message should not displa
   expect(scrollPosition).toBe(targetScrollPosition)
 
   await expect(page.locator('#top-message')).not.toBeInViewport()
+  await page.waitForTimeout(1000)
 
   // Step 3: Navigate to the about page
   await page.getByRole('link', { name: 'About', exact: true }).click()
@@ -44,6 +46,7 @@ test('restore scroll positions by element, first regular list item should not di
 }) => {
   // Step 1: Navigate to the by-element page
   await page.goto('/by-element')
+  await page.waitForURL('/by-element')
 
   // Step 2: Scroll to a position that hides the first list item in regular list
   const targetScrollPosition = 1000
@@ -79,4 +82,36 @@ test('restore scroll positions by element, first regular list item should not di
   //   () => document.querySelector('#RegularList')!.scrollTop,
   // )
   // expect(restoredScrollPosition).toBe(targetScrollPosition)
+})
+
+test('scroll to top when not scrolled, regression test for #4782', async ({
+  page,
+}) => {
+  await page.goto('/foo')
+  await page.waitForURL('/foo')
+
+  await expect(page.getByTestId('foo-route-component')).toBeVisible()
+
+  let scrollPosition = await page.evaluate(() => window.scrollY)
+  expect(scrollPosition).toBe(0)
+
+  // do not scroll, just navigate to /bar
+  await page.getByTestId('go-to-bar-link').click()
+  await expect(page.getByTestId('bar-route-component')).toBeVisible()
+
+  const targetScrollPosition = 1000
+  await page.evaluate(
+    (scrollPos: number) => window.scrollTo(0, scrollPos),
+    targetScrollPosition,
+  )
+  scrollPosition = await page.evaluate(() => window.scrollY)
+  expect(scrollPosition).toBe(targetScrollPosition)
+
+  // navigate back to /foo
+  await page.goBack()
+  await expect(page.getByTestId('foo-route-component')).toBeVisible()
+
+  // check if scroll position is restored to 0 since we did not scroll on /foo
+  const restoredScrollPosition = await page.evaluate(() => window.scrollY)
+  expect(restoredScrollPosition).toBe(0)
 })

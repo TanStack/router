@@ -13,7 +13,7 @@ For the following functions, the property order of the passed in object matters 
 The correct property order is as follows
 
 - `params`, `validateSearch`
-- `loaderDeps`, `search.middlewares`
+- `loaderDeps`, `search.middlewares`, `ssr`
 - `context`
 - `beforeLoad`
 - `loader`

@@ -242,6 +242,7 @@ export function transformStreamWithRouter(
     onEnd: () => {
       // Mark the app as done rendering
       isAppRendering = false
+      router.serverSsr!.setRenderFinished()
 
       // If there are no pending promises, resolve the injectedHtmlDonePromise
       if (processingCount === 0) {

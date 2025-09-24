@@ -21,6 +21,7 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
+    "stripInternal": true,
     "target": "ES2020"
   },
   "include": ["eslint.config.js", "prettier.config.js", "scripts"]

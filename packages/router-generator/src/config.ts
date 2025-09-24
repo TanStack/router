@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { virtualRootRouteSchema } from './filesystem/virtual/config'
 import type { GeneratorPlugin } from './plugin/types'
@@ -37,7 +37,12 @@ export const configSchema = baseConfigSchema.extend({
   verboseFileRoutes: z.boolean().optional(),
   addExtensions: z.boolean().optional().default(false),
   enableRouteTreeFormatting: z.boolean().optional().default(true),
-  routeTreeFileFooter: z.array(z.string()).optional().default([]),
+  routeTreeFileFooter: z
+    .union([
+      z.array(z.string()).optional().default([]),
+      z.function().returns(z.array(z.string())),
+    ])
+    .optional(),
   autoCodeSplitting: z.boolean().optional(),
   customScaffolding: z
     .object({
@@ -53,6 +58,7 @@ export const configSchema = baseConfigSchema.extend({
     .optional(),
   plugins: z.array(z.custom<GeneratorPlugin>()).optional(),
   tmpDir: z.string().optional().default(''),
+  importRoutesUsingAbsolutePaths: z.boolean().optional().default(false),
 })
 
 export type Config = z.infer<typeof configSchema>
@@ -127,7 +133,6 @@ export function getConfig(
     if (!path.isAbsolute(dir)) {
       dir = path.resolve(process.cwd(), dir)
     }
-    mkdirSync(dir, { recursive: true })
     return dir
   }
 

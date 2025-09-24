@@ -61,11 +61,18 @@ plugins: [
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  Partial<Config | (() => Config)> | undefined
 > = (options = {}, { framework }) => {
   let ROOT: string = process.cwd()
-  let userConfig = options as Config
+  let userConfig: Config
 
+  function initUserConfig() {
+    if (typeof options === 'function') {
+      userConfig = options()
+    } else {
+      userConfig = getConfig(options, ROOT)
+    }
+  }
   const isProduction = process.env.NODE_ENV === 'production'
 
   const getGlobalCodeSplitGroupings = () => {
@@ -120,11 +127,13 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
-      runtimeEnv: isProduction ? 'prod' : 'dev',
       codeSplitGroupings: splitGroupings,
       targetFramework: userConfig.target,
       filename: id,
       id,
+      deleteNodes: new Set(userConfig.codeSplittingOptions?.deleteNodes),
+      addHmr:
+        (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction,
     })
 
     if (debug) {
@@ -171,6 +180,11 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     return result
   }
 
+  const includedCode = [
+    'createFileRoute(',
+    'createRootRoute(',
+    'createRootRouteWithContext(',
+  ]
   return [
     {
       name: 'tanstack-router:code-splitter:compile-reference-file',
@@ -183,11 +197,16 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
             // this is necessary for webpack / rspack to avoid matching .html files
             include: /\.(m|c)?(j|t)sx?$/,
           },
-          code: 'createFileRoute(',
+          code: {
+            include: includedCode,
+          },
         },
         handler(code, id) {
           const generatorFileInfo = globalThis.TSR_ROUTES_BY_ID_MAP?.get(id)
-          if (generatorFileInfo && code.includes('createFileRoute(')) {
+          if (
+            generatorFileInfo &&
+            includedCode.some((included) => code.includes(included))
+          ) {
             for (const externalPlugin of bannedBeforeExternalPlugins) {
               if (!externalPlugin.frameworks.includes(framework)) {
                 continue
@@ -208,18 +227,24 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       vite: {
         configResolved(config) {
           ROOT = config.root
-          userConfig = getConfig(options, ROOT)
+          initUserConfig()
+        },
+        applyToEnvironment(environment) {
+          if (userConfig.plugin?.vite?.environmentName) {
+            return userConfig.plugin.vite.environmentName === environment.name
+          }
+          return true
         },
       },
 
       rspack() {
         ROOT = process.cwd()
-        userConfig = getConfig(options, ROOT)
+        initUserConfig()
       },
 
       webpack(compiler) {
         ROOT = process.cwd()
-        userConfig = getConfig(options, ROOT)
+        initUserConfig()
 
         if (compiler.options.mode === 'production') {
           compiler.hooks.done.tap(PLUGIN_NAME, () => {

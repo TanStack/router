@@ -79,11 +79,30 @@ function MyComponent() {
 }
 ```
 
+Note that even if `shouldBlockFn` returns `false`, the browser's `beforeunload` event may still be triggered on page reloads or tab closing. To gain control over this, you can use the `enableBeforeUnload` option to conditionally register the `beforeunload` handler:
+
+[//]: # 'HookBasedBlockingExample'
+
+```tsx
+import { useBlocker } from '@tanstack/react-router'
+
+function MyComponent() {
+  const [formIsDirty, setFormIsDirty] = useState(false)
+
+  useBlocker({
+    {/* ... */}
+    enableBeforeUnload: formIsDirty, // or () => formIsDirty
+  })
+
+  // ...
+}
+```
+
 You can find more information about the `useBlocker` hook in the [API reference](../../api/router/useBlockerHook.md).
 
 ## Component-based blocking
 
-In addition to logical/hook based blocking, can use the `Block` component to achieve similar results:
+In addition to logical/hook based blocking, you can use the `Block` component to achieve similar results:
 
 [//]: # 'ComponentBasedBlockingExample'
 
@@ -101,13 +120,18 @@ function MyComponent() {
         const shouldLeave = confirm('Are you sure you want to leave?')
         return !shouldLeave
       }}
+      enableBeforeUnload={formIsDirty}
     />
   )
 
   // OR
 
   return (
-    <Block shouldBlockFn={() => !formIsDirty} withResolver>
+    <Block
+      shouldBlockFn={() => formIsDirty}
+      enableBeforeUnload={formIsDirty}
+      withResolver
+    >
       {({ status, proceed, reset }) => <>{/* ... */}</>}
     </Block>
   )

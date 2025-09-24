@@ -8,16 +8,12 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createServerRootRoute } from '@tanstack/react-start/server'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
-import { ServerRoute as ApiAuthCallbackServerRouteImport } from './routes/api/auth/callback'
-
-const rootServerRouteImport = createServerRootRoute()
+import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 
 const LogoutRoute = LogoutRouteImport.update({
   id: '/logout',
@@ -38,21 +34,23 @@ const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const ApiAuthCallbackServerRoute = ApiAuthCallbackServerRouteImport.update({
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
   id: '/api/auth/callback',
   path: '/api/auth/callback',
-  getParentRoute: () => rootServerRouteImport,
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/logout': typeof LogoutRoute
   '/account': typeof AuthenticatedAccountRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/logout': typeof LogoutRoute
   '/account': typeof AuthenticatedAccountRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -60,45 +58,27 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/logout': typeof LogoutRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/logout' | '/account'
+  fullPaths: '/' | '/logout' | '/account' | '/api/auth/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/logout' | '/account'
+  to: '/' | '/logout' | '/account' | '/api/auth/callback'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/logout'
     | '/_authenticated/account'
+    | '/api/auth/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LogoutRoute: typeof LogoutRoute
-}
-export interface FileServerRoutesByFullPath {
-  '/api/auth/callback': typeof ApiAuthCallbackServerRoute
-}
-export interface FileServerRoutesByTo {
-  '/api/auth/callback': typeof ApiAuthCallbackServerRoute
-}
-export interface FileServerRoutesById {
-  __root__: typeof rootServerRouteImport
-  '/api/auth/callback': typeof ApiAuthCallbackServerRoute
-}
-export interface FileServerRouteTypes {
-  fileServerRoutesByFullPath: FileServerRoutesByFullPath
-  fullPaths: '/api/auth/callback'
-  fileServerRoutesByTo: FileServerRoutesByTo
-  to: '/api/auth/callback'
-  id: '__root__' | '/api/auth/callback'
-  fileServerRoutesById: FileServerRoutesById
-}
-export interface RootServerRouteChildren {
-  ApiAuthCallbackServerRoute: typeof ApiAuthCallbackServerRoute
+  ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -131,16 +111,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-  }
-}
-declare module '@tanstack/react-start/server' {
-  interface ServerFileRoutesByPath {
     '/api/auth/callback': {
       id: '/api/auth/callback'
       path: '/api/auth/callback'
       fullPath: '/api/auth/callback'
-      preLoaderRoute: typeof ApiAuthCallbackServerRouteImport
-      parentRoute: typeof rootServerRouteImport
+      preLoaderRoute: typeof ApiAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -161,13 +137,16 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LogoutRoute: LogoutRoute,
+  ApiAuthCallbackRoute: ApiAuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-const rootServerRouteChildren: RootServerRouteChildren = {
-  ApiAuthCallbackServerRoute: ApiAuthCallbackServerRoute,
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
 }
-export const serverRouteTree = rootServerRouteImport
-  ._addFileChildren(rootServerRouteChildren)
-  ._addFileTypes<FileServerRouteTypes>()

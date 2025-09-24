@@ -19,6 +19,11 @@ export default mergeConfig(
   tanstackViteConfig({
     srcDir: './src',
     entry: './src/index.tsx',
-    externalDeps: [...Object.values(VIRTUAL_MODULES)],
+    externalDeps: [
+      ...Object.values(VIRTUAL_MODULES),
+      '#tanstack-start-entry',
+      '#tanstack-router-entry',
+    ],
+    cjs: false,
   }),
 )

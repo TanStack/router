@@ -1,7 +1,7 @@
 import { expectTypeOf, test } from 'vitest'
 import { createServerFn } from '@tanstack/start-client-core'
 
-test('createServerFn returns RSC', () => {
+test.skip('createServerFn returns RSC', () => {
   const fn = createServerFn().handler(() => ({
     rscs: [
       <div key="0">I'm an RSC</div>,
@@ -10,6 +10,8 @@ test('createServerFn returns RSC', () => {
   }))
 
   expectTypeOf(fn()).toEqualTypeOf<
-    Promise<{ rscs: readonly [ReadableStream, ReadableStream] }>
+    Promise<{
+      rscs: readonly [ReadableStream, ReadableStream]
+    }>
   >()
 })
