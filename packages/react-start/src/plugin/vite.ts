@@ -65,7 +65,7 @@ export function tanstackStart(
                       ? ['react-dom/client']
                       : ['react-dom/server']),
                     // `@tanstack/react-store` has a dependency on `use-sync-external-store`, which is CJS.
-                    // It therefore needs to included so that it is converted to ESM.
+                    // It therefore needs to be included so that it is converted to ESM.
                     '@tanstack/react-router > @tanstack/react-store',
                   ],
                 }

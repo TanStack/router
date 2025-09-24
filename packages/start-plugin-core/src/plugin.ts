@@ -193,10 +193,13 @@ export function TanStackStartVitePluginCore(
                 },
                 outDir: getClientOutputDirectory(viteConfig),
               },
+              optimizeDeps: {
+                // Ensure user code can be crawled for dependencies
+                entries: [clientAlias, routerAlias],
+              },
             },
             [VITE_ENVIRONMENT_NAMES.server]: {
               consumer: 'server',
-
               build: {
                 ssr: true,
                 rollupOptions: {
@@ -211,6 +214,10 @@ export function TanStackStartVitePluginCore(
                 copyPublicDir:
                   viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
                     ?.build?.copyPublicDir ?? false,
+              },
+              optimizeDeps: {
+                // Ensure user code can be crawled for dependencies
+                entries: [serverAlias, startAlias, routerAlias],
               },
             },
           },
