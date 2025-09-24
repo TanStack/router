@@ -219,21 +219,21 @@ Build your own authentication system using TanStack Start's server functions and
 ## Next Steps
 
 - **Partner solutions** → [Clerk](https://go.clerk.com/wOwHtuJ) or [WorkOS](https://workos.com/)
-- **DIY implementation** → [Authentication Guide](./authentication.md)
+- **DIY implementation** → [Authentication Guide](../authentication.md)
 - **Examples** → [Working implementations](https://github.com/TanStack/router/tree/main/examples/react)
 
 ## Resources
 
 **Implementation Guides:**
 
-- [Authentication Patterns](./authentication.md)
-- [Router Authentication Guide](../../router/framework/react/guide/authenticated-routes.md)
+- [Authentication Patterns](../authentication.md)
+- [Router Authentication Guide](/router/latest/docs/framework/react/guide/authenticated-routes.md)
 
 **Foundation Concepts:**
 
-- [Execution Model](./execution-model.md)
-- [Server Functions](./server-functions.md)
+- [Execution Model](../execution-model.md)
+- [Server Functions](../server-functions.md)
 
 **Step-by-Step Tutorials:**
 
-- [Router How-to Guides](../../router/framework/react/how-to/README.md#authentication)
+- [Router How-to Guides](/router/latest/docs/framework/react/how-to/README.md#authentication)

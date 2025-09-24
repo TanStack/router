@@ -467,7 +467,7 @@ interface ImportMetaEnv {
 
 ## Related Resources
 
-- [Code Execution Patterns](./code-execution-patterns.md) - Learn about server vs client code execution
-- [Server Functions](./server-functions.md) - Learn more about server-side code
-- [Hosting](./hosting.md) - Platform-specific environment variable configuration
+- [Code Execution Patterns](../code-execution-patterns.md) - Learn about server vs client code execution
+- [Server Functions](../server-functions.md) - Learn more about server-side code
+- [Hosting](../hosting.md) - Platform-specific environment variable configuration
 - [Vite Environment Variables](https://vitejs.dev/guide/env-and-mode.html) - Official Vite documentation

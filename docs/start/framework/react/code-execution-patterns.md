@@ -3,7 +3,7 @@ id: code-execution-patterns
 title: Code Execution Patterns
 ---
 
-This guide covers patterns for controlling where code runs in your TanStack Start application - server-only, client-only, or isomorphic (both environments). For foundational concepts, see the [Execution Model](./execution-model.md) guide.
+This guide covers patterns for controlling where code runs in your TanStack Start application - server-only, client-only, or isomorphic (both environments). For foundational concepts, see the [Execution Model](../execution-model.md) guide.
 
 ## Quick Start
 
@@ -140,7 +140,7 @@ function CurrentTime() {
 
 ## Related Resources
 
-- [Execution Model](./execution-model.md) - Core concepts and architectural patterns
-- [Server Functions](./server-functions.md) - Deep dive into server function patterns
-- [Environment Variables](./environment-variables.md) - Secure environment variable handling
-- [Middleware](./middleware.md) - Server function middleware patterns
+- [Execution Model](../execution-model.md) - Core concepts and architectural patterns
+- [Server Functions](../server-functions.md) - Deep dive into server function patterns
+- [Environment Variables](../environment-variables.md) - Secure environment variable handling
+- [Middleware](../middleware.md) - Server function middleware patterns
