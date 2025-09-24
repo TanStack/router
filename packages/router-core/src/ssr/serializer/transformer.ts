@@ -223,8 +223,8 @@ type ResolveArrayShape<
   TMode extends 'input' | 'result',
 > = number extends T['length']
   ? T extends Array<infer U>
-    ? Array<ResolveArrayElement<U, TSerializable, TMode>>
-    : ReadonlyArray<ResolveArrayElement<T[number], TSerializable, TMode>>
+    ? Array<ArrayModeResult<TMode, U, TSerializable>>
+    : ReadonlyArray<ArrayModeResult<TMode, T[number], TSerializable>>
   : ResolveTupleShape<T, TSerializable, TMode>
 
 type ResolveTupleShape<
@@ -233,19 +233,15 @@ type ResolveTupleShape<
   TMode extends 'input' | 'result',
 > = T extends readonly [infer THead, ...infer TTail]
   ? readonly [
-      ResolveArrayElement<THead, TSerializable, TMode>,
-      ...ResolveTupleShape<
-        TTail extends ReadonlyArray<unknown> ? TTail : [],
-        TSerializable,
-        TMode
-      >,
+      ArrayModeResult<TMode, THead, TSerializable>,
+      ...ResolveTupleShape<Readonly<TTail>, TSerializable, TMode>,
     ]
   : T
 
-type ResolveArrayElement<
+type ArrayModeResult<
+  TMode extends 'input' | 'result',
   TValue,
   TSerializable,
-  TMode extends 'input' | 'result',
 > = TMode extends 'input'
   ? ValidateSerializable<TValue, TSerializable>
   : ValidateSerializableResult<TValue, TSerializable>
