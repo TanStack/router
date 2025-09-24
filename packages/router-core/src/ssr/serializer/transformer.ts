@@ -32,7 +32,7 @@ export interface CreateSerializationAdapterOptions<TInput, TOutput> {
 
 export type ValidateSerializable<T, TSerializable> =
   T extends ReadonlyArray<unknown>
-    ? ValidateSerializableArray<T, TSerializable>
+    ? ResolveArrayShape<T, TSerializable, 'input'>
     : T extends TSerializable
       ? T
       : T extends (...args: Array<any>) => any
@@ -45,9 +45,7 @@ export type ValidateSerializable<T, TSerializable> =
               ? ValidateSerializableSet<T, TSerializable>
               : T extends Map<any, any>
                 ? ValidateSerializableMap<T, TSerializable>
-                : {
-                    [K in keyof T]: ValidateSerializable<T[K], TSerializable>
-                  }
+                : { [K in keyof T]: ValidateSerializable<T[K], TSerializable> }
 
 export type ValidateSerializablePromise<T, TSerializable> =
   T extends Promise<infer TAwaited>
@@ -71,28 +69,6 @@ export type ValidateSerializableMap<T, TSerializable> =
         ValidateSerializable<TValue, TSerializable>
       >
     : never
-
-type ValidateSerializableArray<
-  T extends ReadonlyArray<unknown>,
-  TSerializable,
-> = number extends T['length']
-  ? T extends Array<infer U>
-    ? Array<ValidateSerializable<U, TSerializable>>
-    : ReadonlyArray<ValidateSerializable<T[number], TSerializable>>
-  : ValidateSerializableTuple<T, TSerializable>
-
-type ValidateSerializableTuple<
-  T extends ReadonlyArray<unknown>,
-  TSerializable,
-> = T extends readonly [infer THead, ...infer TTail]
-  ? readonly [
-      ValidateSerializable<THead, TSerializable>,
-      ...ValidateSerializableTuple<
-        TTail extends ReadonlyArray<unknown> ? TTail : [],
-        TSerializable
-      >,
-    ]
-  : T
 
 export type RegisteredReadableStream =
   unknown extends SerializerExtensions['ReadableStream']
@@ -199,7 +175,7 @@ export type ValidateSerializableInputResult<TRegister, T> =
 
 export type ValidateSerializableResult<T, TSerializable> =
   T extends ReadonlyArray<unknown>
-    ? ValidateSerializableResultArray<T, TSerializable>
+    ? ResolveArrayShape<T, TSerializable, 'result'>
     : T extends TSerializable
       ? T
       : unknown extends SerializerExtensions['ReadableStream']
@@ -207,28 +183,6 @@ export type ValidateSerializableResult<T, TSerializable> =
         : T extends SerializerExtensions['ReadableStream']
           ? ReadableStream
           : { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
-
-type ValidateSerializableResultArray<
-  T extends ReadonlyArray<unknown>,
-  TSerializable,
-> = number extends T['length']
-  ? T extends Array<infer U>
-    ? Array<ValidateSerializableResult<U, TSerializable>>
-    : ReadonlyArray<ValidateSerializableResult<T[number], TSerializable>>
-  : ValidateSerializableResultTuple<T, TSerializable>
-
-type ValidateSerializableResultTuple<
-  T extends ReadonlyArray<unknown>,
-  TSerializable,
-> = T extends readonly [infer THead, ...infer TTail]
-  ? readonly [
-      ValidateSerializableResult<THead, TSerializable>,
-      ...ValidateSerializableResultTuple<
-        TTail extends ReadonlyArray<unknown> ? TTail : [],
-        TSerializable
-      >,
-    ]
-  : T
 
 export type RegisteredSSROption<TRegister> =
   unknown extends RegisteredConfigType<TRegister, 'defaultSsr'>
@@ -262,3 +216,36 @@ export type ValidateSerializableLifecycleResultSSR<
     : RegisteredSSROption<TRegister> extends false
       ? any
       : ValidateSerializableInput<TRegister, LooseReturnType<TFn>>
+
+type ResolveArrayShape<
+  T extends ReadonlyArray<unknown>,
+  TSerializable,
+  TMode extends 'input' | 'result',
+> = number extends T['length']
+  ? T extends Array<infer U>
+    ? Array<ResolveArrayElement<U, TSerializable, TMode>>
+    : ReadonlyArray<ResolveArrayElement<T[number], TSerializable, TMode>>
+  : ResolveTupleShape<T, TSerializable, TMode>
+
+type ResolveTupleShape<
+  T extends ReadonlyArray<unknown>,
+  TSerializable,
+  TMode extends 'input' | 'result',
+> = T extends readonly [infer THead, ...infer TTail]
+  ? readonly [
+      ResolveArrayElement<THead, TSerializable, TMode>,
+      ...ResolveTupleShape<
+        TTail extends ReadonlyArray<unknown> ? TTail : [],
+        TSerializable,
+        TMode
+      >,
+    ]
+  : T
+
+type ResolveArrayElement<
+  TValue,
+  TSerializable,
+  TMode extends 'input' | 'result',
+> = TMode extends 'input'
+  ? ValidateSerializable<TValue, TSerializable>
+  : ValidateSerializableResult<TValue, TSerializable>
