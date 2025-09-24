@@ -301,7 +301,7 @@ function Component() {
 }
 ```
 
-Learn more about the [Links](../learn-the-basics.md#navigation).
+Learn more about the [Links](/router/latest/docs/framework/react/guide/navigation#link-component).
 
 ### Server ~Actions~ Functions
 

@@ -18,12 +18,13 @@ However, since hosting is one of the most crucial aspects of your application's 
 
 When a TanStack Start application is being deployed, the `target` value in the TanStack Start Vite plugin in the`vite.config.ts` file determines the deployment target. The deployment target can be set to one of the following values:
 
-- [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
+- [`cloudflare-pages`](#cloudflare-workers): Deploy to Cloudflare Pages
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
-- [`cloudflare-pages`](#cloudflare-pages): Deploy to Cloudflare Pages
-- [`railway`](#railway): Deploy to Railway
-- [`node-server`](#nodejs): Deploy to a Node.js server
+- [`cloudflare-pages`](#cloudflare-workers): Deploy to Cloudflare Pages
+- [`railway`](#nodejs--railway--docker): Deploy to Railway
+- [`nitro`](#using-nitro-v2): Deploy to a Nitro server
+- [`node-server`](#nodejs--railway--docker): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
 - ... and more to come!
 
@@ -85,6 +86,8 @@ Deploy your application to Cloudflare Workers using their one-click deployment p
     <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg" width="280">
   </picture>
 </a>
+
+### Netlify 
 
 Install and add the [`@netlify/vite-plugin-tanstack-start`](https://www.npmjs.com/package/@netlify/vite-plugin-tanstack-start) plugin, which configures your build for Netlify deployment and provides full Netlify production platform emulation in local dev.
 
@@ -197,7 +200,7 @@ npm run start
 ### Bun
 
 > [!IMPORTANT]
-> Currently, the Bun specific deployment guidelines only work with React 19. If you are using React 18, please refer to the [Node.js](#nodejs) deployment guidelines.
+> Currently, the Bun specific deployment guidelines only work with React 19. If you are using React 18, please refer to the [Node.js](#nodejs--railway--docker) deployment guidelines.
 
 Make sure that your `react` and `react-dom` packages are set to version 19.0.0 or higher in your `package.json` file. If not, run the following command to upgrade the packages:
 
