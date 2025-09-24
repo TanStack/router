@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from '@tanstack/router-e2e-utils'
 
 test('merge-server-fn-middleware-context', async ({ page }) => {
   await page.goto('/merge-server-fn-middleware-context')

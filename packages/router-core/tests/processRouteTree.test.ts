@@ -291,7 +291,6 @@ describe('processRouteTree', () => {
       // Test actual path matching for `/foo`
       const matchResult = getMatchedRoutes({
         pathname: '/foo',
-        basepath: '/',
         caseSensitive: false,
         routesByPath: result.routesByPath,
         routesById: result.routesById,

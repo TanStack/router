@@ -320,11 +320,10 @@ export function hasParentRoute(
  */
 export const getResolvedRouteNodeVariableName = (
   routeNode: RouteNode,
-  variableNameSuffix: string,
 ): string => {
   return routeNode.children?.length
-    ? `${routeNode.variableName}${variableNameSuffix}WithChildren`
-    : `${routeNode.variableName}${variableNameSuffix}`
+    ? `${routeNode.variableName}RouteWithChildren`
+    : `${routeNode.variableName}Route`
 }
 
 /**
@@ -463,65 +462,59 @@ Conflicting files: \n ${conflictingFiles.map((d) => path.resolve(config.routesDi
 
 export function buildRouteTreeConfig(
   nodes: Array<RouteNode>,
-  exportName: string,
   disableTypes: boolean,
   depth = 1,
 ): Array<string> {
-  const children = nodes
-    .filter((n) => n.exports?.includes(exportName))
-    .map((node) => {
-      if (node._fsRouteType === '__root') {
-        return
-      }
+  const children = nodes.map((node) => {
+    if (node._fsRouteType === '__root') {
+      return
+    }
 
-      if (node._fsRouteType === 'pathless_layout' && !node.children?.length) {
-        return
-      }
+    if (node._fsRouteType === 'pathless_layout' && !node.children?.length) {
+      return
+    }
 
-      const route = `${node.variableName}`
+    const route = `${node.variableName}`
 
-      if (node.children?.length) {
-        const childConfigs = buildRouteTreeConfig(
-          node.children,
-          exportName,
-          disableTypes,
-          depth + 1,
-        )
+    if (node.children?.length) {
+      const childConfigs = buildRouteTreeConfig(
+        node.children,
+        disableTypes,
+        depth + 1,
+      )
 
-        const childrenDeclaration = disableTypes
-          ? ''
-          : `interface ${route}${exportName}Children {
+      const childrenDeclaration = disableTypes
+        ? ''
+        : `interface ${route}RouteChildren {
   ${node.children
-    .filter((n) => n.exports?.includes(exportName))
     .map(
       (child) =>
-        `${child.variableName}${exportName}: typeof ${getResolvedRouteNodeVariableName(child, exportName)}`,
+        `${child.variableName}Route: typeof ${getResolvedRouteNodeVariableName(child)}`,
     )
     .join(',')}
 }`
 
-        const children = `const ${route}${exportName}Children${disableTypes ? '' : `: ${route}${exportName}Children`} = {
+      const children = `const ${route}RouteChildren${disableTypes ? '' : `: ${route}RouteChildren`} = {
   ${node.children
-    .filter((n) => n.exports?.includes(exportName))
     .map(
       (child) =>
-        `${child.variableName}${exportName}: ${getResolvedRouteNodeVariableName(child, exportName)}`,
+        `${child.variableName}Route: ${getResolvedRouteNodeVariableName(child)}`,
     )
     .join(',')}
 }`
 
-        const routeWithChildren = `const ${route}${exportName}WithChildren = ${route}${exportName}._addFileChildren(${route}${exportName}Children)`
+      const routeWithChildren = `const ${route}RouteWithChildren = ${route}Route._addFileChildren(${route}RouteChildren)`
 
-        return [
-          childConfigs.join('\n'),
-          childrenDeclaration,
-          children,
-          routeWithChildren,
-        ].join('\n\n')
-      }
+      return [
+        childConfigs.join('\n'),
+        childrenDeclaration,
+        children,
+        routeWithChildren,
+      ].join('\n\n')
+    }
 
-      return undefined
-    })
+    return undefined
+  })
 
   return children.filter((x) => x !== undefined)
 }
@@ -570,55 +563,33 @@ export function mergeImportDeclarations(
   return Object.values(merged)
 }
 
-export function hasChildWithExport(
-  node: RouteNode,
-  exportName: string,
-): boolean {
-  return (
-    node.children?.some((child) => hasChildWithExport(child, exportName)) ??
-    false
-  )
-}
-
-export const findParent = (
-  node: RouteNode | undefined,
-  exportName: string,
-): string => {
+export const findParent = (node: RouteNode | undefined): string => {
   if (!node) {
-    return `root${exportName}Import`
+    return `rootRouteImport`
   }
   if (node.parent) {
-    if (node.parent.exports?.includes(exportName)) {
-      if (node.isVirtualParentRequired) {
-        return `${node.parent.variableName}${exportName}`
-      } else {
-        return `${node.parent.variableName}${exportName}`
-      }
+    if (node.isVirtualParentRequired) {
+      return `${node.parent.variableName}Route`
+    } else {
+      return `${node.parent.variableName}Route`
     }
   }
-  return findParent(node.parent, exportName)
+  return findParent(node.parent)
 }
 
 export function buildFileRoutesByPathInterface(opts: {
   routeNodes: Array<RouteNode>
   module: string
   interfaceName: string
-  exportName: string
 }): string {
   return `declare module '${opts.module}' {
   interface ${opts.interfaceName} {
     ${opts.routeNodes
       .map((routeNode) => {
         const filePathId = routeNode.routePath
-        let preloaderRoute = ''
+        const preloaderRoute = `typeof ${routeNode.variableName}RouteImport`
 
-        if (routeNode.exports?.includes(opts.exportName)) {
-          preloaderRoute = `typeof ${routeNode.variableName}${opts.exportName}Import`
-        } else {
-          preloaderRoute = 'unknown'
-        }
-
-        const parent = findParent(routeNode, opts.exportName)
+        const parent = findParent(routeNode)
 
         return `'${filePathId}': {
           id: '${filePathId}'
@@ -631,4 +602,48 @@ export function buildFileRoutesByPathInterface(opts: {
       .join('\n')}
   }
 }`
+}
+
+export function getImportPath(
+  node: RouteNode,
+  config: Config,
+  generatedRouteTreePath: string,
+): string {
+  return replaceBackslash(
+    removeExt(
+      path.relative(
+        path.dirname(generatedRouteTreePath),
+        path.resolve(config.routesDirectory, node.filePath),
+      ),
+      config.addExtensions,
+    ),
+  )
+}
+
+export function getImportForRouteNode(
+  node: RouteNode,
+  config: Config,
+  generatedRouteTreePath: string,
+  root: string,
+): ImportDeclaration {
+  let source = ''
+  if (config.importRoutesUsingAbsolutePaths) {
+    source = replaceBackslash(
+      removeExt(
+        path.resolve(root, config.routesDirectory, node.filePath),
+        config.addExtensions,
+      ),
+    )
+  } else {
+    source = `./${getImportPath(node, config, generatedRouteTreePath)}`
+  }
+  return {
+    source,
+    specifiers: [
+      {
+        imported: 'Route',
+        local: `${node.variableName}RouteImport`,
+      },
+    ],
+  } satisfies ImportDeclaration
 }

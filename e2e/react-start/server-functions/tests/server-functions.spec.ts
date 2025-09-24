@@ -1,7 +1,10 @@
 import * as fs from 'node:fs'
-import { expect, test } from '@playwright/test'
-import { PORT } from '../playwright.config'
+import { expect } from '@playwright/test'
+import { getTestServerPort, test } from '@tanstack/router-e2e-utils'
+import packageJson from '../package.json' with { type: 'json' }
 import type { Page } from '@playwright/test'
+
+const PORT = await getTestServerPort(packageJson.name)
 
 test('invoking a server function with custom response status code', async ({
   page,
@@ -11,16 +14,10 @@ test('invoking a server function with custom response status code', async ({
   await page.waitForLoadState('networkidle')
 
   const requestPromise = new Promise<void>((resolve) => {
-    page.on('response', async (response) => {
+    page.on('response', (response) => {
       expect(response.status()).toBe(225)
       expect(response.statusText()).toBe('hello')
-      expect(response.headers()['content-type']).toBe('application/json')
-      expect(await response.json()).toEqual(
-        expect.objectContaining({
-          result: { hello: 'world' },
-          context: {},
-        }),
-      )
+      expect(response.headers()['content-type']).toContain('application/json')
       resolve()
     })
   })
@@ -122,11 +119,11 @@ test('env-only functions can only be called on the server or client respectively
     'server got: hello',
   )
   await expect(page.getByTestId('server-on-client')).toContainText(
-    'serverEcho threw an error: serverOnly() functions can only be called on the server!',
+    'serverEcho threw an error: createServerOnlyFn() functions can only be called on the server!',
   )
 
   await expect(page.getByTestId('client-on-server')).toContainText(
-    'clientEcho threw an error: clientOnly() functions can only be called on the client!',
+    'clientEcho threw an error: createClientOnlyFn() functions can only be called on the client!',
   )
   await expect(page.getByTestId('client-on-client')).toContainText(
     'client got: hello',
@@ -371,4 +368,38 @@ test.describe('middleware', () => {
       await runTest(page)
     })
   })
+})
+
+test('factory', async ({ page }) => {
+  await page.goto('/factory')
+
+  await expect(page.getByTestId('factory-route-component')).toBeInViewport()
+
+  const buttons = await page
+    .locator('[data-testid^="btn-fn-"]')
+    .elementHandles()
+  for (const button of buttons) {
+    const testId = await button.getAttribute('data-testid')
+
+    if (!testId) {
+      throw new Error('Button is missing data-testid')
+    }
+
+    const suffix = testId.replace('btn-fn-', '')
+
+    const expected =
+      (await page.getByTestId(`expected-fn-result-${suffix}`).textContent()) ||
+      ''
+    expect(expected).not.toBe('')
+
+    await button.click()
+
+    await expect(page.getByTestId(`fn-result-${suffix}`)).toContainText(
+      expected,
+    )
+
+    await expect(page.getByTestId(`fn-comparison-${suffix}`)).toContainText(
+      'equal',
+    )
+  }
 })

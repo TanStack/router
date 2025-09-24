@@ -11,7 +11,7 @@ export default defineConfig({
       projects: ['./tsconfig.json'],
     }),
     tanstackStart({
-      tsr: {
+      router: {
         virtualRouteConfig: './routes.ts',
       },
     }),

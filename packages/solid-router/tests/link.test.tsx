@@ -3935,6 +3935,7 @@ describe('Link', () => {
     })
 
     const postRoute = createRoute({
+      ssr: false,
       getParentRoute: () => rootRoute,
       path: '/posts',
       loader: () => sleep(WAIT_TIME),

@@ -10,10 +10,10 @@ import type { Config } from './config'
 const PLUGIN_NAME = 'unplugin:router-generator'
 
 export const unpluginRouterGeneratorFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  Partial<Config | (() => Config)> | undefined
 > = (options = {}) => {
-  const ROOT: string = process.cwd()
-  let userConfig = options as Config
+  let ROOT: string = process.cwd()
+  let userConfig: Config
   let generator: Generator
 
   const routeGenerationDisabled = () =>
@@ -24,8 +24,15 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
       : join(ROOT, userConfig.routesDirectory)
   }
 
-  const initConfigAndGenerator = () => {
-    userConfig = getConfig(options, ROOT)
+  const initConfigAndGenerator = (opts?: { root?: string }) => {
+    if (opts?.root) {
+      ROOT = opts.root
+    }
+    if (typeof options === 'function') {
+      userConfig = options()
+    } else {
+      userConfig = getConfig(options, ROOT)
+    }
     generator = new Generator({
       config: userConfig,
       root: ROOT,
@@ -66,23 +73,11 @@ export const unpluginRouterGeneratorFactory: UnpluginFactory<
         event,
       })
     },
-    async buildStart() {
-      await generate()
-    },
     vite: {
-      configResolved() {
-        initConfigAndGenerator()
-      },
-      applyToEnvironment(environment) {
-        if (userConfig.plugin?.vite?.environmentName) {
-          return userConfig.plugin.vite.environmentName === environment.name
-        }
-        return true
-      },
-      async buildStart() {
+      async configResolved(config) {
+        initConfigAndGenerator({ root: config.root })
         await generate()
       },
-      sharedDuringBuild: true,
     },
     rspack(compiler) {
       initConfigAndGenerator()

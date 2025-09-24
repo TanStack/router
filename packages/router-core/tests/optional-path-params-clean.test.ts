@@ -99,43 +99,43 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
 
     describe('matchPathname', () => {
       it('should match optional dynamic params when present', () => {
-        const result = matchPathname('/', '/posts/tech', {
+        const result = matchPathname('/posts/tech', {
           to: '/posts/{-$category}',
         })
         expect(result).toEqual({ category: 'tech' })
       })
 
       it('should match optional dynamic params when absent', () => {
-        const result = matchPathname('/', '/posts', {
+        const result = matchPathname('/posts', {
           to: '/posts/{-$category}',
         })
         expect(result).toEqual({})
       })
 
       it('should handle multiple optional dynamic params', () => {
-        const result1 = matchPathname('/', '/posts/tech/hello', {
+        const result1 = matchPathname('/posts/tech/hello', {
           to: '/posts/{-$category}/{-$slug}',
         })
         expect(result1).toEqual({ category: 'tech', slug: 'hello' })
 
-        const result2 = matchPathname('/', '/posts/tech', {
+        const result2 = matchPathname('/posts/tech', {
           to: '/posts/{-$category}/{-$slug}',
         })
         expect(result2).toEqual({ category: 'tech' })
 
-        const result3 = matchPathname('/', '/posts', {
+        const result3 = matchPathname('/posts', {
           to: '/posts/{-$category}/{-$slug}',
         })
         expect(result3).toEqual({})
       })
 
       it('should handle mixed required and optional dynamic params', () => {
-        const result1 = matchPathname('/', '/posts/tech/user/123', {
+        const result1 = matchPathname('/posts/tech/user/123', {
           to: '/posts/{-$category}/user/$id',
         })
         expect(result1).toEqual({ category: 'tech', id: '123' })
 
-        const result2 = matchPathname('/', '/posts/user/123', {
+        const result2 = matchPathname('/posts/user/123', {
           to: '/posts/{-$category}/user/$id',
         })
         expect(result2).toEqual({ id: '123' })
