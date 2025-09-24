@@ -1,4 +1,3 @@
-import path from 'node:path'
 import { trimPathRight } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
@@ -134,37 +133,25 @@ export function TanStackStartVitePluginCore(
           required: false,
         })
 
-        let clientAlias: string
-        if (clientEntryPath) {
-          clientAlias = vite.normalizePath(
-            path.join('/@fs', path.resolve(root, clientEntryPath)),
-          )
-        } else {
-          clientAlias = corePluginOpts.defaultEntryPaths.client
-        }
-
-        let serverAlias: string
-        if (serverEntryPath) {
-          serverAlias = vite.normalizePath(path.resolve(root, serverEntryPath))
-        } else {
-          serverAlias = corePluginOpts.defaultEntryPaths.server
-        }
-
-        let startAlias: string
-        if (startFilePath) {
-          startAlias = vite.normalizePath(path.resolve(root, startFilePath))
-        } else {
-          startAlias = corePluginOpts.defaultEntryPaths.start
-        }
+        const clientAlias = vite.normalizePath(
+          clientEntryPath ?? corePluginOpts.defaultEntryPaths.client,
+        )
+        const serverAlias = vite.normalizePath(
+          serverEntryPath ?? corePluginOpts.defaultEntryPaths.server,
+        )
+        const startAlias = vite.normalizePath(
+          startFilePath ?? corePluginOpts.defaultEntryPaths.start,
+        )
+        const routerAlias = vite.normalizePath(routerFilePath)
 
         const entryAliasConfiguration: Record<
           (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS],
           string
         > = {
-          [ENTRY_POINTS.start]: startAlias,
-          [ENTRY_POINTS.router]: routerFilePath,
           [ENTRY_POINTS.client]: clientAlias,
           [ENTRY_POINTS.server]: serverAlias,
+          [ENTRY_POINTS.start]: startAlias,
+          [ENTRY_POINTS.router]: routerAlias,
         }
 
         const startPackageName =
