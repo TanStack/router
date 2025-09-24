@@ -9,6 +9,6 @@ replace:
     '@vitejs/plugin-react': 'vite-plugin-solid',
     '@types/react @types/react-dom ': '',
     '"jsx": "react-jsx"': '"jsx": "preserve",\n  "jsxImportSource": "solid-js"',
-    'react\'s': 'solid\'s'
+    "react's": "solid's"
   }
 ---
