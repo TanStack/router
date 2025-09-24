@@ -454,8 +454,6 @@ Sometimes you may need to set headers in the response. You can do this by either
   // routes/hello.ts
   import { createFileRoute } from '@tanstack/react-router'
 
-  <<<<<<< HEAD
-  =======
   ```
 
 > > > > > > > 582e8c7a1 (docs: Start overhaul)

@@ -21,7 +21,6 @@ When a TanStack Start application is being deployed, the `target` value in the T
 - [`cloudflare-pages`](#cloudflare-workers): Deploy to Cloudflare Pages
 - [`netlify`](#netlify): Deploy to Netlify
 - [`vercel`](#vercel): Deploy to Vercel
-- [`cloudflare-pages`](#cloudflare-workers): Deploy to Cloudflare Pages
 - [`railway`](#nodejs--railway--docker): Deploy to Railway
 - [`nitro`](#using-nitro-v2): Deploy to a Nitro server
 - [`node-server`](#nodejs--railway--docker): Deploy to a Node.js server
