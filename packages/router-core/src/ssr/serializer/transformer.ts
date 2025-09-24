@@ -79,20 +79,16 @@ type ApplyArrayValidation<
   ? ValidateSerializable<TValue, TSerializable>
   : ValidateSerializableResult<TValue, TSerializable>
 
-type IsTuple<T extends ReadonlyArray<unknown>> = number extends T['length']
-  ? false
-  : true
-
 type ValidateSerializableArrayCore<
   T extends ReadonlyArray<unknown>,
   TSerializable,
   TKind extends 'input' | 'result',
 > = T extends any
-  ? IsTuple<T> extends true
-    ? { [K in keyof T]: ApplyArrayValidation<T[K], TSerializable, TKind> }
-    : T extends Array<infer U>
+  ? number extends T['length']
+    ? T extends Array<infer U>
       ? Array<ApplyArrayValidation<U, TSerializable, TKind>>
       : ReadonlyArray<ApplyArrayValidation<T[number], TSerializable, TKind>>
+    : { [K in keyof T]: ApplyArrayValidation<T[K], TSerializable, TKind> }
   : never
 
 type ValidateSerializableArray<
