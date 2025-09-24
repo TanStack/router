@@ -5,7 +5,7 @@ import { logDiff } from '@tanstack/router-utils'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { normalizePath } from 'vite'
 import path from 'pathe'
-import { makeIdFiltersToMatchWithQuery} from '@rolldown/pluginutils'
+import { makeIdFiltersToMatchWithQuery } from '@rolldown/pluginutils'
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { compileStartOutputFactory } from './compilers'
 import { transformFuncs } from './constants'
@@ -72,10 +72,7 @@ export function startCompilerPlugin(
               }),
               ...resolveRuntimeFiles({
                 package: '@tanstack/start-server-core',
-                files: [
-                  'index.js',
-                  'server-functions-handler.js',
-                ],
+                files: ['index.js', 'server-functions-handler.js'],
               }),
               ...resolveRuntimeFiles({
                 package: `@tanstack/${framework}-start-client`,
