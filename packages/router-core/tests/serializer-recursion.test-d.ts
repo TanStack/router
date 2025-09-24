@@ -12,4 +12,23 @@ describe('ValidateSerializableResult recursion', () => {
       ValidateSerializableResult<Result, Serializable>
     >().branded.toEqualTypeOf<Result>()
   })
+
+  it('should preserve recursive tuples without infinite expansion', () => {
+    type ResultTuple = readonly [
+      ReadonlyArray<ResultTuple>,
+      { [key: string]: ResultTuple }
+    ]
+    expectTypeOf<
+      ValidateSerializableResult<ResultTuple, Serializable>
+    >().branded.toEqualTypeOf<ResultTuple>()
+  })
+
+  it('should preserve readonly recursive arrays without infinite expansion', () => {
+    type ResultReadonlyArray = ReadonlyArray<
+      ResultReadonlyArray | { [key: string]: ResultReadonlyArray }
+    >
+    expectTypeOf<
+      ValidateSerializableResult<ResultReadonlyArray, Serializable>
+    >().branded.toEqualTypeOf<ResultReadonlyArray>()
+  })
 })
