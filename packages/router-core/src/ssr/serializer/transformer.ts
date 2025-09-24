@@ -191,12 +191,21 @@ export type ValidateSerializableResult<T, TSerializable> =
   T extends TSerializable
     ? T
     : T extends ReadonlyArray<any>
-      ? ValidateSerializableArray<T, TSerializable>
+      ? ValidateSerializableResultArray<T, TSerializable>
       : unknown extends SerializerExtensions['ReadableStream']
         ? { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
         : T extends SerializerExtensions['ReadableStream']
           ? ReadableStream
           : { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
+
+type ValidateSerializableResultArray<
+  T extends ReadonlyArray<any>,
+  TSerializable,
+> = IsTuple<T> extends true
+  ? { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
+  : T extends Array<infer U>
+    ? Array<ValidateSerializableResult<U, TSerializable>>
+    : ReadonlyArray<ValidateSerializableResult<T[number], TSerializable>>
 
 export type RegisteredSSROption<TRegister> =
   unknown extends RegisteredConfigType<TRegister, 'defaultSsr'>
