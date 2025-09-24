@@ -87,7 +87,7 @@ Deploy your application to Cloudflare Workers using their one-click deployment p
   </picture>
 </a>
 
-### Netlify 
+### Netlify
 
 Install and add the [`@netlify/vite-plugin-tanstack-start`](https://www.npmjs.com/package/@netlify/vite-plugin-tanstack-start) plugin, which configures your build for Netlify deployment and provides full Netlify production platform emulation in local dev.
 
