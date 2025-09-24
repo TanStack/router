@@ -71,12 +71,29 @@ export type ValidateSerializableMap<T, TSerializable> =
       >
     : never
 
-type ValidateSerializableArray<T extends ReadonlyArray<any>, TSerializable> =
+type ApplyArrayValidation<
+  TValue,
+  TSerializable,
+  TKind extends 'input' | 'result',
+> = TKind extends 'input'
+  ? ValidateSerializable<TValue, TSerializable>
+  : ValidateSerializableResult<TValue, TSerializable>
+
+type ValidateSerializableArrayCore<
+  T extends ReadonlyArray<any>,
+  TSerializable,
+  TKind extends 'input' | 'result',
+> =
   IsTuple<T> extends true
-    ? { [K in keyof T]: ValidateSerializable<T[K], TSerializable> }
+    ? { [K in keyof T]: ApplyArrayValidation<T[K], TSerializable, TKind> }
     : T extends Array<infer U>
-      ? Array<ValidateSerializable<U, TSerializable>>
-      : ReadonlyArray<ValidateSerializable<T[number], TSerializable>>
+      ? Array<ApplyArrayValidation<U, TSerializable, TKind>>
+      : ReadonlyArray<ApplyArrayValidation<T[number], TSerializable, TKind>>
+
+type ValidateSerializableArray<
+  T extends ReadonlyArray<any>,
+  TSerializable,
+> = ValidateSerializableArrayCore<T, TSerializable, 'input'>
 
 type IsTuple<T extends ReadonlyArray<any>> = T extends readonly []
   ? true
@@ -202,12 +219,7 @@ export type ValidateSerializableResult<T, TSerializable> = T extends unknown
 type ValidateSerializableResultArray<
   T extends ReadonlyArray<any>,
   TSerializable,
-> =
-  IsTuple<T> extends true
-    ? { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
-    : T extends Array<infer U>
-      ? Array<ValidateSerializableResult<U, TSerializable>>
-      : ReadonlyArray<ValidateSerializableResult<T[number], TSerializable>>
+> = ValidateSerializableArrayCore<T, TSerializable, 'result'>
 
 export type RegisteredSSROption<TRegister> =
   unknown extends RegisteredConfigType<TRegister, 'defaultSsr'>
