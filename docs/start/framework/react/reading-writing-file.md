@@ -26,9 +26,9 @@ The complete code for this tutorial is available on [GitHub](https://github.com/
 
 ## Nice to know
 
-- [Server Side Rendering (SSR)](https://tanstack.com/router/latest/docs/framework/react/guide/ssr)
-- [TanStack Router concepts](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts)
-- [React Query concepts](https://tanstack.com/query/latest/docs/framework/react/overview)
+- [Server Side Rendering (SSR)](/router/latest/docs/framework/react/guide/ssr)
+- [TanStack Router concepts](/router/latest/docs/framework/react/routing/routing-concepts)
+- [React Query concepts](/query/latest/docs/framework/react/overview)
 
 ## Setting up a TanStack Start Project
 
@@ -96,7 +96,7 @@ Once your project is set up, you can access your app at `localhost:3000`. You sh
 
 At this point, your app will look like this -
 
-![TanStack Start Welcome Page After Setup](https://res.cloudinary.com/dubc3wnbv/image/upload/v1746312482/Photo-1_lpechn.png)
+![TanStack Start Welcome Page After Setup](https://raw.githubusercontent.com/TanStack/router/main/docs/router/assets/reading-writing-file-setup.png)
 
 ## Step 1: Reading Data From a File
 
@@ -164,7 +164,6 @@ Let's create a new file `src/serverActions/jokesActions.ts` to create a server f
 
 ```tsx
 // src/serverActions/jokesActions.ts
-
 import { createServerFn } from '@tanstack/react-start'
 import * as fs from 'node:fs'
 import type { JokesData } from '../types'
@@ -247,7 +246,7 @@ When the page loads, `jokes` will have data from the `jokes.json` file already!
 
 With a little Tailwind styling, the app should look like this:
 
-![DevJoke App with 5 DevJokes](https://res.cloudinary.com/dubc3wnbv/image/upload/v1746313558/Screenshot_2025-05-03_at_4.04.50_PM_w0eern.png)
+![DevJoke App with 5 DevJokes](https://raw.githubusercontent.com/TanStack/router/main/docs/router/assets/reading-writing-file-devjokes-1.jpg)
 
 ## Step 2: Writing Data to a File
 
@@ -265,7 +264,7 @@ import { v4 as uuidv4 } from 'uuid' // Add this import
 import type { Joke, JokesData } from '../types'
 
 export const addJoke = createServerFn({ method: 'POST' })
-  .validator((data: { question: string; answer: string }) => {
+  .inputValidator((data: { question: string; answer: string }) => {
     // Validate input data
     if (!data.question || !data.question.trim()) {
       throw new Error('Joke question is required')
@@ -308,7 +307,7 @@ export const addJoke = createServerFn({ method: 'POST' })
 In this code:
 
 - We are using `createServerFn` to create server functions that run on the server but can be called from the client. This server function is used to write data to the file.
-- We are going to first use `validator` to validate the input data. This is a good practice to ensure that the data we are receiving is in the correct format.
+- We are going to first use `inputValidator` to validate the input data. This is a good practice to ensure that the data we are receiving is in the correct format.
 - We are going to perform the actual write operation in the `handler` function.
 - `getJokes` reads the jokes from our JSON file.
 - `addJoke` validates the input data and adds a new joke to our file.
@@ -445,7 +444,7 @@ export function JokeForm() {
 ```
 
 With this, our UI should look like this:
-![DevJoke App with Form to Add Jokes](https://res.cloudinary.com/dubc3wnbv/image/upload/v1746356983/Screenshot_2025-05-04_at_4.06.57_AM_dkgvsm.png)
+![DevJoke App with Form to Add Jokes](https://raw.githubusercontent.com/TanStack/router/main/docs/router/assets/reading-writing-file-devjokes-2.jpg)
 
 ## Understanding How It All Works Together
 
@@ -472,7 +471,37 @@ Let's break down how the different parts of our application work together:
 
 ### Data Flow
 
-![Data Flow Diagram](https://res.cloudinary.com/dubc3wnbv/image/upload/v1746437057/Screenshot_2025-05-05_at_2.23.11_AM_wxfz2m.png)
+```mermaid
+sequenceDiagram
+autonumber
+actor User
+participant UI as Browser (HomePage + Form)
+participant Loader as Route Loader (loader)
+participant Server
+participant Store as jokes.json
+
+%% Visiting the Home Page
+User ->> UI: Visit /
+UI ->> Loader: loader() calls getJokes()
+Loader ->> Server: getJokes()
+Server ->> Store: Read jokes.json
+Store -->> Server: jokes data
+Server -->> Loader: jokes[]
+Loader -->> UI: useLoaderData() → jokes[]
+
+%% Adding a New Joke
+User ->> UI: Fill form and submit
+UI ->> Server: handleSubmit → addJoke(newJoke)
+Server ->> Store: Read jokes.json
+Server ->> Store: Write updated jokes.json
+Server -->> UI: addJoke() resolved
+UI ->> Loader: router.invalidate() (re-run loader)
+Loader ->> Server: getJokes()
+Server ->> Store: Read jokes.json
+Store -->> Server: updated jokes[]
+Server -->> Loader: updated jokes[]
+Loader -->> UI: useLoaderData() → updated jokes[]
+```
 
 When a user visits the home page:
 

@@ -8,7 +8,7 @@ export const Route = createFileRoute('/raw-response')({
 })
 
 const expectedValue = 'Hello from a server function!'
-export const rawResponseFn = createServerFn({ response: 'raw' }).handler(() => {
+export const rawResponseFn = createServerFn().handler(() => {
   return new Response(expectedValue)
 })
 

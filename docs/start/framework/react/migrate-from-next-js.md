@@ -85,10 +85,11 @@ Now that you've installed the necessary dependencies, update your project config
 
 ```ts
 // vite.config.ts
-import tailwindcss from '@tailwindcss/vite'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   server: {
@@ -99,11 +100,12 @@ export default defineConfig({
     // Enables Vite to resolve imports using path aliases.
     tsconfigPaths(),
     tanstackStart({
-      tsr: {
+      router: {
         // Specifies the directory TanStack Router uses for your routes.
         routesDirectory: 'src/app', // Defaults to "src/routes"
       },
     }),
+    viteReact(),
   ],
 })
 ```
@@ -209,27 +211,21 @@ Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
 
 ### 6. Are we migrated yet?
 
-Before you can run the development server, you need to create a router file that will define the behavior of TanStack Router within TanStack Start.
+Before you can run the development server, you need to create a file that will define the behavior of TanStack Router within TanStack Start.
 
-- `src/router.tsx`
+- `src/start.tsx`
 
 ```tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
 
   return router
-}
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: ReturnType<typeof createRouter>
-  }
 }
 ```
 
@@ -305,7 +301,7 @@ function Component() {
 }
 ```
 
-Learn more about the [Links](../learn-the-basics.md#navigation).
+Learn more about the [Links](/router/latest/docs/framework/react/guide/navigation#link-component).
 
 ### Server ~Actions~ Functions
 
@@ -326,10 +322,14 @@ Learn more about the [Server Functions](../server-functions.md).
 
 ```ts
 - export async function GET() { // [!code --]
-+ export const ServerRoute = createServerFileRoute().methods({ // [!code ++]
-+   GET: async () => { // [!code ++]
-    return Response.json("Hello, World!")
-  }
++ export const Route = createFileRoute('/api/hello')({ // [!code ++]
++  server: { // [!code ++]
++     handlers: { // [!code ++]
++       GET: async () => { // [!code ++]
++         return Response.json("Hello, World!")
++       } // [!code ++]
++    } // [!code ++]
++  } // [!code ++]
 + }) // [!code ++]
 ```
 

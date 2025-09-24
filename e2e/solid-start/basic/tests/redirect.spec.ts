@@ -4,9 +4,9 @@ import combinateImport from 'combinate'
 import {
   getDummyServerPort,
   getTestServerPort,
+  test,
 } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
-import { test } from './fixture'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
@@ -183,6 +183,8 @@ test.describe('redirects', () => {
       })
 
       await page.goto(`/redirect/${target}/serverFn/via-useServerFn?${q}`)
+
+      await page.waitForLoadState('networkidle')
 
       const button = page.getByTestId('redirect-on-click')
 

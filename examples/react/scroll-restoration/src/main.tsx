@@ -43,7 +43,7 @@ function RootComponent() {
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  loader: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise<void>((r) => setTimeout(r, 500)),
   component: IndexComponent,
 })
 
@@ -68,7 +68,7 @@ function IndexComponent() {
 const aboutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/about',
-  loader: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise<void>((r) => setTimeout(r, 500)),
   component: AboutComponent,
 })
 
@@ -93,7 +93,7 @@ function AboutComponent() {
 const byElementRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/by-element',
-  loader: () => new Promise((r) => setTimeout(r, 500)),
+  loader: () => new Promise<void>((r) => setTimeout(r, 500)),
   component: ByElementComponent,
 })
 

@@ -8,7 +8,7 @@ import type {
   RouteById,
   RouteIds,
 } from './routeInfo'
-import type { AnyRouter, RegisteredRouter } from './router'
+import type { AnyRouter, RegisteredRouter, SSROption } from './router'
 import type { Constrain, ControlledPromise } from './utils'
 
 export type AnyMatchAndValue = { match: any; value: any }
@@ -167,7 +167,7 @@ export interface RouteMatch<
   globalNotFound?: boolean
   staticData: StaticDataRouteOption
   /** This attribute is not reactive */
-  ssr?: boolean | 'data-only'
+  ssr?: SSROption
   _forcePending?: boolean
   _displayPending?: boolean
 }

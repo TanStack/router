@@ -9,9 +9,9 @@
     "start": "vite start"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.131.35",
-    "@tanstack/solid-router-devtools": "^1.131.35",
-    "@tanstack/solid-start": "^1.131.35",
+    "@tanstack/solid-router": "^1.132.2",
+    "@tanstack/solid-router-devtools": "^1.132.2",
+    "@tanstack/solid-start": "^1.132.2",
     "solid-js": "^1.9.5",
     "redaxios": "^0.5.1",
     "tailwind-merge": "^2.6.0",
@@ -19,10 +19,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "vite-plugin-solid": "^2.11.2",
+    "vite-plugin-solid": "^2.11.8",
     "combinate": "^1.1.11",
     "typescript": "^5.7.2",
-    "vite": "^6.3.5",
+    "vite": "^7.1.1",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

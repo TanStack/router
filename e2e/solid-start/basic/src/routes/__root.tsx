@@ -104,6 +104,14 @@ function RootComponent() {
           Scripts
         </Link>{' '}
         <Link
+          to="/inline-scripts"
+          activeProps={{
+            class: 'font-bold',
+          }}
+        >
+          Inline Scripts
+        </Link>{' '}
+        <Link
           to="/deferred"
           activeProps={{
             class: 'font-bold',

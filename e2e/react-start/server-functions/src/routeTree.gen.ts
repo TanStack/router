@@ -24,6 +24,7 @@ import { Route as AbortSignalRouteImport } from './routes/abort-signal'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MiddlewareIndexRouteImport } from './routes/middleware/index'
 import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-redirect/index'
+import { Route as FactoryIndexRouteImport } from './routes/factory/index'
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
@@ -105,6 +106,11 @@ const FormdataRedirectIndexRoute = FormdataRedirectIndexRouteImport.update({
   path: '/formdata-redirect/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FactoryIndexRoute = FactoryIndexRouteImport.update({
+  id: '/factory/',
+  path: '/factory/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CookiesIndexRoute = CookiesIndexRouteImport.update({
   id: '/cookies/',
   path: '/cookies/',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/cookies': typeof CookiesIndexRoute
+  '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
@@ -173,6 +180,7 @@ export interface FileRoutesByTo {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/cookies': typeof CookiesIndexRoute
+  '/factory': typeof FactoryIndexRoute
   '/formdata-redirect': typeof FormdataRedirectIndexRoute
   '/middleware': typeof MiddlewareIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/cookies/': typeof CookiesIndexRoute
+  '/factory/': typeof FactoryIndexRoute
   '/formdata-redirect/': typeof FormdataRedirectIndexRoute
   '/middleware/': typeof MiddlewareIndexRoute
   '/formdata-redirect/target/$name': typeof FormdataRedirectTargetNameRoute
@@ -220,6 +229,7 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/send-serverFn'
     | '/cookies'
+    | '/factory'
     | '/formdata-redirect'
     | '/middleware'
     | '/formdata-redirect/target/$name'
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/send-serverFn'
     | '/cookies'
+    | '/factory'
     | '/formdata-redirect'
     | '/middleware'
     | '/formdata-redirect/target/$name'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/middleware/client-middleware-router'
     | '/middleware/send-serverFn'
     | '/cookies/'
+    | '/factory/'
     | '/formdata-redirect/'
     | '/middleware/'
     | '/formdata-redirect/target/$name'
@@ -287,6 +299,7 @@ export interface RootRouteChildren {
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
   CookiesIndexRoute: typeof CookiesIndexRoute
+  FactoryIndexRoute: typeof FactoryIndexRoute
   FormdataRedirectIndexRoute: typeof FormdataRedirectIndexRoute
   MiddlewareIndexRoute: typeof MiddlewareIndexRoute
   FormdataRedirectTargetNameRoute: typeof FormdataRedirectTargetNameRoute
@@ -399,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FormdataRedirectIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/factory/': {
+      id: '/factory/'
+      path: '/factory'
+      fullPath: '/factory'
+      preLoaderRoute: typeof FactoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cookies/': {
       id: '/cookies/'
       path: '/cookies'
@@ -455,6 +475,7 @@ const rootRouteChildren: RootRouteChildren = {
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
   CookiesIndexRoute: CookiesIndexRoute,
+  FactoryIndexRoute: FactoryIndexRoute,
   FormdataRedirectIndexRoute: FormdataRedirectIndexRoute,
   MiddlewareIndexRoute: MiddlewareIndexRoute,
   FormdataRedirectTargetNameRoute: FormdataRedirectTargetNameRoute,
@@ -462,3 +483,11 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
