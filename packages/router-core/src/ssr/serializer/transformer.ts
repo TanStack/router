@@ -79,13 +79,9 @@ type ApplyArrayValidation<
   ? ValidateSerializable<TValue, TSerializable>
   : ValidateSerializableResult<TValue, TSerializable>
 
-type IsTuple<T extends ReadonlyArray<unknown>> = T extends readonly []
-  ? true
-  : T extends readonly [unknown, ...infer TRest]
-    ? TRest extends ReadonlyArray<unknown>
-      ? true
-      : false
-    : false
+type IsTuple<T extends ReadonlyArray<unknown>> = number extends T['length']
+  ? false
+  : true
 
 type ValidateSerializableArrayCore<
   T extends ReadonlyArray<unknown>,
