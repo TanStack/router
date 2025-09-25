@@ -7063,6 +7063,9 @@ importers:
       srvx:
         specifier: ^0.8.2
         version: 0.8.7
+      tinyglobby:
+        specifier: ^0.2.15
+        version: 0.2.15
       ufo:
         specifier: ^1.5.4
         version: 1.6.1
@@ -18254,10 +18257,10 @@ snapshots:
       '@rollup/pluginutils': 5.1.4(rollup@4.52.2)
       commondir: 1.0.1
       estree-walker: 2.0.2
-      fdir: 6.4.4(picomatch@4.0.2)
+      fdir: 6.5.0(picomatch@4.0.3)
       is-reference: 1.2.1
       magic-string: 0.30.19
-      picomatch: 4.0.2
+      picomatch: 4.0.3
     optionalDependencies:
       rollup: 4.52.2
 
@@ -18304,7 +18307,7 @@ snapshots:
     dependencies:
       '@types/estree': 1.0.7
       estree-walker: 2.0.2
-      picomatch: 4.0.2
+      picomatch: 4.0.3
     optionalDependencies:
       rollup: 4.52.2
 
@@ -19512,7 +19515,7 @@ snapshots:
       glob: 10.4.5
       graceful-fs: 4.2.11
       node-gyp-build: 4.8.4
-      picomatch: 4.0.2
+      picomatch: 4.0.3
       resolve-from: 5.0.0
     transitivePeerDependencies:
       - encoding
@@ -19624,7 +19627,7 @@ snapshots:
       flatted: 3.3.2
       pathe: 2.0.3
       sirv: 3.0.1
-      tinyglobby: 0.2.13
+      tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
       vitest: 3.2.4(@types/node@22.13.4)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.6.0)(jsdom@25.0.1)(lightningcss@1.29.2)(msw@2.7.0(@types/node@22.13.4)(typescript@5.9.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
@@ -23492,7 +23495,7 @@ snapshots:
   rollup-plugin-visualizer@6.0.3(rollup@4.52.2):
     dependencies:
       open: 8.4.2
-      picomatch: 4.0.2
+      picomatch: 4.0.3
       source-map: 0.7.6
       yargs: 17.7.2
     optionalDependencies:

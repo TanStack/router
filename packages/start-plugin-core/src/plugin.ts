@@ -4,6 +4,7 @@ import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
 import { join } from 'pathe'
+import { escapePath } from 'tinyglobby'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
@@ -195,7 +196,10 @@ export function TanStackStartVitePluginCore(
               },
               optimizeDeps: {
                 // Ensure user code can be crawled for dependencies
-                entries: [clientAlias, routerAlias],
+                entries: [clientAlias, routerAlias].map((entry) =>
+                  // Entries are treated as `tinyglobby` patterns so need to be escaped
+                  escapePath(entry),
+                ),
               },
             },
             [VITE_ENVIRONMENT_NAMES.server]: {
@@ -217,7 +221,10 @@ export function TanStackStartVitePluginCore(
               },
               optimizeDeps: {
                 // Ensure user code can be crawled for dependencies
-                entries: [serverAlias, startAlias, routerAlias],
+                entries: [serverAlias, startAlias, routerAlias].map((entry) =>
+                  // Entries are treated as `tinyglobby` patterns so need to be escaped
+                  escapePath(entry),
+                ),
               },
             },
           },
