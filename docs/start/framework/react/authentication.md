@@ -5,7 +5,7 @@ title: Authentication
 
 This guide covers authentication patterns and shows how to implement your own authentication system with TanStack Start.
 
-> **📋 Before You Start:** Check our [Authentication Overview](./authentication-overview.md) for all available options including partner solutions and hosted services.
+> **📋 Before You Start:** Check our [Authentication Overview](../authentication-overview.md) for all available options including partner solutions and hosted services.
 
 ## Authentication Approaches
 
@@ -47,7 +47,7 @@ import { redirect } from '@tanstack/react-router'
 
 // Login server function
 export const loginFn = createServerFn({ method: 'POST' })
-  .validator((data: { email: string; password: string }) => data)
+  .inputValidator((data: { email: string; password: string }) => data)
   .handler(async ({ data }) => {
     // Verify credentials (replace with your auth logic)
     const user = await authenticateUser(data.email, data.password)
@@ -218,7 +218,9 @@ import { createServerFn } from '@tanstack/react-start'
 
 // User registration
 export const registerFn = createServerFn({ method: 'POST' })
-  .validator((data: { email: string; password: string; name: string }) => data)
+  .inputValidator(
+    (data: { email: string; password: string; name: string }) => data,
+  )
   .handler(async ({ data }) => {
     // Check if user exists
     const existingUser = await getUserByEmail(data.email)
@@ -300,7 +302,7 @@ export const authProviders = {
 }
 
 export const initiateOAuthFn = createServerFn({ method: 'POST' })
-  .validator((data: { provider: 'google' | 'github' }) => data)
+  .inputValidator((data: { provider: 'google' | 'github' }) => data)
   .handler(async ({ data }) => {
     const provider = authProviders[data.provider]
     const state = generateRandomState()
@@ -321,7 +323,7 @@ export const initiateOAuthFn = createServerFn({ method: 'POST' })
 ```tsx
 // Password reset request
 export const requestPasswordResetFn = createServerFn({ method: 'POST' })
-  .validator((data: { email: string }) => data)
+  .inputValidator((data: { email: string }) => data)
   .handler(async ({ data }) => {
     const user = await getUserByEmail(data.email)
     if (!user) {
@@ -340,7 +342,7 @@ export const requestPasswordResetFn = createServerFn({ method: 'POST' })
 
 // Password reset confirmation
 export const resetPasswordFn = createServerFn({ method: 'POST' })
-  .validator((data: { token: string; newPassword: string }) => data)
+  .inputValidator((data: { token: string; newPassword: string }) => data)
   .handler(async ({ data }) => {
     const resetToken = await getPasswordResetToken(data.token)
 
@@ -421,7 +423,7 @@ const loginSchema = z.object({
 })
 
 export const loginFn = createServerFn({ method: 'POST' })
-  .validator((data) => loginSchema.parse(data))
+  .inputValidator((data) => loginSchema.parse(data))
   .handler(async ({ data }) => {
     // data is now validated
   })
@@ -517,7 +519,7 @@ function LoginForm() {
 
 ```tsx
 export const loginFn = createServerFn({ method: 'POST' })
-  .validator(
+  .inputValidator(
     (data: { email: string; password: string; rememberMe?: boolean }) => data,
   )
   .handler(async ({ data }) => {
@@ -604,4 +606,4 @@ When implementing authentication, consider:
 - **Monitoring**: Add logging and monitoring for authentication events
 - **Compliance**: Ensure compliance with relevant regulations if storing personal data
 
-For other authentication approaches, check the [Authentication Overview](./authentication-overview.md). For specific integration help, see the [How-to Guides](../../router/framework/react/how-to/README.md#authentication) or explore our [working examples](https://github.com/TanStack/router/tree/main/examples/react).
+For other authentication approaches, check the [Authentication Overview](../authentication-overview.md). For specific integration help, see the [How-to Guides](/router/latest/docs/framework/react/how-to/README.md#authentication) or explore our [working examples](https://github.com/TanStack/router/tree/main/examples/react).
