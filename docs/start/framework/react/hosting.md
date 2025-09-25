@@ -159,6 +159,19 @@ export default defineConfig({
 })
 ```
 
+You should opt-in to the nightly release channel by updating your `package.json`:
+
+```text
+{
+  "devDependencies": {
+--    "nitropack": "^2.0.0"
+++    "nitropack": "npm:nitropack-nightly@latest"
+  }
+}
+```
+
+Reference: [nitro.build@nightly](https://nitro.build/guide/nightly)
+
 Deploy your application to Vercel using their one-click deployment process, and you're ready to go!
 
 ### Node.js / Railway / Docker
