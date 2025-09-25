@@ -1,17 +1,18 @@
----
+di---
 id: environment-functions
 title: Environment Functions
+
 ---
 
 ## What Are Environment Functions?
 
 Environment functions are utilities designed to define and control function execution based on the runtime environment—whether the code is running on the client or the server. These utilities help ensure that environment-specific logic is executed safely and intentionally, preventing runtime errors and improving maintainability in fullstack or isomorphic applications.
 
-Start provide three core environment functions:
+Start provides three core environment functions:
 
 - `createIsomorphicFn`: Compose a single function that adapts to both client and server environments.
-- `serverOnly`: Ensures a function can only run on the server.
-- `clientOnly`: Ensures a function can only run on the client.
+- `createServerOnlyFn`: Create a function that can only run on the server.
+- `createClientOnlyFn`: Create a function that can only run on the client.
 
 ---
 
@@ -87,28 +88,28 @@ function noop() {}
 
 ## `env`Only Functions
 
-The `serverOnly` and `clientOnly` helpers enforce strict environment-bound execution. They ensure the decorated function is only callable in the correct runtime context. If misused, they throw descriptive runtime errors to prevent unintentional logic execution.
+The `createServerOnlyFn` and `createClientOnlyFn` helpers enforce strict environment-bound execution. They ensure the returned function is only callable in the correct runtime context. If misused, they throw descriptive runtime errors to prevent unintentional logic execution.
 
-### `serverOnly`
+### `createServerOnlyFn`
 
 ```tsx
-import { serverOnly } from '@tanstack/react-start'
+import { createServerOnlyFn } from '@tanstack/react-start'
 
-const foo = serverOnly(() => 'bar')
+const foo = createServerOnlyFn(() => 'bar')
 
 foo() // ✅ On server: returns "bar"
-// ❌ On client: throws "serverOnly() functions can only be called on the server!"
+// ❌ On client: throws "createServerOnlyFn() functions can only be called on the server!"
 ```
 
-### `clientOnly`
+### `createClientOnlyFn`
 
 ```tsx
-import { clientOnly } from '@tanstack/react-start'
+import { createClientOnlyFn } from '@tanstack/react-start'
 
-const foo = clientOnly(() => 'bar')
+const foo = createClientOnlyFn(() => 'bar')
 
 foo() // ✅ On client: returns "bar"
-// ❌ On server: throws "clientOnly() functions can only be called on the client!"
+// ❌ On server: throws "createClientOnlyFn() functions can only be called on the client!"
 ```
 
 > [!NOTE]
@@ -120,4 +121,4 @@ Environment functions are tree-shaken based on the environment for each bundle p
 
 Functions created using `createIsomorphicFn()` are tree-shaken. All codes inside `.client()` are not included in server bundle, and vice-versa.
 
-On the server, implementation of `clientOnly` functions are replaced with a function that throws an `Error`. The reverse is true for `serverOnly` functions on the client.
+On the server, functions created using `createClientOnlyFn()` functions are replaced with a function that throws an `Error` on the server. The reverse is true for `createServerOnlyFn` functions on the client.
