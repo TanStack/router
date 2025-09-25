@@ -49,7 +49,7 @@ Call server functions from:
 - **Other server functions** - Compose server logic
 - **Event handlers** - Handle form submissions, clicks, etc.
 
-````tsx
+```tsx
 // In a route loader
 export const Route = createFileRoute('/posts')({
   loader: () => getPosts(),
@@ -64,6 +64,7 @@ function PostList() {
     queryFn: () => getPosts(),
   })
 }
+```
 
 ## Parameters & Validation
 
@@ -81,7 +82,7 @@ export const greetUser = createServerFn({ method: 'GET' })
   })
 
 await greetUser({ data: { name: 'John' } })
-````
+```
 
 ### Validation with Zod
 
