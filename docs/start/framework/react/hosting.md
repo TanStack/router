@@ -161,6 +161,10 @@ export default defineConfig({
 
 Deploy your application to Vercel using their one-click deployment process, and you're ready to go!
 
+### Firebase App Hosting
+
+[Firebase App Hosting](https://firebase.google.com/docs/app-hosting) is compatible with TanStack Start [without any additional configuration needed](https://firebase.blog/posts/2025/06/app-hosting-frameworks#nitro-analog-nuxt-solidstart-tanstack-start).
+
 ### Node.js / Railway / Docker
 
 TanStack Start builds to a `node` server by default. Use the `node` command to start your application from the server from the build output files.
