@@ -59,12 +59,8 @@ export function devServerPlugin({
               return
             }
 
-            // do not install middleware if SSR env in case another plugin already did
-            if (
-              !isRunnableDevEnvironment(serverEnv) ||
-              // do not check via `isFetchableDevEnvironment` since nitro does implement the `FetchableDevEnvironment` interface but not via inheritance (which this helper checks)
-              'dispatchFetch' in serverEnv
-            ) {
+            // only install middleware when the SSR environment can run requests itself
+            if (!isRunnableDevEnvironment(serverEnv)) {
               return
             }
           }
@@ -101,7 +97,7 @@ export function devServerPlugin({
               console.error(e)
               try {
                 viteDevServer.ssrFixStacktrace(e as Error)
-              } catch (_e) {}
+              } catch {}
 
               if (
                 webReq.headers.get('content-type')?.includes('application/json')
