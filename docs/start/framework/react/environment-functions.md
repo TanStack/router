@@ -1,7 +1,6 @@
 ---
 id: environment-functions
 title: Environment Functions
-
 ---
 
 ## What Are Environment Functions?
