@@ -7,8 +7,10 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/react-router'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { TanStackRouterDevtools, TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import * as React from 'react'
+import { TanStackDevtools } from '@tanstack/react-devtools'
+import { StartDevtoolsPanel } from '@tanstack/react-start-devtools'
 import type { QueryClient } from '@tanstack/react-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
@@ -136,6 +138,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </div>
         <hr />
         {children}
+        <TanStackDevtools plugins={[
+          {
+            name: 'React Query',
+            render: () => <TanStackRouterDevtoolsPanel />
+          },
+          {
+            name: 'React Router',
+            render: () => <TanStackRouterDevtoolsPanel />
+          },
+          {
+            name: "Start",
+            render: () => <StartDevtoolsPanel />
+          }
+        ]} />
         <TanStackRouterDevtools position="bottom-right" />
         <ReactQueryDevtools buttonPosition="bottom-left" />
         <Scripts />
