@@ -120,4 +120,4 @@ Environment functions are tree-shaken based on the environment for each bundle p
 
 Functions created using `createIsomorphicFn()` are tree-shaken. All codes inside `.client()` are not included in server bundle, and vice-versa.
 
-On the server, functions created using `createClientOnlyFn()` functions are replaced with a function that throws an `Error` on the server. The reverse is true for `createServerOnlyFn` functions on the client.
+On the server, functions created using `createClientOnlyFn()` are replaced with a function that throws an `Error` on the server. The reverse is true for `createServerOnlyFn` functions on the client.
