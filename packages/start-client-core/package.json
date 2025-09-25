@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-client-core",
-  "version": "1.131.44",
+  "version": "1.132.7",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -46,13 +46,23 @@
       "import": {
         "types": "./dist/esm/index.d.ts",
         "default": "./dist/esm/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.cts",
-        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/esm/client/index.d.ts",
+        "default": "./dist/esm/client/index.js"
       }
     },
     "./package.json": "./package.json"
+  },
+  "imports": {
+    "#tanstack-start-entry": {
+      "default": "./dist/esm/fake-start-entry.js"
+    },
+    "#tanstack-router-entry": {
+      "default": "./dist/esm/fake-start-entry.js"
+    }
   },
   "sideEffects": false,
   "files": [
@@ -60,12 +70,12 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "@tanstack/router-core": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
-    "cookie-es": "^1.2.2",
+    "seroval": "^1.3.2",
     "tiny-invariant": "^1.3.3",
     "tiny-warning": "^1.0.3"
   }

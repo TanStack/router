@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-start-server",
-  "version": "1.131.44",
+  "version": "1.132.7",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -45,10 +45,6 @@
       "import": {
         "types": "./dist/esm/index.d.ts",
         "default": "./dist/esm/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.cts",
-        "default": "./dist/cjs/index.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -59,7 +55,7 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "@solidjs/meta": "^0.29.4",
@@ -67,14 +63,12 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
-    "@tanstack/start-server-core": "workspace:*",
-    "isbot": "^5.1.22"
+    "@tanstack/start-server-core": "workspace:*"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0",
     "solid-js": "^1.9.5",
     "typescript": "^5.7.2",
-    "vite-plugin-solid": "^2.11.2"
+    "vite-plugin-solid": "^2.11.8"
   },
   "peerDependencies": {
     "solid-js": "^1.0.0"

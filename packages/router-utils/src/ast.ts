@@ -8,10 +8,8 @@ export type ParseAstOptions = ParserOptions & {
   code: string
 }
 
-export function parseAst({
-  code,
-  ...opts
-}: ParseAstOptions): ParseResult<_babel_types.File> {
+export type ParseAstResult = ParseResult<_babel_types.File>
+export function parseAst({ code, ...opts }: ParseAstOptions): ParseAstResult {
   return parse(code, {
     plugins: ['jsx', 'typescript', 'explicitResourceManagement'],
     sourceType: 'module',

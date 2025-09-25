@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test'
 import combinateImport from 'combinate'
-import { test } from './fixture'
+import { test } from '@tanstack/router-e2e-utils'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport

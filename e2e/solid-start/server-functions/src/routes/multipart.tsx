@@ -7,7 +7,7 @@ export const Route = createFileRoute('/multipart')({
 })
 
 const multipartFormDataServerFn = createServerFn({ method: 'POST' })
-  .validator((x: unknown) => {
+  .inputValidator((x: unknown) => {
     if (!(x instanceof FormData)) {
       throw new Error('Invalid form data')
     }

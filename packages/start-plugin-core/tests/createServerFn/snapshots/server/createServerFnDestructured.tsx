@@ -66,7 +66,7 @@ export const withZodValidator = createServerFn({
 }));
 export const withValidatorFn = createServerFn({
   method: 'GET'
-}).validator(z.number()).handler((opts, signal) => {
+}).inputValidator(z.number()).handler((opts, signal) => {
   "use server";
 
   return withValidatorFn.__executeServer(opts, signal);

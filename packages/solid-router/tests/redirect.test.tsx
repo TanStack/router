@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
+import invariant from 'tiny-invariant'
 import {
   Link,
   RouterProvider,
@@ -10,7 +11,6 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  invariant,
   redirect,
   useRouter,
 } from '../src'
@@ -351,6 +351,8 @@ describe('redirect', () => {
     expect(currentRedirect.headers.get('Location')).toEqual('/about')
     expect(currentRedirect.options).toEqual({
       _fromLocation: {
+        publicHref: '/',
+        url: 'http://localhost/',
         hash: '',
         href: '/',
         pathname: '/',

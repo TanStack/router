@@ -20,6 +20,7 @@ import { Route as ComponentTypesTestRouteImport } from './routes/component-types
 import { Route as AnchorRouteImport } from './routes/anchor'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
+import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
 import { Route as RelativeIndexRouteImport } from './routes/relative/index'
@@ -37,6 +38,10 @@ import { Route as anotherGroupOnlyrouteinsideRouteImport } from './routes/(anoth
 import { Route as RelativeUseNavigateRouteRouteImport } from './routes/relative/useNavigate/route'
 import { Route as RelativeLinkRouteRouteImport } from './routes/relative/link/route'
 import { Route as ParamsPsNonNestedRouteRouteImport } from './routes/params-ps/non-nested/route'
+import { Route as NonNestedSuffixRouteRouteImport } from './routes/non-nested/suffix/route'
+import { Route as NonNestedPrefixRouteRouteImport } from './routes/non-nested/prefix/route'
+import { Route as NonNestedPathRouteRouteImport } from './routes/non-nested/path/route'
+import { Route as NonNestedNamedRouteRouteImport } from './routes/non-nested/named/route'
 import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
 import { Route as RelativeUseNavigateRelativeUseNavigateBRouteImport } from './routes/relative/useNavigate/relative-useNavigate-b'
 import { Route as RelativeUseNavigateRelativeUseNavigateARouteImport } from './routes/relative/useNavigate/relative-useNavigate-a'
@@ -55,13 +60,29 @@ import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfo
 import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_layout.insidelayout'
 import { Route as ParamsPsNonNestedFooRouteRouteImport } from './routes/params-ps/non-nested/$foo_/route'
 import { Route as ParamsPsNamedFooRouteRouteImport } from './routes/params-ps/named/$foo/route'
+import { Route as NonNestedSuffixChar123bazChar125suffixRouteRouteImport } from './routes/non-nested/suffix/{$baz}suffix.route'
+import { Route as NonNestedPrefixPrefixChar123bazChar125RouteRouteImport } from './routes/non-nested/prefix/prefix{$baz}.route'
+import { Route as NonNestedPathBazRouteRouteImport } from './routes/non-nested/path/baz.route'
+import { Route as NonNestedNamedBazRouteRouteImport } from './routes/non-nested/named/$baz.route'
 import { Route as RelativeUseNavigateWithSearchIndexRouteImport } from './routes/relative/useNavigate/with-search/index'
 import { Route as RelativeUseNavigatePathIndexRouteImport } from './routes/relative/useNavigate/path/index'
 import { Route as RelativeUseNavigateNestedIndexRouteImport } from './routes/relative/useNavigate/nested/index'
 import { Route as RelativeLinkWithSearchIndexRouteImport } from './routes/relative/link/with-search/index'
 import { Route as RelativeLinkPathIndexRouteImport } from './routes/relative/link/path/index'
 import { Route as RelativeLinkNestedIndexRouteImport } from './routes/relative/link/nested/index'
+import { Route as NonNestedSuffixChar123bazChar125suffixIndexRouteImport } from './routes/non-nested/suffix/{$baz}suffix.index'
+import { Route as NonNestedPrefixPrefixChar123bazChar125IndexRouteImport } from './routes/non-nested/prefix/prefix{$baz}.index'
+import { Route as NonNestedPathBazIndexRouteImport } from './routes/non-nested/path/baz.index'
+import { Route as NonNestedNamedBazIndexRouteImport } from './routes/non-nested/named/$baz.index'
 import { Route as ParamsPsNonNestedFooBarRouteImport } from './routes/params-ps/non-nested/$foo_/$bar'
+import { Route as NonNestedSuffixChar123bazChar125suffixBarRouteImport } from './routes/non-nested/suffix/{$baz}suffix_.bar'
+import { Route as NonNestedSuffixChar123bazChar125suffixFooRouteImport } from './routes/non-nested/suffix/{$baz}suffix.foo'
+import { Route as NonNestedPrefixPrefixChar123bazChar125BarRouteImport } from './routes/non-nested/prefix/prefix{$baz}_.bar'
+import { Route as NonNestedPrefixPrefixChar123bazChar125FooRouteImport } from './routes/non-nested/prefix/prefix{$baz}.foo'
+import { Route as NonNestedPathBazBarRouteImport } from './routes/non-nested/path/baz_.bar'
+import { Route as NonNestedPathBazFooRouteImport } from './routes/non-nested/path/baz.foo'
+import { Route as NonNestedNamedBazBarRouteImport } from './routes/non-nested/named/$baz_.bar'
+import { Route as NonNestedNamedBazFooRouteImport } from './routes/non-nested/named/$baz.foo'
 import { Route as ParamsPsNamedFooBarRouteRouteImport } from './routes/params-ps/named/$foo/$bar.route'
 import { Route as RelativeUseNavigatePathPathIndexRouteImport } from './routes/relative/useNavigate/path/$path/index'
 import { Route as RelativeUseNavigateNestedDeepIndexRouteImport } from './routes/relative/useNavigate/nested/deep/index'
@@ -117,6 +138,11 @@ const LayoutRoute = LayoutRouteImport.update({
 const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
   id: '/search-params',
   path: '/search-params',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NonNestedRouteRoute = NonNestedRouteRouteImport.update({
+  id: '/non-nested',
+  path: '/non-nested',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -205,6 +231,26 @@ const ParamsPsNonNestedRouteRoute = ParamsPsNonNestedRouteRouteImport.update({
   id: '/params-ps/non-nested',
   path: '/params-ps/non-nested',
   getParentRoute: () => rootRouteImport,
+} as any)
+const NonNestedSuffixRouteRoute = NonNestedSuffixRouteRouteImport.update({
+  id: '/suffix',
+  path: '/suffix',
+  getParentRoute: () => NonNestedRouteRoute,
+} as any)
+const NonNestedPrefixRouteRoute = NonNestedPrefixRouteRouteImport.update({
+  id: '/prefix',
+  path: '/prefix',
+  getParentRoute: () => NonNestedRouteRoute,
+} as any)
+const NonNestedPathRouteRoute = NonNestedPathRouteRouteImport.update({
+  id: '/path',
+  path: '/path',
+  getParentRoute: () => NonNestedRouteRoute,
+} as any)
+const NonNestedNamedRouteRoute = NonNestedNamedRouteRouteImport.update({
+  id: '/named',
+  path: '/named',
+  getParentRoute: () => NonNestedRouteRoute,
 } as any)
 const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
@@ -302,6 +348,28 @@ const ParamsPsNamedFooRouteRoute = ParamsPsNamedFooRouteRouteImport.update({
   path: '/params-ps/named/$foo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NonNestedSuffixChar123bazChar125suffixRouteRoute =
+  NonNestedSuffixChar123bazChar125suffixRouteRouteImport.update({
+    id: '/{$baz}suffix',
+    path: '/{$baz}suffix',
+    getParentRoute: () => NonNestedSuffixRouteRoute,
+  } as any)
+const NonNestedPrefixPrefixChar123bazChar125RouteRoute =
+  NonNestedPrefixPrefixChar123bazChar125RouteRouteImport.update({
+    id: '/prefix{$baz}',
+    path: '/prefix{$baz}',
+    getParentRoute: () => NonNestedPrefixRouteRoute,
+  } as any)
+const NonNestedPathBazRouteRoute = NonNestedPathBazRouteRouteImport.update({
+  id: '/baz',
+  path: '/baz',
+  getParentRoute: () => NonNestedPathRouteRoute,
+} as any)
+const NonNestedNamedBazRouteRoute = NonNestedNamedBazRouteRouteImport.update({
+  id: '/$baz',
+  path: '/$baz',
+  getParentRoute: () => NonNestedNamedRouteRoute,
+} as any)
 const RelativeUseNavigateWithSearchIndexRoute =
   RelativeUseNavigateWithSearchIndexRouteImport.update({
     id: '/with-search/',
@@ -336,10 +404,76 @@ const RelativeLinkNestedIndexRoute = RelativeLinkNestedIndexRouteImport.update({
   path: '/nested/',
   getParentRoute: () => RelativeLinkRouteRoute,
 } as any)
+const NonNestedSuffixChar123bazChar125suffixIndexRoute =
+  NonNestedSuffixChar123bazChar125suffixIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => NonNestedSuffixChar123bazChar125suffixRouteRoute,
+  } as any)
+const NonNestedPrefixPrefixChar123bazChar125IndexRoute =
+  NonNestedPrefixPrefixChar123bazChar125IndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => NonNestedPrefixPrefixChar123bazChar125RouteRoute,
+  } as any)
+const NonNestedPathBazIndexRoute = NonNestedPathBazIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NonNestedPathBazRouteRoute,
+} as any)
+const NonNestedNamedBazIndexRoute = NonNestedNamedBazIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NonNestedNamedBazRouteRoute,
+} as any)
 const ParamsPsNonNestedFooBarRoute = ParamsPsNonNestedFooBarRouteImport.update({
   id: '/$bar',
   path: '/$bar',
   getParentRoute: () => ParamsPsNonNestedFooRouteRoute,
+} as any)
+const NonNestedSuffixChar123bazChar125suffixBarRoute =
+  NonNestedSuffixChar123bazChar125suffixBarRouteImport.update({
+    id: '/{$baz}suffix_/bar',
+    path: '/{$baz}suffix/bar',
+    getParentRoute: () => NonNestedSuffixRouteRoute,
+  } as any)
+const NonNestedSuffixChar123bazChar125suffixFooRoute =
+  NonNestedSuffixChar123bazChar125suffixFooRouteImport.update({
+    id: '/foo',
+    path: '/foo',
+    getParentRoute: () => NonNestedSuffixChar123bazChar125suffixRouteRoute,
+  } as any)
+const NonNestedPrefixPrefixChar123bazChar125BarRoute =
+  NonNestedPrefixPrefixChar123bazChar125BarRouteImport.update({
+    id: '/prefix{$baz}_/bar',
+    path: '/prefix{$baz}/bar',
+    getParentRoute: () => NonNestedPrefixRouteRoute,
+  } as any)
+const NonNestedPrefixPrefixChar123bazChar125FooRoute =
+  NonNestedPrefixPrefixChar123bazChar125FooRouteImport.update({
+    id: '/foo',
+    path: '/foo',
+    getParentRoute: () => NonNestedPrefixPrefixChar123bazChar125RouteRoute,
+  } as any)
+const NonNestedPathBazBarRoute = NonNestedPathBazBarRouteImport.update({
+  id: '/baz_/bar',
+  path: '/baz/bar',
+  getParentRoute: () => NonNestedPathRouteRoute,
+} as any)
+const NonNestedPathBazFooRoute = NonNestedPathBazFooRouteImport.update({
+  id: '/foo',
+  path: '/foo',
+  getParentRoute: () => NonNestedPathBazRouteRoute,
+} as any)
+const NonNestedNamedBazBarRoute = NonNestedNamedBazBarRouteImport.update({
+  id: '/$baz_/bar',
+  path: '/$baz/bar',
+  getParentRoute: () => NonNestedNamedRouteRoute,
+} as any)
+const NonNestedNamedBazFooRoute = NonNestedNamedBazFooRouteImport.update({
+  id: '/foo',
+  path: '/foo',
+  getParentRoute: () => NonNestedNamedBazRouteRoute,
 } as any)
 const ParamsPsNamedFooBarRouteRoute =
   ParamsPsNamedFooBarRouteRouteImport.update({
@@ -379,6 +513,7 @@ const ParamsPsNamedFooBarBazRoute = ParamsPsNamedFooBarBazRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof groupLayoutRouteWithChildren
+  '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
@@ -387,6 +522,10 @@ export interface FileRoutesByFullPath {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
+  '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
+  '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
+  '/non-nested/suffix': typeof NonNestedSuffixRouteRouteWithChildren
   '/params-ps/non-nested': typeof ParamsPsNonNestedRouteRouteWithChildren
   '/relative/link': typeof RelativeLinkRouteRouteWithChildren
   '/relative/useNavigate': typeof RelativeUseNavigateRouteRouteWithChildren
@@ -401,6 +540,10 @@ export interface FileRoutesByFullPath {
   '/redirect': typeof RedirectIndexRoute
   '/relative': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
+  '/non-nested/path/baz': typeof NonNestedPathBazRouteRouteWithChildren
+  '/non-nested/prefix/prefix{$baz}': typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteWithChildren
+  '/non-nested/suffix/{$baz}suffix': typeof NonNestedSuffixChar123bazChar125suffixRouteRouteWithChildren
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/params-ps/non-nested/$foo': typeof ParamsPsNonNestedFooRouteRouteWithChildren
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
@@ -420,7 +563,19 @@ export interface FileRoutesByFullPath {
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
+  '/non-nested/named/$baz/foo': typeof NonNestedNamedBazFooRoute
+  '/non-nested/named/$baz/bar': typeof NonNestedNamedBazBarRoute
+  '/non-nested/path/baz/foo': typeof NonNestedPathBazFooRoute
+  '/non-nested/path/baz/bar': typeof NonNestedPathBazBarRoute
+  '/non-nested/prefix/prefix{$baz}/foo': typeof NonNestedPrefixPrefixChar123bazChar125FooRoute
+  '/non-nested/prefix/prefix{$baz}/bar': typeof NonNestedPrefixPrefixChar123bazChar125BarRoute
+  '/non-nested/suffix/{$baz}suffix/foo': typeof NonNestedSuffixChar123bazChar125suffixFooRoute
+  '/non-nested/suffix/{$baz}suffix/bar': typeof NonNestedSuffixChar123bazChar125suffixBarRoute
   '/params-ps/non-nested/$foo/$bar': typeof ParamsPsNonNestedFooBarRoute
+  '/non-nested/named/$baz/': typeof NonNestedNamedBazIndexRoute
+  '/non-nested/path/baz/': typeof NonNestedPathBazIndexRoute
+  '/non-nested/prefix/prefix{$baz}/': typeof NonNestedPrefixPrefixChar123bazChar125IndexRoute
+  '/non-nested/suffix/{$baz}suffix/': typeof NonNestedSuffixChar123bazChar125suffixIndexRoute
   '/relative/link/nested': typeof RelativeLinkNestedIndexRoute
   '/relative/link/path': typeof RelativeLinkPathIndexRoute
   '/relative/link/with-search': typeof RelativeLinkWithSearchIndexRoute
@@ -435,12 +590,17 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof groupLayoutRouteWithChildren
+  '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
+  '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
+  '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
+  '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
+  '/non-nested/suffix': typeof NonNestedSuffixRouteRouteWithChildren
   '/params-ps/non-nested': typeof ParamsPsNonNestedRouteRouteWithChildren
   '/relative/link': typeof RelativeLinkRouteRouteWithChildren
   '/relative/useNavigate': typeof RelativeUseNavigateRouteRouteWithChildren
@@ -473,7 +633,19 @@ export interface FileRoutesByTo {
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
+  '/non-nested/named/$baz/foo': typeof NonNestedNamedBazFooRoute
+  '/non-nested/named/$baz/bar': typeof NonNestedNamedBazBarRoute
+  '/non-nested/path/baz/foo': typeof NonNestedPathBazFooRoute
+  '/non-nested/path/baz/bar': typeof NonNestedPathBazBarRoute
+  '/non-nested/prefix/prefix{$baz}/foo': typeof NonNestedPrefixPrefixChar123bazChar125FooRoute
+  '/non-nested/prefix/prefix{$baz}/bar': typeof NonNestedPrefixPrefixChar123bazChar125BarRoute
+  '/non-nested/suffix/{$baz}suffix/foo': typeof NonNestedSuffixChar123bazChar125suffixFooRoute
+  '/non-nested/suffix/{$baz}suffix/bar': typeof NonNestedSuffixChar123bazChar125suffixBarRoute
   '/params-ps/non-nested/$foo/$bar': typeof ParamsPsNonNestedFooBarRoute
+  '/non-nested/named/$baz': typeof NonNestedNamedBazIndexRoute
+  '/non-nested/path/baz': typeof NonNestedPathBazIndexRoute
+  '/non-nested/prefix/prefix{$baz}': typeof NonNestedPrefixPrefixChar123bazChar125IndexRoute
+  '/non-nested/suffix/{$baz}suffix': typeof NonNestedSuffixChar123bazChar125suffixIndexRoute
   '/relative/link/nested': typeof RelativeLinkNestedIndexRoute
   '/relative/link/path': typeof RelativeLinkPathIndexRoute
   '/relative/link/with-search': typeof RelativeLinkWithSearchIndexRoute
@@ -489,6 +661,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/anchor': typeof AnchorRoute
@@ -498,6 +671,10 @@ export interface FileRoutesById {
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
   '/remountDeps': typeof RemountDepsRoute
+  '/non-nested/named': typeof NonNestedNamedRouteRouteWithChildren
+  '/non-nested/path': typeof NonNestedPathRouteRouteWithChildren
+  '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
+  '/non-nested/suffix': typeof NonNestedSuffixRouteRouteWithChildren
   '/params-ps/non-nested': typeof ParamsPsNonNestedRouteRouteWithChildren
   '/relative/link': typeof RelativeLinkRouteRouteWithChildren
   '/relative/useNavigate': typeof RelativeUseNavigateRouteRouteWithChildren
@@ -515,6 +692,10 @@ export interface FileRoutesById {
   '/redirect/': typeof RedirectIndexRoute
   '/relative/': typeof RelativeIndexRoute
   '/search-params/': typeof SearchParamsIndexRoute
+  '/non-nested/named/$baz': typeof NonNestedNamedBazRouteRouteWithChildren
+  '/non-nested/path/baz': typeof NonNestedPathBazRouteRouteWithChildren
+  '/non-nested/prefix/prefix{$baz}': typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteWithChildren
+  '/non-nested/suffix/{$baz}suffix': typeof NonNestedSuffixChar123bazChar125suffixRouteRouteWithChildren
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/params-ps/non-nested/$foo_': typeof ParamsPsNonNestedFooRouteRouteWithChildren
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
@@ -534,7 +715,19 @@ export interface FileRoutesById {
   '/relative/useNavigate/relative-useNavigate-b': typeof RelativeUseNavigateRelativeUseNavigateBRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
   '/params-ps/named/$foo/$bar': typeof ParamsPsNamedFooBarRouteRouteWithChildren
+  '/non-nested/named/$baz/foo': typeof NonNestedNamedBazFooRoute
+  '/non-nested/named/$baz_/bar': typeof NonNestedNamedBazBarRoute
+  '/non-nested/path/baz/foo': typeof NonNestedPathBazFooRoute
+  '/non-nested/path/baz_/bar': typeof NonNestedPathBazBarRoute
+  '/non-nested/prefix/prefix{$baz}/foo': typeof NonNestedPrefixPrefixChar123bazChar125FooRoute
+  '/non-nested/prefix/prefix{$baz}_/bar': typeof NonNestedPrefixPrefixChar123bazChar125BarRoute
+  '/non-nested/suffix/{$baz}suffix/foo': typeof NonNestedSuffixChar123bazChar125suffixFooRoute
+  '/non-nested/suffix/{$baz}suffix_/bar': typeof NonNestedSuffixChar123bazChar125suffixBarRoute
   '/params-ps/non-nested/$foo_/$bar': typeof ParamsPsNonNestedFooBarRoute
+  '/non-nested/named/$baz/': typeof NonNestedNamedBazIndexRoute
+  '/non-nested/path/baz/': typeof NonNestedPathBazIndexRoute
+  '/non-nested/prefix/prefix{$baz}/': typeof NonNestedPrefixPrefixChar123bazChar125IndexRoute
+  '/non-nested/suffix/{$baz}suffix/': typeof NonNestedSuffixChar123bazChar125suffixIndexRoute
   '/relative/link/nested/': typeof RelativeLinkNestedIndexRoute
   '/relative/link/path/': typeof RelativeLinkPathIndexRoute
   '/relative/link/with-search/': typeof RelativeLinkWithSearchIndexRoute
@@ -551,6 +744,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/non-nested'
     | '/search-params'
     | '/anchor'
     | '/component-types-test'
@@ -559,6 +753,10 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/non-nested/named'
+    | '/non-nested/path'
+    | '/non-nested/prefix'
+    | '/non-nested/suffix'
     | '/params-ps/non-nested'
     | '/relative/link'
     | '/relative/useNavigate'
@@ -573,6 +771,10 @@ export interface FileRouteTypes {
     | '/redirect'
     | '/relative'
     | '/search-params/'
+    | '/non-nested/named/$baz'
+    | '/non-nested/path/baz'
+    | '/non-nested/prefix/prefix{$baz}'
+    | '/non-nested/suffix/{$baz}suffix'
     | '/params-ps/named/$foo'
     | '/params-ps/non-nested/$foo'
     | '/insidelayout'
@@ -592,7 +794,19 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/redirect/$target/'
     | '/params-ps/named/$foo/$bar'
+    | '/non-nested/named/$baz/foo'
+    | '/non-nested/named/$baz/bar'
+    | '/non-nested/path/baz/foo'
+    | '/non-nested/path/baz/bar'
+    | '/non-nested/prefix/prefix{$baz}/foo'
+    | '/non-nested/prefix/prefix{$baz}/bar'
+    | '/non-nested/suffix/{$baz}suffix/foo'
+    | '/non-nested/suffix/{$baz}suffix/bar'
     | '/params-ps/non-nested/$foo/$bar'
+    | '/non-nested/named/$baz/'
+    | '/non-nested/path/baz/'
+    | '/non-nested/prefix/prefix{$baz}/'
+    | '/non-nested/suffix/{$baz}suffix/'
     | '/relative/link/nested'
     | '/relative/link/path'
     | '/relative/link/with-search'
@@ -607,12 +821,17 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/non-nested'
     | '/anchor'
     | '/component-types-test'
     | '/editing-a'
     | '/editing-b'
     | '/notRemountDeps'
     | '/remountDeps'
+    | '/non-nested/named'
+    | '/non-nested/path'
+    | '/non-nested/prefix'
+    | '/non-nested/suffix'
     | '/params-ps/non-nested'
     | '/relative/link'
     | '/relative/useNavigate'
@@ -645,7 +864,19 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/redirect/$target'
     | '/params-ps/named/$foo/$bar'
+    | '/non-nested/named/$baz/foo'
+    | '/non-nested/named/$baz/bar'
+    | '/non-nested/path/baz/foo'
+    | '/non-nested/path/baz/bar'
+    | '/non-nested/prefix/prefix{$baz}/foo'
+    | '/non-nested/prefix/prefix{$baz}/bar'
+    | '/non-nested/suffix/{$baz}suffix/foo'
+    | '/non-nested/suffix/{$baz}suffix/bar'
     | '/params-ps/non-nested/$foo/$bar'
+    | '/non-nested/named/$baz'
+    | '/non-nested/path/baz'
+    | '/non-nested/prefix/prefix{$baz}'
+    | '/non-nested/suffix/{$baz}suffix'
     | '/relative/link/nested'
     | '/relative/link/path'
     | '/relative/link/with-search'
@@ -660,6 +891,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/non-nested'
     | '/search-params'
     | '/_layout'
     | '/anchor'
@@ -669,6 +901,10 @@ export interface FileRouteTypes {
     | '/notRemountDeps'
     | '/posts'
     | '/remountDeps'
+    | '/non-nested/named'
+    | '/non-nested/path'
+    | '/non-nested/prefix'
+    | '/non-nested/suffix'
     | '/params-ps/non-nested'
     | '/relative/link'
     | '/relative/useNavigate'
@@ -686,6 +922,10 @@ export interface FileRouteTypes {
     | '/redirect/'
     | '/relative/'
     | '/search-params/'
+    | '/non-nested/named/$baz'
+    | '/non-nested/path/baz'
+    | '/non-nested/prefix/prefix{$baz}'
+    | '/non-nested/suffix/{$baz}suffix'
     | '/params-ps/named/$foo'
     | '/params-ps/non-nested/$foo_'
     | '/(group)/_layout/insidelayout'
@@ -705,7 +945,19 @@ export interface FileRouteTypes {
     | '/relative/useNavigate/relative-useNavigate-b'
     | '/redirect/$target/'
     | '/params-ps/named/$foo/$bar'
+    | '/non-nested/named/$baz/foo'
+    | '/non-nested/named/$baz_/bar'
+    | '/non-nested/path/baz/foo'
+    | '/non-nested/path/baz_/bar'
+    | '/non-nested/prefix/prefix{$baz}/foo'
+    | '/non-nested/prefix/prefix{$baz}_/bar'
+    | '/non-nested/suffix/{$baz}suffix/foo'
+    | '/non-nested/suffix/{$baz}suffix_/bar'
     | '/params-ps/non-nested/$foo_/$bar'
+    | '/non-nested/named/$baz/'
+    | '/non-nested/path/baz/'
+    | '/non-nested/prefix/prefix{$baz}/'
+    | '/non-nested/suffix/{$baz}suffix/'
     | '/relative/link/nested/'
     | '/relative/link/path/'
     | '/relative/link/with-search/'
@@ -721,6 +973,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  NonNestedRouteRoute: typeof NonNestedRouteRouteWithChildren
   SearchParamsRouteRoute: typeof SearchParamsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   AnchorRoute: typeof AnchorRoute
@@ -817,6 +1070,13 @@ declare module '@tanstack/solid-router' {
       path: '/search-params'
       fullPath: '/search-params'
       preLoaderRoute: typeof SearchParamsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/non-nested': {
+      id: '/non-nested'
+      path: '/non-nested'
+      fullPath: '/non-nested'
+      preLoaderRoute: typeof NonNestedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -937,6 +1197,34 @@ declare module '@tanstack/solid-router' {
       fullPath: '/params-ps/non-nested'
       preLoaderRoute: typeof ParamsPsNonNestedRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/non-nested/suffix': {
+      id: '/non-nested/suffix'
+      path: '/suffix'
+      fullPath: '/non-nested/suffix'
+      preLoaderRoute: typeof NonNestedSuffixRouteRouteImport
+      parentRoute: typeof NonNestedRouteRoute
+    }
+    '/non-nested/prefix': {
+      id: '/non-nested/prefix'
+      path: '/prefix'
+      fullPath: '/non-nested/prefix'
+      preLoaderRoute: typeof NonNestedPrefixRouteRouteImport
+      parentRoute: typeof NonNestedRouteRoute
+    }
+    '/non-nested/path': {
+      id: '/non-nested/path'
+      path: '/path'
+      fullPath: '/non-nested/path'
+      preLoaderRoute: typeof NonNestedPathRouteRouteImport
+      parentRoute: typeof NonNestedRouteRoute
+    }
+    '/non-nested/named': {
+      id: '/non-nested/named'
+      path: '/named'
+      fullPath: '/non-nested/named'
+      preLoaderRoute: typeof NonNestedNamedRouteRouteImport
+      parentRoute: typeof NonNestedRouteRoute
     }
     '/redirect/$target/': {
       id: '/redirect/$target/'
@@ -1064,6 +1352,34 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ParamsPsNamedFooRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/non-nested/suffix/{$baz}suffix': {
+      id: '/non-nested/suffix/{$baz}suffix'
+      path: '/{$baz}suffix'
+      fullPath: '/non-nested/suffix/{$baz}suffix'
+      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRouteImport
+      parentRoute: typeof NonNestedSuffixRouteRoute
+    }
+    '/non-nested/prefix/prefix{$baz}': {
+      id: '/non-nested/prefix/prefix{$baz}'
+      path: '/prefix{$baz}'
+      fullPath: '/non-nested/prefix/prefix{$baz}'
+      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteImport
+      parentRoute: typeof NonNestedPrefixRouteRoute
+    }
+    '/non-nested/path/baz': {
+      id: '/non-nested/path/baz'
+      path: '/baz'
+      fullPath: '/non-nested/path/baz'
+      preLoaderRoute: typeof NonNestedPathBazRouteRouteImport
+      parentRoute: typeof NonNestedPathRouteRoute
+    }
+    '/non-nested/named/$baz': {
+      id: '/non-nested/named/$baz'
+      path: '/$baz'
+      fullPath: '/non-nested/named/$baz'
+      preLoaderRoute: typeof NonNestedNamedBazRouteRouteImport
+      parentRoute: typeof NonNestedNamedRouteRoute
+    }
     '/relative/useNavigate/with-search/': {
       id: '/relative/useNavigate/with-search/'
       path: '/with-search'
@@ -1106,12 +1422,96 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof RelativeLinkNestedIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
+    '/non-nested/suffix/{$baz}suffix/': {
+      id: '/non-nested/suffix/{$baz}suffix/'
+      path: '/'
+      fullPath: '/non-nested/suffix/{$baz}suffix/'
+      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixIndexRouteImport
+      parentRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRoute
+    }
+    '/non-nested/prefix/prefix{$baz}/': {
+      id: '/non-nested/prefix/prefix{$baz}/'
+      path: '/'
+      fullPath: '/non-nested/prefix/prefix{$baz}/'
+      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125IndexRouteImport
+      parentRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRoute
+    }
+    '/non-nested/path/baz/': {
+      id: '/non-nested/path/baz/'
+      path: '/'
+      fullPath: '/non-nested/path/baz/'
+      preLoaderRoute: typeof NonNestedPathBazIndexRouteImport
+      parentRoute: typeof NonNestedPathBazRouteRoute
+    }
+    '/non-nested/named/$baz/': {
+      id: '/non-nested/named/$baz/'
+      path: '/'
+      fullPath: '/non-nested/named/$baz/'
+      preLoaderRoute: typeof NonNestedNamedBazIndexRouteImport
+      parentRoute: typeof NonNestedNamedBazRouteRoute
+    }
     '/params-ps/non-nested/$foo_/$bar': {
       id: '/params-ps/non-nested/$foo_/$bar'
       path: '/$bar'
       fullPath: '/params-ps/non-nested/$foo/$bar'
       preLoaderRoute: typeof ParamsPsNonNestedFooBarRouteImport
       parentRoute: typeof ParamsPsNonNestedFooRouteRoute
+    }
+    '/non-nested/suffix/{$baz}suffix_/bar': {
+      id: '/non-nested/suffix/{$baz}suffix_/bar'
+      path: '/{$baz}suffix/bar'
+      fullPath: '/non-nested/suffix/{$baz}suffix/bar'
+      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixBarRouteImport
+      parentRoute: typeof NonNestedSuffixRouteRoute
+    }
+    '/non-nested/suffix/{$baz}suffix/foo': {
+      id: '/non-nested/suffix/{$baz}suffix/foo'
+      path: '/foo'
+      fullPath: '/non-nested/suffix/{$baz}suffix/foo'
+      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixFooRouteImport
+      parentRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRoute
+    }
+    '/non-nested/prefix/prefix{$baz}_/bar': {
+      id: '/non-nested/prefix/prefix{$baz}_/bar'
+      path: '/prefix{$baz}/bar'
+      fullPath: '/non-nested/prefix/prefix{$baz}/bar'
+      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125BarRouteImport
+      parentRoute: typeof NonNestedPrefixRouteRoute
+    }
+    '/non-nested/prefix/prefix{$baz}/foo': {
+      id: '/non-nested/prefix/prefix{$baz}/foo'
+      path: '/foo'
+      fullPath: '/non-nested/prefix/prefix{$baz}/foo'
+      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125FooRouteImport
+      parentRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRoute
+    }
+    '/non-nested/path/baz_/bar': {
+      id: '/non-nested/path/baz_/bar'
+      path: '/baz/bar'
+      fullPath: '/non-nested/path/baz/bar'
+      preLoaderRoute: typeof NonNestedPathBazBarRouteImport
+      parentRoute: typeof NonNestedPathRouteRoute
+    }
+    '/non-nested/path/baz/foo': {
+      id: '/non-nested/path/baz/foo'
+      path: '/foo'
+      fullPath: '/non-nested/path/baz/foo'
+      preLoaderRoute: typeof NonNestedPathBazFooRouteImport
+      parentRoute: typeof NonNestedPathBazRouteRoute
+    }
+    '/non-nested/named/$baz_/bar': {
+      id: '/non-nested/named/$baz_/bar'
+      path: '/$baz/bar'
+      fullPath: '/non-nested/named/$baz/bar'
+      preLoaderRoute: typeof NonNestedNamedBazBarRouteImport
+      parentRoute: typeof NonNestedNamedRouteRoute
+    }
+    '/non-nested/named/$baz/foo': {
+      id: '/non-nested/named/$baz/foo'
+      path: '/foo'
+      fullPath: '/non-nested/named/$baz/foo'
+      preLoaderRoute: typeof NonNestedNamedBazFooRouteImport
+      parentRoute: typeof NonNestedNamedBazRouteRoute
     }
     '/params-ps/named/$foo/$bar': {
       id: '/params-ps/named/$foo/$bar'
@@ -1157,6 +1557,147 @@ declare module '@tanstack/solid-router' {
     }
   }
 }
+
+interface NonNestedNamedBazRouteRouteChildren {
+  NonNestedNamedBazFooRoute: typeof NonNestedNamedBazFooRoute
+  NonNestedNamedBazIndexRoute: typeof NonNestedNamedBazIndexRoute
+}
+
+const NonNestedNamedBazRouteRouteChildren: NonNestedNamedBazRouteRouteChildren =
+  {
+    NonNestedNamedBazFooRoute: NonNestedNamedBazFooRoute,
+    NonNestedNamedBazIndexRoute: NonNestedNamedBazIndexRoute,
+  }
+
+const NonNestedNamedBazRouteRouteWithChildren =
+  NonNestedNamedBazRouteRoute._addFileChildren(
+    NonNestedNamedBazRouteRouteChildren,
+  )
+
+interface NonNestedNamedRouteRouteChildren {
+  NonNestedNamedBazRouteRoute: typeof NonNestedNamedBazRouteRouteWithChildren
+  NonNestedNamedBazBarRoute: typeof NonNestedNamedBazBarRoute
+}
+
+const NonNestedNamedRouteRouteChildren: NonNestedNamedRouteRouteChildren = {
+  NonNestedNamedBazRouteRoute: NonNestedNamedBazRouteRouteWithChildren,
+  NonNestedNamedBazBarRoute: NonNestedNamedBazBarRoute,
+}
+
+const NonNestedNamedRouteRouteWithChildren =
+  NonNestedNamedRouteRoute._addFileChildren(NonNestedNamedRouteRouteChildren)
+
+interface NonNestedPathBazRouteRouteChildren {
+  NonNestedPathBazFooRoute: typeof NonNestedPathBazFooRoute
+  NonNestedPathBazIndexRoute: typeof NonNestedPathBazIndexRoute
+}
+
+const NonNestedPathBazRouteRouteChildren: NonNestedPathBazRouteRouteChildren = {
+  NonNestedPathBazFooRoute: NonNestedPathBazFooRoute,
+  NonNestedPathBazIndexRoute: NonNestedPathBazIndexRoute,
+}
+
+const NonNestedPathBazRouteRouteWithChildren =
+  NonNestedPathBazRouteRoute._addFileChildren(
+    NonNestedPathBazRouteRouteChildren,
+  )
+
+interface NonNestedPathRouteRouteChildren {
+  NonNestedPathBazRouteRoute: typeof NonNestedPathBazRouteRouteWithChildren
+  NonNestedPathBazBarRoute: typeof NonNestedPathBazBarRoute
+}
+
+const NonNestedPathRouteRouteChildren: NonNestedPathRouteRouteChildren = {
+  NonNestedPathBazRouteRoute: NonNestedPathBazRouteRouteWithChildren,
+  NonNestedPathBazBarRoute: NonNestedPathBazBarRoute,
+}
+
+const NonNestedPathRouteRouteWithChildren =
+  NonNestedPathRouteRoute._addFileChildren(NonNestedPathRouteRouteChildren)
+
+interface NonNestedPrefixPrefixChar123bazChar125RouteRouteChildren {
+  NonNestedPrefixPrefixChar123bazChar125FooRoute: typeof NonNestedPrefixPrefixChar123bazChar125FooRoute
+  NonNestedPrefixPrefixChar123bazChar125IndexRoute: typeof NonNestedPrefixPrefixChar123bazChar125IndexRoute
+}
+
+const NonNestedPrefixPrefixChar123bazChar125RouteRouteChildren: NonNestedPrefixPrefixChar123bazChar125RouteRouteChildren =
+  {
+    NonNestedPrefixPrefixChar123bazChar125FooRoute:
+      NonNestedPrefixPrefixChar123bazChar125FooRoute,
+    NonNestedPrefixPrefixChar123bazChar125IndexRoute:
+      NonNestedPrefixPrefixChar123bazChar125IndexRoute,
+  }
+
+const NonNestedPrefixPrefixChar123bazChar125RouteRouteWithChildren =
+  NonNestedPrefixPrefixChar123bazChar125RouteRoute._addFileChildren(
+    NonNestedPrefixPrefixChar123bazChar125RouteRouteChildren,
+  )
+
+interface NonNestedPrefixRouteRouteChildren {
+  NonNestedPrefixPrefixChar123bazChar125RouteRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteWithChildren
+  NonNestedPrefixPrefixChar123bazChar125BarRoute: typeof NonNestedPrefixPrefixChar123bazChar125BarRoute
+}
+
+const NonNestedPrefixRouteRouteChildren: NonNestedPrefixRouteRouteChildren = {
+  NonNestedPrefixPrefixChar123bazChar125RouteRoute:
+    NonNestedPrefixPrefixChar123bazChar125RouteRouteWithChildren,
+  NonNestedPrefixPrefixChar123bazChar125BarRoute:
+    NonNestedPrefixPrefixChar123bazChar125BarRoute,
+}
+
+const NonNestedPrefixRouteRouteWithChildren =
+  NonNestedPrefixRouteRoute._addFileChildren(NonNestedPrefixRouteRouteChildren)
+
+interface NonNestedSuffixChar123bazChar125suffixRouteRouteChildren {
+  NonNestedSuffixChar123bazChar125suffixFooRoute: typeof NonNestedSuffixChar123bazChar125suffixFooRoute
+  NonNestedSuffixChar123bazChar125suffixIndexRoute: typeof NonNestedSuffixChar123bazChar125suffixIndexRoute
+}
+
+const NonNestedSuffixChar123bazChar125suffixRouteRouteChildren: NonNestedSuffixChar123bazChar125suffixRouteRouteChildren =
+  {
+    NonNestedSuffixChar123bazChar125suffixFooRoute:
+      NonNestedSuffixChar123bazChar125suffixFooRoute,
+    NonNestedSuffixChar123bazChar125suffixIndexRoute:
+      NonNestedSuffixChar123bazChar125suffixIndexRoute,
+  }
+
+const NonNestedSuffixChar123bazChar125suffixRouteRouteWithChildren =
+  NonNestedSuffixChar123bazChar125suffixRouteRoute._addFileChildren(
+    NonNestedSuffixChar123bazChar125suffixRouteRouteChildren,
+  )
+
+interface NonNestedSuffixRouteRouteChildren {
+  NonNestedSuffixChar123bazChar125suffixRouteRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRouteWithChildren
+  NonNestedSuffixChar123bazChar125suffixBarRoute: typeof NonNestedSuffixChar123bazChar125suffixBarRoute
+}
+
+const NonNestedSuffixRouteRouteChildren: NonNestedSuffixRouteRouteChildren = {
+  NonNestedSuffixChar123bazChar125suffixRouteRoute:
+    NonNestedSuffixChar123bazChar125suffixRouteRouteWithChildren,
+  NonNestedSuffixChar123bazChar125suffixBarRoute:
+    NonNestedSuffixChar123bazChar125suffixBarRoute,
+}
+
+const NonNestedSuffixRouteRouteWithChildren =
+  NonNestedSuffixRouteRoute._addFileChildren(NonNestedSuffixRouteRouteChildren)
+
+interface NonNestedRouteRouteChildren {
+  NonNestedNamedRouteRoute: typeof NonNestedNamedRouteRouteWithChildren
+  NonNestedPathRouteRoute: typeof NonNestedPathRouteRouteWithChildren
+  NonNestedPrefixRouteRoute: typeof NonNestedPrefixRouteRouteWithChildren
+  NonNestedSuffixRouteRoute: typeof NonNestedSuffixRouteRouteWithChildren
+}
+
+const NonNestedRouteRouteChildren: NonNestedRouteRouteChildren = {
+  NonNestedNamedRouteRoute: NonNestedNamedRouteRouteWithChildren,
+  NonNestedPathRouteRoute: NonNestedPathRouteRouteWithChildren,
+  NonNestedPrefixRouteRoute: NonNestedPrefixRouteRouteWithChildren,
+  NonNestedSuffixRouteRoute: NonNestedSuffixRouteRouteWithChildren,
+}
+
+const NonNestedRouteRouteWithChildren = NonNestedRouteRoute._addFileChildren(
+  NonNestedRouteRouteChildren,
+)
 
 interface SearchParamsRouteRouteChildren {
   SearchParamsDefaultRoute: typeof SearchParamsDefaultRoute
@@ -1363,6 +1904,7 @@ const ParamsPsNamedFooRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  NonNestedRouteRoute: NonNestedRouteRouteWithChildren,
   SearchParamsRouteRoute: SearchParamsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   AnchorRoute: AnchorRoute,

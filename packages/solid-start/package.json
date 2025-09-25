@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-start",
-  "version": "1.131.44",
+  "version": "1.132.7",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -27,69 +27,39 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:build",
     "test:build": "exit 0; vitest",
-    "build": "vite build"
+    "build": "vite build && vite build -c vite.config.server-entry.ts"
   },
   "type": "module",
-  "types": "dist/esm/client.d.ts",
+  "types": "dist/esm/index.d.ts",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/esm/client.d.ts",
-        "default": "./dist/esm/client.js"
-      },
-      "require": {
-        "types": "./dist/cjs/client.d.cts",
-        "default": "./dist/cjs/client.cjs"
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
       }
     },
     "./client": {
       "import": {
         "types": "./dist/esm/client.d.ts",
         "default": "./dist/esm/client.js"
-      },
-      "require": {
-        "types": "./dist/cjs/client.d.cts",
-        "default": "./dist/cjs/client.cjs"
       }
     },
     "./server": {
       "import": {
         "types": "./dist/esm/server.d.ts",
         "default": "./dist/esm/server.js"
-      },
-      "require": {
-        "types": "./dist/cjs/server.d.cts",
-        "default": "./dist/cjs/server.cjs"
       }
     },
     "./plugin/vite": {
       "import": {
-        "types": "./dist/esm/plugin-vite.d.ts",
-        "default": "./dist/esm/plugin-vite.js"
-      },
-      "require": {
-        "types": "./dist/cjs/plugin-vite.d.cts",
-        "default": "./dist/cjs/plugin-vite.cjs"
+        "types": "./dist/esm/plugin/vite.d.ts",
+        "default": "./dist/esm/plugin/vite.js"
       }
     },
-    "./server-functions-client": {
+    "./server-entry": {
       "import": {
-        "types": "./dist/esm/server-functions-client.d.ts",
-        "default": "./dist/esm/server-functions-client.js"
-      },
-      "require": {
-        "types": "./dist/cjs/server-functions-client.d.cts",
-        "default": "./dist/cjs/server-functions-client.cjs"
-      }
-    },
-    "./server-functions-server": {
-      "import": {
-        "types": "./dist/esm/server-functions-server.d.ts",
-        "default": "./dist/esm/server-functions-server.js"
-      },
-      "require": {
-        "types": "./dist/cjs/server-functions-server.d.cts",
-        "default": "./dist/cjs/server-functions-server.cjs"
+        "types": "./dist/default-entry/esm/server.d.ts",
+        "default": "./dist/default-entry/esm/server.js"
       }
     },
     "./package.json": "./package.json"
@@ -100,21 +70,22 @@
     "src"
   ],
   "engines": {
-    "node": ">=12"
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "@tanstack/solid-start-client": "workspace:*",
     "@tanstack/solid-start-server": "workspace:*",
-    "@tanstack/solid-start-plugin": "workspace:*",
-    "@tanstack/start-server-functions-client": "workspace:*",
-    "@tanstack/start-server-functions-server": "workspace:*"
+    "@tanstack/start-plugin-core": "workspace:*",
+    "@tanstack/solid-router": "workspace:*",
+    "@tanstack/start-client-core": "workspace:*",
+    "pathe": "^2.0.3"
+  },
+  "devDependencies": {
+    "@tanstack/router-utils": "workspace:*",
+    "vite": "^7.1.1"
   },
   "peerDependencies": {
     "solid-js": ">=1.0.0",
-    "vite": ">=6.0.0",
-    "vite-plugin-solid": ">=2.11.6"
-  },
-  "devDependencies": {
-    "esbuild": "^0.25.0"
+    "vite": ">=7.0.0"
   }
 }

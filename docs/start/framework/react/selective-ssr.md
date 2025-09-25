@@ -23,24 +23,16 @@ TanStack Start's [SPA mode](../spa-mode) completely disables server-side executi
 
 ## Configuration
 
-You can control how a route is handled during the initial server request using the `ssr` property. If this property is not set, it defaults to `true`. You can change this default using the `defaultSsr` option in `createRouter`:
+You can control how a route is handled during the initial server request using the `ssr` property. If this property is not set, it defaults to `true`. You can change this default using the `defaultSsr` option in `createStart`:
 
 ```tsx
-// src/router.tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
+// src/start.ts
+import { createStart } from '@tanstack/react-start'
 
-export function createRouter() {
-  const router = createTanStackRouter({
-    routeTree,
-    scrollRestoration: true,
-    defaultPendingComponent: () => <div>Loading...</div>,
-    // Disable SSR by default
-    defaultSsr: false,
-  })
-
-  return router
-}
+export const startInstance = createStart(() => ({
+  // Disable SSR by default
+  defaultSsr: false,
+}))
 ```
 
 ### `ssr: true`

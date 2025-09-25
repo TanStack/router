@@ -99,6 +99,8 @@ function RouteComp({
     RouterState<
       Route<
         any,
+        any,
+        any,
         '/',
         '/',
         string,
@@ -111,7 +113,9 @@ function RouteComp({
         {},
         undefined,
         any,
-        FileRouteTypes
+        FileRouteTypes,
+        unknown,
+        undefined
       >,
       MakeRouteMatchUnion
     >

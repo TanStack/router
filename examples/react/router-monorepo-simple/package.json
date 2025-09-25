@@ -8,9 +8,9 @@
     "dev": "pnpm router build && pnpm post-feature build && pnpm app dev"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.131.44",
-    "@tanstack/react-router-devtools": "^1.131.44",
-    "@tanstack/router-plugin": "^1.131.44",
+    "@tanstack/react-router": "^1.132.7",
+    "@tanstack/react-router-devtools": "^1.132.7",
+    "@tanstack/router-plugin": "^1.132.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1"
@@ -21,7 +21,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.3.5",
+    "vite": "^7.1.1",
     "vite-plugin-dts": "^4.5.0"
   },
   "keywords": [],

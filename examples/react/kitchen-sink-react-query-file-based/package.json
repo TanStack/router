@@ -11,9 +11,9 @@
   "dependencies": {
     "@tanstack/react-query": "^5.66.0",
     "@tanstack/react-query-devtools": "^5.66.0",
-    "@tanstack/react-router": "^1.131.44",
-    "@tanstack/react-router-devtools": "^1.131.44",
-    "@tanstack/router-plugin": "^1.131.44",
+    "@tanstack/react-router": "^1.132.7",
+    "@tanstack/react-router-devtools": "^1.132.7",
+    "@tanstack/router-plugin": "^1.132.7",
     "immer": "^10.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -28,6 +28,6 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
-    "vite": "^6.3.5"
+    "vite": "^7.1.1"
   }
 }

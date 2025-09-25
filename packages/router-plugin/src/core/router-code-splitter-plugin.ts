@@ -61,11 +61,18 @@ plugins: [
 const PLUGIN_NAME = 'unplugin:router-code-splitter'
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
-  Partial<Config> | undefined
+  Partial<Config | (() => Config)> | undefined
 > = (options = {}, { framework }) => {
   let ROOT: string = process.cwd()
-  let userConfig = options as Config
+  let userConfig: Config
 
+  function initUserConfig() {
+    if (typeof options === 'function') {
+      userConfig = options()
+    } else {
+      userConfig = getConfig(options, ROOT)
+    }
+  }
   const isProduction = process.env.NODE_ENV === 'production'
 
   const getGlobalCodeSplitGroupings = () => {
@@ -124,8 +131,11 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       targetFramework: userConfig.target,
       filename: id,
       id,
-      deleteNodes: new Set(userConfig.codeSplittingOptions?.deleteNodes),
-      addHmr: (options.codeSplittingOptions?.addHmr ?? true) && !isProduction,
+      deleteNodes: userConfig.codeSplittingOptions?.deleteNodes
+        ? new Set(userConfig.codeSplittingOptions.deleteNodes)
+        : undefined,
+      addHmr:
+        (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction,
     })
 
     if (debug) {
@@ -219,7 +229,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       vite: {
         configResolved(config) {
           ROOT = config.root
-          userConfig = getConfig(options, ROOT)
+          initUserConfig()
         },
         applyToEnvironment(environment) {
           if (userConfig.plugin?.vite?.environmentName) {
@@ -231,12 +241,12 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       rspack() {
         ROOT = process.cwd()
-        userConfig = getConfig(options, ROOT)
+        initUserConfig()
       },
 
       webpack(compiler) {
         ROOT = process.cwd()
-        userConfig = getConfig(options, ROOT)
+        initUserConfig()
 
         if (compiler.options.mode === 'production') {
           compiler.hooks.done.tap(PLUGIN_NAME, () => {

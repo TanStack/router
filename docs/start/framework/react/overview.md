@@ -3,125 +3,47 @@ id: overview
 title: TanStack Start Overview
 ---
 
+> [!NOTE]
+> TanStack Start is currently in the **Release Candidate** stage! This means it is considered feature-complete and its API is considered stable.
+> **This does not mean it is bug-free or without issues, which is why we invite you to try it out and provide feedback!**
+> The road to v1 will likely be a quick one, so don't wait too long to try it out!
+
 TanStack Start is a full-stack React framework powered by TanStack Router. It provides a full-document SSR, streaming, server functions, bundling, and more. Thanks to [Vite](https://vite.dev/), it's ready to develop and deploy to any hosting provider or runtime you want!
 
-## Router or Start?
+## Dependencies
 
-TanStack Router is a powerful, type-safe, and full-featured routing system for React applications. It is designed to handle the beefiest of full-stack routing requirements with ease. TanStack Start builds on top of Router's type system to provide type-safe full-stack APIs that keep you in the fast lane.
+TanStack Start is built on two key technologies:
 
-What you get with TanStack Router:
+- **[TanStack Router](https://tanstack.com/router)**: A type-safe router for building web applications with advanced features like nested routing, search params, and data loading
+- **[Vite](https://vite.dev/)**: A modern build tool that provides fast development with hot module replacement and optimized production builds
 
-- 100% inferred TypeScript support
-- Typesafe navigation
-- Nested Routing and pathless layout routes
-- Built-in Route Loaders w/ SWR Caching
-- Designed for client-side data caches (TanStack Query, SWR, etc.)
-- Automatic route prefetching
-- Asynchronous route elements and error boundaries
-- File-based Route Generation
-- Typesafe JSON-first Search Params state management APIs
-- Path and Search Parameter Schema Validation
-- Search Param Navigation APIs
-- Custom Search Param parser/serializer support
-- Search param middleware
-- Route matching/loading middleware
+## Should I use TanStack Start or just TanStack Router?
 
-What you get with TanStack Start:
+90% of any framework usually comes down to the router, and TanStack Start is no different. **TanStack Start relies 100% on TanStack Router for its routing system.** In addition to TanStack Router's amazing features, Start enables even more powerful features:
 
-- Full-document SSR
-- Streaming
-- Server Functions / RPCs
-- Bundling
-- Deployment
-- Full-Stack Type Safety
+- **Full-document SSR** - Server-side rendering for better performance and SEO
+- **Streaming** - Progressive page loading for improved user experience
+- **Server Routes & API Routes** - Build backend endpoints alongside your frontend
+- **Server Functions** - Type-safe RPCs between client and server
+- **Middleware & Context** - Powerful request/response handling and data injection
+- **Full-Stack Bundling** - Optimized builds for both client and server code
+- **Universal Deployment** - Deploy to any Vite-compatible hosting provider
+- **End-to-End Type Safety** - Full TypeScript support across the entire stack
 
-**In summary, use TanStack Router for client-side routing and TanStack Start for full-stack routing.**
+That said, if you **know with certainty** that you will not need any of the above features, then you may want to consider using TanStack Router alone, which is still a powerful and type-safe SPA routing upgrade over other routers and frameworks.
 
-## How does it work?
+## Are there limitations?
 
-TanStack Start uses [Vite](https://vitejs.dev/) to bundle and deploy your application and empowers amazing features like:
+The only relevant limitation is that TanStack Start does not currently support React Server Components, **but we are actively working on integration and expect to support them in the near future.**
 
-- Provide a unified API for SSR, streaming, and hydration
-- Extract server-only code from your client-side code (e.g. server functions)
-- Bundle your application for deployment to any hosting provider
-
-## When should I use it?
-
-TanStack Start is perfect for you if you want to build a full-stack React application with the following requirements:
-
-- Full-document SSR & Hydration
-- Streaming
-- Server Functions / RPCs
-- Full-Stack Type Safety
-- Robust Routing
-- Rich Client-Side Interactivity
-
-## When might I not want to use it?
-
-TanStack Start is not for you if:
-
-- Your goal is a server-rendered site with zero JS or minimal client-side interactivity
-- You're looking for a React-Server-Component-first framework. (We'll support RSCs soon in our own awesome flavor!)
+Otherwise, TanStack Start provides the same capability as other full-stack frameworks like Next.js, Remix, etc, with even more features and a more powerful developer experience.
 
 ## How is TanStack Start funded?
 
-TanStack works closely with our partners to provide the best possible developer experience while also providing solutions that work anywhere and are vetted by industry experts. Each of our partners plays a unique role in the TanStack ecosystem:
+TanStack is 100% open source, free to use, and always will be. It is built and maintained by an extremely talented and dedicated community of developers and software engineers. TanStack.com (also open source) is owned by TanStack LLC, a privately held company, 100% bootstrapped and self-funded. We are not venture-backed and have never sought investors. To support the development of TanStack Start and other TanStack libraries, TanStack.com partners with [these amazing companies](https://tanstack.com/partners?status=active&libraries=%5B%22start%22%5D) who offer both financial support and resources to help us continue to build the best possible developer experience for the web community:
 
-- **Netlify**
-  <a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-dark.svg" style="height: 90px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg" style="height: 90px;">
-    <img alt="Netlify logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/netlify-light.svg" style="height: 90px;">
-  </picture>
-  </a>
-  The leading hosting platform for web applications that provides a fast, secure, and reliable environment for deploying your web applications. We work closely with Netlify to ensure that TanStack Start applications not only deploy seamlessly to their platform, but also implement best practices for performance, security, and reliability regardless of where you end up deploying.
-- **Neon**
-  <a href="https://neon.tech?utm_source=tanstack" alt="Neon Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-dark.svg" style="height: 60px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-light.svg" style="height: 60px;">
-  <img alt="Neon logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/neon-light.svg" style="height: 60px;">
-  </picture>
-  </a>
-  A serverless, autoscaling Postgres solution purpose-built for modern full-stack apps. Neon offers rich integration opportunities with TanStack Start, including server functions and database-backed routing. Together, we’re simplifying the database experience for developers using TanStack.
-- **Clerk**
-  <a href="https://go.clerk.com/wOwHtuJ" alt="Clerk Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-dark.svg" style="height: 40px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-light.svg" style="height: 40px;">
-  <img alt="Clerk logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/clerk-logo-light.svg" style="height: 40px;">
-  </picture>
-  </a>
-  The best possible authentication experience for modern web applications, including TanStack Start applications. Clerk provides TanStack Start users with first-class integrations and solutions to auth and collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in auth best practices.
-- **Convex**
-  <a href="https://convex.dev?utm_source=tanstack" alt="Convex Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-white.svg" style="height: 40px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-color.svg" style="height: 40px;">
-  <img alt="Convex logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/convex-color.svg" style="height: 40px;">
-  </picture>
-  </a>
-  A serverless database platform that integrates seamlessly with TanStack Start. Convex is designed to simplify the process of managing your application's data and provides a real-time, scalable, and transactional data backend that works well with TanStack Start applications. Convex also collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in database best practices.
-- **Sentry**
-  <a href="https://sentry.io?utm_source=tanstack" alt='Sentry Logo'>
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/sentry-wordmark-light.svg" style="height: 60px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/sentry-wordmark-dark.svg" style="height: 60px;">
-  <img alt="Sentry logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/sentry-wordmark-light.svg" style="height: 60px;">
-  </picture>
-  </a>
-  A powerful, full-featured observability platform that integrates seamlessly with TanStack Start. Sentry helps developers monitor and fix crashes in real-time and provides insights into your application's performance and error tracking. Sentry collaborates closely with the TanStack team to ensure that TanStack Start provides APIs that are up to date with the latest in observability best practices.
-- **Prisma**
-  <a href="https://prisma.io?utm_source=tanstack&via=tanstack" alt="Prisma Logo">
-  <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-dark.svg" style="height: 60px;">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" style="height: 60px;">
-  <img alt="Prisma logo" src="https://raw.githubusercontent.com/tanstack/tanstack.com/main/src/images/prisma-light.svg" style="height: 60px;">
-  </picture>
-  </a>
-  Skip the database setup, get to building. Prisma Postgres provisions production-ready Postgres databases in seconds—no resource config, no infrastructure planning, no late-night "why is my connection pool maxed out?" debugging sessions. Just connect your TanStack app and start building features that matter.
+<iframe src="https://tanstack.com/partners-embed" style="aspect-ratio: 1/2; width: 100%;"></iframe>
 
 ## Ready to get started?
 
-Proceed to the next page to learn how to install TanStack Start and create your first app!
+Go to the next page to learn how to install TanStack Start and create your first app!
