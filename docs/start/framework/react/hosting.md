@@ -86,6 +86,28 @@ pnpm add wrangler -D
 }
 ```
 
+5. Modify package.json script
+
+```json
+
+{
+    "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "start": "node .output/server/index.mjs",
+    // ============ 👇 add this line ============
+    "deploy": "wrangler deploy"
+  },
+}
+
+```
+
+6. Build and deploy
+
+```bash
+pnpm run build && pnpm run deploy
+```
+
 Deploy your application to Cloudflare Workers using their one-click deployment process, and you're ready to go!
 
 ### Netlify ⭐ _Official Partner_
