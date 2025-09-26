@@ -79,6 +79,7 @@ export class FileRoute<
   >(
     options?: FileBaseRouteOptions<
       TParentRoute,
+      AnyRoute,
       TId,
       TPath,
       TSearchValidator,

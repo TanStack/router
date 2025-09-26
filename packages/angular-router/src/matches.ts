@@ -10,7 +10,7 @@ import {
 } from '@angular/core'
 import { toSignal } from '@angular/core/rxjs-interop'
 import { combineLatest, distinctUntilChanged, map, of, switchMap } from 'rxjs'
-import { shallow } from '@tanstack/router-core'
+import { shallow } from './utils'
 import { DefaultError } from './default-error'
 import { MATCH_ID, RouteMatch } from './outlet'
 import { ERROR_COMPONENT_CONTEXT } from './route'
@@ -42,7 +42,7 @@ export class Matches {
   private matchLoad$ = this.rootMatchId$.pipe(
     switchMap((rootMatchId) => {
       if (!rootMatchId) return of({ pending: false })
-      const loadPromise = this.router.getMatch(rootMatchId)?.loadPromise
+      const loadPromise = this.router.getMatch(rootMatchId)?._nonReactive.loadPromise;
       if (!loadPromise) return of({ pending: false })
       return of({ pending: true }).pipe(
         switchMap(() => loadPromise.then(() => ({ pending: false }))),

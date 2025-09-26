@@ -14,12 +14,12 @@ import {
   exactPathTest,
   preloadWarning,
   removeTrailingSlash,
-  shallow,
 } from '@tanstack/router-core'
 import { combineLatest, distinctUntilChanged, map } from 'rxjs'
 import { matches$ } from './matches'
 import { injectRouter } from './router'
 import { routerState, routerState$ } from './router-state'
+import { shallow } from './utils'
 
 import type {
   AnyRouter,

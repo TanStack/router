@@ -29,9 +29,9 @@
     "test:unit": "vitest"
   },
   "peerDependencies": {
-    "@angular/common": ">=19.0.0",
-    "@angular/core": ">=19.0.0",
-    "@angular/platform-browser-dynamic": ">=19.0.0",
+    "@angular/common": ">=20.0.0",
+    "@angular/core": ">=20.0.0",
+    "@angular/platform-browser-dynamic": ">=20.0.0",
     "@tanstack/angular-router": "workspace:*",
     "rxjs": "^7.8.0"
   },
@@ -48,7 +48,7 @@
     "@analogjs/vite-plugin-angular": "1.15.1-beta.3",
     "@analogjs/vitest-angular": "1.15.1-beta.3",
     "@tanstack/angular-router": "workspace:*",
-    "ng-packagr": "^19.2.0",
+    "ng-packagr": "^20.0.0",
     "premove": "^4.0.0"
   },
   "sideEffects": false,

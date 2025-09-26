@@ -17,9 +17,7 @@ import {
   getLocationChangeInfo,
   isNotFound,
   isRedirect,
-  pick,
   rootRouteId,
-  shallow,
 } from '@tanstack/router-core'
 import {
   catchError,
@@ -41,6 +39,7 @@ import { isDevMode } from './is-dev-mode'
 import { ERROR_COMPONENT_CONTEXT, NOT_FOUND_COMPONENT_CONTEXT } from './route'
 import { injectRouter } from './router'
 import { routerState$ } from './router-state'
+import { pick, shallow } from './utils'
 
 import type { ComponentRef, Type } from '@angular/core'
 import type { Subscription } from 'rxjs'
@@ -165,7 +164,7 @@ export class RouteMatch {
   private matchLoad$ = this.match$.pipe(
     withLatestFrom(this.matchRoute$),
     switchMap(([match, matchRoute]) => {
-      const loadPromise = this.router.getMatch(match.id)?.loadPromise
+      const loadPromise = this.router.getMatch(match.id)?._nonReactive.loadPromise
       if (!loadPromise) return Promise.resolve() as any
 
       if (match.status === 'pending') {
@@ -174,7 +173,7 @@ export class RouteMatch {
           this.router.options.defaultPendingMinMs
         let minPendingPromise = this.router.getMatch(
           match.id,
-        )?.minPendingPromise
+        )?._nonReactive.minPendingPromise
 
         if (pendingMinMs && !minPendingPromise) {
           // Create a promise that will resolve after the minPendingMs
@@ -429,7 +428,7 @@ export class Outlet {
   private matchLoad$ = this.childMatchId$.pipe(
     switchMap((childMatchId) => {
       if (!childMatchId) return Promise.resolve() as any
-      const loadPromise = this.router.getMatch(childMatchId)?.loadPromise
+      const loadPromise = this.router.getMatch(childMatchId)?._nonReactive.loadPromise
       if (!loadPromise) return Promise.resolve() as any
       return loadPromise
     }),

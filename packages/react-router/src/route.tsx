@@ -26,7 +26,6 @@ import type {
   ResolveFullPath,
   ResolveId,
   ResolveParams,
-  RootRoute as RootRouteCore,
   RootRouteId,
   RootRouteOptions,
   RouteConstraints,
@@ -473,21 +472,6 @@ export class RootRoute<
     TServerMiddlewares,
     THandlers
   >
-  implements
-    RootRouteCore<
-      TRegister,
-      TSearchValidator,
-      TRouterContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      TLoaderDeps,
-      TLoaderFn,
-      TChildren,
-      TFileRouteTypes,
-      TSSR,
-      TServerMiddlewares,
-      THandlers
-    >
 {
   /**
    * @deprecated `RootRoute` is now an internal implementation detail. Use `createRootRoute()` instead.

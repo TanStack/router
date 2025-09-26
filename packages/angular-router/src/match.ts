@@ -8,7 +8,7 @@ import {
 import { toObservable, toSignal } from '@angular/core/rxjs-interop'
 import { combineLatest, distinctUntilChanged, map } from 'rxjs'
 import invariant from 'tiny-invariant'
-import { shallow } from '@tanstack/router-core'
+import { shallow } from './utils'
 import { MATCH_ID } from './outlet'
 import { routerState$ } from './router-state'
 

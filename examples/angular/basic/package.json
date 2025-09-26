@@ -4,12 +4,12 @@
   "scripts": {},
   "private": true,
   "dependencies": {
-    "@angular/common": "^19.2.0",
-    "@angular/compiler": "^19.2.0",
-    "@angular/core": "^19.2.0",
-    "@angular/forms": "^19.2.0",
-    "@angular/platform-browser": "^19.2.0",
-    "@angular/platform-browser-dynamic": "^19.2.0",
+    "@angular/common": "^20.0.0",
+    "@angular/compiler": "^20.0.0",
+    "@angular/core": "^20.0.0",
+    "@angular/forms": "^20.0.0",
+    "@angular/platform-browser": "^20.0.0",
+    "@angular/platform-browser-dynamic": "^20.0.0",
     "@tanstack/angular-router": "workspace:*",
     "@tanstack/angular-router-devtools": "workspace:*",
     "@tanstack/history": "workspace:*",
@@ -22,8 +22,8 @@
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
-    "@angular/build": "^19.2.5",
-    "@angular/compiler-cli": "^19.2.0",
-    "typescript": "~5.7.2"
+    "@angular/build": "^20.0.0",
+    "@angular/compiler-cli": "^20.0.0",
+    "typescript": "~5.8.0"
   }
 }

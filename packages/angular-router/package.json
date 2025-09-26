@@ -29,9 +29,9 @@
     "test:unit": "vitest"
   },
   "peerDependencies": {
-    "@angular/common": ">=19.0.0",
-    "@angular/core": ">=19.0.0",
-    "@angular/platform-browser-dynamic": ">=19.0.0",
+    "@angular/common": ">=20.0.0",
+    "@angular/core": ">=20.0.0",
+    "@angular/platform-browser-dynamic": ">=20.0.0",
     "rxjs": "^7.8.0"
   },
   "dependencies": {
@@ -47,13 +47,14 @@
     "dist"
   ],
   "devDependencies": {
-    "@analogjs/vite-plugin-angular": "1.15.1-beta.3",
-    "@analogjs/vitest-angular": "1.15.1-beta.3",
+    "@analogjs/vite-plugin-angular": "1.21.1",
+    "@analogjs/vitest-angular": "1.21.1",
     "@testing-library/angular": "^17.3.7",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
-    "ng-packagr": "^19.2.0",
+    "ng-packagr": "^20.0.0",
     "premove": "^4.0.0",
+    "typescript": "~5.8.0",
     "zod": "^3.23.8"
   },
   "sideEffects": false,

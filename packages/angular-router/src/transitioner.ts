@@ -13,9 +13,9 @@ import {
   BehaviorSubject,
   Subscription,
   combineLatest,
+  distinctUntilChanged,
   map,
   tap,
-  distinctUntilChanged,
 } from 'rxjs'
 import { toSignal } from '@angular/core/rxjs-interop'
 import { injectRouter } from './router'

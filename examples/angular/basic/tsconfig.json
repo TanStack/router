@@ -16,7 +16,7 @@
     "importHelpers": true,
     "target": "ESNext",
     "moduleResolution": "Bundler",
-    "module": "ESNext"
+    "module": "preserve"
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

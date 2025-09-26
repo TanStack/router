@@ -5,7 +5,6 @@ import {
   runInInjectionContext,
 } from '@angular/core'
 import { toSignal } from '@angular/core/rxjs-interop'
-import { shallow } from '@tanstack/router-core'
 import { distinctUntilChanged, map } from 'rxjs'
 import { injectRouterState } from './router'
 
@@ -37,7 +36,7 @@ export function routerState$<
 >({
   select,
   injector,
-  equal = shallow,
+  equal,
 }: RouterStateOptions<TRouter, TSelected>): Observable<
   RouterStateResult<TRouter, TSelected>
 > {
@@ -64,7 +63,7 @@ export function routerState<
 >({
   select,
   injector,
-  equal = shallow,
+  equal,
 }: RouterStateOptions<TRouter, TSelected> = {}): Signal<
   RouterStateResult<TRouter, TSelected>
 > {
