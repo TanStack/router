@@ -28,7 +28,7 @@
     "@tanstack/router-plugin": "^1.132.7",
     "@types/express": "^4.17.21",
     "typescript": "^5.7.2",
-    "vite": "^7.1.1",
+    "vite": "^7.1.7",
     "vite-plugin-solid": "^2.11.8"
   }
 }

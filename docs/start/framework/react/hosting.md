@@ -214,10 +214,10 @@ npm run start
 Make sure that your `react` and `react-dom` packages are set to version 19.0.0 or higher in your `package.json` file. If not, run the following command to upgrade the packages:
 
 ```sh
-npm install react@rc react-dom@rc
+bun install react@19 react-dom@19
 ```
 
-Ensure your `vite.config.ts` file is correct.
+Ensure your `vite.config.ts` file is correct:
 
 ```ts
 // vite.config.ts
@@ -230,14 +230,81 @@ export default defineConfig({
 })
 ```
 
-Then you can run the following command to build and start your application:
+#### Production Server with Bun
+
+To run TanStack Start applications in production with Bun, you need a custom server implementation.
+
+We've created an optimized production server that provides intelligent static asset loading with configurable memory management.
+
+**Features:**
+
+- **Hybrid loading strategy**: Small files (<5MB by default) are preloaded into memory, large files are served on-demand
+- **Configurable file filtering**: Use include/exclude patterns to control which files are preloaded
+- **Production-ready caching headers**: Automatic optimization for static assets
+- **Memory-efficient**: Smart memory management prevents excessive RAM usage
+
+**Quick Setup:**
+
+1. Copy the [`server.ts`](../../../../examples/react/start-bun/server.ts) file from the example in this repository to your project root
+
+2. Build your application:
+
+   ```sh
+   bun run build
+   ```
+
+3. Start the server:
+
+   ```sh
+   bun run server.ts
+   ```
+
+**Configuration:**
+
+The server can be configured using environment variables:
 
 ```sh
-bun run build
+# Basic usage
+bun run server.ts
+
+# Custom port
+PORT=8080 bun run server.ts
+
+# Optimize for minimal memory usage (1MB preload limit)
+STATIC_PRELOAD_MAX_BYTES=1048576 bun run server.ts
+
+# Preload only critical assets
+STATIC_PRELOAD_INCLUDE="*.js,*.css" \
+STATIC_PRELOAD_EXCLUDE="*.map,vendor-*" \
+bun run server.ts
+
+# Debug mode with verbose logging
+STATIC_PRELOAD_VERBOSE=true bun run server.ts
 ```
 
-You're now ready to deploy your application to a Bun server. You can start your application by running:
+**Environment Variables:**
 
-```sh
-bun run .output/server/index.mjs
+- `PORT`: Server port (default: 3000)
+- `STATIC_PRELOAD_MAX_BYTES`: Maximum file size to preload in bytes (default: 5242880 = 5MB)
+- `STATIC_PRELOAD_INCLUDE`: Comma-separated glob patterns for files to include
+- `STATIC_PRELOAD_EXCLUDE`: Comma-separated glob patterns for files to exclude
+- `STATIC_PRELOAD_VERBOSE`: Enable detailed logging (set to "true")
+
+**Example Output:**
+
+```txt
+📦 Loading static assets from ./dist/client...
+   Max preload size: 5.00 MB
+
+📁 Preloaded into memory:
+   /assets/index-a1b2c3d4.js           45.23 kB │ gzip:  15.83 kB
+   /assets/index-e5f6g7h8.css           12.45 kB │ gzip:   4.36 kB
+
+💾 Served on-demand:
+   /assets/vendor-i9j0k1l2.js          245.67 kB │ gzip:  86.98 kB
+
+✅ Preloaded 2 files (57.68 KB) into memory
+🚀 Server running at http://localhost:3000
 ```
+
+For a complete working example, check out the [TanStack Start + Bun example](../../../../examples/react/start-bun) in this repository.

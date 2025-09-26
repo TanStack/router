@@ -133,7 +133,7 @@ export function createStartHandler<TRegister = Register>(
 
       // If not, it should just use the original fetch
       return originalFetch(input, init)
-    }
+    } as typeof fetch
 
     const url = new URL(request.url)
     const href = url.href.replace(url.origin, '')
