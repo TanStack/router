@@ -84,6 +84,7 @@
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
+    "@tanstack/start-server-core": "workspace:*",
     "pathe": "^2.0.3"
   },
   "devDependencies": {

@@ -298,7 +298,7 @@ export function TanStackStartVitePluginCore(
       },
       server: {
         getRuntimeCode: () =>
-          `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server'`,
+          `import { createServerRpc } from '@tanstack/${corePluginOpts.framework}-start/server-rpc'`,
         replacer: (d) => `createServerRpc('${d.functionId}', ${d.fn})`,
         envName: VITE_ENVIRONMENT_NAMES.server,
       },

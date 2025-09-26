@@ -56,6 +56,12 @@
         "default": "./dist/esm/server.js"
       }
     },
+    "./server-rpc": {
+      "import": {
+        "types": "./dist/esm/server-rpc.d.ts",
+        "default": "./dist/esm/server-rpc.js"
+      }
+    },
     "./plugin/vite": {
       "import": {
         "types": "./dist/esm/plugin/vite.d.ts",
@@ -85,6 +91,7 @@
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/react-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
+    "@tanstack/start-server-core": "workspace:*",
     "pathe": "^2.0.3"
   },
   "peerDependencies": {

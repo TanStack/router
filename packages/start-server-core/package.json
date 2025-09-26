@@ -47,6 +47,12 @@
         "default": "./dist/esm/index.js"
       }
     },
+    "./createServerRpc": {
+      "import": {
+        "types": "./dist/esm/createServerRpc.d.ts",
+        "default": "./dist/esm/createServerRpc.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
