@@ -1,162 +1,77 @@
 import * as React from 'react'
-import { useRouter } from './useRouter'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type { Asset } from '@tanstack/router-core'
 
-interface ScriptAttrs {
-  [key: string]: string | boolean | undefined
-  src?: string
-  suppressHydrationWarning?: boolean
-}
-
-export function Asset({
-  tag,
-  attrs,
+export function Asset<T>({
+  asset,
   children,
-}: RouterManagedTag): React.ReactElement | null {
-  switch (tag) {
-    case 'title':
+  ...rest
+}: {
+  asset: Asset<T>
+  children?: (asset: T) => React.ReactNode
+} & Omit<React.HTMLAttributes<HTMLElement>, 'children'>) {
+  const data = asset.read()
+
+  if (asset.meta.tag === 'title') {
+    return <title>{data}</title>
+  }
+
+  if (asset.meta.tag === 'meta') {
+    return <meta {...(data as any)} />
+  }
+
+  if (asset.meta.tag === 'link') {
+    return <link {...(data as any)} />
+  }
+
+  if (asset.meta.tag === 'script') {
+    if (asset.meta.isScript) {
+      const { children, allowUnsafe, ...scriptRest } = data as any
+
+      if (!allowUnsafe) {
+        if (process.env.NODE_ENV !== 'production') {
+      >
+        {asset.meta.content!}
+      </style>
+        return null
+      }
+
       return (
-        <title {...attrs} suppressHydrationWarning>
-          {children}
-        </title>
-      )
-    case 'meta':
-      return <meta {...attrs} suppressHydrationWarning />
-    case 'link':
-      return <link {...attrs} suppressHydrationWarning />
-    case 'style':
-      return (
-        <style
-          {...attrs}
-          dangerouslySetInnerHTML={{ __html: children as string }}
+        <script
+          {...scriptRest}
+          dangerouslySetInnerHTML={{
+            __html: children,
+          }}
         />
       )
-    case 'script':
-      return <Script attrs={attrs}>{children}</Script>
-    default:
-      return null
-  }
-}
-
-function Script({
-  attrs,
-  children,
-}: {
-  attrs?: ScriptAttrs
-  children?: string
-}) {
-  const router = useRouter()
-
-  React.useEffect(() => {
-    if (attrs?.src) {
-      const normSrc = (() => {
-        try {
-          const base = document.baseURI || window.location.href
-          return new URL(attrs.src, base).href
-        } catch {
-          return attrs.src
-        }
-      })()
-      const existingScript = Array.from(
-        document.querySelectorAll('script[src]'),
-      ).find((el) => (el as HTMLScriptElement).src === normSrc)
-
-      if (existingScript) {
-        return
-      }
-
-      const script = document.createElement('script')
-
-      for (const [key, value] of Object.entries(attrs)) {
-        if (
-          key !== 'suppressHydrationWarning' &&
-          value !== undefined &&
-          value !== false
-        ) {
-          script.setAttribute(
-            key,
-            typeof value === 'boolean' ? '' : String(value),
-          )
-        }
-      }
-
-      document.head.appendChild(script)
-
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      }
     }
 
-    if (typeof children === 'string') {
-      const typeAttr =
-        typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
-      const nonceAttr =
-        typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
-      const existingScript = Array.from(
-        document.querySelectorAll('script:not([src])'),
-      ).find((el) => {
-        if (!(el instanceof HTMLScriptElement)) return false
-        const sType = el.getAttribute('type') ?? 'text/javascript'
-        const sNonce = el.getAttribute('nonce') ?? undefined
-        return (
-          el.textContent === children &&
-          sType === typeAttr &&
-          sNonce === nonceAttr
+    return <script {...(data as any)} />
+  }
+
+  if (asset.meta.tag === 'style') {
+    const { children, allowUnsafe, ...styleRest } = data as any
+
+    if (!allowUnsafe) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error(
+          `Security Warning: Rendering an inline style from a string is a security risk. If you are sure you trust this content, pass \`allowUnsafe: true\` in the asset definition for key: '${asset.key}'.`,
         )
-      })
-
-      if (existingScript) {
-        return
       }
-
-      const script = document.createElement('script')
-      script.textContent = children
-
-      if (attrs) {
-        for (const [key, value] of Object.entries(attrs)) {
-          if (
-            key !== 'suppressHydrationWarning' &&
-            value !== undefined &&
-            value !== false
-          ) {
-            script.setAttribute(
-              key,
-              typeof value === 'boolean' ? '' : String(value),
-            )
-          }
-        }
-      }
-
-      document.head.appendChild(script)
-
-      return () => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      }
+      return null
     }
 
-    return undefined
-  }, [attrs, children])
-
-  if (!router.isServer) {
-    return null
-  }
-
-  if (attrs?.src && typeof attrs.src === 'string') {
-    return <script {...attrs} suppressHydrationWarning />
-  }
-
-  if (typeof children === 'string') {
     return (
-      <script
-        {...attrs}
-        dangerouslySetInnerHTML={{ __html: children }}
-        suppressHydrationWarning
+      <style
+        {...styleRest}
+        dangerouslySetInnerHTML={{
+          __html: children,
+        }}
       />
     )
+  }
+
+  if (children) {
+    return children(data)
   }
 
   return null
