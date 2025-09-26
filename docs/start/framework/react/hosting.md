@@ -53,7 +53,7 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [tanstackStart(), cloudflare(), viteReact()],
+  plugins: [cloudflare({ viteEnvironment: { name: 'ssr' }}), tanstackStart(), viteReact()],
 })
 ```
 
