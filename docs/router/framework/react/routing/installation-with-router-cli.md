@@ -11,7 +11,7 @@ To use file-based routing with the TanStack Router CLI, you'll need to install t
 npm install -D @tanstack/router-cli
 ```
 
-Once installed, you'll need to amend your your scripts in your `package.json` for the CLI to `watch` and `generate` files.
+Once installed, you'll need to amend your scripts in your `package.json` for the CLI to `watch` and `generate` files.
 
 ```json
 {

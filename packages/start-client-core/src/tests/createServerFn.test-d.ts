@@ -537,3 +537,31 @@ test('compose middlewares and server function factories', () => {
     }>()
   })
 })
+
+test('createServerFn with request middleware', () => {
+  const reqMw = createMiddleware().server(({ next }) => {
+    return next()
+  })
+  const fn = createServerFn()
+    .middleware([reqMw])
+    .handler(() => ({}))
+
+  expectTypeOf(fn()).toEqualTypeOf<Promise<{}>>()
+})
+
+test('createServerFn with request middleware and function middleware', () => {
+  const reqMw = createMiddleware().server(({ next }) => {
+    return next()
+  })
+
+  const funMw = createMiddleware({ type: 'function' })
+    .inputValidator((x: string) => x)
+    .server(({ next }) => {
+      return next({ context: { a: 'a' } as const })
+    })
+  const fn = createServerFn()
+    .middleware([reqMw, funMw])
+    .handler(() => ({}))
+
+  expectTypeOf(fn({ data: 'a' })).toEqualTypeOf<Promise<{}>>()
+})

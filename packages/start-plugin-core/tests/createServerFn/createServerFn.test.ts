@@ -17,19 +17,11 @@ async function compile(opts: {
     loadModule: async (id) => {
       // do nothing in test
     },
+    lookupKinds: new Set(['ServerFn']),
     lookupConfigurations: [
       {
         libName: `@tanstack/react-start`,
-        rootExport: 'createMiddleware',
-      },
-
-      {
-        libName: `@tanstack/react-start`,
         rootExport: 'createServerFn',
-      },
-      {
-        libName: `@tanstack/react-start`,
-        rootExport: 'createStart',
       },
     ],
     resolveId: async (id) => {

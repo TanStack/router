@@ -1,10 +1,10 @@
-import path from 'node:path'
 import { trimPathRight } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
 import { join } from 'pathe'
+import { escapePath } from 'tinyglobby'
 import { startManifestPlugin } from './start-manifest-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from './constants'
@@ -134,37 +134,25 @@ export function TanStackStartVitePluginCore(
           required: false,
         })
 
-        let clientAlias: string
-        if (clientEntryPath) {
-          clientAlias = vite.normalizePath(
-            path.join('/@fs', path.resolve(root, clientEntryPath)),
-          )
-        } else {
-          clientAlias = corePluginOpts.defaultEntryPaths.client
-        }
-
-        let serverAlias: string
-        if (serverEntryPath) {
-          serverAlias = vite.normalizePath(path.resolve(root, serverEntryPath))
-        } else {
-          serverAlias = corePluginOpts.defaultEntryPaths.server
-        }
-
-        let startAlias: string
-        if (startFilePath) {
-          startAlias = vite.normalizePath(path.resolve(root, startFilePath))
-        } else {
-          startAlias = corePluginOpts.defaultEntryPaths.start
-        }
+        const clientAlias = vite.normalizePath(
+          clientEntryPath ?? corePluginOpts.defaultEntryPaths.client,
+        )
+        const serverAlias = vite.normalizePath(
+          serverEntryPath ?? corePluginOpts.defaultEntryPaths.server,
+        )
+        const startAlias = vite.normalizePath(
+          startFilePath ?? corePluginOpts.defaultEntryPaths.start,
+        )
+        const routerAlias = vite.normalizePath(routerFilePath)
 
         const entryAliasConfiguration: Record<
           (typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS],
           string
         > = {
-          [ENTRY_POINTS.start]: startAlias,
-          [ENTRY_POINTS.router]: routerFilePath,
           [ENTRY_POINTS.client]: clientAlias,
           [ENTRY_POINTS.server]: serverAlias,
+          [ENTRY_POINTS.start]: startAlias,
+          [ENTRY_POINTS.router]: routerAlias,
         }
 
         const startPackageName =
@@ -206,10 +194,16 @@ export function TanStackStartVitePluginCore(
                 },
                 outDir: getClientOutputDirectory(viteConfig),
               },
+              optimizeDeps: {
+                // Ensure user code can be crawled for dependencies
+                entries: [clientAlias, routerAlias].map((entry) =>
+                  // Entries are treated as `tinyglobby` patterns so need to be escaped
+                  escapePath(entry),
+                ),
+              },
             },
             [VITE_ENVIRONMENT_NAMES.server]: {
               consumer: 'server',
-
               build: {
                 ssr: true,
                 rollupOptions: {
@@ -224,6 +218,13 @@ export function TanStackStartVitePluginCore(
                 copyPublicDir:
                   viteConfig.environments?.[VITE_ENVIRONMENT_NAMES.server]
                     ?.build?.copyPublicDir ?? false,
+              },
+              optimizeDeps: {
+                // Ensure user code can be crawled for dependencies
+                entries: [serverAlias, startAlias, routerAlias].map((entry) =>
+                  // Entries are treated as `tinyglobby` patterns so need to be escaped
+                  escapePath(entry),
+                ),
               },
             },
           },
