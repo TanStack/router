@@ -7,7 +7,9 @@
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "pnpx srvx --prod -s ../client  dist/server/server.js",
+    "preview": "vite preview",
+    "cf-typegen": "wrangler types",
+    "postinstall": "npm run cf-typegen",
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
@@ -18,6 +20,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.13.7",
     "@playwright/test": "^1.50.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
@@ -26,10 +29,10 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.1",
-    "srvx": "^0.8.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite": "^7.1.1",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-tsconfig-paths": "^5.1.4",
+    "wrangler": "^4.40.2"
   }
 }

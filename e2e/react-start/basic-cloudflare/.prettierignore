@@ -1,4 +1,4 @@
-**/build
 **/public
 pnpm-lock.yaml
 routeTree.gen.ts
+worker-configuration.d.ts

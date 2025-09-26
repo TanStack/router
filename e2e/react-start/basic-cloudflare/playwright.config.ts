@@ -1,12 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
-import {
-  getDummyServerPort,
-  getTestServerPort,
-} from '@tanstack/router-e2e-utils'
+import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
 const PORT = await getTestServerPort(packageJson.name)
-const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
 
 /**
@@ -27,7 +23,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `VITE_NODE_ENV="test" VITE_EXTERNAL_PORT=${EXTERNAL_PORT} pnpm build && VITE_NODE_ENV="test" VITE_EXTERNAL_PORT=${EXTERNAL_PORT} VITE_SERVER_PORT=${PORT} PORT=${PORT} pnpm start`,
+    command: `pnpm build && pnpm preview --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
