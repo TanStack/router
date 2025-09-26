@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "postinstall": "npm run cf-typegen"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.132.7",
