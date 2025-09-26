@@ -25,7 +25,7 @@
     "@types/react-dom": "^19.0.3",
     "typescript": "^5.7.2",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^7.1.1",
+    "vite": "^7.1.7",
     "vite-plugin-dts": "^4.5.0"
   },
   "keywords": [],

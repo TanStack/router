@@ -29,6 +29,6 @@
     "@playwright/test": "^1.50.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "vite-plugin-solid": "^2.11.8",
-    "vite": "^7.1.1"
+    "vite": "^7.1.7"
   }
 }
