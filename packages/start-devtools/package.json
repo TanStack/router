@@ -1,0 +1,70 @@
+{
+  "name": "@tanstack/start-devtools",
+  "version": "0.0.1",
+  "description": "Devtools for Start.",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TanStack/router.git",
+    "directory": "packages/start-devtools"
+  },
+  "homepage": "https://tanstack.com/start",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "devtools",
+    "start"
+  ],
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      }
+    },
+    "./production": {
+      "import": {
+        "types": "./dist/esm/production.d.ts",
+        "default": "./dist/esm/production.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist/",
+    "src"
+  ],
+  "scripts": {
+    "clean": "rimraf ./build ./dist",
+    "lint:fix": "eslint ./src --fix",
+    "test:eslint": "eslint ./src",
+    "test:lib": "vitest",
+    "test:lib:dev": "pnpm test:lib --watch",
+    "test:types": "tsc",
+    "test:build": "publint --strict",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@tanstack/start-server-core": "workspace:*",
+    "@tanstack/devtools-ui": "^0.3.5",
+    "@tanstack/devtools-utils": "^0.0.3",
+    "@tanstack/solid-store": "^0.7.5",
+    "clsx": "^2.1.1",
+    "dayjs": "^1.11.18",
+    "goober": "^2.1.16",
+    "solid-js": "^1.9.9"
+  },
+  "devDependencies": {
+    "vite-plugin-solid": "^2.11.8"
+  }
+}
