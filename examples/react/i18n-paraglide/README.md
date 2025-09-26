@@ -1,4 +1,4 @@
-# TanSTack Router example
+# TanStack Router example
 
 This example shows how to use Paraglide with TanStack Router. The source code can be found [here](https://github.com/opral/monorepo/tree/main/inlang/packages/paraglide/paraglide-js/examples/tanstack-router).
 
