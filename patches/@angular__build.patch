@@ -1,8 +1,8 @@
 diff --git a/src/builders/dev-server/vite-server.js b/src/builders/dev-server/vite-server.js
-index 09f6e66145b640cec8d6a1adb7df48132109f2ba..73046f4fc748548fb0e3d9e17ba8a2e4a0d1af6a 100755
+index 9fb7f767078a1814579484ea073a6922dd101757..3a9e2dc9ff15d114f234b049d4c60c4b7274e7b9 100755
 --- a/src/builders/dev-server/vite-server.js
 +++ b/src/builders/dev-server/vite-server.js
-@@ -543,11 +543,11 @@ function updateResultRecord(outputPath, file, normalizePath, htmlIndexPath, gene
+@@ -549,11 +549,11 @@ function updateResultRecord(outputPath, file, normalizePath, htmlIndexPath, gene
  }
  // eslint-disable-next-line max-lines-per-function
  async function setupServer(serverOptions, outputFiles, assets, preserveSymlinks, externalMetadata, ssrMode, prebundleTransformer, target, zoneless, componentStyles, templateUpdates, prebundleLoaderExtensions, define, extensionMiddleware, indexHtmlTransformer, thirdPartySourcemaps = false) {
@@ -16,16 +16,17 @@ index 09f6e66145b640cec8d6a1adb7df48132109f2ba..73046f4fc748548fb0e3d9e17ba8a2e4
      // Files used for SSR warmup.
      let ssrFiles;
      switch (ssrMode) {
-@@ -635,6 +635,7 @@ async function setupServer(serverOptions, outputFiles, assets, preserveSymlinks,
+@@ -640,7 +640,7 @@ async function setupServer(serverOptions, outputFiles, assets, preserveSymlinks,
+                 // the `allow` option is explicitly configured, they must be included manually.
                  allow: [
                      cacheDir,
-                     (0, node_path_1.join)(serverOptions.workspaceRoot, 'node_modules'),
+-                    (0, node_path_1.join)(serverOptions.workspaceRoot, 'node_modules'),
 +                    (0, node_path_1.join)(serverOptions.projectRoot, 'node_modules'),
                      ...[...assets.values()].map(({ source }) => source),
                  ],
              },
-@@ -673,7 +674,7 @@ async function setupServer(serverOptions, outputFiles, assets, preserveSymlinks,
-                 resetComponentUpdates: () => templateUpdates.clear(),
+@@ -680,7 +680,7 @@ async function setupServer(serverOptions, outputFiles, assets, preserveSymlinks,
+                 projectRoot: serverOptions.projectRoot,
              }),
              (0, plugins_1.createRemoveIdPrefixPlugin)(externalMetadata.explicitBrowser),
 -            await (0, plugins_1.createAngularSsrTransformPlugin)(serverOptions.workspaceRoot),

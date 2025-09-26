@@ -67,7 +67,8 @@
     "typescript57": "npm:typescript@5.7",
     "typescript58": "npm:typescript@5.8",
     "vite": "^7.1.7",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zone.js": "~0.15.1"
   },
   "pnpm": {
     "overrides": {
