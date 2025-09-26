@@ -118,12 +118,14 @@ Deploy your application using their one-click deployment process, and you're rea
 
 **⚠️ During TanStack Start 1.0 release candidate phase, we currently recommend using:**
 
-- [@tanstack/tanstack-nitro-v2-vite-plugin (Temporary Compatibility Plugin)](https://www.npmjs.com/package/@tanstack/tanstack-nitro-v2-vite-plugin) - A temporary compatibility plugin for using Nitro v2 as the underlying build tool for TanStack Start.
+- [@tanstack/nitro-v2-vite-plugin (Temporary Compatibility Plugin)](https://www.npmjs.com/package/@tanstack/nitro-v2-vite-plugin) - A temporary compatibility plugin for using Nitro v2 as the underlying build tool for TanStack Start.
 - [Nitro v3's Vite Plugin (BETA)](https://www.npmjs.com/package/nitro-vite) - A **BETA** plugin for officially using Nitro v3 as the underlying build tool for TanStack Start.
 
 #### Using Nitro v2
 
 **⚠️ `@tanstack/nitro-v2-vite-plugin` is a temporary compatibility plugin for using Nitro v2 as the underlying build tool for TanStack Start. Use this plugin if you experience issues with the Nitro v3 plugin. It does not support all of Nitro v3's features and is limited in it's dev server capabilities, but should work as a safe fallback, even for production deployments for those who were using TanStack Start's alpha/beta versions.**
+
+If you want to use this plugin with bun please make sure to use [isolated installs](https://bun.com/docs/install/isolated#using-isolated-installs).
 
 ```tsx
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -136,7 +138,7 @@ export default defineConfig({
   plugins: [
     tsConfigPaths({ projects: ['./tsconfig.json'] }),
     tanstackStart(),
-    nitro(),
+    nitroV2Plugin(),
     viteReact(),
   ],
 })
@@ -144,7 +146,13 @@ export default defineConfig({
 
 #### Using Nitro v3 (BETA)
 
-**⚠️ The `nitro/vite` plugin is an official **BETA** plugin from the Nitro team for using Nitro v3 as the underlying build tool for TanStack Start. It is still in development and is receiving regular updates.**
+**⚠️ The `nitro` vite plugin is an official **BETA** plugin from the Nitro team for using Nitro v3 as the underlying build tool for TanStack Start. It is still in development and is receiving regular updates.**
+
+This package needs to be installed as follows:
+
+```
+ "nitro": "npm:nitro-nightly",
+```
 
 ```tsx
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
