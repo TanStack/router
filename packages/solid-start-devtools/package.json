@@ -42,7 +42,7 @@
     "src"
   ],
   "scripts": {
-    "clean": "premove ./build ./dist",
+    "clean": "rimraf ./build ./dist",
     "lint:fix": "eslint ./src --fix",
     "test:eslint": "eslint ./src",
     "test:lib": "vitest",

@@ -39,8 +39,8 @@ overrides:
   '@tanstack/solid-start-server': workspace:*
   '@tanstack/start-plugin-core': workspace:*
   '@tanstack/start-devtools': workspace:*
-  '@tanstack/start-react-devtools': workspace:*
-  '@tanstack/start-solid-devtools': workspace:*
+  '@tanstack/react-start-devtools': workspace:*
+  '@tanstack/solid-start-devtools': workspace:*
   '@tanstack/start-client-core': workspace:*
   '@tanstack/start-server-core': workspace:*
   '@tanstack/start-storage-context': workspace:*
@@ -4931,7 +4931,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/react-start
       '@tanstack/react-start-devtools':
-        specifier: 0.0.1
+        specifier: workspace:*
         version: link:../../../packages/react-start-devtools
       react:
         specifier: ^19.0.0
