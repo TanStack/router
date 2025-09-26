@@ -65,8 +65,13 @@ export default defineConfig({
   ],
 })
 ```
+3. Install `wrangler`
 
-3. Add a `wrangler.json` config file
+```bash
+pnpm add wrangler -D
+```
+
+4. Add a `wrangler.json` config file
 
 ```json
 {
