@@ -26,6 +26,7 @@ export default mergeConfig(
     entry: [
       './src/index.ts',
       './src/client.tsx',
+      './src/client-rpc.ts',
       './src/server.tsx',
       './src/plugin/vite.ts',
     ],

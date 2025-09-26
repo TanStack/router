@@ -44,6 +44,12 @@
         "default": "./dist/esm/client.js"
       }
     },
+    "./client-rpc": {
+      "import": {
+        "types": "./dist/esm/client-rpc.d.ts",
+        "default": "./dist/esm/client-rpc.js"
+      }
+    },
     "./server": {
       "import": {
         "types": "./dist/esm/server.d.ts",

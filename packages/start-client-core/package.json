@@ -54,6 +54,12 @@
         "default": "./dist/esm/client/index.js"
       }
     },
+    "./client-rpc": {
+      "import": {
+        "types": "./dist/esm/client-rpc/index.d.ts",
+        "default": "./dist/esm/client-rpc/index.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "imports": {
