@@ -54,6 +54,7 @@ You can easily use this production server in your own TanStack Start project:
    ```
 
 Or add it to your `package.json` scripts:
+
 ```json
 {
   "scripts": {
@@ -63,6 +64,7 @@ Or add it to your `package.json` scripts:
 ```
 
 Then run with:
+
 ```bash
 bun run start
 ```
