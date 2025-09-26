@@ -214,7 +214,7 @@ npm run start
 Make sure that your `react` and `react-dom` packages are set to version 19.0.0 or higher in your `package.json` file. If not, run the following command to upgrade the packages:
 
 ```sh
-bun install react@rc react-dom@rc
+bun install react@19 react-dom@19
 ```
 
 Ensure your `vite.config.ts` file is correct:
@@ -232,7 +232,7 @@ export default defineConfig({
 
 #### Production Server with Bun
 
-To run TanStack Start applications in production with Bun, you need a custom server implementation. The default build output doesn't work directly with `bun run dist/server/server.js`.
+To run TanStack Start applications in production with Bun, you need a custom server implementation.
 
 We've created an optimized production server that provides intelligent static asset loading with configurable memory management.
 
@@ -253,7 +253,7 @@ We've created an optimized production server that provides intelligent static as
    bun run build
    ```
 
-3. Start the optimized server:
+3. Start the server:
 
    ```sh
    bun run server.ts
