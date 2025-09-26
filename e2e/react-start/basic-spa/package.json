@@ -7,7 +7,7 @@
     "dev": "vite dev --port 3001",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-		"start": "pnpx srvx --prod -s ../client  dist/server/server.js",
+    "start": "pnpx srvx --prod -s ../client  dist/server/server.js",
     "test:e2e": "rm -rf port*.txt; NODE_ENV=development playwright test --project=chromium"
   },
   "dependencies": {
