@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.132.7",
-    "@tanstack/react-router-devtools": "^1.132.7",
-    "@tanstack/react-start": "^1.132.10",
+    "@tanstack/react-router-devtools": "^1.132.11",
+    "@tanstack/react-start": "^1.132.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^2.6.0",
