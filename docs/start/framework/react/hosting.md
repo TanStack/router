@@ -245,7 +245,7 @@ We've created an optimized production server that provides intelligent static as
 
 **Quick Setup:**
 
-1. Copy the [`server.ts`](https://github.com/magnusmay/tanstack-start-bun-hosting/blob/main/server.ts) file from the example repository to your project root
+1. Copy the [`server.ts`](../../../../examples/react/start-bun/server.ts) file from the example in this repository to your project root
 
 2. Build your application:
 
@@ -307,4 +307,4 @@ STATIC_PRELOAD_VERBOSE=true bun run server.ts
 🚀 Server running at http://localhost:3000
 ```
 
-For a complete example and more details, check out the [TanStack Start + Bun Hosting repository](https://github.com/magnusmay/tanstack-start-bun-hosting).
+For a complete working example, check out the [TanStack Start + Bun example](../../../../examples/react/start-bun) in this repository.
