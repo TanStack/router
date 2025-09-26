@@ -61,7 +61,7 @@ Add logging to your server functions to track execution, performance, and errors
 import { createServerFn } from '@tanstack/react-start'
 
 const getUser = createServerFn({ method: 'GET' })
-  .inputValidator((id: string) => id)
+  .validator((id: string) => id)
   .handler(async ({ data: id }) => {
     const startTime = Date.now()
 
@@ -518,7 +518,7 @@ import { trace, SpanStatusCode } from '@opentelemetry/api'
 const tracer = trace.getTracer('tanstack-start')
 
 const getUserWithTracing = createServerFn({ method: 'GET' })
-  .inputValidator((id: string) => id)
+  .validator((id: string) => id)
   .handler(async ({ data: id }) => {
     return tracer.startActiveSpan('get-user', async (span) => {
       span.setAttributes({

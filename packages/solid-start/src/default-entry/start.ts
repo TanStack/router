@@ -1,1 +1,1 @@
-export const startInstance = undefined
+export default {}

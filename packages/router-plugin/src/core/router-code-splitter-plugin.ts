@@ -131,9 +131,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       targetFramework: userConfig.target,
       filename: id,
       id,
-      deleteNodes: userConfig.codeSplittingOptions?.deleteNodes
-        ? new Set(userConfig.codeSplittingOptions.deleteNodes)
-        : undefined,
+      deleteNodes: new Set(userConfig.codeSplittingOptions?.deleteNodes),
       addHmr:
         (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction,
     })

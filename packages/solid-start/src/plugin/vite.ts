@@ -1,8 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import {
-  TanStackStartVitePluginCore,
-  VITE_ENVIRONMENT_NAMES,
-} from '@tanstack/start-plugin-core'
+import { TanStackStartVitePluginCore } from '@tanstack/start-plugin-core'
 import path from 'pathe'
 import type { TanStackStartInputConfig } from '@tanstack/start-plugin-core'
 import type { PluginOption } from 'vite'
@@ -25,23 +22,6 @@ export function tanstackStart(
   options?: TanStackStartInputConfig,
 ): Array<PluginOption> {
   return [
-    {
-      name: 'tanstack-solid-start:config',
-      configEnvironment(environmentName, options) {
-        return {
-          optimizeDeps:
-            environmentName === VITE_ENVIRONMENT_NAMES.client ||
-            (environmentName === VITE_ENVIRONMENT_NAMES.server &&
-              // This indicates that the server environment has opted in to dependency optimization
-              options.optimizeDeps?.noDiscovery === false)
-              ? {
-                  // As `@tanstack/solid-start` depends on `@tanstack/solid-router`, we should exclude both.
-                  exclude: ['@tanstack/solid-start', '@tanstack/solid-router'],
-                }
-              : undefined,
-        }
-      },
-    },
     TanStackStartVitePluginCore(
       {
         framework: 'solid',

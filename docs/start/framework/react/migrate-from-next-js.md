@@ -55,13 +55,13 @@ rm postcss.config.* next.config.*
 TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
 
 ```sh
-npm i @tanstack/react-router @tanstack/react-start
+npm i @tanstack/react-router @tanstack/react-start vite
 ```
 
 For Tailwind CSS and resolving imports using path aliases:
 
 ```sh
-npm i -D vite @vitejs/plugin-react @tailwindcss/vite tailwindcss vite-tsconfig-paths
+npm i -D @tailwindcss/vite tailwindcss vite-tsconfig-paths
 ```
 
 ### 3. Update Project Configuration
@@ -100,10 +100,9 @@ export default defineConfig({
     // Enables Vite to resolve imports using path aliases.
     tsconfigPaths(),
     tanstackStart({
-      srcDirectory: 'src', // This is the default
       router: {
         // Specifies the directory TanStack Router uses for your routes.
-        routesDirectory: 'app', // Defaults to "routes", relative to srcDirectory
+        routesDirectory: 'src/app', // Defaults to "src/routes"
       },
     }),
     viteReact(),
@@ -111,7 +110,7 @@ export default defineConfig({
 })
 ```
 
-By default, `routesDirectory` is set to `routes`. To maintain consistency with Next.js App Router conventions, you can set it to `app` instead.
+By default, `routesDirectory` is set to `src/routes`. To maintain consistency with Next.js App Router conventions, you can set it to `src/app` instead.
 
 ### 4. Adapt the Root Layout
 
@@ -214,7 +213,7 @@ Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
 
 Before you can run the development server, you need to create a file that will define the behavior of TanStack Router within TanStack Start.
 
-- `src/router.tsx`
+- `src/start.tsx`
 
 ```tsx
 import { createRouter } from '@tanstack/react-router'

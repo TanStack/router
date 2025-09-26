@@ -169,7 +169,7 @@ export function compileCodeSplitReferenceRoute(
                     (prop) => {
                       if (t.isObjectProperty(prop)) {
                         if (t.isIdentifier(prop.key)) {
-                          if (opts.deleteNodes!.has(prop.key.name as any)) {
+                          if (opts.deleteNodes?.has(prop.key.name as any)) {
                             return false
                           }
                         }

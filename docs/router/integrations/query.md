@@ -18,13 +18,13 @@ title: TanStack Query Integration
 The TanStack query integration is a separate package that you need to install:
 
 ```sh
-npm install @tanstack/react-router-ssr-query
+npm install -D @tanstack/react-router-ssr-query
 # or
-pnpm add @tanstack/react-router-ssr-query
+pnpm add -D @tanstack/react-router-ssr-query
 # or
-yarn add @tanstack/react-router-ssr-query
+yarn add -D @tanstack/react-router-ssr-query
 # or
-bun add @tanstack/react-router-ssr-query
+bun add -D @tanstack/react-router-ssr-query
 ```
 
 ## Setup
@@ -38,7 +38,7 @@ import { createRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { routeTree } from './routeTree.gen'
 
-export function getRouter() {
+export function createAppRouter() {
   const queryClient = new QueryClient()
   const router = createRouter({
     routeTree,

@@ -1,2 +1,4 @@
-export const startInstance = undefined
+export default {
+  startInstance: () => {},
+}
 export const getRouter = () => {}
