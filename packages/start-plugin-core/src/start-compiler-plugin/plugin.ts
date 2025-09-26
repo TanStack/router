@@ -32,8 +32,15 @@ function resolveRuntimeFiles(opts: { package: string; files: Array<string> }) {
 }
 
 function resolvePackage(packageName: string): string {
-  const pkgRoot = path.dirname(require.resolve(packageName + '/package.json'))
-  return pkgRoot
+  const expectedLocation = packageName + '/package.json'
+  try {
+    const pkgRoot = path.dirname(require.resolve(expectedLocation))
+    return pkgRoot
+    // eslint-disable-next-line unused-imports/no-unused-vars
+  } catch (_error) {
+    const pkgRoot = path.dirname(expectedLocation)
+    return pkgRoot
+  }
 }
 
 export function startCompilerPlugin(
@@ -89,10 +96,10 @@ export function startCompilerPlugin(
             : this.environment.name === VITE_ENVIRONMENT_NAMES.server
               ? 'server'
               : (() => {
-                  throw new Error(
-                    `Environment ${this.environment.name} not configured`,
-                  )
-                })()
+                throw new Error(
+                  `Environment ${this.environment.name} not configured`,
+                )
+              })()
 
         const url = pathToFileURL(id)
         url.searchParams.delete('v')

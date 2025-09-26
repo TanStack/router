@@ -19,6 +19,7 @@ import { handleServerAction } from './server-functions-handler'
 
 import { HEADERS } from './constants'
 import { ServerFunctionSerializationAdapter } from './serializer/ServerFunctionSerializationAdapter'
+import { startEventClient } from './event-client'
 import type {
   AnyStartInstanceOptions,
   RouteMethod,
@@ -94,6 +95,13 @@ export function createStartHandler<TRegister = Register>(
     request,
     requestOpts,
   ) => {
+    startEventClient.emit("request-received", {
+      headers: request.headers,
+      url: request.url.split("--")[0]!,
+      method: request.method
+
+    })
+
     function getOrigin() {
       const originHeader = request.headers.get('Origin')
       if (originHeader) {
@@ -101,7 +109,7 @@ export function createStartHandler<TRegister = Register>(
       }
       try {
         return new URL(request.url).origin
-      } catch {}
+      } catch { }
       return 'http://localhost'
     }
 
@@ -394,8 +402,8 @@ async function handleServerRoutes({
       const handlers =
         typeof server.handlers === 'function'
           ? server.handlers({
-              createHandlers: (d: any) => d,
-            })
+            createHandlers: (d: any) => d,
+          })
           : server.handlers
 
       const requestMethod = request.method.toLowerCase()

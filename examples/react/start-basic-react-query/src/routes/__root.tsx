@@ -6,8 +6,8 @@ import {
   Scripts,
   createRootRouteWithContext,
 } from '@tanstack/react-router'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { TanStackRouterDevtools, TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
+import {  ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
+import {  TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import * as React from 'react'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { StartDevtoolsPanel } from '@tanstack/react-start-devtools'
@@ -138,22 +138,23 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </div>
         <hr />
         {children}
-        <TanStackDevtools plugins={[
+        <TanStackDevtools eventBusConfig={{
+          connectToServerBus: true
+        }} plugins={[
           {
             name: 'React Query',
-            render: () => <TanStackRouterDevtoolsPanel />
+            render: () => <ReactQueryDevtoolsPanel />
           },
           {
             name: 'React Router',
             render: () => <TanStackRouterDevtoolsPanel />
           },
           {
-            name: "Start",
+            name: "TanStack Start",
             render: () => <StartDevtoolsPanel />
           }
         ]} />
-        <TanStackRouterDevtools position="bottom-right" />
-        <ReactQueryDevtools buttonPosition="bottom-left" />
+        
         <Scripts />
       </body>
     </html>

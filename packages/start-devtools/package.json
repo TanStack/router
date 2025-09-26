@@ -55,7 +55,8 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@tanstack/devtools-ui": "^0.3.4",
+    "@tanstack/start-server-core": "workspace:*",
+    "@tanstack/devtools-ui": "^0.3.5",
     "@tanstack/devtools-utils": "^0.0.3",
     "@tanstack/solid-store": "^0.7.5",
     "clsx": "^2.1.1",

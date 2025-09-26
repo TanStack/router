@@ -7081,7 +7081,7 @@ importers:
   packages/start-devtools:
     dependencies:
       '@tanstack/devtools-ui':
-        specifier: ^0.3.4
+        specifier: ^0.3.5
         version: 0.3.5(csstype@3.1.3)(solid-js@1.9.9)
       '@tanstack/devtools-utils':
         specifier: ^0.0.3
@@ -7089,6 +7089,9 @@ importers:
       '@tanstack/solid-store':
         specifier: ^0.7.5
         version: 0.7.7(solid-js@1.9.9)
+      '@tanstack/start-server-core':
+        specifier: workspace:*
+        version: link:../start-server-core
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -7181,6 +7184,9 @@ importers:
 
   packages/start-server-core:
     dependencies:
+      '@tanstack/devtools-event-client':
+        specifier: ^0.3.2
+        version: 0.3.2
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
@@ -10613,6 +10619,10 @@ packages:
 
   '@tanstack/devtools-event-bus@0.3.2':
     resolution: {integrity: sha512-yJT2As/drc+Epu0nsqCsJaKaLcaNGufiNxSlp/+/oeTD0jsBxF9/PJBfh66XVpYXkKr97b8689mSu7QMef0Rrw==}
+    engines: {node: '>=18'}
+
+  '@tanstack/devtools-event-client@0.3.2':
+    resolution: {integrity: sha512-gkvph/YMCFUfAca75EsJBJnhbKitDGix7vdEcT/3lAV+eyGSv+uECYG43apVQN4yLJKnV6mzcNvGzOhDhb72gg==}
     engines: {node: '>=18'}
 
   '@tanstack/devtools-ui@0.3.5':
@@ -19696,6 +19706,8 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+
+  '@tanstack/devtools-event-client@0.3.2': {}
 
   '@tanstack/devtools-ui@0.3.5(csstype@3.1.3)(solid-js@1.9.9)':
     dependencies:
