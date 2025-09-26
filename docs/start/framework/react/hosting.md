@@ -40,8 +40,13 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 ### Cloudflare Workers
 
 When deploying to Cloudflare Workers, you'll need to complete a few extra steps before your users can start using your app.
+1. Install `@cloudflare/vite-plugin`
 
-1. Update `vite.config.ts`
+```bash
+pnpm install @cloudflare/vite-plugin -D
+```
+ 
+2. Update `vite.config.ts`
 
 Add the cloudflare plugin to your `vite.config.ts` file.
 
@@ -61,7 +66,7 @@ export default defineConfig({
 })
 ```
 
-2. Add a `wrangler.json` config file
+3. Add a `wrangler.json` config file
 
 ```json
 {
