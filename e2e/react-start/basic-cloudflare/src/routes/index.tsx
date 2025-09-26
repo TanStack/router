@@ -20,8 +20,8 @@ function Home() {
   return (
     <div className="p-2">
       <h3>Welcome Home!!!</h3>
-      <p>{data.message}</p>
-      <p>{data.myVar}</p>
+      <p data-testid="message">{data.message}</p>
+      <p data-testid="myVar">{data.myVar}</p>
     </div>
   )
 }
