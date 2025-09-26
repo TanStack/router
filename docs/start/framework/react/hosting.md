@@ -119,7 +119,7 @@ Deploy your application using their one-click deployment process, and you're rea
 **⚠️ During TanStack Start 1.0 release candidate phase, we currently recommend using:**
 
 - [@tanstack/nitro-v2-vite-plugin (Temporary Compatibility Plugin)](https://www.npmjs.com/package/@tanstack/nitro-v2-vite-plugin) - A temporary compatibility plugin for using Nitro v2 as the underlying build tool for TanStack Start.
-- [Nitro v3's Vite Plugin (BETA)](https://www.npmjs.com/package/nitro-vite) - A **BETA** plugin for officially using Nitro v3 as the underlying build tool for TanStack Start.
+- [Nitro v3's Vite Plugin (BETA)](https://www.npmjs.com/package/nitro-nightly) - A **BETA** plugin for officially using Nitro v3 as the underlying build tool for TanStack Start.
 
 #### Using Nitro v2
 
