@@ -276,7 +276,9 @@ function baseParsePathname(
     ...split.map((part): Segment => {
       // strip tailing underscore for non-nested paths
       const partToMatch =
-        !basePathValues && part.slice(-1) === '_' ? part.slice(0, -1) : part
+        !basePathValues && part !== '__root__' && part.slice(-1) === '_'
+          ? part.slice(0, -1)
+          : part
 
       // Check for wildcard with curly braces: prefix{$}suffix
       const wildcardBracesMatch = partToMatch.match(WILDCARD_W_CURLY_BRACES_RE)
