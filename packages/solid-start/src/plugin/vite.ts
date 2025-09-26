@@ -16,9 +16,9 @@ const defaultEntryDir = path.resolve(
   'default-entry',
 )
 const defaultEntryPaths = {
-  client: path.resolve(defaultEntryDir, 'client'),
-  server: path.resolve(defaultEntryDir, 'server'),
-  start: path.resolve(defaultEntryDir, 'start'),
+  client: path.resolve(defaultEntryDir, 'client.tsx'),
+  server: path.resolve(defaultEntryDir, 'server.ts'),
+  start: path.resolve(defaultEntryDir, 'start.ts'),
 }
 
 export function tanstackStart(

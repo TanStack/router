@@ -101,6 +101,12 @@ export interface Register {
   // ssr
 }
 
+export type RegisteredSsr<TRegister = Register> = TRegister extends {
+  ssr: infer TSSR
+}
+  ? TSSR
+  : false
+
 export type RegisteredRouter<TRegister = Register> = TRegister extends {
   router: infer TRouter
 }

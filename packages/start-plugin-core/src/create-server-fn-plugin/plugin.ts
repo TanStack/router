@@ -1,5 +1,6 @@
 import { VITE_ENVIRONMENT_NAMES } from '../constants'
 import { ServerFnCompiler } from './compiler'
+import type { LookupConfig, LookupKind } from './compiler'
 import type { CompileStartFrameworkOptions } from '../start-compiler-plugin/compilers'
 import type { ViteEnvironmentNames } from '../constants'
 import type { PluginOption } from 'vite'
@@ -8,6 +9,36 @@ function cleanId(id: string): string {
   return id.split('?')[0]!
 }
 
+const LookupKindsPerEnv: Record<'client' | 'server', Set<LookupKind>> = {
+  client: new Set(['Middleware', 'ServerFn'] as const),
+  server: new Set(['ServerFn'] as const),
+}
+
+const getLookupConfigurationsForEnv = (
+  env: 'client' | 'server',
+  framework: CompileStartFrameworkOptions,
+): Array<LookupConfig> => {
+  const createServerFnConfig: LookupConfig = {
+    libName: `@tanstack/${framework}-start`,
+    rootExport: 'createServerFn',
+  }
+  if (env === 'client') {
+    return [
+      {
+        libName: `@tanstack/${framework}-start`,
+        rootExport: 'createMiddleware',
+      },
+      {
+        libName: `@tanstack/${framework}-start`,
+        rootExport: 'createStart',
+      },
+
+      createServerFnConfig,
+    ]
+  } else {
+    return [createServerFnConfig]
+  }
+}
 export function createServerFnPlugin(
   framework: CompileStartFrameworkOptions,
 ): PluginOption {
@@ -52,8 +83,9 @@ export function createServerFnPlugin(
             exclude: new RegExp(`${SERVER_FN_LOOKUP}$`),
           },
           code: {
-            // only scan files that mention `.handler(` | `.server(` | `.client(`
-            include: [/\.handler\(/, /\.server\(/, /\.client\(/],
+            // TODO apply this plugin with a different filter per environment so that .createMiddleware() calls are not scanned in server env
+            // only scan files that mention `.handler(` | `.createMiddleware()`
+            include: [/\.handler\(/, /.createMiddleware\(\)/],
           },
         },
         async handler(code, id) {
@@ -73,21 +105,11 @@ export function createServerFnPlugin(
 
             compiler = new ServerFnCompiler({
               env,
-              lookupConfigurations: [
-                {
-                  libName: `@tanstack/${framework}-start`,
-                  rootExport: 'createMiddleware',
-                },
-
-                {
-                  libName: `@tanstack/${framework}-start`,
-                  rootExport: 'createServerFn',
-                },
-                {
-                  libName: `@tanstack/${framework}-start`,
-                  rootExport: 'createStart',
-                },
-              ],
+              lookupKinds: LookupKindsPerEnv[env],
+              lookupConfigurations: getLookupConfigurationsForEnv(
+                env,
+                framework,
+              ),
               loadModule: async (id: string) => {
                 if (this.environment.mode === 'build') {
                   const loaded = await this.load({ id })
