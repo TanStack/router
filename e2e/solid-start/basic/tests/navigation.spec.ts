@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { isSpaMode } from './utils/isSpaMode'
 
 test.use({
   whitelistErrors: [
@@ -43,13 +44,17 @@ test('client side navigating to a route with scripts', async ({ page }) => {
   await page.getByRole('link', { name: 'Scripts', exact: true }).click()
   await expect(page.getByTestId('scripts-test-heading')).toBeInViewport()
   expect(await page.evaluate('window.SCRIPT_1')).toBe(true)
-  expect(await page.evaluate('window.SCRIPT_2')).toBe(undefined)
+  expect(await page.evaluate('window.SCRIPT_2')).toBe(
+    isSpaMode ? true : undefined,
+  )
 })
 
 test('directly going to a route with scripts', async ({ page }) => {
   await page.goto('/scripts')
   expect(await page.evaluate('window.SCRIPT_1')).toBe(true)
-  expect(await page.evaluate('window.SCRIPT_2')).toBe(undefined)
+  expect(await page.evaluate('window.SCRIPT_2')).toBe(
+    isSpaMode ? true : undefined,
+  )
 })
 
 test('Navigating to a not-found route', async ({ page }) => {
