@@ -1,4 +1,6 @@
-export const Route = createFileRoute({
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/foo/$bar/$qux/_here/')({
   component: RouteComponent,
 })
 
