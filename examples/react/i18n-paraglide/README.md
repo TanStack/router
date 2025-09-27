@@ -76,39 +76,39 @@ export const Route = createRootRoute({
 If you don't want to miss any translated path, you can create a `createTranslatedPathnames` function and pass it to the vite plugin.
 
 ```ts
-import { Locale } from "@/paraglide/runtime";
-import { FileRoutesByTo } from "../routeTree.gen";
+import { Locale } from '@/paraglide/runtime'
+import { FileRoutesByTo } from '../routeTree.gen'
 
-type RoutePath = keyof FileRoutesByTo;
+type RoutePath = keyof FileRoutesByTo
 
-const excludedPaths = ["admin", "docs", "api"] as const;
+const excludedPaths = ['admin', 'docs', 'api'] as const
 
 type PublicRoutePath = Exclude<
   RoutePath,
   `${string}${(typeof excludedPaths)[number]}${string}`
->;
+>
 
 type TranslatedPathname = {
-  pattern: string;
-  localized: Array<[Locale, string]>;
-};
+  pattern: string
+  localized: Array<[Locale, string]>
+}
 
 function toUrlPattern(path: string) {
   return (
     path
       // catch-all
-      .replace(/\/\$$/, "/:path(.*)?")
+      .replace(/\/\$$/, '/:path(.*)?')
       // optional parameters: {-$param}
-      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ":$1?")
+      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ':$1?')
       // named parameters: $param
-      .replace(/\$([a-zA-Z0-9_]+)/g, ":$1")
+      .replace(/\$([a-zA-Z0-9_]+)/g, ':$1')
       // remove trailing slash
-      .replace(/\/+$/, "")
-  );
+      .replace(/\/+$/, '')
+  )
 }
 
 function createTranslatedPathnames(
-  input: Record<PublicRoutePath, Record<Locale, string>>
+  input: Record<PublicRoutePath, Record<Locale, string>>,
 ): TranslatedPathname[] {
   return Object.entries(input).map(([pattern, locales]) => ({
     pattern: toUrlPattern(pattern),
@@ -117,21 +117,21 @@ function createTranslatedPathnames(
         [locale as Locale, `/${locale}${toUrlPattern(path)}`] satisfies [
           Locale,
           string,
-        ]
+        ],
     ),
-  }));
+  }))
 }
 
 export const translatedPathnames = createTranslatedPathnames({
-  "/": {
-    en: "/",
-    de: "/",
+  '/': {
+    en: '/',
+    de: '/',
   },
-  "/about": {
-    en: "/about",
-    de: "/ueber",
+  '/about': {
+    en: '/about',
+    de: '/ueber',
   },
-});
+})
 ```
 
 And import into the Paraglide Vite plguin.

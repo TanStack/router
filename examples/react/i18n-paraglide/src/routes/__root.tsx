@@ -1,25 +1,20 @@
-import {
-  Link,
-  Outlet,
-  createRootRoute,
-  redirect,
-} from "@tanstack/react-router";
+import { Link, Outlet, createRootRoute, redirect } from '@tanstack/react-router'
 import {
   getLocale,
   locales,
   setLocale,
   shouldRedirect,
-} from "@/paraglide/runtime";
-import { m } from "@/paraglide/messages";
+} from '@/paraglide/runtime'
+import { m } from '@/paraglide/messages'
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
-    document.documentElement.setAttribute("lang", getLocale());
+    document.documentElement.setAttribute('lang', getLocale())
 
-    const decision = await shouldRedirect({ url: window.location.href });
+    const decision = await shouldRedirect({ url: window.location.href })
 
     if (decision.redirectUrl) {
-      throw redirect({ href: decision.redirectUrl.href });
+      throw redirect({ href: decision.redirectUrl.href })
     }
   },
   component: () => (
@@ -29,7 +24,7 @@ export const Route = createRootRoute({
           <Link
             to="/"
             activeProps={{
-              className: "font-bold",
+              className: 'font-bold',
             }}
             activeOptions={{ exact: true }}
           >
@@ -39,7 +34,7 @@ export const Route = createRootRoute({
           <Link
             to="/about"
             activeProps={{
-              className: "font-bold",
+              className: 'font-bold',
             }}
           >
             {m.about_page()}
@@ -67,4 +62,4 @@ export const Route = createRootRoute({
       </div>
     </>
   ),
-});
+})

@@ -66,20 +66,20 @@ const router = createRouter({
 In `server.ts` intercept the request with the paraglideMiddleware.
 
 ```ts
-import { paraglideMiddleware } from "./paraglide/server.js";
-import handler from "@tanstack/react-start/server-entry";
+import { paraglideMiddleware } from './paraglide/server.js'
+import handler from '@tanstack/react-start/server-entry'
 
 export default {
   fetch(req: Request): Promise<Response> {
-    return paraglideMiddleware(req, ({ request }) => handler.fetch(request));
+    return paraglideMiddleware(req, ({ request }) => handler.fetch(request))
   },
-};
+}
 ```
 
 In `__root.tsx` add change the html lang attribute to the current locale.
 
 ```tsx
-import { getLocale } from "../paraglide/runtime.js";
+import { getLocale } from '../paraglide/runtime.js'
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -92,7 +92,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  );
+  )
 }
 ```
 
@@ -120,39 +120,39 @@ export const Route = createRootRoute({
 If you don't want to miss any translated path, you can create a `createTranslatedPathnames` function and pass it to the vite plugin.
 
 ```ts
-import { Locale } from "@/paraglide/runtime";
-import { FileRoutesByTo } from "../routeTree.gen";
+import { Locale } from '@/paraglide/runtime'
+import { FileRoutesByTo } from '../routeTree.gen'
 
-type RoutePath = keyof FileRoutesByTo;
+type RoutePath = keyof FileRoutesByTo
 
-const excludedPaths = ["admin", "docs", "api"] as const;
+const excludedPaths = ['admin', 'docs', 'api'] as const
 
 type PublicRoutePath = Exclude<
   RoutePath,
   `${string}${(typeof excludedPaths)[number]}${string}`
->;
+>
 
 type TranslatedPathname = {
-  pattern: string;
-  localized: Array<[Locale, string]>;
-};
+  pattern: string
+  localized: Array<[Locale, string]>
+}
 
 function toUrlPattern(path: string) {
   return (
     path
       // catch-all
-      .replace(/\/\$$/, "/:path(.*)?")
+      .replace(/\/\$$/, '/:path(.*)?')
       // optional parameters: {-$param}
-      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ":$1?")
+      .replace(/\{-\$([a-zA-Z0-9_]+)\}/g, ':$1?')
       // named parameters: $param
-      .replace(/\$([a-zA-Z0-9_]+)/g, ":$1")
+      .replace(/\$([a-zA-Z0-9_]+)/g, ':$1')
       // remove trailing slash
-      .replace(/\/+$/, "")
-  );
+      .replace(/\/+$/, '')
+  )
 }
 
 function createTranslatedPathnames(
-  input: Record<PublicRoutePath, Record<Locale, string>>
+  input: Record<PublicRoutePath, Record<Locale, string>>,
 ): TranslatedPathname[] {
   return Object.entries(input).map(([pattern, locales]) => ({
     pattern: toUrlPattern(pattern),
@@ -161,21 +161,21 @@ function createTranslatedPathnames(
         [locale as Locale, `/${locale}${toUrlPattern(path)}`] satisfies [
           Locale,
           string,
-        ]
+        ],
     ),
-  }));
+  }))
 }
 
 export const translatedPathnames = createTranslatedPathnames({
-  "/": {
-    en: "/",
-    de: "/",
+  '/': {
+    en: '/',
+    de: '/',
   },
-  "/about": {
-    en: "/about",
-    de: "/ueber",
+  '/about': {
+    en: '/about',
+    de: '/ueber',
   },
-});
+})
 ```
 
 And import into the Paraglide Vite plguin.
@@ -185,12 +185,12 @@ And import into the Paraglide Vite plguin.
 You can use use the `localizeHref` function to map the routes to localized versions and import into the pages option in the TanStack Start plugin. For this to work you will need to compile paraglide before the build with the CLI.
 
 ```ts
-import { localizeHref } from "./paraglide/runtime";
+import { localizeHref } from './paraglide/runtime'
 
-export const prerenderRoutes = ["/", "/about"].map((path) => ({
+export const prerenderRoutes = ['/', '/about'].map((path) => ({
   path: localizeHref(path),
   prerender: {
     enabled: true,
   },
-}));
+}))
 ```

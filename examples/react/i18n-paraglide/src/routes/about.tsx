@@ -1,10 +1,10 @@
-import { m } from "@/paraglide/messages";
-import { createFileRoute } from "@tanstack/react-router";
+import { m } from '@/paraglide/messages'
+import { createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute("/about")({
+export const Route = createFileRoute('/about')({
   component: RouteComponent,
-});
+})
 
 function RouteComponent() {
-  return <div>{m.hello_about()}</div>;
+  return <div>{m.hello_about()}</div>
 }
