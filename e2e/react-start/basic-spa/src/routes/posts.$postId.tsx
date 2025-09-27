@@ -13,7 +13,7 @@ export const Route = createFileRoute('/posts/$postId')({
   },
 })
 
-export function PostErrorComponent({ error }: ErrorComponentProps) {
+function PostErrorComponent({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />
 }
 

@@ -10,9 +10,11 @@ test.use({
 
 test('Navigating to post', async ({ page }) => {
   await page.goto('/')
+  await page.waitForURL('/')
   await page.waitForLoadState('networkidle')
 
   await page.getByRole('link', { name: 'Posts' }).click()
+  await page.waitForURL('/posts')
   await page.waitForLoadState('networkidle')
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await page.waitForLoadState('networkidle')
@@ -24,9 +26,11 @@ test('Navigating to post', async ({ page }) => {
 test('Navigating to user', async ({ page }) => {
   await page.goto('/')
   await page.waitForURL('/')
+  await page.waitForLoadState('networkidle')
 
   await page.getByRole('link', { name: 'Users' }).click()
   await page.waitForURL('/users')
+  await page.waitForLoadState('networkidle')
   await page.getByRole('link', { name: 'Leanne Graham' }).click()
   await page.waitForLoadState('networkidle')
   await expect(page.getByRole('heading')).toContainText('Leanne Graham')
