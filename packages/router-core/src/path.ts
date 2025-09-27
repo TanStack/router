@@ -1,3 +1,4 @@
+import { rootRouteId } from './root'
 import { last } from './utils'
 import type { LRUCache } from './lru-cache'
 import type { MatchLocation } from './RouterProvider'
@@ -276,7 +277,7 @@ function baseParsePathname(
     ...split.map((part): Segment => {
       // strip tailing underscore for non-nested paths
       const partToMatch =
-        !basePathValues && part !== '__root__' && part.slice(-1) === '_'
+        !basePathValues && part !== rootRouteId && part.slice(-1) === '_'
           ? part.slice(0, -1)
           : part
 
