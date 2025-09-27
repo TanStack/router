@@ -1,7 +1,7 @@
 import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
-import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
+import { TSS_SERVER_FUNCTION, TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getServerContextAfterGlobalMiddlewares } from './getServerContextAfterGlobalMiddlewares'
 import { getStartOptions } from './getStartOptions'
 import type {
@@ -248,6 +248,7 @@ export type Fetcher<TRegister, TMiddlewares, TInputValidator, TResponse> =
     : RequiredFetcher<TRegister, TMiddlewares, TInputValidator, TResponse>
 
 export interface FetcherBase {
+  [TSS_SERVER_FUNCTION]: true
   url: string
   __executeServer: (opts: {
     method: Method

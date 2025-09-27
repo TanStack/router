@@ -3,6 +3,7 @@ import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
 import type { Constrain, Register, Validator } from '@tanstack/router-core'
 import type { ConstrainValidator } from '../createServerFn'
+import { TSS_SERVER_FUNCTION } from '../constants'
 
 test('createServerFn method with autocomplete', () => {
   createServerFn().handler((options) => {
@@ -585,4 +586,10 @@ test('createServerFn with inputValidator and request middleware', () => {
   expectTypeOf(fn({ data: { userName: 'test' } })).toEqualTypeOf<
     Promise<string>
   >()
+})
+
+test('createServerFn has TSS_SERVER_FUNCTION symbol set', () => {
+  const fn = createServerFn().handler(() => ({}))
+  expectTypeOf(fn).toHaveProperty(TSS_SERVER_FUNCTION)
+  expectTypeOf(fn[TSS_SERVER_FUNCTION]).toEqualTypeOf<true>()
 })
