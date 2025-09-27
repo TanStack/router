@@ -17,11 +17,13 @@ export function parseStartConfig(
   const srcDirectory = options.srcDirectory
 
   const routesDirectory = path.resolve(
+    root,
     srcDirectory,
     options.router.routesDirectory ?? 'routes',
   )
 
   const generatedRouteTree = path.resolve(
+    root,
     srcDirectory,
     options.router.generatedRouteTree ?? 'routeTree.gen.ts',
   )
