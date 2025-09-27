@@ -6,6 +6,7 @@ import { useLoaderDeps } from './useLoaderDeps'
 import { useLoaderData } from './useLoaderData'
 import { useSearch } from './useSearch'
 import { useParams } from './useParams'
+import { useHistoryState } from './useHistoryState'
 import { useNavigate } from './useNavigate'
 import { useRouter } from './useRouter'
 import type { UseParamsRoute } from './useParams'
@@ -34,6 +35,7 @@ import type {
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseRouteContextRoute } from './useRouteContext'
+import type { UseHistoryStateRoute } from './useHistoryState'
 
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
@@ -55,7 +57,7 @@ export function createFileRoute<
   }).createRoute
 }
 
-/** 
+/**
   @deprecated It's no longer recommended to use the `FileRoute` class directly.
   Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
 */
@@ -79,6 +81,7 @@ export class FileRoute<
   createRoute = <
     TRegister = Register,
     TSearchValidator = undefined,
+    TStateValidator = undefined,
     TParams = ResolveParams<TPath>,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
@@ -95,6 +98,7 @@ export class FileRoute<
       TId,
       TPath,
       TSearchValidator,
+      TStateValidator,
       TParams,
       TLoaderDeps,
       TLoaderFn,
@@ -112,6 +116,7 @@ export class FileRoute<
         TFullPath,
         TParams,
         TSearchValidator,
+        TStateValidator,
         TLoaderFn,
         TLoaderDeps,
         AnyContext,
@@ -126,6 +131,7 @@ export class FileRoute<
     TFilePath,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     AnyContext,
     TRouteContextFn,
@@ -148,7 +154,7 @@ export class FileRoute<
   }
 }
 
-/** 
+/**
   @deprecated It's recommended not to split loaders into separate files.
   Instead, place the loader function in the the main route file, inside the
   `createFileRoute('/path/to/file)(options)` options.
@@ -224,6 +230,15 @@ export class LazyRoute<TRoute extends AnyRoute> {
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.options.id,
+    } as any) as any
+  }
+
+  useHistoryState: UseHistoryStateRoute<TRoute['id']> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    return useHistoryState({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.options.id,

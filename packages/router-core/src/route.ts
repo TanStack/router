@@ -35,6 +35,7 @@ import type {
   AnyValidatorObj,
   DefaultValidator,
   ResolveSearchValidatorInput,
+  ResolveStateValidatorInput,
   ResolveValidatorOutput,
   StandardSchemaValidator,
   ValidatorAdapter,
@@ -47,6 +48,10 @@ export type AnyPathParams = {}
 
 export type SearchSchemaInput = {
   __TSearchSchemaInput__: 'TSearchSchemaInput'
+}
+
+export type StateSchemaInput = {
+  __TStateSchemaInput__: 'TStateSchemaInput'
 }
 
 export type AnyContext = {}
@@ -105,6 +110,13 @@ export type InferFullSearchSchemaInput<TRoute> = TRoute extends {
   ? TFullSearchSchemaInput
   : {}
 
+export type InferFullStateSchemaInput<TRoute> = TRoute extends {
+  types: {
+    fullStateSchemaInput: infer TFullStateSchemaInput
+  }
+}
+  ? TFullStateSchemaInput
+  : {}
 export type InferAllParams<TRoute> = TRoute extends {
   types: {
     allParams: infer TAllParams
@@ -156,6 +168,29 @@ export type ResolveSearchSchema<TSearchValidator> =
           ? ResolveSearchSchemaFn<TSearchValidator['parse']>
           : ResolveSearchSchemaFn<TSearchValidator>
 
+export type ResolveStateSchemaFn<TStateValidator> = TStateValidator extends (
+  ...args: any
+) => infer TStateSchema
+  ? TStateSchema
+  : AnySchema
+
+export type ResolveFullStateSchema<
+  TParentRoute extends AnyRoute,
+  TStateValidator,
+> = unknown extends TParentRoute
+  ? ResolveStateSchema<TStateValidator>
+  : IntersectAssign<
+      InferFullStateSchema<TParentRoute>,
+      ResolveStateSchema<TStateValidator>
+    >
+
+export type InferFullStateSchema<TRoute> = TRoute extends {
+  types: {
+    fullStateSchema: infer TFullStateSchema
+  }
+}
+  ? TFullStateSchema
+  : {}
 export type ResolveRequiredParams<TPath extends string, T> = {
   [K in ParsePathParams<TPath>['required']]: T
 }
@@ -185,12 +220,12 @@ export type ParamsOptions<in out TPath extends string, in out TParams> = {
     stringify?: StringifyParamsFn<TPath, TParams>
   }
 
-  /** 
+  /**
   @deprecated Use params.parse instead
   */
   parseParams?: ParseParamsFn<TPath, TParams>
 
-  /** 
+  /**
   @deprecated Use params.stringify instead
   */
   stringifyParams?: StringifyParamsFn<TPath, TParams>
@@ -313,6 +348,24 @@ export type ResolveFullSearchSchemaInput<
   InferFullSearchSchemaInput<TParentRoute>,
   ResolveSearchValidatorInput<TSearchValidator>
 >
+export type ResolveStateSchema<TStateValidator> =
+  unknown extends TStateValidator
+    ? TStateValidator
+    : TStateValidator extends AnyStandardSchemaValidator
+      ? NonNullable<TStateValidator['~standard']['types']>['output']
+      : TStateValidator extends AnyValidatorAdapter
+        ? TStateValidator['types']['output']
+        : TStateValidator extends AnyValidatorObj
+          ? ResolveStateSchemaFn<TStateValidator['parse']>
+          : ResolveStateSchemaFn<TStateValidator>
+
+export type ResolveFullStateSchemaInput<
+  TParentRoute extends AnyRoute,
+  TStateValidator,
+> = IntersectAssign<
+  InferFullStateSchemaInput<TParentRoute>,
+  ResolveStateValidatorInput<TStateValidator>
+>
 
 export type ResolveAllParamsFromParent<
   TParentRoute extends AnyRoute,
@@ -385,6 +438,7 @@ export interface RouteTypes<
   in out TCustomId extends string,
   in out TId extends string,
   in out TSearchValidator,
+  in out TStateValidator,
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
@@ -406,10 +460,18 @@ export interface RouteTypes<
   searchSchema: ResolveValidatorOutput<TSearchValidator>
   searchSchemaInput: ResolveSearchValidatorInput<TSearchValidator>
   searchValidator: TSearchValidator
+  stateSchema: ResolveStateSchema<TStateValidator>
+  stateSchemaInput: ResolveStateValidatorInput<TStateValidator>
+  stateValidator: TStateValidator
   fullSearchSchema: ResolveFullSearchSchema<TParentRoute, TSearchValidator>
   fullSearchSchemaInput: ResolveFullSearchSchemaInput<
     TParentRoute,
     TSearchValidator
+  >
+  fullStateSchema: ResolveFullStateSchema<TParentRoute, TStateValidator>
+  fullStateSchemaInput: ResolveFullStateSchemaInput<
+    TParentRoute,
+    TStateValidator
   >
   params: TParams
   allParams: ResolveAllParamsFromParent<TParentRoute, TParams>
@@ -467,6 +529,7 @@ export type RouteAddChildrenFn<
   in out TCustomId extends string,
   in out TId extends string,
   in out TSearchValidator,
+  in out TStateValidator,
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
@@ -490,6 +553,7 @@ export type RouteAddChildrenFn<
   TCustomId,
   TId,
   TSearchValidator,
+  TStateValidator,
   TParams,
   TRouterContext,
   TRouteContextFn,
@@ -511,6 +575,7 @@ export type RouteAddFileChildrenFn<
   in out TCustomId extends string,
   in out TId extends string,
   in out TSearchValidator,
+  in out TStateValidator,
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
@@ -531,6 +596,7 @@ export type RouteAddFileChildrenFn<
   TCustomId,
   TId,
   TSearchValidator,
+  TStateValidator,
   TParams,
   TRouterContext,
   TRouteContextFn,
@@ -552,6 +618,7 @@ export type RouteAddFileTypesFn<
   TCustomId extends string,
   TId extends string,
   TSearchValidator,
+  TStateValidator,
   TParams,
   TRouterContext,
   TRouteContextFn,
@@ -570,6 +637,7 @@ export type RouteAddFileTypesFn<
   TCustomId,
   TId,
   TSearchValidator,
+  TStateValidator,
   TParams,
   TRouterContext,
   TRouteContextFn,
@@ -591,6 +659,7 @@ export interface Route<
   in out TCustomId extends string,
   in out TId extends string,
   in out TSearchValidator,
+  in out TStateValidator,
   in out TParams,
   in out TRouterContext,
   in out TRouteContextFn,
@@ -614,6 +683,7 @@ export interface Route<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -634,6 +704,7 @@ export interface Route<
     TFullPath,
     TPath,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TLoaderDeps,
     TLoaderFn,
@@ -659,6 +730,7 @@ export interface Route<
         TCustomId,
         TId,
         TSearchValidator,
+        TStateValidator,
         TParams,
         TRouterContext,
         TRouteContextFn,
@@ -687,6 +759,7 @@ export interface Route<
       TFullPath,
       TParams,
       TSearchValidator,
+      TStateValidator,
       TLoaderFn,
       TLoaderDeps,
       TRouterContext,
@@ -703,6 +776,7 @@ export interface Route<
       TCustomId,
       TId,
       TSearchValidator,
+      TStateValidator,
       TParams,
       TRouterContext,
       TRouteContextFn,
@@ -724,6 +798,7 @@ export interface Route<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -743,6 +818,7 @@ export interface Route<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -762,6 +838,7 @@ export interface Route<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -776,6 +853,7 @@ export interface Route<
 }
 
 export type AnyRoute = Route<
+  any,
   any,
   any,
   any,
@@ -808,6 +886,7 @@ export type RouteOptions<
   TFullPath extends string = string,
   TPath extends string = string,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TParams = AnyPathParams,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
@@ -824,6 +903,7 @@ export type RouteOptions<
   TCustomId,
   TPath,
   TSearchValidator,
+  TStateValidator,
   TParams,
   TLoaderDeps,
   TLoaderFn,
@@ -840,6 +920,7 @@ export type RouteOptions<
     NoInfer<TFullPath>,
     NoInfer<TParams>,
     NoInfer<TSearchValidator>,
+    NoInfer<TStateValidator>,
     NoInfer<TLoaderFn>,
     NoInfer<TLoaderDeps>,
     NoInfer<TRouterContext>,
@@ -902,6 +983,7 @@ export interface FilebaseRouteOptionsInterface<
   TId extends string = string,
   TPath extends string = string,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TParams = {},
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
@@ -914,6 +996,7 @@ export interface FilebaseRouteOptionsInterface<
   THandlers = undefined,
 > {
   validateSearch?: Constrain<TSearchValidator, AnyValidator, DefaultValidator>
+  validateState?: Constrain<TStateValidator, AnyValidator, DefaultValidator>
 
   shouldReload?:
     | boolean
@@ -1025,6 +1108,7 @@ export type BaseRouteOptions<
   TCustomId extends string = string,
   TPath extends string = string,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TParams = {},
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
@@ -1041,6 +1125,7 @@ export type BaseRouteOptions<
     TId,
     TPath,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TLoaderDeps,
     TLoaderFn,
@@ -1125,6 +1210,7 @@ type AssetFnContextOptions<
   in out TParentRoute extends AnyRoute,
   in out TParams,
   in out TSearchValidator,
+  in out TStateValidator,
   in out TLoaderFn,
   in out TRouterContext,
   in out TRouteContextFn,
@@ -1137,6 +1223,7 @@ type AssetFnContextOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveFullStateSchema<TParentRoute, TStateValidator>,
       ResolveLoaderData<TLoaderFn>,
       ResolveAllContext<
         TParentRoute,
@@ -1152,6 +1239,7 @@ type AssetFnContextOptions<
     TFullPath,
     ResolveAllParamsFromParent<TParentRoute, TParams>,
     ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+    ResolveFullStateSchema<TParentRoute, TStateValidator>,
     ResolveLoaderData<TLoaderFn>,
     ResolveAllContext<
       TParentRoute,
@@ -1181,6 +1269,7 @@ export interface UpdatableRouteOptions<
   in out TFullPath,
   in out TParams,
   in out TSearchValidator,
+  in out TStateValidator,
   in out TLoaderFn,
   in out TLoaderDeps,
   in out TRouterContext,
@@ -1208,13 +1297,13 @@ export interface UpdatableRouteOptions<
       >
     >
   }
-  /** 
+  /**
   @deprecated Use search.middlewares instead
   */
   preSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  /** 
+  /**
   @deprecated Use search.middlewares instead
   */
   postSearchFilters?: Array<
@@ -1230,6 +1319,7 @@ export interface UpdatableRouteOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveFullStateSchema<TParentRoute, TStateValidator>,
       ResolveLoaderData<TLoaderFn>,
       ResolveAllContext<
         TParentRoute,
@@ -1246,6 +1336,7 @@ export interface UpdatableRouteOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveFullStateSchema<TParentRoute, TStateValidator>,
       ResolveLoaderData<TLoaderFn>,
       ResolveAllContext<
         TParentRoute,
@@ -1262,6 +1353,7 @@ export interface UpdatableRouteOptions<
       TFullPath,
       ResolveAllParamsFromParent<TParentRoute, TParams>,
       ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
+      ResolveFullStateSchema<TParentRoute, TStateValidator>,
       ResolveLoaderData<TLoaderFn>,
       ResolveAllContext<
         TParentRoute,
@@ -1279,6 +1371,7 @@ export interface UpdatableRouteOptions<
       TParentRoute,
       TParams,
       TSearchValidator,
+      TStateValidator,
       TLoaderFn,
       TRouterContext,
       TRouteContextFn,
@@ -1293,6 +1386,7 @@ export interface UpdatableRouteOptions<
       TParentRoute,
       TParams,
       TSearchValidator,
+      TStateValidator,
       TLoaderFn,
       TRouterContext,
       TRouteContextFn,
@@ -1312,6 +1406,7 @@ export interface UpdatableRouteOptions<
       TParentRoute,
       TParams,
       TSearchValidator,
+      TStateValidator,
       TLoaderFn,
       TRouterContext,
       TRouteContextFn,
@@ -1403,6 +1498,7 @@ export interface RootRouteOptionsExtensions
 export interface RootRouteOptions<
   TRegister = unknown,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TRouterContext = {},
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
@@ -1420,6 +1516,7 @@ export interface RootRouteOptions<
         '', // TFullPath
         '', // TPath
         TSearchValidator,
+        TStateValidator,
         {}, // TParams
         TLoaderDeps,
         TLoaderFn,
@@ -1448,6 +1545,8 @@ export type RouteConstraints = {
   TId: string
   TSearchSchema: AnySchema
   TFullSearchSchema: AnySchema
+  TStateSchema: AnySchema
+  TFullStateSchema: AnySchema
   TParams: Record<string, any>
   TAllParams: Record<string, any>
   TParentContext: AnyContext
@@ -1501,6 +1600,7 @@ export class BaseRoute<
   in out TCustomId extends string = string,
   in out TId extends string = ResolveId<TParentRoute, TCustomId, TPath>,
   in out TSearchValidator = undefined,
+  in out TStateValidator = undefined,
   in out TParams = ResolveParams<TPath>,
   in out TRouterContext = AnyContext,
   in out TRouteContextFn = AnyContext,
@@ -1522,6 +1622,7 @@ export class BaseRoute<
     TFullPath,
     TPath,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TLoaderDeps,
     TLoaderFn,
@@ -1570,6 +1671,7 @@ export class BaseRoute<
         TCustomId,
         TId,
         TSearchValidator,
+        TStateValidator,
         TParams,
         TRouterContext,
         TRouteContextFn,
@@ -1598,6 +1700,7 @@ export class BaseRoute<
       TFullPath,
       TPath,
       TSearchValidator,
+      TStateValidator,
       TParams,
       TLoaderDeps,
       TLoaderFn,
@@ -1625,6 +1728,7 @@ export class BaseRoute<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -1650,6 +1754,7 @@ export class BaseRoute<
           TFullPath,
           TPath,
           TSearchValidator,
+          TStateValidator,
           TParams,
           TLoaderDeps,
           TLoaderFn,
@@ -1726,6 +1831,7 @@ export class BaseRoute<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -1748,6 +1854,7 @@ export class BaseRoute<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -1778,6 +1885,7 @@ export class BaseRoute<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -1816,6 +1924,7 @@ export class BaseRoute<
       TCustomId,
       TId,
       TSearchValidator,
+      TStateValidator,
       TParams,
       TRouterContext,
       TRouteContextFn,
@@ -1837,6 +1946,7 @@ export class BaseRoute<
       TFullPath,
       TParams,
       TSearchValidator,
+      TStateValidator,
       TLoaderFn,
       TLoaderDeps,
       TRouterContext,
@@ -1857,6 +1967,7 @@ export class BaseRoute<
       TCustomId,
       TId,
       TSearchValidator,
+      TStateValidator,
       TParams,
       TRouterContext,
       TRouteContextFn,
@@ -1890,6 +2001,7 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
 export interface RootRoute<
   in out TRegister,
   in out TSearchValidator = undefined,
+  in out TStateValidator = undefined,
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
@@ -1908,6 +2020,7 @@ export interface RootRoute<
     string, // TCustomId
     RootRouteId, // TId
     TSearchValidator, // TSearchValidator
+    TStateValidator, // TStateValidator
     {}, // TParams
     TRouterContext,
     TRouteContextFn,
@@ -1924,6 +2037,7 @@ export interface RootRoute<
 export class BaseRootRoute<
   in out TRegister = Register,
   in out TSearchValidator = undefined,
+  in out TStateValidator = undefined,
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
@@ -1942,6 +2056,7 @@ export class BaseRootRoute<
   string, // TCustomId
   RootRouteId, // TId
   TSearchValidator, // TSearchValidator
+  TStateValidator, // TStateValidator
   {}, // TParams
   TRouterContext,
   TRouteContextFn,
@@ -1958,6 +2073,7 @@ export class BaseRootRoute<
     options?: RootRouteOptions<
       TRegister,
       TSearchValidator,
+      TStateValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
