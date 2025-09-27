@@ -1,4 +1,5 @@
 import { createMiddleware } from './createMiddleware'
+import type { TSS_SERVER_FUNCTION } from './constants'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
@@ -116,7 +117,7 @@ export type AnyStartInstance = StartInstance<any, any, any, any>
 export type AnyStartInstanceOptions = StartInstanceOptions<any, any, any, any>
 
 declare module '@tanstack/router-core' {
-  interface Register {
-    ssr: true
+  interface SerializableExtensions {
+    serverFn: { [TSS_SERVER_FUNCTION]: true }
   }
 }
