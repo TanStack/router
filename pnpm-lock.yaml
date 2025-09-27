@@ -6726,6 +6726,9 @@ importers:
       '@tanstack/start-plugin-core':
         specifier: workspace:*
         version: link:../start-plugin-core
+      '@tanstack/start-server-core':
+        specifier: workspace:*
+        version: link:../start-server-core
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
@@ -7194,6 +7197,9 @@ importers:
       '@tanstack/start-plugin-core':
         specifier: workspace:*
         version: link:../start-plugin-core
+      '@tanstack/start-server-core':
+        specifier: workspace:*
+        version: link:../start-server-core
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
