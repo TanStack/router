@@ -178,7 +178,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <hr />
         {children}
         <div className="inline-div">This is an inline styled div</div>
-        <RouterDevtools position="bottom-right" />
         <Scripts />
       </body>
     </html>
