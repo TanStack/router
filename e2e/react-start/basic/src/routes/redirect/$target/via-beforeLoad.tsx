@@ -1,6 +1,6 @@
-import { redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/redirect/$target/via-beforeLoad')({
   beforeLoad: ({
     params: { target },
     search: { reloadDocument, externalHost },

@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { isSpaMode } from 'tests/utils/isSpaMode'
 import type { Response } from '@playwright/test'
 
 function expectRedirect(response: Response | null, endsWith: string) {
@@ -25,7 +26,11 @@ test.describe('/search-params/loader-throws-redirect', () => {
     page,
   }) => {
     const response = await page.goto('/search-params/loader-throws-redirect')
-    expectRedirect(response, '/search-params/loader-throws-redirect?step=a')
+
+    if (!isSpaMode) {
+      expectRedirect(response, '/search-params/loader-throws-redirect?step=a')
+    }
+
     await expect(page.getByTestId('search-param')).toContainText('a')
     expect(page.url().endsWith('/search-params/loader-throws-redirect?step=a'))
   })
