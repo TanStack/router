@@ -10,10 +10,10 @@ test.use({
 
 test('Navigating to post', async ({ page }) => {
   await page.goto('/')
-  await page.waitForURL('/')
+  await page.waitForLoadState('networkidle')
 
   await page.getByRole('link', { name: 'Posts' }).click()
-  await page.waitForURL('/posts')
+  await page.waitForLoadState('networkidle')
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await page.waitForLoadState('networkidle')
   await page.getByRole('link', { name: 'Deep View' }).click()
