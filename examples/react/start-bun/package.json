@@ -18,7 +18,7 @@
     "@tanstack/react-router": "^1.132.7",
     "@tanstack/react-router-devtools": "^1.132.11",
     "@tanstack/react-router-ssr-query": "^1.132.7",
-    "@tanstack/react-start": "^1.132.15",
+    "@tanstack/react-start": "^1.132.16",
     "@tanstack/router-plugin": "^1.132.7",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
