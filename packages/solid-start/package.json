@@ -50,7 +50,7 @@
         "default": "./dist/esm/client-rpc.js"
       }
     },
-     "./server-rpc": {
+    "./server-rpc": {
       "import": {
         "types": "./dist/esm/server-rpc.d.ts",
         "default": "./dist/esm/server-rpc.js"
