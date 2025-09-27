@@ -8,7 +8,7 @@
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
     "start": "npx serve dist/client",
-    "test:e2e": "rm -rf port*.txt; NODE_ENV=development playwright test --project=chromium"
+    "test:e2e": "rm -rf port*.txt; pnpm run build && NODE_ENV=development playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",
