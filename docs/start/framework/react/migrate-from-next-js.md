@@ -55,13 +55,13 @@ rm postcss.config.* next.config.*
 TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
 
 ```sh
-npm i @tanstack/react-router @tanstack/react-start vite
+npm i @tanstack/react-router @tanstack/react-start
 ```
 
 For Tailwind CSS and resolving imports using path aliases:
 
 ```sh
-npm i -D @tailwindcss/vite tailwindcss vite-tsconfig-paths
+npm i -D vite @vitejs/plugin-react @tailwindcss/vite tailwindcss vite-tsconfig-paths
 ```
 
 ### 3. Update Project Configuration
@@ -85,10 +85,11 @@ Now that you've installed the necessary dependencies, update your project config
 
 ```ts
 // vite.config.ts
-import tailwindcss from '@tailwindcss/vite'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   server: {
@@ -99,16 +100,18 @@ export default defineConfig({
     // Enables Vite to resolve imports using path aliases.
     tsconfigPaths(),
     tanstackStart({
-      tsr: {
+      srcDirectory: 'src', // This is the default
+      router: {
         // Specifies the directory TanStack Router uses for your routes.
-        routesDirectory: 'src/app', // Defaults to "src/routes"
+        routesDirectory: 'app', // Defaults to "routes", relative to srcDirectory
       },
     }),
+    viteReact(),
   ],
 })
 ```
 
-By default, `routesDirectory` is set to `src/routes`. To maintain consistency with Next.js App Router conventions, you can set it to `src/app` instead.
+By default, `routesDirectory` is set to `routes`. To maintain consistency with Next.js App Router conventions, you can set it to `app` instead.
 
 ### 4. Adapt the Root Layout
 
@@ -209,27 +212,21 @@ Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
 
 ### 6. Are we migrated yet?
 
-Before you can run the development server, you need to create a router file that will define the behavior of TanStack Router within TanStack Start.
+Before you can run the development server, you need to create a file that will define the behavior of TanStack Router within TanStack Start.
 
 - `src/router.tsx`
 
 ```tsx
-import { createRouter as createTanStackRouter } from '@tanstack/react-router'
+import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 
-export function createRouter() {
-  const router = createTanStackRouter({
+export function getRouter() {
+  const router = createRouter({
     routeTree,
     scrollRestoration: true,
   })
 
   return router
-}
-
-declare module '@tanstack/react-router' {
-  interface Register {
-    router: ReturnType<typeof createRouter>
-  }
 }
 ```
 
@@ -305,7 +302,7 @@ function Component() {
 }
 ```
 
-Learn more about the [Links](../learn-the-basics.md#navigation).
+Learn more about the [Links](/router/latest/docs/framework/react/guide/navigation#link-component).
 
 ### Server ~Actions~ Functions
 
@@ -326,10 +323,14 @@ Learn more about the [Server Functions](../server-functions.md).
 
 ```ts
 - export async function GET() { // [!code --]
-+ export const ServerRoute = createServerFileRoute().methods({ // [!code ++]
-+   GET: async () => { // [!code ++]
-    return Response.json("Hello, World!")
-  }
++ export const Route = createFileRoute('/api/hello')({ // [!code ++]
++  server: { // [!code ++]
++     handlers: { // [!code ++]
++       GET: async () => { // [!code ++]
++         return Response.json("Hello, World!")
++       } // [!code ++]
++    } // [!code ++]
++  } // [!code ++]
 + }) // [!code ++]
 ```
 

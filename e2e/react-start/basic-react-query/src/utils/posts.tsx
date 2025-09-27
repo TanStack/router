@@ -31,7 +31,7 @@ export const postsQueryOptions = () =>
   })
 
 export const fetchPost = createServerFn({ method: 'GET' })
-  .validator((postId: string) => postId)
+  .inputValidator((postId: string) => postId)
   .handler(async ({ data: postId }) => {
     console.info(`Fetching post with id ${postId}...`)
     const post = await axios

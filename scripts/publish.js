@@ -97,10 +97,6 @@ await publish({
       packageDir: 'packages/solid-start',
     },
     {
-      name: '@tanstack/solid-start-plugin',
-      packageDir: 'packages/solid-start-plugin',
-    },
-    {
       name: '@tanstack/solid-start-client',
       packageDir: 'packages/solid-start-client',
     },
@@ -125,10 +121,6 @@ await publish({
       packageDir: 'packages/react-start',
     },
     {
-      name: '@tanstack/react-start-plugin',
-      packageDir: 'packages/react-start-plugin',
-    },
-    {
       name: '@tanstack/react-start-client',
       packageDir: 'packages/react-start-client',
     },
@@ -137,24 +129,20 @@ await publish({
       packageDir: 'packages/react-start-server',
     },
     {
-      name: '@tanstack/start-server-functions-fetcher',
-      packageDir: 'packages/start-server-functions-fetcher',
-    },
-    {
-      name: '@tanstack/start-server-functions-client',
-      packageDir: 'packages/start-server-functions-client',
-    },
-    {
-      name: '@tanstack/start-server-functions-server',
-      packageDir: 'packages/start-server-functions-server',
-    },
-    {
       name: '@tanstack/start-plugin-core',
       packageDir: 'packages/start-plugin-core',
     },
     {
+      name: '@tanstack/start-static-server-functions',
+      packageDir: 'packages/start-static-server-functions',
+    },
+    {
       name: '@tanstack/router-utils',
       packageDir: 'packages/router-utils',
+    },
+    {
+      name: '@tanstack/nitro-v2-vite-plugin',
+      packageDir: 'packages/nitro-v2-vite-plugin',
     },
   ],
   branchConfigs: {

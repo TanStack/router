@@ -78,20 +78,6 @@ export function useLinkProps<
     ...propsSafeToSpread
   } = options
 
-  // If this link simply reloads the current route,
-  // make sure it has a new key so it will trigger a data refresh
-
-  // If this `to` is a valid external URL, return
-  // null for LinkUtils
-
-  const type: 'internal' | 'external' = React.useMemo(() => {
-    try {
-      new URL(to as any)
-      return 'external'
-    } catch {}
-    return 'internal'
-  }, [to])
-
   // subscribe to search params to re-build location if it changes
   const currentSearch = useRouterState({
     select: (s) => s.location.search,
@@ -125,10 +111,36 @@ export function useLinkProps<
     [router, _options],
   )
 
-  const isExternal = type === 'external'
+  const hrefOption = React.useMemo(() => {
+    if (disabled) {
+      return undefined
+    }
+    let href = next.maskedLocation ? next.maskedLocation.url : next.url
+
+    let external = false
+    if (router.origin) {
+      if (href.startsWith(router.origin)) {
+        href = href.replace(router.origin, '') || '/'
+      } else {
+        external = true
+      }
+    }
+    return { href, external }
+  }, [disabled, next.maskedLocation, next.url, router.origin])
+
+  const externalLink = React.useMemo(() => {
+    if (hrefOption?.external) {
+      return hrefOption.href
+    }
+    try {
+      new URL(to as any)
+      return to
+    } catch {}
+    return undefined
+  }, [to, hrefOption])
 
   const preload =
-    options.reloadDocument || isExternal
+    options.reloadDocument || externalLink
       ? false
       : (userPreload ?? router.options.defaultPreload)
   const preloadDelay =
@@ -136,7 +148,7 @@ export function useLinkProps<
 
   const isActive = useRouterState({
     select: (s) => {
-      if (isExternal) return false
+      if (externalLink) return false
       if (activeOptions?.exact) {
         const testExact = exactPathTest(
           s.location.pathname,
@@ -218,11 +230,15 @@ export function useLinkProps<
 
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
+    // Check actual element's target attribute as fallback
+    const elementTarget = (e.currentTarget as HTMLAnchorElement).target
+    const effectiveTarget = target !== undefined ? target : elementTarget
+
     if (
       !disabled &&
       !isCtrlEvent(e) &&
       !e.defaultPrevented &&
-      (!target || target === '_self') &&
+      (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
@@ -250,12 +266,11 @@ export function useLinkProps<
     }
   }
 
-  if (isExternal) {
+  if (externalLink) {
     return {
       ...propsSafeToSpread,
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      type,
-      href: to,
+      href: externalLink,
       ...(children && { children }),
       ...(target && { target }),
       ...(disabled && { disabled }),
@@ -338,11 +353,7 @@ export function useLinkProps<
     ...propsSafeToSpread,
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
-    href: disabled
-      ? undefined
-      : next.maskedLocation
-        ? router.history.createHref(next.maskedLocation.href)
-        : router.history.createHref(next.href),
+    href: hrefOption?.href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onFocus: composeHandlers([onFocus, handleFocus]),
@@ -374,10 +385,11 @@ const intersectionObserverOptions: IntersectionObserverInit = {
 const composeHandlers =
   (handlers: Array<undefined | React.EventHandler<any>>) =>
   (e: React.SyntheticEvent) => {
-    handlers.filter(Boolean).forEach((handler) => {
+    for (const handler of handlers) {
+      if (!handler) continue
       if (e.defaultPrevented) return
-      handler!(e)
-    })
+      handler(e)
+    }
   }
 
 type UseLinkReactProps<TComp> = TComp extends keyof React.JSX.IntrinsicElements

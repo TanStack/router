@@ -15,7 +15,7 @@ if (import.meta.env.VITE_NODE_ENV === 'test') {
 }
 
 export const fetchPost = createServerFn({ method: 'GET' })
-  .validator((postId: string) => postId)
+  .inputValidator((postId: string) => postId)
   .handler(async ({ data: postId }) => {
     console.info(`Fetching post with id ${postId}...`)
     const post = await axios

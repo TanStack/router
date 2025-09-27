@@ -1,3 +1,5 @@
+import { useRouter } from './useRouter'
+
 export function ScriptOnce({
   children,
 }: {
@@ -5,14 +7,15 @@ export function ScriptOnce({
   log?: boolean
   sync?: boolean
 }) {
-  if (typeof document !== 'undefined') {
+  const router = useRouter()
+  if (!router.isServer) {
     return null
   }
-
   return (
     <script
-      class="tsr-once"
-      innerHTML={[children].filter(Boolean).join('\n')}
+      nonce={router.options.ssr?.nonce}
+      class="$tsr"
+      innerHTML={[children].filter(Boolean).join('\n') + ';$_TSR.c()'}
     />
   )
 }

@@ -1,4 +1,3 @@
-console.warn("These exports from \"retain-export-component.tsx?loader\" are not being code-split and will increase your bundle size: \n- Layout\nThese should either have their export statements removed or be imported from another file that is not a route.");
 import * as React from 'react';
 import { importedLoader } from '../../shared/imported';
 import { Route } from "retain-export-component.tsx";

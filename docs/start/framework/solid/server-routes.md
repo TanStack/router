@@ -1,4 +1,5 @@
 ---
 ref: docs/start/framework/react/server-routes.md
-replace: { 'react': 'solid' }
+replace:
+  { '@tanstack/react-start': '@tanstack/solid-start', 'React': 'SolidJS' }
 ---

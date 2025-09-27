@@ -1,4 +1,4 @@
-import { act, useEffect } from 'react'
+import { act, useEffect, useRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
@@ -8,6 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { z } from 'zod'
+import { composeRewrites } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
@@ -18,6 +19,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  rewriteBasepath,
   useNavigate,
 } from '../src'
 import type { StandardSchemaValidator } from '@tanstack/router-core'
@@ -59,7 +61,7 @@ export function validateSearchParams<
 }
 
 function createTestRouter(
-  options: RouterOptions<AnyRoute, 'never'> &
+  options: RouterOptions<AnyRoute, 'never', any, any, any> &
     Required<Pick<RouterOptions<AnyRoute, 'never'>, 'history'>>,
 ) {
   const rootRoute = createRootRoute({
@@ -343,7 +345,7 @@ describe('encoding: URL param segment for /posts/$slug', () => {
 
     await act(() => router.load())
 
-    expect(router.state.location.pathname).toBe('/posts/🚀')
+    expect(router.state.location.pathname).toBe('/posts/%F0%9F%9A%80')
   })
 
   it('state.location.pathname, should have the params.slug value of "100%25"', async () => {
@@ -592,7 +594,7 @@ describe('encoding: URL splat segment for /$', () => {
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe('/🚀')
+    expect(router.state.location.pathname).toBe('/%F0%9F%9A%80')
   })
 
   it('state.location.pathname, should have the params._splat value of "100%25"', async () => {
@@ -636,7 +638,7 @@ describe('encoding: URL splat segment for /$', () => {
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe(
+    expect(router.state.location.href).toBe(
       '/framework%2Freact%2Fguide%2Ffile-based-routing%20tanstack',
     )
   })
@@ -650,8 +652,8 @@ describe('encoding: URL splat segment for /$', () => {
 
     await router.load()
 
-    expect(router.state.location.pathname).toBe(
-      '/framework/react/guide/file-based-routing tanstack',
+    expect(router.state.location.href).toBe(
+      '/framework/react/guide/file-based-routing%20tanstack',
     )
   })
 
@@ -736,12 +738,11 @@ describe('encoding: URL path segment', () => {
   it.each([
     {
       input: '/path-segment/%C3%A9',
-      output: '/path-segment/é',
-      type: 'encoded',
+      output: '/path-segment/%C3%A9',
     },
     {
       input: '/path-segment/é',
-      output: '/path-segment/é',
+      output: '/path-segment/%C3%A9',
       type: 'not encoded',
     },
     {
@@ -761,53 +762,46 @@ describe('encoding: URL path segment', () => {
     },
     {
       input: '/path-segment/%F0%9F%9A%80',
-      output: '/path-segment/🚀',
-      type: 'encoded',
+      output: '/path-segment/%F0%9F%9A%80',
     },
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon',
-      type: 'encoded',
+      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/%25🚀to%2Fthe%2Fmoon',
-      type: 'encoded',
+      output: '/path-segment/%25%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon%25',
-      type: 'encoded',
+      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25',
     },
     {
       input:
         '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon%25🚀to%2Fthe%2Fmoon',
-      type: 'encoded',
+      output:
+        '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon%25%F0%9F%9A%80to%2Fthe%2Fmoon',
     },
     {
       input: '/path-segment/🚀',
-      output: '/path-segment/🚀',
+      output: '/path-segment/%F0%9F%9A%80',
       type: 'not encoded',
     },
     {
       input: '/path-segment/🚀to%2Fthe%2Fmoon',
-      output: '/path-segment/🚀to%2Fthe%2Fmoon',
+      output: '/path-segment/%F0%9F%9A%80to%2Fthe%2Fmoon',
       type: 'not encoded',
     },
-  ])(
-    'should resolve $input to $output when the path segment is $type',
-    async ({ input, output }) => {
-      const { router } = createTestRouter({
-        history: createMemoryHistory({ initialEntries: [input] }),
-      })
+  ])('should resolve $input to $output', async ({ input, output }) => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: [input] }),
+    })
 
-      render(<RouterProvider router={router} />)
-      await act(() => router.load())
+    render(<RouterProvider router={router} />)
+    await act(() => router.load())
 
-      expect(router.state.location.pathname).toBe(output)
-    },
-  )
+    expect(new URL(router.state.location.url).pathname).toBe(output)
+  })
 })
 
 describe('router emits events during rendering', () => {
@@ -885,12 +879,16 @@ describe('router rendering stability', () => {
     remountDeps: {
       default?: RemountDepsFn
       fooId?: RemountDepsFn
+      foo2Id?: RemountDepsFn
       barId?: RemountDepsFn
+      bar2Id?: RemountDepsFn
     }
   }) {
     const mountMocks = {
       fooId: vi.fn(),
+      foo2Id: vi.fn(),
       barId: vi.fn(),
+      bar2Id: vi.fn(),
     }
 
     const rootRoute = createRootRoute({
@@ -927,12 +925,34 @@ describe('router rendering stability', () => {
               >
                 Foo3-Bar2
               </Link>
+              <Link
+                data-testid="link-foo2-1-bar2-1"
+                to="/foo2/$foo2Id/bar2/$bar2Id"
+                params={{ foo2Id: '1', bar2Id: '1' }}
+              >
+                Foo2-1-Bar2_1
+              </Link>
+              <Link
+                data-testid="link-foo2-1-bar2-2"
+                to="/foo2/$foo2Id/bar2/$bar2Id"
+                params={{ foo2Id: '1', bar2Id: '2' }}
+              >
+                Foo2-1-Bar2_2
+              </Link>
+              <Link
+                data-testid="link-foo2-2-bar2-1"
+                to="/foo2/$foo2Id/bar2/$bar2Id"
+                params={{ foo2Id: '2', bar2Id: '1' }}
+              >
+                Foo2-2-Bar2_1
+              </Link>
             </div>
             <Outlet />
           </div>
         )
       },
     })
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
@@ -940,6 +960,7 @@ describe('router rendering stability', () => {
         return ''
       },
     })
+
     const fooIdRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/foo/$fooId',
@@ -968,7 +989,7 @@ describe('router rendering stability', () => {
     })
 
     function BarIdRouteComponent() {
-      const barId = fooIdRoute.useParams({ select: (s) => s.barId })
+      const barId = barIdRoute.useParams({ select: (s) => s.barId })
 
       useEffect(() => {
         mountMocks.barId()
@@ -981,8 +1002,57 @@ describe('router rendering stability', () => {
       )
     }
 
+    const foo2IdRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo2/$foo2Id',
+      component: Foo2IdRouteComponent,
+      remountDeps: opts?.remountDeps.foo2Id,
+    })
+
+    function Foo2IdRouteComponent() {
+      const renderCounter = useRef(0)
+      renderCounter.current = renderCounter.current + 1
+
+      const { foo2Id } = foo2IdRoute.useParams()
+
+      useEffect(() => {
+        mountMocks.foo2Id()
+      }, [foo2Id])
+
+      return (
+        <div data-testid="foo2Id-page">
+          RenderCount:{' '}
+          <span data-testid="foo2Id-Render-Count">{renderCounter.current}</span>
+          Foo page <span data-testid="foo2Id-value">{foo2Id}</span>
+          <Outlet />
+        </div>
+      )
+    }
+
+    const bar2IdRoute = createRoute({
+      getParentRoute: () => foo2IdRoute,
+      path: '/bar2/$bar2Id',
+      component: Bar2IdRouteComponent,
+      remountDeps: opts?.remountDeps.bar2Id,
+    })
+
+    function Bar2IdRouteComponent() {
+      const { bar2Id } = bar2IdRoute.useParams()
+
+      useEffect(() => {
+        mountMocks.bar2Id()
+      }, [bar2Id])
+
+      return (
+        <div data-testid="bar2Id-page">
+          Bar2 page <span data-testid="bar2Id-value">{bar2Id}</span> <Outlet />
+        </div>
+      )
+    }
+
     const routeTree = rootRoute.addChildren([
       fooIdRoute.addChildren([barIdRoute]),
+      foo2IdRoute.addChildren([bar2IdRoute]),
       indexRoute,
     ])
     const router = createRouter({
@@ -998,19 +1068,37 @@ describe('router rendering stability', () => {
 
     const foo3bar1 = await screen.findByTestId('link-foo-3-bar-1')
     const foo3bar2 = await screen.findByTestId('link-foo-3-bar-2')
+    const foo_2_1_bar2_1 = await screen.findByTestId('link-foo2-1-bar2-1')
+    const foo_2_1_bar2_2 = await screen.findByTestId('link-foo2-1-bar2-2')
+    const foo_2_2_bar2_1 = await screen.findByTestId('link-foo2-2-bar2-1')
 
     expect(foo1).toBeInTheDocument()
     expect(foo2).toBeInTheDocument()
     expect(foo3bar1).toBeInTheDocument()
     expect(foo3bar2).toBeInTheDocument()
+    expect(foo_2_1_bar2_1).toBeInTheDocument()
+    expect(foo_2_1_bar2_2).toBeInTheDocument()
+    expect(foo_2_2_bar2_1).toBeInTheDocument()
 
-    return { router, mountMocks, links: { foo1, foo2, foo3bar1, foo3bar2 } }
+    return {
+      router,
+      mountMocks,
+      links: {
+        foo1,
+        foo2,
+        foo3bar1,
+        foo3bar2,
+        foo_2_1_bar2_1,
+        foo_2_1_bar2_2,
+        foo_2_2_bar2_1,
+      },
+    }
   }
 
   async function check(
-    page: 'fooId' | 'barId',
+    page: 'fooId' | 'foo2Id' | 'barId' | 'bar2Id',
     expected: { value: string; mountCount: number },
-    mountMocks: Record<'fooId' | 'barId', () => void>,
+    mountMocks: Record<'fooId' | 'foo2Id' | 'barId' | 'bar2Id', () => void>,
   ) {
     const p = await screen.findByTestId(`${page}-page`)
     expect(p).toBeInTheDocument()
@@ -1027,7 +1115,6 @@ describe('router rendering stability', () => {
     await act(() => fireEvent.click(links.foo1))
     await check('fooId', { value: '1', mountCount: 1 }, mountMocks)
     expect(mountMocks.barId).not.toHaveBeenCalled()
-
     await act(() => fireEvent.click(links.foo2))
     await check('fooId', { value: '2', mountCount: 1 }, mountMocks)
     expect(mountMocks.barId).not.toHaveBeenCalled()
@@ -1035,9 +1122,35 @@ describe('router rendering stability', () => {
     await act(() => fireEvent.click(links.foo3bar1))
     await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
     await check('barId', { value: '1', mountCount: 1 }, mountMocks)
+
     await act(() => fireEvent.click(links.foo3bar2))
     await check('fooId', { value: '3', mountCount: 1 }, mountMocks)
     await check('barId', { value: '2', mountCount: 1 }, mountMocks)
+
+    mountMocks.foo2Id.mockClear()
+    mountMocks.bar2Id.mockClear()
+    await act(() => fireEvent.click(links.foo_2_1_bar2_1))
+    const renderCount = await screen.findByTestId('foo2Id-Render-Count')
+
+    await check('foo2Id', { value: '1', mountCount: 1 }, mountMocks)
+    await check('bar2Id', { value: '1', mountCount: 1 }, mountMocks)
+    expect(renderCount).toBeInTheDocument()
+    expect(renderCount).toHaveTextContent('1')
+
+    await act(() => fireEvent.click(links.foo_2_1_bar2_2))
+    await check('foo2Id', { value: '1', mountCount: 1 }, mountMocks)
+    await check('bar2Id', { value: '2', mountCount: 2 }, mountMocks)
+    expect(renderCount).toBeInTheDocument()
+    expect(renderCount).toHaveTextContent('1')
+
+    mountMocks.foo2Id.mockClear()
+    mountMocks.bar2Id.mockClear()
+
+    await act(() => fireEvent.click(links.foo_2_2_bar2_1))
+    await check('foo2Id', { value: '2', mountCount: 1 }, mountMocks)
+    await check('bar2Id', { value: '1', mountCount: 1 }, mountMocks)
+    expect(renderCount).toBeInTheDocument()
+    expect(renderCount).toHaveTextContent('2')
   })
 
   it('should remount the fooId and barId page component when navigating to the same route but different path param if defaultRemountDeps with params is used', async () => {
@@ -1855,5 +1968,960 @@ describe('statusCode reset on navigation', () => {
 
     await act(() => router.navigate({ to: '/another-non-existing' }))
     expect(router.state.statusCode).toBe(404)
+  })
+})
+
+describe('Router rewrite functionality', () => {
+  it('should rewrite URLs using input before router interprets them', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const newPathRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/new-path',
+      component: () => <div data-testid="new-path">New Path Content</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([newPathRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/old-path'] }),
+      rewrite: {
+        input: ({ url }) => {
+          // Rewrite /old-path to /new-path
+
+          if (url.pathname === '/old-path') {
+            url.pathname = `/new-path`
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('new-path')).toBeInTheDocument()
+    })
+
+    // Router should have interpreted the rewritten URL
+    expect(router.state.location.pathname).toBe('/new-path')
+  })
+
+  it('should handle input rewrite with complex URL transformations', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const usersRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users',
+      component: () => <div data-testid="users">Users Content</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([usersRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/legacy/users?page=1#top'],
+      }),
+      rewrite: {
+        input: ({ url }) => {
+          // Rewrite legacy URLs to new format
+          if (url.pathname === '/legacy/users') {
+            url.pathname = `/users`
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('users')).toBeInTheDocument()
+    })
+
+    // Router should have interpreted the rewritten URL
+    expect(router.state.location.pathname).toBe('/users')
+    expect(router.state.location.search).toEqual({ page: 1 })
+    expect(router.state.location.hash).toBe('top')
+  })
+
+  it('should handle multiple input rewrite conditions', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div data-testid="home">Home Content</div>,
+    })
+
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <div data-testid="about">About Content</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([homeRoute, aboutRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/old-about'] }),
+      rewrite: {
+        input: ({ url }) => {
+          // Multiple rewrite rules
+          if (url.pathname === '/old-home' || url.pathname === '/home') {
+            url.pathname = '/'
+          }
+          if (url.pathname === '/old-about' || url.pathname === '/info') {
+            url.pathname = '/about'
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('about')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/about')
+  })
+
+  it('should handle input rewrite with search params and hash preservation', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const docsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/docs',
+      component: () => <div data-testid="docs">Documentation</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([docsRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/old/documentation?version=v2&lang=en#installation'],
+      }),
+      rewrite: {
+        input: ({ url }) => {
+          // Rewrite old docs URL structure
+          if (url.pathname === '/old/documentation') {
+            url.pathname = `/docs`
+            return url
+          }
+          return undefined
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('docs')).toBeInTheDocument()
+    })
+
+    // Verify the URL was rewritten correctly with search params and hash preserved
+    expect(router.state.location.pathname).toBe('/docs')
+    expect(router.state.location.search).toEqual({
+      version: 'v2',
+      lang: 'en',
+    })
+    expect(router.state.location.hash).toBe('installation')
+  })
+
+  it('should handle subdomain to path rewriting with input', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const apiRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/$stage/users',
+      component: () => (
+        <div data-testid="component">{apiRoute.useParams().stage} Users</div>
+      ),
+    })
+
+    const routeTree = rootRoute.addChildren([apiRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['https://test.domain.com/users'],
+      }),
+      rewrite: {
+        input: ({ url }) => {
+          // Rewrite test.domain.com/path to /test/path (subdomain becomes path segment)
+          if (url.hostname.startsWith('test.domain.com')) {
+            url.pathname = `/test${url.pathname}`
+            return url
+          }
+          return undefined
+        },
+      },
+    })
+    render(<RouterProvider router={router} />)
+    await router.latestLoadPromise
+    await waitFor(() => {
+      expect(screen.getByTestId('component')).toHaveTextContent('test Users')
+    })
+
+    // Router should have interpreted the rewritten URL
+    expect(router.state.location.pathname).toBe('/test/users')
+  })
+
+  it('should handle hostname-based routing with input rewrite', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const appRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/app',
+      component: () => <div data-testid="app">App Content</div>,
+    })
+
+    const adminRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/admin',
+      component: () => <div data-testid="admin">Admin Content</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([appRoute, adminRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['https://admin.example.com/dashboard'],
+      }),
+      rewrite: {
+        input: ({ url }) => {
+          // Route based on subdomain
+          if (url.hostname === 'admin.example.com') {
+            url.pathname = '/admin'
+          }
+          if (url.hostname === 'app.example.com') {
+            url.pathname = '/app'
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('admin')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/admin')
+  })
+
+  it('should handle multiple URL transformation patterns', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const productsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/products',
+      component: () => <div data-testid="products">Products</div>,
+    })
+
+    const blogRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/blog',
+      component: () => <div data-testid="blog">Blog</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([productsRoute, blogRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/old/shop/items?category=electronics'],
+      }),
+      rewrite: {
+        input: ({ url }) => {
+          // Multiple transformation patterns
+          if (url.pathname === '/old/shop/items') {
+            url.pathname = `/products`
+          }
+          if (url.pathname.startsWith('/legacy/')) {
+            url.pathname = url.pathname.replace('/legacy/', '/blog/')
+          }
+          if (url.pathname.startsWith('/v1/')) {
+            url.pathname = url.pathname.replace('/v1/', '/')
+          }
+          return url
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('products')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/products')
+    expect(router.state.location.search).toEqual({ category: 'electronics' })
+  })
+
+  it('should handle rewriting subdomain and path', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const apiRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/api/v2',
+      component: () => <div data-testid="api-v2">API v2</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([apiRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['https://legacy.example.com/api/v1'],
+      }),
+      rewrite: {
+        input: ({ url }) => {
+          if (
+            url.hostname === 'legacy.example.com' &&
+            url.pathname === '/api/v1'
+          ) {
+            return 'https://api.example.com/api/v2'
+          }
+          return undefined
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('api-v2')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/api/v2')
+  })
+
+  it('should handle rewriting subdomain, path and search', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const newApiRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/api/v3/users',
+      component: () => <div data-testid="api-v3">API v3 Users</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([newApiRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: [
+          'https://old-api.company.com/users?limit=10&offset=20',
+        ],
+      }),
+      rewrite: {
+        input: ({ url }) => {
+          if (
+            url.hostname === 'old-api.company.com' &&
+            url.pathname === '/users'
+          ) {
+            url.hostname = 'api.company.com'
+            url.pathname = '/api/v3/users'
+            url.searchParams.set('version', '3')
+            return url
+          }
+          return undefined
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('api-v3')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/api/v3/users')
+    expect(router.state.location.search).toEqual({
+      limit: 10,
+      offset: 20,
+      version: 3,
+    })
+  })
+
+  it('should handle complex URL mutations with hostname and search params', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const blogRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/content/blog',
+      component: () => <div data-testid="blog">Blog Content</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([blogRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: [
+          'https://blog.oldsite.com/posts?category=tech&year=2024#top',
+        ],
+      }),
+      rewrite: {
+        input: ({ url }) => {
+          // Mutate URL: change subdomain to path, preserve params and hash
+          if (url.hostname === 'blog.oldsite.com') {
+            url.hostname = 'newsite.com'
+            url.pathname = '/content/blog'
+            url.searchParams.set('source', 'migration')
+            // Keep existing search params and hash
+            return url.href
+          }
+          return undefined
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('blog')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/content/blog')
+    expect(router.state.location.search).toEqual({
+      category: 'tech',
+      year: 2024,
+      source: 'migration',
+    })
+    expect(router.state.location.hash).toBe('top')
+  })
+
+  it('should handle returning new URL instance vs mutating existing one', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const shopRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/shop/products',
+      component: () => <div data-testid="shop">Shop Products</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([shopRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['https://store.example.com/items?id=123'],
+      }),
+      rewrite: {
+        input: ({ url }) => {
+          // Alternative pattern: create new URL instance and return it
+
+          if (
+            url.hostname === 'store.example.com' &&
+            url.pathname === '/items'
+          ) {
+            const newUrl = new URL('https://example.com/shop/products')
+            newUrl.searchParams.set(
+              'productId',
+              url.searchParams.get('id') || '',
+            )
+            newUrl.searchParams.set('migrated', 'true')
+            return newUrl
+          }
+          return undefined
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('shop')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/shop/products')
+    expect(router.state.location.search).toEqual({
+      productId: 123,
+      migrated: true,
+    })
+  })
+
+  it('should handle output rewrite when navigating', async () => {
+    // This test demonstrates expected output behavior for programmatic navigation
+    const Navigate = () => {
+      const navigate = useNavigate()
+      return (
+        <button
+          data-testid="navigate-btn"
+          onClick={() => navigate({ to: '/dashboard' })}
+        >
+          Navigate to Dashboard
+        </button>
+      )
+    }
+
+    const rootRoute = createRootRoute()
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: Navigate,
+    })
+
+    const dashboardRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/dashboard',
+      component: () => <div data-testid="dashboard">Dashboard</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, dashboardRoute])
+
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: {
+        output: ({ url }) => {
+          if (url.pathname === '/dashboard') {
+            url.pathname = '/admin/panel'
+            return url
+          }
+          return undefined
+        },
+        input: ({ url }) => {
+          if (url.pathname === '/admin/panel') {
+            url.pathname = '/dashboard'
+            return url
+          }
+          return undefined
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const navigateBtn = await screen.findByTestId('navigate-btn')
+
+    fireEvent.click(navigateBtn)
+    await router.latestLoadPromise
+
+    await screen.findByTestId('dashboard')
+
+    // Router internal state should show the internal path
+    expect(router.state.location.pathname).toBe('/dashboard')
+
+    // History should be updated with the rewritten path due to output
+    expect(history.location.pathname).toBe('/admin/panel')
+  })
+
+  it('should handle output rewrite with Link navigation', async () => {
+    // This test demonstrates expected output behavior for Link-based navigation
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <div>
+          <Link to="/profile" data-testid="profile-link">
+            Go to Profile
+          </Link>
+        </div>
+      ),
+    })
+
+    const profileRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/profile',
+      component: () => <div data-testid="profile">User Profile</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, profileRoute])
+
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: {
+        output: ({ url }) => {
+          if (url.pathname === '/profile') {
+            url.pathname = '/user'
+            return url
+          }
+          return undefined
+        },
+        input: ({ url }) => {
+          if (url.pathname === '/user') {
+            url.pathname = '/profile'
+            return url
+          }
+          return undefined
+        },
+      },
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const profileLink = await screen.findByTestId('profile-link')
+
+    fireEvent.click(profileLink)
+
+    expect(await screen.findByTestId('profile')).toBeInTheDocument()
+
+    expect(router.state.location.pathname).toBe('/profile')
+
+    expect(history.location.pathname).toBe('/user')
+  })
+})
+
+describe('rewriteBasepath utility', () => {
+  it('should handle basic basepath rewriting with input', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div data-testid="home">Home</div>,
+    })
+
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <div data-testid="about">About</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([homeRoute, aboutRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/my-app/about'],
+      }),
+      rewrite: rewriteBasepath({ basepath: 'my-app' }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('about')).toBeInTheDocument()
+    })
+
+    // Router should interpret the URL without the basepath
+    expect(router.state.location.pathname).toBe('/about')
+  })
+
+  it('should handle basepath with leading and trailing slashes', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const usersRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users',
+      component: () => <div data-testid="users">Users</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([usersRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/api/v1/users'],
+      }),
+      rewrite: rewriteBasepath({ basepath: '/api/v1/' }), // With leading and trailing slashes
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('users')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/users')
+  })
+
+  it('should handle empty basepath gracefully', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const testRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/test',
+      component: () => <div data-testid="test">Test</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([testRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/test'],
+      }),
+      rewrite: rewriteBasepath({ basepath: '' }), // Empty basepath
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByTestId('test')).toBeInTheDocument()
+
+    expect(router.state.location.pathname).toBe('/test')
+  })
+
+  it('should combine basepath with additional input rewrite logic', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const newApiRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/api/v2',
+      component: () => <div data-testid="api-v2">API v2</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([newApiRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/my-app/legacy/api/v1'],
+      }),
+      rewrite: composeRewrites([
+        rewriteBasepath({ basepath: 'my-app' }),
+        {
+          // Additional rewrite logic after basepath removal
+          input: ({ url }) => {
+            if (url.pathname === '/legacy/api/v1') {
+              url.pathname = '/api/v2'
+              return url
+            }
+            return undefined
+          },
+        },
+      ]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByTestId('api-v2')).toBeInTheDocument()
+
+    // Should first remove basepath (/my-app/legacy/api/v1 -> /legacy/api/v1)
+    // Then apply additional rewrite (/legacy/api/v1 -> /api/v2)
+    expect(router.state.location.pathname).toBe('/api/v2')
+  })
+
+  it('should handle complex basepath with subdomain-style paths', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const dashboardRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/dashboard',
+      component: () => <div data-testid="dashboard">Dashboard</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([dashboardRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/tenant-123/dashboard'],
+      }),
+      rewrite: rewriteBasepath({ basepath: 'tenant-123' }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/dashboard')
+  })
+
+  it('should preserve search params and hash when rewriting basepath', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const searchRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/search',
+      component: () => <div data-testid="search">Search</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([searchRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/app/search?q=test&filter=all#results'],
+      }),
+      rewrite: rewriteBasepath({ basepath: 'app' }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('search')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/search')
+    expect(router.state.location.search).toEqual({
+      q: 'test',
+      filter: 'all',
+    })
+    expect(router.state.location.hash).toBe('results')
+  })
+
+  it('should handle nested basepath with multiple rewrite layers', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const finalRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/final',
+      component: () => <div data-testid="final">Final</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([finalRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/base/legacy/old/path'],
+      }),
+      rewrite: composeRewrites([
+        rewriteBasepath({ basepath: 'base' }),
+        {
+          input: ({ url }) => {
+            // First layer: convert legacy paths
+            if (url.pathname === '/legacy/old/path') {
+              url.pathname = '/new/path'
+              return url
+            }
+            return undefined
+          },
+          output: ({ url }) => {
+            // First layer: convert legacy paths
+            if (url.pathname === '/new/path') {
+              url.pathname = '/legacy/old/path'
+              return url
+            }
+            return undefined
+          },
+        },
+      ]),
+    })
+
+    // Add a second rewrite layer
+    const originalRewrite = router.options.rewrite
+    router.update({
+      rewrite: composeRewrites([
+        originalRewrite!,
+        {
+          input: ({ url }) => {
+            if (url.pathname === '/new/path') {
+              url.pathname = '/final'
+            }
+            return url
+          },
+          output: ({ url }) => {
+            if (url.pathname === '/final') {
+              url.pathname = '/new/path'
+            }
+            return url
+          },
+        },
+      ]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(router.state.location.pathname).toBe('/final')
+    expect(await screen.findByTestId('final')).toBeInTheDocument()
+
+    // Should apply: /base/legacy/old/path -> /legacy/old/path -> /new/path -> /final
+  })
+
+  it('should handle basepath with output rewriting', async () => {
+    // This test verifies that basepath is added back when navigating
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <div>
+          <Link to="/about" data-testid="about-link">
+            About
+          </Link>
+        </div>
+      ),
+    })
+
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <div data-testid="about">About</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute, aboutRoute])
+
+    const history = createMemoryHistory({ initialEntries: ['/my-app/'] })
+
+    const router = createRouter({
+      routeTree,
+      history,
+      rewrite: rewriteBasepath({ basepath: 'my-app' }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const aboutLink = await screen.findByTestId('about-link')
+
+    fireEvent.click(aboutLink)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('about')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/about')
+    expect(history.location.pathname).toBe('/my-app/about')
   })
 })

@@ -4,9 +4,11 @@ import { createServerFn } from '@tanstack/react-start'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import type { User } from '~/utils/users'
 import { NotFound } from '~/components/NotFound'
+import { staticFunctionMiddleware } from '@tanstack/start-static-server-functions'
 
-const fetchUser = createServerFn({ method: 'GET', type: 'static' })
-  .validator((d: string) => d)
+const fetchUser = createServerFn({ method: 'GET' })
+  .middleware([staticFunctionMiddleware])
+  .inputValidator((d: string) => d)
   .handler(async ({ data: userId }) => {
     return axios
       .get<User>('https://jsonplaceholder.typicode.com/users/' + userId)

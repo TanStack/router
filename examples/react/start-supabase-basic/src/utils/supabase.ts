@@ -1,4 +1,4 @@
-import { parseCookies, setCookie } from '@tanstack/react-start/server'
+import { getCookies, setCookie } from '@tanstack/react-start/server'
 import { createServerClient } from '@supabase/ssr'
 
 export function getSupabaseServerClient() {
@@ -8,7 +8,7 @@ export function getSupabaseServerClient() {
     {
       cookies: {
         getAll() {
-          return Object.entries(parseCookies()).map(([name, value]) => ({
+          return Object.entries(getCookies()).map(([name, value]) => ({
             name,
             value,
           }))

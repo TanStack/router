@@ -1,14 +1,16 @@
 import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
-import { ReadableStreamPlugin } from 'seroval-plugins/web'
 import invariant from 'tiny-invariant'
 import { createControlledPromise } from '../utils'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
-import { ShallowErrorPlugin } from './seroval-plugins'
+import { GLOBAL_TSR } from './constants'
+import { defaultSerovalPlugins } from './serializer/seroval-plugins'
+import { makeSsrSerovalPlugin } from './serializer/transformer'
 import type { AnyRouter } from '../router'
 import type { DehydratedMatch } from './ssr-client'
 import type { DehydratedRouter } from './client'
 import type { AnyRouteMatch } from '../Matches'
 import type { Manifest } from '../manifest'
+import type { AnySerializationAdapter } from './serializer/transformer'
 
 declare module '../router' {
   interface ServerSsr {
@@ -22,7 +24,6 @@ declare module '../router' {
   }
 }
 
-export const GLOBAL_TSR = '$_TSR'
 const SCOPE_ID = 'tsr'
 
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
@@ -47,15 +48,16 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   return dehydratedMatch
 }
 
-export function attachRouterServerSsrUtils(
-  router: AnyRouter,
-  manifest: Manifest | undefined,
-) {
+export function attachRouterServerSsrUtils({
+  router,
+  manifest,
+}: {
+  router: AnyRouter
+  manifest: Manifest | undefined
+}) {
   router.ssr = {
     manifest,
   }
-  const serializationRefs = new Map<unknown, number>()
-
   let initialScriptSent = false
   const getInitialScript = () => {
     if (initialScriptSent) {
@@ -82,7 +84,7 @@ export function attachRouterServerSsrUtils(
     injectScript: (getScript) => {
       return router.serverSsr!.injectHtml(async () => {
         const script = await getScript()
-        return `<script class='$tsr'>${getInitialScript()}${script};if (typeof $_TSR !== 'undefined') $_TSR.c()</script>`
+        return `<script ${router.options.ssr?.nonce ? `nonce='${router.options.ssr.nonce}'` : ''} class='$tsr'>${getInitialScript()}${script};$_TSR.c()</script>`
       })
     },
     dehydrate: async () => {
@@ -106,12 +108,21 @@ export function attachRouterServerSsrUtils(
       _dehydrated = true
 
       const p = createControlledPromise<string>()
+      const trackPlugins = { didRun: false }
+      const plugins =
+        (
+          router.options.serializationAdapters as
+            | Array<AnySerializationAdapter>
+            | undefined
+        )?.map((t) => makeSsrSerovalPlugin(t, trackPlugins)) ?? []
       crossSerializeStream(dehydratedRouter, {
-        refs: serializationRefs,
-        // TODO make plugins configurable
-        plugins: [ReadableStreamPlugin, ShallowErrorPlugin],
+        refs: new Map(),
+        plugins: [...plugins, ...defaultSerovalPlugins],
         onSerialize: (data, initial) => {
-          const serialized = initial ? `${GLOBAL_TSR}["router"]=` + data : data
+          let serialized = initial ? GLOBAL_TSR + '.router=' + data : data
+          if (trackPlugins.didRun) {
+            serialized = GLOBAL_TSR + '.p(()=>' + serialized + ')'
+          }
           router.serverSsr!.injectScript(() => serialized)
         },
         scopeId: SCOPE_ID,

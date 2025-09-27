@@ -389,7 +389,7 @@ describe('Optional Path Parameters', () => {
         expectedMatchedParams: {},
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
-      expect(matchPathname('/', input, matchingOptions)).toStrictEqual(
+      expect(matchPathname(input, matchingOptions)).toStrictEqual(
         expectedMatchedParams,
       )
     })
@@ -422,16 +422,16 @@ describe('Optional Path Parameters', () => {
       ]
 
       tests.forEach(({ input, pattern, expected }) => {
-        expect(matchPathname('/', input, { to: pattern })).toEqual(expected)
+        expect(matchPathname(input, { to: pattern })).toEqual(expected)
       })
     })
 
     it('should prioritize more specific routes over optional param routes', () => {
       // Test that /posts/featured matches a static route, not optional param route
-      const staticMatch = matchPathname('/', '/posts/featured', {
+      const staticMatch = matchPathname('/posts/featured', {
         to: '/posts/featured',
       })
-      const optionalMatch = matchPathname('/', '/posts/featured', {
+      const optionalMatch = matchPathname('/posts/featured', {
         to: '/posts/{-$category}',
       })
 
@@ -448,7 +448,7 @@ describe('Optional Path Parameters', () => {
         _splat: 'extra/path',
       }
 
-      expect(matchPathname('/', input, { to: pattern })).toEqual(expected)
+      expect(matchPathname(input, { to: pattern })).toEqual(expected)
     })
   })
 })

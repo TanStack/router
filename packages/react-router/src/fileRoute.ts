@@ -21,6 +21,7 @@ import type {
   FileBaseRouteOptions,
   FileRoutesByPath,
   LazyRouteOptions,
+  Register,
   RegisteredRouter,
   ResolveParams,
   Route,
@@ -78,6 +79,7 @@ export class FileRoute<
   }
 
   createRoute = <
+    TRegister = Register,
     TSearchValidator = undefined,
     TStateValidator = undefined,
     TParams = ResolveParams<TPath>,
@@ -86,8 +88,12 @@ export class FileRoute<
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
     TChildren = unknown,
+    TSSR = unknown,
+    const TMiddlewares = unknown,
+    THandlers = undefined,
   >(
     options?: FileBaseRouteOptions<
+      TRegister,
       TParentRoute,
       TId,
       TPath,
@@ -98,7 +104,11 @@ export class FileRoute<
       TLoaderFn,
       AnyContext,
       TRouteContextFn,
-      TBeforeLoadFn
+      TBeforeLoadFn,
+      AnyContext,
+      TSSR,
+      TMiddlewares,
+      THandlers
     > &
       UpdatableRouteOptions<
         TParentRoute,
@@ -114,6 +124,7 @@ export class FileRoute<
         TBeforeLoadFn
       >,
   ): Route<
+    TRegister,
     TParentRoute,
     TPath,
     TFullPath,
@@ -128,7 +139,10 @@ export class FileRoute<
     TLoaderDeps,
     TLoaderFn,
     TChildren,
-    unknown
+    unknown,
+    TSSR,
+    TMiddlewares,
+    THandlers
   > => {
     warning(
       this.silent,
@@ -154,6 +168,7 @@ export function FileRouteLoader<
   loaderFn: Constrain<
     TLoaderFn,
     RouteLoaderFn<
+      Register,
       TRoute['parentRoute'],
       TRoute['types']['id'],
       TRoute['types']['params'],

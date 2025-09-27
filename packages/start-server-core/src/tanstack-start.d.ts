@@ -5,11 +5,9 @@ declare module 'tanstack-start-manifest:v' {
 }
 
 declare module 'tanstack-start-route-tree:v' {
-  import type { AnyServerRouteWithTypes } from '@tanstack/start-server-core'
   import type { AnyRoute } from '@tanstack/router-core'
 
   export const routeTree: AnyRoute | undefined
-  export const serverRouteTree: AnyServerRouteWithTypes | undefined
 }
 
 declare module 'tanstack-start-server-fn-manifest:v' {
@@ -24,4 +22,8 @@ declare module 'tanstack-start-server-fn-manifest:v' {
   >
 
   export default serverFnManifest
+}
+
+declare module 'tanstack-start-injected-head-scripts:v' {
+  export const injectedHeadScripts: string | undefined
 }

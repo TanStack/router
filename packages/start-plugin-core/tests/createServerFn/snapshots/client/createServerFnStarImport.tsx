@@ -1,5 +1,4 @@
 import * as TanStackStart from '@tanstack/react-start';
-import { z } from 'zod';
 export const withUseServer = TanStackStart.createServerFn({
   method: 'GET'
 }).handler((opts, signal) => {
@@ -21,11 +20,6 @@ export const withVariable = TanStackStart.createServerFn({
 
   return withVariable.__executeServer(opts, signal);
 });
-function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn: (input: z.output<TSchema>) => TResult) {
-  return async (input: unknown) => {
-    return fn(schema.parse(input));
-  };
-}
 export const withZodValidator = TanStackStart.createServerFn({
   method: 'GET'
 }).handler((opts, signal) => {

@@ -5,12 +5,14 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('Navigating to a post page', async ({ page }) => {
+  await page.waitForURL('/')
   await page.getByRole('link', { name: 'Posts' }).click()
   await page.getByRole('link', { name: 'sunt aut facere repe' }).click()
   await expect(page.getByRole('heading')).toContainText('sunt aut facere')
 })
 
 test('Navigating nested layouts', async ({ page }) => {
+  await page.waitForURL('/')
   await page.getByRole('link', { name: 'Layout', exact: true }).click()
 
   await expect(page.locator('#app')).toContainText("I'm a layout")
@@ -24,6 +26,7 @@ test('Navigating nested layouts', async ({ page }) => {
 })
 
 test('Navigating to a not-found route', async ({ page }) => {
+  await page.waitForURL('/')
   await page.getByRole('link', { name: 'This Route Does Not Exist' }).click()
   await expect(page.getByRole('paragraph')).toContainText(
     'This is the notFoundComponent configured on root route',

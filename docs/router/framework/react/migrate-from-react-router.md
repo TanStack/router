@@ -7,7 +7,7 @@ toc: false
 
 Here is the [example repo](https://github.com/Benanna2019/SickFitsForEveryone/tree/migrate-to-tanstack/router/React-Router)
 
-- [ ] Install Router - `npm i @tanstack/react-router` (see [detailed installation guide](./how-to/install.md))
+- [ ] Install Router - `npm i @tanstack/react-router` (see [detailed installation guide](../how-to/install.md))
 - [ ] **Optional:** Uninstall React Router to get TypeScript errors on imports.
   - At this point I don’t know if you can do a gradual migration, but it seems likely you could have multiple router providers, not desirable.
   - The api’s between React Router and TanStack Router are very similar and could most likely be handled in a sprint cycle or two if that is your companies way of doing things.

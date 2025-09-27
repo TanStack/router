@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { test } from './fixture'
+import { test } from '@tanstack/router-e2e-utils'
 
 const testCount = 7
 

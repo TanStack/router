@@ -1,3 +1,4 @@
+console.warn("[tanstack-router] These exports from \"retain-exports-function.tsx\" will not be code-split and will increase your bundle size:\n- Layout\nFor the best optimization, these items should either have their export statements removed, or be imported from another location that is not a route file.");
 import * as React from 'react';
 import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { importedComponent as ImportedComponent, importedLoader } from '../../shared/imported';

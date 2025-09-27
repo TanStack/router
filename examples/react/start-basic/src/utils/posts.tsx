@@ -2,14 +2,15 @@ import { notFound } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 
 export type PostType = {
-  id: string
+  id: number
   title: string
   body: string
 }
 
-export const fetchPost = createServerFn()
-  .validator((d: string) => d)
-  .handler(async ({ data }) => {
+export const fetchPost = createServerFn({ method: 'POST' })
+  .inputValidator((d: string) => d)
+  .handler(async ({ data, context }) => {
+    console.log('Request context:', context)
     console.info(`Fetching post with id ${data}...`)
     const res = await fetch(
       `https://jsonplaceholder.typicode.com/posts/${data}`,
@@ -22,9 +23,9 @@ export const fetchPost = createServerFn()
       throw new Error('Failed to fetch post')
     }
 
-    const post = (await res.json()) as PostType
+    const post = await res.json()
 
-    return post
+    return post as PostType
   })
 
 export const fetchPosts = createServerFn().handler(async () => {
@@ -34,7 +35,7 @@ export const fetchPosts = createServerFn().handler(async () => {
     throw new Error('Failed to fetch posts')
   }
 
-  const posts = (await res.json()) as Array<PostType>
+  const posts = await res.json()
 
-  return posts.slice(0, 10)
+  return (posts as Array<PostType>).slice(0, 10)
 })

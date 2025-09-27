@@ -1,6 +1,3 @@
-export { default as invariant } from 'tiny-invariant'
-export { default as warning } from 'tiny-warning'
-
 export {
   defer,
   TSR_DEFERRED_PROMISE,
@@ -14,7 +11,6 @@ export {
   parsePathname,
   interpolatePath,
   matchPathname,
-  removeBasepath,
   matchByPath,
   rootRouteId,
   defaultSerializeError,
@@ -22,16 +18,15 @@ export {
   defaultStringifySearch,
   parseSearchWith,
   stringifySearchWith,
-  escapeJSON, // SSR
   functionalUpdate,
   replaceEqualDeep,
   isPlainObject,
   isPlainArray,
   deepEqual,
-  shallow,
   createControlledPromise,
   retainSearchParams,
   stripSearchParams,
+  createSerializationAdapter,
 } from '@tanstack/router-core'
 
 export type {
@@ -115,6 +110,8 @@ export type {
   RouteById,
   RootRouteOptions,
   CreateFileRoute,
+  SerializationAdapter,
+  AnySerializationAdapter,
 } from '@tanstack/router-core'
 
 export {
@@ -198,7 +195,6 @@ export type {
   AnyRouteMatch,
   RouteContextFn,
   RouteContextOptions,
-  BeforeLoadFn,
   BeforeLoadContextOptions,
   ContextOptions,
   RouteOptions,
@@ -253,7 +249,7 @@ export { useMatch } from './useMatch'
 export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
 
-export { redirect, isRedirect } from '@tanstack/router-core'
+export { redirect, isRedirect, createRouterConfig } from '@tanstack/router-core'
 
 export {
   RouteApi,
@@ -357,3 +353,9 @@ export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent } from './HeadContent'
 export { Scripts } from './Scripts'
+export type * from './ssr/serializer'
+export { rewriteBasepath, composeRewrites } from '@tanstack/router-core'
+export type {
+  LocationRewrite,
+  LocationRewriteFunction,
+} from '@tanstack/router-core'

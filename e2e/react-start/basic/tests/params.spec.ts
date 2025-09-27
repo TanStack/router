@@ -1,9 +1,16 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+
+import { test } from '@tanstack/router-e2e-utils'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
+test.use({
+  whitelistErrors: [
+    /Failed to load resource: the server responded with a status of 404/,
+  ],
+})
 test.describe('Unicode route rendering', () => {
   test('should render non-latin route correctly', async ({ page, baseURL }) => {
     await page.goto('/대한민국')

@@ -13,7 +13,7 @@ const getEcho = createIsomorphicFn()
   .client((input) => 'client received ' + input)
 
 const getServerEcho = createServerFn()
-  .validator((input: string) => input)
+  .inputValidator((input: string) => input)
   .handler(({ data }) => getEcho(data))
 
 export const Route = createFileRoute('/isomorphic-fns')({
