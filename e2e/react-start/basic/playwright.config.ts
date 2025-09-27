@@ -35,7 +35,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
     env: {
-      SPA_MODE: isSpaMode.toString(),
+      MODE: process.env.MODE || '',
       VITE_NODE_ENV: 'test',
       VITE_EXTERNAL_PORT: String(EXTERNAL_PORT),
       VITE_SERVER_PORT: String(PORT),
