@@ -290,12 +290,15 @@ export interface RouterOptions<
    * ```ts
    * const router = createRouter({
    *   routeTree,
-   *   rewrite: rewriteBasepath('/basepath')
-   *   // Or wrap existing rewrite functionality
-   *   rewrite: rewriteBasepath('/basepath', {
-   *     output: ({ url }) => {...},
-   *     input: ({ url }) => {...},
-   *   })
+   *   rewrite: rewriteBasepath({ basepath: '/basepath' })
+   *   // Or compose with existing rewrite functionality
+   *   rewrite: composeRewrites([
+   *     rewriteBasepath({ basepath: '/basepath', caseSensitive: true }),
+   *     {
+   *       input: ({ url }) => {...},
+   *       output: ({ url }) => {...},
+   *     }
+   *   ])
    * })
    * ```
    * @default '/'
@@ -1688,7 +1691,7 @@ export class RouterCore<
       return {
         publicHref:
           rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
-        href: fullPath,
+        href: rewrittenUrl.href.replace(rewrittenUrl.origin, ''),
         url: rewrittenUrl.href,
         pathname: nextPathname,
         search: nextSearch,
