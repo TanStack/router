@@ -726,6 +726,8 @@ export interface RequestMiddlewareTypes<
   type: 'request'
   // this only exists so we can use request middlewares in server functions
   allInput: undefined
+  // this only exists so we can use request middlewares in server functions
+  allOutput: undefined
   middlewares: TMiddlewares
   serverContext: TServerContext
   allServerContext: AssignAllServerRequestContext<

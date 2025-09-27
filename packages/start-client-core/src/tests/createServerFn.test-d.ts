@@ -565,3 +565,24 @@ test('createServerFn with request middleware and function middleware', () => {
 
   expectTypeOf(fn({ data: 'a' })).toEqualTypeOf<Promise<{}>>()
 })
+
+test('createServerFn with inputValidator and request middleware', () => {
+  const loggingMiddleware = createMiddleware().server(async ({ next }) => {
+    console.log('Logging middleware executed on the server')
+    const result = await next()
+    return result
+  })
+
+  const fn = createServerFn()
+    .middleware([loggingMiddleware])
+    .inputValidator(({ userName }: { userName: string }) => {
+      return { userName }
+    })
+    .handler(async ({ data }) => {
+      return data.userName
+    })
+
+  expectTypeOf(fn({ data: { userName: 'test' } })).toEqualTypeOf<
+    Promise<string>
+  >()
+})
