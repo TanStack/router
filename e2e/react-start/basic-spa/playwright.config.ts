@@ -26,10 +26,16 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `NODE_ENV=development VITE_EXTERNAL_PORT=${EXTERNAL_PORT} VITE_SERVER_PORT=${PORT} PORT=${PORT} pnpm run dev:e2e --port=${PORT}`,
+    command: `pnpm run dev:e2e --port=${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
+    env: {
+      NODE_ENV: 'development',
+      VITE_EXTERNAL_PORT: String(EXTERNAL_PORT),
+      VITE_SERVER_PORT: String(PORT),
+      PORT: String(PORT),
+    },
   },
 
   projects: [
