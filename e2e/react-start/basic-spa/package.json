@@ -7,21 +7,22 @@
     "dev": "vite dev --port 3001",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "start": "pnpx srvx --prod -s ../client  dist/server/server.js",
+    "start": "npx serve dist/client",
     "test:e2e": "rm -rf port*.txt; NODE_ENV=development playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-router-devtools": "workspace:^",
-    "@tanstack/react-start": "workspace:^",
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-router-devtools": "workspace:*",
+    "@tanstack/react-start": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.6.0"
+    "tailwind-merge": "^2.6.0",
+		"zod": "^3.24.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
-    "@tanstack/router-e2e-utils": "workspace:^",
+    "@tanstack/router-e2e-utils": "workspace:*",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
@@ -33,7 +34,6 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite": "^7.1.1",
-    "vite-tsconfig-paths": "^5.1.4",
-    "zod": "^3.24.2"
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }

@@ -28,21 +28,34 @@ function Home() {
   const [streamData, setStreamData] = useState<Array<string>>([])
 
   useEffect(() => {
+    let cancelled = false
+    setStreamData([])
+
     async function fetchStream() {
       const reader = stream.getReader()
       let chunk
 
-      while (!(chunk = await reader.read()).done) {
-        let value = chunk.value
-        if (typeof value !== 'string') {
-          value = decoder.decode(value, { stream: !chunk.done })
+      try {
+        while (!(chunk = await reader.read()).done) {
+          let value = chunk.value
+          if (typeof value !== 'string') {
+            value = decoder.decode(value, { stream: true })
+          }
+          if (!cancelled) {
+            setStreamData((prev) => [...prev, value])
+          }
         }
-        setStreamData((prev) => [...prev, value])
+      } finally {
+        reader.releaseLock()
       }
     }
 
     fetchStream()
-  }, [])
+
+    return () => {
+      cancelled = true
+    }
+  }, [stream])
 
   return (
     <>

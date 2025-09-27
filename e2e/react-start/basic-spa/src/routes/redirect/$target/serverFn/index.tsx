@@ -3,7 +3,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/redirect/$target/serverFn/')({
   component: () => (
     <div>
-      <h1 className="mb-4 text-4xl font-extrabold lmd:text-5xl lg:text-6xl ">
+      <h1 className="mb-4 text-4xl font-extrabold md:text-5xl lg:text-6xl ">
         redirect test with server functions (target {Route.useParams().target})
       </h1>
       <div className="mb-2">

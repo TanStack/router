@@ -48,7 +48,7 @@ export const Route = createRootRoute({
         sizes: '16x16',
         href: '/favicon-16x16.png',
       },
-      { rel: 'manifest', href: '/site.webmanifest', color: '#fffff' },
+      { rel: 'manifest', href: '/site.webmanifest', color: '#ffffff' },
       { rel: 'icon', href: '/favicon.ico' },
     ],
     styles: [

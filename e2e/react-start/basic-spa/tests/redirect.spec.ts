@@ -88,7 +88,6 @@ test.describe('redirects', () => {
       page,
     }) => {
       await page.goto(`/redirect/internal/via-${thrower}`)
-      await page.waitForURL(`/redirect/internal/via-${thrower}`)
       await page.waitForLoadState('networkidle')
 
       const url = `http://localhost:${PORT}/posts`

@@ -32,7 +32,9 @@ test.describe('/search-params/loader-throws-redirect', () => {
     }
 
     await expect(page.getByTestId('search-param')).toContainText('a')
-    expect(page.url().endsWith('/search-params/loader-throws-redirect?step=a'))
+    expect(
+      page.url().endsWith('/search-params/loader-throws-redirect?step=a'),
+    ).toBeTruthy()
   })
 
   test('Directly visiting the route with search param set', async ({
@@ -43,7 +45,9 @@ test.describe('/search-params/loader-throws-redirect', () => {
     )
     expectNoRedirect(response)
     await expect(page.getByTestId('search-param')).toContainText('b')
-    expect(page.url().endsWith('/search-params/loader-throws-redirect?step=b'))
+    expect(
+      page.url().endsWith('/search-params/loader-throws-redirect?step=b'),
+    ).toBeTruthy()
   })
 })
 
