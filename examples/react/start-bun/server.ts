@@ -63,6 +63,8 @@
  *   bun run server.ts
  */
 
+import path from 'node:path'
+
 // Configuration
 const SERVER_PORT = Number(process.env.PORT ?? 3000)
 const CLIENT_DIRECTORY = './dist/client'
@@ -309,8 +311,8 @@ async function initializeStaticRoutes(
   try {
     const glob = createCompositeGlobPattern()
     for await (const relativePath of glob.scan({ cwd: clientDirectory })) {
-      const filepath = `${clientDirectory}/${relativePath}`
-      const route = `/${relativePath}`
+      const filepath = path.join(clientDirectory, relativePath)
+      const route = `/${relativePath.split(path.sep).join(path.posix.sep)}`
 
       try {
         // Get file metadata
