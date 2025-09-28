@@ -7406,9 +7406,9 @@ importers:
       '@tanstack/start-storage-context':
         specifier: workspace:*
         version: link:../start-storage-context
-      h3:
-        specifier: 2.0.0-beta.4
-        version: 2.0.0-beta.4
+      h3-v2:
+        specifier: npm:h3@2.0.0-beta.4
+        version: h3@2.0.0-beta.4
       seroval:
         specifier: ^1.3.2
         version: 1.3.2
