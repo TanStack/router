@@ -25,7 +25,7 @@ or
 npm create @tanstack/start@latest
 ```
 
-depending on your package manage of choice. You'll be prompted on whether you want to add things like Tailwind, eslint, as well as a ton of other options.
+depending on your package manage of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.
 
 ## Manually starting a new project from scratch
 
