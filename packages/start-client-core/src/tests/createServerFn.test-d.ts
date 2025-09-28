@@ -319,6 +319,7 @@ test('createServerFn cannot return function', () => {
     .parameter(0)
     .returns.toEqualTypeOf<
       | Response
+      | Promise<Response>
       | { func: 'Function is not serializable' }
       | Promise<{ func: 'Function is not serializable' }>
     >()
@@ -597,4 +598,17 @@ test('createServerFn has TSS_SERVER_FUNCTION symbol set', () => {
 test('createServerFn fetcher itself is serializable', () => {
   const fn1 = createServerFn().handler(() => ({}))
   const fn2 = createServerFn().handler(() => fn1)
+})
+
+test('createServerFn returns async Response', () => {
+  const serverFn = createServerFn().handler(async () => {
+    return new Response(new Blob([JSON.stringify({ a: 1 })]), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Response>>()
 })
