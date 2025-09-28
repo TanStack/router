@@ -97,7 +97,10 @@ export function createStartHandler<TRegister = Register>(
     function getOrigin() {
       const originHeader = request.headers.get('Origin')
       if (originHeader) {
-        return originHeader
+        try {
+          new URL(originHeader)
+          return originHeader
+        } catch {}
       }
       try {
         return new URL(request.url).origin
