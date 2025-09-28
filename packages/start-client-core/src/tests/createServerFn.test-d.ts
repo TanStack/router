@@ -319,9 +319,8 @@ test('createServerFn cannot return function', () => {
     .parameter(0)
     .returns.toEqualTypeOf<
       | Response
-      | Promise<Response>
       | { func: 'Function is not serializable' }
-      | Promise<{ func: 'Function is not serializable' }>
+      | Promise<{ func: 'Function is not serializable' } | Response>
     >()
 })
 
@@ -611,4 +610,35 @@ test('createServerFn returns async Response', () => {
   })
 
   expectTypeOf(serverFn()).toEqualTypeOf<Promise<Response>>()
+})
+
+test('createServerFn returns sync Response', () => {
+  const serverFn = createServerFn().handler(() => {
+    return new Response(new Blob([JSON.stringify({ a: 1 })]), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Response>>()
+})
+
+test('createServerFn returns async array', () => {
+  const result: Array<{ a: number }> = [{ a: 1 }]
+  const serverFn = createServerFn({ method: 'GET' }).handler(async () => {
+    return result
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Array<{ a: number }>>>()
+})
+
+test('createServerFn returns sync array', () => {
+  const result: Array<{ a: number }> = [{ a: 1 }]
+  const serverFn = createServerFn({ method: 'GET' }).handler(() => {
+    return result
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Array<{ a: number }>>>()
 })

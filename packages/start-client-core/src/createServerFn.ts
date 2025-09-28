@@ -311,8 +311,7 @@ export type Method = 'GET' | 'POST'
 
 export type ServerFnReturnType<TRegister, TResponse> =
   | Response
-  | Promise<Response>
-  | Promise<ValidateSerializableInput<TRegister, TResponse>>
+  | Promise<ValidateSerializableInput<TRegister, TResponse> | Response>
   | ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
