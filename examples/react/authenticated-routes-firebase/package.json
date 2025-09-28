@@ -9,9 +9,9 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.132.17",
-    "@tanstack/react-router-devtools": "^1.132.17",
-    "@tanstack/router-plugin": "^1.132.17",
+    "@tanstack/react-router": "^1.132.19",
+    "@tanstack/react-router-devtools": "^1.132.19",
+    "@tanstack/router-plugin": "^1.132.19",
     "autoprefixer": "^10.4.20",
     "firebase": "^11.4.0",
     "postcss": "^8.5.1",
