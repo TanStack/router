@@ -11,7 +11,7 @@ title: Getting Started
   - [React Router](../migrate-from-react-router) (Including React Router 7 "Data Mode")
   - Remix 2 / React Router 7 "Framework Mode" (coming soon!)
 
-## Manually starting a new project from scratch
+## Start a new project from scratch
 
 Choose one of the following options to start building a _new_ TanStack Start project:
 
