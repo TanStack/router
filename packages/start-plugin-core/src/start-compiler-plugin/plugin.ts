@@ -68,6 +68,8 @@ export function startCompilerPlugin(
                   'createIsomorphicFn.js',
                   'envOnly.js',
                   'serverFnFetcher.js',
+                  'createStart.js',
+                  'createMiddleware.js',
                 ],
               }),
               ...resolveRuntimeFiles({
