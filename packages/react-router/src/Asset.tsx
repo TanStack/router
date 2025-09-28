@@ -12,7 +12,8 @@ export function Asset({
   tag,
   attrs,
   children,
-}: RouterManagedTag): React.ReactElement | null {
+  nonce,
+}: RouterManagedTag & { nonce?: string }): React.ReactElement | null {
   switch (tag) {
     case 'title':
       return (
@@ -23,16 +24,21 @@ export function Asset({
     case 'meta':
       return <meta {...attrs} suppressHydrationWarning />
     case 'link':
-      return <link {...attrs} suppressHydrationWarning />
+      return <link {...attrs} nonce={nonce} suppressHydrationWarning />
     case 'style':
       return (
         <style
           {...attrs}
           dangerouslySetInnerHTML={{ __html: children as string }}
+          nonce={nonce}
         />
       )
     case 'script':
-      return <Script attrs={attrs}>{children}</Script>
+      return (
+        <Script attrs={attrs} nonce={nonce}>
+          {children}
+        </Script>
+      )
     default:
       return null
   }
@@ -41,9 +47,11 @@ export function Asset({
 function Script({
   attrs,
   children,
+  nonce,
 }: {
   attrs?: ScriptAttrs
   children?: string
+  nonce?: string
 }) {
   const router = useRouter()
 
@@ -146,7 +154,7 @@ function Script({
   }
 
   if (attrs?.src && typeof attrs.src === 'string') {
-    return <script {...attrs} suppressHydrationWarning />
+    return <script {...attrs} suppressHydrationWarning nonce={nonce} />
   }
 
   if (typeof children === 'string') {
@@ -155,6 +163,7 @@ function Script({
         {...attrs}
         dangerouslySetInnerHTML={{ __html: children }}
         suppressHydrationWarning
+        nonce={nonce}
       />
     )
   }
