@@ -307,4 +307,4 @@ STATIC_PRELOAD_VERBOSE=true bun run server.ts
 🚀 Server running at http://localhost:3000
 ```
 
-For a complete working example, check out the [TanStack Start + Bun example](../../../../examples/react/start-bun) in this repository.
+For a complete working example, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
