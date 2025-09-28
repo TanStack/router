@@ -245,7 +245,7 @@ We've created an optimized production server that provides intelligent static as
 
 **Quick Setup:**
 
-1. Copy the [`server.ts`](../../../../examples/react/start-bun/server.ts) file from the example in this repository to your project root
+1. Copy the [`server.ts`](https://github.com/tanstack/router/blob/main/examples/react/start-bun/server.ts) file from the example in this repository to your project root
 
 2. Build your application:
 
