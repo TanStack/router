@@ -20,9 +20,9 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
 
 - [`cloudflare-workers`](#cloudflare-workers): Deploy to Cloudflare Workers
 - [`netlify`](#netlify): Deploy to Netlify
+- [`nitro`](#nitro): Deploy using Nitro
 - [`vercel`](#vercel): Deploy to Vercel
 - [`railway`](#nodejs--railway--docker): Deploy to Railway
-- [`nitro`](#using-nitro-v2): Deploy to a Nitro server
 - [`node-server`](#nodejs--railway--docker): Deploy to a Node.js server
 - [`bun`](#bun): Deploy to a Bun server
 - ... and more to come!
@@ -78,6 +78,8 @@ export default defineConfig({
 
 Deploy your application to Cloudflare Workers using their one-click deployment process, and you're ready to go!
 
+A full TanStack Start example for Cloudflare Workers is available [here](https://github.com/TanStack/router/tree/main/examples/react/start-basic-cloudflare).
+
 ### Netlify ⭐ _Official Partner_
 
 <a href="https://www.netlify.com?utm_source=tanstack" alt="Netlify Logo">
@@ -114,7 +116,9 @@ Add a `netlify.toml` file to your project root:
 
 Deploy your application using their one-click deployment process, and you're ready to go!
 
-### Vercel
+### Nitro
+
+[Nitro](https://nitro.build/) is an abstraction layer that allows you to deploy TanStack Start applications to [a wide range of providers](https://nitro.build/deploy).
 
 **⚠️ During TanStack Start 1.0 release candidate phase, we currently recommend using:**
 
@@ -123,22 +127,21 @@ Deploy your application using their one-click deployment process, and you're rea
 
 #### Using Nitro v2
 
-**⚠️ `@tanstack/nitro-v2-vite-plugin` is a temporary compatibility plugin for using Nitro v2 as the underlying build tool for TanStack Start. Use this plugin if you experience issues with the Nitro v3 plugin. It does not support all of Nitro v3's features and is limited in it's dev server capabilities, but should work as a safe fallback, even for production deployments for those who were using TanStack Start's alpha/beta versions.**
-
-If you want to use this plugin with bun please make sure to use [isolated installs](https://bun.com/docs/install/isolated#using-isolated-installs).
+**⚠️ `@tanstack/nitro-v2-vite-plugin` is a temporary compatibility plugin for using Nitro v2 as the underlying build tool for TanStack Start. Use this plugin if you experience issues with the Nitro v3 plugin. It does not support all of Nitro v3's features and is limited in its dev server capabilities, but should work as a safe fallback, even for production deployments for those who were using TanStack Start's alpha/beta versions.**
 
 ```tsx
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import viteReact from '@vitejs/plugin-react'
 import { nitroV2Plugin } from '@tanstack/nitro-v2-vite-plugin'
 
 export default defineConfig({
   plugins: [
-    tsConfigPaths({ projects: ['./tsconfig.json'] }),
     tanstackStart(),
-    nitroV2Plugin(),
+    nitroV2Plugin(/* 
+      // nitro config goes here, e.g.
+      { target: 'node-server' }
+    */),
     viteReact(),
   ],
 })
@@ -157,35 +160,29 @@ This package needs to be installed as follows:
 ```tsx
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
-import tsConfigPaths from 'vite-tsconfig-paths'
 import viteReact from '@vitejs/plugin-react'
 import { nitro } from 'nitro/vite'
 
 export default defineConfig({
   plugins: [
-    tsConfigPaths({ projects: ['./tsconfig.json'] }),
     tanstackStart(),
-    nitro(),
+    nitro(/*
+      // nitro config goes here, e.g.
+      { config: { target: 'node-server' } }
+    */)
     viteReact(),
   ],
 })
 ```
 
+### Vercel
+
+Follow the [`Nitro`](#nitro) deployment instructions.
 Deploy your application to Vercel using their one-click deployment process, and you're ready to go!
 
 ### Node.js / Railway / Docker
 
-TanStack Start builds to a `node` server by default. Use the `node` command to start your application from the server from the build output files.
-
-```ts
-// vite.config.ts
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import { defineConfig } from 'vite'
-
-export default defineConfig({
-  plugins: [tanstackStart()],
-})
-```
+Follow the [`Nitro`](#nitro) deployment instructions. Use the `node` command to start your application from the server from the build output files.
 
 Ensure `build` and `start` npm scripts are present in your `package.json` file:
 
@@ -217,22 +214,30 @@ Make sure that your `react` and `react-dom` packages are set to version 19.0.0 o
 bun install react@19 react-dom@19
 ```
 
-Ensure your `vite.config.ts` file is correct:
+Follow the [`Nitro`](#nitro) deployment instructions.
+Depending on how you invoke the build, you might need to set the `'bun'` preset in the Nitro configuration:
 
 ```ts
 // vite.config.ts
-import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { defineConfig } from 'vite'
 import viteReact from '@vitejs/plugin-react'
+import { nitroV2Plugin } from '@tanstack/nitro-v2-vite-plugin'
+// alternatively: import { nitro } from 'nitro/vite'
 
 export default defineConfig({
-  plugins: [tanstackStart(), viteReact()],
+  plugins: [
+    tanstackStart(),
+    nitroV2Plugin({ preset: 'bun' })
+    // alternatively: nitro( { config: { preset: 'bun' }} ),
+    viteReact(),
+  ],
 })
 ```
 
 #### Production Server with Bun
 
-To run TanStack Start applications in production with Bun, you need a custom server implementation.
+Alternatively, you can use a custom server implementation.
 
 We've created an optimized production server that provides intelligent static asset loading with configurable memory management.
 
