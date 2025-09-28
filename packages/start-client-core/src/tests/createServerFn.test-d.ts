@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
+import { TSS_SERVER_FUNCTION } from '../constants'
 import type { Constrain, Register, Validator } from '@tanstack/router-core'
 import type { ConstrainValidator } from '../createServerFn'
 
@@ -585,4 +586,15 @@ test('createServerFn with inputValidator and request middleware', () => {
   expectTypeOf(fn({ data: { userName: 'test' } })).toEqualTypeOf<
     Promise<string>
   >()
+})
+
+test('createServerFn has TSS_SERVER_FUNCTION symbol set', () => {
+  const fn = createServerFn().handler(() => ({}))
+  expectTypeOf(fn).toHaveProperty(TSS_SERVER_FUNCTION)
+  expectTypeOf(fn[TSS_SERVER_FUNCTION]).toEqualTypeOf<true>()
+})
+
+test('createServerFn fetcher itself is serializable', () => {
+  const fn1 = createServerFn().handler(() => ({}))
+  const fn2 = createServerFn().handler(() => fn1)
 })
