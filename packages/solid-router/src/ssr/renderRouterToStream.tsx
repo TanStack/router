@@ -18,7 +18,9 @@ export const renderRouterToStream = async ({
 }) => {
   const { writable, readable } = new TransformStream()
 
-  const stream = Solid.renderToStream(children)
+  const stream = Solid.renderToStream(children, {
+    nonce: router.options.ssr?.nonce,
+  })
 
   if (isbot(request.headers.get('User-Agent'))) {
     await stream

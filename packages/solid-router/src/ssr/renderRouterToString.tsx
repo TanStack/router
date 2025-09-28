@@ -12,7 +12,9 @@ export const renderRouterToString = async ({
   children: () => JSXElement
 }) => {
   try {
-    let html = Solid.renderToString(children)
+    let html = Solid.renderToString(children, {
+      nonce: router.options.ssr?.nonce,
+    })
     router.serverSsr!.setRenderFinished()
     const injectedHtml = await Promise.all(router.serverSsr!.injectedHtml).then(
       (htmls) => htmls.join(''),
