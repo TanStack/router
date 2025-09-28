@@ -98,7 +98,7 @@ const UserSchema = z.object({
 })
 
 export const createUser = createServerFn({ method: 'POST' })
-  .inputValidator((data) => UserSchema.parse(data))
+  .inputValidator(UserSchema)
   .handler(async ({ data }) => {
     // data is fully typed and validated
     return `Created user: ${data.name}, age ${data.age}`
