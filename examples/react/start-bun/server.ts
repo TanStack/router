@@ -63,7 +63,7 @@
  *   bun run server.ts
  */
 
-import path from "node:path"
+import path from 'node:path'
 
 // Configuration
 const SERVER_PORT = Number(process.env.PORT ?? 3000)
