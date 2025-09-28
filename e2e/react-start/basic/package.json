@@ -7,7 +7,7 @@
     "dev": "vite dev --port 3000",
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
-		"build:spa": "MODE=spa vite build && tsc --noEmit",
+    "build:spa": "MODE=spa vite build && tsc --noEmit",
     "start": "pnpx srvx --prod -s ../client  dist/server/server.js",
     "start:spa": "node server.js",
     "test:e2e:spaMode": "rm -rf port*.txt; MODE=spa playwright test --project=chromium",
