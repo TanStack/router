@@ -7,7 +7,11 @@ import {
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import invariant from 'tiny-invariant'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
-import { TSS_FORMDATA_CONTEXT, X_TSS_SERIALIZED } from '../constants'
+import {
+  TSS_FORMDATA_CONTEXT,
+  X_TSS_RAW_RESPONSE,
+  X_TSS_SERIALIZED,
+} from '../constants'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
@@ -156,6 +160,9 @@ async function getResponse(fn: () => Promise<Response>) {
     }
   })()
 
+  if (response.headers.get(X_TSS_RAW_RESPONSE) === 'true') {
+    return response
+  }
   const contentType = response.headers.get('content-type')
   invariant(contentType, 'expected content-type header to be set')
   const serializedByStart = !!response.headers.get(X_TSS_SERIALIZED)
