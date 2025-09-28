@@ -4,8 +4,6 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { isSpaMode } from './tests/utils/isSpaMode'
 
-const spaMode = isSpaMode
-
 const spaModeConfiguration = {
   enabled: true,
   prerender: {
@@ -23,7 +21,7 @@ export default defineConfig({
     }),
     // @ts-ignore we want to keep one test with verboseFileRoutes off even though the option is hidden
     tanstackStart({
-      spa: spaMode ? spaModeConfiguration : undefined,
+      spa: isSpaMode ? spaModeConfiguration : undefined,
     }),
     viteReact(),
   ],

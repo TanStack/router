@@ -52,7 +52,9 @@ test.describe('/search-params/default', () => {
     page,
   }) => {
     const response = await page.goto('/search-params/default')
-    expectRedirect(response, '/search-params/default?default=d1')
+    if (!isSpaMode) {
+      expectRedirect(response, '/search-params/default?default=d1')
+    }
     await expect(page.getByTestId('search-default')).toContainText('d1')
     await expect(page.getByTestId('context-hello')).toContainText('world')
     expect(

@@ -6,12 +6,18 @@ import {
 import packageJson from './package.json' with { type: 'json' }
 import { isSpaMode } from './tests/utils/isSpaMode'
 
-const PORT = await getTestServerPort(packageJson.name)
+const PORT = await getTestServerPort(
+  `${packageJson.name}${isSpaMode ? '_spa' : ''}`,
+)
+const START_PORT = await getTestServerPort(
+  `${packageJson.name}${isSpaMode ? '_spa_start' : ''}`,
+)
 const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
-const spaModeCommand = `pnpm build && pnpm dev:e2e --port=${PORT}`
+const spaModeCommand = `pnpm build:spa && pnpm start:spa`
 const ssrModeCommand = `pnpm build && pnpm start`
 
+console.log('running in spa mode: ', isSpaMode.toString())
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -39,6 +45,7 @@ export default defineConfig({
       VITE_NODE_ENV: 'test',
       VITE_EXTERNAL_PORT: String(EXTERNAL_PORT),
       VITE_SERVER_PORT: String(PORT),
+      START_PORT: String(START_PORT),
       PORT: String(PORT),
     },
   },
