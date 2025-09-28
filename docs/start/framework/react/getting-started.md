@@ -11,28 +11,12 @@ title: Getting Started
   - [React Router](../migrate-from-react-router) (Including React Router 7 "Data Mode")
   - Remix 2 / React Router 7 "Framework Mode" (coming soon!)
 
-## Quickly scaffolding a new project
-
-To get a new project scaffolded, simply run
-
-```
-pnpm create @tanstack/start@latest
-```
-
-or
-
-```
-npm create @tanstack/start@latest
-```
-
-depending on your package manage of choice. You'll be prompted to add things like Tailwind, eslint, and a ton of other options.
-
 ## Manually starting a new project from scratch
 
 Choose one of the following options to start building a _new_ TanStack Start project:
 
+- [TanStack Start CLI] - Just run `npm create @tanstack/start@latest`. Local, fast, and optionally customizable
 - [TanStack Builder](#) (coming soon!) - A visual interface to configure new TanStack projects with a few clicks
-- [TanStack Start CLI](https://github.com/TanStack/create-tsrouter-app/blob/main/cli/create-start-app/README.md) via `npx create-start-app@latest` - Local, fast, and optionally customizable
 - [Quick Start Examples](../quick-start) Download or clone one of our official examples
 - [Build a project from scratch](../build-from-scratch) - A guide to building a TanStack Start project line-by-line, file-by-file.
 
