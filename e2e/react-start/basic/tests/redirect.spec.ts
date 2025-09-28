@@ -12,7 +12,10 @@ import packageJson from '../package.json' with { type: 'json' }
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
-const PORT = await getTestServerPort(packageJson.name)
+const PORT = await getTestServerPort(
+  `${packageJson.name}${isSpaMode ? '_spa' : ''}`,
+)
+
 const EXTERNAL_HOST_PORT = await getDummyServerPort(packageJson.name)
 
 test.describe('redirects', () => {
@@ -65,7 +68,6 @@ test.describe('redirects', () => {
           await link.click()
 
           const url = `http://localhost:${PORT}/posts`
-
           await page.waitForURL(url)
           expect(page.url()).toBe(url)
           await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
@@ -80,14 +82,6 @@ test.describe('redirects', () => {
     })
 
     internalDirectVisitTestMatrix.forEach(({ thrower, reloadDocument }) => {
-      if (isSpaMode) {
-        test.use({
-          whitelistErrors: [
-            /A tree hydrated but some attributes of the server rendered HTML/,
-          ],
-        })
-      }
-
       test(`internal target, direct visit: thrower: ${thrower}, reloadDocument: ${reloadDocument}`, async ({
         page,
       }) => {
