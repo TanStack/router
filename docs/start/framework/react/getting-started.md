@@ -11,7 +11,23 @@ title: Getting Started
   - [React Router](../migrate-from-react-router) (Including React Router 7 "Data Mode")
   - Remix 2 / React Router 7 "Framework Mode" (coming soon!)
 
-## Start a new project from scratch
+## Quickly scaffolding a new project
+
+To get a new project scaffolded, simply run
+
+```
+pnpm create @tanstack/start@latest
+```
+
+or
+
+```
+npm create @tanstack/start@latest
+```
+
+depending on your package manage of choice. You'll be prompted on whether you want to add things like Tailwind, eslint, as well as a ton of other options.
+
+## Manually starting a new project from scratch
 
 Choose one of the following options to start building a _new_ TanStack Start project:
 
