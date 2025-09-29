@@ -120,13 +120,13 @@ export function useLinkProps<
     let external = false
     if (router.origin) {
       if (href.startsWith(router.origin)) {
-        href = href.replace(router.origin, '') || '/'
+        href = router.history.createHref(href.replace(router.origin, '')) || '/'
       } else {
         external = true
       }
     }
     return { href, external }
-  }, [disabled, next.maskedLocation, next.url, router.origin])
+  }, [disabled, next.maskedLocation, next.url, router.origin, router.history])
 
   const externalLink = React.useMemo(() => {
     if (hrefOption?.external) {
