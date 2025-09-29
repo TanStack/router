@@ -9,14 +9,19 @@ import type {
 import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
 
-export type Serializable =
-  | number
-  | string
-  | boolean
-  | null
-  | undefined
-  | bigint
-  | Date
+export interface DefaultSerializable {
+  number: number
+  string: string
+  boolean: boolean
+  null: null
+  undefined: undefined
+  bigint: bigint
+  Date: Date
+}
+
+export interface SerializableExtensions extends DefaultSerializable {}
+
+export type Serializable = SerializableExtensions[keyof SerializableExtensions]
 
 export function createSerializationAdapter<
   TInput = unknown,

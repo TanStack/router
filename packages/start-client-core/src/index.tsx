@@ -27,6 +27,7 @@ export {
   type FunctionMiddlewareAfterClient,
   type FunctionMiddlewareAfterServer,
   type FunctionMiddleware,
+  type FunctionMiddlewareAfterMiddleware,
   type FunctionMiddlewareClientFnOptions,
   type FunctionMiddlewareClientFnResult,
   type FunctionMiddlewareClientNextFn,
@@ -41,6 +42,18 @@ export {
   type FunctionMiddlewareServerNextFn,
   type FunctionServerResultWithContext,
   type AnyRequestMiddleware,
+  type RequestMiddlewareOptions,
+  type RequestMiddlewareWithTypes,
+  type RequestMiddlewareServer,
+  type RequestMiddlewareAfterServer,
+  type RequestMiddleware,
+  type RequestMiddlewareAfterMiddleware,
+  type RequestServerFn,
+  type RequestMiddlewareServerFnResult,
+  type RequestServerOptions,
+  type RequestServerNextFn,
+  type RequestServerNextFnOptions,
+  type RequestServerResult,
 } from './createMiddleware'
 export type {
   CompiledFetcherFnOptions,
@@ -79,7 +92,11 @@ export type * from './serverRoute'
 export type * from './startEntry'
 
 export { createStart } from './createStart'
-export type { AnyStartInstance, AnyStartInstanceOptions } from './createStart'
+export type {
+  AnyStartInstance,
+  AnyStartInstanceOptions,
+  StartInstance,
+} from './createStart'
 export type { Register } from '@tanstack/router-core'
 
 export { getRouterInstance } from './getRouterInstance'

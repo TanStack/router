@@ -23,6 +23,7 @@ export const renderRouterToStream = async ({
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
     const stream = await ReactDOMServer.renderToReadableStream(children, {
       signal: request.signal,
+      nonce: router.options.ssr?.nonce,
     })
 
     if (isbot(request.headers.get('User-Agent'))) {
@@ -44,6 +45,7 @@ export const renderRouterToStream = async ({
 
     try {
       const pipeable = ReactDOMServer.renderToPipeableStream(children, {
+        nonce: router.options.ssr?.nonce,
         ...(isbot(request.headers.get('User-Agent'))
           ? {
               onAllReady() {

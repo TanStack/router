@@ -97,7 +97,10 @@ export function createStartHandler<TRegister = Register>(
     function getOrigin() {
       const originHeader = request.headers.get('Origin')
       if (originHeader) {
-        return originHeader
+        try {
+          new URL(originHeader)
+          return originHeader
+        } catch {}
       }
       try {
         return new URL(request.url).origin
@@ -133,7 +136,7 @@ export function createStartHandler<TRegister = Register>(
 
       // If not, it should just use the original fetch
       return originalFetch(input, init)
-    }
+    } as typeof fetch
 
     const url = new URL(request.url)
     const href = url.href.replace(url.origin, '')
@@ -495,33 +498,36 @@ function executeMiddleware(middlewares: TODO, ctx: TODO) {
     const middleware = middlewares[index]
     if (!middleware) return ctx
 
-    const result = await middleware({
-      ...ctx,
-      // Allow the middleware to call the next middleware in the chain
-      next: async (nextCtx: TODO) => {
-        // Allow the caller to extend the context for the next middleware
-        const nextResult = await next({
-          ...ctx,
-          ...nextCtx,
-          context: {
-            ...ctx.context,
-            ...(nextCtx?.context || {}),
-          },
-        })
+    let result
+    try {
+      result = await middleware({
+        ...ctx,
+        // Allow the middleware to call the next middleware in the chain
+        next: async (nextCtx: TODO) => {
+          // Allow the caller to extend the context for the next middleware
+          const nextResult = await next({
+            ...ctx,
+            ...nextCtx,
+            context: {
+              ...ctx.context,
+              ...(nextCtx?.context || {}),
+            },
+          })
 
-        // Merge the result into the context\
-        return Object.assign(ctx, handleCtxResult(nextResult))
-      },
-      // Allow the middleware result to extend the return context
-    }).catch((err: TODO) => {
+          // Merge the result into the context\
+          return Object.assign(ctx, handleCtxResult(nextResult))
+        },
+        // Allow the middleware result to extend the return context
+      })
+    } catch (err: TODO) {
       if (isSpecialResponse(err)) {
-        return {
+        result = {
           response: err,
         }
+      } else {
+        throw err
       }
-
-      throw err
-    })
+    }
 
     // Merge the middleware result into the context, just in case it
     // returns a partial context

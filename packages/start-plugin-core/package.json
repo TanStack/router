@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-plugin-core",
-  "version": "1.132.9",
+  "version": "1.132.24",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -85,7 +85,7 @@
   "devDependencies": {
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
-    "vite": "^7.1.1"
+    "vite": "^7.1.7"
   },
   "peerDependencies": {
     "vite": ">=7.0.0"
