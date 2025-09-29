@@ -55,6 +55,8 @@ export function tanstackStart(
                     '@tanstack/react-start',
                     '@tanstack/react-router',
                     '@tanstack/react-router-devtools',
+                    // Excluding the react-devtools for compatibility with the Cloudflare plugin
+                    '@tanstack/react-devtools',
                   ],
                   include: [
                     'react',
