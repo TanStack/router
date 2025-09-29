@@ -140,7 +140,7 @@ export default defineConfig({
     tanstackStart(),
     nitroV2Plugin(/* 
       // nitro config goes here, e.g.
-      { target: 'node-server' }
+      { preset: 'node-server' }
     */),
     viteReact(),
   ],
