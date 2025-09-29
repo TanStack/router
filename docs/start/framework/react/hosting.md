@@ -168,7 +168,7 @@ export default defineConfig({
     tanstackStart(),
     nitro(/*
       // nitro config goes here, e.g.
-      { config: { target: 'node-server' } }
+      { config: { preset: 'node-server' } }
     */)
     viteReact(),
   ],
