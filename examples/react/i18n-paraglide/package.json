@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.13",
-    "@tanstack/react-router": "^1.132.25",
-    "@tanstack/router-plugin": "^1.132.25",
+    "@tanstack/react-router": "^1.132.26",
+    "@tanstack/router-plugin": "^1.132.26",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwindcss": "^4.1.13"
