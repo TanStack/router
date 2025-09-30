@@ -140,7 +140,7 @@ export const Route = createFileRoute('/hello')({
 You can define handlers in two ways:
 
 - **Simple handlers**: Provide handler functions directly in a handlers object
-- **Handlers with middleware**: Use the `createHandlers` function to define handlers with middleware
+- **Handlers with middleware**: Use an object to define handlers with middleware
 
 ### Simple handlers
 

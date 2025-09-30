@@ -163,7 +163,7 @@ export const Route = createFileRoute('/foo')({
 
 #### Specific Server Route Methods
 
-You can pass middleware to specific server route methods by using the `{ middleware, handler }` form for a method. Example:
+You can pass middleware to specific server route methods by using the object form. Example:
 
 ```tsx
 const loggingMiddleware = createMiddleware().server(() => {
