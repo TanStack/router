@@ -1,6 +1,8 @@
 import { expectTypeOf, test } from 'vitest'
 import { createServerFn } from '@tanstack/start-client-core'
 
+/*
+// disabled until we really support RSC
 test.skip('createServerFn returns RSC', () => {
   const fn = createServerFn().handler(() => ({
     rscs: [
@@ -14,7 +16,7 @@ test.skip('createServerFn returns RSC', () => {
       rscs: readonly [ReadableStream, ReadableStream]
     }>
   >()
-})
+})*/
 
 test('createServerFn returns async array', () => {
   const result: Array<{ a: number }> = [{ a: 1 }]

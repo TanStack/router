@@ -14,7 +14,6 @@ import type {
   ResolveValidatorInput,
   ValidateSerializable,
   ValidateSerializableInput,
-  ValidateSerializableInputResult,
   Validator,
 } from '@tanstack/router-core'
 import type { JsonResponse } from '@tanstack/router-core/ssr/client'
@@ -243,10 +242,10 @@ export type CompiledFetcherFnOptions = {
   context?: any
 }
 
-export type Fetcher<TRegister, TMiddlewares, TInputValidator, TResponse> =
+export type Fetcher<TMiddlewares, TInputValidator, TResponse> =
   undefined extends IntersectAllValidatorInputs<TMiddlewares, TInputValidator>
-    ? OptionalFetcher<TRegister, TMiddlewares, TInputValidator, TResponse>
-    : RequiredFetcher<TRegister, TMiddlewares, TInputValidator, TResponse>
+    ? OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
+    : RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
 
 export interface FetcherBase {
   [TSS_SERVER_FUNCTION]: true
@@ -260,26 +259,18 @@ export interface FetcherBase {
   }) => Promise<unknown>
 }
 
-export interface OptionalFetcher<
-  TRegister,
-  TMiddlewares,
-  TInputValidator,
-  TResponse,
-> extends FetcherBase {
+export interface OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
+  extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<FetcherData<TRegister, TResponse>>
+  ): Promise<FetcherData<TResponse>>
 }
 
-export interface RequiredFetcher<
-  TRegister,
-  TMiddlewares,
-  TInputValidator,
-  TResponse,
-> extends FetcherBase {
+export interface RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
+  extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<FetcherData<TRegister, TResponse>>
+  ): Promise<FetcherData<TResponse>>
 }
 
 export type FetcherBaseOptions = {
@@ -297,22 +288,23 @@ export interface RequiredFetcherDataOptions<TMiddlewares, TInputValidator>
   data: Expand<IntersectAllValidatorInputs<TMiddlewares, TInputValidator>>
 }
 
-export type FetcherData<TRegister, TResponse> = TResponse extends Response
-  ? Response
-  : TResponse extends JsonResponse<any>
-    ? ValidateSerializableInputResult<TRegister, ReturnType<TResponse['json']>>
-    : ValidateSerializableInputResult<TRegister, TResponse>
-
 export type RscStream<T> = {
   __cacheState: T
 }
 
 export type Method = 'GET' | 'POST'
 
+export type FetcherData<TResponse> =
+  Awaited<TResponse> extends Response
+    ? Awaited<TResponse>
+    : Awaited<TResponse> extends JsonResponse<any>
+      ? ReturnType<Awaited<TResponse>['json']>
+      : Awaited<TResponse>
+
 export type ServerFnReturnType<TRegister, TResponse> =
-  | Response
-  | Promise<ValidateSerializableInput<TRegister, TResponse> | Response>
-  | ValidateSerializableInput<TRegister, TResponse>
+  Awaited<TResponse> extends Response
+    ? TResponse
+    : ValidateSerializableInput<TRegister, TResponse>
 
 export type ServerFn<
   TRegister,
@@ -521,7 +513,7 @@ export interface ServerFnHandler<
       TInputValidator,
       TNewResponse
     >,
-  ) => Fetcher<TRegister, TMiddlewares, TInputValidator, TNewResponse>
+  ) => Fetcher<TMiddlewares, TInputValidator, TNewResponse>
 }
 
 export interface ServerFnBuilder<TRegister, TMethod extends Method = 'GET'>
