@@ -11,7 +11,10 @@ import {
   joinPaths,
   trimPath,
 } from '@tanstack/router-core'
-import { attachRouterServerSsrUtils, getOrigin } from '@tanstack/router-core/ssr/server'
+import {
+  attachRouterServerSsrUtils,
+  getOrigin,
+} from '@tanstack/router-core/ssr/server'
 import { runWithStartContext } from '@tanstack/start-storage-context'
 import { getResponseHeaders, requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
@@ -95,7 +98,7 @@ export function createStartHandler<TRegister = Register>(
     requestOpts,
   ) => {
     const origin = getOrigin(request)
-    
+
     // Patching fetch function to use our request resolver
     // if the input starts with `/` which is a common pattern for
     // client-side routing.
