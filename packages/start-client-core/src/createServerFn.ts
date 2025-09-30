@@ -173,7 +173,7 @@ export async function executeMiddleware(
   env: 'client' | 'server',
   opts: ServerFnMiddlewareOptions,
 ): Promise<ServerFnMiddlewareResult> {
-  const globalMiddlewares = getStartOptions().functionMiddleware || []
+  const globalMiddlewares = getStartOptions()?.functionMiddleware || []
   const flattenedMiddlewares = flattenMiddlewares([
     ...globalMiddlewares,
     ...middlewares,
