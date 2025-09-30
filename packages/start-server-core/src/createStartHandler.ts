@@ -11,7 +11,7 @@ import {
   joinPaths,
   trimPath,
 } from '@tanstack/router-core'
-import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
+import { attachRouterServerSsrUtils, getOrigin } from '@tanstack/router-core/ssr/server'
 import { runWithStartContext } from '@tanstack/start-storage-context'
 import { getResponseHeaders, requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
@@ -94,20 +94,8 @@ export function createStartHandler<TRegister = Register>(
     request,
     requestOpts,
   ) => {
-    function getOrigin() {
-      const originHeader = request.headers.get('Origin')
-      if (originHeader) {
-        try {
-          new URL(originHeader)
-          return originHeader
-        } catch {}
-      }
-      try {
-        return new URL(request.url).origin
-      } catch {}
-      return 'http://localhost'
-    }
-
+    const origin = getOrigin(request)
+    
     // Patching fetch function to use our request resolver
     // if the input starts with `/` which is a common pattern for
     // client-side routing.
@@ -121,7 +109,7 @@ export function createStartHandler<TRegister = Register>(
 
       if (typeof input === 'string' && input.startsWith('/')) {
         // e.g: fetch('/api/data')
-        const url = new URL(input, getOrigin())
+        const url = new URL(input, origin)
         return resolve(url, init)
       } else if (
         typeof input === 'object' &&
@@ -130,7 +118,7 @@ export function createStartHandler<TRegister = Register>(
         input.url.startsWith('/')
       ) {
         // e.g: fetch(new Request('/api/data'))
-        const url = new URL(input.url, getOrigin())
+        const url = new URL(input.url, origin)
         return resolve(url, init)
       }
 
@@ -163,12 +151,11 @@ export function createStartHandler<TRegister = Register>(
         initialEntries: [href],
       })
 
-      const origin = router.options.origin ?? getOrigin()
       router.update({
         history,
         isShell,
         isPrerendering,
-        origin,
+        origin: router.options.origin ?? origin,
         ...{
           defaultSsr: startOptions.defaultSsr,
           serializationAdapters: startOptions.serializationAdapters,

@@ -18,7 +18,7 @@ export async function render({
   res: express.Response
 }) {
   // Convert the express request to a fetch request
-  const url = new URL(req.originalUrl || req.url, 'https://localhost:3000').href
+  const url = new URL(req.originalUrl || req.url, 'http://localhost:3000').href
 
   const request = new Request(url, {
     method: req.method,
@@ -57,6 +57,7 @@ export async function render({
       children: <RouterServer router={router} />,
     }),
   )
+  console.log(response)
 
   // Convert the fetch response back to an express response
   res.statusMessage = response.statusText

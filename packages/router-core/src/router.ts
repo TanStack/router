@@ -2230,7 +2230,11 @@ export class RouterCore<
 
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
     if (!redirect.options.href) {
-      redirect.options.href = this.buildLocation(redirect.options).href
+      let href = this.buildLocation(redirect.options).url
+       if (this.origin && href.startsWith(this.origin)) {
+        href = href.replace(this.origin, '') || '/'
+       }
+      redirect.options.href = href
       redirect.headers.set('Location', redirect.options.href)
     }
 
