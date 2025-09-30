@@ -16,7 +16,7 @@ import {
   getOrigin,
 } from '@tanstack/router-core/ssr/server'
 import { runWithStartContext } from '@tanstack/start-storage-context'
-import { getResponseHeaders, requestHandler } from './request-response'
+import { requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
 import { handleServerAction } from './server-functions-handler'
 
@@ -43,7 +43,6 @@ type TODO = any
 
 function getStartResponseHeaders(opts: { router: AnyRouter }) {
   const headers = mergeHeaders(
-    getResponseHeaders() as Headers,
     {
       'Content-Type': 'text/html; charset=utf-8',
     },

@@ -65,6 +65,21 @@ export interface StartInstanceTypes<
   functionMiddleware: TFunctionMiddlewares
 }
 
+function dedupeSerializationAdapters(
+  deduped: Set<AnySerializationAdapter>,
+  plugins: Array<AnySerializationAdapter>,
+): void {
+  for (let i = 0, len = plugins.length; i < len; i++) {
+    const current = plugins[i]!
+    if (!deduped.has(current)) {
+      deduped.add(current)
+      if (current.extends) {
+        dedupeSerializationAdapters(deduped, current.extends)
+      }
+    }
+  }
+}
+
 export const createStart = <
   const TSerializationAdapters extends
     ReadonlyArray<AnySerializationAdapter> = [],
@@ -102,6 +117,14 @@ export const createStart = <
   return {
     getOptions: async () => {
       const options = await getOptions()
+      if (options.serializationAdapters) {
+        const deduped = new Set<AnySerializationAdapter>()
+        dedupeSerializationAdapters(
+          deduped,
+          options.serializationAdapters as unknown as Array<AnySerializationAdapter>,
+        )
+        options.serializationAdapters = Array.from(deduped) as any
+      }
       return options
     },
     createMiddleware: createMiddleware as any,
