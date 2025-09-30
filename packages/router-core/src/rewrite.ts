@@ -23,13 +23,28 @@ export function rewriteBasepath(opts: {
   caseSensitive?: boolean
 }) {
   const trimmedBasepath = trimPath(opts.basepath)
-  const regex = new RegExp(
-    `^/${trimmedBasepath}/`,
-    opts.caseSensitive ? '' : 'i',
-  )
+  const normalizedBasepath = `/${trimmedBasepath}`
+  const normalizedBasepathWithSlash = `${normalizedBasepath}/`
+  const checkBasepath = opts.caseSensitive
+    ? normalizedBasepath
+    : normalizedBasepath.toLowerCase()
+  const checkBasepathWithSlash = opts.caseSensitive
+    ? normalizedBasepathWithSlash
+    : normalizedBasepathWithSlash.toLowerCase()
+
   return {
     input: ({ url }) => {
-      url.pathname = url.pathname.replace(regex, '/')
+      const pathname = opts.caseSensitive
+        ? url.pathname
+        : url.pathname.toLowerCase()
+
+      // Handle exact basepath match (e.g., /my-app -> /)
+      if (pathname === checkBasepath) {
+        url.pathname = '/'
+      } else if (pathname.startsWith(checkBasepathWithSlash)) {
+        // Handle basepath with trailing content (e.g., /my-app/users -> /users)
+        url.pathname = url.pathname.slice(normalizedBasepath.length)
+      }
       return url
     },
     output: ({ url }) => {
