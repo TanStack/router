@@ -25,18 +25,18 @@ export function rewriteBasepath(opts: {
   const trimmedBasepath = trimPath(opts.basepath)
   const normalizedBasepath = `/${trimmedBasepath}`
   const normalizedBasepathWithSlash = `${normalizedBasepath}/`
+  const checkBasepath = opts.caseSensitive
+    ? normalizedBasepath
+    : normalizedBasepath.toLowerCase()
+  const checkBasepathWithSlash = opts.caseSensitive
+    ? normalizedBasepathWithSlash
+    : normalizedBasepathWithSlash.toLowerCase()
 
   return {
     input: ({ url }) => {
       const pathname = opts.caseSensitive
         ? url.pathname
         : url.pathname.toLowerCase()
-      const checkBasepath = opts.caseSensitive
-        ? normalizedBasepath
-        : normalizedBasepath.toLowerCase()
-      const checkBasepathWithSlash = opts.caseSensitive
-        ? normalizedBasepathWithSlash
-        : normalizedBasepathWithSlash.toLowerCase()
 
       // Handle exact basepath match (e.g., /my-app -> /)
       if (pathname === checkBasepath) {
