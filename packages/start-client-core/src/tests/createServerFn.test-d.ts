@@ -317,11 +317,7 @@ test('createServerFn returns undefined', () => {
 test('createServerFn cannot return function', () => {
   expectTypeOf(createServerFn().handler<{ func: () => 'func' }>)
     .parameter(0)
-    .returns.toEqualTypeOf<
-      | Response
-      | { func: 'Function is not serializable' }
-      | Promise<{ func: 'Function is not serializable' }>
-    >()
+    .returns.toEqualTypeOf<{ func: 'Function is not serializable' }>()
 })
 
 test('createServerFn cannot validate function', () => {
@@ -597,4 +593,48 @@ test('createServerFn has TSS_SERVER_FUNCTION symbol set', () => {
 test('createServerFn fetcher itself is serializable', () => {
   const fn1 = createServerFn().handler(() => ({}))
   const fn2 = createServerFn().handler(() => fn1)
+})
+
+test('createServerFn returns async Response', () => {
+  const serverFn = createServerFn().handler(async () => {
+    return new Response(new Blob([JSON.stringify({ a: 1 })]), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Response>>()
+})
+
+test('createServerFn returns sync Response', () => {
+  const serverFn = createServerFn().handler(() => {
+    return new Response(new Blob([JSON.stringify({ a: 1 })]), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Response>>()
+})
+
+test('createServerFn returns async array', () => {
+  const result: Array<{ a: number }> = [{ a: 1 }]
+  const serverFn = createServerFn({ method: 'GET' }).handler(async () => {
+    return result
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Array<{ a: number }>>>()
+})
+
+test('createServerFn returns sync array', () => {
+  const result: Array<{ a: number }> = [{ a: 1 }]
+  const serverFn = createServerFn({ method: 'GET' }).handler(() => {
+    return result
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Array<{ a: number }>>>()
 })
