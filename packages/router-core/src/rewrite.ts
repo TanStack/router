@@ -24,7 +24,7 @@ export function rewriteBasepath(opts: {
 }) {
   const trimmedBasepath = trimPath(opts.basepath)
   const regex = new RegExp(
-    `^/${trimmedBasepath}/`,
+    `^/${trimmedBasepath}(?:/|$)`,
     opts.caseSensitive ? '' : 'i',
   )
   return {
