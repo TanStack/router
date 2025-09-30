@@ -397,7 +397,7 @@ async function handleServerRoutes({
       const handlers =
         typeof server.handlers === 'function'
           ? server.handlers()
-          : server.handlers.handler()
+          : server.handlers
 
       const requestMethod = request.method.toLowerCase()
 
