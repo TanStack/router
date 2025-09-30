@@ -57,7 +57,6 @@ export async function render({
       children: <RouterServer router={router} />,
     }),
   )
-  console.log(response)
 
   // Convert the fetch response back to an express response
   res.statusMessage = response.statusText
