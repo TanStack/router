@@ -153,29 +153,29 @@ export interface RouteServerOptions<
             TServerMiddlewares,
             any,
             any
+          > 
+          | RouteMethodBuilderOptions<
+           TRegister,
+            TParentRoute,
+            TPath,
+            TServerMiddlewares,
+            any,
+            any
           >
         >
       >
-    | ((
-        opts: HandlersFnOpts<
-          TRegister,
-          TParentRoute,
-          TPath,
-          TServerMiddlewares
-        >,
-      ) => CustomHandlerFunctionsRecord<
+    |  CustomHandlerFunctionsRecord<
         TRegister,
         TParentRoute,
         TPath,
         TServerMiddlewares,
         any,
         any
-      >)
+      >
   >
   test?: (test: Expand<ExtractHandlersContext<THandlers>>) => void
 }
 
-declare const createHandlersSymbol: unique symbol
 
 type CustomHandlerFunctionsRecord<
   TRegister,
@@ -184,9 +184,7 @@ type CustomHandlerFunctionsRecord<
   TServerMiddlewares,
   TMethodMiddlewares,
   TServerContext,
-> = {
-  [createHandlersSymbol]: true
-} & Partial<
+> =  Partial<
   Record<
     RouteMethod,
     RouteMethodHandler<
@@ -200,59 +198,6 @@ type CustomHandlerFunctionsRecord<
   >
 >
 
-export interface HandlersFnOpts<
-  TRegister,
-  TParentRoute extends AnyRoute,
-  TPath extends string,
-  TServerMiddlewares,
-> {
-  createHandlers: CreateHandlersFn<
-    TRegister,
-    TParentRoute,
-    TPath,
-    TServerMiddlewares
-  >
-}
-
-export type CreateHandlersFn<
-  TRegister,
-  TParentRoute extends AnyRoute,
-  TPath extends string,
-  TServerMiddlewares,
-> = <
-  const TMethodAllMiddlewares,
-  const TMethodGetMiddlewares,
-  const TMethodPostMiddlewares,
-  const TMethodPutMiddlewares,
-  const TMethodPatchMiddlewares,
-  const TMethodDeleteMiddlewares,
-  const TMethodOptionsMiddlewares,
-  const TMethodHeadMiddlewares,
-  TServerContext,
->(
-  opts: CreateMethodFnOpts<
-    TRegister,
-    TParentRoute,
-    TPath,
-    TServerMiddlewares,
-    TMethodAllMiddlewares,
-    TMethodGetMiddlewares,
-    TMethodPostMiddlewares,
-    TMethodPutMiddlewares,
-    TMethodPatchMiddlewares,
-    TMethodDeleteMiddlewares,
-    TMethodOptionsMiddlewares,
-    TMethodHeadMiddlewares,
-    TServerContext
-  >,
-) => CustomHandlerFunctionsRecord<
-  TRegister,
-  TParentRoute,
-  TPath,
-  TServerMiddlewares,
-  any,
-  TServerContext
->
 
 export interface CreateMethodFnOpts<
   TRegister,

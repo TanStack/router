@@ -61,63 +61,64 @@ export const testGetMiddleware = startInstance
 export const Route = createRootRoute({
   server: {
     middleware: [testServerMw],
+    // handlers: {
+    //   GET: ({ context, next }) => {
+    //     context.fromFetch
+    //     //      ^?
+    //     context.fromServerMw
+    //     //      ^?
+    //     context.fromIndexServerMw
+    //     //      ^?
+    //     return next({
+    //       context: {
+    //         fromGet: true,
+    //       },
+    //     })
+    //   },
+    //   POST: ({ context, next }) => {
+    //     context.fromFetch
+    //     context.fromServerMw
+    //     context.fromIndexServerMw
+    //     return next({
+    //       context: {
+    //         fromPost: true,
+    //       },
+    //     })
+    //   },
+    // },
+
     handlers: {
-      GET: ({ context, next }) => {
-        context.fromFetch
-        //      ^?
-        context.fromServerMw
-        //      ^?
-        context.fromIndexServerMw
-        //      ^?
-        return next({
-          context: {
-            fromGet: true,
+        GET: {
+          middleware: [testGetMiddleware],
+          handler: ({ context, next }) => {
+            context.fromFetch
+            //      ^?
+            context.fromServerMw
+            //      ^?
+            context.fromIndexServerMw
+            //      ^?
+            context.fromGetMiddleware
+            //      ^?
+            console.log({context})
+            return next({
+              context: {
+                fromGet: true,
+                fromPost: false,
+              },
+            })
           },
-        })
-      },
-      POST: ({ context, next }) => {
-        context.fromFetch
-        context.fromServerMw
-        context.fromIndexServerMw
-        return next({
-          context: {
-            fromPost: true,
+        },
+        POST: {
+          handler: ({ next }) => {
+            return next({
+              context: {
+                fromGet: false,
+                fromPost: true,
+              },
+            })
           },
-        })
+        },
       },
-    },
-    // handlers: ({ createHandlers }) =>
-    //   createHandlers({
-    //     GET: {
-    //       middleware: [testGetMiddleware],
-    //       handler: ({ context, next }) => {
-    //         context.fromFetch
-    //         //      ^?
-    //         context.fromServerMw
-    //         //      ^?
-    //         context.fromIndexServerMw
-    //         //      ^?
-    //         context.fromGetMiddleware
-    //         //      ^?
-    //         return next({
-    //           context: {
-    //             fromGet: true,
-    //             fromPost: false,
-    //           },
-    //         })
-    //       },
-    //     },
-    //     POST: {
-    //       handler: ({ next }) => {
-    //         return next({
-    //           context: {
-    //             fromGet: false,
-    //             fromPost: true,
-    //           },
-    //         })
-    //       },
-    //     },
-    //   }),
     test: (test) => {},
   },
   beforeLoad: ({ serverContext }) => {

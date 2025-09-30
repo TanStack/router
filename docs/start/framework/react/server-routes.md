@@ -117,6 +117,7 @@ If you need to customize the server handler, you can do so by creating a custom 
 Server routes are created by adding a `server` property to your `createFileRoute` call. The `server` property contains:
 
 - `handlers` - Either an object mapping HTTP methods to handler functions, or a function that receives `createHandlers` for more advanced use cases
+ - `handlers` - An object mapping HTTP methods to handler functions, or to objects with `{ middleware, handler }` to attach middleware to specific methods
 - `middleware` - Optional route-level middleware array that applies to all handlers
 
 ```ts
@@ -162,7 +163,7 @@ export const Route = createFileRoute('/hello')({
 
 ### Adding middleware to specific handlers
 
-For more complex use cases, you can add middleware to specific handlers. This requires using the `createHandlers` function:
+For more complex use cases, you can add middleware to specific handlers by using an object with `middleware` and `handler` properties on the method:
 
 ```tsx
 // routes/hello.ts
@@ -170,15 +171,14 @@ import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/hello')({
   server: {
-    handlers: ({ createHandlers }) =>
-      createHandlers({
-        GET: {
-          middleware: [loggerMiddleware],
-          handler: async ({ request }) => {
-            return new Response('Hello, World! from ' + request.url)
-          },
+    handlers: {
+      GET: {
+        middleware: [loggerMiddleware],
+        handler: async ({ request }) => {
+          return new Response('Hello, World! from ' + request.url)
         },
-      }),
+      },
+    },
   },
 })
 ```
@@ -218,19 +218,18 @@ import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/hello')({
   server: {
     middleware: [authMiddleware], // Runs first for all handlers
-    handlers: ({ createHandlers }) =>
-      createHandlers({
-        GET: async ({ request }) => {
-          return new Response('Hello, World!')
+    handlers: {
+      GET: async ({ request }) => {
+        return new Response('Hello, World!')
+      },
+      POST: {
+        middleware: [validationMiddleware], // Runs after authMiddleware, only for POST
+        handler: async ({ request }) => {
+          const body = await request.json()
+          return new Response(`Hello, ${body.name}!`)
         },
-        POST: {
-          middleware: [validationMiddleware], // Runs after authMiddleware, only for POST
-          handler: async ({ request }) => {
-            const body = await request.json()
-            return new Response(`Hello, ${body.name}!`)
-          },
-        },
-      }),
+      },
+    },
   },
 })
 ```

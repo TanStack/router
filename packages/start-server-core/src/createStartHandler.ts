@@ -396,10 +396,8 @@ async function handleServerRoutes({
     if (server.handlers) {
       const handlers =
         typeof server.handlers === 'function'
-          ? server.handlers({
-              createHandlers: (d: any) => d,
-            })
-          : server.handlers
+          ? server.handlers()
+          : server.handlers.handler()
 
       const requestMethod = request.method.toLowerCase()
 
