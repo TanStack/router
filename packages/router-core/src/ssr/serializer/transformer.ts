@@ -23,19 +23,40 @@ export interface SerializableExtensions extends DefaultSerializable {}
 
 export type Serializable = SerializableExtensions[keyof SerializableExtensions]
 
+export type UnionizeSerializationAdaptersInput<
+  TAdapters extends ReadonlyArray<AnySerializationAdapter>,
+> = TAdapters[number]['~types']['input']
+
 export function createSerializationAdapter<
   TInput = unknown,
-  TOutput = unknown /* we need to check that this type is actually serializable taking into account all seroval native types and any custom plugin WE=router/start add!!! */,
+  TOutput = unknown,
+  const TExtendsAdapters extends
+    | ReadonlyArray<AnySerializationAdapter>
+    | never = never,
 >(
-  opts: CreateSerializationAdapterOptions<TInput, TOutput>,
-): SerializationAdapter<TInput, TOutput> {
-  return opts as unknown as SerializationAdapter<TInput, TOutput>
+  opts: CreateSerializationAdapterOptions<TInput, TOutput, TExtendsAdapters>,
+): SerializationAdapter<TInput, TOutput, TExtendsAdapters> {
+  return opts as unknown as SerializationAdapter<
+    TInput,
+    TOutput,
+    TExtendsAdapters
+  >
 }
 
-export interface CreateSerializationAdapterOptions<TInput, TOutput> {
+export interface CreateSerializationAdapterOptions<
+  TInput,
+  TOutput,
+  TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter> | never,
+> {
   key: string
+  extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
-  toSerializable: (value: TInput) => ValidateSerializable<TOutput, Serializable>
+  toSerializable: (
+    value: TInput,
+  ) => ValidateSerializable<
+    TOutput,
+    Serializable | UnionizeSerializationAdaptersInput<TExtendsAdapters>
+  >
   fromSerializable: (value: TOutput) => TInput
 }
 
@@ -90,28 +111,42 @@ export interface DefaultSerializerExtensions {
 
 export interface SerializerExtensions extends DefaultSerializerExtensions {}
 
-export interface SerializationAdapter<TInput, TOutput> {
-  '~types': SerializationAdapterTypes<TInput, TOutput>
+export interface SerializationAdapter<
+  TInput,
+  TOutput,
+  TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter>,
+> {
+  '~types': SerializationAdapterTypes<TInput, TOutput, TExtendsAdapters>
   key: string
+  extends?: TExtendsAdapters
   test: (value: unknown) => value is TInput
   toSerializable: (value: TInput) => TOutput
   fromSerializable: (value: TOutput) => TInput
-  makePlugin: (options: { didRun: boolean }) => Plugin<TInput, SerovalNode>
 }
 
-export interface SerializationAdapterTypes<TInput, TOutput> {
-  input: TInput
+export interface SerializationAdapterTypes<
+  TInput,
+  TOutput,
+  TExtendsAdapters extends ReadonlyArray<AnySerializationAdapter>,
+> {
+  input: TInput | UnionizeSerializationAdaptersInput<TExtendsAdapters>
   output: TOutput
+  extends: TExtendsAdapters
 }
 
-export type AnySerializationAdapter = SerializationAdapter<any, any>
+export type AnySerializationAdapter = SerializationAdapter<any, any, any>
 
-export function makeSsrSerovalPlugin<TInput, TOutput>(
-  serializationAdapter: SerializationAdapter<TInput, TOutput>,
+export function makeSsrSerovalPlugin(
+  serializationAdapter: AnySerializationAdapter,
   options: { didRun: boolean },
-) {
-  return createPlugin<TInput, SerovalNode>({
+): Plugin<any, SerovalNode> {
+  return createPlugin<any, SerovalNode>({
     tag: '$TSR/t/' + serializationAdapter.key,
+    extends: serializationAdapter.extends
+      ? (serializationAdapter.extends as Array<AnySerializationAdapter>).map(
+          (ext) => makeSsrSerovalPlugin(ext, options),
+        )
+      : undefined,
     test: serializationAdapter.test,
     parse: {
       stream(value, ctx) {
@@ -134,11 +169,16 @@ export function makeSsrSerovalPlugin<TInput, TOutput>(
   })
 }
 
-export function makeSerovalPlugin<TInput, TOutput>(
-  serializationAdapter: SerializationAdapter<TInput, TOutput>,
-) {
-  return createPlugin<TInput, SerovalNode>({
+export function makeSerovalPlugin(
+  serializationAdapter: AnySerializationAdapter,
+): Plugin<any, SerovalNode> {
+  return createPlugin<any, SerovalNode>({
     tag: '$TSR/t/' + serializationAdapter.key,
+    extends: serializationAdapter.extends
+      ? (serializationAdapter.extends as Array<AnySerializationAdapter>).map(
+          makeSerovalPlugin,
+        )
+      : undefined,
     test: serializationAdapter.test,
     parse: {
       sync(value, ctx) {
@@ -154,9 +194,7 @@ export function makeSerovalPlugin<TInput, TOutput>(
     // we don't generate JS code outside of SSR (for now)
     serialize: undefined as never,
     deserialize(node, ctx) {
-      return serializationAdapter.fromSerializable(
-        ctx.deserialize(node) as TOutput,
-      )
+      return serializationAdapter.fromSerializable(ctx.deserialize(node))
     },
   })
 }

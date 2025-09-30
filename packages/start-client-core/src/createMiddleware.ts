@@ -292,11 +292,8 @@ export type AssignAllServerRequestContext<
 > = Assign<
   // Fetch Request Context
   GlobalFetchRequestContext,
-  // AnyContext,
   Assign<
-    GlobalServerRequestContext<TRegister>, // TODO: This enabled global middleware
-    // type inference, but creates a circular types issue. No idea how to fix this.
-    // AnyContext,
+    GlobalServerRequestContext<TRegister>,
     __AssignAllServerRequestContext<TMiddlewares, TSendContext, TServerContext>
   >
 >

@@ -2670,6 +2670,144 @@ describe('rewriteBasepath utility', () => {
     expect(router.state.location.pathname).toBe('/users')
   })
 
+  it.each([
+    {
+      description: 'basepath with leading slash but without trailing slash',
+      basepath: '/api/v1',
+    },
+    {
+      description: 'basepath without leading slash but with trailing slash',
+      basepath: 'api/v1/',
+    },
+    {
+      description: 'basepath without leading and trailing slashes',
+      basepath: 'api/v1',
+    },
+  ])('should handle $description', async ({ basepath }) => {
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+
+    const usersRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users',
+      component: () => <div data-testid="users">Users</div>,
+    })
+
+    const routeTree = rootRoute.addChildren([usersRoute])
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ['/api/v1/users'],
+      }),
+      rewrite: rewriteBasepath({ basepath }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('users')).toBeInTheDocument()
+    })
+
+    expect(router.state.location.pathname).toBe('/users')
+  })
+
+  it.each([
+    { description: 'has trailing slash', basepath: '/my-app/' },
+    { description: 'has no trailing slash', basepath: '/my-app' },
+  ])(
+    'should not resolve to 404 when basepath $description and URL matches',
+    async ({ basepath }) => {
+      const rootRoute = createRootRoute({
+        component: () => <Outlet />,
+      })
+
+      const homeRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <div data-testid="home">Home</div>,
+      })
+
+      const usersRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/users',
+        component: () => <div data-testid="users">Users</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([homeRoute, usersRoute])
+
+      const router = createRouter({
+        routeTree,
+        history: createMemoryHistory({
+          initialEntries: ['/my-app/'],
+        }),
+        rewrite: rewriteBasepath({ basepath }),
+      })
+
+      render(<RouterProvider router={router} />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('home')).toBeInTheDocument()
+      })
+
+      expect(router.state.location.pathname).toBe('/')
+      expect(router.state.statusCode).toBe(200)
+    },
+  )
+
+  it.each([
+    { description: 'with trailing slash', basepath: '/my-app/' },
+    { description: 'without trailing slash', basepath: '/my-app' },
+  ])(
+    'should handle basepath $description when navigating to root path',
+    async ({ basepath }) => {
+      const rootRoute = createRootRoute({
+        component: () => <Outlet />,
+      })
+
+      const homeRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <div>
+            <Link to="/about" data-testid="about-link">
+              About
+            </Link>
+          </div>
+        ),
+      })
+
+      const aboutRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+        component: () => <div data-testid="about">About</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([homeRoute, aboutRoute])
+
+      const history = createMemoryHistory({ initialEntries: ['/my-app/'] })
+
+      const router = createRouter({
+        routeTree,
+        history,
+        rewrite: rewriteBasepath({ basepath }),
+      })
+
+      render(<RouterProvider router={router} />)
+
+      const aboutLink = await screen.findByTestId('about-link')
+      fireEvent.click(aboutLink)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('about')).toBeInTheDocument()
+      })
+
+      expect(router.state.location.pathname).toBe('/about')
+      expect(history.location.pathname).toBe('/my-app/about')
+    },
+  )
+
   it('should handle empty basepath gracefully', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
