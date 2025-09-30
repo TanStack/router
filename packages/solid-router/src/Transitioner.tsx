@@ -50,10 +50,10 @@ export function Transitioner() {
       _includeValidateSearch: true,
     })
 
-    if (
-      trimPathRight(router.latestLocation.href) !==
-      trimPathRight(nextLocation.href)
-    ) {
+    const latestPublicHref = trimPathRight(router.latestLocation.publicHref)
+    const nextPublicHref = trimPathRight(nextLocation.publicHref)
+
+    if (latestPublicHref !== nextPublicHref) {
       router.commitLocation({ ...nextLocation, replace: true })
     }
 

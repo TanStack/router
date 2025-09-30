@@ -1787,8 +1787,11 @@ export class RouterCore<
       return isEqual
     }
 
+    const latestPublicHref = this.latestLocation.publicHref ?? this.latestLocation.href
+    const nextPublicHref = next.publicHref ?? next.href
+
     const isSameUrl =
-      trimPathRight(this.latestLocation.href) === trimPathRight(next.href)
+      trimPathRight(latestPublicHref) === trimPathRight(nextPublicHref)
 
     const previousCommitPromise = this.commitLocationPromise
     this.commitLocationPromise = createControlledPromise<void>(() => {
@@ -1945,11 +1948,14 @@ export class RouterCore<
         }
       }
 
+      const latestPublicHref = this.latestLocation.publicHref
+      const nextPublicHref = nextLocation.publicHref
+
       if (
-        trimPath(normalizeUrl(this.latestLocation.href)) !==
-        trimPath(normalizeUrl(nextLocation.href))
+        trimPath(normalizeUrl(latestPublicHref)) !==
+        trimPath(normalizeUrl(nextPublicHref))
       ) {
-        throw redirect({ href: nextLocation.href })
+        throw redirect({ href: nextPublicHref })
       }
     }
 
