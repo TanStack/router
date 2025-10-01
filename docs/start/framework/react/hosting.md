@@ -269,20 +269,22 @@ export default defineConfig({
 
 #### Production Server with Bun
 
-Alternatively, you can use a custom server implementation.
+Alternatively, you can use a custom server implementation that leverages Bun's native APIs.
 
-We've created an optimized production server that provides intelligent static asset loading with configurable memory management.
+We provide a reference implementation that demonstrates one approach to building a production-ready Bun server. This example uses Bun-native functions for optimal performance and includes features like intelligent asset preloading and memory management.
 
-**Features:**
+**This is a starting point - feel free to adapt it to your needs or simplify it for your use case.**
 
-- **Hybrid loading strategy**: Small files (<5MB by default) are preloaded into memory, large files are served on-demand
-- **Configurable file filtering**: Use include/exclude patterns to control which files are preloaded
-- **Production-ready caching headers**: Automatic optimization for static assets
-- **Memory-efficient**: Smart memory management prevents excessive RAM usage
+**What this example demonstrates:**
+
+- Serving static assets using Bun's native file handling
+- Hybrid loading strategy (preload small files, serve large files on-demand)
+- Optional features like ETag support and Gzip compression
+- Production-ready caching headers
 
 **Quick Setup:**
 
-1. Copy the [`server.ts`](https://github.com/tanstack/router/blob/main/examples/react/start-bun/server.ts) file from the example in this repository to your project root
+1. Copy the [`server.ts`](https://github.com/tanstack/router/blob/main/examples/react/start-bun/server.ts) file from the example repository to your project root (or use it as inspiration for your own implementation)
 
 2. Build your application:
 
@@ -296,18 +298,38 @@ We've created an optimized production server that provides intelligent static as
    bun run server.ts
    ```
 
-**Configuration:**
+**Configuration (Optional):**
 
-The server can be configured using environment variables:
+The reference server implementation includes several optional configuration options via environment variables. You can use these as-is, modify them, or remove features you don't need:
 
 ```sh
-# Basic usage
+# Basic usage - just works out of the box
 bun run server.ts
 
-# Custom port
-PORT=8080 bun run server.ts
+# Common configurations
+PORT=8080 bun run server.ts  # Custom port
+ASSET_PRELOAD_VERBOSE_LOGGING=true bun run server.ts  # See what's happening
+```
 
-# Optimize for minimal memory usage (1MB preload limit)
+**Available Environment Variables:**
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | `3000` |
+| `ASSET_PRELOAD_MAX_SIZE` | Maximum file size to preload into memory (bytes) | `5242880` (5MB) |
+| `ASSET_PRELOAD_INCLUDE_PATTERNS` | Comma-separated glob patterns for files to include | All files |
+| `ASSET_PRELOAD_EXCLUDE_PATTERNS` | Comma-separated glob patterns for files to exclude | None |
+| `ASSET_PRELOAD_VERBOSE_LOGGING` | Enable detailed logging | `false` |
+| `ASSET_PRELOAD_ENABLE_ETAG` | Enable ETag generation | `true` |
+| `ASSET_PRELOAD_ENABLE_GZIP` | Enable Gzip compression | `true` |
+| `ASSET_PRELOAD_GZIP_MIN_SIZE` | Minimum file size for Gzip (bytes) | `1024` (1KB) |
+| `ASSET_PRELOAD_GZIP_MIME_TYPES` | MIME types eligible for Gzip | `text/,application/javascript,application/json,application/xml,image/svg+xml` |
+
+<details>
+<summary>Advanced configuration examples</summary>
+
+```sh
+# Optimize for minimal memory usage
 ASSET_PRELOAD_MAX_SIZE=1048576 bun run server.ts
 
 # Preload only critical assets
@@ -315,32 +337,18 @@ ASSET_PRELOAD_INCLUDE_PATTERNS="*.js,*.css" \
 ASSET_PRELOAD_EXCLUDE_PATTERNS="*.map,vendor-*" \
 bun run server.ts
 
-# Debug mode with verbose logging
-ASSET_PRELOAD_VERBOSE_LOGGING=true bun run server.ts
+# Disable optional features
+ASSET_PRELOAD_ENABLE_ETAG=false \
+ASSET_PRELOAD_ENABLE_GZIP=false \
+bun run server.ts
 
-# Disable ETag generation
-ASSET_PRELOAD_ENABLE_ETAG=false bun run server.ts
-
-# Disable Gzip compression
-ASSET_PRELOAD_ENABLE_GZIP=false bun run server.ts
-
-# Configure Gzip compression (minimum size and MIME types)
+# Custom Gzip configuration
 ASSET_PRELOAD_GZIP_MIN_SIZE=2048 \
 ASSET_PRELOAD_GZIP_MIME_TYPES="text/,application/javascript,application/json" \
 bun run server.ts
 ```
 
-**Environment Variables:**
-
-- `PORT`: Server port (default: 3000)
-- `ASSET_PRELOAD_MAX_SIZE`: Maximum file size to preload in bytes (default: 5242880 = 5MB)
-- `ASSET_PRELOAD_INCLUDE_PATTERNS`: Comma-separated glob patterns for files to include
-- `ASSET_PRELOAD_EXCLUDE_PATTERNS`: Comma-separated glob patterns for files to exclude
-- `ASSET_PRELOAD_VERBOSE_LOGGING`: Enable detailed logging (set to "true")
-- `ASSET_PRELOAD_ENABLE_ETAG`: Enable ETag generation for preloaded assets (default: "true")
-- `ASSET_PRELOAD_ENABLE_GZIP`: Enable Gzip compression for eligible assets (default: "true")
-- `ASSET_PRELOAD_GZIP_MIN_SIZE`: Minimum file size in bytes for Gzip compression (default: 1024 = 1KB)
-- `ASSET_PRELOAD_GZIP_MIME_TYPES`: Comma-separated MIME types eligible for Gzip compression (default: "text/,application/javascript,application/json,application/xml,image/svg+xml")
+</details>
 
 **Example Output:**
 
