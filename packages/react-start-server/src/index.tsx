@@ -5,5 +5,4 @@ export type {
   RequestHandler,
   RequestOptions,
 } from '@tanstack/start-server-core'
-export { createServerRpc } from '@tanstack/start-server-core'
 export * from '@tanstack/start-server-core'

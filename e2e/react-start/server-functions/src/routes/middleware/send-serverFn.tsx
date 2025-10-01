@@ -6,7 +6,7 @@ const middleware = createMiddleware({ type: 'function' }).client(
   async ({ next }) => {
     return next({
       sendContext: {
-        serverFn: barFn as any,
+        serverFn: barFn,
       },
     })
   },

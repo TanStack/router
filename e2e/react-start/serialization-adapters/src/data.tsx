@@ -88,6 +88,38 @@ export function makeData() {
     },
   }
 }
+export class NestedOuter {
+  constructor(public inner: NestedInner) {}
+  whisper() {
+    return this.inner.value.toLowerCase()
+  }
+}
+
+export class NestedInner {
+  constructor(public value: string) {}
+  shout() {
+    return this.value.toUpperCase()
+  }
+}
+
+export const nestedInnerAdapter = createSerializationAdapter({
+  key: 'nestedInner',
+  test: (value): value is NestedInner => value instanceof NestedInner,
+  toSerializable: (inner) => inner.value,
+  fromSerializable: (value) => new NestedInner(value),
+})
+
+export const nestedOuterAdapter = createSerializationAdapter({
+  key: 'nestedOuter',
+  extends: [nestedInnerAdapter],
+  test: (value) => value instanceof NestedOuter,
+  toSerializable: (outer) => outer.inner,
+  fromSerializable: (value) => new NestedOuter(value),
+})
+
+export function makeNested() {
+  return new NestedOuter(new NestedInner('Hello World'))
+}
 
 export function RenderData({
   id,

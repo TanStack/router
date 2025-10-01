@@ -6,6 +6,7 @@ import {
   findReferencedIdentifiers,
 } from 'babel-dead-code-elimination'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import { handleCreateMiddleware } from '../create-server-fn-plugin/handleCreateMiddleware'
 import { transformFuncs } from './constants'
 import { handleCreateIsomorphicFnCallExpression } from './isomorphicFn'
 import {
@@ -36,6 +37,11 @@ export function compileStartOutputFactory(
       createIsomorphicFn: {
         name: 'createIsomorphicFn',
         handleCallExpression: handleCreateIsomorphicFnCallExpression,
+        paths: [],
+      },
+      createMiddleware: {
+        name: 'createMiddleware',
+        handleCallExpression: handleCreateMiddleware,
         paths: [],
       },
     }

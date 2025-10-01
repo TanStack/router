@@ -141,3 +141,17 @@ export function attachRouterServerSsrUtils({
     },
   }
 }
+
+export function getOrigin(request: Request) {
+  const originHeader = request.headers.get('Origin')
+  if (originHeader) {
+    try {
+      new URL(originHeader)
+      return originHeader
+    } catch {}
+  }
+  try {
+    return new URL(request.url).origin
+  } catch {}
+  return 'http://localhost'
+}

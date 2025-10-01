@@ -420,6 +420,9 @@ export type {
   SerializerExtensions,
   ValidateSerializable,
   RegisteredSerializableInput,
+  SerializableExtensions,
+  DefaultSerializable,
+  Serializable,
 } from './ssr/serializer/transformer'
 
 export {

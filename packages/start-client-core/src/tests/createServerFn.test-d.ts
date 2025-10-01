@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
+import { TSS_SERVER_FUNCTION } from '../constants'
 import type { Constrain, Register, Validator } from '@tanstack/router-core'
 import type { ConstrainValidator } from '../createServerFn'
 
@@ -316,11 +317,7 @@ test('createServerFn returns undefined', () => {
 test('createServerFn cannot return function', () => {
   expectTypeOf(createServerFn().handler<{ func: () => 'func' }>)
     .parameter(0)
-    .returns.toEqualTypeOf<
-      | Response
-      | { func: 'Function is not serializable' }
-      | Promise<{ func: 'Function is not serializable' }>
-    >()
+    .returns.toEqualTypeOf<{ func: 'Function is not serializable' }>()
 })
 
 test('createServerFn cannot validate function', () => {
@@ -536,4 +533,108 @@ test('compose middlewares and server function factories', () => {
       signal: AbortSignal
     }>()
   })
+})
+
+test('createServerFn with request middleware', () => {
+  const reqMw = createMiddleware().server(({ next }) => {
+    return next()
+  })
+  const fn = createServerFn()
+    .middleware([reqMw])
+    .handler(() => ({}))
+
+  expectTypeOf(fn()).toEqualTypeOf<Promise<{}>>()
+})
+
+test('createServerFn with request middleware and function middleware', () => {
+  const reqMw = createMiddleware().server(({ next }) => {
+    return next()
+  })
+
+  const funMw = createMiddleware({ type: 'function' })
+    .inputValidator((x: string) => x)
+    .server(({ next }) => {
+      return next({ context: { a: 'a' } as const })
+    })
+  const fn = createServerFn()
+    .middleware([reqMw, funMw])
+    .handler(() => ({}))
+
+  expectTypeOf(fn({ data: 'a' })).toEqualTypeOf<Promise<{}>>()
+})
+
+test('createServerFn with inputValidator and request middleware', () => {
+  const loggingMiddleware = createMiddleware().server(async ({ next }) => {
+    console.log('Logging middleware executed on the server')
+    const result = await next()
+    return result
+  })
+
+  const fn = createServerFn()
+    .middleware([loggingMiddleware])
+    .inputValidator(({ userName }: { userName: string }) => {
+      return { userName }
+    })
+    .handler(async ({ data }) => {
+      return data.userName
+    })
+
+  expectTypeOf(fn({ data: { userName: 'test' } })).toEqualTypeOf<
+    Promise<string>
+  >()
+})
+
+test('createServerFn has TSS_SERVER_FUNCTION symbol set', () => {
+  const fn = createServerFn().handler(() => ({}))
+  expectTypeOf(fn).toHaveProperty(TSS_SERVER_FUNCTION)
+  expectTypeOf(fn[TSS_SERVER_FUNCTION]).toEqualTypeOf<true>()
+})
+
+test('createServerFn fetcher itself is serializable', () => {
+  const fn1 = createServerFn().handler(() => ({}))
+  const fn2 = createServerFn().handler(() => fn1)
+})
+
+test('createServerFn returns async Response', () => {
+  const serverFn = createServerFn().handler(async () => {
+    return new Response(new Blob([JSON.stringify({ a: 1 })]), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Response>>()
+})
+
+test('createServerFn returns sync Response', () => {
+  const serverFn = createServerFn().handler(() => {
+    return new Response(new Blob([JSON.stringify({ a: 1 })]), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Response>>()
+})
+
+test('createServerFn returns async array', () => {
+  const result: Array<{ a: number }> = [{ a: 1 }]
+  const serverFn = createServerFn({ method: 'GET' }).handler(async () => {
+    return result
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Array<{ a: number }>>>()
+})
+
+test('createServerFn returns sync array', () => {
+  const result: Array<{ a: number }> = [{ a: 1 }]
+  const serverFn = createServerFn({ method: 'GET' }).handler(() => {
+    return result
+  })
+
+  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Array<{ a: number }>>>()
 })

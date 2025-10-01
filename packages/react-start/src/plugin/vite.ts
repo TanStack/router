@@ -16,9 +16,9 @@ const defaultEntryDir = path.resolve(
   'default-entry',
 )
 const defaultEntryPaths = {
-  client: path.resolve(defaultEntryDir, 'client'),
-  server: path.resolve(defaultEntryDir, 'server'),
-  start: path.resolve(defaultEntryDir, 'start'),
+  client: path.resolve(defaultEntryDir, 'client.tsx'),
+  server: path.resolve(defaultEntryDir, 'server.ts'),
+  start: path.resolve(defaultEntryDir, 'start.ts'),
 }
 
 const isInsideRouterMonoRepo =
@@ -65,7 +65,7 @@ export function tanstackStart(
                       ? ['react-dom/client']
                       : ['react-dom/server']),
                     // `@tanstack/react-store` has a dependency on `use-sync-external-store`, which is CJS.
-                    // It therefore needs to included so that it is converted to ESM.
+                    // It therefore needs to be included so that it is converted to ESM.
                     '@tanstack/react-router > @tanstack/react-store',
                   ],
                 }

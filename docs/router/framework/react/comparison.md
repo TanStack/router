@@ -71,7 +71,7 @@ Feature/Capability Key:
 | React Server Functions                         | ✅                                               | 🛑                                                    | ✅                                                    |
 | React Server Function Middleware               | ✅                                               | 🛑                                                    | 🛑                                                    |
 | API Routes                                     | ✅                                               | ✅                                                    | ✅                                                    |
-| API Middleware                                 | ✅                                               | 🛑                                                    | ✅                                                    |
+| API Middleware                                 | ✅                                               | ✅                                                    | ✅                                                    |
 | React Server Components                        | 🛑                                               | 🟡 (Experimental)                                     | ✅                                                    |
 | `<Form>` API                                   | 🛑                                               | ✅                                                    | ✅                                                    |
 

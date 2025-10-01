@@ -174,8 +174,10 @@ export const useTags = () => {
  */
 export function HeadContent() {
   const tags = useTags()
+  const router = useRouter()
+  const nonce = router.options.ssr?.nonce
   return tags.map((tag) => (
-    <Asset {...tag} key={`tsr-meta-${JSON.stringify(tag)}`} />
+    <Asset {...tag} key={`tsr-meta-${JSON.stringify(tag)}`} nonce={nonce} />
   ))
 }
 

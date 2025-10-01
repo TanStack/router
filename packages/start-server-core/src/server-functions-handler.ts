@@ -2,6 +2,7 @@ import { isNotFound } from '@tanstack/router-core'
 import invariant from 'tiny-invariant'
 import {
   TSS_FORMDATA_CONTEXT,
+  X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
   getDefaultSerovalPlugins,
 } from '@tanstack/start-client-core'
@@ -145,6 +146,7 @@ export const handleServerAction = async ({
       // Any time we get a Response back, we should just
       // return it immediately.
       if (result.result instanceof Response) {
+        result.result.headers.set(X_TSS_RAW_RESPONSE, 'true')
         return result.result
       }
 

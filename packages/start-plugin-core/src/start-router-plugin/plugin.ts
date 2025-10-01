@@ -71,6 +71,7 @@ function moduleDeclaration({
   result.push(
     `declare module '@tanstack/${corePluginOpts.framework}-start' {
   interface Register {
+    ssr: true
     router: Awaited<ReturnType<typeof getRouter>>`,
   )
   if (startFilePath) {

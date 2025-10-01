@@ -29,10 +29,18 @@ type ExportEntry =
 
 type Kind = 'None' | `Root` | `Builder` | LookupKind
 
-type LookupKind = 'ServerFn' | 'Middleware'
+export type LookupKind = 'ServerFn' | 'Middleware'
 
-const validLookupKinds: Array<LookupKind> = ['ServerFn', 'Middleware']
-const candidateCallIdentifier = ['handler', 'server', 'client']
+const LookupSetup: Record<
+  LookupKind,
+  { candidateCallIdentifier: Set<string> }
+> = {
+  ServerFn: { candidateCallIdentifier: new Set(['handler']) },
+  Middleware: {
+    candidateCallIdentifier: new Set(['server', 'client', 'createMiddlewares']),
+  },
+}
+
 export type LookupConfig = {
   libName: string
   rootExport: string
@@ -48,14 +56,18 @@ interface ModuleInfo {
 export class ServerFnCompiler {
   private moduleCache = new Map<string, ModuleInfo>()
   private initialized = false
+  private validLookupKinds: Set<LookupKind>
   constructor(
     private options: {
       env: 'client' | 'server'
       lookupConfigurations: Array<LookupConfig>
+      lookupKinds: Set<LookupKind>
       loadModule: (id: string) => Promise<void>
       resolveId: (id: string, importer?: string) => Promise<string | null>
     },
-  ) {}
+  ) {
+    this.validLookupKinds = options.lookupKinds
+  }
 
   private async init(id: string) {
     await Promise.all(
@@ -207,7 +219,7 @@ export class ServerFnCompiler {
     }> = []
     for (const handler of candidates) {
       const kind = await this.resolveExprKind(handler, id)
-      if (validLookupKinds.includes(kind as LookupKind)) {
+      if (this.validLookupKinds.has(kind as LookupKind)) {
         toRewrite.push({ callExpression: handler, kind: kind as LookupKind })
       }
     }
@@ -261,7 +273,10 @@ export class ServerFnCompiler {
 
     for (const binding of bindings.values()) {
       if (binding.type === 'var') {
-        const handler = isCandidateCallExpression(binding.init)
+        const handler = isCandidateCallExpression(
+          binding.init,
+          this.validLookupKinds,
+        )
         if (handler) {
           candidates.push(handler)
         }
@@ -368,7 +383,7 @@ export class ServerFnCompiler {
         if (calleeKind === `Root` || calleeKind === `Builder`) {
           return `Builder`
         }
-        for (const kind of validLookupKinds) {
+        for (const kind of this.validLookupKinds) {
           if (calleeKind === kind) {
             return kind
           }
@@ -407,16 +422,18 @@ export class ServerFnCompiler {
     if (t.isMemberExpression(callee) && t.isIdentifier(callee.property)) {
       const prop = callee.property.name
 
-      if (prop === 'handler') {
+      if (
+        this.validLookupKinds.has('ServerFn') &&
+        LookupSetup['ServerFn'].candidateCallIdentifier.has(prop)
+      ) {
         const base = await this.resolveExprKind(callee.object, fileId, visited)
         if (base === 'Root' || base === 'Builder') {
           return 'ServerFn'
         }
         return 'None'
       } else if (
-        prop === 'client' ||
-        prop === 'server' ||
-        prop === 'createMiddleware'
+        this.validLookupKinds.has('Middleware') &&
+        LookupSetup['Middleware'].candidateCallIdentifier.has(prop)
       ) {
         const base = await this.resolveExprKind(callee.object, fileId, visited)
         if (base === 'Root' || base === 'Builder' || base === 'Middleware') {
@@ -483,6 +500,7 @@ export class ServerFnCompiler {
 
 function isCandidateCallExpression(
   node: t.Node | null | undefined,
+  lookupKinds: Set<LookupKind>,
 ): undefined | t.CallExpression {
   if (!t.isCallExpression(node)) return undefined
 
@@ -490,9 +508,11 @@ function isCandidateCallExpression(
   if (!t.isMemberExpression(callee) || !t.isIdentifier(callee.property)) {
     return undefined
   }
-  if (!candidateCallIdentifier.includes(callee.property.name)) {
-    return undefined
+  for (const kind of lookupKinds) {
+    if (LookupSetup[kind].candidateCallIdentifier.has(callee.property.name)) {
+      return node
+    }
   }
 
-  return node
+  return undefined
 }

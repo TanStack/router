@@ -58,7 +58,11 @@ export const Scripts = () => {
   return (
     <>
       {allScripts.map((asset, i) => (
-        <Asset {...asset} key={`tsr-scripts-${asset.tag}-${i}`} />
+        <Asset
+          {...asset}
+          key={`tsr-scripts-${asset.tag}-${i}`}
+          nonce={router.options.ssr?.nonce}
+        />
       ))}
     </>
   )

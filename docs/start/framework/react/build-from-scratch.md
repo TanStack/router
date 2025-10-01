@@ -66,7 +66,7 @@ Alternatively, you can also use `@vitejs/plugin-react-oxc` or `@vitejs/plugin-re
 and some TypeScript:
 
 ```shell
-npm i -D typescript @types/react @types/react-dom vite-tsconfig-paths
+npm i -D typescript @types/react @types/react-dom @types/node vite-tsconfig-paths
 ```
 
 ## Update Configuration Files
@@ -122,7 +122,6 @@ Once configuration is done, we'll have a file tree that looks like the following
 │   │   └── `__root.tsx`
 │   ├── `router.tsx`
 │   ├── `routeTree.gen.ts`
-├── `.gitignore`
 ├── `vite.config.ts`
 ├── `package.json`
 └── `tsconfig.json`
@@ -137,7 +136,7 @@ from the default [preloading functionality](/router/latest/docs/framework/react/
 > You won't have a `routeTree.gen.ts` file yet. This file will be generated when you run TanStack Start for the first time.
 
 ```tsx
-// src/start.tsx
+// src/router.tsx
 import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 

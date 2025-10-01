@@ -49,6 +49,27 @@ test.describe('SSR serialization adapters', () => {
     await awaitPageLoaded(page)
     await checkData(page, 'stream')
   })
+
+  test('nested', async ({ page }) => {
+    await page.goto('/ssr/nested')
+    await awaitPageLoaded(page)
+
+    const expectedShout = await page
+      .getByTestId(`shout-expected-state`)
+      .textContent()
+    expect(expectedShout).not.toBeNull()
+    await expect(page.getByTestId(`shout-actual-state`)).toContainText(
+      expectedShout!,
+    )
+
+    const expectedWhisper = await page
+      .getByTestId(`whisper-expected-state`)
+      .textContent()
+    expect(expectedWhisper).not.toBeNull()
+    await expect(page.getByTestId(`whisper-actual-state`)).toContainText(
+      expectedWhisper!,
+    )
+  })
 })
 
 test.describe('server functions serialization adapters', () => {
