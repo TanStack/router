@@ -2591,7 +2591,7 @@ importers:
         version: 2.6.0
       vite:
         specifier: ^7.1.7
-        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     devDependencies:
       '@playwright/test':
         specifier: ^1.52.0
@@ -2619,10 +2619,10 @@ importers:
         version: 5.9.2
       vite-plugin-solid:
         specifier: ^2.11.8
-        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
-        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-start/basic-tsr-config:
     dependencies:
@@ -2753,7 +2753,7 @@ importers:
         version: 2.6.0
       vite:
         specifier: ^7.1.7
-        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -2781,10 +2781,10 @@ importers:
         version: 5.9.2
       vite-plugin-solid:
         specifier: ^2.11.8
-        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
-        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+        version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-start/scroll-restoration:
     dependencies:
@@ -7545,6 +7545,9 @@ importers:
       '@tanstack/router-ssr-query-core':
         specifier: workspace:*
         version: link:../router-ssr-query-core
+      eslint-plugin-solid:
+        specifier: ^0.14.5
+        version: 0.14.5(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
     devDependencies:
       '@tanstack/solid-query':
         specifier: '>=5.66.0'
@@ -7557,7 +7560,7 @@ importers:
         version: 1.9.5
       vite-plugin-solid:
         specifier: ^2.11.8
-        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   packages/solid-start:
     dependencies:
@@ -18161,7 +18164,7 @@ snapshots:
       '@eslint-react/eff': 1.26.2
       '@typescript-eslint/types': 8.23.0
       '@typescript-eslint/typescript-estree': 8.23.0(typescript@5.9.2)
-      '@typescript-eslint/utils': 8.23.0(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
+      '@typescript-eslint/utils': 8.44.1(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
       string-ts: 2.2.1
       ts-pattern: 5.6.2
     transitivePeerDependencies:
@@ -18179,7 +18182,7 @@ snapshots:
       '@typescript-eslint/scope-manager': 8.23.0
       '@typescript-eslint/type-utils': 8.23.0(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
       '@typescript-eslint/types': 8.23.0
-      '@typescript-eslint/utils': 8.23.0(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
+      '@typescript-eslint/utils': 8.44.1(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
       birecord: 0.1.1
       ts-pattern: 5.6.2
     transitivePeerDependencies:
@@ -18217,7 +18220,7 @@ snapshots:
       '@eslint-react/var': 1.26.2(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
       '@typescript-eslint/scope-manager': 8.23.0
       '@typescript-eslint/types': 8.23.0
-      '@typescript-eslint/utils': 8.23.0(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
+      '@typescript-eslint/utils': 8.44.1(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
       ts-pattern: 5.6.2
     transitivePeerDependencies:
       - eslint
@@ -18241,7 +18244,7 @@ snapshots:
       '@eslint-react/eff': 1.26.2
       '@typescript-eslint/scope-manager': 8.23.0
       '@typescript-eslint/types': 8.23.0
-      '@typescript-eslint/utils': 8.23.0(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
+      '@typescript-eslint/utils': 8.44.1(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
       string-ts: 2.2.1
       ts-pattern: 5.6.2
     transitivePeerDependencies:
@@ -23277,7 +23280,7 @@ snapshots:
 
   eslint-plugin-solid@0.14.5(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2):
     dependencies:
-      '@typescript-eslint/utils': 8.23.0(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
+      '@typescript-eslint/utils': 8.44.1(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
       eslint: 9.22.0(jiti@2.6.0)
       estraverse: 5.3.0
       is-html: 2.0.0

@@ -16,7 +16,7 @@ export const Route = createFileRoute('/users/$userId')({
   },
 })
 
-export function UserErrorComponent(props: ErrorComponentProps) {
+function UserErrorComponent(props: ErrorComponentProps) {
   return <ErrorComponent error={props.error} />
 }
 
@@ -27,7 +27,9 @@ function UserComponent() {
 
   return (
     <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{user()?.name ?? 'loading...'}</h4>
+      <h4 class="text-xl font-bold underline">
+        {user()?.name ?? 'loading...'}
+      </h4>
       <div class="text-sm">{user()?.email ?? ''}</div>
     </div>
   )

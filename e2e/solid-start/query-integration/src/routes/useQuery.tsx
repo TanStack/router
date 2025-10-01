@@ -16,7 +16,8 @@ function RouteComponent() {
   return (
     <div>
       <div>
-        query data: <div data-testid="query-data">{query.data ?? 'loading...'}</div>
+        query data:{' '}
+        <div data-testid="query-data">{query.data ?? 'loading...'}</div>
       </div>
     </div>
   )
