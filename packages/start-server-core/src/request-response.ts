@@ -327,7 +327,7 @@ export function clearSession(config: Partial<SessionConfig>): Promise<void> {
 // not public API
 export function getResponse() {
   const event = getH3Event()
-  return event._res
+  return event.res
 }
 
 // not public API (yet)
