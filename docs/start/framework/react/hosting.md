@@ -313,17 +313,17 @@ ASSET_PRELOAD_VERBOSE_LOGGING=true bun run server.ts  # See what's happening
 
 **Available Environment Variables:**
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `3000` |
-| `ASSET_PRELOAD_MAX_SIZE` | Maximum file size to preload into memory (bytes) | `5242880` (5MB) |
-| `ASSET_PRELOAD_INCLUDE_PATTERNS` | Comma-separated glob patterns for files to include | All files |
-| `ASSET_PRELOAD_EXCLUDE_PATTERNS` | Comma-separated glob patterns for files to exclude | None |
-| `ASSET_PRELOAD_VERBOSE_LOGGING` | Enable detailed logging | `false` |
-| `ASSET_PRELOAD_ENABLE_ETAG` | Enable ETag generation | `true` |
-| `ASSET_PRELOAD_ENABLE_GZIP` | Enable Gzip compression | `true` |
-| `ASSET_PRELOAD_GZIP_MIN_SIZE` | Minimum file size for Gzip (bytes) | `1024` (1KB) |
-| `ASSET_PRELOAD_GZIP_MIME_TYPES` | MIME types eligible for Gzip | `text/,application/javascript,application/json,application/xml,image/svg+xml` |
+| Variable                         | Description                                        | Default                                                                       |
+| -------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `PORT`                           | Server port                                        | `3000`                                                                        |
+| `ASSET_PRELOAD_MAX_SIZE`         | Maximum file size to preload into memory (bytes)   | `5242880` (5MB)                                                               |
+| `ASSET_PRELOAD_INCLUDE_PATTERNS` | Comma-separated glob patterns for files to include | All files                                                                     |
+| `ASSET_PRELOAD_EXCLUDE_PATTERNS` | Comma-separated glob patterns for files to exclude | None                                                                          |
+| `ASSET_PRELOAD_VERBOSE_LOGGING`  | Enable detailed logging                            | `false`                                                                       |
+| `ASSET_PRELOAD_ENABLE_ETAG`      | Enable ETag generation                             | `true`                                                                        |
+| `ASSET_PRELOAD_ENABLE_GZIP`      | Enable Gzip compression                            | `true`                                                                        |
+| `ASSET_PRELOAD_GZIP_MIN_SIZE`    | Minimum file size for Gzip (bytes)                 | `1024` (1KB)                                                                  |
+| `ASSET_PRELOAD_GZIP_MIME_TYPES`  | MIME types eligible for Gzip                       | `text/,application/javascript,application/json,application/xml,image/svg+xml` |
 
 <details>
 <summary>Advanced configuration examples</summary>
