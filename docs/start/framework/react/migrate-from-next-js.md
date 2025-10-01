@@ -310,8 +310,8 @@ Next.js uses the `next/image` component for optimized images. In TanStack Start,
 and almost a drop-in replacement.
 
 ```tsx
-import Image from "next/image" // [!code --]
-import { Image } from "@unpic/react"; // [!code ++]
+import Image from 'next/image' // [!code --]
+import { Image } from '@unpic/react' // [!code ++]
 function Component() {
   return (
     <Image
@@ -325,7 +325,6 @@ function Component() {
   )
 }
 ```
-
 
 ### Server ~Actions~ Functions
 
