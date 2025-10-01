@@ -64,18 +64,19 @@
     "node": ">=12"
   },
   "dependencies": {
-    "@tanstack/router-ssr-query-core": "workspace:*"
+    "@tanstack/router-ssr-query-core": "workspace:*",
+    "eslint-plugin-solid": "^0.14.5"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.8",
-    "solid-js": "^1.9.5",
+    "@tanstack/solid-query": ">=5.66.0",
     "@tanstack/solid-router": "workspace:*",
-    "@tanstack/solid-query": ">=5.66.0"
+    "solid-js": "^1.9.5",
+    "vite-plugin-solid": "^2.11.8"
   },
   "peerDependencies": {
-    "solid-js": "^1.9.5",
     "@tanstack/query-core": ">=5.66.0",
+    "@tanstack/solid-query": ">=5.66.2",
     "@tanstack/solid-router": ">=1.127.0",
-    "@tanstack/solid-query": ">=5.66.2"
+    "solid-js": "^1.9.5"
   }
 }
