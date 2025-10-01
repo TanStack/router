@@ -18,7 +18,9 @@ export type NotFoundError = {
   headers?: HeadersInit
 }
 
-export function notFound(options: NotFoundError = {}) {
+export function notFound(options: NotFoundError & { throw: true }): never
+export function notFound(options?: NotFoundError): NotFoundError
+export function notFound(options: NotFoundError = {}): NotFoundError | never {
   ;(options as any).isNotFound = true
   if (options.throw) throw options
   return options
