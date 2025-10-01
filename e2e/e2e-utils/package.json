@@ -12,7 +12,8 @@
     ".": {
       "import": "./dist/index.js",
 			"require": "./dist/index.cjs",
-      "default": "./dist/index.js"
+      "default": "./dist/index.js",
+			"types": "./dist/index.d.ts"
     },
     "./package.json": "./package.json"
   },
