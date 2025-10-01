@@ -9,10 +9,10 @@
     "start": "vite start"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.132.27",
-    "@tanstack/react-router-devtools": "^1.132.27",
-    "@tanstack/react-start": "^1.132.28",
-    "@tanstack/start-static-server-functions": "^1.132.27",
+    "@tanstack/react-router": "^1.132.29",
+    "@tanstack/react-router-devtools": "^1.132.29",
+    "@tanstack/react-start": "^1.132.29",
+    "@tanstack/start-static-server-functions": "^1.132.29",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
