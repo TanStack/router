@@ -308,24 +308,39 @@ bun run server.ts
 PORT=8080 bun run server.ts
 
 # Optimize for minimal memory usage (1MB preload limit)
-STATIC_PRELOAD_MAX_BYTES=1048576 bun run server.ts
+ASSET_PRELOAD_MAX_SIZE=1048576 bun run server.ts
 
 # Preload only critical assets
-STATIC_PRELOAD_INCLUDE="*.js,*.css" \
-STATIC_PRELOAD_EXCLUDE="*.map,vendor-*" \
+ASSET_PRELOAD_INCLUDE_PATTERNS="*.js,*.css" \
+ASSET_PRELOAD_EXCLUDE_PATTERNS="*.map,vendor-*" \
 bun run server.ts
 
 # Debug mode with verbose logging
-STATIC_PRELOAD_VERBOSE=true bun run server.ts
+ASSET_PRELOAD_VERBOSE_LOGGING=true bun run server.ts
+
+# Disable ETag generation
+ASSET_PRELOAD_ENABLE_ETAG=false bun run server.ts
+
+# Disable Gzip compression
+ASSET_PRELOAD_ENABLE_GZIP=false bun run server.ts
+
+# Configure Gzip compression (minimum size and MIME types)
+ASSET_PRELOAD_GZIP_MIN_SIZE=2048 \
+ASSET_PRELOAD_GZIP_MIME_TYPES="text/,application/javascript,application/json" \
+bun run server.ts
 ```
 
 **Environment Variables:**
 
 - `PORT`: Server port (default: 3000)
-- `STATIC_PRELOAD_MAX_BYTES`: Maximum file size to preload in bytes (default: 5242880 = 5MB)
-- `STATIC_PRELOAD_INCLUDE`: Comma-separated glob patterns for files to include
-- `STATIC_PRELOAD_EXCLUDE`: Comma-separated glob patterns for files to exclude
-- `STATIC_PRELOAD_VERBOSE`: Enable detailed logging (set to "true")
+- `ASSET_PRELOAD_MAX_SIZE`: Maximum file size to preload in bytes (default: 5242880 = 5MB)
+- `ASSET_PRELOAD_INCLUDE_PATTERNS`: Comma-separated glob patterns for files to include
+- `ASSET_PRELOAD_EXCLUDE_PATTERNS`: Comma-separated glob patterns for files to exclude
+- `ASSET_PRELOAD_VERBOSE_LOGGING`: Enable detailed logging (set to "true")
+- `ASSET_PRELOAD_ENABLE_ETAG`: Enable ETag generation for preloaded assets (default: "true")
+- `ASSET_PRELOAD_ENABLE_GZIP`: Enable Gzip compression for eligible assets (default: "true")
+- `ASSET_PRELOAD_GZIP_MIN_SIZE`: Minimum file size in bytes for Gzip compression (default: 1024 = 1KB)
+- `ASSET_PRELOAD_GZIP_MIME_TYPES`: Comma-separated MIME types eligible for Gzip compression (default: "text/,application/javascript,application/json,application/xml,image/svg+xml")
 
 **Example Output:**
 
