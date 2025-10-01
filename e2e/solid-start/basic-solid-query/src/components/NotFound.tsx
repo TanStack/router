@@ -4,7 +4,9 @@ import type { JSX } from 'solid-js'
 export function NotFound(props?: { children?: JSX.Element }) {
   return (
     <div class="space-y-2 p-2">
-      <div>{props?.children || 'The page you are looking for does not exist.'}</div>
+      <div>
+        {props?.children || 'The page you are looking for does not exist.'}
+      </div>
       <p class="flex items-center gap-2 flex-wrap">
         <button
           onClick={() => window.history.back()}

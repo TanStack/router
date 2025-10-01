@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/solid-query'
-import { ErrorComponent, createFileRoute } from '@tanstack/solid-router'
+import { ErrorComponent, Link, createFileRoute } from '@tanstack/solid-router'
 import { postQueryOptions } from '~/utils/posts'
 
 export const Route = createFileRoute('/posts/$postId')({
@@ -22,6 +22,16 @@ function PostComponent() {
     <div class="space-y-2">
       <h4 class="text-xl font-bold underline">{postQuery.data?.title}</h4>
       <div class="text-sm">{postQuery.data?.body}</div>
+      <Link
+        to="/posts/$postId/deep"
+        params={{
+          postId: postQuery.data?.id ?? '',
+        }}
+        activeProps={{ class: 'text-black font-bold' }}
+        class="inline-block py-1 text-blue-800 hover:text-blue-600"
+      >
+        Deep View
+      </Link>
     </div>
   )
 }

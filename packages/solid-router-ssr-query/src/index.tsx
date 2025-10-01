@@ -17,8 +17,10 @@ export function setupRouterSsrQueryIntegration<TRouter extends AnyRouter>(
   if (opts.wrapQueryClient === false) {
     return
   }
-  
-  const OGWrap = opts.router.options.Wrap || ((props: { children: JSX.Element }) => props.children)
+
+  const OGWrap =
+    opts.router.options.Wrap ||
+    ((props: { children: JSX.Element }) => props.children)
 
   opts.router.options.Wrap = (props) => {
     return (

@@ -19,7 +19,9 @@ export const Route = createFileRoute('/loader-fetchQuery/$type')({
   loader: async ({ context, params }) => {
     await context.queryClient.ensureQueryData(context.queryOptions)
     if (params.type === 'sync') {
-      return context.queryClient.getQueryData(context.queryOptions.queryKey) as string
+      return context.queryClient.getQueryData(
+        context.queryOptions.queryKey,
+      ) as string
     }
     return undefined as any
   },
@@ -35,10 +37,12 @@ function RouteComponent() {
   return (
     <div>
       <div>
-        loader data: <div data-testid="loader-data">{loaderData() ?? 'undefined'}</div>
+        loader data:{' '}
+        <div data-testid="loader-data">{loaderData() ?? 'undefined'}</div>
       </div>
       <div>
-        query data: <div data-testid="query-data">{query.data ?? 'loading...'}</div>
+        query data:{' '}
+        <div data-testid="query-data">{query.data ?? 'loading...'}</div>
       </div>
     </div>
   )
