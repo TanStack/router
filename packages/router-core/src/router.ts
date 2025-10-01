@@ -1787,7 +1787,8 @@ export class RouterCore<
       return isEqual
     }
 
-    const latestPublicHref = this.latestLocation.publicHref ?? this.latestLocation.href
+    const latestPublicHref =
+      this.latestLocation.publicHref ?? this.latestLocation.href
     const nextPublicHref = next.publicHref ?? next.href
 
     const isSameUrl =
