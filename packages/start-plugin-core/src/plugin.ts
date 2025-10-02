@@ -1,4 +1,4 @@
-import { trimPathRight } from '@tanstack/router-core'
+import { joinPaths, trimPathRight } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
@@ -41,6 +41,7 @@ export interface ResolvedStartConfig {
   startFilePath: string | undefined
   routerFilePath: string
   srcDirectory: string
+  viteAppBase: string
 }
 
 export type GetConfigFn = () => {
@@ -56,6 +57,7 @@ export function TanStackStartVitePluginCore(
     startFilePath: undefined,
     routerFilePath: '',
     srcDirectory: '',
+    viteAppBase: '',
   }
 
   let startConfig: TanStackStartOutputConfig | null
@@ -90,13 +92,25 @@ export function TanStackStartVitePluginCore(
       name: 'tanstack-start-core:config',
       enforce: 'pre',
       async config(viteConfig, { command }) {
-        const viteAppBase = trimPathRight(viteConfig.base || '/')
-        globalThis.TSS_APP_BASE = viteAppBase
-
+        resolvedStartConfig.viteAppBase = trimPathRight(viteConfig.base || '/')
         const root = viteConfig.root || process.cwd()
         resolvedStartConfig.root = root
 
         const { startConfig } = getConfig()
+        if (startConfig.router.basepath === undefined) {
+          startConfig.router.basepath = resolvedStartConfig.viteAppBase
+        }
+        startConfig.router.basepath = startConfig.router.basepath.replace(
+          /^\/|\/$/g,
+          '',
+        )
+
+        const TSS_SERVER_FN_BASE = joinPaths([
+          '/',
+          startConfig.router.basepath,
+          startConfig.serverFns.base,
+          '/',
+        ])
         const resolvedSrcDirectory = join(root, startConfig.srcDirectory)
         resolvedStartConfig.srcDirectory = resolvedSrcDirectory
 
@@ -179,7 +193,6 @@ export function TanStackStartVitePluginCore(
         })
 
         return {
-          base: viteAppBase,
           // see https://vite.dev/config/shared-options.html#apptype
           // this will prevent vite from injecting middlewares that we don't want
           appType: viteConfig.appType ?? 'custom',
@@ -246,9 +259,9 @@ export function TanStackStartVitePluginCore(
             // i.e: __FRAMEWORK_NAME__ can be replaced with JSON.stringify("TanStack Start")
             // This is not the same as injecting environment variables.
 
-            ...defineReplaceEnv('TSS_SERVER_FN_BASE', startConfig.serverFns.base),
+            ...defineReplaceEnv('TSS_SERVER_FN_BASE', TSS_SERVER_FN_BASE),
             ...defineReplaceEnv('TSS_CLIENT_OUTPUT_DIR', getClientOutputDirectory(viteConfig)),
-            ...defineReplaceEnv('TSS_APP_BASE', viteAppBase),
+            ...defineReplaceEnv('TSS_ROUTER_BASEPATH', startConfig.router.basepath),
             ...(command === 'serve' ? defineReplaceEnv('TSS_SHELL', startConfig.spa?.enabled ? 'true' : 'false') : {}),
             ...defineReplaceEnv('TSS_DEV_SERVER', command === 'serve' ? 'true' : 'false'),
           },
@@ -306,6 +319,7 @@ export function TanStackStartVitePluginCore(
     loadEnvPlugin(),
     startManifestPlugin({
       getClientBundle: () => getBundle(VITE_ENVIRONMENT_NAMES.client),
+      getConfig,
     }),
     devServerPlugin({ getConfig }),
     {

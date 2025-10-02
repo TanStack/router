@@ -352,7 +352,7 @@ export { ScriptOnce } from './ScriptOnce'
 export { Asset } from './Asset'
 export { HeadContent, useTags } from './HeadContent'
 export { Scripts } from './Scripts'
-export { rewriteBasepath, composeRewrites } from '@tanstack/router-core'
+export { composeRewrites } from '@tanstack/router-core'
 export type {
   LocationRewrite,
   LocationRewriteFunction,

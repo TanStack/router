@@ -285,18 +285,6 @@ export interface RouterOptions<
   routeTree?: TRouteTree
   /**
    * The basepath for then entire router. This is useful for mounting a router instance at a subpath.
-   *
-   * @deprecated - use `rewrite.input` with the new `rewriteBasepath` utility instead:
-   * ```ts
-   * const router = createRouter({
-   *   routeTree,
-   *   rewrite: rewriteBasepath('/basepath')
-   *   // Or wrap existing rewrite functionality
-   *   rewrite: rewriteBasepath('/basepath', {
-   *     output: ({ url }) => {...},
-   *     input: ({ url }) => {...},
-   *   })
-   * })
    * ```
    * @default '/'
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#basepath-property)
@@ -472,8 +460,8 @@ export interface RouterOptions<
    * Configures how the router will rewrite the location between the actual href and the internal href of the router.
    *
    * @default undefined
-   * @description You can provide a custom rewrite pair (in/out) or use the utilities like `rewriteBasepath` as a convenience for common use cases, or even do both!
-   * This is useful for basepath rewriting, shifting data from the origin to the path (for things like )
+   * @description You can provide a custom rewrite pair (in/out).
+   * This is useful for shifting data from the origin to the path (for things like subdomain routing), or other advanced use cases.
    */
   rewrite?: LocationRewrite
   origin?: string
@@ -485,14 +473,12 @@ export interface RouterOptions<
 export type LocationRewrite = {
   /**
    * A function that will be called to rewrite the URL before it is interpreted by the router from the history instance.
-   * Utilities like `rewriteBasepath` are provided as a convenience for common use cases.
    *
    * @default undefined
    */
   input?: LocationRewriteFunction
   /**
    * A function that will be called to rewrite the URL before it is committed to the actual history instance from the router.
-   * Utilities like `rewriteBasepath` are provided as a convenience for common use cases.
    *
    * @default undefined
    */
@@ -884,7 +870,6 @@ export class RouterCore<
   rewrite?: LocationRewrite
   origin?: string
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
-  // @deprecated - basepath functionality is now implemented via the `rewrite` option
   basepath!: string
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
@@ -976,19 +961,6 @@ export class RouterCore<
         this.history = this.options.history
       }
     }
-    // For backwards compatibility, we support a basepath option, which we now implement as a rewrite
-    if (this.options.basepath) {
-      const basepathRewrite = rewriteBasepath({
-        basepath: this.options.basepath,
-      })
-      if (this.options.rewrite) {
-        this.rewrite = composeRewrites([basepathRewrite, this.options.rewrite])
-      } else {
-        this.rewrite = basepathRewrite
-      }
-    } else {
-      this.rewrite = this.options.rewrite
-    }
 
     this.origin = this.options.origin
     if (!this.origin) {
@@ -999,6 +971,7 @@ export class RouterCore<
         this.origin = 'http://localhost'
       }
     }
+
     if (this.history) {
       this.updateLatestLocation()
     }
@@ -1021,6 +994,34 @@ export class RouterCore<
       })
 
       setupScrollRestoration(this)
+    }
+
+    let needsLocationUpdate = false
+    if (this.basepath !== this.options.basepath) {
+      needsLocationUpdate = true
+      if (this.options.basepath) {
+        this.basepath = this.options.basepath
+        const basepathRewrite = rewriteBasepath({
+          basepath: this.basepath,
+        })
+        if (this.options.rewrite) {
+          this.rewrite = composeRewrites([
+            basepathRewrite,
+            this.options.rewrite,
+          ])
+        } else {
+          this.rewrite = basepathRewrite
+        }
+      }
+    } else if (this.options.rewrite !== this.rewrite) {
+      needsLocationUpdate = true
+      this.rewrite = this.options.rewrite
+    }
+    if (needsLocationUpdate) {
+      this.__store.state = {
+        ...this.state,
+        location: this.latestLocation,
+      }
     }
 
     if (

@@ -10,15 +10,7 @@ import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
 
-function sanitizeBase(base: string | undefined) {
-  if (!base) {
-    throw new Error(
-      '🚨 process.env.TSS_SERVER_FN_BASE is required in start/server-handler/index',
-    )
-  }
-
-  return base.replace(/^\/|\/$/g, '')
-}
+let regex: RegExp | undefined = undefined
 
 export const handleServerAction = async ({
   request,
@@ -32,13 +24,14 @@ export const handleServerAction = async ({
   const abort = () => controller.abort()
   request.signal.addEventListener('abort', abort)
 
+  if (regex === undefined) {
+    regex = new RegExp(`${process.env.TSS_SERVER_FN_BASE}([^/?#]+)`)
+  }
+
   const method = request.method
   const url = new URL(request.url, 'http://localhost:3000')
   // extract the serverFnId from the url as host/_serverFn/:serverFnId
   // Define a regex to match the path and extract the :thing part
-  const regex = new RegExp(
-    `${sanitizeBase(process.env.TSS_SERVER_FN_BASE)}/([^/?#]+)`,
-  )
 
   // Execute the regex
   const match = url.pathname.match(regex)

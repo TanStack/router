@@ -138,6 +138,7 @@ const tanstackStartOptionsSchema = z
     router: z
       .object({
         entry: z.string().optional(),
+        basepath: z.string().optional(),
       })
       .and(tsrConfig.optional().default({}))
       .optional()

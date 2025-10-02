@@ -138,6 +138,8 @@ export async function prerender({
         ...page.prerender,
       }
 
+      const routerBasePath = startConfig.router.basepath || '/'
+
       // Add the task
       queue.add(async () => {
         logger.info(`Crawling: ${page.path}`)
@@ -146,7 +148,7 @@ export async function prerender({
           // Fetch the route
           const encodedRoute = encodeURI(page.path)
 
-          const res = await localFetch(withBase(encodedRoute, TSS_APP_BASE), {
+          const res = await localFetch(withBase(encodedRoute, routerBasePath), {
             headers: {
               ...prerenderOptions.headers,
             },
@@ -179,7 +181,7 @@ export async function prerender({
 
           const filename = withoutBase(
             isImplicitHTML ? htmlPath : routeWithIndex,
-            TSS_APP_BASE,
+            routerBasePath,
           )
 
           const html = await res.text()
