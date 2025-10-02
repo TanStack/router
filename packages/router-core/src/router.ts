@@ -1691,7 +1691,7 @@ export class RouterCore<
       return {
         publicHref:
           rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash,
-        href: rewrittenUrl.href.replace(rewrittenUrl.origin, ''),
+        href: fullPath,
         url: rewrittenUrl.href,
         pathname: nextPathname,
         search: nextSearch,
