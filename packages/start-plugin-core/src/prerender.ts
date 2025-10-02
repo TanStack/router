@@ -138,7 +138,7 @@ export async function prerender({
         ...page.prerender,
       }
 
-      const routerBasePath = startConfig.router.basepath || '/'
+      const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
 
       // Add the task
       queue.add(async () => {
