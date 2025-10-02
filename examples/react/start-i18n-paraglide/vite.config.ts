@@ -14,25 +14,25 @@ const config = defineConfig({
       cookieName: 'PARAGLIDE_LOCALE',
       strategy: ['url', 'cookie', 'preferredLanguage', 'baseLocale'],
       urlPatterns: [
-      {
-          pattern: "/",
+        {
+          pattern: '/',
           localized: [
-            ["en", "/en"],
-            ["de", "/de"],
+            ['en', '/en'],
+            ['de', '/de'],
           ],
         },
         {
-          pattern: "/about",
+          pattern: '/about',
           localized: [
-            ["en", "/en/about"],
-            ["de", "/de/ueber"],
+            ['en', '/en/about'],
+            ['de', '/de/ueber'],
           ],
         },
         {
-          pattern: "/:path(.*)?",
+          pattern: '/:path(.*)?',
           localized: [
-            ["en", "/en/:path(.*)?"],
-            ["de", "/de/:path(.*)?"],
+            ['en', '/en/:path(.*)?'],
+            ['de', '/de/:path(.*)?'],
           ],
         },
       ],

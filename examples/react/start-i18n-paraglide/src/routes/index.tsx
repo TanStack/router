@@ -20,8 +20,7 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  const { serverFunctionMessage, messageFromLoader } =
-    Route.useLoaderData()
+  const { serverFunctionMessage, messageFromLoader } = Route.useLoaderData()
   return (
     <div className="p-2">
       <h2>Message from loader: {messageFromLoader}</h2>
