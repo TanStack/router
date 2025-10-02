@@ -1,6 +1,9 @@
 import path from 'node:path'
-import { defineConfig } from 'vitest/config'
+import { fileURLToPath } from 'node:url'
+import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
   build: {

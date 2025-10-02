@@ -8,7 +8,7 @@
     "test:unit": "exit 0; vitest --typecheck"
   },
   "type": "module",
-  "types": "dist/esm/index.d.ts",
+  "types": "dist/types/index.d.ts",
   "main": "dist/cjs/index.cjs",
   "module": "dist/esm/index.js",
   "exports": {
@@ -19,7 +19,7 @@
       },
       "require": {
         "types": "./dist/types/index.d.ts",
-        "default": "./dist/cjs/index.js"
+        "default": "./dist/cjs/index.cjs"
       }
     },
     "./package.json": "./package.json"
