@@ -16,7 +16,6 @@ import type {
   ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
-import type { JsonResponse } from '@tanstack/router-core/ssr/client'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
@@ -263,14 +262,14 @@ export interface OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
   extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<FetcherData<TResponse>>
+  ): Promise<Awaited<TResponse>>
 }
 
 export interface RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
   extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<FetcherData<TResponse>>
+  ): Promise<Awaited<TResponse>>
 }
 
 export type FetcherBaseOptions = {
@@ -293,13 +292,6 @@ export type RscStream<T> = {
 }
 
 export type Method = 'GET' | 'POST'
-
-export type FetcherData<TResponse> =
-  Awaited<TResponse> extends Response
-    ? Awaited<TResponse>
-    : Awaited<TResponse> extends JsonResponse<any>
-      ? ReturnType<Awaited<TResponse>['json']>
-      : Awaited<TResponse>
 
 export type ServerFnReturnType<TRegister, TResponse> =
   Awaited<TResponse> extends Response
