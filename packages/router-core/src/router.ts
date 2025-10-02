@@ -1949,14 +1949,11 @@ export class RouterCore<
         }
       }
 
-      const latestPublicHref = this.latestLocation.publicHref
-      const nextPublicHref = nextLocation.publicHref
-
       if (
-        trimPath(normalizeUrl(latestPublicHref)) !==
-        trimPath(normalizeUrl(nextPublicHref))
+        trimPath(normalizeUrl(this.latestLocation.href)) !==
+        trimPath(normalizeUrl(nextLocation.href))
       ) {
-        throw redirect({ href: nextPublicHref })
+        throw redirect({ href: nextLocation.href })
       }
     }
 
