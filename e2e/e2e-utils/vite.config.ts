@@ -1,20 +1,36 @@
-import { defineConfig, mergeConfig } from 'vitest/config'
-import { tanstackViteConfig } from '@tanstack/config/vite'
-import packageJson from './package.json'
+import path from 'node:path'
+import { defineConfig } from 'vitest/config'
+import dts from 'vite-plugin-dts'
 
-const config = defineConfig({
-  test: {
-    name: packageJson.name,
-    dir: './tests',
-    watch: false,
-    typecheck: { enabled: true },
+export default defineConfig({
+  build: {
+    ssr: true,
+    emptyOutDir: true,
+    rollupOptions: {
+      input: 'src/index.ts',
+      output: [
+        {
+          format: 'esm',
+          dir: './dist/esm',
+          entryFileNames: '[name].js',
+          preserveModules: true,
+          preserveModulesRoot: path.resolve(__dirname, 'src'),
+        },
+        {
+          format: 'cjs',
+          dir: './dist/cjs',
+          entryFileNames: '[name].cjs',
+          preserveModules: true,
+          preserveModulesRoot: path.resolve(__dirname, 'src'),
+        },
+      ],
+    },
   },
+  plugins: [
+    dts({
+      copyDtsFiles: true,
+      entryRoot: './src',
+      outDir: './dist/types',
+    }),
+  ],
 })
-
-export default mergeConfig(
-  config,
-  tanstackViteConfig({
-    entry: './src/index.ts',
-    srcDir: './src',
-  }),
-)
