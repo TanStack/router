@@ -290,12 +290,15 @@ export interface RouterOptions<
    * ```ts
    * const router = createRouter({
    *   routeTree,
-   *   rewrite: rewriteBasepath('/basepath')
-   *   // Or wrap existing rewrite functionality
-   *   rewrite: rewriteBasepath('/basepath', {
-   *     output: ({ url }) => {...},
-   *     input: ({ url }) => {...},
-   *   })
+   *   rewrite: rewriteBasepath({ basepath: '/basepath' })
+   *   // Or compose with existing rewrite functionality
+   *   rewrite: composeRewrites([
+   *     rewriteBasepath({ basepath: '/basepath', caseSensitive: true }),
+   *     {
+   *       input: ({ url }) => {...},
+   *       output: ({ url }) => {...},
+   *     }
+   *   ])
    * })
    * ```
    * @default '/'
@@ -1784,8 +1787,12 @@ export class RouterCore<
       return isEqual
     }
 
+    const latestPublicHref =
+      this.latestLocation.publicHref ?? this.latestLocation.href
+    const nextPublicHref = next.publicHref ?? next.href
+
     const isSameUrl =
-      trimPathRight(this.latestLocation.href) === trimPathRight(next.href)
+      trimPathRight(latestPublicHref) === trimPathRight(nextPublicHref)
 
     const previousCommitPromise = this.commitLocationPromise
     this.commitLocationPromise = createControlledPromise<void>(() => {
