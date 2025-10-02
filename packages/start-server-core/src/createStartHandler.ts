@@ -160,7 +160,10 @@ export function createStartHandler<TRegister = Register>(
         origin: router.options.origin ?? origin,
         ...{
           defaultSsr: startOptions.defaultSsr,
-          serializationAdapters: startOptions.serializationAdapters,
+          serializationAdapters: [
+            ...(startOptions.serializationAdapters || []),
+            ...(router.options?.serializationAdapters || []),
+          ],
         },
       })
       return router
