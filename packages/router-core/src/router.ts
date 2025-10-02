@@ -933,8 +933,13 @@ export class RouterCore<
       )
     }
 
+    const prevOptions = this.options
+    const prevBasepath = this.basepath ?? prevOptions?.basepath ?? '/'
+    const basepathWasUnset = this.basepath === undefined
+    const prevRewriteOption = prevOptions?.rewrite
+
     this.options = {
-      ...this.options,
+      ...prevOptions,
       ...newOptions,
     }
 
@@ -997,27 +1002,41 @@ export class RouterCore<
     }
 
     let needsLocationUpdate = false
-    if (this.basepath !== this.options.basepath) {
-      needsLocationUpdate = true
-      if (this.options.basepath) {
-        this.basepath = this.options.basepath
-        const basepathRewrite = rewriteBasepath({
-          basepath: this.basepath,
-        })
-        if (this.options.rewrite) {
-          this.rewrite = composeRewrites([
-            basepathRewrite,
-            this.options.rewrite,
-          ])
-        } else {
-          this.rewrite = basepathRewrite
-        }
+    const nextBasepath = this.options.basepath ?? '/'
+    const nextRewriteOption = this.options.rewrite
+    const basepathChanged = basepathWasUnset || prevBasepath !== nextBasepath
+    const rewriteChanged = prevRewriteOption !== nextRewriteOption
+
+    if (basepathChanged || rewriteChanged) {
+      this.basepath = nextBasepath
+
+      const rewrites: Array<LocationRewrite> = []
+      if (trimPath(nextBasepath) !== '') {
+        rewrites.push(
+          rewriteBasepath({
+            basepath: nextBasepath,
+          }),
+        )
       }
-    } else if (this.options.rewrite !== this.rewrite) {
+      if (nextRewriteOption) {
+        rewrites.push(nextRewriteOption)
+      }
+
+      this.rewrite =
+        rewrites.length === 0
+          ? undefined
+          : rewrites.length === 1
+            ? rewrites[0]
+            : composeRewrites(rewrites)
+
+      if (this.history) {
+        this.updateLatestLocation()
+      }
+
       needsLocationUpdate = true
-      this.rewrite = this.options.rewrite
     }
-    if (needsLocationUpdate) {
+
+    if (needsLocationUpdate && this.__store) {
       this.__store.state = {
         ...this.state,
         location: this.latestLocation,
