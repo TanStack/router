@@ -3,38 +3,38 @@
   "private": true,
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-		"build": "vite build",
+    "build": "vite build",
     "test:eslint": "eslint ./src",
     "test:unit": "exit 0; vitest --typecheck"
   },
   "type": "module",
-	"types": "dist/esm/index.d.ts",
-	"main": "dist/cjs/index.cjs",
-	"module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "main": "dist/cjs/index.cjs",
+  "module": "dist/esm/index.js",
   "exports": {
     ".": {
-			"import": {
-				"types": "./dist/types/index.d.ts",
-				"default": "./dist/esm/index.js"
-			},
-			"require": {
-				"types": "./dist/types/index.d.ts",
-				"default": "./dist/cjs/index.js"
-			}
-		},
+      "import": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
     "./package.json": "./package.json"
   },
-	"sideEffects": false,
-	"files": [
-		"dist",
-		"src"
-	],
-	"engines": {
-		"node": ">=12"
-	},
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
   "dependencies": {},
   "devDependencies": {
     "get-port-please": "^3.2.0",
-		"vite-plugin-dts": "^4.5.4"
+    "vite-plugin-dts": "^4.5.4"
   }
 }
