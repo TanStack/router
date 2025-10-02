@@ -60,7 +60,6 @@ export type {
   CompiledFetcherFn,
   Fetcher,
   RscStream,
-  FetcherData,
   FetcherBaseOptions,
   ServerFn,
   ServerFnCtx,
