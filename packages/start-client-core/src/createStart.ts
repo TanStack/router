@@ -67,10 +67,10 @@ export interface StartInstanceTypes<
 
 function dedupeSerializationAdapters(
   deduped: Set<AnySerializationAdapter>,
-  plugins: Array<AnySerializationAdapter>,
+  serializationAdapters: Array<AnySerializationAdapter>,
 ): void {
-  for (let i = 0, len = plugins.length; i < len; i++) {
-    const current = plugins[i]!
+  for (let i = 0, len = serializationAdapters.length; i < len; i++) {
+    const current = serializationAdapters[i]!
     if (!deduped.has(current)) {
       deduped.add(current)
       if (current.extends) {

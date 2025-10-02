@@ -21,6 +21,24 @@ async function checkData(page: Page, id: string) {
     '{"value":"server"}',
   )
 }
+
+async function checkNestedData(page: Page) {
+  const expectedShout = await page
+    .getByTestId(`shout-expected-state`)
+    .textContent()
+  expect(expectedShout).not.toBeNull()
+  await expect(page.getByTestId(`shout-actual-state`)).toContainText(
+    expectedShout!,
+  )
+
+  const expectedWhisper = await page
+    .getByTestId(`whisper-expected-state`)
+    .textContent()
+  expect(expectedWhisper).not.toBeNull()
+  await expect(page.getByTestId(`whisper-actual-state`)).toContainText(
+    expectedWhisper!,
+  )
+}
 test.use({
   whitelistErrors: [
     /Failed to load resource: the server responded with a status of 499/,
@@ -54,21 +72,7 @@ test.describe('SSR serialization adapters', () => {
     await page.goto('/ssr/nested')
     await awaitPageLoaded(page)
 
-    const expectedShout = await page
-      .getByTestId(`shout-expected-state`)
-      .textContent()
-    expect(expectedShout).not.toBeNull()
-    await expect(page.getByTestId(`shout-actual-state`)).toContainText(
-      expectedShout!,
-    )
-
-    const expectedWhisper = await page
-      .getByTestId(`whisper-expected-state`)
-      .textContent()
-    expect(expectedWhisper).not.toBeNull()
-    await expect(page.getByTestId(`whisper-actual-state`)).toContainText(
-      expectedWhisper!,
-    )
+    await checkNestedData(page)
   })
 })
 
@@ -93,5 +97,16 @@ test.describe('server functions serialization adapters', () => {
     await expect(
       page.getByTestId('server-function-invalid-response'),
     ).toContainText('{"message":"Invalid input","foo":"bar","bar":"123"}')
+  })
+  test('nested', async ({ page }) => {
+    await page.goto('/server-function/nested')
+    await awaitPageLoaded(page)
+
+    await expect(page.getByTestId('waiting-for-response')).toContainText(
+      'waiting for response...',
+    )
+
+    await page.getByTestId('server-function-trigger').click()
+    await checkNestedData(page)
   })
 })

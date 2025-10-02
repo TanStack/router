@@ -142,11 +142,6 @@ export function makeSsrSerovalPlugin(
 ): Plugin<any, SerovalNode> {
   return createPlugin<any, SerovalNode>({
     tag: '$TSR/t/' + serializationAdapter.key,
-    extends: serializationAdapter.extends
-      ? (serializationAdapter.extends as Array<AnySerializationAdapter>).map(
-          (ext) => makeSsrSerovalPlugin(ext, options),
-        )
-      : undefined,
     test: serializationAdapter.test,
     parse: {
       stream(value, ctx) {
@@ -174,11 +169,6 @@ export function makeSerovalPlugin(
 ): Plugin<any, SerovalNode> {
   return createPlugin<any, SerovalNode>({
     tag: '$TSR/t/' + serializationAdapter.key,
-    extends: serializationAdapter.extends
-      ? (serializationAdapter.extends as Array<AnySerializationAdapter>).map(
-          makeSerovalPlugin,
-        )
-      : undefined,
     test: serializationAdapter.test,
     parse: {
       sync(value, ctx) {

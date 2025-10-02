@@ -143,7 +143,7 @@ export function setResponseHeaders(
 
 export function getResponseHeaders(): TypedHeaders<ResponseHeaderMap> {
   const event = getH3Event()
-  return Object.fromEntries(event.res.headers.entries()) as any
+  return event.res.headers
 }
 
 export function getResponseHeader(

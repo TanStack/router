@@ -304,6 +304,28 @@ function Component() {
 
 Learn more about the [Links](/router/latest/docs/framework/react/guide/navigation#link-component).
 
+### Images
+
+Next.js uses the `next/image` component for optimized images. In TanStack Start, you can use the package called [Unpic](https://unpic.pics/) for similar functionality
+and almost a drop-in replacement.
+
+```tsx
+import Image from 'next/image' // [!code --]
+import { Image } from '@unpic/react' // [!code ++]
+function Component() {
+  return (
+    <Image
+      src="/path/to/image.jpg"
+      alt="Description"
+      width="600" // [!code --]
+      height="400" // [!code --]
+      width={600} // [!code ++]
+      height={400} // [!code ++]
+    />
+  )
+}
+```
+
 ### Server ~Actions~ Functions
 
 ```tsx
