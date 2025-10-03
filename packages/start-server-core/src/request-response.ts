@@ -15,6 +15,7 @@ import {
   sanitizeStatusMessage as h3_sanitizeStatusMessage,
   sealSession as h3_sealSession,
   setCookie as h3_setCookie,
+  toResponse as h3_toResponse,
   unsealSession as h3_unsealSession,
   updateSession as h3_updateSession,
   useSession as h3_useSession,
@@ -54,7 +55,7 @@ export function requestHandler<TRegister = unknown>(
     const response = eventStorage.run({ h3Event }, () =>
       handler(request, requestOpts),
     )
-    return response // h3_toResponse(response, h3Event)
+    return h3_toResponse(response, h3Event)
   }
 }
 
