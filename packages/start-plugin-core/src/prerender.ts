@@ -107,6 +107,7 @@ export async function prerender({
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
+    const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
 
     startConfig.pages.forEach((page) => addCrawlPageTask(page))
 
@@ -137,8 +138,6 @@ export async function prerender({
         ...startConfig.prerender,
         ...page.prerender,
       }
-
-      const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
 
       // Add the task
       queue.add(async () => {
