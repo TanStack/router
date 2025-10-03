@@ -121,6 +121,19 @@ export function TanStackStartVitePluginCore(
           } else {
             startConfig.router.basepath = '/'
           }
+        } else {
+          if (command === 'serve' && !viteConfig.server?.middlewareMode) {
+            // when serving, we must ensure that router basepath and viteAppBase are aligned
+            if (
+              !joinPaths(['/', startConfig.router.basepath, '/']).startsWith(
+                joinPaths(['/', resolvedStartConfig.viteAppBase, '/']),
+              )
+            ) {
+              this.error(
+                '[tanstack-start]: During `vite dev`, `router.basepath` must start with the vite `base` config value',
+              )
+            }
+          }
         }
 
         const TSS_SERVER_FN_BASE = joinPaths([
