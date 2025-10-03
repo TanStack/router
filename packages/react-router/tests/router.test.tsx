@@ -2986,7 +2986,7 @@ describe('basepath', () => {
     const router = createRouter({
       routeTree,
       history,
-      basepath: 'my-app'
+      basepath: 'my-app',
     })
 
     render(<RouterProvider router={router} />)
