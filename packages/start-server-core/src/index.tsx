@@ -18,3 +18,5 @@ export * from './virtual-modules'
 export { HEADERS } from './constants'
 
 export type { RequestHandler, RequestOptions } from './request-handler'
+
+export type { SessionConfig } from './session'
