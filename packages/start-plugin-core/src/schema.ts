@@ -162,13 +162,6 @@ const tanstackStartOptionsSchema = z
       })
       .optional()
       .default({}),
-    public: z
-      .object({
-        dir: z.string().optional().default('public'),
-        base: z.string().optional().default('/'),
-      })
-      .optional()
-      .default({}),
     pages: z.array(pageSchema).optional().default([]),
     sitemap: z
       .object({
