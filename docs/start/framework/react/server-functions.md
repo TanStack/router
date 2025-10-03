@@ -199,7 +199,7 @@ For more advanced server function patterns and features, see these dedicated gui
 
 Access request headers, cookies, and response customization:
 
-- `getRequest()` - Access the full request object
+- `getWebRequest()` - Access the full request object
 - `getRequestHeader()` - Read specific headers
 - `setResponseHeader()` - Set custom response headers
 - `setResponseStatus()` - Custom status codes
