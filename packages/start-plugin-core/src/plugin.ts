@@ -1,4 +1,4 @@
-import { joinPaths, trimPathRight } from '@tanstack/router-core'
+import { joinPaths } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { TanStackServerFnPluginEnv } from '@tanstack/server-functions-plugin'
 import * as vite from 'vite'
@@ -48,6 +48,16 @@ export type GetConfigFn = () => {
   startConfig: TanStackStartOutputConfig
   resolvedStartConfig: ResolvedStartConfig
 }
+
+function isFullUrl(str: string): boolean {
+  try {
+    new URL(str)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function TanStackStartVitePluginCore(
   corePluginOpts: TanStackStartVitePluginCoreOptions,
   startPluginOpts: TanStackStartInputConfig,
@@ -92,18 +102,26 @@ export function TanStackStartVitePluginCore(
       name: 'tanstack-start-core:config',
       enforce: 'pre',
       async config(viteConfig, { command }) {
-        resolvedStartConfig.viteAppBase = trimPathRight(viteConfig.base || '/')
+        resolvedStartConfig.viteAppBase = viteConfig.base ?? '/'
+        if (!isFullUrl(resolvedStartConfig.viteAppBase)) {
+          resolvedStartConfig.viteAppBase = joinPaths([
+            '/',
+            viteConfig.base,
+            '/',
+          ])
+        }
         const root = viteConfig.root || process.cwd()
         resolvedStartConfig.root = root
 
         const { startConfig } = getConfig()
         if (startConfig.router.basepath === undefined) {
-          startConfig.router.basepath = resolvedStartConfig.viteAppBase
+          if (!isFullUrl(resolvedStartConfig.viteAppBase)) {
+            startConfig.router.basepath =
+              resolvedStartConfig.viteAppBase.replace(/^\/|\/$/g, '')
+          } else {
+            startConfig.router.basepath = '/'
+          }
         }
-        startConfig.router.basepath = startConfig.router.basepath.replace(
-          /^\/|\/$/g,
-          '',
-        )
 
         const TSS_SERVER_FN_BASE = joinPaths([
           '/',
