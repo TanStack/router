@@ -29,7 +29,7 @@ npm install -D vite-tsconfig-paths
 Now, you'll need to update your `vite.config.ts` file to include the following:
 
 ```ts
-// app.config.ts
+// vite.config.ts
 import { defineConfig } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 
