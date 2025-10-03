@@ -37,19 +37,15 @@ Once you've chosen a deployment target, you can follow the deployment guidelines
   </picture>
 </a>
 
-### Cloudflare Workers
-
 When deploying to Cloudflare Workers, you'll need to complete a few extra steps before your users can start using your app.
 
-1. Install `@cloudflare/vite-plugin`
+1. Install `@cloudflare/vite-plugin` and `wrangler`
 
 ```bash
-pnpm install @cloudflare/vite-plugin -D
+pnpm add -D @cloudflare/vite-plugin wrangler
 ```
 
-2. Update `vite.config.ts`
-
-Add the cloudflare plugin to your `vite.config.ts` file.
+2. Add the Cloudflare plugin to your `vite.config.ts` file
 
 ```ts
 // vite.config.ts
@@ -67,13 +63,7 @@ export default defineConfig({
 })
 ```
 
-3. Install `wrangler`
-
-```bash
-pnpm add wrangler -D
-```
-
-4. Add a `wrangler.json` config file
+3. Add a `wrangler.jsonc` config file
 
 ```json
 {
@@ -81,28 +71,28 @@ pnpm add wrangler -D
   "name": "tanstack-start-app",
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
-  "vars": {
-    "MY_VAR": "Hello from Cloudflare"
-  }
+  "main": "@tanstack/react-start/server-entry"
 }
 ```
 
-5. Modify package.json script
+4. Modify the scripts in your `package.json` file
 
 ```json
 {
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
+    // ============ 👇 remove this line ============
     "start": "node .output/server/index.mjs",
-    // ============ 👇 add this line ============
-    "deploy": "wrangler deploy"
+    // ============ 👇 add these lines ============
+    "preview": "vite preview",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types"
   }
 }
 ```
 
-6. Build and deploy
+5. Build and deploy
 
 ```bash
 pnpm run build && pnpm run deploy
