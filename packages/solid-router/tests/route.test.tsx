@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@solidjs/testing-library'
+import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 
 import {
   RouterProvider,
@@ -201,6 +201,51 @@ describe('onEnter event', () => {
     expect(indexElem).toBeInTheDocument()
 
     expect(fn).toHaveBeenCalledWith({ foo: 'bar' })
+  })
+})
+
+describe('useLoaderDeps', () => {
+  test('returns an Accessor', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loaderDeps: ({ search }) => ({ testDep: 'value' }),
+      component: () => {
+        const deps = indexRoute.useLoaderDeps()
+        // deps should be an Accessor, so we need to call it to get the value
+        expect(typeof deps).toBe('function')
+        expect(deps()).toEqual({ testDep: 'value' })
+        return <div>Index</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, history })
+    render(() => <RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index')
+    expect(indexElem).toBeInTheDocument()
+  })
+
+  test('returns an Accessor via Route API', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loaderDeps: ({ search }) => ({ testDep: 'api-value' }),
+      component: () => {
+        const api = getRouteApi('/')
+        const deps = api.useLoaderDeps()
+        // deps should be an Accessor, so we need to call it to get the value
+        expect(typeof deps).toBe('function')
+        expect(deps()).toEqual({ testDep: 'api-value' })
+        return <div>Index with API</div>
+      },
+    })
+    const routeTree = rootRoute.addChildren([indexRoute])
+    const router = createRouter({ routeTree, history })
+    render(() => <RouterProvider router={router} />)
+    const indexElem = await screen.findByText('Index with API')
+    expect(indexElem).toBeInTheDocument()
   })
 })
 
