@@ -26,11 +26,11 @@ After updating your `tsconfig.json` file, you'll need to install the `vite-tscon
 npm install -D vite-tsconfig-paths
 ```
 
-Now, you'll need to update your `app.config.ts` file to include the following:
+Now, you'll need to update your `vite.config.ts` file to include the following:
 
 ```ts
 // app.config.ts
-import { defineConfig } from '@tanstack/react-start/config'
+import { defineConfig } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
