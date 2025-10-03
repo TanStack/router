@@ -8,7 +8,7 @@ import { loadVirtualModule } from './loadVirtualModule'
  * special assets that are needed for the client. It does not include relationships
  * between routes or any other data that is not needed for the client.
  */
-export async function getStartManifest(opts: { basePath: string }) {
+export async function getStartManifest() {
   const { tsrStartManifest } = await loadVirtualModule(
     VIRTUAL_MODULES.startManifest,
   )

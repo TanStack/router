@@ -4,6 +4,7 @@ import tsConfigPaths from 'vite-tsconfig-paths'
 import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
+  base: '/foo/',
   server: {
     port: 3000,
   },

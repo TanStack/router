@@ -4,6 +4,7 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { tsrSplit } from '@tanstack/router-plugin'
 import { resolveViteId } from '../utils'
 import { ENTRY_POINTS } from '../constants'
+import type { GetConfigFn } from '../plugin'
 import type { PluginOption, Rollup } from 'vite'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
@@ -42,6 +43,7 @@ export const getCSSRecursively = (
 const resolvedModuleId = resolveViteId(VIRTUAL_MODULES.startManifest)
 export function startManifestPlugin(opts: {
   getClientBundle: () => Rollup.OutputBundle
+  getConfig: GetConfigFn
 }): PluginOption {
   return {
     name: 'tanstack-start:start-manifest-plugin',
@@ -60,6 +62,7 @@ export function startManifestPlugin(opts: {
         id: new RegExp(resolvedModuleId),
       },
       handler(id) {
+        const { resolvedStartConfig } = opts.getConfig()
         if (id === resolvedModuleId) {
           if (this.environment.config.consumer !== 'server') {
             // this will ultimately fail the build if the plugin is used outside the server environment
@@ -67,14 +70,11 @@ export function startManifestPlugin(opts: {
             return `export default {}`
           }
 
-          // This is the basepath for the application
-          const APP_BASE = globalThis.TSS_APP_BASE
-
           // If we're in development, return a dummy manifest
           if (this.environment.config.command === 'serve') {
             return `export const tsrStartManifest = () => ({
             routes: {},
-            clientEntry: '${joinURL(APP_BASE, '@id', ENTRY_POINTS.client)}',
+            clientEntry: '${joinURL(resolvedStartConfig.viteAppBase, '@id', ENTRY_POINTS.client)}',
           })`
           }
 
@@ -146,19 +146,21 @@ export function startManifestPlugin(opts: {
                 // Map the relevant imports to their route paths,
                 // so that it can be imported in the browser.
                 const preloads = chunk.imports.map((d) => {
-                  const assetPath = joinURL(APP_BASE, d)
+                  const assetPath = joinURL(resolvedStartConfig.viteAppBase, d)
                   return assetPath
                 })
 
                 // Since this is the most important JS entry for the route,
                 // it should be moved to the front of the preloads so that
                 // it has the best chance of being loaded first.
-                preloads.unshift(joinURL(APP_BASE, chunk.fileName))
+                preloads.unshift(
+                  joinURL(resolvedStartConfig.viteAppBase, chunk.fileName),
+                )
 
                 const cssAssetsList = getCSSRecursively(
                   chunk,
                   chunksByFileName,
-                  APP_BASE,
+                  resolvedStartConfig.viteAppBase,
                 )
 
                 routeTreeRoutes[routeId] = {
@@ -174,8 +176,10 @@ export function startManifestPlugin(opts: {
             throw new Error('No entry file found')
           }
           routeTreeRoutes[rootRouteId]!.preloads = [
-            joinURL(APP_BASE, entryFile.fileName),
-            ...entryFile.imports.map((d) => joinURL(APP_BASE, d)),
+            joinURL(resolvedStartConfig.viteAppBase, entryFile.fileName),
+            ...entryFile.imports.map((d) =>
+              joinURL(resolvedStartConfig.viteAppBase, d),
+            ),
           ]
 
           // Gather all the CSS files from the entry file in
@@ -183,7 +187,7 @@ export function startManifestPlugin(opts: {
           const entryCssAssetsList = getCSSRecursively(
             entryFile,
             chunksByFileName,
-            APP_BASE,
+            resolvedStartConfig.viteAppBase,
           )
 
           routeTreeRoutes[rootRouteId]!.assets = [
@@ -218,7 +222,10 @@ export function startManifestPlugin(opts: {
 
           const startManifest = {
             routes: routeTreeRoutes,
-            clientEntry: joinURL(APP_BASE, entryFile.fileName),
+            clientEntry: joinURL(
+              resolvedStartConfig.viteAppBase,
+              entryFile.fileName,
+            ),
           }
 
           return `export const tsrStartManifest = () => (${JSON.stringify(startManifest)})`

@@ -1,13 +1,23 @@
 import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
 
-import type { PluginOption, Rollup } from 'vite'
+import type { PluginOption, ResolvedConfig, Rollup } from 'vite'
 import type { NitroConfig } from 'nitropack'
 
 let ssrBundle: Rollup.OutputBundle
 let ssrEntryFile: string
 
+function isFullUrl(str: string): boolean {
+  try {
+    new URL(str)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
+  let resolvedConfig: ResolvedConfig
   return [
     {
       name: 'tanstack-nitro-v2-vite-plugin',
@@ -42,7 +52,10 @@ export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
         },
       },
 
-      async config(_, env) {
+      configResolved(config) {
+        resolvedConfig = config
+      },
+      config(_, env) {
         if (env.command !== 'build') {
           return
         }
@@ -81,15 +94,19 @@ export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
               await builder.build(server)
 
               const virtualEntry = '#tanstack/start/entry'
+              const baseURL = !isFullUrl(resolvedConfig.base)
+                ? resolvedConfig.base
+                : undefined
               const config: NitroConfig = {
-                ...nitroConfig,
+                baseURL,
                 publicAssets: [
                   {
                     dir: client.config.build.outDir,
-                    baseURL: '/',
                     maxAge: 31536000, // 1 year
+                    baseURL: '/',
                   },
                 ],
+                ...nitroConfig,
                 renderer: virtualEntry,
                 rollupConfig: {
                   ...nitroConfig?.rollupConfig,
