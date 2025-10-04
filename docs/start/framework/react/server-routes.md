@@ -453,11 +453,7 @@ Sometimes you may need to set headers in the response. You can do this by either
   ```ts
   // routes/hello.ts
   import { createFileRoute } from '@tanstack/react-router'
-  ```
-
-> > > > > > > 582e8c7a1 (docs: Start overhaul)
-> > > > > > > export const Route = createFileRoute('/hello')({
-
+  export const Route = createFileRoute('/hello')({
     server: {
       handlers: {
         GET: async ({ request }) => {
@@ -469,13 +465,10 @@ Sometimes you may need to set headers in the response. You can do this by either
         },
       },
     },
-
-})
-
-// Visit /hello to see the response
-// Hello, World!
-
-````
+  })
+  // Visit /hello to see the response
+  // Hello, World!
+  ```
 
 - Or using the `setResponseHeaders` helper function from `@tanstack/react-start/server`.
 
@@ -496,4 +489,4 @@ export const Route = createFileRoute('/hello')({
     },
   },
 })
-````
+```
