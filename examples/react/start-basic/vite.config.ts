@@ -4,7 +4,6 @@ import tsConfigPaths from 'vite-tsconfig-paths'
 import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
-  base: '/foo/',
   server: {
     port: 3000,
   },
@@ -14,8 +13,6 @@ export default defineConfig({
     }),
     tanstackStart({
       srcDirectory: 'src',
-      start: { entry: './start.tsx' },
-      server: { entry: './server.ts' },
     }),
     viteReact(),
   ],
