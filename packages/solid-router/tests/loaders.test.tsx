@@ -317,3 +317,29 @@ test('throw error from beforeLoad when navigating to route', async () => {
   const indexElement = await screen.findByText('fooErrorComponent')
   expect(indexElement).toBeInTheDocument()
 })
+
+test('throw abortError from loader upon initial load with basepath', async () => {
+  const rootRoute = createRootRoute({})
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: async () => {
+      return Promise.reject(new DOMException('Aborted', 'AbortError'))
+    },
+    component: () => <div>Index route content</div>,
+    errorComponent: () => (
+      <div data-testid="index-error">indexErrorComponent</div>
+    ),
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({ routeTree, basepath: '/app' })
+
+  render(() => <RouterProvider router={router} />)
+
+  const indexElement = await screen.findByText('Index route content')
+  expect(indexElement).toBeInTheDocument()
+  expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
+  expect(window.location.pathname.startsWith('/app')).toBe(true)
+})
