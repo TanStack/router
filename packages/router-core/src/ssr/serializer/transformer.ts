@@ -75,7 +75,19 @@ export type ValidateSerializable<T, TSerializable> =
               ? ValidateSerializableSet<T, TSerializable>
               : T extends Map<any, any>
                 ? ValidateSerializableMap<T, TSerializable>
-                : { [K in keyof T]: ValidateSerializable<T[K], TSerializable> }
+                : T extends AsyncGenerator<any, any>
+                  ? ValidateSerializableAsyncGenerator<T, TSerializable>
+                  : {
+                      [K in keyof T]: ValidateSerializable<T[K], TSerializable>
+                    }
+
+export type ValidateSerializableAsyncGenerator<T, TSerializable> =
+  T extends AsyncGenerator<infer T, infer TReturn>
+    ? AsyncGenerator<
+        ValidateSerializable<T, TSerializable>,
+        ValidateSerializable<TReturn, TSerializable>
+      >
+    : never
 
 export type ValidateSerializablePromise<T, TSerializable> =
   T extends Promise<infer TAwaited>
