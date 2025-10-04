@@ -16,6 +16,7 @@ import {
   Outlet,
   RouterProvider,
   createBrowserHistory,
+  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
@@ -728,4 +729,88 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(defaultPendingComponentOnMountMock).not.toHaveBeenCalled()
   expect(nestedPendingComponentOnMountMock).not.toHaveBeenCalled()
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
+})
+
+test('reproducer for #4696', async () => {
+  const rootRoute = createRootRoute({
+    beforeLoad: async ({ context }) => {
+      return {
+        ...context,
+        isAuthenticated: true,
+        isAdmin: false,
+      }
+    },
+    loader: ({ context }) => context,
+    pendingComponent: () => 'Loading...',
+    wrapInSuspense: true,
+    component: RootRouteContent,
+  })
+
+  function RootRouteContent() {
+    const routeData = rootRoute.useLoaderData()
+    const isAuthenticated = routeData.isAuthenticated
+    return (
+      <>
+        {!!isAuthenticated && (
+          <nav data-testid="nav" style={{ display: 'flex', gap: 8 }}>
+            <Link data-testid="link-index" to="/">
+              Index
+            </Link>
+            <Link data-testid="link-dashboard" to="/dashboard">
+              Dashboard
+            </Link>
+          </nav>
+        )}
+        <hr />
+        <Outlet />
+      </>
+    )
+  }
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <h1 data-testid="heading-index">Index</h1>,
+  })
+
+  const dashboardRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/dashboard',
+    pendingComponent: () => 'Loading dashboard...',
+    validateSearch: () => {
+      return {
+        page: 0,
+      }
+    },
+    component: () => <h1 data-testid="heading-dashboard">Dashboard</h1>,
+  })
+
+  const routeTree = rootRoute.addChildren([indexRoute, dashboardRoute])
+  const router = createRouter({ routeTree })
+
+  render(<RouterProvider router={router} />)
+  await act(async () => {})
+  expect(screen.getByTestId('heading-index')).toBeInTheDocument()
+  expect(screen.getByTestId('nav')).toBeInTheDocument()
+
+  cleanup()
+
+  const historyWithSearchParam = createMemoryHistory({
+    initialEntries: ['/dashboard?page=0'],
+  })
+  render(<RouterProvider history={historyWithSearchParam} router={router} />)
+  await act(async () => {})
+  expect(screen.getByTestId('heading-dashboard')).toBeInTheDocument()
+  expect(screen.getByTestId('nav')).toBeInTheDocument()
+
+  cleanup()
+
+  const historyWithoutSearchParam = createMemoryHistory({
+    initialEntries: ['/dashboard'],
+  })
+  render(<RouterProvider history={historyWithoutSearchParam} router={router} />)
+  await act(async () => {})
+  expect(screen.getByTestId('heading-dashboard')).toBeInTheDocument()
+  // Fails here!
+  expect(screen.getByTestId('nav')).toBeInTheDocument()
 })
