@@ -11,6 +11,7 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
+  notFound,
   redirect,
   retainSearchParams,
   useNavigate,
@@ -29,12 +30,46 @@ import {
   postInvoice,
 } from './mockTodos'
 import { useMutation } from './useMutation'
+import type { NotFoundRouteProps } from '@tanstack/react-router'
 import type { Invoice } from './mockTodos'
 import './styles.css'
 
 //
 
 type UsersViewSortBy = 'name' | 'id' | 'email'
+
+type MissingUserData = {
+  userId: number
+}
+
+function isMissingUserData(data: unknown): data is MissingUserData {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    typeof (data as { userId?: unknown }).userId === 'number'
+  )
+}
+
+function UsersNotFoundComponent({ data, routeId }: NotFoundRouteProps) {
+  const userId = isMissingUserData(data) ? data.userId : undefined
+
+  return (
+    <div className="p-4 space-y-2">
+      <h4 className="text-lg font-bold">User not found</h4>
+      <p>
+        {typeof userId === 'number'
+          ? `We couldn't find a user with ID ${userId}.`
+          : "We couldn't find the requested user."}
+      </p>
+      <p className="text-xs text-gray-500">
+        Rendered by the "{routeId}" route.
+      </p>
+      <p className="text-sm text-gray-500">
+        Pick another user from the list on the left to continue.
+      </p>
+    </div>
+  )
+}
 
 const rootRoute = createRootRouteWithContext<{
   auth: Auth
@@ -449,6 +484,7 @@ const usersLayoutRoute = createRoute({
     sortBy: usersView?.sortBy ?? 'name',
   }),
   loader: ({ deps }) => fetchUsers(deps),
+  notFoundComponent: UsersNotFoundComponent,
   component: UsersLayoutComponent,
 })
 
@@ -563,6 +599,18 @@ function UsersLayoutComponent() {
             </div>
           )
         })}
+        <div className="px-3 py-2 text-xs text-gray-500 bg-gray-100 dark:bg-gray-800/60">
+          Need to see how not-found errors look?{' '}
+          <Link
+            to={userRoute.to}
+            search={{
+              userId: 404,
+            }}
+            className="text-blue-700"
+          >
+            Try loading user 404
+          </Link>
+        </div>
       </div>
       <div className="flex-initial border-l">
         <Outlet />
@@ -610,7 +658,19 @@ const userRoute = createRoute({
   loaderDeps: ({ search: { userId } }) => ({
     userId,
   }),
-  loader: ({ deps: { userId } }) => fetchUserById(userId),
+  loader: async ({ deps: { userId } }) => {
+    const user = await fetchUserById(userId)
+
+    if (!user) {
+      throw notFound({
+        data: {
+          userId,
+        },
+      })
+    }
+
+    return user
+  },
   component: UserComponent,
 })
 

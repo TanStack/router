@@ -10,7 +10,7 @@ export function renderRouteNotFound(
 ) {
   if (!route.options.notFoundComponent) {
     if (router.options.defaultNotFoundComponent) {
-      return <router.options.defaultNotFoundComponent data={data} />
+      return <router.options.defaultNotFoundComponent {...data} />
     }
 
     if (process.env.NODE_ENV === 'development') {
@@ -23,5 +23,5 @@ export function renderRouteNotFound(
     return <DefaultGlobalNotFound />
   }
 
-  return <route.options.notFoundComponent data={data} />
+  return <route.options.notFoundComponent {...data} />
 }
