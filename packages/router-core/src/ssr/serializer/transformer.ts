@@ -82,10 +82,11 @@ export type ValidateSerializable<T, TSerializable> =
                     }
 
 export type ValidateSerializableAsyncGenerator<T, TSerializable> =
-  T extends AsyncGenerator<infer T, infer TReturn>
+  T extends AsyncGenerator<infer T, infer TReturn, infer TNext>
     ? AsyncGenerator<
         ValidateSerializable<T, TSerializable>,
-        ValidateSerializable<TReturn, TSerializable>
+        ValidateSerializable<TReturn, TSerializable>,
+        TNext
       >
     : never
 
