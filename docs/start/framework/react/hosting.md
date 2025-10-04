@@ -202,6 +202,10 @@ export default defineConfig({
 Follow the [`Nitro`](#nitro) deployment instructions.
 Deploy your application to Vercel using their one-click deployment process, and you're ready to go!
 
+### Firebase App Hosting
+
+[Firebase App Hosting](https://firebase.google.com/docs/app-hosting) is compatible with TanStack Start [without any additional configuration needed](https://firebase.blog/posts/2025/06/app-hosting-frameworks#nitro-analog-nuxt-solidstart-tanstack-start).
+
 ### Node.js / Railway / Docker
 
 Follow the [`Nitro`](#nitro) deployment instructions. Use the `node` command to start your application from the server from the build output files.
