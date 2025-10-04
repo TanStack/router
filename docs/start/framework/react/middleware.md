@@ -81,7 +81,7 @@ const loggingMiddleware = createMiddleware().server(async ({ next }) => {
 
 ## Request Middleware
 
-Request middleware is used to customize the behavior of any server request that passes through it, including both server routes and server functions.
+Request middleware is used to customize the behavior of any server request that passes through it, including server routes, SSR and server functions.
 
 To create a request middleware, call the `createMiddleware` function. You may call this function with the `type` property set to 'request', but this is the default value so you can omit it if you'd like.
 
@@ -418,7 +418,7 @@ export const startInstance = createStart(() => {
 ```
 
 > [!NOTE]
-> Global **request** middleware runs before **every request, including both server routes and server functions**.
+> Global **request** middleware runs before **every request, including server routes, SSR and server functions**.
 
 ### Global Server Function Middleware
 
