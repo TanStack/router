@@ -987,7 +987,7 @@ export interface FilebaseRouteOptionsInterface<
     (
       opt: RemountDepsOptions<
         TId,
-        FullSearchSchemaOption<TParentRoute, TSearchValidator>,
+        ResolveFullSearchSchema<TParentRoute, TSearchValidator>,
         Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>,
         TLoaderDeps
       >,
