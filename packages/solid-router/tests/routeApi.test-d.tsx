@@ -1,7 +1,7 @@
+import type { MakeRouteMatch, UseNavigateResult } from '@tanstack/router-core'
+import type { Accessor } from 'solid-js'
 import { describe, expectTypeOf, test } from 'vitest'
 import { createRootRoute, createRoute, createRouter, getRouteApi } from '../src'
-import type { Accessor } from 'solid-js'
-import type { MakeRouteMatch, UseNavigateResult } from '@tanstack/router-core'
 import type { LinkComponentRoute } from '../src/link'
 
 const rootRoute = createRootRoute()
@@ -88,9 +88,11 @@ describe('getRouteApi', () => {
     >()
   })
   test('useLoaderDeps', () => {
-    expectTypeOf(invoiceRouteApi.useLoaderDeps<DefaultRouter>()).toEqualTypeOf<{
-      dep: number
-    }>()
+    expectTypeOf(invoiceRouteApi.useLoaderDeps<DefaultRouter>()).toEqualTypeOf<
+      Accessor<{
+        dep: number
+      }>
+    >()
   })
   test('useMatch', () => {
     expectTypeOf(invoiceRouteApi.useMatch<DefaultRouter>()).toEqualTypeOf<
