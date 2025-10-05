@@ -3,6 +3,7 @@ import { dirname, resolve } from 'pathe'
 
 import type { PluginOption, ResolvedConfig, Rollup } from 'vite'
 import type { NitroConfig } from 'nitropack'
+import { createRequire } from 'node:module'
 
 let ssrBundle: Rollup.OutputBundle
 let ssrEntryFile: string
@@ -15,6 +16,7 @@ function isFullUrl(str: string): boolean {
     return false
   }
 }
+const require = createRequire(import.meta.url)
 
 export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
   let resolvedConfig: ResolvedConfig
@@ -92,6 +94,7 @@ export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
 
               await builder.build(client)
               await builder.build(server)
+              const h3 = require.resolve('h3-v1')
 
               const virtualEntry = '#tanstack/start/entry'
               const baseURL = !isFullUrl(resolvedConfig.base)
@@ -110,7 +113,22 @@ export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
                 renderer: virtualEntry,
                 rollupConfig: {
                   ...nitroConfig?.rollupConfig,
-                  plugins: [virtualBundlePlugin(ssrBundle) as any],
+                  plugins: [
+                    virtualBundlePlugin(ssrBundle) as any,
+                    {
+                      name: 'resolve',
+                      resolveId(source, importer) {
+                        if (
+                          (importer?.includes('nitropack') ||
+                            importer === virtualEntry) &&
+                          source === 'h3'
+                        ) {
+                          return h3
+                        }
+                        return null
+                      },
+                    },
+                  ],
                 },
                 virtual: {
                   ...nitroConfig?.virtual,
