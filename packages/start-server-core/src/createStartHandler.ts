@@ -147,7 +147,7 @@ export function createStartHandler<TRegister = Register>(
           defaultSsr: startOptions.defaultSsr,
           serializationAdapters: [
             ...(startOptions.serializationAdapters || []),
-            ...(router.options?.serializationAdapters || []),
+            ...(router.options.serializationAdapters || []),
           ],
         },
         basepath: ROUTER_BASEPATH,
