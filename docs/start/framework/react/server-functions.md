@@ -224,6 +224,50 @@ Cache server function results at build time for static generation. See [Static S
 
 Handle request cancellation with `AbortSignal` for long-running operations.
 
+### Function ID generation
+
+Server functions are addressed by a generated, stable function ID under the hood. These IDs are embedded into the client/SSR builds and used by the server to locate and import the correct module at runtime.
+
+Defaults:
+- In development, IDs are URL-safe strings derived from `${filename}--${functionName}` to aid debugging.
+- In production, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
+- If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
+- IDs are stable for a given file/function tuple for the lifetime of the process (hot updates keep the same mapping).
+
+Customization:
+
+You can customize the ID generation by passing a `generateFunctionId` option to the server-functions plugin during bundler setup. If your function returns `undefined`, the default strategy above is used.
+
+Example:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      serverFns: {
+        generateFunctionId: ({ filename, functionName }) => {
+          // Return a custom ID string. If you return undefined, the default is used.
+          // For example, always hash (even in dev):
+          // return createHash('sha256').update(`${filename}--${functionName}`).digest('hex')
+          return undefined
+        },
+      },
+    }),
+    react(),
+  ],
+})
+```
+
+Tips:
+- Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
+- If you don’t want file paths in dev IDs, return a hash in all environments.
+- Ensure the returned ID is **URL-safe**.
+
 ---
 
 > **Note**: Server functions use a compilation process that extracts server code from client bundles while maintaining seamless calling patterns. On the client, calls become `fetch` requests to the server.
