@@ -58,10 +58,9 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
       }
     },
   })
-  const functionId = buildFunctionId({
-    functionId: opts.functionId ? opts.functionId : (opts) => opts.currentId,
-    directiveFnsById,
-  })
+  const functionId = buildFunctionId(
+    opts.functionId ? opts.functionId : (opts) => opts.currentId,
+  )
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -182,20 +181,17 @@ export function TanStackServerFnPluginEnv(
       }
     },
   })
-  const functionId = buildFunctionId({
-    functionId: (functionIdOpts) => {
-      // If the consumer provided a functionId then use that for all cases.
-      // If not then return the currentId on development
-      // and SHA256 using the currentId as seed on production
-      if (opts.functionId) return opts.functionId(functionIdOpts)
-      else if (serverDevEnv) return functionIdOpts.currentId
-      else
-        return crypto
-          .createHash('sha256')
-          .update(functionIdOpts.currentId)
-          .digest('hex')
-    },
-    directiveFnsById,
+  const functionId = buildFunctionId((functionIdOpts) => {
+    // If the consumer provided a functionId then use that for all cases.
+    // If not, then return the currentId on development
+    // and SHA256 using the currentId as seed on production
+    if (opts.functionId) return opts.functionId(functionIdOpts)
+    else if (serverDevEnv) return functionIdOpts.currentId
+    else
+      return crypto
+        .createHash('sha256')
+        .update(functionIdOpts.currentId)
+        .digest('hex')
   })
 
   const directive = 'use server'
@@ -272,19 +268,23 @@ function resolveViteId(id: string) {
   return `\0${id}`
 }
 
-function buildFunctionId(opts: {
-  functionId: FunctionIdFn
-  directiveFnsById: Record<string, DirectiveFn>
-}): FunctionIdFn {
+function buildFunctionId(delegate: FunctionIdFn): FunctionIdFn {
+  const cache = new Map<string, string>()
   return (functionIdOps) => {
-    let generatedId = opts.functionId(functionIdOps)
-    if (generatedId in opts.directiveFnsById) {
-      let deduplicatedId = generatedId
-      let iteration = 0
-      do {
-        deduplicatedId = `${deduplicatedId}_${++iteration}`
-      } while (deduplicatedId in opts.directiveFnsById)
-      generatedId = deduplicatedId
+    // Keep the previous id in case we already generated it. This is for consistency
+    // between client / server builds and hot reload
+    let generatedId = cache.get(functionIdOps.currentId)
+    if (generatedId === undefined) {
+      generatedId = delegate(functionIdOps)
+      if (cache.has(generatedId)) {
+        let deduplicatedId = generatedId
+        let iteration = 0
+        do {
+          deduplicatedId = `${deduplicatedId}_${++iteration}`
+        } while (cache.has(deduplicatedId))
+        generatedId = deduplicatedId
+      }
+      cache.set(functionIdOps.currentId, generatedId)
     }
     return generatedId
   }
