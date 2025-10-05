@@ -12,6 +12,10 @@ import type {
 
 export type CreateRpcFn = (functionId: string, splitImportFn?: string) => any
 
+export type GenerateFunctionIdFnOptional = (
+  opts: Parameters<GenerateFunctionIdFn>[0],
+) => string | undefined
+
 export type ServerFnPluginOpts = {
   /**
    * The virtual import ID that will be used to import the server function manifest.
@@ -19,7 +23,7 @@ export type ServerFnPluginOpts = {
    * and its modules.
    */
   manifestVirtualImportId: string
-  generateFunctionId?: GenerateFunctionIdFn
+  generateFunctionId?: GenerateFunctionIdFnOptional
   client: ServerFnPluginEnvOpts
   ssr: ServerFnPluginEnvOpts
   server: ServerFnPluginEnvOpts
@@ -282,39 +286,38 @@ function buildGenerateFunctionId(
     next: (dev: boolean, value?: string) => string,
   ) => string,
 ): GenerateFunctionIdFn {
-  const currentIdToGeneratedId = new Map<string, string>()
-  const generatedIds = new Set<string>()
+  const entryIdToFunctionId = new Map<string, string>()
+  const functionIds = new Set<string>()
   return (opts) => {
-    // Keep the previous id in case we already generated it. This is for consistency
-    // between client / server builds and hot reload
-    let generatedId = currentIdToGeneratedId.get(opts.currentId)
-    if (generatedId === undefined) {
-      generatedId = delegate(opts, (dev, newId) => {
+    const entryId = `${opts.filename}--${opts.functionName}`
+    let functionId = entryIdToFunctionId.get(entryId)
+    if (functionId === undefined) {
+      functionId = delegate(opts, (dev, updatedFunctionId) => {
         // If no value provided, then return the url-safe currentId on development
         // and SHA256 using the currentId as seed on production
-        if (newId === undefined) {
-          if (dev) newId = makeFunctionIdUrlSafe(opts.currentId)
+        if (updatedFunctionId === undefined) {
+          if (dev) updatedFunctionId = makeFunctionIdUrlSafe(entryId)
           else
-            newId = crypto
+            updatedFunctionId = crypto
               .createHash('sha256')
-              .update(opts.currentId)
+              .update(entryId)
               .digest('hex')
         }
-        return newId
+        return updatedFunctionId
       })
       // Deduplicate in case the generated id conflicts with an existing id
-      if (generatedIds.has(generatedId)) {
+      if (functionIds.has(functionId)) {
         let deduplicatedId
         let iteration = 0
         do {
-          deduplicatedId = `${generatedId}_${++iteration}`
-        } while (generatedIds.has(deduplicatedId))
-        generatedId = deduplicatedId
+          deduplicatedId = `${functionId}_${++iteration}`
+        } while (functionIds.has(deduplicatedId))
+        functionId = deduplicatedId
       }
-      currentIdToGeneratedId.set(opts.currentId, generatedId)
-      generatedIds.add(generatedId)
+      entryIdToFunctionId.set(entryId, functionId)
+      functionIds.add(functionId)
     }
-    return generatedId
+    return functionId
   }
 }
 

@@ -33,7 +33,7 @@ export type DirectiveFunctionsViteOptions = Pick<
 > &
   DirectiveFunctionsViteEnvOptions & {
     onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
-    generateFunctionId?: GenerateFunctionIdFn
+    generateFunctionId: GenerateFunctionIdFn
   }
 
 const createDirectiveRx = (directive: string) =>
@@ -67,7 +67,7 @@ export type DirectiveFunctionsVitePluginEnvOptions = Pick<
     server: DirectiveFunctionsViteEnvOptions & { envName?: string }
   }
   onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
-  generateFunctionId?: GenerateFunctionIdFn
+  generateFunctionId: GenerateFunctionIdFn
 }
 
 export function TanStackDirectiveFunctionsPluginEnv(

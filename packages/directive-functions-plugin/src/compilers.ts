@@ -24,8 +24,9 @@ export type SupportedFunctionPath =
   | babel.NodePath<babel.types.ArrowFunctionExpression>
 
 export type GenerateFunctionIdFn = (opts: {
-  currentId: string
-}) => string | undefined
+  filename: string
+  functionName: string
+}) => string
 
 export type ReplacerFn = (opts: {
   fn: string
@@ -43,7 +44,7 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   getRuntimeCode?: (opts: {
     directiveFnsById: Record<string, DirectiveFn>
   }) => string
-  generateFunctionId?: GenerateFunctionIdFn
+  generateFunctionId: GenerateFunctionIdFn
   replacer: ReplacerFn
   // devSplitImporter: string
   filename: string
@@ -219,7 +220,7 @@ export function findDirectives(
     directive: string
     directiveLabel: string
     replacer?: ReplacerFn
-    generateFunctionId?: GenerateFunctionIdFn
+    generateFunctionId: GenerateFunctionIdFn
     directiveSplitParam: string
     filename: string
     root: string
@@ -471,22 +472,10 @@ export function findDirectives(
     // Relative to have constant functionId regardless of the machine
     // that we are executing
     const relativeFilename = path.relative(opts.root, baseFilename)
-    let functionId = `${relativeFilename}--${functionName}`
-    if (opts.generateFunctionId) {
-      functionId =
-        opts.generateFunctionId({ currentId: functionId }) ?? functionId
-      // Handle cases in which the returned id conflicts with
-      // one of the already defined ids
-      if (functionId in directiveFnsById) {
-        let deduplicatedId
-        let iteration = 0
-        do {
-          deduplicatedId = `${functionId}_${++iteration}`
-        } while (deduplicatedId in directiveFnsById)
-        functionId = deduplicatedId
-      }
-    }
-
+    const functionId = opts.generateFunctionId({
+      filename: relativeFilename,
+      functionName: functionName,
+    })
     // If a replacer is provided, replace the function with the replacer
     if (opts.replacer) {
       const replacer = opts.replacer({

@@ -163,7 +163,8 @@ const tanstackStartOptionsSchema = z
           .function()
           .args(
             z.object({
-              currentId: z.string(),
+              filename: z.string(),
+              functionName: z.string(),
             }),
           )
           .returns(z.string().optional())
