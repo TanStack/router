@@ -1,3 +1,5 @@
+import { useMatch } from './useMatch'
+import type { Accessor } from 'solid-js'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -5,8 +7,6 @@ import type {
   StrictOrFrom,
   UseLoaderDepsResult,
 } from '@tanstack/router-core'
-import type { Accessor } from 'solid-js'
-import { useMatch } from './useMatch'
 
 export interface UseLoaderDepsBaseOptions<
   TRouter extends AnyRouter,
