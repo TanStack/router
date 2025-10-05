@@ -23,7 +23,9 @@ export type SupportedFunctionPath =
   | babel.NodePath<babel.types.FunctionExpression>
   | babel.NodePath<babel.types.ArrowFunctionExpression>
 
-export type FunctionIdFn = (opts: { currentId: string }) => string | undefined
+export type GenerateFunctionIdFn = (opts: {
+  currentId: string
+}) => string | undefined
 
 export type ReplacerFn = (opts: {
   fn: string
@@ -41,7 +43,7 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   getRuntimeCode?: (opts: {
     directiveFnsById: Record<string, DirectiveFn>
   }) => string
-  functionId?: FunctionIdFn
+  generateFunctionId?: GenerateFunctionIdFn
   replacer: ReplacerFn
   // devSplitImporter: string
   filename: string
@@ -202,14 +204,6 @@ function findNearestVariableName(
   return nameParts.length > 0 ? nameParts.join('_') : 'anonymous'
 }
 
-function makeFunctionIdUrlSafe(location: string): string {
-  return location
-    .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace unsafe chars with underscore
-    .replace(/_{2,}/g, '_') // Collapse multiple underscores
-    .replace(/^_|_$/g, '') // Trim leading/trailing underscores
-    .replace(/_--/g, '--') // Clean up the joiner
-}
-
 function makeIdentifierSafe(identifier: string): string {
   return identifier
     .replace(/[^a-zA-Z0-9_$]/g, '_') // Replace unsafe chars with underscore
@@ -225,7 +219,7 @@ export function findDirectives(
     directive: string
     directiveLabel: string
     replacer?: ReplacerFn
-    functionId?: FunctionIdFn
+    generateFunctionId?: GenerateFunctionIdFn
     directiveSplitParam: string
     filename: string
     root: string
@@ -478,8 +472,9 @@ export function findDirectives(
     // that we are executing
     const relativeFilename = path.relative(opts.root, baseFilename)
     let functionId = `${relativeFilename}--${functionName}`
-    if (opts.functionId) {
-      functionId = opts.functionId({ currentId: functionId }) ?? functionId
+    if (opts.generateFunctionId) {
+      functionId =
+        opts.generateFunctionId({ currentId: functionId }) ?? functionId
       // Handle cases in which the returned id conflicts with
       // one of the already defined ids
       if (functionId in directiveFnsById) {
@@ -491,7 +486,6 @@ export function findDirectives(
         functionId = deduplicatedId
       }
     }
-    functionId = makeFunctionIdUrlSafe(functionId)
 
     // If a replacer is provided, replace the function with the replacer
     if (opts.replacer) {

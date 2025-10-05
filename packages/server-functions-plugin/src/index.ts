@@ -6,7 +6,7 @@ import {
 import type { DevEnvironment, Plugin, ViteDevServer } from 'vite'
 import type {
   DirectiveFn,
-  FunctionIdFn,
+  GenerateFunctionIdFn,
   ReplacerFn,
 } from '@tanstack/directive-functions-plugin'
 
@@ -19,7 +19,7 @@ export type ServerFnPluginOpts = {
    * and its modules.
    */
   manifestVirtualImportId: string
-  functionId?: FunctionIdFn
+  generateFunctionId?: GenerateFunctionIdFn
   client: ServerFnPluginEnvOpts
   ssr: ServerFnPluginEnvOpts
   server: ServerFnPluginEnvOpts
@@ -58,8 +58,12 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
       }
     },
   })
-  const functionId = buildFunctionId((functionIdOpts, next) =>
-    next(Boolean(viteDevServer), opts.functionId?.(functionIdOpts)),
+  const generateFunctionId = buildGenerateFunctionId(
+    (generateFunctionIdOpts, next) =>
+      next(
+        Boolean(viteDevServer),
+        opts.generateFunctionId?.(generateFunctionIdOpts),
+      ),
   )
 
   const directive = 'use server'
@@ -74,7 +78,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         directive,
         directiveLabel,
         getRuntimeCode: opts.client.getRuntimeCode,
-        functionId,
+        generateFunctionId,
         replacer: opts.client.replacer,
         onDirectiveFnsById,
       }),
@@ -86,7 +90,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         directive,
         directiveLabel,
         getRuntimeCode: opts.ssr.getRuntimeCode,
-        functionId,
+        generateFunctionId,
         replacer: opts.ssr.replacer,
         onDirectiveFnsById,
       }),
@@ -136,7 +140,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         directive,
         directiveLabel,
         getRuntimeCode: opts.server.getRuntimeCode,
-        functionId,
+        generateFunctionId,
         replacer: opts.server.replacer,
         onDirectiveFnsById,
       }),
@@ -182,8 +186,12 @@ export function TanStackServerFnPluginEnv(
     },
   })
 
-  const functionId = buildFunctionId((functionIdOpts, next) =>
-    next(Boolean(serverDevEnv), opts.functionId?.(functionIdOpts)),
+  const generateFunctionId = buildGenerateFunctionId(
+    (generateFunctionIdOpts, next) =>
+      next(
+        Boolean(serverDevEnv),
+        opts.generateFunctionId?.(generateFunctionIdOpts),
+      ),
   )
 
   const directive = 'use server'
@@ -196,7 +204,7 @@ export function TanStackServerFnPluginEnv(
       directive,
       directiveLabel,
       onDirectiveFnsById,
-      functionId,
+      generateFunctionId,
       environments: {
         client: {
           envLabel: 'Client',
@@ -260,12 +268,20 @@ function resolveViteId(id: string) {
   return `\0${id}`
 }
 
-function buildFunctionId(
+function makeFunctionIdUrlSafe(location: string): string {
+  return location
+    .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace unsafe chars with underscore
+    .replace(/_{2,}/g, '_') // Collapse multiple underscores
+    .replace(/^_|_$/g, '') // Trim leading/trailing underscores
+    .replace(/_--/g, '--') // Clean up the joiner
+}
+
+function buildGenerateFunctionId(
   delegate: (
-    opts: Parameters<FunctionIdFn>[0],
+    opts: Parameters<GenerateFunctionIdFn>[0],
     next: (dev: boolean, value?: string) => string,
   ) => string,
-): FunctionIdFn {
+): GenerateFunctionIdFn {
   const currentIdToGeneratedId = new Map<string, string>()
   const generatedIds = new Set<string>()
   return (opts) => {
@@ -274,10 +290,10 @@ function buildFunctionId(
     let generatedId = currentIdToGeneratedId.get(opts.currentId)
     if (generatedId === undefined) {
       generatedId = delegate(opts, (dev, newId) => {
-        // If no value provided, then return the currentId on development
+        // If no value provided, then return the url-safe currentId on development
         // and SHA256 using the currentId as seed on production
         if (newId === undefined) {
-          if (dev) newId = opts.currentId
+          if (dev) newId = makeFunctionIdUrlSafe(opts.currentId)
           else
             newId = crypto
               .createHash('sha256')
@@ -286,7 +302,6 @@ function buildFunctionId(
         }
         return newId
       })
-
       // Deduplicate in case the generated id conflicts with an existing id
       if (generatedIds.has(generatedId)) {
         let deduplicatedId

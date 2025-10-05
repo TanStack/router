@@ -5,7 +5,7 @@ import { compileDirectives } from './compilers'
 import type {
   CompileDirectivesOpts,
   DirectiveFn,
-  FunctionIdFn,
+  GenerateFunctionIdFn,
 } from './compilers'
 import type { Plugin } from 'vite'
 
@@ -17,7 +17,7 @@ export type {
   DirectiveFn,
   CompileDirectivesOpts,
   ReplacerFn,
-  FunctionIdFn,
+  GenerateFunctionIdFn,
 } from './compilers'
 
 export type DirectiveFunctionsViteEnvOptions = Pick<
@@ -33,7 +33,7 @@ export type DirectiveFunctionsViteOptions = Pick<
 > &
   DirectiveFunctionsViteEnvOptions & {
     onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
-    functionId?: FunctionIdFn
+    generateFunctionId?: GenerateFunctionIdFn
   }
 
 const createDirectiveRx = (directive: string) =>
@@ -67,7 +67,7 @@ export type DirectiveFunctionsVitePluginEnvOptions = Pick<
     server: DirectiveFunctionsViteEnvOptions & { envName?: string }
   }
   onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
-  functionId?: FunctionIdFn
+  generateFunctionId?: GenerateFunctionIdFn
 }
 
 export function TanStackDirectiveFunctionsPluginEnv(
@@ -138,7 +138,7 @@ function transformCode({
   directive,
   directiveLabel,
   getRuntimeCode,
-  functionId,
+  generateFunctionId,
   replacer,
   onDirectiveFnsById,
   root,
@@ -163,7 +163,7 @@ function transformCode({
       directive,
       directiveLabel,
       getRuntimeCode,
-      functionId,
+      generateFunctionId,
       replacer,
       code,
       root,
