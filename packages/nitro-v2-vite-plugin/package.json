@@ -40,7 +40,6 @@
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",
-  "main": "dist/cjs/index.cjs",
   "module": "dist/esm/index.js",
   "exports": {
     ".": {
@@ -61,7 +60,8 @@
   },
   "dependencies": {
     "nitropack": "^2.12.6",
-    "pathe": "^2.0.3"
+    "pathe": "^2.0.3",
+    "h3-v1": "npm:h3@^1.15.4"
   },
   "peerDependencies": {
     "vite": ">=7.0.0"

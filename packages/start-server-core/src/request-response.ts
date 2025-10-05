@@ -19,7 +19,7 @@ import {
   unsealSession as h3_unsealSession,
   updateSession as h3_updateSession,
   useSession as h3_useSession,
-} from 'h3-v2'
+} from 'h3'
 import type {
   RequestHeaderMap,
   RequestHeaderName,
