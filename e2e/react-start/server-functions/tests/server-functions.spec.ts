@@ -6,6 +6,20 @@ import type { Page } from '@playwright/test'
 
 const PORT = await getTestServerPort(packageJson.name)
 
+test('Server function URLs correctly include constant ids', async ({
+  page,
+}) => {
+  for (const currentPage of ['/submit-post-formdata', '/formdata-redirect']) {
+    await page.goto(currentPage)
+    await page.waitForLoadState('networkidle')
+
+    const form = page.locator('form')
+    const actionUrl = await form.getAttribute('action')
+
+    expect(actionUrl).toMatch(/^\/_serverFn\/constant_id/)
+  }
+})
+
 test('invoking a server function with custom response status code', async ({
   page,
 }) => {
