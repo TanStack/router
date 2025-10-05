@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { createServerFn, useServerFn } from '@tanstack/react-start'
+import { createServerFn, useServerFn } from '../index'
 
 const serverFn = createServerFn({ method: 'POST' })
   .inputValidator((input: { name: string }) => input)
