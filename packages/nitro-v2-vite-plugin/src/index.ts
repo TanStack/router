@@ -94,7 +94,7 @@ export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
 
               await builder.build(client)
               await builder.build(server)
-              const h3 = require.resolve('h3-v1')
+              const h3v1 = require.resolve('h3-v1')
 
               const virtualEntry = '#tanstack/start/entry'
               const baseURL = !isFullUrl(resolvedConfig.base)
@@ -119,11 +119,11 @@ export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
                       name: 'resolve',
                       resolveId(source, importer) {
                         if (
+                          source === 'h3' &&
                           (importer?.includes('nitropack') ||
-                            importer === virtualEntry) &&
-                          source === 'h3'
+                            importer?.includes(virtualEntry))
                         ) {
-                          return h3
+                          return h3v1
                         }
                         return null
                       },
