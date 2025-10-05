@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-start-typed-readable-stream",
+  "name": "tanstack-start-streaming-data-from-server-functions",
   "private": true,
   "sideEffects": false,
   "type": "module",
