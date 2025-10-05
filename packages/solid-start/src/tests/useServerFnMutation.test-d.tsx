@@ -2,17 +2,13 @@ import { createServerFn, useServerFn } from '../index'
 
 const serverFn = createServerFn({ method: 'POST' })
   .inputValidator((input: { name: string }) => input)
-  .handler(async ({ data }) => {
-    return await Promise.resolve({
-      message: `Hello ${data.name}!`,
-    })
-  })
+  .handler(async ({ data }) => ({
+    message: `Hello ${data.name}!`,
+  }))
 
-const optionalServerFn = createServerFn().handler(async () => {
-  return await Promise.resolve({
-    ok: true as const,
-  })
-})
+const optionalServerFn = createServerFn().handler(async () => ({
+  ok: true as const,
+}))
 
 export function UseServerFnRegressionComponent() {
   const handler = useServerFn(serverFn)
