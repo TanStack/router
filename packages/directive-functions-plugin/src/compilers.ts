@@ -5,6 +5,7 @@ import {
   deadCodeElimination,
   findReferencedIdentifiers,
 } from 'babel-dead-code-elimination'
+import path from 'pathe'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
@@ -22,6 +23,8 @@ export type SupportedFunctionPath =
   | babel.NodePath<babel.types.FunctionExpression>
   | babel.NodePath<babel.types.ArrowFunctionExpression>
 
+export type FunctionIdFn = (opts: { currentId: string }) => string
+
 export type ReplacerFn = (opts: {
   fn: string
   extractedFilename: string
@@ -38,6 +41,7 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   getRuntimeCode?: (opts: {
     directiveFnsById: Record<string, DirectiveFn>
   }) => string
+  functionId?: FunctionIdFn
   replacer: ReplacerFn
   // devSplitImporter: string
   filename: string
@@ -198,7 +202,7 @@ function findNearestVariableName(
   return nameParts.length > 0 ? nameParts.join('_') : 'anonymous'
 }
 
-function makeFileLocationUrlSafe(location: string): string {
+function makeFunctionIdUrlSafe(location: string): string {
   return location
     .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace unsafe chars with underscore
     .replace(/_{2,}/g, '_') // Collapse multiple underscores
@@ -221,6 +225,7 @@ export function findDirectives(
     directive: string
     directiveLabel: string
     replacer?: ReplacerFn
+    functionId?: FunctionIdFn
     directiveSplitParam: string
     filename: string
     root: string
@@ -460,15 +465,33 @@ export function findDirectives(
       `body.${topParentIndex}.declarations.0.init`,
     ) as SupportedFunctionPath
 
-    const [baseFilename, ..._searchParams] = opts.filename.split('?')
+    const [baseFilename, ..._searchParams] = opts.filename.split('?') as [
+      string,
+      ...Array<string>,
+    ]
     const searchParams = new URLSearchParams(_searchParams.join('&'))
     searchParams.set(opts.directiveSplitParam, '')
 
     const extractedFilename = `${baseFilename}?${searchParams.toString()}`
 
-    const functionId = makeFileLocationUrlSafe(
-      `${baseFilename}--${functionName}`.replace(opts.root, ''),
-    )
+    // Relative in order to have constant functionId regardless of the machine
+    // that we are executing
+    const relativeFilename = path.relative(opts.root, baseFilename)
+    let functionId = `${relativeFilename}--${functionName}`
+    if (opts.functionId) {
+      functionId = opts.functionId({ currentId: functionId })
+      // Handle cases in which the returned id conflicts with
+      // one of the already defined ids
+      if (functionId in directiveFnsById) {
+        let deduplicatedId = functionId
+        let iteration = 0
+        do {
+          deduplicatedId = `${deduplicatedId}_${++iteration}`
+        } while (deduplicatedId in directiveFnsById)
+        functionId = deduplicatedId
+      }
+    }
+    functionId = makeFunctionIdUrlSafe(functionId)
 
     // If a replacer is provided, replace the function with the replacer
     if (opts.replacer) {

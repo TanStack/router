@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import {
   TanStackDirectiveFunctionsPlugin,
   TanStackDirectiveFunctionsPluginEnv,
@@ -5,6 +6,7 @@ import {
 import type { DevEnvironment, Plugin, ViteDevServer } from 'vite'
 import type {
   DirectiveFn,
+  FunctionIdFn,
   ReplacerFn,
 } from '@tanstack/directive-functions-plugin'
 
@@ -17,6 +19,7 @@ export type ServerFnPluginOpts = {
    * and its modules.
    */
   manifestVirtualImportId: string
+  functionId?: FunctionIdFn
   client: ServerFnPluginEnvOpts
   ssr: ServerFnPluginEnvOpts
   server: ServerFnPluginEnvOpts
@@ -25,6 +28,7 @@ export type ServerFnPluginOpts = {
 export type ServerFnPluginEnvOpts = {
   getRuntimeCode: () => string
   replacer: ReplacerFn
+  envName?: string
 }
 
 const debug =
@@ -54,6 +58,12 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
       }
     },
   })
+  const functionId = buildFunctionId({
+    functionId: opts.functionId
+      ? opts.functionId
+      : opts => opts.currentId,
+    directiveFnsById,
+  })
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -67,6 +77,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         directive,
         directiveLabel,
         getRuntimeCode: opts.client.getRuntimeCode,
+        functionId,
         replacer: opts.client.replacer,
         onDirectiveFnsById,
       }),
@@ -78,6 +89,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         directive,
         directiveLabel,
         getRuntimeCode: opts.ssr.getRuntimeCode,
+        functionId,
         replacer: opts.ssr.replacer,
         onDirectiveFnsById,
       }),
@@ -127,6 +139,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         directive,
         directiveLabel,
         getRuntimeCode: opts.server.getRuntimeCode,
+        functionId,
         replacer: opts.server.replacer,
         onDirectiveFnsById,
       }),
@@ -134,24 +147,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
   }
 }
 
-export interface TanStackServerFnPluginEnvOpts {
-  /**
-   * The virtual import ID that will be used to import the server function manifest.
-   * This virtual import ID will be used in the server build to import the manifest
-   * and its modules.
-   */
-  manifestVirtualImportId: string
-  client: {
-    envName?: string
-    getRuntimeCode: () => string
-    replacer: ReplacerFn
-  }
-  server: {
-    envName?: string
-    getRuntimeCode: () => string
-    replacer: ReplacerFn
-  }
-}
+export type TanStackServerFnPluginEnvOpts = Omit<ServerFnPluginOpts, 'ssr'>
 
 export function TanStackServerFnPluginEnv(
   _opts: TanStackServerFnPluginEnvOpts,
@@ -188,6 +184,17 @@ export function TanStackServerFnPluginEnv(
       }
     },
   })
+  const functionId = buildFunctionId({
+    functionId: (functionIdOpts) => {
+      // If the consumer provided a functionId then use that for all cases.
+      // If not then return the currentId on development
+      // and SHA256 using the currentId as seed on production
+      if (opts.functionId) return opts.functionId(functionIdOpts)
+      else if (serverDevEnv) return functionIdOpts.currentId
+      else return crypto.createHash('sha256').update(functionIdOpts.currentId).digest('hex')
+    },
+    directiveFnsById,
+  })
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -199,6 +206,7 @@ export function TanStackServerFnPluginEnv(
       directive,
       directiveLabel,
       onDirectiveFnsById,
+      functionId,
       environments: {
         client: {
           envLabel: 'Client',
@@ -260,6 +268,24 @@ export function TanStackServerFnPluginEnv(
 
 function resolveViteId(id: string) {
   return `\0${id}`
+}
+
+function buildFunctionId(opts: {
+  functionId: FunctionIdFn
+  directiveFnsById: Record<string, DirectiveFn>
+}): FunctionIdFn {
+  return (functionIdOps) => {
+    let generatedId = opts.functionId(functionIdOps)
+    if (generatedId in opts.directiveFnsById) {
+      let deduplicatedId = generatedId
+      let iteration = 0
+      do {
+        deduplicatedId = `${deduplicatedId}_${++iteration}`
+      } while (deduplicatedId in opts.directiveFnsById)
+      generatedId = deduplicatedId
+    }
+    return generatedId
+  }
 }
 
 function buildOnDirectiveFnsByIdCallback(opts: {
