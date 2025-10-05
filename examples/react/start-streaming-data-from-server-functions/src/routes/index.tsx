@@ -128,8 +128,8 @@ function RouteComponent() {
 
   const getResponseFromTheAsyncGenerator = useCallback(async () => {
     setAsyncGeneratorFuncMessages('')
-    for await (const m of await streamingWithAnAsyncGeneratorFn()) {
-      const chunk = m?.choices[0].delta.content
+    for await (const msg of await streamingWithAnAsyncGeneratorFn()) {
+      const chunk = msg?.choices[0].delta.content
       if (chunk) {
         setAsyncGeneratorFuncMessages((prev) => prev + chunk)
       }
