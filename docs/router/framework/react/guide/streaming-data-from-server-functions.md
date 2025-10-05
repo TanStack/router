@@ -75,11 +75,11 @@ A much cleaner approach with the same results is to use an async generator funct
 ```ts
 const streamingWithAnAsyncGeneratorFn = createServerFn().handler(
   async function* () {
-    const messages: Message[] = generateMessages();
+    const messages: Message[] = generateMessages()
     for (const msg of messages) {
-      await sleep(500);
+      await sleep(500)
       // The streamed chunks are still typed as `Message`
-      yield msg;
+      yield msg
     }
   },
 )
