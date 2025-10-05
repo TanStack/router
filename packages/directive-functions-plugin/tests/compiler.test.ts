@@ -11,7 +11,9 @@ function makeFunctionIdUrlSafe(location: string): string {
     .replace(/_--/g, '--') // Clean up the joiner
 }
 
-const generateFunctionId: CompileDirectivesOpts['generateFunctionId'] = (opts) => {
+const generateFunctionId: CompileDirectivesOpts['generateFunctionId'] = (
+  opts,
+) => {
   return makeFunctionIdUrlSafe(`${opts.filename}--${opts.functionName}`)
 }
 
