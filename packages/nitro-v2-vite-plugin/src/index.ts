@@ -1,9 +1,9 @@
+import { createRequire } from 'node:module'
 import { build, copyPublicAssets, createNitro, prepare } from 'nitropack'
 import { dirname, resolve } from 'pathe'
 
 import type { PluginOption, ResolvedConfig, Rollup } from 'vite'
 import type { NitroConfig } from 'nitropack'
-import { createRequire } from 'node:module'
 
 let ssrBundle: Rollup.OutputBundle
 let ssrEntryFile: string
