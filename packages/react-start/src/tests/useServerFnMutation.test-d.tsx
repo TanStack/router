@@ -14,10 +14,9 @@ useMutation({
   },
 })
 
-const optionalServerFn = createServerFn()
-  .handler(async () => ({
-    ok: true as const,
-  }))
+const optionalServerFn = createServerFn().handler(async () => ({
+  ok: true as const,
+}))
 
 useServerFn(optionalServerFn)().then((result) => {
   result.ok
