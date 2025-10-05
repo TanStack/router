@@ -58,8 +58,8 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
       }
     },
   })
-  const functionId = buildFunctionId(
-    opts.functionId ? opts.functionId : (opts) => opts.currentId,
+  const functionId = buildFunctionId((functionIdOpts, next) =>
+    next(Boolean(viteDevServer), opts.functionId?.(functionIdOpts)),
   )
 
   const directive = 'use server'
@@ -181,18 +181,10 @@ export function TanStackServerFnPluginEnv(
       }
     },
   })
-  const functionId = buildFunctionId((functionIdOpts) => {
-    // If the consumer provided a functionId then use that for all cases.
-    // If not, then return the currentId on development
-    // and SHA256 using the currentId as seed on production
-    if (opts.functionId) return opts.functionId(functionIdOpts)
-    else if (serverDevEnv) return functionIdOpts.currentId
-    else
-      return crypto
-        .createHash('sha256')
-        .update(functionIdOpts.currentId)
-        .digest('hex')
-  })
+
+  const functionId = buildFunctionId((functionIdOpts, next) =>
+    next(Boolean(serverDevEnv), opts.functionId?.(functionIdOpts)),
+  )
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -268,23 +260,44 @@ function resolveViteId(id: string) {
   return `\0${id}`
 }
 
-function buildFunctionId(delegate: FunctionIdFn): FunctionIdFn {
-  const cache = new Map<string, string>()
-  return (functionIdOps) => {
+function buildFunctionId(
+  delegate: (
+    opts: Parameters<FunctionIdFn>[0],
+    next: (dev: boolean, value?: string) => string,
+  ) => string,
+): FunctionIdFn {
+  const currentIdToGeneratedId = new Map<string, string>()
+  const generatedIds = new Set<string>()
+  return (opts) => {
     // Keep the previous id in case we already generated it. This is for consistency
     // between client / server builds and hot reload
-    let generatedId = cache.get(functionIdOps.currentId)
+    let generatedId = currentIdToGeneratedId.get(opts.currentId)
     if (generatedId === undefined) {
-      generatedId = delegate(functionIdOps)
-      if (cache.has(generatedId)) {
-        let deduplicatedId = generatedId
+      generatedId = delegate(opts, (dev, newId) => {
+        // If no value provided, then return the currentId on development
+        // and SHA256 using the currentId as seed on production
+        if (newId === undefined) {
+          if (dev) newId = opts.currentId
+          else
+            newId = crypto
+              .createHash('sha256')
+              .update(opts.currentId)
+              .digest('hex')
+        }
+        return newId
+      })
+
+      // Deduplicate in case the generated id conflicts with an existing id
+      if (generatedIds.has(generatedId)) {
+        let deduplicatedId
         let iteration = 0
         do {
-          deduplicatedId = `${deduplicatedId}_${++iteration}`
-        } while (cache.has(deduplicatedId))
+          deduplicatedId = `${generatedId}_${++iteration}`
+        } while (generatedIds.has(deduplicatedId))
         generatedId = deduplicatedId
       }
-      cache.set(functionIdOps.currentId, generatedId)
+      currentIdToGeneratedId.set(opts.currentId, generatedId)
+      generatedIds.add(generatedId)
     }
     return generatedId
   }

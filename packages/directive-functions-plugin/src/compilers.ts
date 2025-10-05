@@ -23,7 +23,7 @@ export type SupportedFunctionPath =
   | babel.NodePath<babel.types.FunctionExpression>
   | babel.NodePath<babel.types.ArrowFunctionExpression>
 
-export type FunctionIdFn = (opts: { currentId: string }) => string
+export type FunctionIdFn = (opts: { currentId: string }) => string | undefined
 
 export type ReplacerFn = (opts: {
   fn: string
@@ -474,19 +474,19 @@ export function findDirectives(
 
     const extractedFilename = `${baseFilename}?${searchParams.toString()}`
 
-    // Relative in order to have constant functionId regardless of the machine
+    // Relative to have constant functionId regardless of the machine
     // that we are executing
     const relativeFilename = path.relative(opts.root, baseFilename)
     let functionId = `${relativeFilename}--${functionName}`
     if (opts.functionId) {
-      functionId = opts.functionId({ currentId: functionId })
+      functionId = opts.functionId({ currentId: functionId }) ?? functionId
       // Handle cases in which the returned id conflicts with
       // one of the already defined ids
       if (functionId in directiveFnsById) {
-        let deduplicatedId = functionId
+        let deduplicatedId
         let iteration = 0
         do {
-          deduplicatedId = `${deduplicatedId}_${++iteration}`
+          deduplicatedId = `${functionId}_${++iteration}`
         } while (deduplicatedId in directiveFnsById)
         functionId = deduplicatedId
       }

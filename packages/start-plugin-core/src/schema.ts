@@ -166,7 +166,7 @@ const tanstackStartOptionsSchema = z
               currentId: z.string(),
             }),
           )
-          .returns(z.string())
+          .returns(z.string().optional())
           .optional(),
       })
       .optional()
