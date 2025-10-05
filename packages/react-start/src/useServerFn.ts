@@ -5,11 +5,19 @@ type AwaitedReturn<T extends (...args: Array<any>) => Promise<any>> = Awaited<
   ReturnType<T>
 >
 
+type NonUndefined<T> = Exclude<T, undefined>
+
 type UseServerFnReturn<T extends (...args: Array<any>) => Promise<any>> =
   Parameters<T> extends []
     ? () => Promise<AwaitedReturn<T>>
     : Parameters<T> extends [infer TVariables]
-      ? (variables: TVariables) => Promise<AwaitedReturn<T>>
+      ? undefined extends TVariables
+        ? [NonUndefined<TVariables>] extends [never]
+          ? () => Promise<AwaitedReturn<T>>
+          : (
+              variables?: NonUndefined<TVariables>,
+            ) => Promise<AwaitedReturn<T>>
+        : (variables: TVariables) => Promise<AwaitedReturn<T>>
       : (...args: Parameters<T>) => Promise<AwaitedReturn<T>>
 
 export function useServerFn<T extends (...deps: Array<any>) => Promise<any>>(

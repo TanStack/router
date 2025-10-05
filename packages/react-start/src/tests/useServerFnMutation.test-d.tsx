@@ -13,3 +13,14 @@ useMutation({
     data.message
   },
 })
+
+const optionalServerFn = createServerFn()
+  .handler(async () => ({
+    ok: true as const,
+  }))
+
+useServerFn(optionalServerFn)().then((result) => {
+  result.ok
+})
+
+useServerFn(optionalServerFn)({ headers: { 'x-test': '1' } })
