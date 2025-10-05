@@ -55,9 +55,7 @@ function sleep(ms: number) {
   This server function returns a `ReadableStream`
   that streams `TextPart` chunks to the client.
 */
-const streamingResponseFn = createServerFn({
-  method: 'GET',
-}).handler(async () => {
+const streamingResponseFn = createServerFn().handler(async () => {
   const messages = generateMessages()
   // This `ReadableStream` is typed, so each
   // will be of type `TextPart`.
