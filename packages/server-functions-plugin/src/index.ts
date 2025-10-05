@@ -59,9 +59,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
     },
   })
   const functionId = buildFunctionId({
-    functionId: opts.functionId
-      ? opts.functionId
-      : opts => opts.currentId,
+    functionId: opts.functionId ? opts.functionId : (opts) => opts.currentId,
     directiveFnsById,
   })
 
@@ -191,7 +189,11 @@ export function TanStackServerFnPluginEnv(
       // and SHA256 using the currentId as seed on production
       if (opts.functionId) return opts.functionId(functionIdOpts)
       else if (serverDevEnv) return functionIdOpts.currentId
-      else return crypto.createHash('sha256').update(functionIdOpts.currentId).digest('hex')
+      else
+        return crypto
+          .createHash('sha256')
+          .update(functionIdOpts.currentId)
+          .digest('hex')
     },
     directiveFnsById,
   })
