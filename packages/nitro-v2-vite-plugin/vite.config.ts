@@ -9,6 +9,5 @@ export default mergeConfig(
     entry: './src/index.ts',
     srcDir: './src',
     exclude: ['./src/tests/'],
-    cjs: false,
   }),
 )
