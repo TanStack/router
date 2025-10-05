@@ -19,6 +19,6 @@ main {
   grid-template-columns: 1fr 1fr;
 }
 
-#streamed-results>button {
+#streamed-results > button {
   margin: auto;
 }

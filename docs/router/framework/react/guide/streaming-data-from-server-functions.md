@@ -14,18 +14,18 @@ Here's an example for a server function that streams an array of messages to the
 
 ```ts
 type Message = {
-  content: string;
-};
+  content: string
+}
 
 /**
   This server function returns a `ReadableStream`
   that streams `Message` chunks to the client.
 */
 const streamingResponseFn = createServerFn({
-  method: "GET",
+  method: 'GET',
 }).handler(async () => {
   // These are the messages that you want to send as chunks to the client
-  const messages: Message[] = generateMessages();
+  const messages: Message[] = generateMessages()
 
   // This `ReadableStream` is typed, so each
   // will be of type `Message`.
@@ -33,41 +33,41 @@ const streamingResponseFn = createServerFn({
     async start(controller) {
       for (const message of messages) {
         // Send the message
-        controller.enqueue(message);
+        controller.enqueue(message)
       }
-      controller.close();
+      controller.close()
     },
-  });
+  })
 
-  return stream;
-});
+  return stream
+})
 ```
 
 When you consume this stream from the client, the streamed chunks will be properly typed:
 
 ```ts
-const [message, setMessage] = useState("");
+const [message, setMessage] = useState('')
 
 const getTypedReadableStreamResponse = useCallback(async () => {
-  const response = await streamingResponseFn();
+  const response = await streamingResponseFn()
 
   if (!response) {
-    return;
+    return
   }
 
-  const reader = response.getReader();
-  let done = false;
+  const reader = response.getReader()
+  let done = false
   while (!done) {
-    const { value, done: doneReading } = await reader.read();
-    done = doneReading;
+    const { value, done: doneReading } = await reader.read()
+    done = doneReading
     if (value) {
       // Notice how we know the value of `chunk` (`Message | undefined`)
       // here, because it's coming from the typed `ReadableStream`
-      const chunk = value.content;
-      setMessage((prev) => prev + chunk);
+      const chunk = value.content
+      setMessage((prev) => prev + chunk)
     }
   }
-}, []);
+}, [])
 ```
 
 ## Async Generators in Server Functions
@@ -77,17 +77,17 @@ A much cleaner approach with the same results is to use an async generator funct
 ```ts
 const streamingWithAnAsyncGeneratorFn = createServerFn().handler(
   async function* () {
-    const messages = generateMessages();
+    const messages = generateMessages()
     for (const msg of messages) {
       // Notice how we defined the type of the streamed chunks
       // in the generic passed down the Promise constructor
       yield new Promise<Message>(async (r) => {
         // Send the message
-        return r(msg);
-      });
+        return r(msg)
+      })
     }
-  }
-);
+  },
+)
 ```
 
 The client side code will also be leaner:
@@ -95,8 +95,8 @@ The client side code will also be leaner:
 ```ts
 const getResponseFromTheAsyncGenerator = useCallback(async () => {
   for await (const msg of await streamingWithAnAsyncGeneratorFn()) {
-    const chunk = msg.content;
-    setMessages((prev) => prev + chunk);
+    const chunk = msg.content
+    setMessages((prev) => prev + chunk)
   }
-}, []);
+}, [])
 ```
