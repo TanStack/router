@@ -13,3 +13,12 @@ main {
   padding: 1em;
   margin: 0 auto;
 }
+
+#streamed-results {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+#streamed-results>button {
+  margin: auto;
+}

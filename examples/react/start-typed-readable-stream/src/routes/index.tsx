@@ -3,9 +3,11 @@ import { createServerFn } from '@tanstack/react-start'
 import { useCallback, useState } from 'react'
 import { z } from 'zod'
 
-// This schema will be used to define the type
-// of each chunk in the `ReadableStream`.
-// (It mimics OpenAi's streaming response format.)
+/**
+  This schema will be used to define the type
+  of each chunk in the `ReadableStream`.
+  (It mimics OpenAI's streaming response format.)
+*/
 const textPartSchema = z.object({
   choices: z.array(
     z.object({
@@ -20,13 +22,11 @@ const textPartSchema = z.object({
 
 export type TextPart = z.infer<typeof textPartSchema>
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-const streamingResponseFn = createServerFn({
-  method: 'GET',
-}).handler(async () => {
+/**
+  This helper function generates the array of messages
+  that we'll stream to the client.
+*/
+function generateMessages() {
   const messages = Array.from({ length: 10 }, () =>
     Math.floor(Math.random() * 100),
   ).map((n, i) =>
@@ -40,16 +40,34 @@ const streamingResponseFn = createServerFn({
       ],
     }),
   )
+  return messages
+}
 
-  // This `ReadableStream` is typed, so each chunk
+/**
+  This helper function is used to simulate the
+  delay between each message being sent.
+*/
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+  This server function returns a `ReadableStream`
+  that streams `TextPart` chunks to the client.
+*/
+const streamingResponseFn = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  const messages = generateMessages()
+  // This `ReadableStream` is typed, so each
   // will be of type `TextPart`.
   const stream = new ReadableStream<TextPart>({
     async start(controller) {
       for (const message of messages) {
+        // simulate network latency
         await sleep(500)
         controller.enqueue(message)
       }
-      sleep(500)
       controller.close()
     },
   })
@@ -57,14 +75,36 @@ const streamingResponseFn = createServerFn({
   return stream
 })
 
+/**
+  You can also use an async generator function to stream
+  typed chunks to the client.
+*/
+const streamingWithAnAsyncGeneratorFn = createServerFn().handler(
+  async function* () {
+    const messages = generateMessages()
+    for (const msg of messages) {
+      // Notice how we defined the type of the streamed chunks
+      // in the generic passed down the Promise constructor
+      yield new Promise<TextPart>(async (r) => {
+        // simulate network latency
+        await sleep(500)
+        return r(msg)
+      })
+    }
+  },
+)
+
 export const Route = createFileRoute('/')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const [message, setMessage] = useState('')
+  const [readableStreamMessages, setReadableStreamMessages] = useState('')
 
-  const getStreamingResponse = useCallback(async () => {
+  const [asyncGeneratorFuncMessages, setAsyncGeneratorFuncMessages] =
+    useState('')
+
+  const getTypedReadableStreamResponse = useCallback(async () => {
     const response = await streamingResponseFn()
 
     if (!response) {
@@ -73,7 +113,7 @@ function RouteComponent() {
 
     const reader = response.getReader()
     let done = false
-    setMessage('')
+    setReadableStreamMessages('')
     while (!done) {
       const { value, done: doneReading } = await reader.read()
       done = doneReading
@@ -82,8 +122,18 @@ function RouteComponent() {
         // here, because it's coming from the typed `ReadableStream`
         const chunk = value?.choices[0].delta.content
         if (chunk) {
-          setMessage((prev) => prev + chunk)
+          setReadableStreamMessages((prev) => prev + chunk)
         }
+      }
+    }
+  }, [])
+
+  const getResponseFromTheAsyncGenerator = useCallback(async () => {
+    setAsyncGeneratorFuncMessages('')
+    for await (const m of await streamingWithAnAsyncGeneratorFn()) {
+      const chunk = m?.choices[0].delta.content
+      if (chunk) {
+        setAsyncGeneratorFuncMessages((prev) => prev + chunk)
       }
     }
   }, [])
@@ -91,10 +141,16 @@ function RouteComponent() {
   return (
     <main>
       <h1>Typed Readable Stream</h1>
-      <button onClick={() => getStreamingResponse()}>
-        Get 10 random numbers
-      </button>
-      <pre>{message}</pre>
+      <div id="streamed-results">
+        <button onClick={() => getTypedReadableStreamResponse()}>
+          Get 10 random numbers
+        </button>
+        <button onClick={() => getResponseFromTheAsyncGenerator()}>
+          Get messages
+        </button>
+        <pre>{readableStreamMessages}</pre>
+        <pre>{asyncGeneratorFuncMessages}</pre>
+      </div>
     </main>
   )
 }
