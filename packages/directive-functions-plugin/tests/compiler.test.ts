@@ -3,12 +3,27 @@ import { describe, expect, test } from 'vitest'
 import { compileDirectives } from '../src/compilers'
 import type { CompileDirectivesOpts } from '../src/compilers'
 
+function makeFunctionIdUrlSafe(location: string): string {
+  return location
+    .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace unsafe chars with underscore
+    .replace(/_{2,}/g, '_') // Collapse multiple underscores
+    .replace(/^_|_$/g, '') // Trim leading/trailing underscores
+    .replace(/_--/g, '--') // Clean up the joiner
+}
+
+const generateFunctionId: CompileDirectivesOpts['generateFunctionId'] = (
+  opts,
+) => {
+  return makeFunctionIdUrlSafe(`${opts.filename}--${opts.functionName}`)
+}
+
 const clientConfig: Omit<CompileDirectivesOpts, 'code'> = {
   directive: 'use server',
   directiveLabel: 'Server function',
   root: './test-files',
-  filename: 'test.ts',
+  filename: './test-files/test.ts',
   getRuntimeCode: () => 'import { createClientRpc } from "my-rpc-lib-client"',
+  generateFunctionId,
   replacer: (opts) => `createClientRpc(${JSON.stringify(opts.functionId)})`,
 }
 
@@ -16,8 +31,9 @@ const ssrConfig: Omit<CompileDirectivesOpts, 'code'> = {
   directive: 'use server',
   directiveLabel: 'Server function',
   root: './test-files',
-  filename: 'test.ts',
+  filename: './test-files/test.ts',
   getRuntimeCode: () => 'import { createSsrRpc } from "my-rpc-lib-server"',
+  generateFunctionId,
   replacer: (opts) => `createSsrRpc(${JSON.stringify(opts.functionId)})`,
 }
 
@@ -25,8 +41,9 @@ const serverConfig: Omit<CompileDirectivesOpts, 'code'> = {
   directive: 'use server',
   directiveLabel: 'Server function',
   root: './test-files',
-  filename: 'test.ts',
+  filename: './test-files/test.ts',
   getRuntimeCode: () => 'import { createServerRpc } from "my-rpc-lib-server"',
+  generateFunctionId,
   replacer: (opts) =>
     // On the server build, we need different code for the split function
     // vs any other server functions the split function may reference
