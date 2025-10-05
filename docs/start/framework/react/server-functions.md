@@ -237,7 +237,7 @@ Defaults:
 
 Customization:
 
-You can customize the ID generation by passing a `generateFunctionId` option to the server-functions plugin during bundler setup. If your function returns `undefined`, the default strategy above is used.
+You can customize function ID generation by providing a `generateFunctionId` function when configuring the TanStack Start Vite plugin:
 
 Example:
 
