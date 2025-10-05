@@ -133,31 +133,26 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       const ogMutationCacheConfig = queryClient.getMutationCache().config
       queryClient.getMutationCache().config = {
         ...ogMutationCacheConfig,
-        onError: (error, _variables, _context, _mutation) => {
+        onError: (error, ...rest) => {
           if (isRedirect(error)) {
             error.options._fromLocation = router.state.location
             return router.navigate(router.resolveRedirect(error).options)
           }
 
-          return ogMutationCacheConfig.onError?.(
-            error,
-            _variables,
-            _context,
-            _mutation,
-          )
+          return ogMutationCacheConfig.onError?.(error, ...rest)
         },
       }
 
       const ogQueryCacheConfig = queryClient.getQueryCache().config
       queryClient.getQueryCache().config = {
         ...ogQueryCacheConfig,
-        onError: (error, _query) => {
+        onError: (error, ...rest) => {
           if (isRedirect(error)) {
             error.options._fromLocation = router.state.location
             return router.navigate(router.resolveRedirect(error).options)
           }
 
-          return ogQueryCacheConfig.onError?.(error, _query)
+          return ogQueryCacheConfig.onError?.(error, ...rest)
         },
       }
     }
