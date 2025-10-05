@@ -20,7 +20,7 @@ export function UseServerFnMutationRegressionComponent() {
     mutationFn: useServerFn(serverFn),
     onSuccess: (data, variables) => {
       data.message
-      variables?.data?.name
+      variables.data.name
     },
   })
 
