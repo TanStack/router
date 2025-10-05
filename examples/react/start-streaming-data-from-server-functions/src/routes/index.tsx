@@ -137,10 +137,10 @@ function RouteComponent() {
       <h1>Typed Readable Stream</h1>
       <div id="streamed-results">
         <button onClick={() => getTypedReadableStreamResponse()}>
-          Get 10 random numbers
+          Get 10 random numbers (ReadableStream)
         </button>
         <button onClick={() => getResponseFromTheAsyncGenerator()}>
-          Get messages
+          Get 10 random numbers (Async Generator Function)
         </button>
         <pre>{readableStreamMessages}</pre>
         <pre>{asyncGeneratorFuncMessages}</pre>
