@@ -206,7 +206,7 @@ Access request headers, cookies, and response customization:
 
 ### Streaming
 
-Stream typed data from server functions to the client. See the [Streaming Data from Server Functions guide ](../guide/streaming-data-from-server-functions).
+Stream typed data from server functions to the client. See the [Streaming Data from Server Functions guide](../guide/streaming-data-from-server-functions).
 
 ### Raw Responses
 
