@@ -81,13 +81,9 @@ const streamingWithAnAsyncGeneratorFn = createServerFn().handler(
   async function* () {
     const messages = generateMessages()
     for (const msg of messages) {
-      // Notice how we defined the type of the streamed chunks
-      // in the generic passed down the Promise constructor
-      yield new Promise<TextPart>(async (r) => {
-        // simulate network latency
-        await sleep(500)
-        return r(msg)
-      })
+      await sleep(500)
+      // The streamed chunks are still typed as `TextPart`
+      yield msg
     }
   },
 )

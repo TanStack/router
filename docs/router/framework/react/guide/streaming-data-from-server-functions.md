@@ -21,9 +21,7 @@ type Message = {
   This server function returns a `ReadableStream`
   that streams `Message` chunks to the client.
 */
-const streamingResponseFn = createServerFn({
-  method: 'GET',
-}).handler(async () => {
+const streamingResponseFn = createServerFn().handler(async () => {
   // These are the messages that you want to send as chunks to the client
   const messages: Message[] = generateMessages()
 
@@ -77,14 +75,11 @@ A much cleaner approach with the same results is to use an async generator funct
 ```ts
 const streamingWithAnAsyncGeneratorFn = createServerFn().handler(
   async function* () {
-    const messages = generateMessages()
+    const messages: Message[] = generateMessages();
     for (const msg of messages) {
-      // Notice how we defined the type of the streamed chunks
-      // in the generic passed down the Promise constructor
-      yield new Promise<Message>(async (r) => {
-        // Send the message
-        return r(msg)
-      })
+      await sleep(500);
+      // The streamed chunks are still typed as `Message`
+      yield msg;
     }
   },
 )
