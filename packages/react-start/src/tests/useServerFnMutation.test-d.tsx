@@ -9,12 +9,11 @@ const serverFn = createServerFn({ method: 'POST' })
     })
   })
 
-const optionalServerFn = createServerFn()
-  .handler(async () => {
-    return await Promise.resolve({
-      ok: true as const,
-    })
+const optionalServerFn = createServerFn().handler(async () => {
+  return await Promise.resolve({
+    ok: true as const,
   })
+})
 
 export function UseServerFnMutationRegressionComponent() {
   const mutation = useMutation({
