@@ -229,6 +229,7 @@ Handle request cancellation with `AbortSignal` for long-running operations.
 Server functions are addressed by a generated, stable function ID under the hood. These IDs are embedded into the client/SSR builds and used by the server to locate and import the correct module at runtime.
 
 Defaults:
+
 - In development, IDs are URL-safe strings derived from `${filename}--${functionName}` to aid debugging.
 - In production, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
 - If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
@@ -264,6 +265,7 @@ export default defineConfig({
 ```
 
 Tips:
+
 - Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 - If you don’t want file paths in dev IDs, return a hash in all environments.
 - Ensure the returned ID is **URL-safe**.
