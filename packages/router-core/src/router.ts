@@ -1916,7 +1916,7 @@ export class RouterCore<
     if (reloadDocument) {
       if (!href) {
         const location = this.buildLocation({ to, ...rest } as any)
-        href = location.href
+        href = location.url
       }
       if (rest.replace) {
         window.location.replace(href)
