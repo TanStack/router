@@ -4,5 +4,13 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [tanstackRouter({ target: 'react' }), react()],
+  plugins: [
+    tanstackRouter({
+      target: 'react',
+      experimental: {
+        nonNestedPaths: process.env.MODE === 'nonnested',
+      },
+    }),
+    react(),
+  ],
 })

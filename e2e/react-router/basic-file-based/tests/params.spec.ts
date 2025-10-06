@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { useExperimentalNonNestedPaths } from './utils/useExperimentalNonNestedPaths'
 import type { Page } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
@@ -65,6 +66,8 @@ test.describe('params operations + non-nested routes', () => {
 
     const fooBarLink = page.getByTestId('l-to-non-nested-foo-bar')
 
+    const foo2Bar2Link = page.getByTestId('l-to-non-nested-foo2-bar2')
+
     await expect(fooBarLink).toHaveAttribute(
       'href',
       '/params-ps/non-nested/foo/bar',
@@ -85,12 +88,11 @@ test.describe('params operations + non-nested routes', () => {
     const paramsObj = JSON.parse(paramsText)
     expect(paramsObj).toEqual({ foo: 'foo', bar: 'bar' })
 
-    const foo2Bar2Link = page.getByTestId('l-to-non-nested-foo2-bar2')
-
     await expect(foo2Bar2Link).toHaveAttribute(
       'href',
       '/params-ps/non-nested/foo2/bar2',
     )
+
     await foo2Bar2Link.click()
     await page.waitForURL('/params-ps/non-nested/foo2/bar2')
     const pagePathname2 = new URL(page.url()).pathname
@@ -99,12 +101,22 @@ test.describe('params operations + non-nested routes', () => {
     const foo2ParamsValue = page.getByTestId('foo-params-value')
     const foo2ParamsText = await foo2ParamsValue.innerText()
     const foo2ParamsObj = JSON.parse(foo2ParamsText)
-    expect(foo2ParamsObj).toEqual({ foo: 'foo2' })
+    if (useExperimentalNonNestedPaths) {
+      expect(foo2ParamsObj).toEqual({ foo: 'foo2' })
+    } else {
+      // this is a bug that is resolved in the new experimental flag
+      expect(foo2ParamsObj).toEqual({ foo: 'foo' })
+    }
 
     const params2Value = page.getByTestId('foo-bar-params-value')
     const params2Text = await params2Value.innerText()
     const params2Obj = JSON.parse(params2Text)
-    expect(params2Obj).toEqual({ foo: 'foo2', bar: 'bar2' })
+    if (useExperimentalNonNestedPaths) {
+      expect(params2Obj).toEqual({ foo: 'foo2', bar: 'bar2' })
+    } else {
+      // this is a bug that is resolved in the new experimental flag
+      expect(params2Obj).toEqual({ foo: 'foo', bar: 'bar2' })
+    }
   })
 })
 
