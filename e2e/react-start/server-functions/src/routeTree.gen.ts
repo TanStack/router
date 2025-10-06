@@ -27,6 +27,7 @@ import { Route as FormdataRedirectIndexRouteImport } from './routes/formdata-red
 import { Route as FactoryIndexRouteImport } from './routes/factory/index'
 import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
+import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
 import { Route as MiddlewareClientMiddlewareRouterRouteImport } from './routes/middleware/client-middleware-router'
 import { Route as CookiesSetRouteImport } from './routes/cookies/set'
 import { Route as FormdataRedirectTargetNameRouteImport } from './routes/formdata-redirect/target.$name'
@@ -121,6 +122,12 @@ const MiddlewareSendServerFnRoute = MiddlewareSendServerFnRouteImport.update({
   path: '/middleware/send-serverFn',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MiddlewareRequestMiddlewareRoute =
+  MiddlewareRequestMiddlewareRouteImport.update({
+    id: '/middleware/request-middleware',
+    path: '/middleware/request-middleware',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MiddlewareClientMiddlewareRouterRoute =
   MiddlewareClientMiddlewareRouterRouteImport.update({
     id: '/middleware/client-middleware-router',
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/cookies': typeof CookiesIndexRoute
   '/factory': typeof FactoryIndexRoute
@@ -178,6 +186,7 @@ export interface FileRoutesByTo {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/cookies': typeof CookiesIndexRoute
   '/factory': typeof FactoryIndexRoute
@@ -202,6 +211,7 @@ export interface FileRoutesById {
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/cookies/set': typeof CookiesSetRoute
   '/middleware/client-middleware-router': typeof MiddlewareClientMiddlewareRouterRoute
+  '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/cookies/': typeof CookiesIndexRoute
   '/factory/': typeof FactoryIndexRoute
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/cookies'
     | '/factory'
@@ -250,6 +261,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/cookies'
     | '/factory'
@@ -273,6 +285,7 @@ export interface FileRouteTypes {
     | '/submit-post-formdata'
     | '/cookies/set'
     | '/middleware/client-middleware-router'
+    | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/cookies/'
     | '/factory/'
@@ -297,6 +310,7 @@ export interface RootRouteChildren {
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
   CookiesSetRoute: typeof CookiesSetRoute
   MiddlewareClientMiddlewareRouterRoute: typeof MiddlewareClientMiddlewareRouterRoute
+  MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
   CookiesIndexRoute: typeof CookiesIndexRoute
   FactoryIndexRoute: typeof FactoryIndexRoute
@@ -433,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MiddlewareSendServerFnRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/request-middleware': {
+      id: '/middleware/request-middleware'
+      path: '/middleware/request-middleware'
+      fullPath: '/middleware/request-middleware'
+      preLoaderRoute: typeof MiddlewareRequestMiddlewareRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/middleware/client-middleware-router': {
       id: '/middleware/client-middleware-router'
       path: '/middleware/client-middleware-router'
@@ -473,6 +494,7 @@ const rootRouteChildren: RootRouteChildren = {
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,
   CookiesSetRoute: CookiesSetRoute,
   MiddlewareClientMiddlewareRouterRoute: MiddlewareClientMiddlewareRouterRoute,
+  MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
   CookiesIndexRoute: CookiesIndexRoute,
   FactoryIndexRoute: FactoryIndexRoute,

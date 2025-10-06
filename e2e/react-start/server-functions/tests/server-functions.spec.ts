@@ -382,6 +382,32 @@ test.describe('middleware', () => {
       await runTest(page)
     })
   })
+
+  test('server function in combination with request middleware', async ({
+    page,
+  }) => {
+    await page.goto('/middleware/request-middleware')
+
+    await page.waitForLoadState('networkidle')
+
+    async function checkEqual(prefix: string) {
+      const requestParam = await page
+        .getByTestId(`${prefix}-data-request-param`)
+        .textContent()
+      expect(requestParam).not.toBe('')
+      const requestFunc = await page
+        .getByTestId(`${prefix}-data-request-func`)
+        .textContent()
+      expect(requestParam).toBe(requestFunc)
+    }
+
+    await checkEqual('loader')
+
+    await page.getByTestId('client-call-button').click()
+    await page.waitForLoadState('networkidle')
+
+    await checkEqual('client')
+  })
 })
 
 test('factory', async ({ page }) => {

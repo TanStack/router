@@ -170,6 +170,7 @@ export function createStartHandler<TRegister = Register>(
             getRouter,
             startOptions,
             contextAfterGlobalMiddlewares: context,
+            request,
           },
           async () => {
             try {
