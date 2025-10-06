@@ -18,31 +18,59 @@ describe('cleanPath', () => {
 
 describe('determineInitialRoutePath', () => {
   it('removes dots and adds slashes', () => {
-    expect(determineInitialRoutePath('test.test')).toBe('/test/test')
+    expect(determineInitialRoutePath('test.test')).toStrictEqual({
+      routePath: '/test/test',
+      isExperimentalNonNestedPath: false,
+      cleanedRoutePath: '/test/test',
+    })
   })
 
   it('keeps leading slash', () => {
-    expect(determineInitialRoutePath('/test.test')).toBe('/test/test')
+    expect(determineInitialRoutePath('/test.test')).toStrictEqual({
+      routePath: '/test/test',
+      isExperimentalNonNestedPath: false,
+      cleanedRoutePath: '/test/test',
+    })
   })
 
   it('keeps trailing slash', () => {
-    expect(determineInitialRoutePath('test.test/')).toBe('/test/test/')
+    expect(determineInitialRoutePath('test.test/')).toStrictEqual({
+      routePath: '/test/test/',
+      isExperimentalNonNestedPath: false,
+      cleanedRoutePath: '/test/test/',
+    })
   })
 
   it('removes dots and adds slashes with leading and trailing slashes', () => {
-    expect(determineInitialRoutePath('/test.test/')).toBe('/test/test/')
+    expect(determineInitialRoutePath('/test.test/')).toStrictEqual({
+      routePath: '/test/test/',
+      isExperimentalNonNestedPath: false,
+      cleanedRoutePath: '/test/test/',
+    })
   })
 
   it("returns '/' if path is empty", () => {
-    expect(determineInitialRoutePath('')).toBe('/')
+    expect(determineInitialRoutePath('')).toStrictEqual({
+      routePath: '/',
+      isExperimentalNonNestedPath: false,
+      cleanedRoutePath: '/',
+    })
   })
 
   it("returns '/' if path is '.'", () => {
-    expect(determineInitialRoutePath('.')).toBe('/')
+    expect(determineInitialRoutePath('.')).toStrictEqual({
+      routePath: '/',
+      isExperimentalNonNestedPath: false,
+      cleanedRoutePath: '/',
+    })
   })
 
   it("returns '/' if path is './'", () => {
-    expect(determineInitialRoutePath('./')).toBe('/')
+    expect(determineInitialRoutePath('./')).toStrictEqual({
+      routePath: '/',
+      isExperimentalNonNestedPath: false,
+      cleanedRoutePath: '/',
+    })
   })
 })
 
