@@ -3,17 +3,12 @@ import '@radix-ui/themes/styles.css';
 import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { Suspense } from 'react';
-import { getAuth, getSignInUrl } from '../authkit/serverFunctions';
+import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
 import Footer from '../components/footer';
 import SignInButton from '../components/sign-in-button';
 import type { ReactNode } from 'react';
 
 export const Route = createRootRoute({
-  beforeLoad: async () => {
-    const { user } = await getAuth();
-
-    return { user };
-  },
   head: () => ({
     meta: [
       {
@@ -24,12 +19,13 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'AuthKit Example in TanStack Start',
+        title: '@workos/authkit-tanstack-react-start',
       },
     ],
   }),
-  loader: async ({ context }) => {
-    const { user } = context;
+  loader: async () => {
+    // getAuth() is a server function - works during client-side navigation
+    const { user } = await getAuth();
     const url = await getSignInUrl();
     return {
       user,
