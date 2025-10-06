@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.132.41",
-    "@tanstack/react-router-devtools": "^1.132.41",
+    "@tanstack/react-router-devtools": "^1.132.44",
     "@tanstack/react-start": "^1.132.43",
     "@tanstack/start-static-server-functions": "^1.132.43",
     "react": "^19.0.0",
