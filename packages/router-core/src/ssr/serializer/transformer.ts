@@ -9,6 +9,10 @@ import type {
 import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
 
+declare const TSR_SERIALIZABLE: unique symbol
+export type TSR_SERIALIZABLE = typeof TSR_SERIALIZABLE
+
+export type TsrSerializable = { [TSR_SERIALIZABLE]: true }
 export interface DefaultSerializable {
   number: number
   string: string
@@ -17,6 +21,7 @@ export interface DefaultSerializable {
   undefined: undefined
   bigint: bigint
   Date: Date
+  TsrSerializable: TsrSerializable
 }
 
 export interface SerializableExtensions extends DefaultSerializable {}

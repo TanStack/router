@@ -2,7 +2,12 @@ import { describe, expectTypeOf, test } from 'vitest'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
 import { TSS_SERVER_FUNCTION } from '../constants'
-import type { Constrain, Register, Validator } from '@tanstack/router-core'
+import type {
+  Constrain,
+  Register,
+  TsrSerializable,
+  Validator,
+} from '@tanstack/router-core'
 import type { ConstrainValidator } from '../createServerFn'
 
 test('createServerFn method with autocomplete', () => {
@@ -637,4 +642,16 @@ test('createServerFn returns sync array', () => {
   })
 
   expectTypeOf(serverFn()).toEqualTypeOf<Promise<Array<{ a: number }>>>()
+})
+
+test('createServerFn respects TsrSerializable', () => {
+  type MyCustomType = { f: () => void; value: string }
+  type MyCustomTypeSerializable = MyCustomType & TsrSerializable
+  const fn1 = createServerFn().handler(() => {
+    const custom: MyCustomType = { f: () => {}, value: 'test' }
+    return { nested: { custom: custom as MyCustomTypeSerializable } }
+  })
+  expectTypeOf(fn1()).toEqualTypeOf<
+    Promise<{ nested: { custom: MyCustomTypeSerializable } }>
+  >()
 })
