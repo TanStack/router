@@ -237,7 +237,9 @@ Defaults:
 
 Customization:
 
-You can customize function ID generation by providing a `generateFunctionId` function when configuring the TanStack Start Vite plugin:
+You can customize function ID generation by providing a `generateFunctionId` function when configuring the TanStack Start Vite plugin.
+
+Please note that this customization is **experimental** und subject to change.
 
 Example:
 
