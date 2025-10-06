@@ -2,7 +2,7 @@ import { describe, expectTypeOf, it } from 'vitest'
 
 import {
   Serializable,
-  TSR_SERIALIZABLE,
+  TsrSerializable,
   ValidateSerializable,
   ValidateSerializableResult,
 } from '../src/ssr/serializer/transformer'
@@ -66,7 +66,7 @@ describe('Serializer', () => {
   })
 
   it('works for types extending TsrSerializable', () => {
-    type MyCustomType = { f: () => {} } & { [TSR_SERIALIZABLE]: true }
+    type MyCustomType = { f: () => {} } & TsrSerializable
     expectTypeOf<
       ValidateSerializable<MyCustomType, Serializable>
     >().toEqualTypeOf<MyCustomType>()
