@@ -204,9 +204,13 @@ Access request headers, cookies, and response customization:
 - `setResponseHeader()` - Set custom response headers
 - `setResponseStatus()` - Custom status codes
 
-### Streaming & Raw Responses
+### Streaming
 
-Return `Response` objects for streaming, binary data, or custom content types.
+Stream typed data from server functions to the client. See the [Streaming Data from Server Functions guide](../guide/streaming-data-from-server-functions).
+
+### Raw Responses
+
+Return `Response` objects binary data, or custom content types.
 
 ### Progressive Enhancement
 
