@@ -9,7 +9,9 @@ import type {
 import type { LooseReturnType } from '../../utils'
 import type { AnyRoute, ResolveAllSSR } from '../../route'
 
-export const TSR_SERIALIZABLE = Symbol.for('TSR_SERIALIZABLE')
+declare const TSR_SERIALIZABLE: unique symbol
+export type TSR_SERIALIZABLE = typeof TSR_SERIALIZABLE
+
 export type TsrSerializable = { [TSR_SERIALIZABLE]: true }
 export interface DefaultSerializable {
   number: number
