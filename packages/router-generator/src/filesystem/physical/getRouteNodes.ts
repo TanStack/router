@@ -34,6 +34,7 @@ export async function getRouteNodes(
     | 'disableLogging'
     | 'routeToken'
     | 'indexToken'
+    | 'experimental'
   >,
   root: string,
 ): Promise<GetRouteNodesResult> {
@@ -131,7 +132,12 @@ export async function getRouteNodes(
         } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
-          let routePath = determineInitialRoutePath(filePathNoExt)
+          const {
+            routePath: initialRoutePath,
+            cleanedRoutePath: originalRoutePath,
+            isExperimentalNonNestedPath,
+          } = determineInitialRoutePath(filePathNoExt, config)
+          let routePath = initialRoutePath
 
           if (routeFilePrefix) {
             routePath = routePath.replaceAll(routeFilePrefix, '')
@@ -143,7 +149,11 @@ export async function getRouteNodes(
             throw new Error(errorMessage)
           }
 
-          const meta = getRouteMeta(routePath, config)
+          const meta = getRouteMeta(
+            routePath,
+            config,
+            isExperimentalNonNestedPath,
+          )
           const variableName = meta.variableName
           let routeType: FsRouteType = meta.fsRouteType
 
@@ -192,6 +202,8 @@ export async function getRouteNodes(
             routePath,
             variableName,
             _fsRouteType: routeType,
+            _isExperimentalNonNestedPath: isExperimentalNonNestedPath,
+            originalRoutePath,
           })
         }
       }),
@@ -220,11 +232,13 @@ export async function getRouteNodes(
  *
  * @param routePath - The determined initial routePath.
  * @param config - The user configuration object.
+ * @param isExperimentalNonNestedPath - true if route for which meta is generated is a non-nested path.
  * @returns An object containing the type of the route and the variable name derived from the route path.
  */
 export function getRouteMeta(
   routePath: string,
-  config: Pick<Config, 'routeToken' | 'indexToken'>,
+  config: Pick<Config, 'routeToken' | 'indexToken' | 'experimental'>,
+  isExperimentalNonNestedPath?: boolean,
 ): {
   // `__root` is can be more easily determined by filtering down to routePath === /${rootPathId}
   // `pathless` is needs to determined after `lazy` has been cleaned up from the routePath
@@ -263,7 +277,11 @@ export function getRouteMeta(
     fsRouteType = 'errorComponent'
   }
 
-  const variableName = routePathToVariable(routePath)
+  const variableName = routePathToVariable(
+    routePath,
+    config as Config,
+    isExperimentalNonNestedPath,
+  )
 
   return { fsRouteType, variableName }
 }

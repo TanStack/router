@@ -4,6 +4,7 @@ export type RouteNode = {
   variableName: string
   _fsRouteType: FsRouteType
   routePath?: string
+  originalRoutePath?: string
   cleanedPath?: string
   path?: string
   isNonPath?: boolean
@@ -13,6 +14,7 @@ export type RouteNode = {
   children?: Array<RouteNode>
   parent?: RouteNode
   createFileRouteProps?: Set<string>
+  _isExperimentalNonNestedPath?: boolean
 }
 
 export interface GetRouteNodesResult {
