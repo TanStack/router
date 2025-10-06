@@ -394,27 +394,27 @@ export const Route = createFileRoute('/hello')({
 
 You can set the status code of the response by passing it as a property of the second argument to the `Response` constructor
 
-  ```ts
-  // routes/hello.ts
-  import { createFileRoute } from '@tanstack/solid-router'
-  import { json } from '@tanstack/solid-start'
+```ts
+// routes/hello.ts
+import { createFileRoute } from '@tanstack/solid-router'
+import { json } from '@tanstack/solid-start'
 
-  export const Route = createFileRoute('/hello')({
-    server: {
-      handlers: {
-        GET: async ({ request, params }) => {
-          const user = await findUser(params.id)
-          if (!user) {
-            return new Response('User not found', {
-              status: 404,
-            })
-          }
-          return json(user)
-        },
+export const Route = createFileRoute('/hello')({
+  server: {
+    handlers: {
+      GET: async ({ request, params }) => {
+        const user = await findUser(params.id)
+        if (!user) {
+          return new Response('User not found', {
+            status: 404,
+          })
+        }
+        return json(user)
       },
     },
-  })
-  ```
+  },
+})
+```
 
 In this example, we're returning a `404` status code if the user is not found. You can set any valid HTTP status code using this method.
 
@@ -422,22 +422,22 @@ In this example, we're returning a `404` status code if the user is not found. Y
 
 Sometimes you may need to set headers in the response. You can do this by passing an object as the second argument to the `Response` constructor.
 
-  ```ts
-  // routes/hello.ts
-  import { createFileRoute } from '@tanstack/solid-router'
-  export const Route = createFileRoute('/hello')({
-    server: {
-      handlers: {
-        GET: async ({ request }) => {
-          return new Response('Hello, World!', {
-            headers: {
-              'Content-Type': 'text/plain',
-            },
-          })
-        },
+```ts
+// routes/hello.ts
+import { createFileRoute } from '@tanstack/solid-router'
+export const Route = createFileRoute('/hello')({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        return new Response('Hello, World!', {
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+        })
       },
     },
-  })
-  // Visit /hello to see the response
-  // Hello, World!
-  ```
+  },
+})
+// Visit /hello to see the response
+// Hello, World!
+```
