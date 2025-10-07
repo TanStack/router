@@ -4,17 +4,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
-		"dev:nonnested": "MODE=nonnested VITE_MODE=nonnested vite --port 3000",
+    "dev:nonnested": "MODE=nonnested VITE_MODE=nonnested vite --port 3000",
     "dev:e2e": "vite",
     "build": "vite build && tsc --noEmit",
-		"build:nonnested": "MODE=nonnested VITE_MODE=nonnested vite build && tsc --noEmit",
+    "build:nonnested": "MODE=nonnested VITE_MODE=nonnested vite build && tsc --noEmit",
     "serve": "vite preview",
-		"serve:nonnested": "MODE=nonnested VITE_MODE=nonnested vite preview",
+    "serve:nonnested": "MODE=nonnested VITE_MODE=nonnested vite preview",
     "start": "vite",
-		"start:nonnested": "MODE=nonnested VITE_MODE=nonnested vite",
+    "start:nonnested": "MODE=nonnested VITE_MODE=nonnested vite",
     "test:e2e": "pnpm run test:e2e:nonnested && pnpm run test:e2e:default",
-		"test:e2e:default": "rm -rf port*.txt; playwright test --project=chromium",
-		"test:e2e:nonnested": "rm -rf port*.txt; MODE=nonnested playwright test --project=chromium"
+    "test:e2e:default": "rm -rf port*.txt; playwright test --project=chromium",
+    "test:e2e:nonnested": "rm -rf port*.txt; MODE=nonnested playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

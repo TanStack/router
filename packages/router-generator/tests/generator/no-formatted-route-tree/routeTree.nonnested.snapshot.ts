@@ -14,64 +14,82 @@ import { Route as NestedIndexRouteImport } from './routes/nested/index'
 import { Route as NestedChildRouteImport } from './routes/nested/child'
 
 const IndexRoute = IndexRouteImport.update({
-            id: '/',path: '/',getParentRoute: () => rootRouteImport
-          }as any)
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NestedIndexRoute = NestedIndexRouteImport.update({
-            id: '/nested/',path: '/nested/',getParentRoute: () => rootRouteImport
-          }as any)
+  id: '/nested/',
+  path: '/nested/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NestedChildRoute = NestedChildRouteImport.update({
-            id: '/nested/child',path: '/nested/child',getParentRoute: () => rootRouteImport
-          }as any)
+  id: '/nested/child',
+  path: '/nested/child',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
-'/': typeof IndexRoute,'/nested/child': typeof NestedChildRoute,'/nested': typeof NestedIndexRoute
+  '/': typeof IndexRoute
+  '/nested/child': typeof NestedChildRoute
+  '/nested': typeof NestedIndexRoute
 }
 export interface FileRoutesByTo {
-'/': typeof IndexRoute,'/nested/child': typeof NestedChildRoute,'/nested': typeof NestedIndexRoute
+  '/': typeof IndexRoute
+  '/nested/child': typeof NestedChildRoute
+  '/nested': typeof NestedIndexRoute
 }
 export interface FileRoutesById {
-'__root__': typeof rootRouteImport,
-'/': typeof IndexRoute,'/nested/child': typeof NestedChildRoute,'/nested/': typeof NestedIndexRoute
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/nested/child': typeof NestedChildRoute
+  '/nested/': typeof NestedIndexRoute
 }
 export interface FileRouteTypes {
-fileRoutesByFullPath: FileRoutesByFullPath
-fullPaths: '/'|'/nested/child'|'/nested'
-fileRoutesByTo: FileRoutesByTo
-to: '/'|'/nested/child'|'/nested'
-id: '__root__'|'/'|'/nested/child'|'/nested/'
-fileRoutesById: FileRoutesById
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths: '/' | '/nested/child' | '/nested'
+  fileRoutesByTo: FileRoutesByTo
+  to: '/' | '/nested/child' | '/nested'
+  id: '__root__' | '/' | '/nested/child' | '/nested/'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-IndexRoute: typeof IndexRoute,NestedChildRoute: typeof NestedChildRoute,NestedIndexRoute: typeof NestedIndexRoute
+  IndexRoute: typeof IndexRoute
+  NestedChildRoute: typeof NestedChildRoute
+  NestedIndexRoute: typeof NestedIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/': {
-          id: '/'
-          path: '/'
-          fullPath: '/'
-          preLoaderRoute: typeof IndexRouteImport
-          parentRoute: typeof rootRouteImport
-        }
-'/nested/': {
-          id: '/nested/'
-          path: '/nested'
-          fullPath: '/nested'
-          preLoaderRoute: typeof NestedIndexRouteImport
-          parentRoute: typeof rootRouteImport
-        }
-'/nested/child': {
-          id: '/nested/child'
-          path: '/nested/child'
-          fullPath: '/nested/child'
-          preLoaderRoute: typeof NestedChildRouteImport
-          parentRoute: typeof rootRouteImport
-        }
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nested/': {
+      id: '/nested/'
+      path: '/nested'
+      fullPath: '/nested'
+      preLoaderRoute: typeof NestedIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nested/child': {
+      id: '/nested/child'
+      path: '/nested/child'
+      fullPath: '/nested/child'
+      preLoaderRoute: typeof NestedChildRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,NestedChildRoute: NestedChildRoute,NestedIndexRoute: NestedIndexRoute
+  IndexRoute: IndexRoute,
+  NestedChildRoute: NestedChildRoute,
+  NestedIndexRoute: NestedIndexRoute,
 }
-export const routeTree = rootRouteImport._addFileChildren(rootRouteChildren)._addFileTypes<FileRouteTypes>()
+export const routeTree = rootRouteImport
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
