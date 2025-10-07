@@ -1,11 +1,14 @@
-import { createFileRoute } from '@tanstack/solid-router'
-import { getRouteApi, useParams } from '@tanstack/solid-router'
+import { createFileRoute, getRouteApi, useParams } from '@tanstack/solid-router'
+import { useExperimentalNonNestedRoutes } from '../../tests/utils/useExperimentalNonNestedRoutes'
 
 export const Route = createFileRoute('/posts_/$postId/edit')({
   component: PostEditPage,
 })
 
-const api = getRouteApi('/posts_/$postId/edit')
+const api = getRouteApi(
+  // @ts-expect-error path is updated with new Experimental Non Nested Paths to not include the trailing underscore
+  `/${useExperimentalNonNestedRoutes ? 'posts' : 'posts_'}/$postId/edit`,
+)
 
 function PostEditPage() {
   const paramsViaApi = api.useParams()

@@ -4,10 +4,19 @@ import {
   getTestServerPort,
 } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
+import { useExperimentalNonNestedRoutes } from './tests/utils/useExperimentalNonNestedRoutes'
 
 const PORT = await getTestServerPort(packageJson.name)
 const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
+const experimentalNonNestedPathsModeCommand = `pnpm build:nonnested && pnpm serve:nonnested --port ${PORT}`
+const defaultCommand = `pnpm build && pnpm serve --port ${PORT}`
+const command = useExperimentalNonNestedRoutes
+  ? experimentalNonNestedPathsModeCommand
+  : defaultCommand
+
+console.info('Running with mode: ', process.env.MODE || 'default')
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -26,10 +35,18 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `VITE_NODE_ENV="test" VITE_EXTERNAL_PORT=${EXTERNAL_PORT} VITE_SERVER_PORT=${PORT} pnpm build && VITE_NODE_ENV="test" VITE_EXTERNAL_PORT=${EXTERNAL_PORT} VITE_SERVER_PORT=${PORT} pnpm serve --port ${PORT}`,
+    command,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
+    env: {
+      MODE: process.env.MODE || '',
+      VITE_MODE: process.env.MODE || '',
+      VITE_NODE_ENV: 'test',
+      VITE_EXTERNAL_PORT: String(EXTERNAL_PORT),
+      VITE_SERVER_PORT: String(PORT),
+      PORT: String(PORT),
+    },
   },
 
   projects: [
