@@ -69,8 +69,8 @@
     "@babel/preset-typescript": "^7.27.1",
     "ansis": "^4.1.0",
     "diff": "^8.0.2",
-    "fast-glob": "^3.3.3",
-    "pathe": "^2.0.3"
+    "pathe": "^2.0.3",
+    "tinyglobby": "^0.2.15"
   },
   "devDependencies": {
     "@babel/types": "^7.27.6",
