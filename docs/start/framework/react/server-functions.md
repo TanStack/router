@@ -8,15 +8,15 @@ title: Server Functions
 Server functions let you define server-only logic that can be called from anywhere in your application - loaders, components, hooks, or other server functions. They run on the server but can be invoked from client code seamlessly.
 
 ```tsx
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from '@tanstack/react-start'
 
 export const getServerTime = createServerFn().handler(async () => {
   // This runs only on the server
-  return new Date().toISOString();
-});
+  return new Date().toISOString()
+})
 
 // Call from anywhere - components, loaders, hooks, etc.
-const time = await getServerTime();
+const time = await getServerTime()
 ```
 
 Server functions provide server capabilities (database access, environment variables, file system) while maintaining type safety across the network boundary.
@@ -26,18 +26,18 @@ Server functions provide server capabilities (database access, environment varia
 Server functions are created with `createServerFn()` and can specify HTTP method:
 
 ```tsx
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from '@tanstack/react-start'
 
 // GET request (default)
 export const getData = createServerFn().handler(async () => {
-  return { message: "Hello from server!" };
-});
+  return { message: 'Hello from server!' }
+})
 
 // POST request
-export const saveData = createServerFn({ method: "POST" }).handler(async () => {
+export const saveData = createServerFn({ method: 'POST' }).handler(async () => {
   // Server-only logic
-  return { success: true };
-});
+  return { success: true }
+})
 ```
 
 ## Where to Call Server Functions
@@ -51,18 +51,18 @@ Call server functions from:
 
 ```tsx
 // In a route loader
-export const Route = createFileRoute("/posts")({
+export const Route = createFileRoute('/posts')({
   loader: () => getPosts(),
-});
+})
 
 // In a component
 function PostList() {
-  const getPosts = useServerFn(getServerPosts);
+  const getPosts = useServerFn(getServerPosts)
 
   const { data } = useQuery({
-    queryKey: ["posts"],
+    queryKey: ['posts'],
     queryFn: () => getPosts(),
-  });
+  })
 }
 ```
 
@@ -73,15 +73,15 @@ Server functions accept a single `data` parameter. Since they cross the network 
 ### Basic Parameters
 
 ```tsx
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from '@tanstack/react-start'
 
-export const greetUser = createServerFn({ method: "GET" })
+export const greetUser = createServerFn({ method: 'GET' })
   .inputValidator((data: { name: string }) => data)
   .handler(async ({ data }) => {
-    return `Hello, ${data.name}!`;
-  });
+    return `Hello, ${data.name}!`
+  })
 
-await greetUser({ data: { name: "John" } });
+await greetUser({ data: { name: 'John' } })
 ```
 
 ### Validation with Zod
@@ -89,20 +89,20 @@ await greetUser({ data: { name: "John" } });
 For robust validation, use schema libraries like Zod:
 
 ```tsx
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
+import { createServerFn } from '@tanstack/react-start'
+import { z } from 'zod'
 
 const UserSchema = z.object({
   name: z.string().min(1),
   age: z.number().min(0),
-});
+})
 
-export const createUser = createServerFn({ method: "POST" })
+export const createUser = createServerFn({ method: 'POST' })
   .inputValidator(UserSchema)
   .handler(async ({ data }) => {
     // data is fully typed and validated
-    return `Created user: ${data.name}, age ${data.age}`;
-  });
+    return `Created user: ${data.name}, age ${data.age}`
+  })
 ```
 
 ### Form Data
@@ -110,21 +110,21 @@ export const createUser = createServerFn({ method: "POST" })
 Handle form submissions with FormData:
 
 ```tsx
-export const submitForm = createServerFn({ method: "POST" })
+export const submitForm = createServerFn({ method: 'POST' })
   .inputValidator((data) => {
     if (!(data instanceof FormData)) {
-      throw new Error("Expected FormData");
+      throw new Error('Expected FormData')
     }
 
     return {
-      name: data.get("name")?.toString() || "",
-      email: data.get("email")?.toString() || "",
-    };
+      name: data.get('name')?.toString() || '',
+      email: data.get('email')?.toString() || '',
+    }
   })
   .handler(async ({ data }) => {
     // Process form data
-    return { success: true };
-  });
+    return { success: true }
+  })
 ```
 
 ## Error Handling & Redirects
@@ -134,20 +134,20 @@ Server functions can throw errors, redirects, and not-found responses that are h
 ### Basic Errors
 
 ```tsx
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn } from '@tanstack/react-start'
 
 export const riskyFunction = createServerFn().handler(async () => {
   if (Math.random() > 0.5) {
-    throw new Error("Something went wrong!");
+    throw new Error('Something went wrong!')
   }
-  return { success: true };
-});
+  return { success: true }
+})
 
 // Errors are serialized to the client
 try {
-  await riskyFunction();
+  await riskyFunction()
 } catch (error) {
-  console.log(error.message); // "Something went wrong!"
+  console.log(error.message) // "Something went wrong!"
 }
 ```
 
@@ -156,18 +156,18 @@ try {
 Use redirects for authentication, navigation, etc:
 
 ```tsx
-import { createServerFn } from "@tanstack/react-start";
-import { redirect } from "@tanstack/react-router";
+import { createServerFn } from '@tanstack/react-start'
+import { redirect } from '@tanstack/react-router'
 
 export const requireAuth = createServerFn().handler(async () => {
-  const user = await getCurrentUser();
+  const user = await getCurrentUser()
 
   if (!user) {
-    throw redirect({ to: "/login" });
+    throw redirect({ to: '/login' })
   }
 
-  return user;
-});
+  return user
+})
 ```
 
 ### Not Found
@@ -175,20 +175,20 @@ export const requireAuth = createServerFn().handler(async () => {
 Throw not-found errors for missing resources:
 
 ```tsx
-import { createServerFn } from "@tanstack/react-start";
-import { notFound } from "@tanstack/react-router";
+import { createServerFn } from '@tanstack/react-start'
+import { notFound } from '@tanstack/react-router'
 
 export const getPost = createServerFn()
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    const post = await db.findPost(data.id);
+    const post = await db.findPost(data.id)
 
     if (!post) {
-      throw notFound();
+      throw notFound()
     }
 
-    return post;
-  });
+    return post
+  })
 ```
 
 ## Advanced Topics
@@ -249,9 +249,9 @@ Example:
 
 ```ts
 // vite.config.ts
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
 export default defineConfig({
   plugins: [
@@ -261,13 +261,13 @@ export default defineConfig({
           // Return a custom ID string. If you return undefined, the default is used.
           // For example, always hash (even in dev):
           // return createHash('sha256').update(`${filename}--${functionName}`).digest('hex')
-          return undefined;
+          return undefined
         },
       },
     }),
     react(),
   ],
-});
+})
 ```
 
 Tips:
