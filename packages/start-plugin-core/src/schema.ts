@@ -159,6 +159,16 @@ const tanstackStartOptionsSchema = z
     serverFns: z
       .object({
         base: z.string().optional().default('/_serverFn'),
+        generateFunctionId: z
+          .function()
+          .args(
+            z.object({
+              filename: z.string(),
+              functionName: z.string(),
+            }),
+          )
+          .returns(z.string().optional())
+          .optional(),
       })
       .optional()
       .default({}),

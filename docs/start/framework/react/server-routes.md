@@ -392,108 +392,52 @@ export const Route = createFileRoute('/hello')({
 
 ## Responding with a status code
 
-You can set the status code of the response by either:
+You can set the status code of the response by passing it as a property of the second argument to the `Response` constructor
 
-- Passing it as a property of the second argument to the `Response` constructor
+```ts
+// routes/hello.ts
+import { createFileRoute } from '@tanstack/react-router'
+import { json } from '@tanstack/react-start'
 
-  ```ts
-  // routes/hello.ts
-  import { createFileRoute } from '@tanstack/react-router'
-  import { json } from '@tanstack/react-start'
-
-  export const Route = createFileRoute('/hello')({
-    server: {
-      handlers: {
-        GET: async ({ request, params }) => {
-          const user = await findUser(params.id)
-          if (!user) {
-            return new Response('User not found', {
-              status: 404,
-            })
-          }
-          return json(user)
-        },
+export const Route = createFileRoute('/hello')({
+  server: {
+    handlers: {
+      GET: async ({ request, params }) => {
+        const user = await findUser(params.id)
+        if (!user) {
+          return new Response('User not found', {
+            status: 404,
+          })
+        }
+        return json(user)
       },
     },
-  })
-  ```
-
-- Using the `setResponseStatus` helper function from `@tanstack/react-start/server`
-
-  ```ts
-  // routes/hello.ts
-  import { createFileRoute } from '@tanstack/react-router'
-  import { json } from '@tanstack/react-start'
-  import { setResponseStatus } from '@tanstack/react-start/server'
-
-  export const Route = createFileRoute('/hello')({
-    server: {
-      handlers: {
-        GET: async ({ request, params }) => {
-          const user = await findUser(params.id)
-          if (!user) {
-            setResponseStatus(404)
-            return new Response('User not found')
-          }
-          return json(user)
-        },
-      },
-    },
-  })
-  ```
+  },
+})
+```
 
 In this example, we're returning a `404` status code if the user is not found. You can set any valid HTTP status code using this method.
 
 ## Setting headers in the response
 
-Sometimes you may need to set headers in the response. You can do this by either:
-
-- Passing an object as the second argument to the `Response` constructor.
-
-  ```ts
-  // routes/hello.ts
-  import { createFileRoute } from '@tanstack/react-router'
-  ```
-
-> > > > > > > 582e8c7a1 (docs: Start overhaul)
-> > > > > > > export const Route = createFileRoute('/hello')({
-
-    server: {
-      handlers: {
-        GET: async ({ request }) => {
-          return new Response('Hello, World!', {
-            headers: {
-              'Content-Type': 'text/plain',
-            },
-          })
-        },
-      },
-    },
-
-})
-
-// Visit /hello to see the response
-// Hello, World!
-
-````
-
-- Or using the `setResponseHeaders` helper function from `@tanstack/react-start/server`.
+Sometimes you may need to set headers in the response. You can do this by passing an object as the second argument to the `Response` constructor.
 
 ```ts
 // routes/hello.ts
 import { createFileRoute } from '@tanstack/react-router'
-import { setResponseHeaders } from '@tanstack/react-start/server'
-
 export const Route = createFileRoute('/hello')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        setResponseHeaders({
-          'Content-Type': 'text/plain',
+        return new Response('Hello, World!', {
+          headers: {
+            'Content-Type': 'text/plain',
+          },
         })
-        return new Response('Hello, World!')
       },
     },
   },
 })
-````
+// Visit /hello to see the response
+// Hello, World!
+```

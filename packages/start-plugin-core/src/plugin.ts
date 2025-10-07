@@ -334,6 +334,7 @@ export function TanStackStartVitePluginCore(
       // This is the ID that will be available to look up and import
       // our server function manifest and resolve its module
       manifestVirtualImportId: VIRTUAL_MODULES.serverFnManifest,
+      generateFunctionId: startPluginOpts?.serverFns?.generateFunctionId,
       client: {
         getRuntimeCode: () =>
           `import { createClientRpc } from '@tanstack/${corePluginOpts.framework}-start/client-rpc'`,

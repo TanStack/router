@@ -79,7 +79,7 @@ At this point, the project structure should look like this -
 │   ├── ssr.tsx                           # Server-side rendering
 │   └── styles.css                        # Global styles
 ├── public/                               # Static assets
-├── app.config.ts                         # TanStack Start configuration
+├── vite.config.ts                         # TanStack Start configuration
 ├── package.json                          # Project dependencies
 └── tsconfig.json                         # TypeScript configuration
 ```

@@ -423,6 +423,8 @@ export type {
   SerializableExtensions,
   DefaultSerializable,
   Serializable,
+  TSR_SERIALIZABLE,
+  TsrSerializable,
 } from './ssr/serializer/transformer'
 
 export {
