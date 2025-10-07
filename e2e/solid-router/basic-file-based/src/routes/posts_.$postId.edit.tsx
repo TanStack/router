@@ -12,7 +12,10 @@ const api = getRouteApi(
 
 function PostEditPage() {
   const paramsViaApi = api.useParams()
-  const paramsViaHook = useParams({ from: '/posts_/$postId/edit' })
+  const paramsViaHook = useParams({
+    // @ts-expect-error path is updated with new Experimental Non Nested Paths to not include the trailing underscore
+    from: `/${useExperimentalNonNestedRoutes ? 'posts' : 'posts_'}/$postId/edit`,
+  })
   const paramsViaRouteHook = Route.useParams()
 
   return (
