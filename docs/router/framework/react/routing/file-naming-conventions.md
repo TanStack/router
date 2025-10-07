@@ -19,6 +19,7 @@ File-based routing requires that you follow a few simple file naming conventions
 
 > **💡 Remember:** The file-naming conventions for your project could be affected by what [options](../../../../api/file-based-routing.md) are configured.
 
+> [!NOTE] To escape a trailing underscore, for example `/posts[_].tsx`, usage of the upgraded [Non-Nested Routes](../routing-concepts#non-nested-routes) is required.
 ## Dynamic Path Params
 
 Dynamic path params can be used in both flat and directory routes to create routes that can match a dynamic segment of the URL path. Dynamic path params are denoted by the `$` character in the filename:

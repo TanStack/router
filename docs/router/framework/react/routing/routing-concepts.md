@@ -352,6 +352,38 @@ The following table shows which component will be rendered based on the URL:
 - The `posts.$postId.tsx` route is nested as normal under the `posts.tsx` route and will render `<Posts><Post>`.
 - The `posts_.$postId.edit.tsx` route **does not share** the same `posts` prefix as the other routes and therefore will be treated as if it is a top-level route and will render `<PostEditor>`.
 
+> [!NOTE]
+> While using non-nested routes with file-based routing already works brilliantly, it might misbehave in certain conditions. 
+> Many of these limitations have already been addressed and will be released in the next major version of TanStack Router. 
+>
+> To start enjoying these benefits early, you can enable the experimental `nonNestedRoutes` flag in the router plugin configuration:
+>
+> ```ts
+> export default defineConfig({
+>     plugins: [
+>         tanstackRouter({
+>             // some config,
+>             experimental: {
+>                 nonNestedRoutes: true,
+>             },  
+>         }),
+>     ],
+> })
+> ```
+>
+> *It is important to note that this does bring a slight change in how non-nested routes are referenced in useParams, useNavigate, etc. For this reason this has been released as a feature flag.
+> The trailing underscore is no longer expected in the path:*
+> 
+> Previously:
+> ```ts
+> useParams({from: '/posts_/$postId/edit'})
+> ```
+> 
+> Now:
+> ```ts
+> useParams({from: '/posts/$postId/edit'})
+> ```
+
 ## Excluding Files and Folders from Routes
 
 Files and folders can be excluded from route generation with a `-` prefix attached to the file name. This gives you the ability to colocate logic in the route directories.
