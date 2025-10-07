@@ -115,7 +115,7 @@ function rewriteConfigByFolderName(
       config.disableTypes = true
       config.generatedRouteTree =
         makeFolderDir(folderName) +
-        `/routeTree.${nonNested ? 'nonnested.' : ''}.gen.js`
+        `/routeTree${nonNested ? 'nonnested.' : ''}.gen.js`
       break
     case 'custom-scaffolding':
       config.customScaffolding = {
