@@ -246,22 +246,10 @@ function shouldThrow(folderName: string) {
 describe('generator works', async () => {
   const folderNames = await readDir()
 
-  const testCases = folderNames.reduce(
-    (accum: Array<{ folderName: string; nonNested: boolean }>, folderName) => {
-      accum.push({
-        folderName,
-        nonNested: true,
-      })
-
-      accum.push({
-        folderName,
-        nonNested: false,
-      })
-
-      return accum
-    },
-    [],
-  )
+  const testCases = folderNames.flatMap((folderName) => [
+    { folderName, nonNested: true },
+    { folderName, nonNested: false },
+  ])
 
   it.each(testCases)(
     'should wire-up the routes for a "%s" tree',

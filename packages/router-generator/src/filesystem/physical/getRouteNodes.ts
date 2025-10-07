@@ -233,7 +233,7 @@ export async function getRouteNodes(
  */
 export function getRouteMeta(
   routePath: string,
-  config: Pick<Config, 'routeToken' | 'indexToken' | 'experimental'>,
+  config: Pick<Config, 'routeToken' | 'indexToken'>,
 ): {
   // `__root` is can be more easily determined by filtering down to routePath === /${rootPathId}
   // `pathless` is needs to determined after `lazy` has been cleaned up from the routePath

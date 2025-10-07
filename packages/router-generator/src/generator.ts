@@ -677,14 +677,14 @@ export class Generator {
     if (!config.disableTypes) {
       fileRoutesByFullPath = [
         `export interface FileRoutesByFullPath {
-${[...createRouteNodesByFullPath(acc.routeNodes, this.config).entries()]
+${[...createRouteNodesByFullPath(acc.routeNodes, config).entries()]
   .filter(([fullPath]) => fullPath)
   .map(([fullPath, routeNode]) => {
     return `'${fullPath}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
   })}
 }`,
         `export interface FileRoutesByTo {
-${[...createRouteNodesByTo(acc.routeNodes, this.config).entries()]
+${[...createRouteNodesByTo(acc.routeNodes, config).entries()]
   .filter(([to]) => to)
   .map(([to, routeNode]) => {
     return `'${to}': typeof ${getResolvedRouteNodeVariableName(routeNode)}`
@@ -700,12 +700,7 @@ ${[...createRouteNodesById(acc.routeNodes).entries()].map(([id, routeNode]) => {
 fileRoutesByFullPath: FileRoutesByFullPath
 fullPaths: ${
           acc.routeNodes.length > 0
-            ? [
-                ...createRouteNodesByFullPath(
-                  acc.routeNodes,
-                  this.config,
-                ).keys(),
-              ]
+            ? [...createRouteNodesByFullPath(acc.routeNodes, config).keys()]
                 .filter((fullPath) => fullPath)
                 .map((fullPath) => `'${fullPath}'`)
                 .join('|')
@@ -714,7 +709,7 @@ fullPaths: ${
 fileRoutesByTo: FileRoutesByTo
 to: ${
           acc.routeNodes.length > 0
-            ? [...createRouteNodesByTo(acc.routeNodes, this.config).keys()]
+            ? [...createRouteNodesByTo(acc.routeNodes, config).keys()]
                 .filter((to) => to)
                 .map((to) => `'${to}'`)
                 .join('|')
@@ -732,7 +727,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         module: this.targetTemplate.fullPkg,
         interfaceName: 'FileRoutesByPath',
         routeNodes: sortedRouteNodes,
-        config: this.config,
+        config,
       })
     }
 
@@ -1209,7 +1204,6 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       acc.routeNodes,
       node,
       node.routePath,
-      useExperimentalNonNestedRoutes,
       node.originalRoutePath,
     )
 
@@ -1220,6 +1214,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         parentRoute.children,
         node,
         node.routePath,
+        node.originalRoutePath,
       )
       if (possibleParentRoute) {
         parentRoute = possibleParentRoute

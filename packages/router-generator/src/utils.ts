@@ -193,33 +193,33 @@ export function removeUnderscores(s?: string) {
   return s?.replaceAll(/(^_|_$)/gi, '').replaceAll(/(\/_|_\/)/gi, '/')
 }
 
-export function removeLeadingUnderscores(s: string, routeToken: string) {
-  const parts = s.split('/')
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
-  if (parts.length === 0) return s
+export function removeLeadingUnderscores(s: string, routeToken: string) {
+  if (!s) return s
 
   const routeTokenToExclude =
     routeToken[0] === '_' ? routeToken.slice(1) : routeToken
 
   const leadingUnderscoreRegex =
     routeToken[0] === '_'
-      ? new RegExp(`(?<=^|\\/)_(?!${routeTokenToExclude})`, 'g')
+      ? new RegExp(`(?<=^|\\/)_(?!${escapeRegExp(routeTokenToExclude)})`, 'g')
       : new RegExp(`(?<=^|\\/)_`, 'g')
 
   return s.replaceAll(leadingUnderscoreRegex, '')
 }
 
 export function removeTrailingUnderscores(s: string, routeToken: string) {
-  const parts = s.split('/')
-
-  if (parts.length === 0) return s
+  if (!s) return s
 
   const routeTokenToExclude =
     routeToken.slice(-1) === '_' ? routeToken.slice(0, -1) : routeToken
 
   const trailingUnderscoreRegex =
     routeToken[0] === '_'
-      ? new RegExp(`(?<!${routeTokenToExclude})_(?=\\/|$)`, 'g')
+      ? new RegExp(`(?<!${escapeRegExp(routeTokenToExclude)})_(?=\\/|$)`, 'g')
       : new RegExp(`_(?=\\/)|_$`, 'g')
 
   return s.replaceAll(trailingUnderscoreRegex, '')
@@ -357,7 +357,6 @@ export function hasParentRoute(
   routes: Array<RouteNode>,
   node: RouteNode,
   routePathToCheck: string | undefined,
-  useExperimentalNonNestedRoutes?: boolean,
   originalRoutePathToCheck?: string,
 ): RouteNode | null {
   const getNonNestedSegments = (routePath: string) => {
@@ -433,13 +432,7 @@ export function hasParentRoute(
   segments.pop() // Remove the last segment
   const parentRoutePath = segments.join('/')
 
-  return hasParentRoute(
-    routes,
-    node,
-    parentRoutePath,
-    useExperimentalNonNestedRoutes,
-    originalRoutePathToCheck,
-  )
+  return hasParentRoute(routes, node, parentRoutePath, originalRoutePathToCheck)
 }
 
 /**
@@ -489,10 +482,7 @@ export const inferFullPath = (
   // TODO with new major we can remove check and only remove leading underscores
   const fullPath = removeGroups(
     (config?.experimental?.nonNestedRoutes
-      ? removeLeadingUnderscores(
-          removeLayoutSegments(routeNode.routePath),
-          config.routeToken,
-        )
+      ? removeLayoutSegments(routeNode.routePath)
       : removeUnderscores(removeLayoutSegments(routeNode.routePath))) ?? '',
   )
 
