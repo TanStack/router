@@ -54,8 +54,6 @@ export function removeTrailingSlash(s: string) {
 
 const BRACKET_CONTENT_RE = /\[(.*?)\]/g
 
-const BRACKET_CONTENT_RE_NON_NESTED = /\[([^\]]*[^_\]]|)\]/g
-
 export function determineInitialRoutePath(
   routePath: string,
   config?: Pick<Config, 'experimental' | 'routeToken' | 'indexToken'>,
@@ -74,12 +72,41 @@ export function determineInitialRoutePath(
     '$',
     '%',
   ])
-  const useExperimentalNonNestedPaths =
-    config?.experimental?.nonNestedPaths ?? false
 
-  const parts = routePath.split(/(?<!\[)\.(?!\])/g)
+  const splitRegex = /(?<!\[)\.(?!\])/g
+
+  const originalRoutePath =
+    cleanPath(`/${(cleanPath(routePath) || '').split(splitRegex).join('/')}`) ||
+    ''
+
+  // check if the route path is a valid non-nested path,
+  // TODO with new major rename to reflect not experimental anymore
+  const isExperimentalNonNestedPath = isValidNonNestedPath(
+    originalRoutePath,
+    config,
+  )
+
+  let cleanedRoutePath = routePath
+
+  // we already identified the path as non-nested and can now remove the trailing underscores
+  // we need to do this now before we encounter any escaped trailing underscores
+  // this way we can be sure any remaining trailing underscores should remain
+  // TODO with new major we can remove check and always remove leading underscores
+  if (config?.experimental?.nonNestedPaths) {
+    // we should leave trailing underscores if the route path is the root path
+    if (originalRoutePath !== `/${rootPathId}`) {
+      // remove trailing underscores on various path segments
+      cleanedRoutePath = removeTrailingUnderscores(
+        originalRoutePath,
+        config.routeToken,
+      )
+    }
+  }
+
+  const parts = cleanedRoutePath.split(splitRegex)
 
   // Escape any characters that in square brackets
+  // we keep the original path untouched
   const escapedParts = parts.map((part) => {
     // Check if any disallowed characters are used in brackets
 
@@ -97,12 +124,6 @@ export function determineInitialRoutePath(
       }
     }
 
-    if (useExperimentalNonNestedPaths) {
-      // we don't want to escape any brackets yet that have a trailing underscore in its contents
-      // we do this lower down after we have identified the non-nested paths
-      return part.replace(BRACKET_CONTENT_RE_NON_NESTED, '$1')
-    }
-
     // Since this split segment is safe at this point, we can
     // remove the brackets and replace them with the content inside
     return part.replace(BRACKET_CONTENT_RE, '$1')
@@ -112,82 +133,20 @@ export function determineInitialRoutePath(
   // matching internals of router-core, we'd perform those changes here
   // on the `escapedParts` array before it is joined back together in
   // `final`
-  const cleanedRoutePath = cleanPath(`/${escapedParts.join('/')}`) || ''
-
-  let finalRoutePath = cleanedRoutePath
-
-  // check if the route path is a valid non-nested path,
-  const isExperimentalNonNestedPath = isValidNonNestedPath(
-    finalRoutePath,
-    config,
-  )
-
-  if (useExperimentalNonNestedPaths && config) {
-    // then clean up the trailing underscores and escape the remaining brackets
-    if (finalRoutePath !== `/${rootPathId}`) {
-      const routeTokenToExclude =
-        config.routeToken.slice(-1) === '_'
-          ? config.routeToken.slice(0, -1)
-          : config.routeToken
-
-      // The regex finds either bracketed content or an underscore
-      const regex = new RegExp(`_(?=\\/)|(?<!${routeTokenToExclude})_$`)
-
-      // The replace method takes a function. It's called for each match.
-      const finalEscapedPath = finalRoutePath
-        .replace(regex, (match) => {
-          // If the match is an underscore, remove it.
-          // Otherwise, the match was a bracketed section, so return it unchanged.
-          return match === '_' ? '' : match
-        })
-        .replace(BRACKET_CONTENT_RE, '$1')
-
-      finalRoutePath = cleanPath(finalEscapedPath) || ''
-    }
-  }
+  const finalRoutePath = cleanPath(`/${escapedParts.join('/')}`) || ''
 
   return {
     routePath: finalRoutePath,
     isExperimentalNonNestedPath,
-    cleanedRoutePath,
+    originalRoutePath,
   }
-}
-
-export function escapeNonNestedPaths(
-  routePath: string,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
-) {
-  if (routePath === `/${rootPathId}`) return routePath
-
-  // The regex finds either bracketed content or an underscore
-  const routeTokenToExclude =
-    config?.routeToken.slice(-1) === '_'
-      ? config.routeToken.slice(0, -1)
-      : config?.routeToken
-
-  const regex = new RegExp(`_(?=\\/)|(?<!${routeTokenToExclude})_$`)
-
-  // The replace method takes a function. It's called for each match.
-  const cleanedRoutePath = routePath
-    .replace(regex, (match) => {
-      // If the match is an underscore, remove it.
-      // Otherwise, the match was a bracketed section, so return it unchanged.
-      return match === '_' ? '' : match
-    })
-    .replace(BRACKET_CONTENT_RE, '$1')
-
-  return cleanPath(cleanedRoutePath) || ''
 }
 
 export function replaceBackslash(s: string) {
   return s.replaceAll(/\\/gi, '/')
 }
 
-export function routePathToVariable(
-  routePath: string,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
-  isExperimentalNonNestedPath?: boolean,
-): string {
+export function routePathToVariable(routePath: string): string {
   const toVariableSafeChar = (char: string): string => {
     if (/[a-zA-Z0-9_]/.test(char)) {
       return char // Keep alphanumeric characters and underscores as is
@@ -213,7 +172,7 @@ export function routePathToVariable(
   }
 
   return (
-    removeUnderscores(routePath, config, isExperimentalNonNestedPath)
+    removeUnderscores(routePath)
       ?.replace(/\/\$\//g, '/splat/')
       .replace(/\$$/g, 'splat')
       .replace(/\$\{\$\}/g, 'splat')
@@ -229,35 +188,40 @@ export function routePathToVariable(
   )
 }
 
-export function removeUnderscores(
-  s?: string,
-  config?: Pick<Config, 'experimental' | 'routeToken'>,
-  isExperimentalNonNestedPath?: boolean,
-) {
-  if (!s) return s
+export function removeUnderscores(s?: string) {
+  return s?.replaceAll(/(^_|_$)/gi, '').replaceAll(/(\/_|_\/)/gi, '/')
+}
 
-  if (!config?.experimental?.nonNestedPaths) {
-    return s.replaceAll(/(^_|_$)/gi, '').replaceAll(/(\/_|_\/)/gi, '/')
-  }
-
+export function removeLeadingUnderscores(s: string, routeToken: string) {
   const parts = s.split('/')
 
   if (parts.length === 0) return s
 
-  // Escape any remaining characters that are in square brackets
-  const escapedParts = parts.map((part) => {
-    // Since this split segment is safe at this point, we can
-    // remove the brackets and replace them with the content inside
-    if (!isExperimentalNonNestedPath && !s.endsWith(`/${config.routeToken}`)) {
-      return part.replaceAll(/(^_)/gi, '')
-    }
+  const routeTokenToExclude =
+    routeToken[0] === '_' ? routeToken.slice(1) : routeToken
 
-    return part.replaceAll(/(^_|_$)/gi, '')
-  })
+  const leadingUnderscoreRegex =
+    routeToken[0] === '_'
+      ? new RegExp(`(?<=^|\\/)_(?!${routeTokenToExclude})`, 'g')
+      : new RegExp(`(?<=^|\\/)_`, 'g')
 
-  const final = cleanPath(`/${escapedParts.join('/')}`) || ''
+  return s.replaceAll(leadingUnderscoreRegex, '')
+}
 
-  return final
+export function removeTrailingUnderscores(s: string, routeToken: string) {
+  const parts = s.split('/')
+
+  if (parts.length === 0) return s
+
+  const routeTokenToExclude =
+    routeToken.slice(-1) === '_' ? routeToken.slice(0, -1) : routeToken
+
+  const trailingUnderscoreRegex =
+    routeToken[0] === '_'
+      ? new RegExp(`(?<!${routeTokenToExclude})_(?=\\/|$)`, 'g')
+      : new RegExp(`_(?=\\/)|_$`, 'g')
+
+  return s.replaceAll(trailingUnderscoreRegex, '')
 }
 
 export function capitalize(s: string) {
@@ -418,12 +382,11 @@ export function hasParentRoute(
     (d) => d.variableName,
   ]).filter((d) => d.routePath !== `/${rootPathId}`)
 
-  const filteredNodes =
-    useExperimentalNonNestedPaths && node._isExperimentalNonNestedPath
-      ? []
-      : [...sortedNodes]
+  const filteredNodes = node._isExperimentalNonNestedPath
+    ? []
+    : [...sortedNodes]
 
-  if (useExperimentalNonNestedPaths && node._isExperimentalNonNestedPath) {
+  if (node._isExperimentalNonNestedPath) {
     const nonNestedSegments = getNonNestedSegments(
       originalRoutePathToCheck ?? '',
     )
@@ -521,12 +484,15 @@ export const inferFullPath = (
   routeNode: RouteNode,
   config?: Pick<Config, 'experimental' | 'routeToken'>,
 ): string => {
+  // with new nonNestedPaths feature we can be sure any remaining trailing underscores are escaped and should remain
+  // TODO with new major we can remove check and only remove leading underscores
   const fullPath = removeGroups(
-    removeUnderscores(
-      removeLayoutSegments(routeNode.routePath),
-      config,
-      routeNode._isExperimentalNonNestedPath,
-    ) ?? '',
+    (config?.experimental?.nonNestedPaths
+      ? removeLeadingUnderscores(
+          removeLayoutSegments(routeNode.routePath),
+          config.routeToken,
+        )
+      : removeUnderscores(removeLayoutSegments(routeNode.routePath))) ?? '',
   )
 
   return routeNode.cleanedPath === '/' ? fullPath : fullPath.replace(/\/$/, '')

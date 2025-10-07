@@ -33,6 +33,7 @@ import {
   removeGroups,
   removeLastSegmentFromPath,
   removeLayoutSegments,
+  removeLeadingUnderscores,
   removeUnderscores,
   replaceBackslash,
   resetRegex,
@@ -1199,13 +1200,16 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     // Do not remove this as we need to set the lastIndex to 0 as it
     // is necessary to reset the regex's index when using the global flag
     // otherwise it might not match the next time it's used
+    const useExperimentalNonNestedPaths =
+      config?.experimental?.nonNestedPaths ?? false
+
     resetRegex(this.routeGroupPatternRegex)
 
     let parentRoute = hasParentRoute(
       acc.routeNodes,
       node,
       node.routePath,
-      config?.experimental?.nonNestedPaths,
+      useExperimentalNonNestedPaths,
       node.originalRoutePath,
     )
 
@@ -1235,12 +1239,15 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       lastRouteSegment.startsWith('_') ||
       split.every((part) => this.routeGroupPatternRegex.test(part))
 
+    // with new nonNestedPaths feature we can be sure any remaining trailing underscores are escaped and should remain
+    // TODO with new major we can remove check and only remove leading underscores
     node.cleanedPath = removeGroups(
-      removeUnderscores(
-        removeLayoutSegments(node.path),
-        config,
-        node._isExperimentalNonNestedPath,
-      ) ?? '',
+      (useExperimentalNonNestedPaths
+        ? removeLeadingUnderscores(
+            removeLayoutSegments(node.path ?? ''),
+            config?.routeToken ?? '',
+          )
+        : removeUnderscores(removeLayoutSegments(node.path))) ?? '',
     )
 
     if (

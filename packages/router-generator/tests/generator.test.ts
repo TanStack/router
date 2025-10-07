@@ -42,15 +42,22 @@ async function traverseDirectory(
 
 function setupConfig(
   folder: string,
+  nonNested: boolean,
   inlineConfig: Partial<Omit<Config, 'routesDirectory'>> = {},
 ) {
-  const { generatedRouteTree = '/routeTree.gen.ts', ...rest } = inlineConfig
+  const {
+    generatedRouteTree = `/routeTree.${nonNested ? 'nonnested.' : ''}gen.ts`,
+    ...rest
+  } = inlineConfig
   const dir = makeFolderDir(folder)
 
   const config = getConfig({
     disableLogging: true,
     routesDirectory: dir + '/routes',
     generatedRouteTree: dir + generatedRouteTree,
+    experimental: {
+      nonNestedPaths: nonNested,
+    },
     ...rest,
   })
   return config
@@ -62,7 +69,11 @@ async function getRouteTreeFileText(config: Config) {
   return text
 }
 
-function rewriteConfigByFolderName(folderName: string, config: Config) {
+function rewriteConfigByFolderName(
+  folderName: string,
+  config: Config,
+  nonNested: boolean,
+) {
   switch (folderName) {
     case 'append-and-prepend':
       config.routeTreeFileHeader = ['// prepend1', '// prepend2']
@@ -103,7 +114,8 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
     case 'types-disabled':
       config.disableTypes = true
       config.generatedRouteTree =
-        makeFolderDir(folderName) + '/routeTree.gen.js'
+        makeFolderDir(folderName) +
+        `/routeTree.${nonNested ? 'nonnested.' : ''}.gen.js`
       break
     case 'custom-scaffolding':
       config.customScaffolding = {
@@ -234,17 +246,77 @@ function shouldThrow(folderName: string) {
 describe('generator works', async () => {
   const folderNames = await readDir()
 
-  it.each(folderNames.map((folder) => [folder]))(
+  const testCases = folderNames.reduce(
+    (accum: Array<{ folderName: string; nonNested: boolean }>, folderName) => {
+      accum.push({
+        folderName,
+        nonNested: true,
+      })
+
+      accum.push({
+        folderName,
+        nonNested: false,
+      })
+
+      return accum
+    },
+    [],
+  )
+
+  it.each(testCases)(
     'should wire-up the routes for a "%s" tree',
-    async (folderName) => {
+    async ({ folderName, nonNested }) => {
       const folderRoot = makeFolderDir(folderName)
 
-      const config = await setupConfig(folderName)
+      const config = await setupConfig(folderName, nonNested)
 
-      rewriteConfigByFolderName(folderName, config)
+      rewriteConfigByFolderName(folderName, config, nonNested)
 
       await preprocess(folderName)
       const generator = new Generator({ config, root: folderRoot })
+      const error = shouldThrow(folderName)
+      if (error) {
+        try {
+          await generator.run()
+        } catch (e) {
+          expect(e).toBeInstanceOf(Error)
+          expect((e as Error).message.startsWith(error)).toBeTruthy()
+        }
+      } else {
+        await generator.run()
+
+        const generatedRouteTree = await getRouteTreeFileText(config)
+
+        const snapshotPath = `routeTree.${nonNested ? 'nonnested.' : ''}snapshot.${config.disableTypes ? 'js' : 'ts'}`
+
+        await expect(generatedRouteTree).toMatchFileSnapshot(
+          join('generator', folderName, snapshotPath),
+        )
+      }
+
+      await postprocess(folderName)
+    },
+  )
+
+  it.each(testCases)(
+    'should create directory for routeTree if it does not exist',
+    async ({ nonNested }) => {
+      const folderName = 'only-root'
+      const folderRoot = makeFolderDir(folderName)
+      let pathCreated = false
+
+      const config = await setupConfig(folderName, nonNested)
+
+      rewriteConfigByFolderName(folderName, config, nonNested)
+
+      await preprocess(folderName)
+      config.generatedRouteTree = join(
+        folderRoot,
+        'generated',
+        `/routeTree.${nonNested ? 'nonnested.' : ''}gen.ts`,
+      )
+      const generator = new Generator({ config, root: folderRoot })
+
       const error = shouldThrow(folderName)
       if (error) {
         try {
@@ -262,64 +334,23 @@ describe('generator works', async () => {
           join(
             'generator',
             folderName,
-            `routeTree.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
+            `routeTree.${nonNested ? 'nonnested.' : ''}generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
           ),
         )
+
+        pathCreated = await fs.access(dirname(config.generatedRouteTree)).then(
+          () => true,
+          () => false,
+        )
+
+        await expect(pathCreated).toBe(true)
       }
 
       await postprocess(folderName)
+
+      if (pathCreated) {
+        await fs.rm(dirname(config.generatedRouteTree), { recursive: true })
+      }
     },
   )
-
-  it('should create directory for routeTree if it does not exist', async () => {
-    const folderName = 'only-root'
-    const folderRoot = makeFolderDir(folderName)
-    let pathCreated = false
-
-    const config = await setupConfig(folderName)
-
-    rewriteConfigByFolderName(folderName, config)
-
-    await preprocess(folderName)
-    config.generatedRouteTree = join(
-      folderRoot,
-      'generated',
-      '/routeTree.gen.ts',
-    )
-    const generator = new Generator({ config, root: folderRoot })
-    const error = shouldThrow(folderName)
-    if (error) {
-      try {
-        await generator.run()
-      } catch (e) {
-        expect(e).toBeInstanceOf(Error)
-        expect((e as Error).message.startsWith(error)).toBeTruthy()
-      }
-    } else {
-      await generator.run()
-
-      const generatedRouteTree = await getRouteTreeFileText(config)
-
-      await expect(generatedRouteTree).toMatchFileSnapshot(
-        join(
-          'generator',
-          folderName,
-          `routeTree.generated.snapshot.${config.disableTypes ? 'js' : 'ts'}`,
-        ),
-      )
-
-      pathCreated = await fs.access(dirname(config.generatedRouteTree)).then(
-        () => true,
-        () => false,
-      )
-
-      await expect(pathCreated).toBe(true)
-    }
-
-    await postprocess(folderName)
-
-    if (pathCreated) {
-      await fs.rm(dirname(config.generatedRouteTree), { recursive: true })
-    }
-  })
 })

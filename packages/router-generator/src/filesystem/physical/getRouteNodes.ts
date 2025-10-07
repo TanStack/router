@@ -134,7 +134,7 @@ export async function getRouteNodes(
           const filePathNoExt = removeExt(filePath)
           const {
             routePath: initialRoutePath,
-            cleanedRoutePath: originalRoutePath,
+            originalRoutePath,
             isExperimentalNonNestedPath,
           } = determineInitialRoutePath(filePathNoExt, config)
           let routePath = initialRoutePath
@@ -149,11 +149,7 @@ export async function getRouteNodes(
             throw new Error(errorMessage)
           }
 
-          const meta = getRouteMeta(
-            routePath,
-            config,
-            isExperimentalNonNestedPath,
-          )
+          const meta = getRouteMeta(routePath, config)
           const variableName = meta.variableName
           let routeType: FsRouteType = meta.fsRouteType
 
@@ -232,13 +228,11 @@ export async function getRouteNodes(
  *
  * @param routePath - The determined initial routePath.
  * @param config - The user configuration object.
- * @param isExperimentalNonNestedPath - true if route for which meta is generated is a non-nested path.
  * @returns An object containing the type of the route and the variable name derived from the route path.
  */
 export function getRouteMeta(
   routePath: string,
   config: Pick<Config, 'routeToken' | 'indexToken' | 'experimental'>,
-  isExperimentalNonNestedPath?: boolean,
 ): {
   // `__root` is can be more easily determined by filtering down to routePath === /${rootPathId}
   // `pathless` is needs to determined after `lazy` has been cleaned up from the routePath
@@ -277,11 +271,7 @@ export function getRouteMeta(
     fsRouteType = 'errorComponent'
   }
 
-  const variableName = routePathToVariable(
-    routePath,
-    config as Config,
-    isExperimentalNonNestedPath,
-  )
+  const variableName = routePathToVariable(routePath)
 
   return { fsRouteType, variableName }
 }

@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   cleanPath,
   determineInitialRoutePath,
   mergeImportDeclarations,
   multiSortBy,
   removeExt,
+  removeLeadingUnderscores,
+  removeTrailingUnderscores,
   removeUnderscores,
   routePathToVariable,
 } from '../src/utils'
@@ -16,60 +18,156 @@ describe('cleanPath', () => {
   })
 })
 
-describe('determineInitialRoutePath', () => {
+describe.each([
+  { nonNested: true, mode: 'experimental nonNestedPaths' },
+  { nonNested: false, mode: 'default' },
+])('determineInitialRoutePath - $mode', ({ nonNested }) => {
+  const config = {
+    experimental: {
+      nonNestedPaths: nonNested,
+    },
+    routeToken: 'route',
+    indexToken: 'index',
+  }
+
   it('removes dots and adds slashes', () => {
-    expect(determineInitialRoutePath('test.test')).toStrictEqual({
+    expect(determineInitialRoutePath('test.test', config)).toStrictEqual({
       routePath: '/test/test',
       isExperimentalNonNestedPath: false,
-      cleanedRoutePath: '/test/test',
+      originalRoutePath: '/test/test',
     })
   })
 
   it('keeps leading slash', () => {
-    expect(determineInitialRoutePath('/test.test')).toStrictEqual({
+    expect(determineInitialRoutePath('/test.test', config)).toStrictEqual({
       routePath: '/test/test',
       isExperimentalNonNestedPath: false,
-      cleanedRoutePath: '/test/test',
+      originalRoutePath: '/test/test',
     })
   })
 
   it('keeps trailing slash', () => {
-    expect(determineInitialRoutePath('test.test/')).toStrictEqual({
+    expect(determineInitialRoutePath('test.test/', config)).toStrictEqual({
       routePath: '/test/test/',
       isExperimentalNonNestedPath: false,
-      cleanedRoutePath: '/test/test/',
+      originalRoutePath: '/test/test/',
     })
   })
 
   it('removes dots and adds slashes with leading and trailing slashes', () => {
-    expect(determineInitialRoutePath('/test.test/')).toStrictEqual({
+    expect(determineInitialRoutePath('/test.test/', config)).toStrictEqual({
       routePath: '/test/test/',
       isExperimentalNonNestedPath: false,
-      cleanedRoutePath: '/test/test/',
+      originalRoutePath: '/test/test/',
     })
   })
 
   it("returns '/' if path is empty", () => {
-    expect(determineInitialRoutePath('')).toStrictEqual({
+    expect(determineInitialRoutePath('', config)).toStrictEqual({
       routePath: '/',
       isExperimentalNonNestedPath: false,
-      cleanedRoutePath: '/',
+      originalRoutePath: '/',
     })
   })
 
   it("returns '/' if path is '.'", () => {
-    expect(determineInitialRoutePath('.')).toStrictEqual({
+    expect(determineInitialRoutePath('.', config)).toStrictEqual({
       routePath: '/',
       isExperimentalNonNestedPath: false,
-      cleanedRoutePath: '/',
+      originalRoutePath: '/',
     })
   })
 
   it("returns '/' if path is './'", () => {
-    expect(determineInitialRoutePath('./')).toStrictEqual({
+    expect(determineInitialRoutePath('./', config)).toStrictEqual({
       routePath: '/',
       isExperimentalNonNestedPath: false,
-      cleanedRoutePath: '/',
+      originalRoutePath: '/',
+    })
+  })
+
+  it('errors on disallowed escaped character', () => {
+    const consoleSpy = vi.spyOn(console, 'error')
+
+    expect(() => determineInitialRoutePath('/a[/]', config)).toThrowError()
+
+    expect(consoleSpy).toBeCalledWith(
+      'Error: Disallowed character "/" found in square brackets in route path "/a[/]".\n' +
+        'You cannot use any of the following characters in square brackets: /, \\, ?, #, :, *, <, >, |, !, $, %\n' +
+        'Please remove and/or replace them.',
+    )
+
+    consoleSpy.mockRestore()
+  })
+
+  it('escapes characters correctly', () => {
+    expect(determineInitialRoutePath('/a[.]', config)).toStrictEqual({
+      routePath: '/a.',
+      isExperimentalNonNestedPath: false,
+      originalRoutePath: '/a[.]',
+    })
+
+    expect(determineInitialRoutePath('/a[_]', config)).toStrictEqual({
+      routePath: '/a_',
+      isExperimentalNonNestedPath: false,
+      originalRoutePath: '/a[_]',
+    })
+  })
+
+  // this is changed with experimental non-nested paths.
+  // currently trailing underscores are not removed
+  // with experimental non-nested paths this is removed to allow escaped '_' to be processed correctly later
+  it('should handle trailing underscores correctly', () => {
+    expect(determineInitialRoutePath('a_', config)).toStrictEqual({
+      routePath: `/a${nonNested ? '' : '_'}`,
+      isExperimentalNonNestedPath: nonNested,
+      originalRoutePath: '/a_',
+    })
+
+    expect(determineInitialRoutePath('a_.route', config)).toStrictEqual({
+      routePath: `/a${nonNested ? '' : '_'}/route`,
+      isExperimentalNonNestedPath: nonNested,
+      originalRoutePath: '/a_/route',
+    })
+
+    expect(determineInitialRoutePath('a_.b.c', config)).toStrictEqual({
+      routePath: `/a${nonNested ? '' : '_'}/b/c`,
+      isExperimentalNonNestedPath: nonNested,
+      originalRoutePath: '/a_/b/c',
+    })
+
+    expect(determineInitialRoutePath('a.b_.c.d', config)).toStrictEqual({
+      routePath: `/a/b${nonNested ? '' : '_'}/c/d`,
+      isExperimentalNonNestedPath: nonNested,
+      originalRoutePath: '/a/b_/c/d',
+    })
+
+    expect(determineInitialRoutePath('a_.route.b', config)).toStrictEqual({
+      routePath: `/a${nonNested ? '' : '_'}/route/b`,
+      isExperimentalNonNestedPath: false,
+      originalRoutePath: '/a_/route/b',
+    })
+
+    expect(
+      determineInitialRoutePath('/a_/_route_/b_/c/d[_]', {
+        ...config,
+        routeToken: 'route',
+      }),
+    ).toStrictEqual({
+      routePath: `/a${nonNested ? '' : '_'}/_route${nonNested ? '' : '_'}/b${nonNested ? '' : '_'}/c/d_`,
+      isExperimentalNonNestedPath: nonNested,
+      originalRoutePath: '/a_/_route_/b_/c/d[_]',
+    })
+
+    expect(
+      determineInitialRoutePath('/a_/_route_/b_/c/d[_]', {
+        ...config,
+        routeToken: '_route_',
+      }),
+    ).toStrictEqual({
+      routePath: `/a${nonNested ? '' : '_'}/_route_/b${nonNested ? '' : '_'}/c/d_`,
+      isExperimentalNonNestedPath: nonNested,
+      originalRoutePath: '/a_/_route_/b_/c/d[_]',
     })
   })
 })
@@ -141,6 +239,42 @@ describe('removeUnderscores', () => {
   })
 })
 
+describe('removeLeadingUnderscores', () => {
+  it('removes leading underscore when nonnested path', () => {
+    expect(removeLeadingUnderscores('_test', 'route')).toBe('test')
+
+    expect(removeLeadingUnderscores('/_test/abc/route/_d', 'route')).toBe(
+      '/test/abc/route/d',
+    )
+
+    expect(removeLeadingUnderscores('/_test_/abc/_route_/d_/_e', 'route')).toBe(
+      '/test_/abc/route_/d_/e',
+    )
+
+    expect(
+      removeLeadingUnderscores('/_test_/abc/_route_/d_/_e', '_route_'),
+    ).toBe('/test_/abc/_route_/d_/e')
+  })
+})
+
+describe('removeTrailingUnderscores', () => {
+  it('removes leading underscore when nonnested path', () => {
+    expect(removeTrailingUnderscores('test_', 'route')).toBe('test')
+
+    expect(removeTrailingUnderscores('/_test_/abc_/route/_d', 'route')).toBe(
+      '/_test/abc/route/_d',
+    )
+
+    expect(
+      removeTrailingUnderscores('/_test_/abc/_route_/d_/_e', 'route'),
+    ).toBe('/_test/abc/_route/d/_e')
+
+    expect(
+      removeTrailingUnderscores('/_test_/abc/_route_/d_/_e', '_route_'),
+    ).toBe('/_test/abc/_route_/d/_e')
+  })
+})
+
 describe('routePathToVariable', () => {
   it.each([
     ['/test/$/index', 'TestSplatIndex'],
@@ -149,6 +283,7 @@ describe('routePathToVariable', () => {
     ['/test/index', 'TestIndex'],
     ['/test', 'Test'],
     ['/test/', 'Test'],
+    ['/r0ut3', 'R0ut3'],
   ])(`converts "%s" to "%s"`, (routePath, expected) => {
     expect(routePathToVariable(routePath)).toBe(expected)
   })
