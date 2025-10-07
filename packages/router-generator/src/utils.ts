@@ -203,9 +203,11 @@ export function removeLeadingUnderscores(s: string, routeToken: string) {
   const routeTokenToExclude =
     routeToken[0] === '_' ? routeToken.slice(1) : routeToken
 
+  const escapedRouteToken = escapeRegExp(routeTokenToExclude)
+
   const leadingUnderscoreRegex =
     routeToken[0] === '_'
-      ? new RegExp(`(?<=^|\\/)_(?!${escapeRegExp(routeTokenToExclude)})`, 'g')
+      ? new RegExp(`(?<=^|\\/)_(?!${escapedRouteToken})`, 'g')
       : new RegExp(`(?<=^|\\/)_`, 'g')
 
   return s.replaceAll(leadingUnderscoreRegex, '')
@@ -217,9 +219,11 @@ export function removeTrailingUnderscores(s: string, routeToken: string) {
   const routeTokenToExclude =
     routeToken.slice(-1) === '_' ? routeToken.slice(0, -1) : routeToken
 
+  const escapedRouteToken = escapeRegExp(routeTokenToExclude)
+
   const trailingUnderscoreRegex =
     routeToken[0] === '_'
-      ? new RegExp(`(?<!${escapeRegExp(routeTokenToExclude)})_(?=\\/|$)`, 'g')
+      ? new RegExp(`(?<!${escapedRouteToken})_(?=\\/|$)`, 'g')
       : new RegExp(`_(?=\\/)|_$`, 'g')
 
   return s.replaceAll(trailingUnderscoreRegex, '')
