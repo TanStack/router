@@ -135,7 +135,7 @@ export async function getRouteNodes(
           const {
             routePath: initialRoutePath,
             originalRoutePath,
-            isExperimentalNonNestedPath,
+            isExperimentalNonNestedRoute,
           } = determineInitialRoutePath(filePathNoExt, config)
 
           let routePath = initialRoutePath
@@ -199,7 +199,7 @@ export async function getRouteNodes(
             routePath,
             variableName,
             _fsRouteType: routeType,
-            _isExperimentalNonNestedPath: isExperimentalNonNestedPath,
+            _isExperimentalNonNestedRoute: isExperimentalNonNestedRoute,
             originalRoutePath,
           })
         }

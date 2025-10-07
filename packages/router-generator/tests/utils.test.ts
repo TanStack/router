@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   cleanPath,
   determineInitialRoutePath,
-  isValidNonNestedPath,
+  isValidNonNestedRoute,
   mergeImportDeclarations,
   multiSortBy,
   removeExt,
@@ -25,7 +25,7 @@ describe.each([
 ])('determineInitialRoutePath - $mode', ({ nonNested }) => {
   const config = {
     experimental: {
-      nonNestedPaths: nonNested,
+      nonNestedRoutes: nonNested,
     },
     routeToken: 'route',
     indexToken: 'index',
@@ -34,7 +34,7 @@ describe.each([
   it('removes dots and adds slashes', () => {
     expect(determineInitialRoutePath('test.test', config)).toStrictEqual({
       routePath: '/test/test',
-      isExperimentalNonNestedPath: false,
+      isExperimentalNonNestedRoute: false,
       originalRoutePath: '/test/test',
     })
   })
@@ -42,7 +42,7 @@ describe.each([
   it('keeps leading slash', () => {
     expect(determineInitialRoutePath('/test.test', config)).toStrictEqual({
       routePath: '/test/test',
-      isExperimentalNonNestedPath: false,
+      isExperimentalNonNestedRoute: false,
       originalRoutePath: '/test/test',
     })
   })
@@ -50,7 +50,7 @@ describe.each([
   it('keeps trailing slash', () => {
     expect(determineInitialRoutePath('test.test/', config)).toStrictEqual({
       routePath: '/test/test/',
-      isExperimentalNonNestedPath: false,
+      isExperimentalNonNestedRoute: false,
       originalRoutePath: '/test/test/',
     })
   })
@@ -58,7 +58,7 @@ describe.each([
   it('removes dots and adds slashes with leading and trailing slashes', () => {
     expect(determineInitialRoutePath('/test.test/', config)).toStrictEqual({
       routePath: '/test/test/',
-      isExperimentalNonNestedPath: false,
+      isExperimentalNonNestedRoute: false,
       originalRoutePath: '/test/test/',
     })
   })
@@ -66,7 +66,7 @@ describe.each([
   it("returns '/' if path is empty", () => {
     expect(determineInitialRoutePath('', config)).toStrictEqual({
       routePath: '/',
-      isExperimentalNonNestedPath: false,
+      isExperimentalNonNestedRoute: false,
       originalRoutePath: '/',
     })
   })
@@ -74,7 +74,7 @@ describe.each([
   it("returns '/' if path is '.'", () => {
     expect(determineInitialRoutePath('.', config)).toStrictEqual({
       routePath: '/',
-      isExperimentalNonNestedPath: false,
+      isExperimentalNonNestedRoute: false,
       originalRoutePath: '/',
     })
   })
@@ -82,7 +82,7 @@ describe.each([
   it("returns '/' if path is './'", () => {
     expect(determineInitialRoutePath('./', config)).toStrictEqual({
       routePath: '/',
-      isExperimentalNonNestedPath: false,
+      isExperimentalNonNestedRoute: false,
       originalRoutePath: '/',
     })
   })
@@ -104,13 +104,13 @@ describe.each([
   it('escapes characters correctly', () => {
     expect(determineInitialRoutePath('/a[.]', config)).toStrictEqual({
       routePath: '/a.',
-      isExperimentalNonNestedPath: false,
+      isExperimentalNonNestedRoute: false,
       originalRoutePath: '/a[.]',
     })
 
     expect(determineInitialRoutePath('/a[_]', config)).toStrictEqual({
       routePath: '/a_',
-      isExperimentalNonNestedPath: false,
+      isExperimentalNonNestedRoute: false,
       originalRoutePath: '/a[_]',
     })
   })
@@ -121,31 +121,31 @@ describe.each([
   it('should handle trailing underscores correctly', () => {
     expect(determineInitialRoutePath('a_', config)).toStrictEqual({
       routePath: `/a${nonNested ? '' : '_'}`,
-      isExperimentalNonNestedPath: nonNested,
+      isExperimentalNonNestedRoute: nonNested,
       originalRoutePath: '/a_',
     })
 
     expect(determineInitialRoutePath('a_.route', config)).toStrictEqual({
       routePath: `/a${nonNested ? '' : '_'}/route`,
-      isExperimentalNonNestedPath: nonNested,
+      isExperimentalNonNestedRoute: nonNested,
       originalRoutePath: '/a_/route',
     })
 
     expect(determineInitialRoutePath('a_.b.c', config)).toStrictEqual({
       routePath: `/a${nonNested ? '' : '_'}/b/c`,
-      isExperimentalNonNestedPath: nonNested,
+      isExperimentalNonNestedRoute: nonNested,
       originalRoutePath: '/a_/b/c',
     })
 
     expect(determineInitialRoutePath('a.b_.c.d', config)).toStrictEqual({
       routePath: `/a/b${nonNested ? '' : '_'}/c/d`,
-      isExperimentalNonNestedPath: nonNested,
+      isExperimentalNonNestedRoute: nonNested,
       originalRoutePath: '/a/b_/c/d',
     })
 
     expect(determineInitialRoutePath('a_.route.b', config)).toStrictEqual({
       routePath: `/a${nonNested ? '' : '_'}/route/b`,
-      isExperimentalNonNestedPath: false,
+      isExperimentalNonNestedRoute: false,
       originalRoutePath: '/a_/route/b',
     })
 
@@ -156,7 +156,7 @@ describe.each([
       }),
     ).toStrictEqual({
       routePath: `/a${nonNested ? '' : '_'}/_route${nonNested ? '' : '_'}/b${nonNested ? '' : '_'}/c/d_`,
-      isExperimentalNonNestedPath: nonNested,
+      isExperimentalNonNestedRoute: nonNested,
       originalRoutePath: '/a_/_route_/b_/c/d[_]',
     })
 
@@ -167,7 +167,7 @@ describe.each([
       }),
     ).toStrictEqual({
       routePath: `/a${nonNested ? '' : '_'}/_route_/b${nonNested ? '' : '_'}/c/d_`,
-      isExperimentalNonNestedPath: nonNested,
+      isExperimentalNonNestedRoute: nonNested,
       originalRoutePath: '/a_/_route_/b_/c/d[_]',
     })
   })
@@ -362,35 +362,35 @@ describe('mergeImportDeclarations', () => {
   })
 })
 
-describe('isValidNonNestedPath', () => {
+describe('isValidNonNestedRoute', () => {
   const config = {
     experimental: {
-      nonNestedPaths: true,
+      nonNestedRoutes: true,
     },
     routeToken: 'route',
     indexToken: 'index',
   }
 
-  it('should identify valid nested paths', () => {
-    expect(isValidNonNestedPath('/a_', config)).toBe(true)
-    expect(isValidNonNestedPath('/a/b_', config)).toBe(true)
-    expect(isValidNonNestedPath('/a_/route', config)).toBe(true)
-    expect(isValidNonNestedPath('/a/route/b_', config)).toBe(true)
-    expect(isValidNonNestedPath('/a_/b', config)).toBe(true)
+  it('should identify valid non-nested routes', () => {
+    expect(isValidNonNestedRoute('/a_', config)).toBe(true)
+    expect(isValidNonNestedRoute('/a/b_', config)).toBe(true)
+    expect(isValidNonNestedRoute('/a_/route', config)).toBe(true)
+    expect(isValidNonNestedRoute('/a/route/b_', config)).toBe(true)
+    expect(isValidNonNestedRoute('/a_/b', config)).toBe(true)
   })
 
-  it('should identify invalid nested paths', () => {
-    expect(isValidNonNestedPath('/a', config)).toBe(false)
-    expect(isValidNonNestedPath('/a/b', config)).toBe(false)
-    expect(isValidNonNestedPath('/a/route/false', config)).toBe(false)
-    expect(isValidNonNestedPath('/a_/route/b', config)).toBe(false)
+  it('should identify invalid non-nested routes', () => {
+    expect(isValidNonNestedRoute('/a', config)).toBe(false)
+    expect(isValidNonNestedRoute('/a/b', config)).toBe(false)
+    expect(isValidNonNestedRoute('/a/route/false', config)).toBe(false)
+    expect(isValidNonNestedRoute('/a_/route/b', config)).toBe(false)
   })
 
   it('should return false if not enabled', () => {
     expect(
-      isValidNonNestedPath('/a_', {
+      isValidNonNestedRoute('/a_', {
         ...config,
-        experimental: { nonNestedPaths: false },
+        experimental: { nonNestedRoutes: false },
       }),
     ).toBe(false)
   })

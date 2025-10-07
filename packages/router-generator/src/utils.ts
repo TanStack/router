@@ -81,7 +81,7 @@ export function determineInitialRoutePath(
 
   // check if the route path is a valid non-nested path,
   // TODO with new major rename to reflect not experimental anymore
-  const isExperimentalNonNestedPath = isValidNonNestedPath(
+  const isExperimentalNonNestedRoute = isValidNonNestedRoute(
     originalRoutePath,
     config,
   )
@@ -92,7 +92,7 @@ export function determineInitialRoutePath(
   // we need to do this now before we encounter any escaped trailing underscores
   // this way we can be sure any remaining trailing underscores should remain
   // TODO with new major we can remove check and always remove leading underscores
-  if (config?.experimental?.nonNestedPaths) {
+  if (config?.experimental?.nonNestedRoutes) {
     // we should leave trailing underscores if the route path is the root path
     if (originalRoutePath !== `/${rootPathId}`) {
       // remove trailing underscores on various path segments
@@ -138,7 +138,7 @@ export function determineInitialRoutePath(
 
   return {
     routePath: final,
-    isExperimentalNonNestedPath,
+    isExperimentalNonNestedRoute,
     originalRoutePath,
   }
 }
@@ -357,7 +357,7 @@ export function hasParentRoute(
   routes: Array<RouteNode>,
   node: RouteNode,
   routePathToCheck: string | undefined,
-  useExperimentalNonNestedPaths?: boolean,
+  useExperimentalNonNestedRoutes?: boolean,
   originalRoutePathToCheck?: string,
 ): RouteNode | null {
   const getNonNestedSegments = (routePath: string) => {
@@ -383,11 +383,11 @@ export function hasParentRoute(
     (d) => d.variableName,
   ]).filter((d) => d.routePath !== `/${rootPathId}`)
 
-  const filteredNodes = node._isExperimentalNonNestedPath
+  const filteredNodes = node._isExperimentalNonNestedRoute
     ? []
     : [...sortedNodes]
 
-  if (node._isExperimentalNonNestedPath) {
+  if (node._isExperimentalNonNestedRoute) {
     const nonNestedSegments = getNonNestedSegments(
       originalRoutePathToCheck ?? '',
     )
@@ -397,7 +397,7 @@ export function hasParentRoute(
 
       if (
         routePathToCheck.startsWith(`${route.routePath}/`) &&
-        route._isExperimentalNonNestedPath &&
+        route._isExperimentalNonNestedRoute &&
         route.routePath !== routePathToCheck
       ) {
         return route
@@ -437,7 +437,7 @@ export function hasParentRoute(
     routes,
     node,
     parentRoutePath,
-    useExperimentalNonNestedPaths,
+    useExperimentalNonNestedRoutes,
     originalRoutePathToCheck,
   )
 }
@@ -488,7 +488,7 @@ export const inferFullPath = (
   // with new nonNestedPaths feature we can be sure any remaining trailing underscores are escaped and should remain
   // TODO with new major we can remove check and only remove leading underscores
   const fullPath = removeGroups(
-    (config?.experimental?.nonNestedPaths
+    (config?.experimental?.nonNestedRoutes
       ? removeLeadingUnderscores(
           removeLayoutSegments(routeNode.routePath),
           config.routeToken,
@@ -800,11 +800,11 @@ export function getImportForRouteNode(
  * @param config The `router-generator` configuration object
  * @returns Boolean indicating if the route is a pathless layout route
  */
-export function isValidNonNestedPath(
+export function isValidNonNestedRoute(
   normalizedRoutePath: string,
   config?: Pick<Config, 'experimental' | 'routeToken' | 'indexToken'>,
 ): boolean {
-  if (!config?.experimental?.nonNestedPaths) {
+  if (!config?.experimental?.nonNestedRoutes) {
     return false
   }
 

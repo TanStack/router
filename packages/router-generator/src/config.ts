@@ -55,7 +55,7 @@ export const configSchema = baseConfigSchema.extend({
       // TODO: This has been made stable and is now "autoCodeSplitting". Remove in next major version.
       enableCodeSplitting: z.boolean().optional(),
       // TODO: This resolves issues with non-nested paths in file-based routing. To be made default in next major version.
-      nonNestedPaths: z.boolean().optional(),
+      nonNestedRoutes: z.boolean().optional(),
     })
     .optional(),
   plugins: z.array(z.custom<GeneratorPlugin>()).optional(),

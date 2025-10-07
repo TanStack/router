@@ -8,7 +8,7 @@ export default defineConfig({
     tanstackRouter({
       target: 'react',
       experimental: {
-        nonNestedPaths: process.env.MODE === 'nonnested',
+        nonNestedRoutes: process.env.MODE === 'nonnested',
       },
     }),
     react(),

@@ -14,7 +14,7 @@ export type RouteNode = {
   children?: Array<RouteNode>
   parent?: RouteNode
   createFileRouteProps?: Set<string>
-  _isExperimentalNonNestedPath?: boolean
+  _isExperimentalNonNestedRoute?: boolean
 }
 
 export interface GetRouteNodesResult {

@@ -1,4 +1,4 @@
-export const useExperimentalNonNestedPaths =
+export const useExperimentalNonNestedRoutes =
   typeof process !== 'undefined'
     ? typeof process.env.MODE !== 'undefined'
       ? process.env.MODE === 'nonnested'

@@ -1,5 +1,5 @@
 import { createFileRoute, getRouteApi, useParams } from '@tanstack/react-router'
-import { useExperimentalNonNestedPaths } from '../../tests/utils/useExperimentalNonNestedPaths'
+import { useExperimentalNonNestedRoutes } from '../../tests/utils/useExperimentalNonNestedRoutes'
 
 export const Route = createFileRoute('/posts_/$postId/edit')({
   component: PostEditPage,
@@ -7,14 +7,14 @@ export const Route = createFileRoute('/posts_/$postId/edit')({
 
 const api = getRouteApi(
   // @ts-expect-error path is updated with new Experimental Non Nested Paths to not include the trailing underscore
-  `/${useExperimentalNonNestedPaths ? 'posts' : 'posts_'}/$postId/edit`,
+  `/${useExperimentalNonNestedRoutes ? 'posts' : 'posts_'}/$postId/edit`,
 )
 
 function PostEditPage() {
   const paramsViaApi = api.useParams()
   const paramsViaHook = useParams({
     // @ts-expect-error path is updated with new Experimental Non Nested Paths to not include the trailing underscore
-    from: `/${useExperimentalNonNestedPaths ? 'posts' : 'posts_'}/$postId/edit`,
+    from: `/${useExperimentalNonNestedRoutes ? 'posts' : 'posts_'}/$postId/edit`,
   })
 
   const paramsViaRouteHook = Route.useParams()

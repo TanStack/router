@@ -56,7 +56,7 @@ function setupConfig(
     routesDirectory: dir + '/routes',
     generatedRouteTree: dir + generatedRouteTree,
     experimental: {
-      nonNestedPaths: nonNested,
+      nonNestedRoutes: nonNested,
     },
     ...rest,
   })

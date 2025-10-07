@@ -4,14 +4,14 @@ import {
   getTestServerPort,
 } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
-import { useExperimentalNonNestedPaths } from './tests/utils/useExperimentalNonNestedPaths'
+import { useExperimentalNonNestedRoutes } from './tests/utils/useExperimentalNonNestedRoutes'
 
 const PORT = await getTestServerPort(packageJson.name)
 const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
 const experimentalNonNestedPathsModeCommand = `pnpm build:nonnested && pnpm serve:nonnested --port ${PORT}`
 const defaultCommand = `pnpm build && pnpm serve --port ${PORT}`
-const command = useExperimentalNonNestedPaths
+const command = useExperimentalNonNestedRoutes
   ? experimentalNonNestedPathsModeCommand
   : defaultCommand
 
@@ -41,6 +41,7 @@ export default defineConfig({
     stdout: 'pipe',
     env: {
       MODE: process.env.MODE || '',
+      VITE_MODE: process.env.MODE || '',
       VITE_NODE_ENV: 'test',
       VITE_EXTERNAL_PORT: String(EXTERNAL_PORT),
       VITE_SERVER_PORT: String(PORT),
