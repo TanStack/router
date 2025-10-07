@@ -7,10 +7,7 @@ const config = defineConfig({
     name: packageJson.name,
     dir: './tests',
     watch: false,
-    typecheck: {
-      enabled: true,
-      exclude: ['./tests/generator/types-disabled/**/*.tsx'],
-    },
+    typecheck: { enabled: true },
   },
 })
 
