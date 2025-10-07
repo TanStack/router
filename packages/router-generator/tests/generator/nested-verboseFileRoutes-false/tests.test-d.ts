@@ -1,6 +1,7 @@
 import {
-  Link,
   createRouter,
+  Link,
+  MakeRouteMatch,
   redirect,
   useLoaderData,
   useLoaderDeps,
@@ -10,10 +11,8 @@ import {
   useRouteContext,
   useSearch,
 } from '@tanstack/react-router'
-import { expectTypeOf, test } from 'vitest'
+import { test, expectTypeOf } from 'vitest'
 import { routeTree } from './routeTree.gen'
-import type {
-  MakeRouteMatch} from '@tanstack/react-router';
 
 const defaultRouter = createRouter({
   routeTree,

@@ -133,10 +133,11 @@ export function determineInitialRoutePath(
   // matching internals of router-core, we'd perform those changes here
   // on the `escapedParts` array before it is joined back together in
   // `final`
-  const finalRoutePath = cleanPath(`/${escapedParts.join('/')}`) || ''
+
+  const final = cleanPath(`/${escapedParts.join('/')}`) || ''
 
   return {
-    routePath: finalRoutePath,
+    routePath: final,
     isExperimentalNonNestedPath,
     originalRoutePath,
   }
@@ -829,12 +830,12 @@ function isValidNonNestedPath(
   }
 
   for (const segment of segments.slice(0, -1).reverse()) {
-    if (segment.endsWith('_') && segment !== config.routeToken) {
-      return true
-    }
-
     if (segment === config.routeToken) {
       return false
+    }
+
+    if (segment.endsWith('_')) {
+      return true
     }
   }
 

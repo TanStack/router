@@ -137,6 +137,7 @@ export async function getRouteNodes(
             originalRoutePath,
             isExperimentalNonNestedPath,
           } = determineInitialRoutePath(filePathNoExt, config)
+
           let routePath = initialRoutePath
 
           if (routeFilePrefix) {
