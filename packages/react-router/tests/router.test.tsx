@@ -2856,7 +2856,7 @@ describe('rewriteBasepath utility', () => {
     const router = createRouter({
       routeTree,
       history,
-      rewrite: rewriteBasepath({ basepath: '/my-app' }),
+      basepath: '/my-app',
     })
 
     render(<RouterProvider router={router} />)
