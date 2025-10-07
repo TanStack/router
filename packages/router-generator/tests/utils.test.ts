@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   cleanPath,
   determineInitialRoutePath,
+  isValidNonNestedPath,
   mergeImportDeclarations,
   multiSortBy,
   removeExt,
@@ -358,5 +359,39 @@ describe('mergeImportDeclarations', () => {
         specifiers: [{ imported: 'A' }],
       },
     ])
+  })
+})
+
+describe('isValidNonNestedPath', () => {
+  const config = {
+    experimental: {
+      nonNestedPaths: true,
+    },
+    routeToken: 'route',
+    indexToken: 'index',
+  }
+
+  it('should identify valid nested paths', () => {
+    expect(isValidNonNestedPath('/a_', config)).toBe(true)
+    expect(isValidNonNestedPath('/a/b_', config)).toBe(true)
+    expect(isValidNonNestedPath('/a_/route', config)).toBe(true)
+    expect(isValidNonNestedPath('/a/route/b_', config)).toBe(true)
+    expect(isValidNonNestedPath('/a_/b', config)).toBe(true)
+  })
+
+  it('should identify invalid nested paths', () => {
+    expect(isValidNonNestedPath('/a', config)).toBe(false)
+    expect(isValidNonNestedPath('/a/b', config)).toBe(false)
+    expect(isValidNonNestedPath('/a/route/false', config)).toBe(false)
+    expect(isValidNonNestedPath('/a_/route/b', config)).toBe(false)
+  })
+
+  it('should return false if not enabled', () => {
+    expect(
+      isValidNonNestedPath('/a_', {
+        ...config,
+        experimental: { nonNestedPaths: false },
+      }),
+    ).toBe(false)
   })
 })

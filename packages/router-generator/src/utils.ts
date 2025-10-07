@@ -800,7 +800,7 @@ export function getImportForRouteNode(
  * @param config The `router-generator` configuration object
  * @returns Boolean indicating if the route is a pathless layout route
  */
-function isValidNonNestedPath(
+export function isValidNonNestedPath(
   normalizedRoutePath: string,
   config?: Pick<Config, 'experimental' | 'routeToken' | 'indexToken'>,
 ): boolean {
