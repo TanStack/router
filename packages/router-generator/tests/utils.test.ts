@@ -292,7 +292,7 @@ describe('routePathToVariable', () => {
 
 describe('mergeImportDeclarations', () => {
   it('merges imports with the same source but different specifiers', () => {
-    const imports: ImportDeclaration[] = [
+    const imports: Array<ImportDeclaration> = [
       { source: 'moduleA', specifiers: [{ imported: 'A' }] },
       { source: 'moduleA', specifiers: [{ imported: 'B' }] },
     ]
@@ -308,7 +308,7 @@ describe('mergeImportDeclarations', () => {
   })
 
   it('merges imports with overlapping specifiers', () => {
-    const imports: ImportDeclaration[] = [
+    const imports: Array<ImportDeclaration> = [
       { source: 'moduleA', specifiers: [{ imported: 'A' }] },
       { source: 'moduleA', specifiers: [{ imported: 'A' }, { imported: 'B' }] },
     ]
@@ -324,7 +324,7 @@ describe('mergeImportDeclarations', () => {
   })
 
   it('does not merge imports with mixed import kinds for the same source', () => {
-    const imports: ImportDeclaration[] = [
+    const imports: Array<ImportDeclaration> = [
       {
         source: 'moduleA',
         importKind: 'type',
@@ -346,7 +346,7 @@ describe('mergeImportDeclarations', () => {
   })
 
   it('removes duplicate specifiers', () => {
-    const imports: ImportDeclaration[] = [
+    const imports: Array<ImportDeclaration> = [
       { source: 'moduleA', specifiers: [{ imported: 'A' }] },
       { source: 'moduleA', specifiers: [{ imported: 'A' }] },
     ]
