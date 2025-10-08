@@ -1,4 +1,5 @@
 ---
+id: quick-start
 title: Quick Start
 ---
 
@@ -8,9 +9,13 @@ To quickly scaffold a new project with TanStack Router, you can use the `create-
 
 To create a new project, run the following command in your terminal:
 
+[//]: # 'createAppCommand'
+
 ```sh
 npx create-tsrouter-app@latest
 ```
+
+[//]: # 'createAppCommand'
 
 The CLI will guide you through a short series of prompts to customize your setup, including options for:
 
@@ -37,9 +42,13 @@ The file-based approach is the recommended option for most projects. It automati
 
 To create a new project using file-based route generation, run the following command:
 
+[//]: # 'createAppCommandFileBased'
+
 ```sh
 npx create-tsrouter-app@latest my-app --template file-router
 ```
+
+[//]: # 'createAppCommandFileBased'
 
 This command sets up a new directory called `my-app` with everything configured. Once setup completes, you can then start your development server and begin building your application:
 
@@ -52,9 +61,13 @@ npm run dev
 
 If you prefer to define routes programmatically, you can use the code-based route configuration. This approach gives you full control over routing logic while maintaining the same project scaffolding workflow.
 
+[//]: # 'createAppCommandCodeBased'
+
 ```sh
 npx create-tsrouter-app@latest my-app
 ```
+
+[//]: # 'createAppCommandCodeBased'
 
 Similar to the file-based setup, this command creates a new directory called `my-app` with TanStack Router configured for code-based routing. After setup, navigate to your project directory and start the development server:
 
