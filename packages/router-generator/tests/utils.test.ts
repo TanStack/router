@@ -255,6 +255,10 @@ describe('removeLeadingUnderscores', () => {
     expect(
       removeLeadingUnderscores('/_test_/abc/_route_/d_/_e', '_route_'),
     ).toBe('/test_/abc/_route_/d_/e')
+
+    expect(
+      removeLeadingUnderscores('/_test_/abc/_route_/d_/_e', 'route_'),
+    ).toBe('/test_/abc/route_/d_/e')
   })
 })
 
@@ -273,6 +277,10 @@ describe('removeTrailingUnderscores', () => {
     expect(
       removeTrailingUnderscores('/_test_/abc/_route_/d_/_e', '_route_'),
     ).toBe('/_test/abc/_route_/d/_e')
+
+    expect(
+      removeTrailingUnderscores('/_test_/abc/_route_/d_/_e', '_route'),
+    ).toBe('/_test/abc/_route/d/_e')
   })
 })
 

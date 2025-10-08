@@ -200,15 +200,17 @@ function escapeRegExp(s: string): string {
 export function removeLeadingUnderscores(s: string, routeToken: string) {
   if (!s) return s
 
-  const routeTokenToExclude =
-    routeToken[0] === '_' ? routeToken.slice(1) : routeToken
+  const hasLeadingUnderscore = routeToken[0] === '_'
+
+  const routeTokenToExclude = hasLeadingUnderscore
+    ? routeToken.slice(1)
+    : routeToken
 
   const escapedRouteToken = escapeRegExp(routeTokenToExclude)
 
-  const leadingUnderscoreRegex =
-    routeToken[0] === '_'
-      ? new RegExp(`(?<=^|\\/)_(?!${escapedRouteToken})`, 'g')
-      : new RegExp(`(?<=^|\\/)_`, 'g')
+  const leadingUnderscoreRegex = hasLeadingUnderscore
+    ? new RegExp(`(?<=^|\\/)_(?!${escapedRouteToken})`, 'g')
+    : new RegExp(`(?<=^|\\/)_`, 'g')
 
   return s.replaceAll(leadingUnderscoreRegex, '')
 }
@@ -216,15 +218,17 @@ export function removeLeadingUnderscores(s: string, routeToken: string) {
 export function removeTrailingUnderscores(s: string, routeToken: string) {
   if (!s) return s
 
-  const routeTokenToExclude =
-    routeToken.slice(-1) === '_' ? routeToken.slice(0, -1) : routeToken
+  const hasTrailingUnderscore = routeToken.slice(-1) === '_'
+
+  const routeTokenToExclude = hasTrailingUnderscore
+    ? routeToken.slice(0, -1)
+    : routeToken
 
   const escapedRouteToken = escapeRegExp(routeTokenToExclude)
 
-  const trailingUnderscoreRegex =
-    routeToken[0] === '_'
-      ? new RegExp(`(?<!${escapedRouteToken})_(?=\\/|$)`, 'g')
-      : new RegExp(`_(?=\\/)|_$`, 'g')
+  const trailingUnderscoreRegex = hasTrailingUnderscore
+    ? new RegExp(`(?<!${escapedRouteToken})_(?=\\/|$)`, 'g')
+    : new RegExp(`_(?=\\/)|_$`, 'g')
 
   return s.replaceAll(trailingUnderscoreRegex, '')
 }
