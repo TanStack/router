@@ -7486,6 +7486,9 @@ importers:
       '@tanstack/server-functions-plugin':
         specifier: workspace:*
         version: link:../server-functions-plugin
+      '@tanstack/start-client-core':
+        specifier: workspace:*
+        version: link:../start-client-core
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
