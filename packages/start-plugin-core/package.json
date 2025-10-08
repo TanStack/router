@@ -70,6 +70,7 @@
     "@tanstack/router-plugin": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/server-functions-plugin": "workspace:*",
+    "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
     "babel-dead-code-elimination": "^1.0.9",
     "cheerio": "^1.0.0",
