@@ -1,5 +1,6 @@
 ---
 ref: docs/router/framework/react/quick-start.md
+replace: { 'React': 'Solid' }
 ---
 
 [//]: # 'createAppCommand'
@@ -9,6 +10,14 @@ npx create-tsrouter-app@latest --framework solid
 ```
 
 [//]: # 'createAppCommand'
+[//]: # 'CLIPrompts'
+
+- File-based or code-based route configuration
+- TypeScript support
+- Toolchain setup
+- Git initialization
+
+[//]: # 'CLIPrompts'
 [//]: # 'createAppCommandFileBased'
 
 ```sh

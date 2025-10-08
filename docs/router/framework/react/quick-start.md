@@ -19,11 +19,15 @@ npx create-tsrouter-app@latest
 
 The CLI will guide you through a short series of prompts to customize your setup, including options for:
 
+[//]: # 'CLIPrompts'
+
 - File-based or code-based route configuration
 - TypeScript support
 - Tailwind CSS integration
 - Toolchain setup
 - Git initialization
+
+[//]: # 'CLIPrompts'
 
 Once complete, a new React project will be generated with TanStack Router installed and ready to use. All dependencies are automatically installed, so you can jump straight into development:
 
