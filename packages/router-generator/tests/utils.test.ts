@@ -241,7 +241,7 @@ describe('removeUnderscores', () => {
 })
 
 describe('removeLeadingUnderscores', () => {
-  it('removes leading underscore when nonnested path', () => {
+  it('removes leading underscore when not routeToken', () => {
     expect(removeLeadingUnderscores('_test', 'route')).toBe('test')
 
     expect(removeLeadingUnderscores('/_test/abc/route/_d', 'route')).toBe(
@@ -263,7 +263,7 @@ describe('removeLeadingUnderscores', () => {
 })
 
 describe('removeTrailingUnderscores', () => {
-  it('removes trailing underscore when nonnested path', () => {
+  it('removes trailing underscore when not routeToken', () => {
     expect(removeTrailingUnderscores('test_', 'route')).toBe('test')
 
     expect(removeTrailingUnderscores('/_test_/abc_/route/_d', 'route')).toBe(
