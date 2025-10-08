@@ -404,6 +404,12 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
       overflow-y: auto;
       max-height: 50%;
     `,
+    historyContainer: css`
+      display: flex;
+      flex: 1 1 auto;
+      overflow-y: auto;
+      max-height: 50%;
+    `,
     maskedBadgeContainer: css`
       flex: 1;
       justify-content: flex-end;
