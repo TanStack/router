@@ -8,18 +8,18 @@ title: TanStack Start Overview
 > **This does not mean it is bug-free or without issues, which is why we invite you to try it out and provide feedback!**
 > The road to v1 will likely be a quick one, so don't wait too long to try it out!
 
-TanStack Start is a full-stack React framework powered by TanStack Router. It provides a full-document SSR, streaming, server functions, bundling, and more. Thanks to [Vite](https://vite.dev/), it's ready to develop and deploy to any hosting provider or runtime you want!
+TanStack Start is a full‑stack framework that combines the type-safe routing of [TanStack Router](https://tanstack.com/router/latest) with the fast build and dev experience of Vite. It delivers an integrated workflow for building modern web apps features all designed for fast local development and flexible deployment to Vite‑compatible hosts and runtimes.
 
 ## Dependencies
 
-TanStack Start is built on two key technologies:
+TanStack Start is built on top of two main dependencies:
 
-- **[TanStack Router](https://tanstack.com/router)**: A type-safe router for building web applications with advanced features like nested routing, search params, and data loading
-- **[Vite](https://vite.dev/)**: A modern build tool that provides fast development with hot module replacement and optimized production builds
+- **TanStack Router** — Provides type-safe navigation, nested routes, search params, and data-loading primitives that form the foundation of Start's routing and server‑client type contract.
+- **Vite** — Supplies a fast dev server with HMR, a modern build pipeline, and a rich plugin ecosystem for optimized production builds and broad deployment targets.
 
-## Should I use TanStack Start or just TanStack Router?
+## Key features
 
-90% of any framework usually comes down to the router, and TanStack Start is no different. **TanStack Start relies 100% on TanStack Router for its routing system.** In addition to TanStack Router's amazing features, Start enables even more powerful features:
+In addition to the [features provided by TanStack Router](https://tanstack.com/router/latest/docs/framework/react/overview#key-features), you'll find that TanStack Start extends its capabilities to provide a comprehensive full-stack solution. Some of these key features include:
 
 - **Full-document SSR** - Server-side rendering for better performance and SEO
 - **Streaming** - Progressive page loading for improved user experience
@@ -30,20 +30,11 @@ TanStack Start is built on two key technologies:
 - **Universal Deployment** - Deploy to any Vite-compatible hosting provider
 - **End-to-End Type Safety** - Full TypeScript support across the entire stack
 
-That said, if you **know with certainty** that you will not need any of the above features, then you may want to consider using TanStack Router alone, which is still a powerful and type-safe SPA routing upgrade over other routers and frameworks.
+Together, these features provide a powerful foundation for building modern, type-safe applications that run seamlessly across client and server environments.
 
-## Are there limitations?
+## Next Steps
 
-The only relevant limitation is that TanStack Start does not currently support React Server Components, **but we are actively working on integration and expect to support them in the near future.**
+Now that you have an overview of TanStack Start, you can dive deeper into its features and capabilities. Here are some recommended next steps:
 
-Otherwise, TanStack Start provides the same capability as other full-stack frameworks like Next.js, Remix, etc, with even more features and a more powerful developer experience.
-
-## How is TanStack Start funded?
-
-TanStack is 100% open source, free to use, and always will be. It is built and maintained by an extremely talented and dedicated community of developers and software engineers. TanStack.com (also open source) is owned by TanStack LLC, a privately held company, 100% bootstrapped and self-funded. We are not venture-backed and have never sought investors. To support the development of TanStack Start and other TanStack libraries, TanStack.com partners with [these amazing companies](https://tanstack.com/partners?status=active&libraries=%5B%22start%22%5D) who offer both financial support and resources to help us continue to build the best possible developer experience for the web community:
-
-<iframe src="https://tanstack.com/partners-embed" style="aspect-ratio: 1/2; width: 100%;"></iframe>
-
-## Ready to get started?
-
-Go to the next page to learn how to install TanStack Start and create your first app!
+- [Getting Started Guide](../getting-started)
+- [Build an application from scratch](../build-from-scratch)

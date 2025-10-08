@@ -4,19 +4,6 @@ title: Overview
 
 TanStack Router is a **type‑safe router for React and Solid applications**. It’s designed to make routing, data loading, and navigation smart, predictable, and fully integrated with TypeScript — so you can build faster, safer, and more scalable apps.
 
-## Quick Start
-
-The easiest way to get started with TanStack Router is by using **file‑based route generation**. With Vite (and other supported bundlers), routes are automatically created from your file structure, giving you the best developer experience with minimal setup.
-
-You can quickly create a new project using the official starter template by running the command below in your console:
-
-```bash
-npx create-tsrouter-app@latest my-app --template file-router
-```
-
-- Explore more options with [create-tsrouter-app](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app).
-- Need more detail? See the [installation guide](../installation).
-
 ## Key Features
 
 - **100% inferred TypeScript support** — type safety across navigation, params, and context
@@ -29,6 +16,7 @@ npx create-tsrouter-app@latest my-app --template file-router
 Unlike framework‑bound routers, TanStack Router is **framework‑agnostic at its core**, giving you the freedom to use it standalone or as part of a larger stack. It even powers [TanStack Start](https://tanstack.com/start), our full‑stack React framework built on Router.
 
 [//]: # 'Comparison'
+
 ## Comparison
 
 Before selecting a router or framework, it’s useful to compare the available options to understand how they differ. The table below compares **TanStack Router / Start**, **React Router**, and **Next.js** across a range of features and capabilities.
