@@ -456,7 +456,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                     setCurrentTab('routes')
                   }}
                   disabled={currentTab() === 'routes'}
-                  className={cx(
+                  class={cx(
                     styles().routeMatchesToggleBtn(
                       currentTab() === 'routes',
                       true,
@@ -471,7 +471,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                     setCurrentTab('matches')
                   }}
                   disabled={currentTab() === 'matches'}
-                  className={cx(
+                  class={cx(
                     styles().routeMatchesToggleBtn(
                       currentTab() === 'matches',
                       true,
@@ -486,7 +486,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                     setCurrentTab('history')
                   }}
                   disabled={currentTab() === 'history'}
-                  className={cx(
+                  class={cx(
                     styles().routeMatchesToggleBtn(
                       currentTab() === 'history',
                       false,
@@ -525,12 +525,10 @@ export const BaseTanStackRouterDevtoolsPanel =
                           onClick={() =>
                             setActiveId(activeId() === match.id ? '' : match.id)
                           }
-                          className={cx(
-                            styles().matchRow(match === activeMatch()),
-                          )}
+                          class={cx(styles().matchRow(match === activeMatch()))}
                         >
                           <div
-                            className={cx(
+                            class={cx(
                               styles().matchIndicator(getStatusColor(match)),
                             )}
                           />
@@ -545,7 +543,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                             }
                             right={<AgeTicker match={match} router={router} />}
                           >
-                            <code className={styles().matchID}>
+                            <code class={styles().matchID}>
                               {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
                             </code>
                           </NavigateLink>
@@ -584,7 +582,7 @@ export const BaseTanStackRouterDevtoolsPanel =
                                 <AgeTicker match={match} router={router} />
                               }
                             >
-                              <code className={styles().matchID}>
+                              <code class={styles().matchID}>
                                 {`${match.routeId === rootRouteId ? rootRouteId : match.pathname}`}
                               </code>
                             </NavigateLink>
