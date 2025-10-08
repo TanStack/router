@@ -30,10 +30,6 @@
               "to": "framework/react/devtools"
             },
             {
-              "label": "Comparison",
-              "to": "framework/react/comparison"
-            },
-            {
               "label": "Migrate from React Router",
               "to": "framework/react/migrate-from-react-router"
             },

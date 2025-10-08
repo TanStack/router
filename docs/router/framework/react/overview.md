@@ -2,161 +2,132 @@
 title: Overview
 ---
 
-**TanStack Router is a router for building React and Solid applications**. Some of its features include:
+TanStack Router is a **type‑safe router for React and Solid applications**. It’s designed to make routing, data loading, and navigation smart, predictable, and fully integrated with TypeScript — so you can build faster, safer, and more scalable apps.
 
-- 100% inferred TypeScript support
-- Typesafe navigation
-- Nested Routing and layout routes (with pathless layouts)
-- Built-in Route Loaders w/ SWR Caching
-- Designed for client-side data caches (TanStack Query, SWR, etc.)
-- Automatic route prefetching
-- Asynchronous route elements and error boundaries
-- File-based Route Generation
-- Typesafe JSON-first Search Params state management APIs
-- Path and Search Parameter Schema Validation
-- Search Param Navigation APIs
-- Custom Search Param parser/serializer support
-- Search param middleware
-- Route matching/loading middleware
+## Quick Start
 
-To get started quickly, head to the next page. For a more lengthy explanation, buckle up while I bring you up to speed!
+The easiest way to get started with TanStack Router is by using **file‑based route generation**. With Vite (and other supported bundlers), routes are automatically created from your file structure, giving you the best developer experience with minimal setup.
 
-## "A Fork in the Route"
+You can quickly create a new project using the official starter template by running the command below in your console:
 
-Using a router to build applications is widely regarded as a must-have and is usually one of the first choices you’ll make in your tech stack.
+```bash
+npx create-tsrouter-app@latest my-app --template file-router
+```
 
-[//]: # 'WhyChooseTanStackRouter'
+- Explore more options with [create-tsrouter-app](https://github.com/TanStack/create-tsrouter-app/tree/main/cli/create-tsrouter-app).
+- Need more detail? See the [installation guide](../installation).
 
-**So, why should you choose TanStack Router over another router?**
+## Key Features
 
-To answer this question, we need to look at the other options in the space. There are many if you look hard enough, but in my experience, only a couple are worth exploring seriously:
+- **100% inferred TypeScript support** — type safety across navigation, params, and context
+- **Nested & layout routes** — including pathless layouts for flexible route trees
+- **File‑based or code‑based routing** — choose the style that fits your workflow
+- **Built‑in data loading & caching** — with SWR‑inspired defaults and integration with TanStack Query
+- **Smart navigation** — prefetching, async route elements, and error boundaries out of the box
+- **First‑class search params** — JSON‑safe, validated, and easy to use like state
 
-- **Next.js** - Widely regarded as the de facto framework for starting a new React project, it’s laser focused on performance, workflow, and bleeding edge technology. Its APIs and abstractions are powerful, but can sometimes come across as non-standard. Its extremely fast growth and adoption in the industry has resulted in a featured packed experience, but at the expense of feeling overwhelming and sometimes bloated.
-- **Remix / React Router** - A full-stack framework based on the historically successful React Router offers a similarly powerful developer and user experience, with APIs and vision based firmly on web standards like Request/Response and a focus on running anywhere JS can run. Many of its APIs and abstractions are wonderfully designed and were inspiration for more than a few TanStack Router APIs. That said, its rigid design, bolted-on type safety and sometimes strict over-adherence to platform APIs can leave some developers wanting more.
+Unlike framework‑bound routers, TanStack Router is **framework‑agnostic at its core**, giving you the freedom to use it standalone or as part of a larger stack. It even powers [TanStack Start](https://tanstack.com/start), our full‑stack React framework built on Router.
 
-Both of these frameworks (and their routers) are great, and I can personally attest that both are very good solutions for building React applications. My experience has also taught me that these solutions could also be much better, especially around the actual routing APIs that are available to developers to make their apps faster, easier, and more enjoyable to work with.
+[//]: # 'Comparison'
+## Comparison
 
-It's probably no surprise at this point that picking a router is so important that it is often tied 1-to-1 with your choice of framework, since most frameworks rely on a specific router.
+Before selecting a router or framework, it’s useful to compare the available options to understand how they differ. The table below compares **TanStack Router / Start**, **React Router**, and **Next.js** across a range of features and capabilities.
 
-[//]: # 'WhyChooseTanStackRouter'
+> This comparison table strives to be as accurate and as unbiased as possible. If you use any of these libraries and feel the information could be improved, feel free to suggest changes (with notes or evidence of claims) using the "Edit this page on GitHub" link at the bottom of this page.
 
-**Does this mean that TanStack Router is a framework?**
+### Legend
 
-TanStack Router itself is not a "framework" in the traditional sense, since it doesn't address a few other common full-stack concerns. However TanStack Router has been designed to be upgradable to a full-stack framework when used in conjunction with other tools that address bundling, deployments, and server-side-specific functionality. This is why we are currently developing [TanStack Start](https://tanstack.com/start), a full-stack framework that is built on top of TanStack Router and Vite.
+- ✅ First-class: built-in and ready to use with no extra setup
+- 🟡 Partial support (scale of 5)
+- 🟠 Supported via addon or community package
+- 🔶 Possible with custom code or workarounds
+- 🛑 Not officially supported
 
-For a deeper dive on the history of TanStack Router, feel free to read [TanStack Router's History](../decisions-on-dx.md#tanstack-routers-origin-story).
+|                                                | TanStack Router / Start                          | React Router DOM [_(Website)_][router]                | Next.JS [_(Website)_][nextjs]                         |
+| ---------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------- |
+| Github Repo / Stars                            | [![][stars-tanstack-router]][gh-tanstack-router] | [![][stars-router]][gh-router]                        | [![][stars-nextjs]][gh-nextjs]                        |
+| Bundle Size                                    | [![][bp-tanstack-router]][bpl-tanstack-router]   | [![][bp-router]][bpl-router]                          | ❓                                                    |
+| History, Memory & Hash Routers                 | ✅                                               | ✅                                                    | 🛑                                                    |
+| Nested / Layout Routes                         | ✅                                               | ✅                                                    | 🟡                                                    |
+| Suspense-like Route Transitions                | ✅                                               | ✅                                                    | ✅                                                    |
+| Typesafe Routes                                | ✅                                               | 🟡 (1/5)                                              | 🟡                                                    |
+| Code-based Routes                              | ✅                                               | ✅                                                    | 🛑                                                    |
+| File-based Routes                              | ✅                                               | ✅                                                    | ✅                                                    |
+| Virtual/Programmatic File-based Routes         | ✅                                               | ✅                                                    | 🛑                                                    |
+| Router Loaders                                 | ✅                                               | ✅                                                    | ✅                                                    |
+| SWR Loader Caching                             | ✅                                               | 🛑                                                    | ✅                                                    |
+| Route Prefetching                              | ✅                                               | ✅                                                    | ✅                                                    |
+| Auto Route Prefetching                         | ✅                                               | ✅                                                    | ✅                                                    |
+| Route Prefetching Delay                        | ✅                                               | 🔶                                                    | 🛑                                                    |
+| Path Params                                    | ✅                                               | ✅                                                    | ✅                                                    |
+| Typesafe Path Params                           | ✅                                               | ✅                                                    | 🛑                                                    |
+| Typesafe Route Context                         | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Path Param Validation                          | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Custom Path Param Parsing/Serialization        | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Ranked Routes                                  | ✅                                               | ✅                                                    | ✅                                                    |
+| Active Link Customization                      | ✅                                               | ✅                                                    | ✅                                                    |
+| Optimistic UI                                  | ✅                                               | ✅                                                    | 🔶                                                    |
+| Typesafe Absolute + Relative Navigation        | ✅                                               | 🟡 (1/5 via `buildHref` util)                         | 🟠 (IDE plugin)                                       |
+| Route Mount/Transition/Unmount Events          | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Devtools                                       | ✅                                               | 🟠                                                    | 🛑                                                    |
+| Basic Search Params                            | ✅                                               | ✅                                                    | ✅                                                    |
+| Search Param Hooks                             | ✅                                               | ✅                                                    | ✅                                                    |
+| `<Link/>`/`useNavigate` Search Param API       | ✅                                               | 🟡 (search-string only via the `to`/`search` options) | 🟡 (search-string only via the `to`/`search` options) |
+| JSON Search Params                             | ✅                                               | 🔶                                                    | 🔶                                                    |
+| TypeSafe Search Params                         | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Search Param Schema Validation                 | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Search Param Immutability + Structural Sharing | ✅                                               | 🔶                                                    | 🛑                                                    |
+| Custom Search Param parsing/serialization      | ✅                                               | 🔶                                                    | 🛑                                                    |
+| Search Param Middleware                        | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Suspense Route Elements                        | ✅                                               | ✅                                                    | ✅                                                    |
+| Route Error Elements                           | ✅                                               | ✅                                                    | ✅                                                    |
+| Route Pending Elements                         | ✅                                               | ✅                                                    | ✅                                                    |
+| `<Block>`/`useBlocker`                         | ✅                                               | 🔶 (no hard reloads or cross-origin navigation)       | 🛑                                                    |
+| Deferred Primitives                            | ✅                                               | ✅                                                    | ✅                                                    |
+| Navigation Scroll Restoration                  | ✅                                               | ✅                                                    | ❓                                                    |
+| ElementScroll Restoration                      | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Async Scroll Restoration                       | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Router Invalidation                            | ✅                                               | ✅                                                    | ✅                                                    |
+| Runtime Route Manipulation (Fog of War)        | 🛑                                               | ✅                                                    | ✅                                                    |
+| Parallel Routes                                | 🛑                                               | 🛑                                                    | ✅                                                    |
+| **Full Stack**                                 | --                                               | --                                                    | --                                                    |
+| SSR                                            | ✅                                               | ✅                                                    | ✅                                                    |
+| Streaming SSR                                  | ✅                                               | ✅                                                    | ✅                                                    |
+| Generic RPCs                                   | ✅                                               | 🛑                                                    | 🛑                                                    |
+| Generic RPC Middleware                         | ✅                                               | 🛑                                                    | 🛑                                                    |
+| React Server Functions                         | ✅                                               | 🛑                                                    | ✅                                                    |
+| React Server Function Middleware               | ✅                                               | 🛑                                                    | 🛑                                                    |
+| API Routes                                     | ✅                                               | ✅                                                    | ✅                                                    |
+| API Middleware                                 | ✅                                               | 🛑                                                    | ✅                                                    |
+| React Server Components                        | 🛑                                               | 🟡 (Experimental)                                     | ✅                                                    |
+| `<Form>` API                                   | 🛑                                               | ✅                                                    | ✅                                                    |
 
-## Why TanStack Router?
-
-TanStack Router delivers on the same fundamental expectations as other routers that you’ve come to expect:
-
-- Nested routes, layout routes, grouped routes
-- File-based Routing
-- Parallel data loading
-- Prefetching
-- URL Path Params
-- Error Boundaries and Handling
-- SSR
-- Route Masking
-
-And it also delivers some new features that raise the bar:
-
-- 100% inferred TypeScript support
-- Typesafe navigation
-- Built-in SWR Caching for loaders
-- Designed for client-side data caches (TanStack Query, SWR, etc.)
-- Typesafe JSON-first Search Params state management APIs
-- Path and Search Parameter Schema Validation
-- Search Parameter Navigation APIs
-- Custom Search Param parser/serializer support
-- Search param middleware
-- Inherited Route Context
-- Mixed file-based and code-based routing
-
-Let’s dive into some of the more important ones in more detail!
-
-## 100% Inferred TypeScript Support
-
-Everything these days is written “in Typescript” or at the very least offers type definitions that are veneered over runtime functionality, but too few packages in the ecosystem actually design their APIs with TypeScript in mind. So while I’m pleased that your router is auto-completing your option fields and catching a few property/method typos here and there, there is much more to be had.
-
-- TanStack Router is fully aware of all of your routes and their configuration at any given point in your code. This includes the path, path params, search params, context, and any other configuration you’ve provided. Ultimately this means that you can navigate to any route in your app with 100% type safety and confidence that your link or navigate call will succeed.
-- TanStack Router provides lossless type-inference. It uses countless generic type parameters to enforce and propagate any type information you give it throughout the rest of its API and ultimately your app. No other router offers this level of type safety and developer confidence.
-
-What does all of that mean for you?
-
-- Faster feature development with auto-completion and type hints
-- Safer and faster refactors
-- Confidence that your code will work as expected
-
-## 1st Class Search Parameters
-
-Search parameters are often an afterthought, treated like a black box of strings (or string) that you can parse and update, but not much else. Existing solutions are **not** type-safe either, adding to the caution that is required to deal with them. Even the most "modern" frameworks and routers leave it up to you to figure out how to manage this state. Sometimes they'll parse the search string into an object for you, or sometimes you're left to do it yourself with `URLSearchParams`.
-
-Let's step back and remember that **search params are the most powerful state manager in your entire application.** They are global, serializable, bookmarkable, and shareable making them the perfect place to store any kind of state that needs to survive a page refresh or a social share.
-
-To live up to that responsibility, search parameters are a first-class citizen in TanStack Router. While still based on standard URLSearchParams, TanStack Router uses a powerful parser/serializer to manage deeper and more complex data structures in your search params, all while keeping them type-safe and easy to work with.
-
-**It's like having `useState` right in the URL!**
-
-Search parameters are:
-
-- Automatically parsed and serialized as JSON
-- Validated and typed
-- Inherited from parent routes
-- Accessible in loaders, components, and hooks
-- Easily modified with the useSearch hook, Link, navigate, and router.navigate APIs
-- Customizable with a custom search filters and middleware
-- Subscribed via fine-grained search param selectors for efficient re-renders
-
-Once you start using TanStack Router's search parameters, you'll wonder how you ever lived without them.
-
-## Built-In Caching and Friendly Data Loading
-
-Data loading is a critical part of any application and while most existing routers offer some form of critical data loading APIs, they often fall short when it comes to caching and data lifecycle management. Existing solutions suffer from a few common problems:
-
-- No caching at all. Data is always fresh, but your users are left waiting for frequently accessed data to load over and over again.
-- Overly-aggressive caching. Data is cached for too long, leading to stale data and a poor user experience.
-- Blunt invalidation strategies and APIs. Data may be invalidated too often, leading to unnecessary network requests and wasted resources, or you may not have any fine-grained control over when data is invalidated at all.
-
-TanStack Router solves these problems with a two-prong approach to caching and data loading:
-
-### Built-in Cache
-
-TanStack Router provides a light-weight built-in caching layer that works seamlessly with the Router. This caching layer is loosely based on TanStack Query, but with fewer features and a much smaller API surface area. Like TanStack Query, sane but powerful defaults guarantee that your data is cached for reuse, invalidated when necessary, and garbage collected when not in use. It also provides a simple API for invalidating the cache manually when needed.
-
-### Flexible & Powerful Data Lifecycle APIs
-
-TanStack Router is designed with a flexible and powerful data loading API that more easily integrates with existing data fetching libraries like TanStack Query, SWR, Apollo, Relay, or even your own custom data fetching solution. Configurable APIs like `context`, `beforeLoad`, `loaderDeps` and `loader` work in unison to make it easy to define declarative data dependencies, prefetch data, and manage the lifecycle of an external data source with ease.
-
-## Inherited Route Context
-
-TanStack Router's router and route context is a powerful feature that allows you to define context that is specific to a route which is then inherited by all child routes. Even the router and root routes themselves can provide context. Context can be built up both synchronously and asynchronously, and can be used to share data, configuration, or even functions between routes and route configurations. This is especially useful for scenarios like:
-
-- Authentication and Authorization
-- Hybrid SSR/CSR data fetching and preloading
-- Theming
-- Singletons and global utilities
-- Curried or partial application across preloading, loading, and rendering stages
-
-Also, what would route context be if it weren't type-safe? TanStack Router's route context is fully type-safe and inferred at zero cost to you.
-
-## File-based and/or Code-Based Routing
-
-TanStack Router supports both file-based and code-based routing at the same time. This flexibility allows you to choose the approach that best fits your project's needs.
-
-TanStack Router's file-based routing approach is uniquely user-facing. Route configuration is generated for you either by the Vite plugin or TanStack Router CLI, leaving the usage of said generated code up to you! This means that you're always in total control of your routes and router, even if you use file-based routing.
+[bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router
+[bpl-tanstack-router]: https://bundlephobia.com/result?p=@tanstack/react-router
+[gh-tanstack-router]: https://github.com/tanstack/router
+[stars-tanstack-router]: https://img.shields.io/github/stars/tanstack/router?label=%F0%9F%8C%9F
+[_]: _
+[router]: https://github.com/remix-run/react-router
+[bp-router]: https://badgen.net/bundlephobia/minzip/react-router
+[gh-router]: https://github.com/remix-run/react-router
+[stars-router]: https://img.shields.io/github/stars/remix-run/react-router?label=%F0%9F%8C%9F
+[bpl-router]: https://bundlephobia.com/result?p=react-router
+[bpl-history]: https://bundlephobia.com/result?p=history
+[_]: _
+[nextjs]: https://nextjs.org/docs/routing/introduction
+[bp-nextjs]: https://badgen.net/bundlephobia/minzip/next.js?label=All
+[gh-nextjs]: https://github.com/vercel/next.js
+[stars-nextjs]: https://img.shields.io/github/stars/vercel/next.js?label=%F0%9F%8C%9F
+[bpl-nextjs]: https://bundlephobia.com/result?p=next
+[//]: # 'Comparison'
 
 ## Acknowledgements
 
-TanStack Router builds on concepts and patterns popularized by many other OSS projects, including:
+TanStack Router builds on proven concepts and patterns introduced by several outstanding open‑source projects, including:
 
 - [TRPC](https://trpc.io/)
 - [Remix](https://remix.run)
 - [Chicane](https://swan-io.github.io/chicane/)
 - [Next.js](https://nextjs.org)
 
-We acknowledge the investment, risk and research that went into their development, but are excited to push the bar they have set even higher.
-
-## Let's go!
-
-Enough overview, there's so much more to do with TanStack Router. Hit that next button and let's get started!
+We greatly appreciate the innovation, effort, and experimentation these projects haev contributed to the ecosystem, and we’re excited to build on their foundations to raise the bar even higher.

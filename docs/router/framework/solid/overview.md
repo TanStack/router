@@ -1,7 +1,8 @@
 ---
 title: Overview
 ref: docs/router/framework/react/overview.md
+replace: { 'React framework': 'framework' }
 ---
 
-[//]: # 'WhyChooseTanStackRouter'
-[//]: # 'WhyChooseTanStackRouter'
+[//]: # 'Comparison'
+[//]: # 'Comparison'
