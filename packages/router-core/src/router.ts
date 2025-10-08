@@ -1,5 +1,10 @@
 import { Store, batch } from '@tanstack/store'
-import { createBrowserHistory, parseHref } from '@tanstack/history'
+import {
+  createBrowserHistory,
+  omitInternalKeys,
+  parseHref,
+} from '@tanstack/history'
+import invariant from 'tiny-invariant'
 import {
   createControlledPromise,
   deepEqual,
@@ -1301,6 +1306,36 @@ export class RouterCore<
           return [parentSearch, {}, searchParamError]
         }
       })()
+      const [preMatchState, strictMatchState, stateError]: [
+        Record<string, any>,
+        Record<string, any>,
+        Error | undefined,
+      ] = (() => {
+        const rawState = parentMatch?.state ?? next.state
+        const parentStrictState = parentMatch?._strictState ?? {}
+        const filteredState = rawState ? omitInternalKeys(rawState) : {}
+
+        try {
+          const strictState =
+            validateState(route.options.validateState, filteredState) || {}
+          return [
+            {
+              ...filteredState,
+              ...strictState,
+            },
+            { ...parentStrictState, ...strictState },
+            undefined,
+          ]
+        } catch (err: any) {
+          const stateValidationError = err
+
+          if (opts?.throwOnError) {
+            throw stateValidationError
+          }
+
+          return [filteredState, {}, stateValidationError]
+        }
+      })()
 
       // This is where we need to call route.options.loaderDeps() to get any additional
       // deps that the route's loader function might need to run. We need to do this
@@ -1385,6 +1420,10 @@ export class RouterCore<
             ? replaceEqualDeep(previousMatch.search, preMatchSearch)
             : replaceEqualDeep(existingMatch.search, preMatchSearch),
           _strictSearch: strictMatchSearch,
+          state: previousMatch
+            ? replaceEqualDeep(previousMatch.state, preMatchState)
+            : replaceEqualDeep(existingMatch.state, preMatchState),
+          _strictState: strictMatchState,
         }
       } else {
         const status =
@@ -1411,6 +1450,11 @@ export class RouterCore<
           _strictSearch: strictMatchSearch,
           searchError: undefined,
           status,
+          state: previousMatch
+            ? replaceEqualDeep(previousMatch.state, preMatchState)
+            : preMatchState,
+          _strictState: strictMatchState,
+          stateError: undefined,
           isFetching: false,
           error: undefined,
           paramsError,
@@ -1444,6 +1488,8 @@ export class RouterCore<
 
       // update the searchError if there is one
       match.searchError = searchError
+      // update the stateError if there is one
+      match.stateError = stateError
 
       const parentContext = getParentContext(parentMatch)
 
@@ -1696,6 +1742,34 @@ export class RouterCore<
       // Replace the equal deep
       nextState = replaceEqualDeep(currentLocation.state, nextState)
 
+      if (opts._includeValidateState) {
+        const sanitizedNextState = nextState
+          ? omitInternalKeys(nextState as any)
+          : {}
+        let validatedState = {}
+        destRoutes.forEach((route) => {
+          try {
+            if (route.options.validateState) {
+              validatedState = {
+                ...validatedState,
+                ...(validateState(route.options.validateState, {
+                  ...validatedState,
+                  ...sanitizedNextState,
+                }) ?? {}),
+              }
+            }
+          } catch {
+            // ignore errors here because they are already handled in matchRoutes
+          }
+        })
+        const internalOnly = Object.fromEntries(
+          Object.entries(nextState as any).filter(
+            ([k]) => k.startsWith('__') || k === 'key',
+          ),
+        )
+        nextState = { ...internalOnly, ...validatedState }
+      }
+
       // Create the full path of the location
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
 
@@ -1893,6 +1967,7 @@ export class RouterCore<
     const location = this.buildLocation({
       ...(rest as any),
       _includeValidateSearch: true,
+      _includeValidateState: true,
     })
 
     return this.commitLocation({
@@ -2458,6 +2533,8 @@ export class RouterCore<
 
 export class SearchParamError extends Error {}
 
+export class StateParamError extends Error {}
+
 export class PathParamError extends Error {}
 
 const normalize = (str: string) =>
@@ -2498,32 +2575,44 @@ export function getInitialRouterState(
   }
 }
 
-function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
-  if (validateSearch == null) return {}
+function validateInput<TErrorClass extends Error>(
+  validator: AnyValidator,
+  input: unknown,
+  ErrorClass: new (message?: string, options?: ErrorOptions) => TErrorClass,
+): unknown {
+  if (validator == null) return {}
 
-  if ('~standard' in validateSearch) {
-    const result = validateSearch['~standard'].validate(input)
+  if ('~standard' in validator) {
+    const result = validator['~standard'].validate(input)
 
     if (result instanceof Promise)
-      throw new SearchParamError('Async validation not supported')
+      throw new ErrorClass('Async validation not supported')
 
     if (result.issues)
-      throw new SearchParamError(JSON.stringify(result.issues, undefined, 2), {
+      throw new ErrorClass(JSON.stringify(result.issues, undefined, 2), {
         cause: result,
       })
 
     return result.value
   }
 
-  if ('parse' in validateSearch) {
-    return validateSearch.parse(input)
+  if ('parse' in validator) {
+    return validator.parse(input)
   }
 
-  if (typeof validateSearch === 'function') {
-    return validateSearch(input)
+  if (typeof validator === 'function') {
+    return validator(input)
   }
 
   return {}
+}
+
+function validateState(validateState: AnyValidator, input: unknown): unknown {
+  return validateInput(validateState, input, StateParamError)
+}
+
+function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
+  return validateInput(validateSearch, input, SearchParamError)
 }
 
 export function getMatchedRoutes<TRouteLike extends RouteLike>({
