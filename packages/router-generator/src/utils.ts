@@ -53,6 +53,7 @@ export function removeTrailingSlash(s: string) {
 }
 
 const BRACKET_CONTENT_RE = /\[(.*?)\]/g
+const SPLIT_REGEX = /(?<!\[)\.(?!\])/g
 
 export function determineInitialRoutePath(
   routePath: string,
@@ -73,11 +74,10 @@ export function determineInitialRoutePath(
     '%',
   ])
 
-  const splitRegex = /(?<!\[)\.(?!\])/g
-
   const originalRoutePath =
-    cleanPath(`/${(cleanPath(routePath) || '').split(splitRegex).join('/')}`) ||
-    ''
+    cleanPath(
+      `/${(cleanPath(routePath) || '').split(SPLIT_REGEX).join('/')}`,
+    ) || ''
 
   // check if the route path is a valid non-nested path,
   // TODO with new major rename to reflect not experimental anymore
@@ -103,7 +103,7 @@ export function determineInitialRoutePath(
     }
   }
 
-  const parts = cleanedRoutePath.split(splitRegex)
+  const parts = cleanedRoutePath.split(SPLIT_REGEX)
 
   // Escape any characters that in square brackets
   // we keep the original path untouched
