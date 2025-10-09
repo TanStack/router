@@ -244,6 +244,7 @@ export type {
   ClearCacheFn,
   CreateRouterFn,
   SSROption,
+  RouterSSROptionsExtensions,
 } from './router'
 
 export * from './config'
