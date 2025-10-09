@@ -8,6 +8,7 @@ import {
   createRouter,
   notFound,
 } from '../../react-router/dist/esm'
+import type { AnyRouteMatch } from '../src'
 
 describe('hydrate', () => {
   let mockWindow: { $_TSR?: TsrSsrGlobal }
@@ -29,15 +30,15 @@ describe('hydrate', () => {
     const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
-        component: () => <div>Index</div>,
-        notFoundComponent: () => <div>Not Found</div>,
+        component: () => 'Index',
+        notFoundComponent: () => 'Not Found',
         head: mockHead,
     })
 
     const otherRoute = createRoute({
         getParentRoute: () => indexRoute,
         path: '/other',
-        component: () => <div>Other</div>,
+        component: () => 'Other',
     })
 
     const routeTree = rootRoute.addChildren([indexRoute.addChildren([otherRoute])])
@@ -63,7 +64,7 @@ describe('hydrate', () => {
       buffer: [],
       initialized: false,
       // router is missing
-    }
+    } as any
 
     await expect(hydrate(mockRouter)).rejects.toThrow(
       'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!'
@@ -158,8 +159,6 @@ describe('hydrate', () => {
     })
   })
 
-
-
   it('should hydrate matches', async () => {
     const mockMatches = [
       {
@@ -182,7 +181,7 @@ describe('hydrate', () => {
       {
         i: '/',
         l: { indexData: 'server-data' },
-        s: 'success',
+        s: 'success' as const,
         ssr: true,
         u: Date.now(),
       },
@@ -206,7 +205,7 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    const { id, loaderData, ssr, status } = mockMatches[0]
+    const { id, loaderData, ssr, status } = mockMatches[0] as AnyRouteMatch
     expect(id).toBe('/')
     expect(loaderData).toEqual({ indexData: 'server-data' })
     expect(status).toBe('success')
@@ -215,7 +214,9 @@ describe('hydrate', () => {
 
   it('should handle errors during route context hydration', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockHead.mockRejectedValue(() => { throw notFound() })
+    mockHead.mockImplementation(() => { 
+      throw notFound() 
+    })
     
     const mockMatches = [
       { id: '/', routeId: '/', index: 0, ssr: true, _nonReactive: {} },
@@ -247,7 +248,7 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    expect(consoleSpy).toHaveBeenCalledWith('Error during route context hydration:', expect.any(Function))
+    expect(consoleSpy).toHaveBeenCalledWith('Error during route context hydration:', { 'isNotFound': true })
     
     consoleSpy.mockRestore()
   })
