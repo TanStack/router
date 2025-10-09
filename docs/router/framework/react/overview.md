@@ -6,6 +6,8 @@ TanStack Router is a **type‑safe router for React and Solid applications**. It
 
 ## Key Features
 
+On top of the core features you'd expect from a modern router, TanStack Router delivers new features aimed at improving developer experience and productivity:
+
 - **100% inferred TypeScript support** — type safety across navigation, params, and context
 - **Nested & layout routes** — including pathless layouts for flexible route trees
 - **File‑based or code‑based routing** — choose the style that fits your workflow

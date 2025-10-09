@@ -62,7 +62,6 @@
               "label": "Installation",
               "to": "framework/solid/installation"
             },
-
             {
               "label": "Devtools",
               "to": "framework/solid/devtools"

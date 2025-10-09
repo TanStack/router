@@ -2,9 +2,18 @@
 title: Installation
 ---
 
-> **Quick Installation**: For step-by-step installation instructions, see our [How to Install TanStack Router](./how-to/install.md) guide.
+## Requirements
 
-You can install TanStack Router with any [NPM](https://npmjs.com) package manager.
+> [!IMPORTANT] The legacy `.render()` function is not supported. If you are using it, please upgrade to `ReactDOM.createRoot` to ensure compatibility.
+
+Before installing TanStack router, please ensure your React project meets the following requirements:
+
+- `react` v18 or later.
+- `react-dom` v18 or later.
+
+While TypeScript is optional, we recommend using it for a better development experience. If you choose to use TypeScript, please ensure you are using `typescript>=v5.3.x`. While we aim to support the last 5 minor versions of TypeScript, using the latest version will help avoid potential issues.
+
+## Installation
 
 ```sh
 npm install @tanstack/react-router
@@ -17,24 +26,6 @@ bun add @tanstack/react-router
 # or
 deno add npm:@tanstack/react-router
 ```
-
-TanStack Router is currently only compatible with React (with ReactDOM) and Solid. If you would like to contribute to the React Native, Angular, or Vue adapter, please reach out to us on [Discord](https://tlinz.com/discord).
-
-### Requirements
-
-[//]: # 'Requirements'
-
-- `react` either v18.x.x or v19.x.x
-- `react-dom`, either v18.x.x or v19.x.x
-  - Note that `ReactDOM.createRoot` is required.
-  - The legacy `.render()` function is not supported.
-
-[//]: # 'Requirements'
-
-TypeScript is _optional_, but **HIGHLY** recommended! If you are using it, please ensure you are using `typescript>=v5.3.x`.
-
-> [!IMPORTANT]
-> We aim to support the last five minor versions of TypeScript. If you are using an older version, you may run into issues. Please upgrade to the latest version of TypeScript to ensure compatibility. We may drop support for older versions of TypeScript, outside of the range mentioned above, without warning in a minor or patch release.
 
 ### LLM Assistance Support
 
