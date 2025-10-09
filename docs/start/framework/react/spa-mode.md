@@ -22,6 +22,10 @@ For applications that do not require SSR for either SEO, crawlers, or performanc
 - **Slower time to full content** - Time to full content is longer since all JS must download and execute before anything below the shell can be rendered.
 - **Less SEO friendly** - Robots, crawlers and link unfurlers _may_ have a harder time indexing your application unless they are configured to execute JS and your application can render within a reasonable amount of time.
 
+## Pure SPA
+
+SPA mode does not mean there is no frontend server; it's just a different way for the client to interact with your frontend (i.e., TanStack Start) server. If you need to do an SPA with no frontend server, then [TanStack Router](https://tanstack.com/router/latest) will be a better fit for your project.
+
 ## How does it work?
 
 After enabling the SPA mode, running a Start build will have an additional prerendering step afterwards to generate the shell. This is done by:
