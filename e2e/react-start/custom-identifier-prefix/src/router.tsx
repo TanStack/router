@@ -12,7 +12,7 @@ export function getRouter() {
     defaultNotFoundComponent: () => <NotFound />,
     ssr: {
       identifierPrefix: 'myapp',
-    }
+    },
   })
 
   return router

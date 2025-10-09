@@ -6,7 +6,7 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
-  const id = useId();
+  const id = useId()
 
   return (
     <div className="p-2">

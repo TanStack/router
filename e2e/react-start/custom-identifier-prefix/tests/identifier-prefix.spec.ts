@@ -11,5 +11,5 @@ test.use({
 test('Custom identifier prefix', async ({ page }) => {
   await page.goto('/')
 
-  await expect( page.getByTestId('tested-element')).toContainText('myapp')
+  await expect(page.getByTestId('tested-element')).toContainText('myapp')
 })

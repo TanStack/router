@@ -13,7 +13,7 @@ startTransition(() => {
       <StartClient />
     </StrictMode>,
     {
-      identifierPrefix: 'myapp'
-    }
+      identifierPrefix: 'myapp',
+    },
   )
 })
