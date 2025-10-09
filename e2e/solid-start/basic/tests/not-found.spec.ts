@@ -9,6 +9,7 @@ const combinate = (combinateImport as any).default as typeof combinateImport
 test.use({
   whitelistErrors: [
     /Failed to load resource: the server responded with a status of 404/,
+    'Error during route context hydration: {isNotFound: true}',
   ],
 })
 test.describe('not-found', () => {
@@ -24,8 +25,7 @@ test.describe('not-found', () => {
 
   test.describe('throw notFound()', () => {
     const navigationTestMatrix = combinate({
-      // TODO beforeLoad!
-      thrower: [/* 'beforeLoad',*/ 'loader'] as const,
+      thrower: ['beforeLoad', 'head', 'loader'] as const,
       preload: [false, true] as const,
     })
 
@@ -54,9 +54,7 @@ test.describe('not-found', () => {
       })
     })
     const directVisitTestMatrix = combinate({
-      // TODO beforeLoad!
-
-      thrower: [/* 'beforeLoad',*/ 'loader'] as const,
+      thrower: ['beforeLoad', 'head', 'loader'] as const,
     })
 
     directVisitTestMatrix.forEach(({ thrower }) => {
