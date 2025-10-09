@@ -70,4 +70,46 @@ hydrateRoot(
 )
 ```
 
+## Custom `useId` prefix
+
+You can customize the prefix of react's `useId` hook.
+
+```tsx
+// src/client.tsx
+import { StartClient } from '@tanstack/react-start/client'
+import { StrictMode } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import { ErrorBoundary } from './components/ErrorBoundary'
+
+hydrateRoot(
+  document,
+  <StrictMode>
+    <ErrorBoundary>
+      <StartClient />
+    </ErrorBoundary>
+  </StrictMode>,
+  {
+    identifierPrefix: 'custom-prefix', // ⚠️ These values must be the identical to prevent hydration errors!
+  },
+)
+```
+
+```tsx
+// src/router.tsx
+import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+
+export function getRouter() {
+  const router = createRouter({
+    routeTree,
+    scrollRestoration: true,
+    ssr: {
+      identifierPrefix: 'custom-prefix', // ⚠️ These values must be the identical to prevent hydration errors!
+    },
+  })
+
+  return router
+}
+```
+
 The client entry point gives you full control over how your application initializes on the client side while working seamlessly with TanStack Start's server-side rendering.
