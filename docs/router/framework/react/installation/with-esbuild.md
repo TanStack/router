@@ -1,5 +1,5 @@
 ---
-title: ESbuild
+title: Installation with ESbuild
 ---
 
 [//]: # 'BundlerConfiguration'

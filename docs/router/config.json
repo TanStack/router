@@ -47,10 +47,6 @@
               "to": "framework/solid/quick-start"
             },
             {
-              "label": "Installation",
-              "to": "framework/solid/installation"
-            },
-            {
               "label": "Devtools",
               "to": "framework/solid/devtools"
             },
@@ -111,8 +107,8 @@
           "label": "solid",
           "children": [
             {
-              "label": "Manual Installation",
-              "to": "framework/solid/installation"
+              "label": "Manual Setup",
+              "to": "framework/solid/installation/manual"
             }
           ]
         }

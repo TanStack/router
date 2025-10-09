@@ -3,6 +3,11 @@ ref: docs/router/framework/react/quick-start.md
 replace: { 'React': 'Solid' }
 ---
 
+[//]: # 'Requirements'
+
+- `solid-js`v1.x.x
+
+[//]: # 'Requirements'
 [//]: # 'createAppCommand'
 
 ```sh
