@@ -280,6 +280,29 @@ export const BaseTanStackRouterDevtoolsPanel =
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
 
     createEffect(() => {
+      const matches = routerState().matches
+      const currentMatch = matches[matches.length - 1]
+      if (!currentMatch) {
+        return
+      }
+      // Read history WITHOUT tracking it to avoid infinite loops
+      const lastMatch = untrack(() => history()[0])
+      const sameLocation =
+        lastMatch &&
+        lastMatch.pathname === currentMatch.pathname &&
+        JSON.stringify(lastMatch.search) ===
+          JSON.stringify(currentMatch.search || {})
+      if (!lastMatch || !sameLocation) {
+        setHistory((prev) => {
+          const newHistory = [currentMatch, ...prev]
+          // truncate to ensure we don't overflow too much the ui
+          newHistory.splice(15)
+          return newHistory
+        })
+      }
+    })
+
+    createEffect(() => {
       const currentPathname =
         routerState().matches[routerState().matches.length - 1]
 
