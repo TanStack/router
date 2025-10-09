@@ -388,7 +388,23 @@ const executeBeforeLoad = (
     }))
   }
 
-  const resolve = () => {
+  const resolve = async () => {
+    // Execute head during SSR
+    if (inner.router.isServer) {
+      try {
+        const headResult = executeHead(inner, matchId, route)
+        if (headResult) {
+          const head = await headResult
+          inner.updateMatch(matchId, (prev) => ({
+            ...prev,
+            ...head,
+          }))
+        }
+      } catch (err) {
+        console.error('Error executing head:', err)
+      }
+    }
+
     match._nonReactive.beforeLoadPromise?.resolve()
     match._nonReactive.beforeLoadPromise = undefined
     inner.updateMatch(matchId, (prev) => ({
@@ -399,9 +415,9 @@ const executeBeforeLoad = (
 
   // if there is no `beforeLoad` option, skip everything, batch update the store, return early
   if (!route.options.beforeLoad) {
-    batch(() => {
+    batch(async () => {
       pending()
-      resolve()
+      await resolve()
     })
     return
   }
@@ -437,11 +453,11 @@ const executeBeforeLoad = (
     ...inner.router.options.additionalContext,
   }
 
-  const updateContext = (beforeLoadContext: any) => {
+  const updateContext = async (beforeLoadContext: any) => {
     if (beforeLoadContext === undefined) {
-      batch(() => {
+      batch(async () => {
         pending()
-        resolve()
+        await resolve()
       })
       return
     }
@@ -450,7 +466,7 @@ const executeBeforeLoad = (
       handleSerialError(inner, index, beforeLoadContext, 'BEFORE_LOAD')
     }
 
-    batch(() => {
+    batch(async () => {
       pending()
       inner.updateMatch(matchId, (prev) => ({
         ...prev,
@@ -460,7 +476,7 @@ const executeBeforeLoad = (
           ...beforeLoadContext,
         },
       }))
-      resolve()
+      await resolve()
     })
   }
 
@@ -728,14 +744,6 @@ const loadRouteMatch = async (
 
   if (shouldSkipLoader(inner, matchId)) {
     if (inner.router.isServer) {
-      const headResult = executeHead(inner, matchId, route)
-      if (headResult) {
-        const head = await headResult
-        inner.updateMatch(matchId, (prev) => ({
-          ...prev,
-          ...head,
-        }))
-      }
       return inner.router.getMatch(matchId)!
     }
   } else {
