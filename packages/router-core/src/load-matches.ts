@@ -53,8 +53,17 @@ const resolvePreload = (inner: InnerLoadContext, matchId: string): boolean => {
 const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
   // Find the route that should handle the not found error
   // First check if a specific route is requested to show the error
-  const routeCursor =
+  let routeCursor =
     inner.router.routesById[err.routeId ?? ''] ?? inner.router.routeTree
+
+  // For BEFORE_LOAD errors, find a parent route with a notFoundComponent that can handle the error
+  if ((err as any).routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute) {
+    while (routeCursor.parentRoute && !routeCursor.options.notFoundComponent) {
+      routeCursor = routeCursor.parentRoute
+    }
+    // Update the error to point to the error handling route
+    err.routeId = routeCursor.id
+  }
 
   // Ensure a NotFoundComponent exists on the route
   if (
@@ -84,10 +93,6 @@ const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
     error: err,
     isFetching: false,
   }))
-
-  if ((err as any).routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute) {
-    err.routeId = routeCursor.parentRoute.id
-  }
 }
 
 const handleRedirectAndNotFound = (
