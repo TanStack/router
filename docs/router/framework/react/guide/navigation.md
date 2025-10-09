@@ -185,6 +185,11 @@ By default, all links are absolute unless a `from` route path is provided. This 
 
 Relative links can be combined with a `from` route path. If a from route path isn't provided, relative paths default to the current active location.
 
+> [!NOTE]
+> Keep in mind that when calling useNavigate as a method on the route, for example `Route.useNavigate`, then the `from` location is predefined to be the route its called on.
+> 
+> Another common pitfall is when using this in a pathless layout route, since the pathless layout route does not have an actual path, the `from` location is regarded as the parent of the pathless layout route. Hence relative routing will be resolved from this parent.
+
 ```tsx
 const postIdRoute = createRoute({
   path: '/blog/post/$postId',
