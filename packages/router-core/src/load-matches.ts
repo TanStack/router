@@ -87,7 +87,6 @@ const _handleNotFound = (inner: InnerLoadContext, err: NotFoundError) => {
 
   if ((err as any).routerCode === 'BEFORE_LOAD' && routeCursor.parentRoute) {
     err.routeId = routeCursor.parentRoute.id
-    _handleNotFound(inner, err)
   }
 }
 
