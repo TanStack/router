@@ -11,6 +11,8 @@ Before installing TanStack router, please ensure your React project meets the fo
 - `react` v18 or later.
 - `react-dom` v18 or later.
 
+[//]: # 'Requirements'
+
 While TypeScript is optional, we recommend using it for a better development experience. If you choose to use TypeScript, please ensure you are using `typescript>=v5.3.x`. While we aim to support the last 5 minor versions of TypeScript, using the latest version will help avoid potential issues.
 
 ## Installation

@@ -22,20 +22,8 @@
               "to": "framework/react/quick-start"
             },
             {
-              "label": "Installation",
-              "to": "framework/react/installation"
-            },
-            {
               "label": "Devtools",
               "to": "framework/react/devtools"
-            },
-            {
-              "label": "Migrate from React Router",
-              "to": "framework/react/migrate-from-react-router"
-            },
-            {
-              "label": "Migrate from React Location",
-              "to": "framework/react/migrate-from-react-location"
             },
             {
               "label": "Decisions on DX",
@@ -79,6 +67,58 @@
       ]
     },
     {
+      "label": "Installation Guides",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Manual Setup",
+              "to": "framework/react/installation/manual"
+            },
+            {
+              "label": "Vite",
+              "to": "framework/react/installation/with-vite"
+            },
+            {
+              "label": "Rspack/Rsbuild",
+              "to": "framework/react/installation/with-rspack"
+            },
+            {
+              "label": "Webpack",
+              "to": "framework/react/installation/with-webpack"
+            },
+            {
+              "label": "ESbuild",
+              "to": "framework/react/installation/with-esbuild"
+            },
+            {
+              "label": "Router CLI",
+              "to": "framework/react/installation/with-router-cli"
+            },
+            {
+              "label": "Migrate from React Router",
+              "to": "framework/react/installation/migrate-from-react-router"
+            },
+            {
+              "label": "Migrate from React Location",
+              "to": "framework/react/installation/migrate-from-react-location"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Manual Installation",
+              "to": "framework/solid/installation"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "label": "Routing",
       "children": [],
       "frameworks": [
@@ -108,26 +148,6 @@
             {
               "label": "Code-Based Routing",
               "to": "framework/react/routing/code-based-routing"
-            },
-            {
-              "label": "Installation with Vite",
-              "to": "framework/react/routing/installation-with-vite"
-            },
-            {
-              "label": "Installation with Rspack/Rsbuild",
-              "to": "framework/react/routing/installation-with-rspack"
-            },
-            {
-              "label": "Installation with Webpack",
-              "to": "framework/react/routing/installation-with-webpack"
-            },
-            {
-              "label": "Installation with Esbuild",
-              "to": "framework/react/routing/installation-with-esbuild"
-            },
-            {
-              "label": "Installation with the Router CLI",
-              "to": "framework/react/routing/installation-with-router-cli"
             },
             {
               "label": "File Naming Conventions",
@@ -411,25 +431,6 @@
               "to": "framework/solid/guide/ssr"
             }
           ]
-        }
-      ]
-    },
-    {
-      "label": "How-To",
-      "children": [],
-      "frameworks": [
-        {
-          "label": "react",
-          "children": [
-            {
-              "label": "Install TanStack Router",
-              "to": "framework/react/how-to/install"
-            }
-          ]
-        },
-        {
-          "label": "solid",
-          "children": []
         }
       ]
     },
