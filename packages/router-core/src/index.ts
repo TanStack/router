@@ -437,6 +437,7 @@ export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
 
 export {
   composeRewrites,
+  rewriteBasepath,
   executeRewriteInput,
   executeRewriteOutput,
 } from './rewrite'
