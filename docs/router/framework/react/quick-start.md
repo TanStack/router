@@ -116,7 +116,7 @@ cd my-app
 npm run dev
 ```
 
-#### Using Code-Based Route Configuration
+#### Code-Based Route Configuration
 
 If you prefer to define routes programmatically, you can use the code-based route configuration. This approach gives you full control over routing logic while maintaining the same project scaffolding workflow.
 
