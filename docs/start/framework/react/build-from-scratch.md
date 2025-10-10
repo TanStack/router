@@ -4,7 +4,7 @@ title: Build a Project from Scratch
 ---
 
 > [!NOTE]
-> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](../routing) guide.
+> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](../guide/routing) guide.
 
 _So you want to build a TanStack Start project from scratch?_
 

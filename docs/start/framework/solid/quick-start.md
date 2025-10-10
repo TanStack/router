@@ -30,7 +30,7 @@ npm run dev
 
 If you'd like to use a different example, you can replace `start-basic` above with the slug of the example you'd like to use from the list below.
 
-Once you've cloned the example you want, head back to the [Routing](../routing) guide to learn how to use TanStack Start!
+Once you've cloned the example you want, head back to the [Routing](../guide/routing) guide to learn how to use TanStack Start!
 
 ## Examples
 
@@ -60,4 +60,4 @@ npm install
 npm run dev
 ```
 
-Once you've clone or deployed an example, head back to the [Routing](../routing) guide to learn how to use TanStack Start!
+Once you've clone or deployed an example, head back to the [Routing](../guide/routing) guide to learn how to use TanStack Start!
