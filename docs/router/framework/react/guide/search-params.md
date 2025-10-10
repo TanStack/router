@@ -203,7 +203,27 @@ For validation libraries we recommend using adapters which infer the correct `in
 
 ### Zod
 
-An adapter is provided for [Zod](https://zod.dev/) which will pipe through the correct `input` type and `output` type
+> [!WARNING]
+> Router expects the zod 3.24.0+ package to be installed to use without an adapter.
+
+When using [Zod](https://zod.dev/) 3.24.0+ an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [Zod](https://zod.dev/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
+
+const productSearchSchema = z.object({
+  page: z.number().default(1).catch(1),
+  filter: z.string().default('').catch(''),
+  sort: z.enum(['newest', 'oldest', 'price']).default('newest').catch('newest'),
+})
+
+export const Route = createFileRoute('/shop/products/')({
+  validateSearch: productSearchSchema,
+})
+```
+
+For [Zod](https://zod.dev/) <3.24.0 an adapter is provided which will pipe through the correct `input` type and `output` type
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
