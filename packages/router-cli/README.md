@@ -2,4 +2,4 @@
 
 # TanStack Router CLI
 
-See https://tanstack.com/router/latest/docs/framework/react/routing/installation-with-router-cli
+See https://tanstack.com/router/latest/docs/framework/react/routing/installation/with-router-cli

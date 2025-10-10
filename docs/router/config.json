@@ -109,6 +109,14 @@
             {
               "label": "Manual Setup",
               "to": "framework/solid/installation/manual"
+            },
+            {
+              "label": "Installation with Vite",
+              "to": "framework/solid/routing/installation-with-vite"
+            },
+            {
+              "label": "Installation with the Router CLI",
+              "to": "framework/solid/routing/installation/with-router-cli"
             }
           ]
         }
@@ -177,14 +185,6 @@
             {
               "label": "Code-Based Routing",
               "to": "framework/solid/routing/code-based-routing"
-            },
-            {
-              "label": "Installation with Vite",
-              "to": "framework/solid/routing/installation-with-vite"
-            },
-            {
-              "label": "Installation with the Router CLI",
-              "to": "framework/solid/routing/installation-with-router-cli"
             },
             {
               "label": "File Naming Conventions",
