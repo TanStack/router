@@ -11,12 +11,11 @@ To answer this question, it's important to view the other options in the space. 
 - **Next.js** - Widely regarded as the leading framework for starting new React projects. Its design focuses on performance, development workflows, and cutting-edge technology. The framework's APIs and abstractions, while powerful, can sometimes present as non-standard. Rapid growth and industry adoption have resulted in a feature-rich experience, sometimes leading to a steeper learning curve and increased overhead.
 - **Remix / React Router** - Based on the historically successful React Router, Remix delivers a powerful developer and user experience. Its API and architectural vision are firmly rooted in web standards such as Request/Response, with an emphasis on adaptability across various JavaScript environments. Many of its APIs and abstractions are well-designed and have influenced more than a few of TanStack Router's APIs. However, its rigid design, the integration of type safety as an add-on, and sometimes strict adherence to platform APIs can present limitations for some developers.
 
-These frameworks and routers have their strengths, but they also come with trade-offs that may not align with every project's needs. TanStack Router aims to strike a balance by offering routing APIs designed to improving the developer experience without sacrificing flexibility or performance.
+These frameworks and routers have their strengths, but they also come with trade-offs that may not align with every project's needs. TanStack Router aims to strike a balance by offering routing APIs designed to improve the developer experience without sacrificing flexibility or performance.
 
 ## Is TanStack Router a framework?
 
-TanStack Router itself is not a "framework" in the traditional sense, since it doesn't address a few other common full-stack concerns. However TanStack Router has been designed to be upgradable to a full-stack framework when used in conjunction with other tools that address bundling, deployments, and server-side-specific functionality. This is why we are currently developing [TanStack Start](https://tanstack.com/start), a full-stack framework that is built on top of TanStack Router and Vite.
-
+TanStack Router itself is not a "framework" in the traditional sense, since it doesn't address a few other common full-stack concerns. However, TanStack Router has been designed to be upgradable to a full-stack framework when used in conjunction with other tools that address bundling, deployments, and server-side-specific functionality. This is why we are currently developing [TanStack Start](https://tanstack.com/start), a full-stack framework that is built on top of TanStack Router and Vite.
 For a deeper dive on the history of TanStack Router, feel free to read [TanStack Router's History](../decisions-on-dx.md#tanstack-routers-origin-story).
 
 ## Should I commit my `routeTree.gen.ts` file into git?
