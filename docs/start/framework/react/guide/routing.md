@@ -232,4 +232,4 @@ export const Route = createFileRoute('/posts/$postId')({
 
 ## This is just the "start"
 
-This has been just a high-level overview of how to configure routes using TanStack Router. For more detailed information, please refer to the [TanStack Router documentation](/router/latest/docs/framework/react/routing/file-based-routing).
+This has been just a high-level overview of how to configure routes using TanStack Router. For more detailed information, please refer to the [TanStack Router documentation](/router/latest/docs/framework/react/routing/routing-concepts).
