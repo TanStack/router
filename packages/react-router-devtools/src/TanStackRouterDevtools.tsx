@@ -5,7 +5,7 @@ import type { ButtonHTMLAttributes, HTMLAttributes } from 'react'
 import type { AnyRouter } from '@tanstack/react-router'
 import type React from 'react'
 
-interface DevtoolsOptions {
+export interface TanStackRouterDevtoolsOptions {
   /**
    * Set this true if you want the dev tools to default to being open
    */
@@ -44,7 +44,7 @@ interface DevtoolsOptions {
 }
 
 export function TanStackRouterDevtools(
-  props: DevtoolsOptions,
+  props: TanStackRouterDevtoolsOptions,
 ): React.ReactElement | null {
   const {
     initialIsOpen,
