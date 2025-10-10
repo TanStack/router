@@ -16,6 +16,7 @@ export interface HeaderLinkProps<
 > {
   title: string
   linkOptions: ValidateLinkOptions<TRouter, TOptions>
+  paramsToLink?: (id: string) => ValidateLinkOptions<TRouter, TOptions>
 }
 
 export function HeadingLink<TRouter extends RegisteredRouter, TOptions>(
@@ -31,9 +32,10 @@ export function HeadingLink<TRouter extends RegisteredRouter, TOptions>(
 
 function LinkPropsPage() {
   const linkOptionsFromSomeOtherPlace = linkOptions({
-    to: '/params/$param29',
+    to: '/params/$fixedParam/$param1/$otherParam',
     params: {
-      param29: 'value29',
+      param1: 'value29',
+      fixedParam: 'value',
     },
   })
   return (
@@ -42,21 +44,56 @@ function LinkPropsPage() {
       <HeadingLink
         title="Hello"
         linkOptions={{
-          to: '/params/$param29',
+          to: '/params/$fixedParam/$param1/$otherParam',
           params: {
-            param29: 'value29',
+            param1: 'value29',
+            fixedParam: 'a',
+            otherParam: 'value',
           },
         }}
       />
       {/* from a const from a linkOptions, works */}
       <HeadingLink title="Hello" linkOptions={linkOptionsFromSomeOtherPlace} />
-      {/* from an inline linkOptions, breaks for some reason */}
+      {/* from an inline linkOptions on a callback, breaks for some reason */}
+      {/* and without the linkOptions in the callback, type error */}
       <HeadingLink
         title="Hello"
-        linkOptions={linkOptions({
-          to: '/params/$param29',
+        linkOptions={{
+          to: '/params/$fixedParam/$param1/$otherParam',
           params: {
-            param29: 'value29',
+            fixedParam: 'value',
+            param1: 'value',
+            otherParam: 'value',
+          },
+        }}
+        paramsToLink={(id) =>
+          linkOptions({
+            to: '/params/$fixedParam/$param99/$otherParam',
+            params: {
+              param99: id,
+              fixedParam: 'value',
+              otherParam: 'value',
+            },
+          })
+        }
+      />
+      {/* and without the linkOptions in the callback, type error */}
+      <HeadingLink
+        title="Hello"
+        linkOptions={{
+          to: '/params/$fixedParam/$param1/$otherParam',
+          params: {
+            fixedParam: 'value',
+            param1: 'value',
+            otherParam: 'value',
+          },
+        }}
+        paramsToLink={(id) => ({
+          to: '/params/$fixedParam/$param99/$otherParam',
+          params: {
+            param99: id,
+            fixedParam: 'value',
+            otherParam: 'value',
           },
         })}
       />
