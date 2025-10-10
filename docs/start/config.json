@@ -30,10 +30,6 @@
               "to": "framework/react/build-from-scratch"
             },
             {
-              "label": "Tailwind CSS Integration",
-              "to": "framework/react/tailwind-integration"
-            },
-            {
               "label": "Migrate from Next.js",
               "to": "framework/react/migrate-from-next-js"
             }
@@ -57,10 +53,6 @@
             {
               "label": "Build from Scratch",
               "to": "framework/solid/build-from-scratch"
-            },
-            {
-              "label": "Tailwind CSS Integration",
-              "to": "framework/solid/tailwind-integration"
             }
           ]
         }
@@ -152,6 +144,10 @@
             {
               "label": "Path Aliases",
               "to": "framework/react/guide/path-aliases"
+            },
+            {
+              "label": "Tailwind CSS Integration",
+              "to": "framework/solid/guide/tailwind-integration"
             }
           ]
         },
@@ -237,6 +233,10 @@
             {
               "label": "Path Aliases",
               "to": "framework/solid/guide/path-aliases"
+            },
+            {
+              "label": "Tailwind CSS Integration",
+              "to": "framework/solid/guide/tailwind-integration"
             }
           ]
         }
