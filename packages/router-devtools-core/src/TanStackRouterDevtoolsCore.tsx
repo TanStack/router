@@ -160,4 +160,7 @@ class TanStackRouterDevtoolsCore {
   }
 }
 
-export { TanStackRouterDevtoolsCore }
+export {
+  type DevtoolsOptions as TanStackRouterDevtoolsCoreOptions,
+  TanStackRouterDevtoolsCore,
+}
