@@ -1804,8 +1804,12 @@ export class RouterCore<
       return isEqual
     }
 
+    const latestPublicHref =
+      this.latestLocation.publicHref ?? this.latestLocation.href
+    const nextPublicHref = next.publicHref ?? next.href
+
     const isSameUrl =
-      trimPathRight(this.latestLocation.href) === trimPathRight(next.href)
+      trimPathRight(latestPublicHref) === trimPathRight(nextPublicHref)
 
     const previousCommitPromise = this.commitLocationPromise
     this.commitLocationPromise = createControlledPromise<void>(() => {
