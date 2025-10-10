@@ -30,90 +30,6 @@
               "to": "framework/react/build-from-scratch"
             },
             {
-              "label": "Routing",
-              "to": "framework/react/routing"
-            },
-            {
-              "label": "Execution Model",
-              "to": "framework/react/execution-model"
-            },
-            {
-              "label": "Code Execution Patterns",
-              "to": "framework/react/code-execution-patterns"
-            },
-            {
-              "label": "Environment Variables",
-              "to": "framework/react/environment-variables"
-            },
-            {
-              "label": "Server Functions",
-              "to": "framework/react/server-functions"
-            },
-            {
-              "label": "Static Server Functions",
-              "to": "framework/react/static-server-functions"
-            },
-            {
-              "label": "Environment Functions",
-              "to": "framework/react/environment-functions"
-            },
-            {
-              "label": "Middleware",
-              "to": "framework/react/middleware"
-            },
-            {
-              "label": "Server Routes",
-              "to": "framework/react/server-routes"
-            },
-            {
-              "label": "Selective SSR",
-              "to": "framework/react/selective-ssr"
-            },
-            {
-              "label": "SPA Mode",
-              "to": "framework/react/spa-mode"
-            },
-            {
-              "label": "Static Prerendering",
-              "to": "framework/react/static-prerendering"
-            },
-            {
-              "label": "Server Entry Point",
-              "to": "framework/react/server-entry-point"
-            },
-            {
-              "label": "Client Entry Point",
-              "to": "framework/react/client-entry-point"
-            },
-            {
-              "label": "Hosting",
-              "to": "framework/react/hosting"
-            },
-            {
-              "label": "Authentication Overview",
-              "to": "framework/react/authentication-overview"
-            },
-            {
-              "label": "Authentication",
-              "to": "framework/react/authentication"
-            },
-            {
-              "label": "Databases",
-              "to": "framework/react/databases"
-            },
-            {
-              "label": "Observability",
-              "to": "framework/react/observability"
-            },
-            {
-              "label": "Path Aliases",
-              "to": "framework/react/path-aliases"
-            },
-            {
-              "label": "Tailwind CSS Integration",
-              "to": "framework/react/tailwind-integration"
-            },
-            {
               "label": "Migrate from Next.js",
               "to": "framework/react/migrate-from-next-js"
             }
@@ -137,90 +53,190 @@
             {
               "label": "Build from Scratch",
               "to": "framework/solid/build-from-scratch"
-            },
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Guides",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
             {
               "label": "Routing",
-              "to": "framework/solid/routing"
+              "to": "framework/react/guide/routing"
             },
             {
               "label": "Execution Model",
-              "to": "framework/solid/execution-model"
+              "to": "framework/react/guide/execution-model"
             },
             {
               "label": "Code Execution Patterns",
-              "to": "framework/solid/code-execution-patterns"
+              "to": "framework/react/guide/code-execution-patterns"
             },
             {
               "label": "Environment Variables",
-              "to": "framework/solid/environment-variables"
+              "to": "framework/react/guide/environment-variables"
             },
             {
               "label": "Server Functions",
-              "to": "framework/solid/server-functions"
+              "to": "framework/react/guide/server-functions"
             },
             {
               "label": "Static Server Functions",
-              "to": "framework/solid/static-server-functions"
+              "to": "framework/react/guide/static-server-functions"
             },
             {
               "label": "Environment Functions",
-              "to": "framework/solid/environment-functions"
+              "to": "framework/react/guide/environment-functions"
             },
             {
               "label": "Middleware",
-              "to": "framework/solid/middleware"
+              "to": "framework/react/guide/middleware"
             },
             {
               "label": "Server Routes",
-              "to": "framework/solid/server-routes"
+              "to": "framework/react/guide/server-routes"
             },
             {
               "label": "Selective SSR",
-              "to": "framework/solid/selective-ssr"
+              "to": "framework/react/guide/selective-ssr"
             },
             {
               "label": "SPA Mode",
-              "to": "framework/solid/spa-mode"
+              "to": "framework/react/guide/spa-mode"
             },
             {
               "label": "Static Prerendering",
-              "to": "framework/solid/static-prerendering"
+              "to": "framework/react/guide/static-prerendering"
             },
             {
               "label": "Server Entry Point",
-              "to": "framework/solid/server-entry-point"
+              "to": "framework/react/guide/server-entry-point"
             },
             {
               "label": "Client Entry Point",
-              "to": "framework/solid/client-entry-point"
+              "to": "framework/react/guide/client-entry-point"
             },
             {
               "label": "Hosting",
-              "to": "framework/solid/hosting"
+              "to": "framework/react/guide/hosting"
             },
             {
               "label": "Authentication Overview",
-              "to": "framework/solid/authentication-overview"
+              "to": "framework/react/guide/authentication-overview"
             },
             {
               "label": "Authentication",
-              "to": "framework/solid/authentication"
+              "to": "framework/react/guide/authentication"
             },
             {
               "label": "Databases",
-              "to": "framework/solid/databases"
+              "to": "framework/react/guide/databases"
             },
             {
               "label": "Observability",
-              "to": "framework/solid/observability"
+              "to": "framework/react/guide/observability"
             },
             {
               "label": "Path Aliases",
-              "to": "framework/solid/path-aliases"
+              "to": "framework/react/guide/path-aliases"
             },
             {
               "label": "Tailwind CSS Integration",
-              "to": "framework/solid/tailwind-integration"
+              "to": "framework/solid/guide/tailwind-integration"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Routing",
+              "to": "framework/solid/guide/routing"
+            },
+            {
+              "label": "Execution Model",
+              "to": "framework/solid/guide/execution-model"
+            },
+            {
+              "label": "Code Execution Patterns",
+              "to": "framework/solid/guide/code-execution-patterns"
+            },
+            {
+              "label": "Environment Variables",
+              "to": "framework/solid/guide/environment-variables"
+            },
+            {
+              "label": "Server Functions",
+              "to": "framework/solid/guide/server-functions"
+            },
+            {
+              "label": "Static Server Functions",
+              "to": "framework/solid/guide/static-server-functions"
+            },
+            {
+              "label": "Environment Functions",
+              "to": "framework/solid/guide/environment-functions"
+            },
+            {
+              "label": "Middleware",
+              "to": "framework/solid/guide/middleware"
+            },
+            {
+              "label": "Server Routes",
+              "to": "framework/solid/guide/server-routes"
+            },
+            {
+              "label": "Selective SSR",
+              "to": "framework/solid/guide/selective-ssr"
+            },
+            {
+              "label": "SPA Mode",
+              "to": "framework/solid/guide/spa-mode"
+            },
+            {
+              "label": "Static Prerendering",
+              "to": "framework/solid/guide/static-prerendering"
+            },
+            {
+              "label": "Server Entry Point",
+              "to": "framework/solid/guide/server-entry-point"
+            },
+            {
+              "label": "Client Entry Point",
+              "to": "framework/solid/guide/client-entry-point"
+            },
+            {
+              "label": "Hosting",
+              "to": "framework/solid/guide/hosting"
+            },
+            {
+              "label": "Authentication Overview",
+              "to": "framework/solid/guide/authentication-overview"
+            },
+            {
+              "label": "Authentication",
+              "to": "framework/solid/guide/authentication"
+            },
+            {
+              "label": "Databases",
+              "to": "framework/solid/guide/databases"
+            },
+            {
+              "label": "Observability",
+              "to": "framework/solid/guide/observability"
+            },
+            {
+              "label": "Path Aliases",
+              "to": "framework/solid/guide/path-aliases"
+            },
+            {
+              "label": "Tailwind CSS Integration",
+              "to": "framework/solid/guide/tailwind-integration"
             }
           ]
         }
@@ -281,30 +297,6 @@
             {
               "label": "Basic",
               "to": "framework/solid/examples/start-basic"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "label": "Tutorials",
-      "children": [],
-      "frameworks": [
-        {
-          "label": "react",
-          "children": [
-            {
-              "label": "Reading and Writing a File",
-              "to": "framework/react/reading-writing-file"
-            }
-          ]
-        },
-        {
-          "label": "react",
-          "children": [
-            {
-              "label": "Fetching data from external API",
-              "to": "framework/react/fetching-external-api"
             }
           ]
         }
