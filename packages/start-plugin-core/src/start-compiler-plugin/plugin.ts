@@ -76,10 +76,6 @@ export function startCompilerPlugin(
                 package: '@tanstack/start-server-core',
                 files: ['index.js', 'server-functions-handler.js'],
               }),
-              ...resolveRuntimeFiles({
-                package: `@tanstack/${framework}-start-client`,
-                files: ['index.js'],
-              }),
             ]),
           ],
         },
