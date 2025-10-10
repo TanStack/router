@@ -1,7 +1,7 @@
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 
-const length = 100
+const length = 200
 
 const main = async () => {
   const absolute = (await readFile('./src/routes/absolute.tsx')).toString()
@@ -39,10 +39,14 @@ const main = async () => {
     const replacedRelative = relative.replaceAll('/relative', `/relative${y}`)
     const replacedSearch = search.replaceAll('searchPlaceholder', `search${y}`)
     const replacedParams = params.replaceAll('paramsPlaceholder', `param${y}`)
-    await writeFile(`./src/routes/(gen)/absolute${y}.tsx`, replacedAbsolute)
-    await writeFile(`./src/routes/(gen)/relative${y}.tsx`, replacedRelative)
-    await writeFile(`./src/routes/(gen)/search/search${y}.tsx`, replacedSearch)
-    await writeFile(`./src/routes/(gen)/params/$param${y}.tsx`, replacedParams)
+    // await writeFile(`./src/routes/(gen)/absolute${y}.tsx`, replacedAbsolute)
+    // await writeFile(`./src/routes/(gen)/relative${y}.tsx`, replacedRelative)
+    // await writeFile(`./src/routes/(gen)/search/search${y}.tsx`, replacedSearch)
+    // wait writeFile(`./src/routes/(gen)/params/$param${y}.tsx`, replacedParams)
+    await writeFile(
+      `./src/routes/(gen)/params/$fixedParam.$param${y}.$otherParam.tsx`,
+      replacedParams,
+    )
   }
 }
 
