@@ -56,6 +56,16 @@ export function Transitioner() {
     const nextPublicHref = trimPathRight(nextLocation.publicHref)
 
     if (latestPublicHref !== nextPublicHref) {
+      const latestOrigin = new URL(router.latestLocation.url).origin
+      const nextOrigin = new URL(nextLocation.url).origin
+
+      if (latestOrigin !== nextOrigin) {
+        if (typeof window !== 'undefined') {
+          window.location.href = nextLocation.url
+        }
+        return
+      }
+
       router.commitLocation({ ...nextLocation, replace: true })
     }
 
