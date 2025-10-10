@@ -70,9 +70,9 @@ declare module '@tanstack/react-router' {
 
 ### Rendering the Application on the Server
 
-Now that you have a router instance that has loaded all of the critical data for the current URL, you can render your application on the server:
+Now that you have a router instance that has loaded all the critical data for the current URL, you can render your application on the server:
 
-using `defaultRenderToString`
+using `defaultRenderHandler`
 
 ```tsx
 // src/entry-server.tsx
@@ -85,7 +85,7 @@ import { createRouter } from './router'
 export async function render({ request }: { request: Request }) {
   const handler = createRequestHandler({ request, createRouter })
 
-  return await handler(defaultRenderToString)
+  return await handler(defaultRenderHandler)
 }
 ```
 
@@ -144,7 +144,7 @@ With this setup, your application will be rendered on the server and then hydrat
 
 ## Streaming SSR
 
-Streaming SSR is the most modern flavor of SSR and is the process of continuously and incrementally sending HTML markup to the client as it is rendered on the server. This is slightly different from traditional SSR in concept because beyond being able to dehydrate and rehydrate a critical first paint, markup and data with less priority or slower response times can be streamed to the client after the initial render, but in the same request.
+Streaming SSR is the most modern flavor of SSR and is the process of continuously and incrementally sending HTML markup to the client as it is rendered on the server. This is slightly different from traditional SSR in concept because beyond being able to dehydrate and rehydrate a critical first paint, markup and data with lower priority or slower response times can be streamed to the client after the initial render, but in the same request.
 
 This pattern can be useful for pages that have slow or high-latency data fetching requirements. For example, if you have a page that needs to fetch data from a third-party API, you can stream the critical initial markup and data to the client and then stream the less-critical third-party data to the client as it is resolved.
 

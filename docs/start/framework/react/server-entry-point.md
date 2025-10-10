@@ -31,7 +31,7 @@ export default {
 }
 ```
 
-Whether we are statically generating our app or serving it dynamically, the `server.ts` file is the entry point for doing all SSR-related work.
+Whether we are statically generating our app or serving it dynamically, the `server.ts` file is the entry point for doing all SSR-related work as well as for handling server routes and server function requests.
 
 ## Custom Server Handlers
 
@@ -42,18 +42,47 @@ You can create custom server handlers to modify how your application is rendered
 import {
   createStartHandler,
   defaultStreamHandler,
+  defineHandlerCallback,
 } from '@tanstack/react-start/server'
 
-// Custom handler example
-const customHandler = (request, response) => {
-  // Add custom logic here
-  return defaultStreamHandler(request, response)
-}
+const customHandler = defineHandlerCallback((ctx) => {
+  // add custom logic here
+  return defaultStreamHandler(ctx)
+})
 
 const fetch = createStartHandler(customHandler)
 
 export default {
   fetch,
+}
+```
+
+## Request context
+
+When your server needs to pass additional, typed data into request handlers (for example, authenticated user info, a database connection, or per-request flags), register a request context type via TypeScript module augmentation. The registered context is delivered as the second argument to the server `fetch` handler and is available throughout the server-side middleware chain — including global middleware, request/function middleware, server routes, server functions, and the router itself.
+
+To add types for your request context, augment the `Register` interface from `@tanstack/react-start` with a `server.requestContext` property. The runtime `context` you pass to `handler.fetch` will then match that type. Example:
+
+```tsx
+import handler from '@tanstack/react-start/server-entry'
+
+type MyRequestContext = {
+  hello: string
+  foo: number
+}
+
+declare module '@tanstack/react-start' {
+  interface Register {
+    server: {
+      requestContext: MyRequestContext
+    }
+  }
+}
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    return handler.fetch(request, { context: { hello: 'world', foo: 123 } })
+  },
 }
 ```
 

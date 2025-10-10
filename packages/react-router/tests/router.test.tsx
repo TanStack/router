@@ -19,7 +19,6 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  rewriteBasepath,
   useNavigate,
 } from '../src'
 import type { StandardSchemaValidator } from '@tanstack/router-core'
@@ -2602,7 +2601,7 @@ describe('Router rewrite functionality', () => {
   })
 })
 
-describe('rewriteBasepath utility', () => {
+describe('basepath', () => {
   it('should handle basic basepath rewriting with input', async () => {
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
@@ -2627,7 +2626,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/my-app/about'],
       }),
-      rewrite: rewriteBasepath({ basepath: 'my-app' }),
+      basepath: 'my-app',
     })
 
     render(<RouterProvider router={router} />)
@@ -2640,37 +2639,11 @@ describe('rewriteBasepath utility', () => {
     expect(router.state.location.pathname).toBe('/about')
   })
 
-  it('should handle basepath with leading and trailing slashes', async () => {
-    const rootRoute = createRootRoute({
-      component: () => <Outlet />,
-    })
-
-    const usersRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/users',
-      component: () => <div data-testid="users">Users</div>,
-    })
-
-    const routeTree = rootRoute.addChildren([usersRoute])
-
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({
-        initialEntries: ['/api/v1/users'],
-      }),
-      rewrite: rewriteBasepath({ basepath: '/api/v1/' }), // With leading and trailing slashes
-    })
-
-    render(<RouterProvider router={router} />)
-
-    await waitFor(() => {
-      expect(screen.getByTestId('users')).toBeInTheDocument()
-    })
-
-    expect(router.state.location.pathname).toBe('/users')
-  })
-
   it.each([
+    {
+      description: 'basepath with leading and trailing slashes',
+      basepath: '/api/v1/',
+    },
     {
       description: 'basepath with leading slash but without trailing slash',
       basepath: '/api/v1',
@@ -2701,7 +2674,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/api/v1/users'],
       }),
-      rewrite: rewriteBasepath({ basepath }),
+      basepath,
     })
 
     render(<RouterProvider router={router} />)
@@ -2742,7 +2715,7 @@ describe('rewriteBasepath utility', () => {
         history: createMemoryHistory({
           initialEntries: ['/my-app/'],
         }),
-        rewrite: rewriteBasepath({ basepath }),
+        basepath,
       })
 
       render(<RouterProvider router={router} />)
@@ -2791,7 +2764,7 @@ describe('rewriteBasepath utility', () => {
       const router = createRouter({
         routeTree,
         history,
-        rewrite: rewriteBasepath({ basepath }),
+        basepath,
       })
 
       render(<RouterProvider router={router} />)
@@ -2826,7 +2799,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/test'],
       }),
-      rewrite: rewriteBasepath({ basepath: '' }), // Empty basepath
+      basepath: '',
     })
 
     render(<RouterProvider router={router} />)
@@ -2920,19 +2893,16 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/my-app/legacy/api/v1'],
       }),
-      rewrite: composeRewrites([
-        rewriteBasepath({ basepath: 'my-app' }),
-        {
-          // Additional rewrite logic after basepath removal
-          input: ({ url }) => {
-            if (url.pathname === '/legacy/api/v1') {
-              url.pathname = '/api/v2'
-              return url
-            }
-            return undefined
-          },
+      basepath: 'my-app',
+      rewrite: {
+        input: ({ url }) => {
+          if (url.pathname === '/legacy/api/v1') {
+            url.pathname = '/api/v2'
+            return url
+          }
+          return undefined
         },
-      ]),
+      },
     })
 
     render(<RouterProvider router={router} />)
@@ -2942,36 +2912,6 @@ describe('rewriteBasepath utility', () => {
     // Should first remove basepath (/my-app/legacy/api/v1 -> /legacy/api/v1)
     // Then apply additional rewrite (/legacy/api/v1 -> /api/v2)
     expect(router.state.location.pathname).toBe('/api/v2')
-  })
-
-  it('should handle complex basepath with subdomain-style paths', async () => {
-    const rootRoute = createRootRoute({
-      component: () => <Outlet />,
-    })
-
-    const dashboardRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/dashboard',
-      component: () => <div data-testid="dashboard">Dashboard</div>,
-    })
-
-    const routeTree = rootRoute.addChildren([dashboardRoute])
-
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({
-        initialEntries: ['/tenant-123/dashboard'],
-      }),
-      rewrite: rewriteBasepath({ basepath: 'tenant-123' }),
-    })
-
-    render(<RouterProvider router={router} />)
-
-    await waitFor(() => {
-      expect(screen.getByTestId('dashboard')).toBeInTheDocument()
-    })
-
-    expect(router.state.location.pathname).toBe('/dashboard')
   })
 
   it('should preserve search params and hash when rewriting basepath', async () => {
@@ -2992,7 +2932,7 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/app/search?q=test&filter=all#results'],
       }),
-      rewrite: rewriteBasepath({ basepath: 'app' }),
+      basepath: 'app',
     })
 
     render(<RouterProvider router={router} />)
@@ -3027,8 +2967,8 @@ describe('rewriteBasepath utility', () => {
       history: createMemoryHistory({
         initialEntries: ['/base/legacy/old/path'],
       }),
+      basepath: 'base',
       rewrite: composeRewrites([
-        rewriteBasepath({ basepath: 'base' }),
         {
           input: ({ url }) => {
             // First layer: convert legacy paths
@@ -3112,7 +3052,7 @@ describe('rewriteBasepath utility', () => {
     const router = createRouter({
       routeTree,
       history,
-      rewrite: rewriteBasepath({ basepath: 'my-app' }),
+      basepath: 'my-app',
     })
 
     render(<RouterProvider router={router} />)

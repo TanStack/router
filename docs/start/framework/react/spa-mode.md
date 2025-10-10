@@ -42,7 +42,7 @@ To configure SPA mode, there are a few options you can add to your Start plugin'
 // vite.config.ts
 export default defineConfig({
   plugins: [
-    TanStackStart({
+    tanstackStart({
       spa: {
         enabled: true,
       },
@@ -121,7 +121,7 @@ You can always override these options by providing your own prerender options:
 // vite.config.ts
 export default defineConfig({
   plugins: [
-    TanStackStart({
+    tanstackStart({
       spa: {
         prerender: {
           outputPath: '/custom-shell',

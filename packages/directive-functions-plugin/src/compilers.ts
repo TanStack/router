@@ -5,6 +5,7 @@ import {
   deadCodeElimination,
   findReferencedIdentifiers,
 } from 'babel-dead-code-elimination'
+import path from 'pathe'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 
@@ -22,6 +23,11 @@ export type SupportedFunctionPath =
   | babel.NodePath<babel.types.FunctionExpression>
   | babel.NodePath<babel.types.ArrowFunctionExpression>
 
+export type GenerateFunctionIdFn = (opts: {
+  filename: string
+  functionName: string
+}) => string
+
 export type ReplacerFn = (opts: {
   fn: string
   extractedFilename: string
@@ -38,6 +44,7 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   getRuntimeCode?: (opts: {
     directiveFnsById: Record<string, DirectiveFn>
   }) => string
+  generateFunctionId: GenerateFunctionIdFn
   replacer: ReplacerFn
   // devSplitImporter: string
   filename: string
@@ -198,14 +205,6 @@ function findNearestVariableName(
   return nameParts.length > 0 ? nameParts.join('_') : 'anonymous'
 }
 
-function makeFileLocationUrlSafe(location: string): string {
-  return location
-    .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace unsafe chars with underscore
-    .replace(/_{2,}/g, '_') // Collapse multiple underscores
-    .replace(/^_|_$/g, '') // Trim leading/trailing underscores
-    .replace(/_--/g, '--') // Clean up the joiner
-}
-
 function makeIdentifierSafe(identifier: string): string {
   return identifier
     .replace(/[^a-zA-Z0-9_$]/g, '_') // Replace unsafe chars with underscore
@@ -221,6 +220,7 @@ export function findDirectives(
     directive: string
     directiveLabel: string
     replacer?: ReplacerFn
+    generateFunctionId: GenerateFunctionIdFn
     directiveSplitParam: string
     filename: string
     root: string
@@ -460,16 +460,22 @@ export function findDirectives(
       `body.${topParentIndex}.declarations.0.init`,
     ) as SupportedFunctionPath
 
-    const [baseFilename, ..._searchParams] = opts.filename.split('?')
+    const [baseFilename, ..._searchParams] = opts.filename.split('?') as [
+      string,
+      ...Array<string>,
+    ]
     const searchParams = new URLSearchParams(_searchParams.join('&'))
     searchParams.set(opts.directiveSplitParam, '')
 
     const extractedFilename = `${baseFilename}?${searchParams.toString()}`
 
-    const functionId = makeFileLocationUrlSafe(
-      `${baseFilename}--${functionName}`.replace(opts.root, ''),
-    )
-
+    // Relative to have constant functionId regardless of the machine
+    // that we are executing
+    const relativeFilename = path.relative(opts.root, baseFilename)
+    const functionId = opts.generateFunctionId({
+      filename: relativeFilename,
+      functionName: functionName,
+    })
     // If a replacer is provided, replace the function with the replacer
     if (opts.replacer) {
       const replacer = opts.replacer({

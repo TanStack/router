@@ -13,8 +13,6 @@ export default defineConfig({
     }),
     tanstackStart({
       srcDirectory: 'src',
-      start: { entry: './start.tsx' },
-      server: { entry: './server.ts' },
     }),
     viteReact(),
   ],

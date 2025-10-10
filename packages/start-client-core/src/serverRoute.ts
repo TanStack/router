@@ -172,7 +172,6 @@ export interface RouteServerOptions<
         any
       >)
   >
-  test?: (test: Expand<ExtractHandlersContext<THandlers>>) => void
 }
 
 declare const createHandlersSymbol: unique symbol

@@ -11,23 +11,21 @@ const getServerMessage = createServerFn()
 
 export const Route = createFileRoute('/')({
   component: Home,
-  loader: () => {
+  loader: async () => {
     return {
-      localeFromLoader: getLocale(),
       messageFromLoader: m.example_message({ username: 'John Doe' }),
-      serverFunctionMessage: getServerMessage({ data: '📩' }),
+      serverFunctionMessage: await getServerMessage({ data: '📩' }),
     }
   },
 })
 
 function Home() {
-  const { serverFunctionMessage, messageFromLoader, localeFromLoader } =
-    Route.useLoaderData()
+  const { serverFunctionMessage, messageFromLoader } = Route.useLoaderData()
   return (
     <div className="p-2">
       <h2>Message from loader: {messageFromLoader}</h2>
       <h2>Server function message: {serverFunctionMessage}:</h2>
-      <h3>{m.example_message({ username: 'John Doe' })}</h3>
+      <h2>{m.example_message({ username: 'John Doe' })}</h2>
     </div>
   )
 }

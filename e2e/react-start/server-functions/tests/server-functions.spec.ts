@@ -6,6 +6,20 @@ import type { Page } from '@playwright/test'
 
 const PORT = await getTestServerPort(packageJson.name)
 
+test('Server function URLs correctly include constant ids', async ({
+  page,
+}) => {
+  for (const currentPage of ['/submit-post-formdata', '/formdata-redirect']) {
+    await page.goto(currentPage)
+    await page.waitForLoadState('networkidle')
+
+    const form = page.locator('form')
+    const actionUrl = await form.getAttribute('action')
+
+    expect(actionUrl).toMatch(/^\/_serverFn\/constant_id/)
+  }
+})
+
 test('invoking a server function with custom response status code', async ({
   page,
 }) => {
@@ -367,6 +381,32 @@ test.describe('middleware', () => {
       await page.getByTestId('client-middleware-router-link').click()
       await runTest(page)
     })
+  })
+
+  test('server function in combination with request middleware', async ({
+    page,
+  }) => {
+    await page.goto('/middleware/request-middleware')
+
+    await page.waitForLoadState('networkidle')
+
+    async function checkEqual(prefix: string) {
+      const requestParam = await page
+        .getByTestId(`${prefix}-data-request-param`)
+        .textContent()
+      expect(requestParam).not.toBe('')
+      const requestFunc = await page
+        .getByTestId(`${prefix}-data-request-func`)
+        .textContent()
+      expect(requestParam).toBe(requestFunc)
+    }
+
+    await checkEqual('loader')
+
+    await page.getByTestId('client-call-button').click()
+    await page.waitForLoadState('networkidle')
+
+    await checkEqual('client')
   })
 })
 

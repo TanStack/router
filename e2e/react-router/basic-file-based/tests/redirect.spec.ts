@@ -64,6 +64,9 @@ test.describe('redirects', () => {
         const url = `http://localhost:${PORT}/posts`
 
         await page.waitForURL(url)
+        if (reloadDocument) {
+          await page.waitForLoadState('domcontentloaded')
+        }
         expect(page.url()).toBe(url)
         await expect(page.getByTestId('PostsIndexComponent')).toBeInViewport()
         expect(fullPageLoad).toBe(reloadDocument)

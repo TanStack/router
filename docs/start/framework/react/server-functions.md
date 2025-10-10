@@ -204,9 +204,13 @@ Access request headers, cookies, and response customization:
 - `setResponseHeader()` - Set custom response headers
 - `setResponseStatus()` - Custom status codes
 
-### Streaming & Raw Responses
+### Streaming
 
-Return `Response` objects for streaming, binary data, or custom content types.
+Stream typed data from server functions to the client. See the [Streaming Data from Server Functions guide](../streaming-data-from-server-functions).
+
+### Raw Responses
+
+Return `Response` objects binary data, or custom content types.
 
 ### Progressive Enhancement
 
@@ -223,6 +227,54 @@ Cache server function results at build time for static generation. See [Static S
 ### Request Cancellation
 
 Handle request cancellation with `AbortSignal` for long-running operations.
+
+### Function ID generation
+
+Server functions are addressed by a generated, stable function ID under the hood. These IDs are embedded into the client/SSR builds and used by the server to locate and import the correct module at runtime.
+
+Defaults:
+
+- In development, IDs are URL-safe strings derived from `${filename}--${functionName}` to aid debugging.
+- In production, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
+- If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
+- IDs are stable for a given file/function tuple for the lifetime of the process (hot updates keep the same mapping).
+
+Customization:
+
+You can customize function ID generation by providing a `generateFunctionId` function when configuring the TanStack Start Vite plugin.
+
+Please note that this customization is **experimental** und subject to change.
+
+Example:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+
+export default defineConfig({
+  plugins: [
+    tanstackStart({
+      serverFns: {
+        generateFunctionId: ({ filename, functionName }) => {
+          // Return a custom ID string. If you return undefined, the default is used.
+          // For example, always hash (even in dev):
+          // return createHash('sha256').update(`${filename}--${functionName}`).digest('hex')
+          return undefined
+        },
+      },
+    }),
+    react(),
+  ],
+})
+```
+
+Tips:
+
+- Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
+- If you don’t want file paths in dev IDs, return a hash in all environments.
+- Ensure the returned ID is **URL-safe**.
 
 ---
 

@@ -41,9 +41,7 @@ test('Server function URLs correctly include app basepath', async ({
   const form = page.locator('form')
   const actionUrl = await form.getAttribute('action')
 
-  expect(actionUrl).toBe(
-    '/custom/basepath/_serverFn/src_routes_logout_tsx--logoutFn_createServerFn_handler',
-  )
+  expect(actionUrl).toMatch(/^\/custom\/basepath\/_serverFn\//)
 })
 
 test('client-side redirect', async ({ page, baseURL }) => {

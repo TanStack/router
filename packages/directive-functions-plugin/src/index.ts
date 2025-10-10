@@ -2,7 +2,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { logDiff } from '@tanstack/router-utils'
 import { compileDirectives } from './compilers'
-import type { CompileDirectivesOpts, DirectiveFn } from './compilers'
+import type {
+  CompileDirectivesOpts,
+  DirectiveFn,
+  GenerateFunctionIdFn,
+} from './compilers'
 import type { Plugin } from 'vite'
 
 const debug =
@@ -13,6 +17,7 @@ export type {
   DirectiveFn,
   CompileDirectivesOpts,
   ReplacerFn,
+  GenerateFunctionIdFn,
 } from './compilers'
 
 export type DirectiveFunctionsViteEnvOptions = Pick<
@@ -28,6 +33,7 @@ export type DirectiveFunctionsViteOptions = Pick<
 > &
   DirectiveFunctionsViteEnvOptions & {
     onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
+    generateFunctionId: GenerateFunctionIdFn
   }
 
 const createDirectiveRx = (directive: string) =>
@@ -61,6 +67,7 @@ export type DirectiveFunctionsVitePluginEnvOptions = Pick<
     server: DirectiveFunctionsViteEnvOptions & { envName?: string }
   }
   onDirectiveFnsById?: (directiveFnsById: Record<string, DirectiveFn>) => void
+  generateFunctionId: GenerateFunctionIdFn
 }
 
 export function TanStackDirectiveFunctionsPluginEnv(
@@ -131,6 +138,7 @@ function transformCode({
   directive,
   directiveLabel,
   getRuntimeCode,
+  generateFunctionId,
   replacer,
   onDirectiveFnsById,
   root,
@@ -155,6 +163,7 @@ function transformCode({
       directive,
       directiveLabel,
       getRuntimeCode,
+      generateFunctionId,
       replacer,
       code,
       root,

@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import {
   TanStackDirectiveFunctionsPlugin,
   TanStackDirectiveFunctionsPluginEnv,
@@ -5,10 +6,15 @@ import {
 import type { DevEnvironment, Plugin, ViteDevServer } from 'vite'
 import type {
   DirectiveFn,
+  GenerateFunctionIdFn,
   ReplacerFn,
 } from '@tanstack/directive-functions-plugin'
 
 export type CreateRpcFn = (functionId: string, splitImportFn?: string) => any
+
+export type GenerateFunctionIdFnOptional = (
+  opts: Parameters<GenerateFunctionIdFn>[0],
+) => string | undefined
 
 export type ServerFnPluginOpts = {
   /**
@@ -17,6 +23,7 @@ export type ServerFnPluginOpts = {
    * and its modules.
    */
   manifestVirtualImportId: string
+  generateFunctionId?: GenerateFunctionIdFnOptional
   client: ServerFnPluginEnvOpts
   ssr: ServerFnPluginEnvOpts
   server: ServerFnPluginEnvOpts
@@ -25,6 +32,7 @@ export type ServerFnPluginOpts = {
 export type ServerFnPluginEnvOpts = {
   getRuntimeCode: () => string
   replacer: ReplacerFn
+  envName?: string
 }
 
 const debug =
@@ -54,6 +62,13 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
       }
     },
   })
+  const generateFunctionId = buildGenerateFunctionId(
+    (generateFunctionIdOpts, next) =>
+      next(
+        Boolean(viteDevServer),
+        opts.generateFunctionId?.(generateFunctionIdOpts),
+      ),
+  )
 
   const directive = 'use server'
   const directiveLabel = 'Server Function'
@@ -67,6 +82,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         directive,
         directiveLabel,
         getRuntimeCode: opts.client.getRuntimeCode,
+        generateFunctionId,
         replacer: opts.client.replacer,
         onDirectiveFnsById,
       }),
@@ -78,6 +94,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         directive,
         directiveLabel,
         getRuntimeCode: opts.ssr.getRuntimeCode,
+        generateFunctionId,
         replacer: opts.ssr.replacer,
         onDirectiveFnsById,
       }),
@@ -127,6 +144,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
         directive,
         directiveLabel,
         getRuntimeCode: opts.server.getRuntimeCode,
+        generateFunctionId,
         replacer: opts.server.replacer,
         onDirectiveFnsById,
       }),
@@ -134,24 +152,7 @@ export function createTanStackServerFnPlugin(opts: ServerFnPluginOpts): {
   }
 }
 
-export interface TanStackServerFnPluginEnvOpts {
-  /**
-   * The virtual import ID that will be used to import the server function manifest.
-   * This virtual import ID will be used in the server build to import the manifest
-   * and its modules.
-   */
-  manifestVirtualImportId: string
-  client: {
-    envName?: string
-    getRuntimeCode: () => string
-    replacer: ReplacerFn
-  }
-  server: {
-    envName?: string
-    getRuntimeCode: () => string
-    replacer: ReplacerFn
-  }
-}
+export type TanStackServerFnPluginEnvOpts = Omit<ServerFnPluginOpts, 'ssr'>
 
 export function TanStackServerFnPluginEnv(
   _opts: TanStackServerFnPluginEnvOpts,
@@ -189,6 +190,14 @@ export function TanStackServerFnPluginEnv(
     },
   })
 
+  const generateFunctionId = buildGenerateFunctionId(
+    (generateFunctionIdOpts, next) =>
+      next(
+        Boolean(serverDevEnv),
+        opts.generateFunctionId?.(generateFunctionIdOpts),
+      ),
+  )
+
   const directive = 'use server'
   const directiveLabel = 'Server Function'
 
@@ -199,6 +208,7 @@ export function TanStackServerFnPluginEnv(
       directive,
       directiveLabel,
       onDirectiveFnsById,
+      generateFunctionId,
       environments: {
         client: {
           envLabel: 'Client',
@@ -260,6 +270,55 @@ export function TanStackServerFnPluginEnv(
 
 function resolveViteId(id: string) {
   return `\0${id}`
+}
+
+function makeFunctionIdUrlSafe(location: string): string {
+  return location
+    .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace unsafe chars with underscore
+    .replace(/_{2,}/g, '_') // Collapse multiple underscores
+    .replace(/^_|_$/g, '') // Trim leading/trailing underscores
+    .replace(/_--/g, '--') // Clean up the joiner
+}
+
+function buildGenerateFunctionId(
+  delegate: (
+    opts: Parameters<GenerateFunctionIdFn>[0],
+    next: (dev: boolean, value?: string) => string,
+  ) => string,
+): GenerateFunctionIdFn {
+  const entryIdToFunctionId = new Map<string, string>()
+  const functionIds = new Set<string>()
+  return (opts) => {
+    const entryId = `${opts.filename}--${opts.functionName}`
+    let functionId = entryIdToFunctionId.get(entryId)
+    if (functionId === undefined) {
+      functionId = delegate(opts, (dev, updatedFunctionId) => {
+        // If no value provided, then return the url-safe currentId on development
+        // and SHA256 using the currentId as seed on production
+        if (updatedFunctionId === undefined) {
+          if (dev) updatedFunctionId = makeFunctionIdUrlSafe(entryId)
+          else
+            updatedFunctionId = crypto
+              .createHash('sha256')
+              .update(entryId)
+              .digest('hex')
+        }
+        return updatedFunctionId
+      })
+      // Deduplicate in case the generated id conflicts with an existing id
+      if (functionIds.has(functionId)) {
+        let deduplicatedId
+        let iteration = 0
+        do {
+          deduplicatedId = `${functionId}_${++iteration}`
+        } while (functionIds.has(deduplicatedId))
+        functionId = deduplicatedId
+      }
+      entryIdToFunctionId.set(entryId, functionId)
+      functionIds.add(functionId)
+    }
+    return functionId
+  }
 }
 
 function buildOnDirectiveFnsByIdCallback(opts: {

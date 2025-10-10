@@ -2,8 +2,8 @@ import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
-import { getServerContextAfterGlobalMiddlewares } from './getServerContextAfterGlobalMiddlewares'
 import { getStartOptions } from './getStartOptions'
+import { getStartContextServerOnly } from './getStartContextServerOnly'
 import type { TSS_SERVER_FUNCTION } from './constants'
 import type {
   AnyValidator,
@@ -16,7 +16,6 @@ import type {
   ValidateSerializableInput,
   Validator,
 } from '@tanstack/router-core'
-import type { JsonResponse } from '@tanstack/router-core/ssr/client'
 import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
@@ -131,8 +130,9 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           // The extracted function on the server-side calls
           // this function
           __executeServer: async (opts: any, signal: AbortSignal) => {
+            const startContext = getStartContextServerOnly()
             const serverContextAfterGlobalMiddlewares =
-              getServerContextAfterGlobalMiddlewares()
+              startContext.contextAfterGlobalMiddlewares
             const ctx = {
               ...extractedFn,
               ...opts,
@@ -141,6 +141,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
                 ...opts.context,
               },
               signal,
+              request: startContext.request,
             }
 
             return executeMiddleware(resolvedMiddleware, 'server', ctx).then(
@@ -200,11 +201,16 @@ export async function executeMiddleware(
       )
     }
 
-    const middlewareFn = (
-      env === 'client' && 'client' in nextMiddleware.options
-        ? nextMiddleware.options.client
-        : nextMiddleware.options.server
-    ) as MiddlewareFn | undefined
+    let middlewareFn: MiddlewareFn | undefined = undefined
+    if (env === 'client') {
+      if ('client' in nextMiddleware.options) {
+        middlewareFn = nextMiddleware.options.client as MiddlewareFn | undefined
+      }
+    }
+    // env === 'server'
+    else if ('server' in nextMiddleware.options) {
+      middlewareFn = nextMiddleware.options.server as MiddlewareFn | undefined
+    }
 
     if (middlewareFn) {
       // Execute the middleware
@@ -263,14 +269,14 @@ export interface OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
   extends FetcherBase {
   (
     options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<FetcherData<TResponse>>
+  ): Promise<Awaited<TResponse>>
 }
 
 export interface RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
   extends FetcherBase {
   (
     opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<FetcherData<TResponse>>
+  ): Promise<Awaited<TResponse>>
 }
 
 export type FetcherBaseOptions = {
@@ -293,13 +299,6 @@ export type RscStream<T> = {
 }
 
 export type Method = 'GET' | 'POST'
-
-export type FetcherData<TResponse> =
-  Awaited<TResponse> extends Response
-    ? Awaited<TResponse>
-    : Awaited<TResponse> extends JsonResponse<any>
-      ? ReturnType<Awaited<TResponse>['json']>
-      : Awaited<TResponse>
 
 export type ServerFnReturnType<TRegister, TResponse> =
   Awaited<TResponse> extends Response

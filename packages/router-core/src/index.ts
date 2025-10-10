@@ -423,6 +423,8 @@ export type {
   SerializableExtensions,
   DefaultSerializable,
   Serializable,
+  TSR_SERIALIZABLE,
+  TsrSerializable,
 } from './ssr/serializer/transformer'
 
 export {
@@ -434,7 +436,6 @@ export {
 export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
 
 export {
-  rewriteBasepath,
   composeRewrites,
   executeRewriteInput,
   executeRewriteOutput,

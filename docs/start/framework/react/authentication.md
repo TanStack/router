@@ -95,7 +95,7 @@ TanStack Start provides secure HTTP-only cookie sessions:
 
 ```tsx
 // utils/session.ts
-import { useSession } from '@tanstack/react-start'
+import { useSession } from '@tanstack/react-start/server'
 
 type SessionData = {
   userId?: string
