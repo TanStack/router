@@ -30,15 +30,36 @@ export function HeadingLink<TRouter extends RegisteredRouter, TOptions>(
 }
 
 function LinkPropsPage() {
+  const linkOptionsFromSomeOtherPlace = linkOptions({
+    to: '/params/$param29',
+    params: {
+      param29: 'value29',
+    },
+  })
   return (
-    <HeadingLink
-      title="Hello"
-      linkOptions={linkOptions({
-        to: '/params/$param29',
-        params: {
-          param29: 'value29',
-        },
-      })}
-    />
+    <>
+      {/* direct use, works */}
+      <HeadingLink
+        title="Hello"
+        linkOptions={{
+          to: '/params/$param29',
+          params: {
+            param29: 'value29',
+          },
+        }}
+      />
+      {/* from a const from a linkOptions, works */}
+      <HeadingLink title="Hello" linkOptions={linkOptionsFromSomeOtherPlace} />
+      {/* from an inline linkOptions, breaks for some reason */}
+      <HeadingLink
+        title="Hello"
+        linkOptions={linkOptions({
+          to: '/params/$param29',
+          params: {
+            param29: 'value29',
+          },
+        })}
+      />
+    </>
   )
 }
