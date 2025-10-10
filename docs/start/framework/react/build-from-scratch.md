@@ -4,7 +4,7 @@ title: Build a Project from Scratch
 ---
 
 > [!NOTE]
-> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](../routing) guide.
+> If you chose to quick start with an example or cloned project, you can skip this guide and move on to the [Routing](../guide/routing) guide.
 
 _So you want to build a TanStack Start project from scratch?_
 
@@ -265,4 +265,4 @@ That's it! 🤯 You've now set up a TanStack Start project and written your firs
 
 You can now run `npm run dev` to start your server and navigate to `http://localhost:3000` to see your route in action.
 
-You want to deploy your application? Check out the [hosting guide](../hosting.md).
+You want to deploy your application? Check out the [hosting guide](../guide/hosting.md).
