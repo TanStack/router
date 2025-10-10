@@ -136,6 +136,10 @@ export interface RouterOptionsExtensions
 
 export type SSROption = boolean | 'data-only'
 
+export interface RouterSSROptionsExtensions {
+  nonce?: string
+}
+
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
@@ -465,9 +469,7 @@ export interface RouterOptions<
    */
   rewrite?: LocationRewrite
   origin?: string
-  ssr?: {
-    nonce?: string
-  }
+  ssr?: RouterSSROptionsExtensions
 }
 
 export type LocationRewrite = {
