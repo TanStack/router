@@ -55,6 +55,6 @@ In addition to the Basic example, we've created a variety of other examples to g
 - [Material UI](https://github.com/TanStack/router/tree/main/examples/react/start-material-ui) (start-material-ui)
 
 > [!NOTE]
-> While not specific to Start, TanStack Router offers a variety of other examples that may help you understand more about how TanStack Router works. See these examples in [Router's documentation](https://tanstack.com/router/latest/docs/examples/overview).
+> While not specific to Start, TanStack Router offers a variety of other examples that may help you understand more about how TanStack Router works. See these examples in [Router's documentation](https://tanstack.com/router/latest/docs).
 
 Each of the above examples includes an embedded Stackblitz preview to help you find the one that works best for your use-case. To see these, simply select the example you wish to preview from the "Examples" section in the sidebar.
