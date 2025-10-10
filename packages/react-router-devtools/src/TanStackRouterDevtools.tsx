@@ -5,7 +5,7 @@ import type { ButtonHTMLAttributes, HTMLAttributes } from 'react'
 import type { AnyRouter } from '@tanstack/react-router'
 import type React from 'react'
 
-interface DevtoolsOptions {
+interface TanStackRouterDevtoolsOptions {
   /**
    * Set this true if you want the dev tools to default to being open
    */
@@ -43,8 +43,16 @@ interface DevtoolsOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export function TanStackRouterDevtools(
-  props: DevtoolsOptions,
+/**
+ * Mounts the TanStack Router Devtools UI and keeps its core instance synchronized with the provided router, router state, and options.
+ *
+ * The component creates and maintains a single Devtools core instance, updates it when `props` or router state change, mounts it into an internal div, and unmounts it on cleanup.
+ *
+ * @param props - Configuration and optional router instance for the devtools (see `TanStackRouterDevtoolsOptions`)
+ * @returns A React element containing the container div where the devtools UI is mounted, or `null`
+ */
+function TanStackRouterDevtools(
+  props: TanStackRouterDevtoolsOptions,
 ): React.ReactElement | null {
   const {
     initialIsOpen,
@@ -124,3 +132,5 @@ export function TanStackRouterDevtools(
     </Fragment>
   )
 }
+
+export { type TanStackRouterDevtoolsOptions, TanStackRouterDevtools }
