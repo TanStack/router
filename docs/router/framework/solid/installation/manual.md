@@ -1,6 +1,6 @@
 ---
-title: Installation
-ref: docs/router/framework/react/installation.md
+title: Manual Setup
+ref: docs/router/framework/react/installation/manual.md
 replace: { 'react-router': 'solid-router' }
 ---
 
