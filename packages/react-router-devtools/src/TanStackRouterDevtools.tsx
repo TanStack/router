@@ -43,7 +43,7 @@ interface DevtoolsOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
-export function TanStackRouterDevtools(
+function TanStackRouterDevtools(
   props: DevtoolsOptions,
 ): React.ReactElement | null {
   const {
@@ -123,4 +123,9 @@ export function TanStackRouterDevtools(
       <div ref={devToolRef} />
     </Fragment>
   )
+}
+
+export {
+  type DevtoolsOptions as TanStackRouterDevtoolsOptions,
+  TanStackRouterDevtools,
 }

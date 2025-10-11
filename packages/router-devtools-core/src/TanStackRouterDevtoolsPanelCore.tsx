@@ -159,4 +159,7 @@ class TanStackRouterDevtoolsPanelCore {
   }
 }
 
-export { TanStackRouterDevtoolsPanelCore }
+export {
+  type TanStackRouterDevtoolsPanelCoreOptions,
+  TanStackRouterDevtoolsPanelCore,
+}
