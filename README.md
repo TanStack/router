@@ -13,7 +13,7 @@ alt="TanStack Router"
 
 A modern router designed for type safety, data‑driven navigation, and seamless developer experience.
 
-- End‑to‑end type safety (routes, params, loaders)
+- End‑to-end type safety (routes, params, loaders)
 - Schema‑driven search params with validation
 - Built‑in caching, prefetching & invalidation
 - Nested layouts, transitions & error boundaries
@@ -46,28 +46,10 @@ A full‑stack framework built on Router, designed for server rendering, streami
 <br />
 
 <p align="center">
-  <a href="https://npmjs.com/package/@tanstack/react-router">
-    <img align="center" src="https://img.shields.io/npm/dm/@tanstack/react-router.svg" alt="npm downloads"/>
-  </a>
-  <a href="https://github.com/tanstack/router">
-    <img align="center" src="https://img.shields.io/github/stars/tanstack/router.svg?style=social&label=Star" alt="GitHub stars"/>
-  </a>
-  <a href="https://bundlephobia.com/result?p=@tanstack/react-router">
-    <img align="center" src="https://badgen.net/bundlephobia/minzip/@tanstack/react-router" alt="Bundle size"/>
-  </a>
+  <a href="https://npmjs.com/package/@tanstack/react-router"><img src="https://img.shields.io/npm/dm/@tanstack/react-router.svg" alt="npm downloads" /></a> <a href="https://github.com/tanstack/router"><img src="https://img.shields.io/github/stars/tanstack/router.svg?style=social&label=Star" alt="GitHub stars" /></a> <a href="https://bundlephobia.com/result?p=@tanstack/react-router"><img src="https://badgen.net/bundlephobia/minzip/@tanstack/react-router" alt="Bundle size" /></a> <a href="#badge"><img alt="semantic-release" src="https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg"></a> <a href="https://bestofjs.org/projects/tanstack-router"><img alt="Best of JS" src="https://img.shields.io/endpoint?url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=TanStack%2Frouter%26since=daily" /></a> <a href="https://twitter.com/tan_stack"><img src="https://img.shields.io/twitter/follow/tan_stack.svg?style=social" alt="Follow @TanStack"/></a>
 </p>
 
-<p align="center">
-  <a href="#badge">
-    <img align="center" alt="semantic-release" src="https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg"/>
-  </a>
-  <a href="https://bestofjs.org/projects/tanstack-router">
-    <img align="center" alt="Best of JS" src="https://img.shields.io/endpoint?url=https://bestofjs-serverless.now.sh/api/project-badge?fullName=TanStack%2Frouter%26since=daily"/>
-  </a>
-  <a href="https://twitter.com/tan_stack">
-    <img align="center" src="https://img.shields.io/twitter/follow/tan_stack.svg?style=social" alt="Follow @TanStack"/>
-  </a>
-</p>
+<div align="center">
 
 ### [Become a Sponsor!](https://github.com/sponsors/tannerlinsley/)
 
