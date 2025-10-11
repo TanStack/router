@@ -1,4 +1,3 @@
-import { rootRouteId } from './root'
 import { last } from './utils'
 import type { LRUCache } from './lru-cache'
 import type { MatchLocation } from './RouterProvider'
@@ -155,8 +154,8 @@ export function resolvePath({
   trailingSlash = 'never',
   parseCache,
 }: ResolvePathOptions) {
-  let baseSegments = parseBasePathSegments(base, parseCache).slice()
-  const toSegments = parseRoutePathSegments(to, parseCache)
+  let baseSegments = parsePathname(base, parseCache).slice()
+  const toSegments = parsePathname(to, parseCache)
 
   if (baseSegments.length > 1 && last(baseSegments)?.value === '/') {
     baseSegments.pop()
@@ -201,16 +200,6 @@ export function resolvePath({
 }
 
 export type ParsePathnameCache = LRUCache<string, ReadonlyArray<Segment>>
-
-export const parseBasePathSegments = (
-  pathname?: string,
-  cache?: ParsePathnameCache,
-): ReadonlyArray<Segment> => parsePathname(pathname, cache, true)
-
-export const parseRoutePathSegments = (
-  pathname?: string,
-  cache?: ParsePathnameCache,
-): ReadonlyArray<Segment> => parsePathname(pathname, cache, false)
 
 export const parsePathname = (
   pathname?: string,
@@ -275,14 +264,8 @@ function baseParsePathname(
 
   segments.push(
     ...split.map((part): Segment => {
-      // strip tailing underscore for non-nested paths
-      const partToMatch =
-        !basePathValues && part !== rootRouteId && part.slice(-1) === '_'
-          ? part.slice(0, -1)
-          : part
-
       // Check for wildcard with curly braces: prefix{$}suffix
-      const wildcardBracesMatch = partToMatch.match(WILDCARD_W_CURLY_BRACES_RE)
+      const wildcardBracesMatch = part.match(WILDCARD_W_CURLY_BRACES_RE)
       if (wildcardBracesMatch) {
         const prefix = wildcardBracesMatch[1]
         const suffix = wildcardBracesMatch[2]
@@ -295,7 +278,7 @@ function baseParsePathname(
       }
 
       // Check for optional parameter format: prefix{-$paramName}suffix
-      const optionalParamBracesMatch = partToMatch.match(
+      const optionalParamBracesMatch = part.match(
         OPTIONAL_PARAM_W_CURLY_BRACES_RE,
       )
       if (optionalParamBracesMatch) {
@@ -311,7 +294,7 @@ function baseParsePathname(
       }
 
       // Check for the new parameter format: prefix{$paramName}suffix
-      const paramBracesMatch = partToMatch.match(PARAM_W_CURLY_BRACES_RE)
+      const paramBracesMatch = part.match(PARAM_W_CURLY_BRACES_RE)
       if (paramBracesMatch) {
         const prefix = paramBracesMatch[1]
         const paramName = paramBracesMatch[2]
@@ -325,8 +308,8 @@ function baseParsePathname(
       }
 
       // Check for bare parameter format: $paramName (without curly braces)
-      if (PARAM_RE.test(partToMatch)) {
-        const paramName = partToMatch.substring(1)
+      if (PARAM_RE.test(part)) {
+        const paramName = part.substring(1)
         return {
           type: SEGMENT_TYPE_PARAM,
           value: '$' + paramName,
@@ -336,7 +319,7 @@ function baseParsePathname(
       }
 
       // Check for bare wildcard: $ (without curly braces)
-      if (WILDCARD_RE.test(partToMatch)) {
+      if (WILDCARD_RE.test(part)) {
         return {
           type: SEGMENT_TYPE_WILDCARD,
           value: '$',
@@ -348,12 +331,12 @@ function baseParsePathname(
       // Handle regular pathname segment
       return {
         type: SEGMENT_TYPE_PATHNAME,
-        value: partToMatch.includes('%25')
-          ? partToMatch
+        value: part.includes('%25')
+          ? part
               .split('%25')
               .map((segment) => decodeURI(segment))
               .join('%25')
-          : decodeURI(partToMatch),
+          : decodeURI(part),
       }
     }),
   )
@@ -392,7 +375,7 @@ export function interpolatePath({
   decodeCharMap,
   parseCache,
 }: InterpolatePathOptions): InterPolatePathResult {
-  const interpolatedPathSegments = parseRoutePathSegments(path, parseCache)
+  const interpolatedPathSegments = parsePathname(path, parseCache)
 
   function encodeParam(key: string): any {
     const value = params[key]
@@ -537,11 +520,11 @@ export function matchByPath(
   const stringTo = to as string
 
   // Parse the from and to
-  const baseSegments = parseBasePathSegments(
+  const baseSegments = parsePathname(
     from.startsWith('/') ? from : `/${from}`,
     parseCache,
   )
-  const routeSegments = parseRoutePathSegments(
+  const routeSegments = parsePathname(
     stringTo.startsWith('/') ? stringTo : `/${stringTo}`,
     parseCache,
   )

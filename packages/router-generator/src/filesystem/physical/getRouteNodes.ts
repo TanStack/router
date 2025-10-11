@@ -34,6 +34,7 @@ export async function getRouteNodes(
     | 'disableLogging'
     | 'routeToken'
     | 'indexToken'
+    | 'experimental'
   >,
   root: string,
 ): Promise<GetRouteNodesResult> {
@@ -131,7 +132,13 @@ export async function getRouteNodes(
         } else if (fullPath.match(/\.(tsx|ts|jsx|js)$/)) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
-          let routePath = determineInitialRoutePath(filePathNoExt)
+          const {
+            routePath: initialRoutePath,
+            originalRoutePath,
+            isExperimentalNonNestedRoute,
+          } = determineInitialRoutePath(filePathNoExt, config)
+
+          let routePath = initialRoutePath
 
           if (routeFilePrefix) {
             routePath = routePath.replaceAll(routeFilePrefix, '')
@@ -192,6 +199,8 @@ export async function getRouteNodes(
             routePath,
             variableName,
             _fsRouteType: routeType,
+            _isExperimentalNonNestedRoute: isExperimentalNonNestedRoute,
+            originalRoutePath,
           })
         }
       }),
