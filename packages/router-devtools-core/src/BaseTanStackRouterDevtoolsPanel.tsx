@@ -309,26 +309,6 @@ export const BaseTanStackRouterDevtoolsPanel =
       }
     })
 
-    createEffect(() => {
-      const currentPathname =
-        routerState().matches[routerState().matches.length - 1]
-
-      // Read history WITHOUT tracking it to avoid infinite loops
-      const lastPathname = untrack(() => {
-        const h = history()
-        return h[0]
-      })
-
-      if (!lastPathname || lastPathname.id !== currentPathname.id) {
-        setHistory((prev) => {
-          const newHistory = [currentPathname, ...prev]
-          // truncate to ensure we don't overflow too much the ui
-          newHistory.splice(15)
-          return newHistory
-        })
-      }
-    })
-
     const activeMatch = createMemo(() => {
       const matches = [
         ...(routerState().pendingMatches ?? []),
