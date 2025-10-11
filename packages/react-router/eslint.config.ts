@@ -19,6 +19,7 @@ export default [
       '@eslint-react/dom/no-missing-button-type': 'off',
       'react-hooks/exhaustive-deps': 'error',
       'react-hooks/rules-of-hooks': 'error',
+      '@typescript-eslint/no-unnecessary-condition': 'off',
     },
   },
 ]
