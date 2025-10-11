@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { ResponsiveImage } from '@responsive-image/react'
-import { getImage } from '../images.ts'
+import { getImage } from '../images'
 
 export const Route = createFileRoute('/$imageId')({
   loader: ({ params }) => getImage(params.imageId),

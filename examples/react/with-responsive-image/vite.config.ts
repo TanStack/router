@@ -1,11 +1,18 @@
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
+import tsConfigPaths from 'vite-tsconfig-paths'
 import viteReact from '@vitejs/plugin-react'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { setupPlugins } from '@responsive-image/vite-plugin'
 
 export default defineConfig({
+  server: {
+    port: 3000,
+  },
   plugins: [
-    tanstackRouter({ autoCodeSplitting: true }),
+    tsConfigPaths({
+      projects: ['./tsconfig.json'],
+    }),
+    tanstackStart(),
     viteReact(),
     setupPlugins({
       include: /^[^?]+\.(?:jpg|png)\?.*responsive.*$/,
