@@ -280,6 +280,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     )
 
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
+    const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
 
     createEffect(() => {
       const matches = routerState().matches
@@ -288,13 +289,17 @@ export const BaseTanStackRouterDevtoolsPanel =
         return
       }
       // Read history WITHOUT tracking it to avoid infinite loops
-      const lastMatch = untrack(() => history()[0])
+      const historyUntracked = untrack(() => history())
+      const lastMatch = historyUntracked[0]
       const sameLocation =
         lastMatch &&
         lastMatch.pathname === currentMatch.pathname &&
-        JSON.stringify(lastMatch.search) ===
-          JSON.stringify(currentMatch.search || {})
+        JSON.stringify(lastMatch.search ?? {}) ===
+          JSON.stringify(currentMatch.search ?? {})
       if (!lastMatch || !sameLocation) {
+        if (historyUntracked.length >= HISTORY_LIMIT) {
+          setHasHistoryOverflowed(true)
+        }
         setHistory((prev) => {
           const newHistory = [currentMatch, ...prev]
           // truncate to ensure we don't overflow too much the ui
@@ -614,6 +619,12 @@ export const BaseTanStackRouterDevtoolsPanel =
                           </li>
                         )}
                       </For>
+                      {hasHistoryOverflowed() ? (
+                        <li class={styles().historyOverflowContainer}>
+                          History panel is only keeping the last {HISTORY_LIMIT}{' '}
+                          navigations
+                        </li>
+                      ) : null}
                     </ul>
                   </div>
                 </Match>
