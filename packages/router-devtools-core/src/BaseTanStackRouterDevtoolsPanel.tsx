@@ -65,6 +65,8 @@ export interface BaseDevtoolsPanelOptions {
   shadowDOMTarget?: ShadowRoot
 }
 
+const HISTORY_LIMIT = 15
+
 function Logo(props: any) {
   const { className, ...rest } = props
   const styles = useStyles()
@@ -296,7 +298,7 @@ export const BaseTanStackRouterDevtoolsPanel =
         setHistory((prev) => {
           const newHistory = [currentMatch, ...prev]
           // truncate to ensure we don't overflow too much the ui
-          newHistory.splice(15)
+          newHistory.splice(HISTORY_LIMIT)
           return newHistory
         })
       }
