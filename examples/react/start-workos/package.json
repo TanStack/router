@@ -16,7 +16,7 @@
     "@radix-ui/themes": "^3.2.1",
     "@tanstack/react-router": "^1.132.47",
     "@tanstack/react-router-devtools": "^1.132.51",
-    "@tanstack/react-start": "^1.132.54",
+    "@tanstack/react-start": "^1.132.55",
     "@workos-inc/node": "^7.45.0",
     "iron-session": "^8.0.4",
     "jose": "^6.0.10",
