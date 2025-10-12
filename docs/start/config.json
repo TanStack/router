@@ -147,7 +147,7 @@
             },
             {
               "label": "Tailwind CSS Integration",
-              "to": "framework/solid/guide/tailwind-integration"
+              "to": "framework/react/guide/tailwind-integration"
             }
           ]
         },
