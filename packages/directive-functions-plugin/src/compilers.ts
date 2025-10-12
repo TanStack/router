@@ -561,7 +561,7 @@ function codeFrameError(
 }
 
 const safeRemoveExports = (ast: babel.types.File) => {
-  ast.program.body = ast.program.body.map((node) => {
+  ast.program.body = ast.program.body.flatMap((node) => {
     if (
       babel.types.isExportNamedDeclaration(node) ||
       babel.types.isExportDefaultDeclaration(node)
@@ -581,6 +581,9 @@ const safeRemoveExports = (ast: babel.types.File) => {
           }
         }
         return node.declaration
+      } else if (node.declaration === null) {
+        // remove e.g. `export { RouteComponent as component }`
+        return []
       }
     }
     return node
