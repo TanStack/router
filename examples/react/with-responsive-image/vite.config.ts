@@ -8,6 +8,9 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  ssr: {
+    noExternal: '@responsive-image/react',
+  },
   plugins: [
     tsConfigPaths({
       projects: ['./tsconfig.json'],
