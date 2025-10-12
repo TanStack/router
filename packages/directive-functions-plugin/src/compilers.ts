@@ -68,6 +68,7 @@ export function compileDirectives(opts: CompileDirectivesOpts): {
   const directiveFnsById = findDirectives(ast, {
     ...opts,
     directiveSplitParam,
+    isDirectiveSplitParam,
   })
 
   // Add runtime code if there are directives
@@ -224,6 +225,7 @@ export function findDirectives(
     directiveSplitParam: string
     filename: string
     root: string
+    isDirectiveSplitParam: boolean
   },
 ): Record<string, DirectiveFn> {
   const directiveFnsById: Record<string, DirectiveFn> = {}
@@ -241,6 +243,9 @@ export function findDirectives(
   const hasFileDirective = ast.program.directives.some(
     (directive) => directive.value.value === opts.directive,
   )
+  const compileDirectiveOpts = {
+    isDirectiveSplitParam: opts.isDirectiveSplitParam,
+  }
 
   // If the entire file has a directive, we need to compile all of the functions that are
   // exported by the file.
@@ -250,12 +255,18 @@ export function findDirectives(
     babel.traverse(ast, {
       ExportDefaultDeclaration(path) {
         if (babel.types.isFunctionDeclaration(path.node.declaration)) {
-          compileDirective(path.get('declaration') as SupportedFunctionPath)
+          compileDirective(
+            path.get('declaration') as SupportedFunctionPath,
+            compileDirectiveOpts,
+          )
         }
       },
       ExportNamedDeclaration(path) {
         if (babel.types.isFunctionDeclaration(path.node.declaration)) {
-          compileDirective(path.get('declaration') as SupportedFunctionPath)
+          compileDirective(
+            path.get('declaration') as SupportedFunctionPath,
+            compileDirectiveOpts,
+          )
         }
       },
       ExportDeclaration(path) {
@@ -273,6 +284,7 @@ export function findDirectives(
             path.get(
               'declaration.declarations.0.init',
             ) as SupportedFunctionPath,
+            compileDirectiveOpts,
           )
         }
       },
@@ -327,7 +339,7 @@ export function findDirectives(
             )
           }
 
-          compileDirective(directiveFn)
+          compileDirective(directiveFn, compileDirectiveOpts)
         }
       },
     })
@@ -335,7 +347,10 @@ export function findDirectives(
 
   return directiveFnsById
 
-  function compileDirective(directiveFn: SupportedFunctionPath) {
+  function compileDirective(
+    directiveFn: SupportedFunctionPath,
+    compileDirectiveOpts: { isDirectiveSplitParam: boolean },
+  ) {
     // Move the function to program level while preserving its position
     // in the program body
     const programBody = programPath.node.body
@@ -432,7 +447,11 @@ export function findDirectives(
     // If it's an exported named function, we need to swap it with an
     // export const originalFunctionName = functionName
     if (
-      babel.types.isExportNamedDeclaration(directiveFn.parentPath.node) &&
+      (babel.types.isExportNamedDeclaration(directiveFn.parentPath.node) ||
+        (compileDirectiveOpts.isDirectiveSplitParam &&
+          babel.types.isExportDefaultDeclaration(
+            directiveFn.parentPath.node,
+          ))) &&
       (babel.types.isFunctionDeclaration(directiveFn.node) ||
         babel.types.isFunctionExpression(directiveFn.node)) &&
       babel.types.isIdentifier(directiveFn.node.id)
@@ -542,57 +561,32 @@ function codeFrameError(
 }
 
 const safeRemoveExports = (ast: babel.types.File) => {
-  const programBody = ast.program.body
-
-  const removeExport = (
-    path:
-      | babel.NodePath<babel.types.ExportDefaultDeclaration>
-      | babel.NodePath<babel.types.ExportNamedDeclaration>,
-  ) => {
-    // If the value is a function declaration, class declaration, or variable declaration,
-    // That means it has a name and can remain in the file, just unexported.
+  ast.program.body = ast.program.body.flatMap((node) => {
     if (
-      babel.types.isFunctionDeclaration(path.node.declaration) ||
-      babel.types.isClassDeclaration(path.node.declaration) ||
-      babel.types.isVariableDeclaration(path.node.declaration)
+      babel.types.isExportNamedDeclaration(node) ||
+      babel.types.isExportDefaultDeclaration(node)
     ) {
-      // If the value is a function declaration, class declaration, or variable declaration,
-      // That means it has a name and can remain in the file, just unexported.
       if (
-        babel.types.isFunctionDeclaration(path.node.declaration) ||
-        babel.types.isClassDeclaration(path.node.declaration) ||
-        babel.types.isVariableDeclaration(path.node.declaration)
+        babel.types.isFunctionDeclaration(node.declaration) ||
+        babel.types.isClassDeclaration(node.declaration) ||
+        babel.types.isVariableDeclaration(node.declaration)
       ) {
-        // Move the declaration to the top level at the same index
-        const insertIndex = programBody.findIndex(
-          (node) => node === path.node.declaration,
-        )
         // do not remove export if it is an anonymous function / class, otherwise this would produce a syntax error
         if (
-          babel.types.isFunctionDeclaration(path.node.declaration) ||
-          babel.types.isClassDeclaration(path.node.declaration)
+          babel.types.isFunctionDeclaration(node.declaration) ||
+          babel.types.isClassDeclaration(node.declaration)
         ) {
-          if (!path.node.declaration.id) {
-            return
+          if (!node.declaration.id) {
+            return node
           }
         }
-        programBody.splice(insertIndex, 0, path.node.declaration as any)
+        return node.declaration
+      } else if (node.declaration === null) {
+        // remove e.g. `export { RouteComponent as component }`
+        return []
       }
     }
-
-    // Otherwise, remove the export declaration
-    path.remove()
-  }
-
-  // Before we add our export, remove any other exports.
-  // Don't remove the thing they export, just the export declaration
-  babel.traverse(ast, {
-    ExportDefaultDeclaration(path) {
-      removeExport(path)
-    },
-    ExportNamedDeclaration(path) {
-      removeExport(path)
-    },
+    return node
   })
 }
 
