@@ -279,8 +279,6 @@ describe('server function compilation', () => {
       const namedDefaultExport = 'namedDefaultExport';
       export default namedDefaultExport;
       const usedButNotExported = 'usedButNotExported';
-      const namedExport = 'namedExport';
-      export { namedExport };
       export { namedFunction_createServerFn_namedFunction, namedGeneratorFunction_createServerFn_namedGeneratorFunction, arrowFunction_createServerFn, anonymousFunction_createServerFn, anonymousGeneratorFunction_createServerFn, multipleDirectives_multipleDirectives, iife_1, defaultExportFn_1, namedExportFn_1, exportedArrowFunction_wrapper, namedExportConst_1, namedExportConstGenerator_1 };"
     `,
     )
