@@ -57,7 +57,7 @@ describe('code-splitter delete nodes', () => {
               targetFramework: framework,
             })
 
-            await expect(compileResult.code).toMatchFileSnapshot(
+            await expect(compileResult?.code || code).toMatchFileSnapshot(
               path.join(dirs.snapshots, groupName, filename),
             )
           },

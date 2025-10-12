@@ -112,7 +112,7 @@ export function compileCodeSplitReferenceRoute(
     id: string
     addHmr?: boolean
   },
-): GeneratorResult {
+): GeneratorResult | null {
   const ast = parseAst(opts)
 
   const refIdents = findReferencedIdentifiers(ast)
@@ -132,6 +132,7 @@ export function compileCodeSplitReferenceRoute(
 
   let createRouteFn: string
 
+  let modified = false as boolean
   babel.traverse(ast, {
     Program: {
       enter(programPath) {
@@ -170,6 +171,7 @@ export function compileCodeSplitReferenceRoute(
                       if (t.isObjectProperty(prop)) {
                         if (t.isIdentifier(prop.key)) {
                           if (opts.deleteNodes!.has(prop.key.name as any)) {
+                            modified = true
                             return false
                           }
                         }
@@ -181,6 +183,7 @@ export function compileCodeSplitReferenceRoute(
                 if (!splittableCreateRouteFns.includes(createRouteFn)) {
                   // we can't split this route but we still add HMR handling if enabled
                   if (opts.addHmr) {
+                    modified = true
                     programPath.pushContainer('body', routeHmrStatement)
                   }
                   // exit traversal so this route is not split
@@ -268,6 +271,8 @@ export function compileCodeSplitReferenceRoute(
                           return
                         }
 
+                        modified = true
+
                         // Prepend the import statement to the program along with the importer function
                         // Check to see if lazyRouteComponent is already imported before attempting
                         // to import it again
@@ -305,9 +310,8 @@ export function compileCodeSplitReferenceRoute(
                         if (opts.addHmr) {
                           programPath.pushContainer('body', routeHmrStatement)
                         }
-                      }
-
-                      if (splitNodeMeta.splitStrategy === 'lazyFn') {
+                      } else {
+                        // if (splitNodeMeta.splitStrategy === 'lazyFn') {
                         const value = prop.value
 
                         let shouldSplit = true
@@ -339,6 +343,7 @@ export function compileCodeSplitReferenceRoute(
                         if (!shouldSplit) {
                           return
                         }
+                        modified = true
 
                         // Prepend the import statement to the program along with the importer function
                         if (!hasImportedOrDefinedIdentifier(LAZY_FN_IDENT)) {
@@ -404,6 +409,7 @@ export function compileCodeSplitReferenceRoute(
          * specifiers
          */
         if (removableImportPaths.size > 0) {
+          modified = true
           programPath.traverse({
             ImportDeclaration(path) {
               if (path.node.specifiers.length > 0) return
@@ -417,6 +423,9 @@ export function compileCodeSplitReferenceRoute(
     },
   })
 
+  if (!modified) {
+    return null
+  }
   deadCodeElimination(ast, refIdents)
 
   // if there are exported identifiers, then we need to add a warning
