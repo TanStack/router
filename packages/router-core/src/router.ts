@@ -753,6 +753,7 @@ export interface ServerSsr {
   isDehydrated: () => boolean
   onRenderFinished: (listener: () => void) => void
   dehydrate: () => Promise<void>
+  setRenderFinished: () => void
 }
 
 export type AnyRouterWithContext<TContext> = RouterCore<
