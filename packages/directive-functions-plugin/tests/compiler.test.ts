@@ -920,7 +920,7 @@ describe('server function compilation', () => {
 
       export const namedFunction = createServerFn(() => {
         'use server'
-        zExampleSchema.safeParese({ name: 'test', age: 123 })
+        zExampleSchema.safeParse({ name: 'test', age: 123 })
         return 'hello'
       })
     `
@@ -963,7 +963,7 @@ describe('server function compilation', () => {
         age: z.number()
       });
       const namedFunction_createServerFn = createServerRpc("test_ts--namedFunction_createServerFn", () => {
-        zExampleSchema.safeParese({
+        zExampleSchema.safeParse({
           name: 'test',
           age: 123
         });
