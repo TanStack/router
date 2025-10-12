@@ -1,6 +1,7 @@
 import { existsSync, promises as fsp, rmSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import os from 'node:os'
+import { Generator, getConfig } from '@tanstack/router-generator'
 import path from 'pathe'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
@@ -21,13 +22,15 @@ export async function prerender({
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
 
-  // If prerender is enabled but no pages are provided, default to prerendering the root page
+  // If prerender is enabled but no pages are provided, try to discover static paths
   if (startConfig.prerender?.enabled && !startConfig.pages.length) {
-    startConfig.pages = [
-      {
-        path: '/',
-      },
-    ]
+    try {
+      const paths = await getStaticPaths()
+      startConfig.pages = paths
+    } catch (error) {
+      logger.warn('Failed to get static paths:', error)
+    }
+    startConfig.pages = [{ path: '/' }]
   }
 
   const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
@@ -109,6 +112,7 @@ export async function prerender({
     const queue = new Queue({ concurrency })
     const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
 
+    logger.info(startConfig.pages)
     startConfig.pages.forEach((page) => addCrawlPageTask(page))
 
     await queue.start()
@@ -117,6 +121,7 @@ export async function prerender({
 
     function addCrawlPageTask(page: Page) {
       // Was the page already seen?
+      logger.info(`Checking: ${page.path}`)
       if (seen.has(page.path)) return
 
       // Add the page to the seen set
@@ -268,4 +273,44 @@ export async function writeBundleToDisk({
 
     await fsp.writeFile(fullPath, content)
   }
+}
+
+
+async function getStaticPaths() {
+    const config = getConfig()
+
+    const generator = new Generator({
+      config,
+      root: process.cwd(),
+    })
+
+    await generator.run()
+    const crawlingResult = await generator.getCrawlingResult()
+
+    const paths = new Set<string>(["/"])
+
+    for (const route of crawlingResult?.routeFileResult || []) {
+      if (!route.routePath) continue
+
+      // filter routes that are layout
+      if (route.isNonPath === true) continue
+
+      // filter dynamic routes
+      // if routePath contains $ it is dynamic
+      if (route.routePath.includes('$')) continue
+
+      // filter routes that are not components to render
+      if (!route.createFileRouteProps?.has('component')) continue
+
+      // clean the path from _layout or _root or _something
+      // e.g. /_layout/route-a -> /route-a
+      const cleanPath = route.routePath
+        .split('/')
+        .filter((subPath) => !subPath.startsWith('_'))
+        .join('/')
+
+      paths.add(cleanPath)
+    }
+
+    return Array.from(paths).map((path) => ({ path }))
 }
