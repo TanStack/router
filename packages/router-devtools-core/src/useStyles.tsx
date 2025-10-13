@@ -412,6 +412,7 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
     `,
     historyOverflowContainer: css`
       padding: ${size[1]} ${size[2]};
+      font-size: ${tokens.font.size.xs};
     `,
     maskedBadgeContainer: css`
       flex: 1;

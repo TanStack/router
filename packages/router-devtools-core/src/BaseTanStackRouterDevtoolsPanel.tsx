@@ -601,8 +601,8 @@ export const BaseTanStackRouterDevtoolsPanel =
                       </For>
                       {hasHistoryOverflowed() ? (
                         <li class={styles().historyOverflowContainer}>
-                          History panel is only keeping the last {HISTORY_LIMIT}{' '}
-                          navigations
+                          This panel displays the most recent {HISTORY_LIMIT}{' '}
+                          navigations.
                         </li>
                       ) : null}
                     </ul>
