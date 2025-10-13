@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.132.47",
-    "@tanstack/react-router-devtools": "^1.132.51",
+    "@tanstack/react-router-devtools": "^1.133.0",
     "@tanstack/router-plugin": "^1.132.56",
     "autoprefixer": "^10.4.20",
     "firebase": "^11.4.0",
