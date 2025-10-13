@@ -1917,6 +1917,17 @@ export class RouterCore<
       } catch {}
     }
 
+    if (!reloadDocument) {
+      const nextLocation = this.buildLocation({ to, href, ...rest } as any)
+      const currentOrigin = new URL(this.latestLocation.url).origin
+      const nextOrigin = new URL(nextLocation.url).origin
+
+      if (currentOrigin !== nextOrigin) {
+        reloadDocument = true
+        href = nextLocation.url
+      }
+    }
+
     if (reloadDocument) {
       if (!href) {
         const location = this.buildLocation({ to, ...rest } as any)
