@@ -85,7 +85,7 @@ export function createServerFnPlugin(
           code: {
             // TODO apply this plugin with a different filter per environment so that .createMiddleware() calls are not scanned in server env
             // only scan files that mention `.handler(` | `.createMiddleware()`
-            include: [/\.handler\(/, /.createMiddleware\(\)/],
+            include: [/\.\s*handler\(/, /\.\s*createMiddleware\(\)/],
           },
         },
         async handler(code, id) {

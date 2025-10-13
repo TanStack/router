@@ -606,4 +606,4 @@ When implementing authentication, consider:
 - **Monitoring**: Add logging and monitoring for authentication events
 - **Compliance**: Ensure compliance with relevant regulations if storing personal data
 
-For other authentication approaches, check the [Authentication Overview](../authentication-overview.md). For specific integration help, see the [How-to Guides](/router/latest/docs/framework/react/how-to/README.md#authentication) or explore our [working examples](https://github.com/TanStack/router/tree/main/examples/react).
+For other authentication approaches, check the [Authentication Overview](../authentication-overview.md). For specific integration help, explore our [working examples](https://github.com/TanStack/router/tree/main/examples/react).

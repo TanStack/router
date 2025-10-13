@@ -32,7 +32,7 @@ declare module '@tanstack/router-core' {
   > {
     server?: RouteServerOptions<
       TRegister,
-      AnyRoute,
+      TParentRoute,
       TPath,
       TParams,
       TLoaderDeps,

@@ -1,13 +1,14 @@
-import { createRootRoute } from '@tanstack/react-router';
-import crypto from 'node:crypto';
+import { createRootRoute } from '@tanstack/react-router'
+import crypto from 'node:crypto'
+
 export const Route = createRootRoute({
   ssr: () => {
     if (crypto.randomInt(0, 2) === 0) {
-      return 'data-only';
+      return 'data-only'
     }
-    return false;
+    return false
   },
   component: () => {
-    return <div className="p-2">hello world</div>;
-  }
-});
+    return <div className="p-2">hello world</div>
+  },
+})

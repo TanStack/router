@@ -1,5 +1,5 @@
 ---
-ref: docs/start/framework/react/server-functions.md
+ref: docs/start/framework/react/guide/server-functions.md
 replace:
   {
     '@tanstack/react-start': '@tanstack/solid-start',

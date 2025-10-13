@@ -1,5 +1,5 @@
 ---
-ref: docs/router/framework/react/routing/installation-with-vite.md
+ref: docs/router/framework/react/routing/installation/with-vite.md
 ---
 
 [//]: # 'BundlerConfiguration'

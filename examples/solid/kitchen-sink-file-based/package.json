@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@tanstack/solid-router": "^1.132.49",
-    "@tanstack/solid-router-devtools": "^1.132.51",
+    "@tanstack/solid-router-devtools": "^1.133.0",
     "immer": "^10.1.1",
     "solid-js": "^1.9.5",
     "redaxios": "^0.5.1",
@@ -20,7 +20,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.132.51",
+    "@tanstack/router-plugin": "^1.132.56",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vite-plugin-solid": "^2.11.8"
