@@ -301,6 +301,25 @@
           ]
         }
       ]
+    },
+    {
+      "label": "Tutorials",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Reading and Writing a File",
+              "to": "framework/react/tutorial/reading-writing-file"
+            },
+            {
+              "label": "Fetching Data from External API",
+              "to": "framework/react/tutorial/fetching-external-api"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
