@@ -143,7 +143,6 @@ export async function prerender({
     const queue = new Queue({ concurrency })
     const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
 
-    logger.info(startConfig.pages)
     startConfig.pages.forEach((page) => addCrawlPageTask(page))
 
     await queue.start()
