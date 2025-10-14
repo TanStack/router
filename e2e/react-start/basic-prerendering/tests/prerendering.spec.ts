@@ -22,7 +22,7 @@ test.describe('Prerender Static Path Discovery', () => {
       expect(existsSync(join(distDir, '_layout', 'index.html'))).toBe(false) // /_layout
 
       // API routes should NOT be prerendered
-      
+
       expect(existsSync(join(distDir, 'api', 'users', 'index.html'))).toBe(
         false,
       ) // /api/users
