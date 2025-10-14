@@ -148,6 +148,7 @@ export function tanStackStartRouter(
       }),
       ...(routeTreeFileFooter ?? []),
     ]
+    startConfig.router.routeTreeFileFooter = routeTreeFileFooter
     return routeTreeFileFooter
   }
 

@@ -1,12 +1,16 @@
 import { existsSync, promises as fsp, rmSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import os from 'node:os'
-import { Config, Generator, getConfig } from '@tanstack/router-generator'
+import {
+  Generator,
+  getConfig,
+} from '@tanstack/router-generator'
 import path from 'pathe'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { createLogger } from './utils'
 import { Queue } from './queue'
+import type {RouteNode} from '@tanstack/router-generator';
 import type { Rollup, ViteBuilder } from 'vite'
 import type { Page, TanStackStartOutputConfig } from './schema'
 
@@ -21,14 +25,19 @@ export async function prerender({
 }) {
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
-  const config = getConfig(startConfig.router)
 
   // If prerender is enabled but no pages are provided, try to discover static paths
   if (startConfig.prerender?.enabled && !startConfig.pages.length) {
     try {
-      const generatorConfig = getConfig(startConfig.router)
-      const paths = await getStaticPaths(generatorConfig)
-      startConfig.pages = paths
+      const config = getConfig(startConfig.router)
+      const generator = new Generator({
+        config,
+        root: builder.config.root,
+      })
+      await generator.run()
+      const getCrawlingResult = await generator.getCrawlingResult()
+      startConfig.pages = getPrerenderablePaths(getCrawlingResult?.routeFileResult || [])
+
     } catch (error) {
       logger.warn('Failed to get static paths:', error)
       startConfig.pages = [{ path: '/' }]
@@ -74,13 +83,22 @@ export async function prerender({
     pathToFileURL(fullEntryFilePath).toString()
   )
 
-  async function localFetch(path: string, options?: RequestInit, maxRedirects: number = 5): Promise<Response> {
+  async function localFetch(
+    path: string,
+    options?: RequestInit,
+    maxRedirects: number = 5,
+  ): Promise<Response> {
     const url = new URL(`http://localhost${path}`)
     const response = await serverEntrypoint.fetch(new Request(url, options))
-    
-    if(response.status >= 300 && response.status < 400 && response.headers.get('location') && maxRedirects > 0){
+
+    if (
+      response.status >= 300 &&
+      response.status < 400 &&
+      response.headers.get('location') &&
+      maxRedirects > 0
+    ) {
       const location = response.headers.get('location')!
-      if(location.startsWith('http://localhost') || location.startsWith('/')){
+      if (location.startsWith('http://localhost') || location.startsWith('/')) {
         const newUrl = location.replace('http://localhost', '')
         return localFetch(newUrl, options, maxRedirects - 1)
       } else {
@@ -165,12 +183,15 @@ export async function prerender({
           // Fetch the route
           const encodedRoute = encodeURI(page.path)
 
-          const res = await localFetch(withBase(encodedRoute, routerBasePath), {
-            headers: {
-              ...prerenderOptions.headers,
+          const res = await localFetch(
+            withBase(encodedRoute, routerBasePath),
+            {
+              headers: {
+                ...prerenderOptions.headers,
+              },
             },
-          }, prerenderOptions.redirectCount)
-
+            prerenderOptions.redirectCount,
+          )
 
           if (!res.ok) {
             throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`, {
@@ -290,40 +311,33 @@ export async function writeBundleToDisk({
 }
 
 
-async function getStaticPaths(generatorConfig: Config) {
+function getPrerenderablePaths(
+  routeNodes: Array<RouteNode>,
+): Array<{ path: string }> {
+  const paths = new Set<string>(['/'])
 
-    const generator = new Generator({
-      config: {generatorConfig},
-      root: process.cwd(),
-    })
+  for (const route of routeNodes) {
+    if (!route.routePath) continue
 
-    await generator.run()
-    const crawlingResult = await generator.getCrawlingResult()
+    // filter routes that are layout
+    if (route.isNonPath === true) continue
 
-    const paths = new Set<string>(["/"])
+    // filter dynamic routes
+    // if routePath contains $ it is dynamic
+    if (route.routePath.includes('$')) continue
 
-    for (const route of crawlingResult?.routeFileResult || []) {
-      if (!route.routePath) continue
+    // filter routes that do not have a component
+    if (!route.createFileRouteProps?.has('component')) continue
 
-      // filter routes that are layout
-      if (route.isNonPath === true) continue
+    // clean the path from _layout or _root or _something
+    // e.g. /_layout/route-a -> /route-a
+    const cleanPath = route.routePath
+      .split('/')
+      .filter((subPath) => !subPath.startsWith('_'))
+      .join('/')
 
-      // filter dynamic routes
-      // if routePath contains $ it is dynamic
-      if (route.routePath.includes('$')) continue
+    paths.add(cleanPath)
+  }
 
-      // filter routes that are not components to render
-      if (!route.createFileRouteProps?.has('component')) continue
-
-      // clean the path from _layout or _root or _something
-      // e.g. /_layout/route-a -> /route-a
-      const cleanPath = route.routePath
-        .split('/')
-        .filter((subPath) => !subPath.startsWith('_'))
-        .join('/')
-
-      paths.add(cleanPath)
-    }
-
-    return Array.from(paths).map((path) => ({ path }))
+  return Array.from(paths).map((path) => ({ path }))
 }
