@@ -147,7 +147,7 @@
             },
             {
               "label": "Tailwind CSS Integration",
-              "to": "framework/solid/guide/tailwind-integration"
+              "to": "framework/react/guide/tailwind-integration"
             }
           ]
         },
@@ -297,6 +297,25 @@
             {
               "label": "Basic",
               "to": "framework/solid/examples/start-basic"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Tutorials",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Reading and Writing a File",
+              "to": "framework/react/tutorial/reading-writing-file"
+            },
+            {
+              "label": "Fetching Data from External API",
+              "to": "framework/react/tutorial/fetching-external-api"
             }
           ]
         }

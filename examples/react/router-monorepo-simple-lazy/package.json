@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "@tanstack/react-router": "^1.132.47",
-    "@tanstack/react-router-devtools": "^1.132.51",
-    "@tanstack/router-plugin": "^1.132.51",
+    "@tanstack/react-router-devtools": "^1.133.1",
+    "@tanstack/router-plugin": "^1.132.56",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1"
@@ -22,7 +22,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
-    "vite-plugin-dts": "^4.5.0"
+    "vite-plugin-dts": "^4.5.4"
   },
   "keywords": [],
   "author": "",
