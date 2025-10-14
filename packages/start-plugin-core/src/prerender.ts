@@ -1,7 +1,7 @@
 import { existsSync, promises as fsp, rmSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import os from 'node:os'
-import { Generator, getConfig } from '@tanstack/router-generator'
+import { Config, Generator, getConfig } from '@tanstack/router-generator'
 import path from 'pathe'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
@@ -21,16 +21,18 @@ export async function prerender({
 }) {
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
+  const config = getConfig(startConfig.router)
 
   // If prerender is enabled but no pages are provided, try to discover static paths
   if (startConfig.prerender?.enabled && !startConfig.pages.length) {
     try {
-      const paths = await getStaticPaths()
+      const generatorConfig = getConfig(startConfig.router)
+      const paths = await getStaticPaths(generatorConfig)
       startConfig.pages = paths
     } catch (error) {
       logger.warn('Failed to get static paths:', error)
+      startConfig.pages = [{ path: '/' }]
     }
-    startConfig.pages = [{ path: '/' }]
   }
 
   const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
@@ -72,9 +74,21 @@ export async function prerender({
     pathToFileURL(fullEntryFilePath).toString()
   )
 
-  function localFetch(path: string, options?: RequestInit): Promise<Response> {
+  async function localFetch(path: string, options?: RequestInit, maxRedirects: number = 5): Promise<Response> {
     const url = new URL(`http://localhost${path}`)
-    return serverEntrypoint.fetch(new Request(url, options))
+    const response = await serverEntrypoint.fetch(new Request(url, options))
+    
+    if(response.status >= 300 && response.status < 400 && response.headers.get('location') && maxRedirects > 0){
+      const location = response.headers.get('location')!
+      if(location.startsWith('http://localhost') || location.startsWith('/')){
+        const newUrl = location.replace('http://localhost', '')
+        return localFetch(newUrl, options, maxRedirects - 1)
+      } else {
+        logger.warn(`Skipping redirect to external location: ${location}`)
+      }
+    }
+
+    return response
   }
 
   try {
@@ -121,7 +135,6 @@ export async function prerender({
 
     function addCrawlPageTask(page: Page) {
       // Was the page already seen?
-      logger.info(`Checking: ${page.path}`)
       if (seen.has(page.path)) return
 
       // Add the page to the seen set
@@ -156,7 +169,8 @@ export async function prerender({
             headers: {
               ...prerenderOptions.headers,
             },
-          })
+          }, prerenderOptions.redirectCount)
+
 
           if (!res.ok) {
             throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`, {
@@ -276,11 +290,10 @@ export async function writeBundleToDisk({
 }
 
 
-async function getStaticPaths() {
-    const config = getConfig()
+async function getStaticPaths(generatorConfig: Config) {
 
     const generator = new Generator({
-      config,
+      config: {generatorConfig},
       root: process.cwd(),
     })
 
