@@ -1037,8 +1037,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -1244,8 +1244,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -1287,8 +1287,8 @@ importers:
         specifier: ^19.0.3
         version: 19.0.3(@types/react@19.0.8)
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -1348,8 +1348,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -1497,8 +1497,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -1555,8 +1555,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -1610,8 +1610,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -1683,8 +1683,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -1759,8 +1759,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -1878,8 +1878,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -1942,8 +1942,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -2537,8 +2537,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -2577,8 +2577,8 @@ importers:
         specifier: 22.10.2
         version: 22.10.2
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
@@ -2632,8 +2632,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -2702,8 +2702,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -2739,8 +2739,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -2809,8 +2809,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -2876,8 +2876,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -2974,8 +2974,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       srvx:
-        specifier: ^0.8.6
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tailwindcss:
         specifier: ^3.4.17
         version: 3.4.17
@@ -5346,7 +5346,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.52.0)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.0)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.1)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+        version: 3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.6.0)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.1)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
@@ -7505,8 +7505,8 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
       srvx:
-        specifier: ^0.8.2
-        version: 0.8.7
+        specifier: ^0.8.16
+        version: 0.8.16
       tinyglobby:
         specifier: ^0.2.15
         version: 0.2.15
@@ -16026,8 +16026,8 @@ packages:
     peerDependencies:
       kysely: '*'
 
-  srvx@0.8.7:
-    resolution: {integrity: sha512-g3+15LlwVOGL2QpoTPZlvRjg+9a5Tx/69CatXjFP6txvhIaW2FmGyzJfb8yft5wyfGddvJmP/Yx+e/uNDMRSLQ==}
+  srvx@0.8.16:
+    resolution: {integrity: sha512-hmcGW4CgroeSmzgF1Ihwgl+Ths0JqAJ7HwjP2X7e3JzY7u4IydLMcdnlqGQiQGUswz+PO9oh/KtCpOISIvs9QQ==}
     engines: {node: '>=20.16.0'}
     hasBin: true
 
@@ -24182,7 +24182,7 @@ snapshots:
       cookie-es: 2.0.0
       fetchdts: 0.1.7
       rou3: 0.7.5
-      srvx: 0.8.7
+      srvx: 0.8.16
 
   handle-thing@2.0.1: {}
 
@@ -26519,9 +26519,7 @@ snapshots:
       '@sqlite.org/sqlite-wasm': 3.48.0-build4
       kysely: 0.27.6
 
-  srvx@0.8.7:
-    dependencies:
-      cookie-es: 2.0.0
+  srvx@0.8.16: {}
 
   stable-hash-x@0.2.0: {}
 
@@ -27349,50 +27347,6 @@ snapshots:
     optionalDependencies:
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
 
-  vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6(@types/node@22.10.2)(playwright@1.52.0)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))(vitest@3.2.4))(@vitest/ui@3.0.6(vitest@3.2.4))(jiti@2.6.0)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.1)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0):
-    dependencies:
-      '@types/chai': 5.2.2
-      '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
-      '@vitest/pretty-format': 3.2.4
-      '@vitest/runner': 3.2.4
-      '@vitest/snapshot': 3.2.4
-      '@vitest/spy': 3.2.4
-      '@vitest/utils': 3.2.4
-      chai: 5.2.0
-      debug: 4.4.3
-      expect-type: 1.2.2
-      magic-string: 0.30.17
-      pathe: 2.0.3
-      picomatch: 4.0.2
-      std-env: 3.9.0
-      tinybench: 2.9.0
-      tinyexec: 0.3.2
-      tinyglobby: 0.2.15
-      tinypool: 1.1.1
-      tinyrainbow: 2.0.0
-      vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
-      vite-node: 3.2.4(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@types/node': 22.10.2
-      '@vitest/browser': 3.0.6(@types/node@22.10.2)(playwright@1.52.0)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))(vitest@3.2.4)
-      '@vitest/ui': 3.0.6(vitest@3.2.4)
-      jsdom: 27.0.0(postcss@8.5.6)
-    transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
-      - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - yaml
-
   vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.6.0)(jsdom@25.0.1)(lightningcss@1.30.1)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0):
     dependencies:
       '@types/chai': 5.2.2
@@ -27423,6 +27377,50 @@ snapshots:
       '@vitest/browser': 3.0.6(@types/node@22.10.2)(playwright@1.52.0)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))(vitest@3.2.4)
       '@vitest/ui': 3.0.6(vitest@3.2.4)
       jsdom: 25.0.1
+    transitivePeerDependencies:
+      - jiti
+      - less
+      - lightningcss
+      - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - yaml
+
+  vitest@3.2.4(@types/node@22.10.2)(@vitest/browser@3.0.6)(@vitest/ui@3.0.6)(jiti@2.6.0)(jsdom@27.0.0(postcss@8.5.6))(lightningcss@1.30.1)(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0):
+    dependencies:
+      '@types/chai': 5.2.2
+      '@vitest/expect': 3.2.4
+      '@vitest/mocker': 3.2.4(msw@2.7.0(@types/node@22.10.2)(typescript@5.9.2))(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))
+      '@vitest/pretty-format': 3.2.4
+      '@vitest/runner': 3.2.4
+      '@vitest/snapshot': 3.2.4
+      '@vitest/spy': 3.2.4
+      '@vitest/utils': 3.2.4
+      chai: 5.2.0
+      debug: 4.4.3
+      expect-type: 1.2.2
+      magic-string: 0.30.17
+      pathe: 2.0.3
+      picomatch: 4.0.2
+      std-env: 3.9.0
+      tinybench: 2.9.0
+      tinyexec: 0.3.2
+      tinyglobby: 0.2.15
+      tinypool: 1.1.1
+      tinyrainbow: 2.0.0
+      vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+      vite-node: 3.2.4(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 22.10.2
+      '@vitest/browser': 3.0.6(@types/node@22.10.2)(playwright@1.52.0)(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.7.0))(vitest@3.2.4)
+      '@vitest/ui': 3.0.6(vitest@3.2.4)
+      jsdom: 27.0.0(postcss@8.5.6)
     transitivePeerDependencies:
       - jiti
       - less

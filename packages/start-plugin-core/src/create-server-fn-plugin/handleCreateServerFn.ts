@@ -133,7 +133,7 @@ export function handleCreateServerFn(
 
   handlerFnPath.replaceWith(
     t.arrowFunctionExpression(
-      [t.identifier('opts'), t.identifier('signal')],
+      [t.identifier('opts')],
       t.blockStatement(
         // Everything in here is server-only, since the client
         // will strip out anything in the 'use server' directive.
@@ -141,7 +141,7 @@ export function handleCreateServerFn(
           t.returnStatement(
             t.callExpression(
               t.identifier(`${existingVariableName}.__executeServer`),
-              [t.identifier('opts'), t.identifier('signal')],
+              [t.identifier('opts')],
             ),
           ),
         ],

@@ -25,7 +25,7 @@
     "autoprefixer": "^10.4.20",
     "cross-env": "^10.0.0",
     "postcss": "^8.5.1",
-    "srvx": "^0.8.6",
+    "srvx": "^0.8.16",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.3",
     "typescript": "^5.7.2",

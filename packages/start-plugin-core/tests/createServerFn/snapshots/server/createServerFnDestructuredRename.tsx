@@ -2,10 +2,10 @@ import { createServerFn as serverFn } from '@tanstack/react-start';
 import { z } from 'zod';
 export const withUseServer = serverFn({
   method: 'GET'
-}).handler((opts, signal) => {
+}).handler(opts => {
   "use server";
 
-  return withUseServer.__executeServer(opts, signal);
+  return withUseServer.__executeServer(opts);
 }, async function () {
   console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
@@ -13,10 +13,10 @@ export const withUseServer = serverFn({
 });
 export const withoutUseServer = serverFn({
   method: 'GET'
-}).handler((opts, signal) => {
+}).handler(opts => {
   "use server";
 
-  return withoutUseServer.__executeServer(opts, signal);
+  return withoutUseServer.__executeServer(opts);
 }, async () => {
   console.info('Fetching posts...');
   await new Promise(r => setTimeout(r, 500));
@@ -24,10 +24,10 @@ export const withoutUseServer = serverFn({
 });
 export const withVariable = serverFn({
   method: 'GET'
-}).handler((opts, signal) => {
+}).handler(opts => {
   "use server";
 
-  return withVariable.__executeServer(opts, signal);
+  return withVariable.__executeServer(opts);
 }, abstractedFunction);
 async function abstractedFunction() {
   console.info('Fetching posts...');
@@ -41,10 +41,10 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
 }
 export const withZodValidator = serverFn({
   method: 'GET'
-}).handler((opts, signal) => {
+}).handler(opts => {
   "use server";
 
-  return withZodValidator.__executeServer(opts, signal);
+  return withZodValidator.__executeServer(opts);
 }, zodValidator(z.number(), input => {
   return {
     'you gave': input

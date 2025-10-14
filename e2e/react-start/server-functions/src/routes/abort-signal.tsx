@@ -1,33 +1,51 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
+import { getRequest } from '@tanstack/react-start/server'
 import React from 'react'
 
 export const Route = createFileRoute('/abort-signal')({
-  component: RouteComponent,
+  component: () => {
+    return (
+      <div>
+        <Test method="post" fn={abortableServerFnPost} />
+        <hr />
+        <Test method="get" fn={abortableServerFnGet} />
+      </div>
+    )
+  },
 })
 
-const abortableServerFn = createServerFn().handler(
-  async ({ context, signal }) => {
-    console.log('server function started', { context, signal })
-    return new Promise<string>((resolve, reject) => {
-      if (signal.aborted) {
-        return reject(new Error('Aborted before start'))
-      }
-      const timerId = setTimeout(() => {
-        console.log('server function finished')
-        resolve('server function result')
-      }, 1000)
-      const onAbort = () => {
-        clearTimeout(timerId)
-        console.log('server function aborted')
-        reject(new Error('Aborted'))
-      }
-      signal.addEventListener('abort', onAbort, { once: true })
-    })
-  },
-)
+const fn = createServerOnlyFn(async () => {
+  const request = getRequest()
+  const signal = request.signal
+  console.log('server function started', { signal })
+  return new Promise<string>((resolve, reject) => {
+    if (signal.aborted) {
+      return reject(new Error('Aborted before start'))
+    }
+    const timerId = setTimeout(() => {
+      console.log('server function finished')
+      resolve('server function result')
+    }, 1000)
+    const onAbort = () => {
+      clearTimeout(timerId)
+      console.log('server function aborted')
+      reject(new Error('Aborted'))
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+})
 
-function RouteComponent() {
+const abortableServerFnPost = createServerFn({ method: 'POST' }).handler(fn)
+
+const abortableServerFnGet = createServerFn({ method: 'GET' }).handler(fn)
+function Test({
+  method,
+  fn,
+}: {
+  method: string
+  fn: typeof abortableServerFnPost | typeof abortableServerFnGet
+}) {
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>(
     undefined,
   )
@@ -39,12 +57,13 @@ function RouteComponent() {
   }
   return (
     <div>
+      <h2>Test {method}</h2>
       <button
-        data-testid="run-with-abort-btn"
+        data-testid={`run-with-abort-btn-${method}`}
         onClick={async () => {
           reset()
           const controller = new AbortController()
-          const serverFnPromise = abortableServerFn({
+          const serverFnPromise = fn({
             signal: controller.signal,
           })
           const timeoutPromise = new Promise((resolve) =>
@@ -64,21 +83,23 @@ function RouteComponent() {
       </button>
       <br />
       <button
-        data-testid="run-without-abort-btn"
+        data-testid={`run-without-abort-btn-${method}`}
         onClick={async () => {
           reset()
-          const serverFnResult = await abortableServerFn()
+          const serverFnResult = await fn()
           setResult(serverFnResult)
         }}
       >
         call server function
       </button>
       <div className="p-2">
-        result: <p data-testid="result">{result ?? '$undefined'}</p>
+        result: <p data-testid={`result-${method}`}>{result ?? '$undefined'}</p>
       </div>
       <div className="p-2">
         message:{' '}
-        <p data-testid="errorMessage">{errorMessage ?? '$undefined'}</p>
+        <p data-testid={`errorMessage-${method}`}>
+          {errorMessage ?? '$undefined'}
+        </p>
       </div>
     </div>
   )

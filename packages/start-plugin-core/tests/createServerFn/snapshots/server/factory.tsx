@@ -23,17 +23,17 @@ const adminMiddleware = createMiddleware({
 });
 export const createAuthServerFn = createServerFn().middleware([authMiddleware]);
 const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware]);
-export const myAuthedFn = createAuthServerFn().handler((opts, signal) => {
+export const myAuthedFn = createAuthServerFn().handler(opts => {
   "use server";
 
-  return myAuthedFn.__executeServer(opts, signal);
+  return myAuthedFn.__executeServer(opts);
 }, () => {
   return 'myAuthedFn';
 });
-export const deleteUserFn = createAdminServerFn().handler((opts, signal) => {
+export const deleteUserFn = createAdminServerFn().handler(opts => {
   "use server";
 
-  return deleteUserFn.__executeServer(opts, signal);
+  return deleteUserFn.__executeServer(opts);
 }, () => {
   return 'deleteUserFn';
 });

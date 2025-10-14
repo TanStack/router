@@ -75,10 +75,10 @@ describe('createServerFn compiles correctly', async () => {
 
     expect(compiledResultClient!.code).toMatchInlineSnapshot(`
       "import { createServerFn } from '@tanstack/react-start';
-      const myServerFn = createServerFn().handler((opts, signal) => {
+      const myServerFn = createServerFn().handler(opts => {
         "use server";
 
-        return myServerFn.__executeServer(opts, signal);
+        return myServerFn.__executeServer(opts);
       });"
     `)
 
@@ -87,10 +87,10 @@ describe('createServerFn compiles correctly', async () => {
       const myFunc = () => {
         return 'hello from the server';
       };
-      const myServerFn = createServerFn().handler((opts, signal) => {
+      const myServerFn = createServerFn().handler(opts => {
         "use server";
 
-        return myServerFn.__executeServer(opts, signal);
+        return myServerFn.__executeServer(opts);
       }, myFunc);"
     `)
   })
@@ -116,15 +116,15 @@ describe('createServerFn compiles correctly', async () => {
 
     expect(compiledResult!.code).toMatchInlineSnapshot(`
       "import { createServerFn } from '@tanstack/react-start';
-      export const exportedFn = createServerFn().handler((opts, signal) => {
+      export const exportedFn = createServerFn().handler(opts => {
         "use server";
 
-        return exportedFn.__executeServer(opts, signal);
+        return exportedFn.__executeServer(opts);
       });
-      const nonExportedFn = createServerFn().handler((opts, signal) => {
+      const nonExportedFn = createServerFn().handler(opts => {
         "use server";
 
-        return nonExportedFn.__executeServer(opts, signal);
+        return nonExportedFn.__executeServer(opts);
       });"
     `)
 
@@ -138,18 +138,18 @@ describe('createServerFn compiles correctly', async () => {
     expect(compiledResultServer!.code).toMatchInlineSnapshot(`
       "import { createServerFn } from '@tanstack/react-start';
       const exportedVar = 'exported';
-      export const exportedFn = createServerFn().handler((opts, signal) => {
+      export const exportedFn = createServerFn().handler(opts => {
         "use server";
 
-        return exportedFn.__executeServer(opts, signal);
+        return exportedFn.__executeServer(opts);
       }, async () => {
         return exportedVar;
       });
       const nonExportedVar = 'non-exported';
-      const nonExportedFn = createServerFn().handler((opts, signal) => {
+      const nonExportedFn = createServerFn().handler(opts => {
         "use server";
 
-        return nonExportedFn.__executeServer(opts, signal);
+        return nonExportedFn.__executeServer(opts);
       }, async () => {
         return nonExportedVar;
       });"

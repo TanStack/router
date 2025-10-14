@@ -26,7 +26,6 @@ test('createServerFn without middleware', () => {
       method: 'GET'
       context: undefined
       data: undefined
-      signal: AbortSignal
     }>()
   })
 })
@@ -49,7 +48,6 @@ test('createServerFn with validator', () => {
       data: {
         a: string
       }
-      signal: AbortSignal
     }>()
   })
 
@@ -112,7 +110,6 @@ test('createServerFn with middleware and context', () => {
         readonly d: 'd'
       }
       data: undefined
-      signal: AbortSignal
     }>()
   })
 })
@@ -155,7 +152,6 @@ describe('createServerFn with middleware and validator', () => {
             readonly outputB: 'outputB'
             readonly outputC: 'outputC'
           }
-          signal: AbortSignal
         }>()
 
         return 'some-data' as const
@@ -252,7 +248,6 @@ test('createServerFn where validator is a primitive', () => {
         method: 'GET'
         context: undefined
         data: 'c'
-        signal: AbortSignal
       }>()
     })
 })
@@ -265,7 +260,6 @@ test('createServerFn where validator is optional if object is optional', () => {
         method: 'GET'
         context: undefined
         data: 'c' | undefined
-        signal: AbortSignal
       }>()
     })
 
@@ -287,7 +281,6 @@ test('createServerFn where data is optional if there is no validator', () => {
       method: 'GET'
       context: undefined
       data: undefined
-      signal: AbortSignal
     }>()
   })
 
@@ -459,7 +452,6 @@ test('incrementally building createServerFn with multiple middleware calls', () 
         readonly a: 'a'
       }
       data: undefined
-      signal: AbortSignal
     }>()
   })
 
@@ -480,7 +472,6 @@ test('incrementally building createServerFn with multiple middleware calls', () 
         readonly b: 'b'
       }
       data: undefined
-      signal: AbortSignal
     }>()
   })
 
@@ -502,7 +493,6 @@ test('incrementally building createServerFn with multiple middleware calls', () 
         readonly c: 'c'
       }
       data: undefined
-      signal: AbortSignal
     }>()
   })
 })
@@ -535,7 +525,6 @@ test('compose middlewares and server function factories', () => {
         readonly b: 'b'
       }
       data: undefined
-      signal: AbortSignal
     }>()
   })
 })

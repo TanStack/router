@@ -129,7 +129,7 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
           ...extractedFn,
           // The extracted function on the server-side calls
           // this function
-          __executeServer: async (opts: any, signal: AbortSignal) => {
+          __executeServer: async (opts: any) => {
             const startContext = getStartContextServerOnly()
             const serverContextAfterGlobalMiddlewares =
               startContext.contextAfterGlobalMiddlewares
@@ -140,7 +140,6 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
                 ...serverContextAfterGlobalMiddlewares,
                 ...opts.context,
               },
-              signal,
               request: startContext.request,
             }
 
@@ -324,7 +323,6 @@ export interface ServerFnCtx<
   method: TMethod
   data: Expand<IntersectAllValidatorOutputs<TMiddlewares, TInputValidator>>
   context: Expand<AssignAllServerFnContext<TRegister, TMiddlewares, {}>>
-  signal: AbortSignal
 }
 
 export type CompiledFetcherFn<TRegister, TResponse> = {

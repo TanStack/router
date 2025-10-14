@@ -270,46 +270,52 @@ test.describe('server function sets cookies', () => {
 })
 
 test.describe('aborting a server function call', () => {
-  test('without aborting', async ({ page }) => {
-    await page.goto('/abort-signal')
+  ;['get', 'post'].forEach((method) => {
+    test(`without aborting ${method}`, async ({ page }) => {
+      await page.goto('/abort-signal')
 
-    await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('networkidle')
 
-    await page.getByTestId('run-without-abort-btn').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForSelector(
-      '[data-testid="result"]:has-text("server function result")',
-    )
-    await page.waitForSelector(
-      '[data-testid="errorMessage"]:has-text("$undefined")',
-    )
+      await page.getByTestId(`run-without-abort-btn-${method}`).click()
+      await page.waitForLoadState('networkidle')
+      await page.waitForSelector(
+        `[data-testid="result-${method}"]:has-text("server function result")`,
+      )
+      await page.waitForSelector(
+        `[data-testid="errorMessage-${method}"]:has-text("$undefined")`,
+      )
 
-    const result = (await page.getByTestId('result').textContent()) || ''
-    expect(result).toBe('server function result')
+      const result =
+        (await page.getByTestId(`result-${method}`).textContent()) || ''
+      expect(result).toBe('server function result')
 
-    const errorMessage =
-      (await page.getByTestId('errorMessage').textContent()) || ''
-    expect(errorMessage).toBe('$undefined')
-  })
+      const errorMessage =
+        (await page.getByTestId(`errorMessage-${method}`).textContent()) || ''
+      expect(errorMessage).toBe('$undefined')
+    })
 
-  test('aborting', async ({ page }) => {
-    await page.goto('/abort-signal')
+    test(`aborting ${method}`, async ({ page }) => {
+      await page.goto('/abort-signal')
 
-    await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('networkidle')
 
-    await page.getByTestId('run-with-abort-btn').click()
-    await page.waitForLoadState('networkidle')
-    await page.waitForSelector('[data-testid="result"]:has-text("$undefined")')
-    await page.waitForSelector(
-      '[data-testid="errorMessage"]:has-text("aborted")',
-    )
+      await page.getByTestId(`run-with-abort-btn-${method}`).click()
+      await page.waitForLoadState('networkidle')
+      await page.waitForSelector(
+        `[data-testid="result-${method}"]:has-text("$undefined")`,
+      )
+      await page.waitForSelector(
+        `[data-testid="errorMessage-${method}"]:has-text("aborted")`,
+      )
 
-    const result = (await page.getByTestId('result').textContent()) || ''
-    expect(result).toBe('$undefined')
+      const result =
+        (await page.getByTestId(`result-${method}`).textContent()) || ''
+      expect(result).toBe('$undefined')
 
-    const errorMessage =
-      (await page.getByTestId('errorMessage').textContent()) || ''
-    expect(errorMessage).toContain('abort')
+      const errorMessage =
+        (await page.getByTestId(`errorMessage-${method}`).textContent()) || ''
+      expect(errorMessage).toContain('abort')
+    })
   })
 })
 

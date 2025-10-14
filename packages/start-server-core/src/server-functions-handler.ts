@@ -19,11 +19,6 @@ export const handleServerAction = async ({
   request: Request
   context: any
 }) => {
-  const controller = new AbortController()
-  const signal = controller.signal
-  const abort = () => controller.abort()
-  request.signal.addEventListener('abort', abort)
-
   if (regex === undefined) {
     regex = new RegExp(`${process.env.TSS_SERVER_FN_BASE}([^/?#]+)`)
   }
@@ -94,7 +89,7 @@ export const handleServerAction = async ({
             } catch {}
           }
 
-          return await action(params, signal)
+          return await action(params)
         }
 
         // Get requests use the query string
@@ -109,7 +104,7 @@ export const handleServerAction = async ({
           payload = payload ? parsePayload(JSON.parse(payload)) : payload
           payload.context = { ...context, ...payload.context }
           // Send it through!
-          return await action(payload, signal)
+          return await action(payload)
         }
 
         if (method.toLowerCase() !== 'post') {
@@ -127,7 +122,7 @@ export const handleServerAction = async ({
         if (isCreateServerFn) {
           const payload = parsePayload(jsonPayload)
           payload.context = { ...payload.context, ...context }
-          return await action(payload, signal)
+          return await action(payload)
         }
 
         // Otherwise, we'll spread the payload. Need to
@@ -305,8 +300,6 @@ export const handleServerAction = async ({
       })
     }
   })()
-
-  request.signal.removeEventListener('abort', abort)
 
   return response
 }

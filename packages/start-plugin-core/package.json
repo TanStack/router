@@ -26,7 +26,7 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "clean:snapshots": "rimraf **/*snapshot* --glob",
+    "clean:snapshots": "rimraf **/*snapshots* --glob",
     "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
     "test:unit": "vitest",
     "test:eslint": "eslint ./src",
@@ -76,7 +76,7 @@
     "cheerio": "^1.0.0",
     "exsolve": "^1.0.7",
     "pathe": "^2.0.3",
-    "srvx": "^0.8.2",
+    "srvx": "^0.8.16",
     "tinyglobby": "^0.2.15",
     "ufo": "^1.5.4",
     "vitefu": "^1.1.1",
