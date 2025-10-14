@@ -188,13 +188,13 @@ You can combine both prefixes and suffixes to create very specific routing patte
 
 ```tsx
 // src/routes/users/user-{$userId}person
-export const Route = createFileRoute('/users/user-{$userId}person')({
+export const Route = createFileRoute('/users/user-{$userId}.json')({
   component: UserComponent,
 })
 
 function UserComponent() {
   const { userId } = Route.useParams()
-  // userId will be the value between 'user-' and 'person'
+  // userId will be the value between 'user-' and '.json'
   return <div>User ID: {userId}</div>
 }
 ```
