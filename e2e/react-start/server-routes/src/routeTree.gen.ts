@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as MergeServerFnMiddlewareContextRouteImport } from './routes/merge-server-fn-middleware-context'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiMiddlewareContextRouteImport } from './routes/api/middleware-context'
+import { Route as ApiParamsFooRouteRouteImport } from './routes/api/params/$foo/route'
+import { Route as ApiParamsFooBarRouteImport } from './routes/api/params/$foo/$bar'
 
 const MergeServerFnMiddlewareContextRoute =
   MergeServerFnMiddlewareContextRouteImport.update({
@@ -29,22 +31,38 @@ const ApiMiddlewareContextRoute = ApiMiddlewareContextRouteImport.update({
   path: '/api/middleware-context',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiParamsFooRouteRoute = ApiParamsFooRouteRouteImport.update({
+  id: '/api/params/$foo',
+  path: '/api/params/$foo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiParamsFooBarRoute = ApiParamsFooBarRouteImport.update({
+  id: '/$bar',
+  path: '/$bar',
+  getParentRoute: () => ApiParamsFooRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/merge-server-fn-middleware-context': typeof MergeServerFnMiddlewareContextRoute
   '/api/middleware-context': typeof ApiMiddlewareContextRoute
+  '/api/params/$foo': typeof ApiParamsFooRouteRouteWithChildren
+  '/api/params/$foo/$bar': typeof ApiParamsFooBarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/merge-server-fn-middleware-context': typeof MergeServerFnMiddlewareContextRoute
   '/api/middleware-context': typeof ApiMiddlewareContextRoute
+  '/api/params/$foo': typeof ApiParamsFooRouteRouteWithChildren
+  '/api/params/$foo/$bar': typeof ApiParamsFooBarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/merge-server-fn-middleware-context': typeof MergeServerFnMiddlewareContextRoute
   '/api/middleware-context': typeof ApiMiddlewareContextRoute
+  '/api/params/$foo': typeof ApiParamsFooRouteRouteWithChildren
+  '/api/params/$foo/$bar': typeof ApiParamsFooBarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -52,19 +70,29 @@ export interface FileRouteTypes {
     | '/'
     | '/merge-server-fn-middleware-context'
     | '/api/middleware-context'
+    | '/api/params/$foo'
+    | '/api/params/$foo/$bar'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/merge-server-fn-middleware-context' | '/api/middleware-context'
+  to:
+    | '/'
+    | '/merge-server-fn-middleware-context'
+    | '/api/middleware-context'
+    | '/api/params/$foo'
+    | '/api/params/$foo/$bar'
   id:
     | '__root__'
     | '/'
     | '/merge-server-fn-middleware-context'
     | '/api/middleware-context'
+    | '/api/params/$foo'
+    | '/api/params/$foo/$bar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MergeServerFnMiddlewareContextRoute: typeof MergeServerFnMiddlewareContextRoute
   ApiMiddlewareContextRoute: typeof ApiMiddlewareContextRoute
+  ApiParamsFooRouteRoute: typeof ApiParamsFooRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -90,13 +118,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMiddlewareContextRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/params/$foo': {
+      id: '/api/params/$foo'
+      path: '/api/params/$foo'
+      fullPath: '/api/params/$foo'
+      preLoaderRoute: typeof ApiParamsFooRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/params/$foo/$bar': {
+      id: '/api/params/$foo/$bar'
+      path: '/$bar'
+      fullPath: '/api/params/$foo/$bar'
+      preLoaderRoute: typeof ApiParamsFooBarRouteImport
+      parentRoute: typeof ApiParamsFooRouteRoute
+    }
   }
 }
+
+interface ApiParamsFooRouteRouteChildren {
+  ApiParamsFooBarRoute: typeof ApiParamsFooBarRoute
+}
+
+const ApiParamsFooRouteRouteChildren: ApiParamsFooRouteRouteChildren = {
+  ApiParamsFooBarRoute: ApiParamsFooBarRoute,
+}
+
+const ApiParamsFooRouteRouteWithChildren =
+  ApiParamsFooRouteRoute._addFileChildren(ApiParamsFooRouteRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MergeServerFnMiddlewareContextRoute: MergeServerFnMiddlewareContextRoute,
   ApiMiddlewareContextRoute: ApiMiddlewareContextRoute,
+  ApiParamsFooRouteRoute: ApiParamsFooRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

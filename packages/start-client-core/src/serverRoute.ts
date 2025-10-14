@@ -4,7 +4,7 @@ import type {
   Assign,
   Constrain,
   Expand,
-  ResolveParams,
+  ResolveAllParamsFromParent,
   UnionToIntersection,
 } from '@tanstack/router-core'
 import type {
@@ -114,11 +114,19 @@ declare module '@tanstack/router-core' {
 
 type ExtractHandlersContext<THandlers> = THandlers extends (
   ...args: any
-) => CustomHandlerFunctionsRecord<any, any, any, any, any, infer TServerContext>
+) => CustomHandlerFunctionsRecord<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  infer TServerContext
+>
   ? UnionToIntersection<TServerContext>
   : THandlers extends Record<
         string,
-        RouteMethodHandler<any, any, any, any, any, infer TServerContext>
+        RouteMethodHandler<any, any, any, any, any, any, infer TServerContext>
       >
     ? UnionToIntersection<TServerContext>
     : undefined
@@ -126,7 +134,7 @@ type ExtractHandlersContext<THandlers> = THandlers extends (
 export interface RouteServerOptions<
   TRegister,
   TParentRoute extends AnyRoute,
-  TPath extends string,
+  TFullPath extends string,
   TParams,
   TLoaderDeps,
   TLoaderFn,
@@ -149,7 +157,8 @@ export interface RouteServerOptions<
           RouteMethodHandlerFn<
             TRegister,
             TParentRoute,
-            TPath,
+            TFullPath,
+            TParams,
             TServerMiddlewares,
             any,
             any
@@ -160,13 +169,15 @@ export interface RouteServerOptions<
         opts: HandlersFnOpts<
           TRegister,
           TParentRoute,
-          TPath,
+          TFullPath,
+          TParams,
           TServerMiddlewares
         >,
       ) => CustomHandlerFunctionsRecord<
         TRegister,
         TParentRoute,
-        TPath,
+        TFullPath,
+        TParams,
         TServerMiddlewares,
         any,
         any
@@ -179,7 +190,8 @@ declare const createHandlersSymbol: unique symbol
 type CustomHandlerFunctionsRecord<
   TRegister,
   TParentRoute extends AnyRoute,
-  TPath extends string,
+  TFullPath extends string,
+  TParams,
   TServerMiddlewares,
   TMethodMiddlewares,
   TServerContext,
@@ -191,7 +203,8 @@ type CustomHandlerFunctionsRecord<
     RouteMethodHandler<
       TRegister,
       TParentRoute,
-      TPath,
+      TFullPath,
+      TParams,
       TServerMiddlewares,
       TMethodMiddlewares,
       TServerContext
@@ -202,13 +215,15 @@ type CustomHandlerFunctionsRecord<
 export interface HandlersFnOpts<
   TRegister,
   TParentRoute extends AnyRoute,
-  TPath extends string,
+  TFullPath extends string,
+  TParams,
   TServerMiddlewares,
 > {
   createHandlers: CreateHandlersFn<
     TRegister,
     TParentRoute,
-    TPath,
+    TFullPath,
+    TParams,
     TServerMiddlewares
   >
 }
@@ -216,7 +231,8 @@ export interface HandlersFnOpts<
 export type CreateHandlersFn<
   TRegister,
   TParentRoute extends AnyRoute,
-  TPath extends string,
+  TFullPath extends string,
+  TParams,
   TServerMiddlewares,
 > = <
   const TMethodAllMiddlewares,
@@ -232,7 +248,8 @@ export type CreateHandlersFn<
   opts: CreateMethodFnOpts<
     TRegister,
     TParentRoute,
-    TPath,
+    TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodAllMiddlewares,
     TMethodGetMiddlewares,
@@ -247,7 +264,8 @@ export type CreateHandlersFn<
 ) => CustomHandlerFunctionsRecord<
   TRegister,
   TParentRoute,
-  TPath,
+  TFullPath,
+  TParams,
   TServerMiddlewares,
   any,
   TServerContext
@@ -256,7 +274,8 @@ export type CreateHandlersFn<
 export interface CreateMethodFnOpts<
   TRegister,
   TParentRoute extends AnyRoute,
-  TPath extends string,
+  TFullPath extends string,
+  TParams,
   TServerMiddlewares,
   TMethodAllMiddlewares,
   TMethodGetMiddlewares,
@@ -271,7 +290,8 @@ export interface CreateMethodFnOpts<
   ALL?: RouteMethodHandler<
     TRegister,
     TParentRoute,
-    TPath,
+    TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodAllMiddlewares,
     TServerContext
@@ -279,7 +299,8 @@ export interface CreateMethodFnOpts<
   GET?: RouteMethodHandler<
     TRegister,
     TParentRoute,
-    TPath,
+    TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodGetMiddlewares,
     TServerContext
@@ -287,7 +308,8 @@ export interface CreateMethodFnOpts<
   POST?: RouteMethodHandler<
     TRegister,
     TParentRoute,
-    TPath,
+    TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodPostMiddlewares,
     TServerContext
@@ -295,7 +317,8 @@ export interface CreateMethodFnOpts<
   PUT?: RouteMethodHandler<
     TRegister,
     TParentRoute,
-    TPath,
+    TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodPutMiddlewares,
     TServerContext
@@ -303,7 +326,8 @@ export interface CreateMethodFnOpts<
   PATCH?: RouteMethodHandler<
     TRegister,
     TParentRoute,
-    TPath,
+    TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodPatchMiddlewares,
     TServerContext
@@ -311,7 +335,8 @@ export interface CreateMethodFnOpts<
   DELETE?: RouteMethodHandler<
     TRegister,
     TParentRoute,
-    TPath,
+    TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodDeleteMiddlewares,
     TServerContext
@@ -319,7 +344,8 @@ export interface CreateMethodFnOpts<
   OPTIONS?: RouteMethodHandler<
     TRegister,
     TParentRoute,
-    TPath,
+    TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodOptionsMiddlewares,
     TServerContext
@@ -327,7 +353,8 @@ export interface CreateMethodFnOpts<
   HEAD?: RouteMethodHandler<
     TRegister,
     TParentRoute,
-    TPath,
+    TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodHeadMiddlewares,
     TServerContext
@@ -337,7 +364,8 @@ export interface CreateMethodFnOpts<
 export type RouteMethodHandler<
   TRegister,
   TParentRoute extends AnyRoute,
-  TPath extends string,
+  TFullPath extends string,
+  TParams,
   TServerMiddlewares,
   TMethodMiddlewares,
   TServerContext,
@@ -345,7 +373,8 @@ export type RouteMethodHandler<
   | RouteMethodHandlerFn<
       TRegister,
       TParentRoute,
-      TPath,
+      TFullPath,
+      TParams,
       TServerMiddlewares,
       TMethodMiddlewares,
       TServerContext
@@ -353,7 +382,8 @@ export type RouteMethodHandler<
   | RouteMethodBuilderOptions<
       TRegister,
       TParentRoute,
-      TPath,
+      TFullPath,
+      TParams,
       TServerMiddlewares,
       TMethodMiddlewares,
       TServerContext
@@ -363,6 +393,7 @@ export interface RouteMethodBuilderOptions<
   TRegister,
   TParentRoute extends AnyRoute,
   TFullPath extends string,
+  TParams,
   TServerMiddlewares,
   TMethodMiddlewares,
   TResponse,
@@ -371,6 +402,7 @@ export interface RouteMethodBuilderOptions<
     TRegister,
     TParentRoute,
     TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodMiddlewares,
     TResponse
@@ -406,6 +438,7 @@ export type RouteMethodHandlerFn<
   TRegister,
   TParentRoute extends AnyRoute,
   TFullPath extends string,
+  TParams,
   TServerMiddlewares,
   TMethodMiddlewares,
   TServerContext,
@@ -414,6 +447,7 @@ export type RouteMethodHandlerFn<
     TRegister,
     TParentRoute,
     TFullPath,
+    TParams,
     TServerMiddlewares,
     TMethodMiddlewares
   >,
@@ -435,6 +469,7 @@ export interface RouteMethodHandlerCtx<
   in out TRegister,
   in out TParentRoute extends AnyRoute,
   in out TFullPath extends string,
+  in out TParams,
   in out TServerMiddlewares,
   in out TMethodMiddlewares,
 > {
@@ -447,7 +482,7 @@ export interface RouteMethodHandlerCtx<
     >
   >
   request: Request
-  params: Expand<ResolveParams<TFullPath>>
+  params: Expand<ResolveAllParamsFromParent<TParentRoute, TParams>>
   pathname: TFullPath
   next: <TContext = undefined>(options?: {
     context?: TContext
