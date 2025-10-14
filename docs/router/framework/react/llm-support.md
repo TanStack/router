@@ -13,7 +13,7 @@ To use `vibe-rules`, install it globally using your package manager of choice. F
 pnpm add -g vibe-rules
 ```
 
-Once installed, you can run then run it in the editor of your choice. For example, to integrate with Cursor:
+Once installed, you can then run it in the editor of your choice. For example, to integrate with Cursor:
 
 ```bash
 vibe-rules install cursor
