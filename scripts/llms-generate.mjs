@@ -38,12 +38,17 @@ const packages = {
       globs: ['src/**/*.ts', 'src/**/*.tsx'],
     },
     {
+      paths: [`${DOCS_DIR}/router/framework/react/installation`],
+      description: 'TanStack Router: Installation',
+      name: 'installation',
+      globs: ['src/**/*.ts', 'src/**/*.tsx'],
+    },
+    {
       paths: [
         `${DOCS_DIR}/router/framework/react/overview.md`,
         `${DOCS_DIR}/router/framework/react/quick-start.md`,
+        `${DOCS_DIR}/router/framework/react/decisions-on-dx.md`,
         `${DOCS_DIR}/router/framework/react/devtools.md`,
-        `${DOCS_DIR}/router/framework/react/how-to/migrate-from-react-router.md`,
-        `${DOCS_DIR}/router/framework/react/installation/migrate-from-react-location.md`,
         `${DOCS_DIR}/router/framework/react/faq.md`,
       ],
       description: 'TanStack Router: Setup and Architecture',
