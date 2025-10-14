@@ -10,7 +10,8 @@ const PORT = await getTestServerPort(
 )
 const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
-const ssrModeCommand = `pnpm build && pnpm start`
+
+const ssrModeCommand = `pnpm test:e2e:dummyServer && pnpm build && pnpm test:e2e:stopDummyServer && pnpm start`
 
 /**
  * See https://playwright.dev/docs/test-configuration.
