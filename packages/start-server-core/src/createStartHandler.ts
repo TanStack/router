@@ -452,7 +452,7 @@ function throwIfMayNotDefer() {
   throw new Error('Internal Server Error')
 }
 function handlerToMiddleware(
-  handler: RouteMethodHandlerFn<any, AnyRoute, any, any, any, any>,
+  handler: RouteMethodHandlerFn<any, AnyRoute, any, any, any, any, any>,
   mayDefer: boolean = false,
 ) {
   if (mayDefer) {
