@@ -1,16 +1,13 @@
 import { existsSync, promises as fsp, rmSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import os from 'node:os'
-import {
-  Generator,
-  getConfig,
-} from '@tanstack/router-generator'
+import { Generator, getConfig } from '@tanstack/router-generator'
 import path from 'pathe'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { createLogger } from './utils'
 import { Queue } from './queue'
-import type {RouteNode} from '@tanstack/router-generator';
+import type { RouteNode } from '@tanstack/router-generator'
 import type { Rollup, ViteBuilder } from 'vite'
 import type { Page, TanStackStartOutputConfig } from './schema'
 
@@ -36,8 +33,9 @@ export async function prerender({
       })
       await generator.run()
       const getCrawlingResult = await generator.getCrawlingResult()
-      startConfig.pages = getPrerenderablePaths(getCrawlingResult?.routeFileResult || [])
-
+      startConfig.pages = getPrerenderablePaths(
+        getCrawlingResult?.routeFileResult || [],
+      )
     } catch (error) {
       logger.warn('Failed to get static paths:', error)
       startConfig.pages = [{ path: '/' }]
@@ -312,7 +310,6 @@ export async function writeBundleToDisk({
     await fsp.writeFile(fullPath, content)
   }
 }
-
 
 function getPrerenderablePaths(
   routeNodes: Array<RouteNode>,
