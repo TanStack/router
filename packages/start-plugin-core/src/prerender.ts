@@ -138,6 +138,7 @@ export async function prerender({
 
   async function prerenderPages({ outputDir }: { outputDir: string }) {
     const seen = new Set<string>()
+    const prerendered = new Set<string>()
     const retriesByPath = new Map<string, number>()
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
@@ -149,7 +150,7 @@ export async function prerender({
 
     await queue.start()
 
-    return Array.from(seen)
+    return Array.from(prerendered)
 
     function addCrawlPageTask(page: Page) {
       // Was the page already seen?
@@ -233,6 +234,8 @@ export async function prerender({
           })
 
           await fsp.writeFile(filepath, html)
+
+          prerendered.add(page.path)
 
           const newPage = await prerenderOptions.onSuccess?.({ page, html })
 
