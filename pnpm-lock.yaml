@@ -9317,8 +9317,8 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@microsoft/api-extractor-model@7.29.6':
-    resolution: {integrity: sha512-gC0KGtrZvxzf/Rt9oMYD2dHvtN/1KPEYsrQPyMKhLHnlVuO/f4AFN3E4toqZzD2pt4LhkKoYmL2H9tX3yCOyRw==}
+  '@microsoft/api-extractor-model@7.29.4':
+    resolution: {integrity: sha512-LHOMxmT8/tU1IiiiHOdHFF83Qsi+V8d0kLfscG4EvQE9cafiR8blOYr8SfkQKWB1wgEilQgXJX3MIA4vetDLZw==}
 
   '@microsoft/api-extractor@7.47.4':
     resolution: {integrity: sha512-HKm+P4VNzWwvq1Ey+Jfhhj/3MjsD+ka2hbt8L5AcRM95lu1MFOYnz3XlU7Gr79Q/ZhOb7W/imAKeYrOI0bFydg==}
@@ -10684,8 +10684,8 @@ packages:
   '@rushstack/rig-package@0.5.3':
     resolution: {integrity: sha512-olzSSjYrvCNxUFZowevC3uz8gvKr3WTpHQ7BkpjtRpA3wK+T0ybep/SRUMfr195gBzJm5gaXw0ZMgjIyHqJUow==}
 
-  '@rushstack/terminal@0.14.0':
-    resolution: {integrity: sha512-juTKMAMpTIJKudeFkG5slD8Z/LHwNwGZLtU441l/u82XdTBfsP+LbGKJLCNwP5se+DMCT55GB8x9p6+C4UL7jw==}
+  '@rushstack/terminal@0.13.3':
+    resolution: {integrity: sha512-fc3zjXOw8E0pXS5t9vTiIPx9gHA0fIdTXsu9mT4WbH+P3mYvnrX0iAQ5a6NvyK1+CqYWBTw/wVNx7SDJkI+WYQ==}
     peerDependencies:
       '@types/node': 22.10.2
     peerDependenciesMeta:
@@ -11913,8 +11913,8 @@ packages:
   '@vue/compiler-vue2@2.7.16':
     resolution: {integrity: sha512-qYC3Psj9S/mfu9uVi5WvNZIzq+xnXMhOwbTFKKDD7b1lhpnn71jXSFdTQ+WsIEk0ONCd7VV2IMm7ONl6tbQ86A==}
 
-  '@vue/language-core@2.1.6':
-    resolution: {integrity: sha512-MW569cSky9R/ooKMh6xa2g1D0AtRKbL56k83dzus/bx//RDJk24RHWkMzbAlXjMdDNyxAaagKPRquBIxkxlCkg==}
+  '@vue/language-core@2.0.29':
+    resolution: {integrity: sha512-o2qz9JPjhdoVj8D2+9bDXbaI4q2uZTHQA/dbyZT4Bj1FR9viZxDJnLcKVHfxdn6wsOzRgpqIzJEEmSSvgMvDTQ==}
     peerDependencies:
       typescript: '*'
     peerDependenciesMeta:
@@ -16474,8 +16474,8 @@ packages:
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
 
-  vite-plugin-dts@4.2.3:
-    resolution: {integrity: sha512-O5NalzHANQRwVw1xj8KQun3Bv8OSDAlNJXrnqoAz10BOuW8FVvY5g4ygj+DlJZL5mtSPuMu9vd3OfrdW5d4k6w==}
+  vite-plugin-dts@4.0.3:
+    resolution: {integrity: sha512-+xnTsaONwU2kV6zhRjtbRJSGN41uFR/whqmcb4k4fftLFDJElxthp0PP5Fq8gMeM9ytWMt1yk5gGgekLREWYQQ==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       typescript: '*'
@@ -18645,23 +18645,23 @@ snapshots:
       - encoding
       - supports-color
 
-  '@microsoft/api-extractor-model@7.29.6(@types/node@22.10.2)':
+  '@microsoft/api-extractor-model@7.29.4(@types/node@22.10.2)':
     dependencies:
       '@microsoft/tsdoc': 0.15.1
       '@microsoft/tsdoc-config': 0.17.1
-      '@rushstack/node-core-library': 5.7.0(@types/node@22.10.2)
+      '@rushstack/node-core-library': 5.5.1(@types/node@22.10.2)
     transitivePeerDependencies:
       - '@types/node'
 
   '@microsoft/api-extractor@7.47.4(@types/node@22.10.2)':
     dependencies:
-      '@microsoft/api-extractor-model': 7.29.6(@types/node@22.10.2)
+      '@microsoft/api-extractor-model': 7.29.4(@types/node@22.10.2)
       '@microsoft/tsdoc': 0.15.1
       '@microsoft/tsdoc-config': 0.17.1
-      '@rushstack/node-core-library': 5.7.0(@types/node@22.10.2)
+      '@rushstack/node-core-library': 5.5.1(@types/node@22.10.2)
       '@rushstack/rig-package': 0.5.3
-      '@rushstack/terminal': 0.14.0(@types/node@22.10.2)
-      '@rushstack/ts-command-line': 4.22.6(@types/node@22.10.2)
+      '@rushstack/terminal': 0.13.3(@types/node@22.10.2)
+      '@rushstack/ts-command-line': 4.22.3(@types/node@22.10.2)
       lodash: 4.17.21
       minimatch: 3.0.8
       resolve: 1.22.10
@@ -20027,16 +20027,16 @@ snapshots:
       resolve: 1.22.10
       strip-json-comments: 3.1.1
 
-  '@rushstack/terminal@0.14.0(@types/node@22.10.2)':
+  '@rushstack/terminal@0.13.3(@types/node@22.10.2)':
     dependencies:
-      '@rushstack/node-core-library': 5.7.0(@types/node@22.10.2)
+      '@rushstack/node-core-library': 5.5.1(@types/node@22.10.2)
       supports-color: 8.1.1
     optionalDependencies:
       '@types/node': 22.10.2
 
   '@rushstack/ts-command-line@4.22.3(@types/node@22.10.2)':
     dependencies:
-      '@rushstack/terminal': 0.14.0(@types/node@22.10.2)
+      '@rushstack/terminal': 0.13.3(@types/node@22.10.2)
       '@types/argparse': 1.0.38
       argparse: 1.0.10
       string-argv: 0.3.2
@@ -26157,7 +26157,7 @@ snapshots:
 
   ts-declaration-location@1.0.5(typescript@5.9.2):
     dependencies:
-      minimatch: 10.0.3
+      minimatch: 10.0.1
       typescript: 5.9.2
 
   ts-declaration-location@1.0.7(typescript@5.9.2):
@@ -26515,7 +26515,7 @@ snapshots:
 
   vite-plugin-dts@4.0.3(@types/node@22.10.2)(rollup@4.52.2)(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
     dependencies:
-      '@microsoft/api-extractor': 7.47.7(@types/node@22.10.2)
+      '@microsoft/api-extractor': 7.47.4(@types/node@22.10.2)
       '@rollup/pluginutils': 5.1.4(rollup@4.52.2)
       '@volar/typescript': 2.4.11
       '@vue/language-core': 2.0.29(typescript@5.8.2)
