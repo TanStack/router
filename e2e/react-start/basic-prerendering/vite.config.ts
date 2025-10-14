@@ -14,7 +14,7 @@ export default defineConfig({
     tanstackStart({
       prerender:{
         enabled: true,
-        filter: (page) =>  !['/this-route-does-not-exist', '/redirect', '/i-do-not-exist'].some((p) => page.path.includes(p))
+        filter: (page) =>  !['/this-route-does-not-exist', '/redirect', '/i-do-not-exist', '/not-found/via-beforeLoad', '/not-found/via-loader'].some((p) => page.path.includes(p))
       }
     }),
     viteReact(),
