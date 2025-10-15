@@ -14,9 +14,11 @@
     "@emotion/styled": "11.14.0",
     "@fontsource-variable/roboto": "5.2.5",
     "@mui/material": "6.4.7",
+    "@tanstack/react-query": "^5.90.3",
     "@tanstack/react-router": "^1.133.3",
-    "@tanstack/react-start": "^1.133.3",
     "@tanstack/react-router-devtools": "^1.133.3",
+    "@tanstack/react-router-ssr-query": "workspace:*",
+    "@tanstack/react-start": "^1.133.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^3.24.2"

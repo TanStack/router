@@ -1,10 +1,11 @@
 /// <reference types="vite/client" />
+import { QueryClient } from '@tanstack/react-query'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import {
   HeadContent,
   Outlet,
   Scripts,
-  createRootRoute,
+  createRootRouteWithContext,
 } from '@tanstack/react-router'
 import { CacheProvider } from '@emotion/react'
 import { Container, CssBaseline, ThemeProvider } from '@mui/material'
@@ -14,7 +15,9 @@ import React from 'react'
 import { theme } from '~/setup/theme'
 import { Header } from '~/components/Header'
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{
+  queryClient: QueryClient
+}>()({
   head: () => ({
     links: [{ rel: 'stylesheet', href: fontsourceVariableRobotoCss }],
   }),
