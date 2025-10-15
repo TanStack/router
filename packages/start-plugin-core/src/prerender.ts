@@ -76,16 +76,16 @@ export async function prerender({
   async function localFetch(
     path: string,
     options?: RequestInit,
-    maxRedirects: number = 5,
+    maxRedirect: number = 5,
   ): Promise<Response> {
     const url = new URL(`http://localhost${path}`)
     const response = await serverEntrypoint.fetch(new Request(url, options))
 
-    if (isRedirectResponse(response) && maxRedirects > 0) {
+    if (isRedirectResponse(response) && maxRedirect > 0) {
       const location = response.headers.get('location')!
       if (location.startsWith('http://localhost') || location.startsWith('/')) {
         const newUrl = location.replace('http://localhost', '')
-        return localFetch(newUrl, options, maxRedirects - 1)
+        return localFetch(newUrl, options, maxRedirect - 1)
       } else {
         logger.warn(`Skipping redirect to external location: ${location}`)
       }
