@@ -1,13 +1,11 @@
 import { existsSync, promises as fsp, rmSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import os from 'node:os'
-import { Generator, getConfig } from '@tanstack/router-generator'
 import path from 'pathe'
 import { joinURL, withBase, withoutBase } from 'ufo'
 import { VITE_ENVIRONMENT_NAMES } from './constants'
 import { createLogger } from './utils'
 import { Queue } from './queue'
-import type { RouteNode } from '@tanstack/router-generator'
 import type { Rollup, ViteBuilder } from 'vite'
 import type { Page, TanStackStartOutputConfig } from './schema'
 
@@ -26,16 +24,7 @@ export async function prerender({
   // If prerender is enabled but no pages are provided, try to discover static paths
   if (startConfig.prerender?.enabled && !startConfig.pages.length) {
     try {
-      const config = getConfig(startConfig.router)
-      const generator = new Generator({
-        config,
-        root: builder.config.root,
-      })
-      await generator.run()
-      const getCrawlingResult = await generator.getCrawlingResult()
-      startConfig.pages = getPrerenderablePaths(
-        getCrawlingResult?.routeFileResult || [],
-      )
+      startConfig.pages = globalThis.TSS_PRERENDABLE_PATHS
     } catch (error) {
       logger.warn('Failed to get static paths:', error)
       startConfig.pages = [{ path: '/' }]
@@ -310,33 +299,4 @@ export async function writeBundleToDisk({
   }
 }
 
-function getPrerenderablePaths(
-  routeNodes: Array<RouteNode>,
-): Array<{ path: string }> {
-  const paths = new Set<string>(['/'])
 
-  for (const route of routeNodes) {
-    if (!route.routePath) continue
-
-    // filter routes that are layout
-    if (route.isNonPath === true) continue
-
-    // filter dynamic routes
-    // if routePath contains $ it is dynamic
-    if (route.routePath.includes('$')) continue
-
-    // filter routes that do not have a component
-    if (!route.createFileRouteProps?.has('component')) continue
-
-    // clean the path from _layout or _root or _something
-    // e.g. /_layout/route-a -> /route-a
-    const cleanPath = route.routePath
-      .split('/')
-      .filter((subPath) => !subPath.startsWith('_'))
-      .join('/')
-
-    paths.add(cleanPath)
-  }
-
-  return Array.from(paths).map((path) => ({ path }))
-}
