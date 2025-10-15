@@ -62,6 +62,31 @@ Out of the box, TanStack Router will dedupe `title` and `meta` tags, preferring 
 - `title` tags defined in nested routes will override a `title` tag defined in a parent route (but you can compose them together, which is covered in a future section of this guide)
 - `meta` tags with the same `name` or `property` will be overridden by the last occurrence of that tag found in nested routes
 
+### Route-level Document Head
+
+You can use the `context` object inside the `head` function to customize the document head for a route — for example, updating the title or meta tags based on route data.
+You can find the full list of available properties on the `context` object [here](https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType#head-method).
+
+```tsx
+export const Route = createRootRoute({
+  loader: async ({ params }) {
+    const id = params.id;
+    return await fetchPost({ id });
+  },
+  head: (context) => ({
+    meta: [
+      {
+        name: 'description',
+        content: context.loaderData.content.slice(0, 100),
+      },
+      {
+        title: context.loaderData.title,
+      },
+    ],
+  }),
+})
+```
+
 ### `<HeadContent />`
 
 The `<HeadContent />` component is **required** to render the head, title, meta, link, and head-related script tags of a document.
