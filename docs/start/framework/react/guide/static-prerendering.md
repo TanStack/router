@@ -75,12 +75,8 @@ All static paths will be prerendered, and seamlessly merge them with specified `
 
 Routes with path parameters (e.g., `/users/$userId`) are excluded from automatic discovery since they require specific parameter values to be prerendered.
 
-
 ## Crawling Links
 
 Prerender the pages link the prerendered pages
 
 if `/` --has link to--> `/posts`, `/posts` will also be prerendered
-
-
-
