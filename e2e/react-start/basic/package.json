@@ -15,7 +15,7 @@
     "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
     "test:e2e:spaMode": "rm -rf port*.txt; MODE=spa playwright test --project=chromium",
     "test:e2e:ssrMode": "rm -rf port*.txt; playwright test --project=chromium",
-    "test:e2e:prerender": "rm -rf port*.txt; MODE=prerender playwright test --project=chromium --ui",
+    "test:e2e:prerender": "rm -rf port*.txt; MODE=prerender playwright test --project=chromium",
     "test:e2e": "pnpm run test:e2e:spaMode && pnpm run test:e2e:ssrMode"
   },
   "dependencies": {
