@@ -16,7 +16,7 @@
     "test:e2e:spaMode": "rm -rf port*.txt; MODE=spa playwright test --project=chromium",
     "test:e2e:ssrMode": "rm -rf port*.txt; playwright test --project=chromium",
     "test:e2e:prerender": "rm -rf port*.txt; MODE=prerender playwright test --project=chromium",
-    "test:e2e": "pnpm run test:e2e:spaMode && pnpm run test:e2e:ssrMode"
+    "test:e2e": "pnpm run test:e2e:spaMode && pnpm run test:e2e:ssrMode && pnpm run test:e2e:prerender"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
