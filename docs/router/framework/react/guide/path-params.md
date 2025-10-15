@@ -187,14 +187,14 @@ function FileComponent() {
 You can combine both prefixes and suffixes to create very specific routing patterns. For example, if you want to match a URL that starts with `user-` and ends with `.json`, you can define it like this:
 
 ```tsx
-// src/routes/users/user-{$userId}person
-export const Route = createFileRoute('/users/user-{$userId}person')({
+// src/routes/users/user-{$userId}.json
+export const Route = createFileRoute('/users/user-{$userId}.json')({
   component: UserComponent,
 })
 
 function UserComponent() {
   const { userId } = Route.useParams()
-  // userId will be the value between 'user-' and 'person'
+  // userId will be the value between 'user-' and '.json'
   return <div>User ID: {userId}</div>
 }
 ```

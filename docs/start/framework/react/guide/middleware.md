@@ -463,6 +463,7 @@ Middleware is executed dependency-first, starting with global middleware, follow
 - `b`
 - `c`
 - `d`
+- `fn`
 
 ```tsx
 const globalMiddleware1 = createMiddleware({ type: 'function' }).server(
