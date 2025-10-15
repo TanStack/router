@@ -19,7 +19,7 @@ const spaModeCommand = `pnpm build:spa && pnpm start:spa`
 const ssrModeCommand = `pnpm build && pnpm start`
 const prerenderModeCommand = `pnpm run test:e2e:startDummyServer && pnpm build:prerender && pnpm run test:e2e:stopDummyServer && pnpm start`
 
-const getCommand = () =>{
+const getCommand = () => {
   if (isSpaMode) return spaModeCommand
   if (isPrerender) return prerenderModeCommand
   return ssrModeCommand
