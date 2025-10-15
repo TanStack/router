@@ -20,7 +20,7 @@ To manage the document head, it's required that you render both the `<HeadConten
 ## Managing the Document Head
 
 ```tsx
-export const Route = createFileRoute({
+export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
@@ -68,7 +68,7 @@ You can use the `context` object inside the `head` function to customize the doc
 You can find the full list of available properties on the `context` object [here](https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType#head-method).
 
 ```tsx
-export const Route = createRootRoute({
+export const Route = createFileRoute({
   loader: async ({ params }) {
     const id = params.id;
     return await fetchPost({ id });
