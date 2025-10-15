@@ -26,7 +26,7 @@ export default defineConfig({
         autoSubfolderIndex: true,
 
         // If disabled only root or the paths defined in pages config will be pre-rerendered
-        autoStaticPathsDiscovery: false,
+        autoStaticPathsDiscovery: true,
 
         // How many prerender jobs to run at once
         concurrency: 14,
@@ -77,7 +77,7 @@ Routes are excluded from automatic discovery in the following cases:
 
 - Routes with path parameters (e.g., `/users/$userId`) since they require specific parameter values
 - Layout routes (prefixed with `_`) since they don't render standalone pages
-- Routes without components (e.g API routes)
+- Routes without components (e.g., API routes)
 
 Note: Dynamic routes can still be prerendered if they are linked from other pages when `crawlLinks` is enabled.
 
