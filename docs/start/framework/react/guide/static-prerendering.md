@@ -74,6 +74,7 @@ export default defineConfig({
 All static paths will be automatically discovered and seamlessly merged with the specified `pages` config
 
 Routes are excluded from automatic discovery in the following cases:
+
 - Routes with path parameters (e.g., `/users/$userId`) since they require specific parameter values
 - Layout routes (prefixed with `_`) since they don't render standalone pages
 - Routes without components (e.g API routes)
