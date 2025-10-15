@@ -55,8 +55,8 @@ export default defineConfig({
         },
       },
       // Optional configuration for specific pages
-      // Note: When pages are not specified, TanStack Start will automatically
-      // discover and prerender all static routes in your application
+      // Note: When autoStaticPathsDiscovery is enabled (default), discovered static
+      // routes will be merged with the pages specified below
       pages: [
         {
           path: '/my-page',
@@ -85,4 +85,4 @@ Note: Dynamic routes can still be prerendered if they are linked from other page
 
 When `crawlLinks` is enabled (default: `true`), TanStack Start will extract links from prerendered pages and prerender those linked pages as well.
 
-+For example, if `/` contains a link to `/posts`, then `/posts` will also be automatically prerendered.
+For example, if `/` contains a link to `/posts`, then `/posts` will also be automatically prerendered.
