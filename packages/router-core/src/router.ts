@@ -2049,8 +2049,8 @@ export class RouterCore<
                       (match) =>
                         !previousMatches.some((d) => d.id === match.id),
                     )
-                    stayingMatches = previousMatches.filter((match) =>
-                      newMatches.some((d) => d.id === match.id),
+                    stayingMatches = newMatches.filter((match) =>
+                      previousMatches.some((d) => d.id === match.id),
                     )
 
                     return {
