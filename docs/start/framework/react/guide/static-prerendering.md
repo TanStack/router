@@ -46,7 +46,7 @@ export default defineConfig({
         // Maximum number of redirects to follow during prerendering
         maxRedirect: 5,
 
-        // Fail if an error occurred during prerending
+        // Fail if an error occurs during prerendering
         failOnError: true
 
         // Callback when page is successfully rendered
