@@ -1,6 +1,5 @@
-
 import { inferFullPath } from '@tanstack/router-generator'
-import type {GeneratorPlugin, RouteNode} from '@tanstack/router-generator';
+import type { GeneratorPlugin, RouteNode } from '@tanstack/router-generator'
 
 /**
  * this plugin gets the prerenderable paths and stores it on globalThis
@@ -14,7 +13,6 @@ export function prerenderRoutesPlugin(): GeneratorPlugin {
     },
   }
 }
-
 
 function getPrerenderablePaths(
   routeNodes: Array<RouteNode>,

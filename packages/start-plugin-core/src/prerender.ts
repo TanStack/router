@@ -70,7 +70,6 @@ export async function prerender({
     pathToFileURL(fullEntryFilePath).toString()
   )
 
-
   const isRedirectResponse = (res: Response) => {
     return res.status >= 300 && res.status < 400 && res.headers.get('location')
   }
@@ -82,10 +81,7 @@ export async function prerender({
     const url = new URL(`http://localhost${path}`)
     const response = await serverEntrypoint.fetch(new Request(url, options))
 
-    if (
-      isRedirectResponse(response) &&
-      maxRedirects > 0
-    ) {
+    if (isRedirectResponse(response) && maxRedirects > 0) {
       const location = response.headers.get('location')!
       if (location.startsWith('http://localhost') || location.startsWith('/')) {
         const newUrl = location.replace('http://localhost', '')
@@ -303,5 +299,3 @@ export async function writeBundleToDisk({
     await fsp.writeFile(fullPath, content)
   }
 }
-
-
