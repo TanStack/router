@@ -71,12 +71,17 @@ export default defineConfig({
 
 ## Automatic Static Route Discovery
 
-All static paths will be prerendered, and seamlessly merge them with specified `pages` config
+All static paths will be automatically discovered and seamlessly merged with the specified `pages` config
 
-Routes with path parameters (e.g., `/users/$userId`) are excluded from automatic discovery since they require specific parameter values to be prerendered.
+Routes are excluded from automatic discovery in the following cases:
+- Routes with path parameters (e.g., `/users/$userId`) since they require specific parameter values
+- Layout routes (prefixed with `_`) since they don't render standalone pages
+- Routes without components (e.g API routes)
+
+Note: Dynamic routes can still be prerendered if they are linked from other pages when `crawlLinks` is enabled.
 
 ## Crawling Links
 
-Prerender the pages link the prerendered pages
+When `crawlLinks` is enabled (default: `true`), TanStack Start will extract links from prerendered pages and prerender those linked pages as well.
 
-if `/` --has link to--> `/posts`, `/posts` will also be prerendered
++For example, if `/` contains a link to `/posts`, then `/posts` will also be automatically prerendered.
