@@ -138,4 +138,4 @@ And import into the Paraglide Vite plguin.
 
 ## Server side rendering
 
-For server side rerdering, check out the [TanStack Start guide](https://inlang.com/m/gerre34r/library-inlang-paraglideJs/tanstack-start).
+For server side rerdering, check out the [TanStack Start guide](https://github.com/TanStack/router/tree/main/examples/react/start-i18n-paraglide).
