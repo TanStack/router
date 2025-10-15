@@ -4,6 +4,7 @@ import {
   getTestServerPort,
 } from '@tanstack/router-e2e-utils'
 import { isSpaMode } from './tests/utils/isSpaMode'
+import { isPrerender } from './tests/utils/isPrerender'
 import packageJson from './package.json' with { type: 'json' }
 
 const PORT = await getTestServerPort(
@@ -16,8 +17,15 @@ const EXTERNAL_PORT = await getDummyServerPort(packageJson.name)
 const baseURL = `http://localhost:${PORT}`
 const spaModeCommand = `pnpm build:spa && pnpm start:spa`
 const ssrModeCommand = `pnpm build && pnpm start`
+const prerenderModeCommand = `pnpm run test:e2e:startDummyServer && pnpm build:prerender && pnpm run test:e2e:stopDummyServer && pnpm start`
 
+const getCommand = () =>{
+  if (isSpaMode) return spaModeCommand
+  if (isPrerender) return prerenderModeCommand
+  return ssrModeCommand
+}
 console.log('running in spa mode: ', isSpaMode.toString())
+console.log('running in prerender mode: ', isPrerender.toString())
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -35,7 +43,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: isSpaMode ? spaModeCommand : ssrModeCommand,
+    command: getCommand(),
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',
