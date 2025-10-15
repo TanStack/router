@@ -25,7 +25,7 @@ export default defineConfig({
         // Enable if you need pages to be at `/page/index.html` instead of `/page.html`
         autoSubfolderIndex: true,
 
-        // If disabled only root or the paths defined in pages config will be pre-rerendered
+        // If disabled, only the root path or the paths defined in the pages config will be prerendered
         autoStaticPathsDiscovery: true,
 
         // How many prerender jobs to run at once
