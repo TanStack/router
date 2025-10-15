@@ -20,7 +20,7 @@ To manage the document head, it's required that you render both the `<HeadConten
 ## Managing the Document Head
 
 ```tsx
-export const Route = createRootRoute({
+export const Route = createFileRoute({
   head: () => ({
     meta: [
       {
