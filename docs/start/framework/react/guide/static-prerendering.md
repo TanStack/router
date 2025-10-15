@@ -5,9 +5,9 @@ title: Static Prerendering
 
 Static prerendering is the process of generating static HTML files for your application. This can be useful for either improving the performance of your application, as it allows you to serve pre-rendered HTML files to users without having to generate them on the fly or for deploying static sites to platforms that do not support server-side rendering.
 
-## Enabling Prerendering
+## Prerendering
 
-Set the `prerender.enabled` to `true`, others fields are optional
+TanStack Start can prerender your application to static HTML files, which can then be served to users without having to generate them on the fly. To prerender your application, you can add the `prerender` option to your tanstackStart configuration in `vite.config.ts` file:
 
 ```ts
 // vite.config.ts
