@@ -5,21 +5,9 @@ title: Static Prerendering
 
 Static prerendering is the process of generating static HTML files for your application. This can be useful for either improving the performance of your application, as it allows you to serve pre-rendered HTML files to users without having to generate them on the fly or for deploying static sites to platforms that do not support server-side rendering.
 
-## Automatic Static Route Discovery
+## Enabling Prerendering
 
-When you don't specify a `pages` array in your prerendering configuration, TanStack Start will automatically discover and prerender all static routes in your application. This includes:
-
-- Routes with no path parameters (e.g., `/about`, `/contact`)
-- Routes with search parameters that have default values
-- Routes that don't require dynamic data fetching
-
-Routes with path parameters (e.g., `/users/$userId`) are excluded from automatic discovery since they require specific parameter values to be prerendered.
-
-## Manual Page Configuration
-
-TanStack Start can prerender your application to static HTML files, which can then be served to users without having to generate them on the fly. When prerendering is enabled without specifying pages, TanStack Start will automatically discover and prerender all static routes in your application.
-
-To prerender your application, you can add the `prerender` option to your tanstackStart configuration in `vite.config.ts` file:
+Set the `prerender.enabled` to `true`, others fields are optional
 
 ```ts
 // vite.config.ts
@@ -36,6 +24,9 @@ export default defineConfig({
 
         // Enable if you need pages to be at `/page/index.html` instead of `/page.html`
         autoSubfolderIndex: true,
+
+        // If disabled only root or the paths defined in pages config will be pre-rerendered
+        autoStaticPathsDiscovery: false,
 
         // How many prerender jobs to run at once
         concurrency: 14,
@@ -54,6 +45,9 @@ export default defineConfig({
 
         // Maximum number of redirects to follow during prerendering
         maxRedirect: 5,
+
+        // Fail if an error occurred during prerending
+        failOnError: true
 
         // Callback when page is successfully rendered
         onSuccess: ({ page }) => {
@@ -74,3 +68,19 @@ export default defineConfig({
   ],
 })
 ```
+
+## Automatic Static Route Discovery
+
+All static paths will be prerendered, and seamlessly merge them with specified `pages` config
+
+Routes with path parameters (e.g., `/users/$userId`) are excluded from automatic discovery since they require specific parameter values to be prerendered.
+
+
+## Crawling Links
+
+Prerender the pages link the prerendered pages
+
+if `/` --has link to--> `/posts`, `/posts` will also be prerendered
+
+
+

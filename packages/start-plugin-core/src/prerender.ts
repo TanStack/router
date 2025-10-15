@@ -21,18 +21,27 @@ export async function prerender({
   const logger = createLogger('prerender')
   logger.info('Prerendering pages...')
 
-  // If prerender is enabled but no pages are provided, try to discover static paths
-  if (startConfig.prerender?.enabled && !startConfig.pages.length) {
-    try {
-      startConfig.pages = globalThis.TSS_PRERENDABLE_PATHS
-      if (!startConfig.pages.length) {
-        logger.warn('No static paths discovered. Falling back to root "/"')
-        startConfig.pages = [{ path: '/' }]
+  // If prerender is enabled
+  if (startConfig.prerender?.enabled) {
+
+    // default to root page if no pages are defined
+    let pages = startConfig.pages.length ? startConfig.pages : [{path: '/'}]
+
+    if (startConfig.prerender.autoStaticPathsDiscovery ?? true) {
+
+      // merge discovered static pages with user-defined pages
+      const pagesMap = new Map(pages.map(item => [item.path, item]));
+
+      for (const page of globalThis.TSS_PRERENDABLE_PATHS) {
+        if (!pagesMap.has(page.path)) {
+          pagesMap.set(page.path, page);
+        }
       }
-    } catch (error) {
-      logger.warn('Failed to get static paths:', error)
-      startConfig.pages = [{ path: '/' }]
+
+      pages = Array.from(pagesMap.values());
     }
+
+    startConfig.pages = pages
   }
 
   const serverEnv = builder.environments[VITE_ENVIRONMENT_NAMES.server]
