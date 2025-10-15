@@ -7,7 +7,7 @@ title: Getting Started
 
 - [Start a new project from scratch](#start-a-new-project-from-scratch) to quickly learn how Start works (see below)
 - Refer to a migration guide for your specific framework:
-  - [Next.js](../guide/migrate-from-next-js)
+  - [Next.js](../migrate-from-next-js)
   - Remix 2 / React Router 7 "Framework Mode" (coming soon!)
 
 ## Start a new project from scratch
