@@ -70,6 +70,10 @@ export async function prerender({
     pathToFileURL(fullEntryFilePath).toString()
   )
 
+
+  const isRedirectResponse = (res: Response) => {
+    return res.status >= 300 && res.status < 400 && res.headers.get('location')
+  }
   async function localFetch(
     path: string,
     options?: RequestInit,
@@ -79,9 +83,7 @@ export async function prerender({
     const response = await serverEntrypoint.fetch(new Request(url, options))
 
     if (
-      response.status >= 300 &&
-      response.status < 400 &&
-      response.headers.get('location') &&
+      isRedirectResponse(response) &&
       maxRedirects > 0
     ) {
       const location = response.headers.get('location')!
@@ -177,10 +179,13 @@ export async function prerender({
                 ...prerenderOptions.headers,
               },
             },
-            prerenderOptions.redirectCount,
+            prerenderOptions.maxRedirect,
           )
 
           if (!res.ok) {
+            if (isRedirectResponse(res)) {
+              logger.warn(`Max redirects reached for ${page.path}`)
+            }
             throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`, {
               cause: res,
             })

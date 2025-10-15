@@ -53,7 +53,7 @@ export default defineConfig({
         retryDelay: 1000,
 
         // Maximum number of redirects to follow during prerendering
-        redirectCount: 5,
+        maxRedirect: 5,
 
         // Callback when page is successfully rendered
         onSuccess: ({ page }) => {

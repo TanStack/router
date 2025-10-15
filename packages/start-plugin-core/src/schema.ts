@@ -186,7 +186,7 @@ const tanstackStartOptionsSchema = z
         concurrency: z.number().optional(),
         filter: z.function().args(pageSchema).returns(z.any()).optional(),
         failOnError: z.boolean().optional(),
-        redirectCount: z.number().optional(),
+        maxRedirect: z.number().optional(),
       })
       .and(pagePrerenderOptionsSchema.optional())
       .optional(),
