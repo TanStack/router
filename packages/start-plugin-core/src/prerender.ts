@@ -23,22 +23,20 @@ export async function prerender({
 
   // If prerender is enabled
   if (startConfig.prerender?.enabled) {
-
     // default to root page if no pages are defined
-    let pages = startConfig.pages.length ? startConfig.pages : [{path: '/'}]
+    let pages = startConfig.pages.length ? startConfig.pages : [{ path: '/' }]
 
     if (startConfig.prerender.autoStaticPathsDiscovery ?? true) {
-
       // merge discovered static pages with user-defined pages
-      const pagesMap = new Map(pages.map(item => [item.path, item]));
+      const pagesMap = new Map(pages.map((item) => [item.path, item]))
 
       for (const page of globalThis.TSS_PRERENDABLE_PATHS) {
         if (!pagesMap.has(page.path)) {
-          pagesMap.set(page.path, page);
+          pagesMap.set(page.path, page)
         }
       }
 
-      pages = Array.from(pagesMap.values());
+      pages = Array.from(pagesMap.values())
     }
 
     startConfig.pages = pages
