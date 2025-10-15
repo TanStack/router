@@ -47,7 +47,7 @@ export default defineConfig({
         maxRedirect: 5,
 
         // Fail if an error occurs during prerendering
-        failOnError: true
+        failOnError: true,
 
         // Callback when page is successfully rendered
         onSuccess: ({ page }) => {
