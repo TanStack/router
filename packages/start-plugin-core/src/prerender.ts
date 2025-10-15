@@ -28,8 +28,8 @@ export async function prerender({
 
     if (startConfig.prerender.autoStaticPathsDiscovery ?? true) {
       // merge discovered static pages with user-defined pages
-      const pagesMap = new Map(pages.map(item => [item.path, item]));
-      const discoveredPages = globalThis.TSS_PRERENDABLE_PATHS || [];
+      const pagesMap = new Map(pages.map((item) => [item.path, item]))
+      const discoveredPages = globalThis.TSS_PRERENDABLE_PATHS || []
 
       for (const page of discoveredPages) {
         if (!pagesMap.has(page.path)) {
