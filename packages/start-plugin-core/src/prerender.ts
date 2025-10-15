@@ -24,7 +24,7 @@ export async function prerender({
   // If prerender is enabled but no pages are provided, try to discover static paths
   if (startConfig.prerender?.enabled && !startConfig.pages.length) {
     try {
-       startConfig.pages = globalThis.TSS_PRERENDABLE_PATHS
+      startConfig.pages = globalThis.TSS_PRERENDABLE_PATHS
       if (!startConfig.pages.length) {
         logger.warn('No static paths discovered. Falling back to root "/"')
         startConfig.pages = [{ path: '/' }]
