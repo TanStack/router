@@ -12,8 +12,8 @@ TanStack Start can prerender your application to static HTML files, which can th
 ```ts
 // vite.config.ts
 
-import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import viteSolid from 'vite-plugin-solid'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [
@@ -24,6 +24,9 @@ export default defineConfig({
 
         // Enable if you need pages to be at `/page/index.html` instead of `/page.html`
         autoSubfolderIndex: true,
+
+        // If disabled only root or the paths defined in pages config will be pre-rerendered
+        autoStaticPathsDiscovery: false,
 
         // How many prerender jobs to run at once
         concurrency: 14,
@@ -40,13 +43,20 @@ export default defineConfig({
         // Delay between retries in milliseconds
         retryDelay: 1000,
 
+        // Maximum number of redirects to follow during prerendering
+        maxRedirect: 5,
+
+        // Fail if an error occurs during prerendering
+        failOnError: true,
+
         // Callback when page is successfully rendered
         onSuccess: ({ page }) => {
           console.log(`Rendered ${page.path}!`)
         },
       },
-      // Optional configuration for specific pages (without this it will still automatically
-      // prerender all routes)
+      // Optional configuration for specific pages
+      // Note: When pages are not specified, TanStack Start will automatically
+      // discover and prerender all static routes in your application
       pages: [
         {
           path: '/my-page',
@@ -54,7 +64,25 @@ export default defineConfig({
         },
       ],
     }),
-    viteSolid({ ssr: true }),
+    viteReact(),
   ],
 })
 ```
+
+## Automatic Static Route Discovery
+
+All static paths will be automatically discovered and seamlessly merged with the specified `pages` config
+
+Routes are excluded from automatic discovery in the following cases:
+
+- Routes with path parameters (e.g., `/users/$userId`) since they require specific parameter values
+- Layout routes (prefixed with `_`) since they don't render standalone pages
+- Routes without components (e.g API routes)
+
+Note: Dynamic routes can still be prerendered if they are linked from other pages when `crawlLinks` is enabled.
+
+## Crawling Links
+
+When `crawlLinks` is enabled (default: `true`), TanStack Start will extract links from prerendered pages and prerender those linked pages as well.
+
++For example, if `/` contains a link to `/posts`, then `/posts` will also be automatically prerendered.
