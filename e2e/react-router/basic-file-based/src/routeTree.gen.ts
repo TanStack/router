@@ -8,8 +8,6 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
-
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char45824Char54620Char48124Char44397RouteImport } from './routes/대한민국'
 import { Route as RemountDepsRouteImport } from './routes/remountDeps'
@@ -99,12 +97,6 @@ import { Route as RelativeLinkPathPathIndexRouteImport } from './routes/relative
 import { Route as RelativeLinkNestedDeepIndexRouteImport } from './routes/relative/link/nested/deep/index'
 import { Route as ParamsPsNamedFooBarBazRouteImport } from './routes/params-ps/named/$foo/$bar.$baz'
 
-const groupRouteImport = createFileRoute('/(group)')()
-
-const groupRoute = groupRouteImport.update({
-  id: '/(group)',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const Char45824Char54620Char48124Char44397Route =
   Char45824Char54620Char48124Char44397RouteImport.update({
     id: '/대한민국',
@@ -217,19 +209,19 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
 } as any)
 const groupLazyinsideRoute = groupLazyinsideRouteImport
   .update({
-    id: '/lazyinside',
+    id: '/(group)/lazyinside',
     path: '/lazyinside',
-    getParentRoute: () => groupRoute,
+    getParentRoute: () => rootRouteImport,
   } as any)
   .lazy(() => import('./routes/(group)/lazyinside.lazy').then((d) => d.Route))
 const groupInsideRoute = groupInsideRouteImport.update({
-  id: '/inside',
+  id: '/(group)/inside',
   path: '/inside',
-  getParentRoute: () => groupRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const groupLayoutRoute = groupLayoutRouteImport.update({
-  id: '/_layout',
-  getParentRoute: () => groupRoute,
+  id: '/(group)/_layout',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const anotherGroupOnlyrouteinsideRoute =
   anotherGroupOnlyrouteinsideRouteImport.update({
@@ -388,9 +380,9 @@ const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
   getParentRoute: () => LayoutLayout2Route,
 } as any)
 const groupSubfolderInsideRoute = groupSubfolderInsideRouteImport.update({
-  id: '/subfolder/inside',
+  id: '/(group)/subfolder/inside',
   path: '/subfolder/inside',
-  getParentRoute: () => groupRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
   id: '/insidelayout',
@@ -572,7 +564,7 @@ const ParamsPsNamedFooBarBazRoute = ParamsPsNamedFooBarBazRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof groupLayoutRouteWithChildren
+  '/': typeof IndexRoute
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/anchor': typeof AnchorRoute
@@ -658,7 +650,7 @@ export interface FileRoutesByFullPath {
   '/relative/useNavigate/path/$path': typeof RelativeUseNavigatePathPathIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof groupLayoutRouteWithChildren
+  '/': typeof IndexRoute
   '/non-nested': typeof NonNestedRouteRouteWithChildren
   '/anchor': typeof AnchorRoute
   '/component-types-test': typeof ComponentTypesTestRoute
@@ -758,7 +750,6 @@ export interface FileRoutesById {
   '/relative/link': typeof RelativeLinkRouteRouteWithChildren
   '/relative/useNavigate': typeof RelativeUseNavigateRouteRouteWithChildren
   '/(another-group)/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
-  '/(group)': typeof groupRouteWithChildren
   '/(group)/_layout': typeof groupLayoutRouteWithChildren
   '/(group)/inside': typeof groupInsideRoute
   '/(group)/lazyinside': typeof groupLazyinsideRoute
@@ -1015,7 +1006,6 @@ export interface FileRouteTypes {
     | '/relative/link'
     | '/relative/useNavigate'
     | '/(another-group)/onlyrouteinside'
-    | '/(group)'
     | '/(group)/_layout'
     | '/(group)/inside'
     | '/(group)/lazyinside'
@@ -1102,13 +1092,16 @@ export interface RootRouteChildren {
   RelativeLinkRouteRoute: typeof RelativeLinkRouteRouteWithChildren
   RelativeUseNavigateRouteRoute: typeof RelativeUseNavigateRouteRouteWithChildren
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
-  groupRoute: typeof groupRouteWithChildren
+  groupLayoutRoute: typeof groupLayoutRouteWithChildren
+  groupInsideRoute: typeof groupInsideRoute
+  groupLazyinsideRoute: typeof groupLazyinsideRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   StructuralSharingEnabledRoute: typeof StructuralSharingEnabledRoute
   ParamsPsIndexRoute: typeof ParamsPsIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
   RelativeIndexRoute: typeof RelativeIndexRoute
   ParamsPsNamedFooRouteRoute: typeof ParamsPsNamedFooRouteRouteWithChildren
+  groupSubfolderInsideRoute: typeof groupSubfolderInsideRoute
   ParamsPsNamedPrefixChar123fooChar125Route: typeof ParamsPsNamedPrefixChar123fooChar125Route
   ParamsPsNamedChar123fooChar125suffixRoute: typeof ParamsPsNamedChar123fooChar125suffixRoute
   ParamsPsWildcardSplatRoute: typeof ParamsPsWildcardSplatRoute
@@ -1125,13 +1118,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/(group)': {
-      id: '/(group)'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof groupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/대한민국': {
       id: '/대한민국'
       path: '/대한민국'
@@ -1291,21 +1277,21 @@ declare module '@tanstack/react-router' {
       path: '/lazyinside'
       fullPath: '/lazyinside'
       preLoaderRoute: typeof groupLazyinsideRouteImport
-      parentRoute: typeof groupRoute
+      parentRoute: typeof rootRouteImport
     }
     '/(group)/inside': {
       id: '/(group)/inside'
       path: '/inside'
       fullPath: '/inside'
       preLoaderRoute: typeof groupInsideRouteImport
-      parentRoute: typeof groupRoute
+      parentRoute: typeof rootRouteImport
     }
     '/(group)/_layout': {
       id: '/(group)/_layout'
-      path: '/'
-      fullPath: '/'
+      path: ''
+      fullPath: ''
       preLoaderRoute: typeof groupLayoutRouteImport
-      parentRoute: typeof groupRoute
+      parentRoute: typeof rootRouteImport
     }
     '/(another-group)/onlyrouteinside': {
       id: '/(another-group)/onlyrouteinside'
@@ -1515,7 +1501,7 @@ declare module '@tanstack/react-router' {
       path: '/subfolder/inside'
       fullPath: '/subfolder/inside'
       preLoaderRoute: typeof groupSubfolderInsideRouteImport
-      parentRoute: typeof groupRoute
+      parentRoute: typeof rootRouteImport
     }
     '/(group)/_layout/insidelayout': {
       id: '/(group)/_layout/insidelayout'
@@ -2029,22 +2015,6 @@ const groupLayoutRouteWithChildren = groupLayoutRoute._addFileChildren(
   groupLayoutRouteChildren,
 )
 
-interface groupRouteChildren {
-  groupLayoutRoute: typeof groupLayoutRouteWithChildren
-  groupInsideRoute: typeof groupInsideRoute
-  groupLazyinsideRoute: typeof groupLazyinsideRoute
-  groupSubfolderInsideRoute: typeof groupSubfolderInsideRoute
-}
-
-const groupRouteChildren: groupRouteChildren = {
-  groupLayoutRoute: groupLayoutRouteWithChildren,
-  groupInsideRoute: groupInsideRoute,
-  groupLazyinsideRoute: groupLazyinsideRoute,
-  groupSubfolderInsideRoute: groupSubfolderInsideRoute,
-}
-
-const groupRouteWithChildren = groupRoute._addFileChildren(groupRouteChildren)
-
 interface RedirectTargetRouteChildren {
   RedirectTargetViaBeforeLoadRoute: typeof RedirectTargetViaBeforeLoadRoute
   RedirectTargetViaLoaderRoute: typeof RedirectTargetViaLoaderRoute
@@ -2106,13 +2076,16 @@ const rootRouteChildren: RootRouteChildren = {
   RelativeLinkRouteRoute: RelativeLinkRouteRouteWithChildren,
   RelativeUseNavigateRouteRoute: RelativeUseNavigateRouteRouteWithChildren,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,
-  groupRoute: groupRouteWithChildren,
+  groupLayoutRoute: groupLayoutRouteWithChildren,
+  groupInsideRoute: groupInsideRoute,
+  groupLazyinsideRoute: groupLazyinsideRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   StructuralSharingEnabledRoute: StructuralSharingEnabledRoute,
   ParamsPsIndexRoute: ParamsPsIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
   RelativeIndexRoute: RelativeIndexRoute,
   ParamsPsNamedFooRouteRoute: ParamsPsNamedFooRouteRouteWithChildren,
+  groupSubfolderInsideRoute: groupSubfolderInsideRoute,
   ParamsPsNamedPrefixChar123fooChar125Route:
     ParamsPsNamedPrefixChar123fooChar125Route,
   ParamsPsNamedChar123fooChar125suffixRoute:
