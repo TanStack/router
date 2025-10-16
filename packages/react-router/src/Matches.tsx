@@ -12,6 +12,7 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 import type {
+  AnyRoute,
   AnyRouter,
   DeepPartial,
   Expand,
@@ -41,10 +42,12 @@ declare module '@tanstack/router-core' {
 
 export function Matches() {
   const router = useRouter()
+  const rootRoute: AnyRoute = router.routesById['__root__']
 
-  const pendingElement = router.options.defaultPendingComponent ? (
-    <router.options.defaultPendingComponent />
-  ) : null
+  const PendingComponent =
+    rootRoute.options.pendingComponent ?? router.options.defaultPendingComponent
+
+  const pendingElement = PendingComponent ? <PendingComponent /> : null
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
