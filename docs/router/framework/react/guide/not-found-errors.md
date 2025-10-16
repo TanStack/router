@@ -161,11 +161,12 @@ export const Route = createFileRoute('/posts/$postId')({
   },
 })
 ```
+
 The not-found error above will be handled by the same route or nearest parent route that has either a `notFoundComponent` route option or the `defaultNotFoundComponent` router option configured.
 
 If neither the route nor any suitable parent route is found to handle the error, the root route will handle it using TanStack Router's **extremely basic (and purposefully undesirable)** default not-found component that simply renders `<div>Not Found</div>`. It's highly recommended to either attach at least one `notFoundComponent` to the root route or configure a router-wide `defaultNotFoundComponent` to handle not-found errors.
 
-> ⚠️ Throwing a notFound error in a beforeLoad method will always trigger the __root notFoundComponent. Since beforeLoad methods are run prior to the route loader methods, there is no guarantee that any required data for layouts have successfully loaded before the error is thrown.
+> ⚠️ Throwing a notFound error in a beforeLoad method will always trigger the \_\_root notFoundComponent. Since beforeLoad methods are run prior to the route loader methods, there is no guarantee that any required data for layouts have successfully loaded before the error is thrown.
 
 ## Specifying Which Routes Handle Not Found Errors
 
