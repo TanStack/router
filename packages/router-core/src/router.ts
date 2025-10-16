@@ -774,7 +774,7 @@ export interface ViewTransitionOptions {
         pathChanged: boolean
         hrefChanged: boolean
         hashChanged: boolean
-      }) => (Array<string> | false))
+      }) => Array<string> | false)
 }
 
 // TODO where is this used? can we remove this?
