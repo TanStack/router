@@ -140,8 +140,8 @@ test('should show pendingComponent of root route', async () => {
     defaultPendingComponent: () => <div>default pending...</div>,
   })
 
-  render(<RouterProvider router={router} />)
+  const rendered = render(<RouterProvider router={router} />)
 
-  expect(await screen.findByText('root pending...')).toBeInTheDocument()
-  expect(await screen.findByText('index route')).toBeInTheDocument()
+  expect(await rendered.findByText('root pending...')).toBeInTheDocument()
+  expect(await rendered.findByText('index route')).toBeInTheDocument()
 })
