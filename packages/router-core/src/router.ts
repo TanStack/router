@@ -774,7 +774,7 @@ export interface ViewTransitionOptions {
         pathChanged: boolean
         hrefChanged: boolean
         hashChanged: boolean
-      }) => Array<string>)
+      }) => (Array<string> | false))
 }
 
 // TODO where is this used? can we remove this?
@@ -2174,6 +2174,11 @@ export class RouterCore<
                 }),
               )
             : shouldViewTransition.types
+
+        if (resolvedViewTransitionTypes === false) {
+          fn()
+          return
+        }
 
         startViewTransitionParams = {
           update: fn,
