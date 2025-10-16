@@ -11,8 +11,8 @@
   "dependencies": {
     "@tanstack/react-router": "^1.133.3",
     "@tanstack/react-router-devtools": "^1.133.3",
-    "@tanstack/react-start": "^1.133.4",
-    "@tanstack/start-static-server-functions": "^1.133.3",
+    "@tanstack/react-start": "^1.133.5",
+    "@tanstack/start-static-server-functions": "^1.133.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",

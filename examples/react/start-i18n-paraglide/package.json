@@ -12,7 +12,7 @@
     "@tanstack/react-devtools": "^0.7.0",
     "@tanstack/react-router": "^1.133.3",
     "@tanstack/react-router-devtools": "^1.133.3",
-    "@tanstack/react-start": "^1.133.4",
+    "@tanstack/react-start": "^1.133.5",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   },
