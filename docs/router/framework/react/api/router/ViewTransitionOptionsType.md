@@ -8,7 +8,13 @@ The `ViewTransitionOptions` type is used to define a
 
 ```tsx
 interface ViewTransitionOptions {
-  types: Array<string>
+  types: Array<string> | ((locationChangeInfo: {
+    fromLocation?: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+    hrefChanged: boolean
+    hashChanged: boolean
+  }) => (Array<string> | false))
 }
 ```
 
@@ -18,6 +24,16 @@ The `ViewTransitionOptions` type accepts an object with a single property:
 
 ### `types` property
 
-- Type: `Array<string>`
+- Type: `Array<string> | ((locationChangeInfo: {
+    fromLocation?: ParsedLocation
+    toLocation: ParsedLocation
+    pathChanged: boolean
+    hrefChanged: boolean
+    hashChanged: boolean
+  }) => (Array<string> | false))`
 - Required
-- The types array that will be passed to the `document.startViewTransition({update, types}) call`;
+- Either one of:
+  - An array of strings that will be passed to the `document.startViewTransition({update, types}) call`
+  - A function that accepts `locationChangeInfo` object and returns either:
+    - An array of strings that will be passed to the `document.startViewTransition({update, types}) call`
+    - or `false` to cancel the view transition
