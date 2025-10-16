@@ -1622,12 +1622,18 @@ importers:
 
   e2e/react-start/server-functions:
     dependencies:
+      '@tanstack/react-query':
+        specifier: 5.66.0
+        version: 5.66.0(react@19.0.0)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
       '@tanstack/react-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/react-router-devtools
+      '@tanstack/react-router-ssr-query':
+        specifier: workspace:*
+        version: link:../../../packages/react-router-ssr-query
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start

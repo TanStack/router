@@ -38,27 +38,25 @@ export async function serverFnFetcher(
     // Arrange the headers
     const headers = new Headers({
       'x-tsr-redirect': 'manual',
-      ...(type === 'payload'
-        ? {
-            'content-type': 'application/json',
-            accept: 'application/x-ndjson, application/json',
-          }
-        : {}),
       ...(first.headers instanceof Headers
         ? Object.fromEntries(first.headers.entries())
         : first.headers),
     })
+
+    if (type === 'payload') {
+      headers.set('accept', 'application/x-ndjson, application/json')
+    }
 
     // If the method is GET, we need to move the payload to the query string
     if (first.method === 'GET') {
       if (type === 'formData') {
         throw new Error('FormData is not supported with GET requests')
       }
-      const encodedPayload = encode({
-        payload: await serializePayload(first),
-      })
-
-      if (encodedPayload) {
+      const serializedPayload = await serializePayload(first)
+      if (serializedPayload !== undefined) {
+        const encodedPayload = encode({
+          payload: await serializePayload(first),
+        })
         if (url.includes('?')) {
           url += `&${encodedPayload}`
         } else {
@@ -73,12 +71,21 @@ export async function serverFnFetcher(
       url += `?createServerFn`
     }
 
+    let body = undefined
+    if (first.method === 'POST') {
+      const fetchBody = await getFetchBody(first)
+      if (fetchBody?.contentType) {
+        headers.set('content-type', fetchBody.contentType)
+      }
+      body = fetchBody?.body
+    }
+
     return await getResponse(async () =>
       handler(url, {
         method: first.method,
         headers,
         signal: first.signal,
-        ...(await getFetcherRequestOptions(first)),
+        body,
       }),
     )
   }
@@ -100,18 +107,24 @@ export async function serverFnFetcher(
 
 async function serializePayload(
   opts: FunctionMiddlewareClientFnOptions<any, any, any>,
-) {
+): Promise<string | undefined> {
+  let payloadAvailable = false
   const payloadToSerialize: any = {}
-  if (opts.data) {
+  if (opts.data !== undefined) {
+    payloadAvailable = true
     payloadToSerialize['data'] = opts.data
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (opts.context && Object.keys(opts.context).length > 0) {
+    payloadAvailable = true
     payloadToSerialize['context'] = opts.context
   }
 
-  return serialize(payloadToSerialize)
+  if (payloadAvailable) {
+    return serialize(payloadToSerialize)
+  }
+  return undefined
 }
 
 async function serialize(data: any) {
@@ -120,23 +133,25 @@ async function serialize(data: any) {
   )
 }
 
-async function getFetcherRequestOptions(
+async function getFetchBody(
   opts: FunctionMiddlewareClientFnOptions<any, any, any>,
-) {
-  if (opts.method === 'POST') {
-    if (opts.data instanceof FormData) {
-      opts.data.set(TSS_FORMDATA_CONTEXT, await serialize(opts.context))
-      return {
-        body: opts.data,
-      }
+): Promise<{ body: FormData | string; contentType?: string } | undefined> {
+  if (opts.data instanceof FormData) {
+    let serializedContext = undefined
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (opts.context && Object.keys(opts.context).length > 0) {
+      serializedContext = await serialize(opts.context)
     }
-
-    return {
-      body: await serializePayload(opts),
+    if (serializedContext !== undefined) {
+      opts.data.set(TSS_FORMDATA_CONTEXT, serializedContext)
     }
+    return { body: opts.data }
   }
-
-  return {}
+  const serializedBody = await serializePayload(opts)
+  if (serializedBody) {
+    return { body: serializedBody, contentType: 'application/json' }
+  }
+  return undefined
 }
 
 /**
@@ -155,7 +170,7 @@ async function getResponse(fn: () => Promise<Response>) {
       if (error instanceof Response) {
         return error
       }
-
+      console.log(error)
       throw error
     }
   })()
