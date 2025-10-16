@@ -42,7 +42,7 @@ deno add npm:@tanstack/react-router
 
 [//]: # 'installCommand'
 
-Once installed, you can verify the installation by checking your `package.json` file for the `@tanstack/router` dependency.
+Once installed, you can verify the installation by checking your `package.json` file for the dependency.
 
 [//]: # 'packageJson'
 
