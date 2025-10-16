@@ -228,14 +228,11 @@ test('should show pendingComponent of root route', async () => {
     loader: async () => {
       await new Promise((r) => setTimeout(r, 50))
     },
+    component: () => 'root content',
   })
-  const index = createRoute({
-    getParentRoute: () => root,
-    path: '/',
-    component: () => <div>index route</div>,
-  })
+
   const router = createRouter({
-    routeTree: root.addChildren([index]),
+    routeTree: root,
     defaultPendingMs: 0,
     defaultPendingComponent: () => <div>default pending...</div>,
   })
@@ -243,5 +240,5 @@ test('should show pendingComponent of root route', async () => {
   const rendered = render(() => <RouterProvider router={router} />)
 
   expect(await rendered.findByText('root pending...')).toBeInTheDocument()
-  expect(await rendered.findByText('index route')).toBeInTheDocument()
+  expect(await rendered.findByText('root content')).toBeInTheDocument()
 })
