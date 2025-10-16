@@ -121,3 +121,27 @@ test('when filtering useMatches by loaderData', async () => {
 
   expect(await screen.findByText('Incorrect Matches -')).toBeInTheDocument()
 })
+
+test('should show pendingComponent of root route', async () => {
+  const root = createRootRoute({
+    pendingComponent: () => <div>root pending...</div>,
+    loader: async () => {
+      await new Promise((r) => setTimeout(r, 50))
+    },
+  })
+  const index = createRoute({
+    getParentRoute: () => root,
+    path: '/',
+    component: () => <div>index route</div>,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([index]),
+    defaultPendingMs: 0,
+    defaultPendingComponent: () => <div>default pending...</div>,
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByText('root pending...')).toBeInTheDocument()
+  expect(await screen.findByText('index route')).toBeInTheDocument()
+})
