@@ -1,6 +1,5 @@
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
-import * as React from 'react'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
