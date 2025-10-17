@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
+import { rootRouteId } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -8,6 +9,7 @@ import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
 import type {
+  AnyRoute,
   AnyRouter,
   DeepPartial,
   Expand,
@@ -44,16 +46,17 @@ export function Matches() {
       ? SafeFragment
       : Solid.Suspense
 
+  const rootRoute: () => AnyRoute = () => router.routesById[rootRouteId]
+  const PendingComponent =
+    rootRoute().options.pendingComponent ??
+    router.options.defaultPendingComponent
+
   const OptionalWrapper = router.options.InnerWrap || SafeFragment
 
   return (
     <OptionalWrapper>
       <ResolvedSuspense
-        fallback={
-          router.options.defaultPendingComponent ? (
-            <router.options.defaultPendingComponent />
-          ) : null
-        }
+        fallback={PendingComponent ? <PendingComponent /> : null}
       >
         {!router.isServer && <Transitioner />}
         <MatchesInner />

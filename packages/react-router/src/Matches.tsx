@@ -1,5 +1,6 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
+import { rootRouteId } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -12,6 +13,7 @@ import type {
   ValidateSelected,
 } from './structuralSharing'
 import type {
+  AnyRoute,
   AnyRouter,
   DeepPartial,
   Expand,
@@ -41,10 +43,12 @@ declare module '@tanstack/router-core' {
 
 export function Matches() {
   const router = useRouter()
+  const rootRoute: AnyRoute = router.routesById[rootRouteId]
 
-  const pendingElement = router.options.defaultPendingComponent ? (
-    <router.options.defaultPendingComponent />
-  ) : null
+  const PendingComponent =
+    rootRoute.options.pendingComponent ?? router.options.defaultPendingComponent
+
+  const pendingElement = PendingComponent ? <PendingComponent /> : null
 
   // Do not render a root Suspense during SSR or hydrating from SSR
   const ResolvedSuspense =
