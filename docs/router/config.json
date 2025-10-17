@@ -34,6 +34,10 @@
               "to": "framework/react/llm-support"
             },
             {
+              "label": "Comparison",
+              "to": "framework/react/comparison"
+            },
+            {
               "label": "Frequently Asked Questions",
               "to": "framework/react/faq"
             }
