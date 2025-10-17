@@ -7,7 +7,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 
 export const useTags = () => {
   const router = useRouter()
-
+  const nonce = router.options.ssr?.nonce
   const routeMeta = useRouterState({
     select: (state) => {
       return state.matches.map((match) => match.meta!).filter(Boolean)
@@ -46,6 +46,7 @@ export const useTags = () => {
             tag: 'meta',
             attrs: {
               ...m,
+              nonce,
             },
           })
         }
@@ -56,6 +57,15 @@ export const useTags = () => {
       resultMeta.push(title)
     }
 
+    if (router.options.ssr?.nonce) {
+      resultMeta.push({
+        tag: 'meta',
+        attrs: {
+          property: 'csp-nonce',
+          content: router.options.ssr.nonce,
+        },
+      })
+    }
     resultMeta.reverse()
 
     return resultMeta
@@ -71,6 +81,7 @@ export const useTags = () => {
           tag: 'link',
           attrs: {
             ...link,
+            nonce,
           },
         })) satisfies Array<RouterManagedTag>
 
@@ -87,7 +98,7 @@ export const useTags = () => {
           (asset) =>
             ({
               tag: 'link',
-              attrs: asset.attrs,
+              attrs: { ...asset.attrs, nonce },
             }) satisfies RouterManagedTag,
         )
 
@@ -110,6 +121,7 @@ export const useTags = () => {
                 attrs: {
                   rel: 'modulepreload',
                   href: preload,
+                  nonce,
                 },
               })
             }),
@@ -130,6 +142,7 @@ export const useTags = () => {
         tag: 'style',
         attrs: {
           ...style,
+          nonce,
         },
         children,
       })),
@@ -146,6 +159,7 @@ export const useTags = () => {
         tag: 'script',
         attrs: {
           ...script,
+          nonce,
         },
         children,
       })),
@@ -172,6 +186,7 @@ export const useTags = () => {
  */
 export function HeadContent() {
   const tags = useTags()
+
   return (
     <MetaProvider>
       {tags().map((tag) => (
