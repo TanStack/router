@@ -604,6 +604,10 @@ const stylesFactory = (shadowDOMTarget?: ShadowRoot) => {
         color: ${colors.blue[300]};
       }
     `,
+    mainCloseBtnDragging: css`
+      user-select: none;
+      transition: none;
+    `,
   }
 }
 
