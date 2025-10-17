@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
+import { rootRouteId } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -45,7 +46,7 @@ export function Matches() {
       ? SafeFragment
       : Solid.Suspense
 
-  const rootRoute: () => AnyRoute = () => router.routesById['__root__']
+  const rootRoute: () => AnyRoute = () => router.routesById[rootRouteId]
   const PendingComponent =
     rootRoute().options.pendingComponent ??
     router.options.defaultPendingComponent

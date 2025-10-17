@@ -1,5 +1,6 @@
 import * as React from 'react'
 import warning from 'tiny-warning'
+import { rootRouteId } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
@@ -42,7 +43,7 @@ declare module '@tanstack/router-core' {
 
 export function Matches() {
   const router = useRouter()
-  const rootRoute: AnyRoute = router.routesById['__root__']
+  const rootRoute: AnyRoute = router.routesById[rootRouteId]
 
   const PendingComponent =
     rootRoute.options.pendingComponent ?? router.options.defaultPendingComponent
