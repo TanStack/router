@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { createSignal } from 'solid-js'
 import {
   Block,
+  Link,
+  Outlet,
   RouterProvider,
   createRootRoute,
   createRoute,
@@ -345,7 +347,7 @@ describe('useBlocker', () => {
 
       useBlocker<Router>({
         shouldBlockFn: ({ next }) => {
-          if (next.fullPath === '/posts') {
+          if (next?.fullPath === '/posts') {
             return true
           }
           return false
@@ -491,5 +493,52 @@ describe('useBlocker', () => {
     ).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts')
+  })
+
+  test('does not throw when navigating to an unknown route and throwOnUnknownRoute is false', async () => {
+    const rootRoute = createRootRoute({
+      component:() => <Outlet />,
+      notFoundComponent: () => <h1 data-testid="not-found">Not Found</h1>,
+    })
+
+    const IndexComponent = () => {
+      useBlocker({ 
+        shouldBlockFn: () => false, 
+        throwOnUnknownRoute: false 
+      })
+
+      return (
+        <>
+          <h1>Index</h1>
+          <Link data-testid='unknown-link' to='/unknown'>
+            Unknown
+          </Link>
+        </>
+      )
+    }
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    render(() => <RouterProvider router={router} />)
+    await router.load()
+    await screen.findByTestId('unknown-link')
+
+    const unknownLink = screen.getByTestId('unknown-link')
+    unknownLink.click()
+
+    const notFoundComponent = await screen.findByTestId(
+      'not-found',
+      {},
+      { timeout: 1000 },
+    )
+    expect(notFoundComponent).toBeInTheDocument()
   })
 })
