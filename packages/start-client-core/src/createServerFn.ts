@@ -188,31 +188,33 @@ export async function executeMiddleware(
       return ctx
     }
 
-    if (
-      'inputValidator' in nextMiddleware.options &&
-      nextMiddleware.options.inputValidator &&
-      env === 'server'
-    ) {
-      // Execute the middleware's input function
-      ctx.data = await execValidator(
-        nextMiddleware.options.inputValidator,
-        ctx.data,
-      )
-    }
-
-    let middlewareFn: MiddlewareFn | undefined = undefined
-    if (env === 'client') {
-      if ('client' in nextMiddleware.options) {
-        middlewareFn = nextMiddleware.options.client as MiddlewareFn | undefined
-      }
-    }
-    // env === 'server'
-    else if ('server' in nextMiddleware.options) {
-      middlewareFn = nextMiddleware.options.server as MiddlewareFn | undefined
-    }
-
     // Execute the middleware
     try {
+      if (
+        'inputValidator' in nextMiddleware.options &&
+        nextMiddleware.options.inputValidator &&
+        env === 'server'
+      ) {
+        // Execute the middleware's input function
+        ctx.data = await execValidator(
+          nextMiddleware.options.inputValidator,
+          ctx.data,
+        )
+      }
+
+      let middlewareFn: MiddlewareFn | undefined = undefined
+      if (env === 'client') {
+        if ('client' in nextMiddleware.options) {
+          middlewareFn = nextMiddleware.options.client as
+            | MiddlewareFn
+            | undefined
+        }
+      }
+      // env === 'server'
+      else if ('server' in nextMiddleware.options) {
+        middlewareFn = nextMiddleware.options.server as MiddlewareFn | undefined
+      }
+
       if (middlewareFn) {
         const userNext = async (
           userCtx: ServerFnMiddlewareResult | undefined = {} as any,
