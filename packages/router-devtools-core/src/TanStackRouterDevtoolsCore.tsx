@@ -30,8 +30,14 @@ interface DevtoolsOptions {
   /**
    * The position of the TanStack Router logo to open and close the devtools panel.
    * Defaults to 'bottom-left'.
+   * Note: This is ignored when draggable is true and user has moved the button.
    */
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  /**
+   * Allow the toggle button to be draggable to any position.
+   * Defaults to false.
+   */
+  draggable?: boolean
   /**
    * Use this to render the devtools inside a different type of container element for a11y purposes.
    * Any string which corresponds to a valid intrinsic JSX element is allowed.
@@ -53,6 +59,7 @@ class TanStackRouterDevtoolsCore {
   #router: Signal<AnyRouter>
   #routerState: Signal<any>
   #position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  #draggable: boolean
   #initialIsOpen: boolean
   #shadowDOMTarget?: ShadowRoot
 
@@ -69,6 +76,7 @@ class TanStackRouterDevtoolsCore {
     this.#router = createSignal(config.router)
     this.#routerState = createSignal(config.routerState)
     this.#position = config.position ?? 'bottom-left'
+    this.#draggable = config.draggable ?? false
     this.#initialIsOpen = config.initialIsOpen ?? false
     this.#shadowDOMTarget = config.shadowDOMTarget
 
@@ -87,6 +95,7 @@ class TanStackRouterDevtoolsCore {
       const [router] = this.#router
       const [routerState] = this.#routerState
       const position = this.#position
+      const draggable = this.#draggable
       const initialIsOpen = this.#initialIsOpen
       const shadowDOMTarget = this.#shadowDOMTarget
 
@@ -108,6 +117,7 @@ class TanStackRouterDevtoolsCore {
         <ShadowDomTargetContext.Provider value={shadowDOMTarget}>
           <Devtools
             position={position}
+            draggable={draggable}
             initialIsOpen={initialIsOpen}
             router={router}
             routerState={routerState}
@@ -144,6 +154,10 @@ class TanStackRouterDevtoolsCore {
   setOptions(options: Partial<DevtoolsOptions>) {
     if (options.position !== undefined) {
       this.#position = options.position
+    }
+
+    if (options.draggable !== undefined) {
+      this.#draggable = options.draggable
     }
 
     if (options.initialIsOpen !== undefined) {

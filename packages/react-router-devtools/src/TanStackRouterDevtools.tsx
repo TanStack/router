@@ -25,8 +25,14 @@ interface DevtoolsOptions {
   /**
    * The position of the TanStack Router logo to open and close the devtools panel.
    * Defaults to 'bottom-left'.
+   * Note: This is ignored when draggable is true and user has moved the button.
    */
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  /**
+   * Allow the toggle button to be draggable to any position.
+   * Defaults to false.
+   */
+  draggable?: boolean
   /**
    * Use this to render the devtools inside a different type of container element for a11y purposes.
    * Any string which corresponds to a valid intrinsic JSX element is allowed.
@@ -52,6 +58,7 @@ export function TanStackRouterDevtools(
     closeButtonProps,
     toggleButtonProps,
     position,
+    draggable,
     containerElement,
     shadowDOMTarget,
     router: propsRouter,
@@ -71,6 +78,7 @@ export function TanStackRouterDevtools(
         closeButtonProps,
         toggleButtonProps,
         position,
+        draggable,
         containerElement,
         shadowDOMTarget,
         router: activeRouter,
@@ -94,6 +102,7 @@ export function TanStackRouterDevtools(
       closeButtonProps: closeButtonProps,
       toggleButtonProps: toggleButtonProps,
       position: position,
+      draggable: draggable,
       containerElement: containerElement,
       shadowDOMTarget: shadowDOMTarget,
     })
@@ -104,6 +113,7 @@ export function TanStackRouterDevtools(
     closeButtonProps,
     toggleButtonProps,
     position,
+    draggable,
     containerElement,
     shadowDOMTarget,
   ])
