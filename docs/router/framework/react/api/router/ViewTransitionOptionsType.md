@@ -36,4 +36,4 @@ The `ViewTransitionOptions` type accepts an object with a single property:
   - An array of strings that will be passed to the `document.startViewTransition({update, types}) call`
   - A function that accepts `locationChangeInfo` object and returns either:
     - An array of strings that will be passed to the `document.startViewTransition({update, types}) call`
-    - or `false` to cancel the view transition
+    - or `false` to skip the view transition
