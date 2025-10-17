@@ -8,6 +8,5 @@ export const VIRTUAL_MODULES = {
 
 export type VirtualModules = {
   [VIRTUAL_MODULES.startManifest]: typeof import('tanstack-start-manifest:v')
-  [VIRTUAL_MODULES.serverFnManifest]: typeof import('#tanstack-start-server-fn-manifest')
   [VIRTUAL_MODULES.injectedHeadScripts]: typeof import('tanstack-start-injected-head-scripts:v')
 }
