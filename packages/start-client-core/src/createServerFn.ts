@@ -1,4 +1,3 @@
-import { isNotFound, isRedirect } from '@tanstack/router-core'
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
@@ -112,17 +111,17 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       return Object.assign(
         async (opts?: CompiledFetcherFnOptions) => {
           // Start by executing the client-side middleware chain
-          return executeMiddleware(resolvedMiddleware, 'client', {
+          const result = await executeMiddleware(resolvedMiddleware, 'client', {
             ...extractedFn,
             ...newOptions,
             data: opts?.data as any,
             headers: opts?.headers,
             signal: opts?.signal,
             context: {},
-          }).then((d) => {
-            if (d.error) throw d.error
-            return d.result
           })
+
+          if (result.error) throw result.error
+          return result.result
         },
         {
           // This copies over the URL, function ID
@@ -180,7 +179,7 @@ export async function executeMiddleware(
     ...middlewares,
   ])
 
-  const next: NextFn = async (ctx) => {
+  const callNextMiddleware: NextFn = async (ctx) => {
     // Get the next middleware
     const nextMiddleware = flattenedMiddlewares.shift()
 
@@ -212,27 +211,70 @@ export async function executeMiddleware(
       middlewareFn = nextMiddleware.options.server as MiddlewareFn | undefined
     }
 
-    if (middlewareFn) {
-      // Execute the middleware
-      return applyMiddleware(middlewareFn, ctx, async (newCtx) => {
-        return next(newCtx).catch((error: any) => {
-          if (isRedirect(error) || isNotFound(error)) {
+    // Execute the middleware
+    try {
+      if (middlewareFn) {
+        const userNext = async (
+          userCtx: ServerFnMiddlewareResult | undefined = {} as any,
+        ) => {
+          // Return the next middleware
+          const nextCtx = {
+            ...ctx,
+            ...userCtx,
+            context: {
+              ...ctx.context,
+              ...userCtx.context,
+            },
+            sendContext: {
+              ...ctx.sendContext,
+              ...(userCtx.sendContext ?? {}),
+            },
+            headers: mergeHeaders(ctx.headers, userCtx.headers),
+            result:
+              userCtx.result !== undefined
+                ? userCtx.result
+                : userCtx instanceof Response
+                  ? userCtx
+                  : (ctx as any).result,
+            error: userCtx.error ?? (ctx as any).error,
+          }
+
+          try {
+            return await callNextMiddleware(nextCtx)
+          } catch (error: any) {
             return {
-              ...newCtx,
+              ...nextCtx,
               error,
             }
           }
+        }
 
-          throw error
-        })
-      })
+        // Execute the middleware
+        const result = await middlewareFn({
+          ...ctx,
+          next: userNext as any,
+        } as any)
+
+        if (!(result as any)) {
+          throw new Error(
+            'User middleware returned undefined. You must call next() or return a result in your middlewares.',
+          )
+        }
+
+        return result
+      }
+
+      return callNextMiddleware(ctx)
+    } catch (error: any) {
+      return {
+        ...ctx,
+        error,
+      }
     }
-
-    return next(ctx)
   }
 
   // Start the middleware chain
-  return next({
+  return callNextMiddleware({
     ...opts,
     headers: opts.headers || {},
     sendContext: opts.sendContext || {},
@@ -627,41 +669,6 @@ export type MiddlewareFn = (
     next: NextFn
   },
 ) => Promise<ServerFnMiddlewareResult>
-
-export const applyMiddleware = async (
-  middlewareFn: MiddlewareFn,
-  ctx: ServerFnMiddlewareOptions,
-  nextFn: NextFn,
-) => {
-  return middlewareFn({
-    ...ctx,
-    next: (async (
-      userCtx: ServerFnMiddlewareResult | undefined = {} as any,
-    ) => {
-      // Return the next middleware
-      return nextFn({
-        ...ctx,
-        ...userCtx,
-        context: {
-          ...ctx.context,
-          ...userCtx.context,
-        },
-        sendContext: {
-          ...ctx.sendContext,
-          ...(userCtx.sendContext ?? {}),
-        },
-        headers: mergeHeaders(ctx.headers, userCtx.headers),
-        result:
-          userCtx.result !== undefined
-            ? userCtx.result
-            : userCtx instanceof Response
-              ? userCtx
-              : (ctx as any).result,
-        error: userCtx.error ?? (ctx as any).error,
-      })
-    }) as any,
-  } as any)
-}
 
 export function execValidator(
   validator: AnyValidator,
