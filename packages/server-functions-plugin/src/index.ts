@@ -68,17 +68,32 @@ export function TanStackServerFnPlugin(
   const entryIdToFunctionId = new Map<string, string>()
   const functionIds = new Set<string>()
 
+  function withTrailingSlash(path: string): string {
+    if (path[path.length - 1] !== '/') {
+      return `${path}/`
+    }
+    return path
+  }
+
   const generateFunctionId: GenerateFunctionIdFn = ({
     extractedFilename,
     functionName,
     filename,
   }) => {
     if (serverDevEnv) {
+      const root = serverDevEnv.config.root
+
+      let file = extractedFilename
+      if (extractedFilename.startsWith(withTrailingSlash(root))) {
+        file = extractedFilename.slice(root.length)
+      }
+      file = `/@id${file[0] === '/' ? '' : '/'}${file}`
+
       const serverFn: {
         file: string
         export: string
       } = {
-        file: extractedFilename,
+        file,
         export: functionName,
       }
       const base64 = Buffer.from(JSON.stringify(serverFn), 'utf8').toString(
