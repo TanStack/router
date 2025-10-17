@@ -86,6 +86,13 @@ export async function hydrate(router: AnyRouter): Promise<any> {
   router.ssr = {
     manifest,
   }
+  const meta = document.querySelector('meta[property="csp-nonce"]') as
+    | HTMLMetaElement
+    | undefined
+  const nonce = meta?.content
+  router.options.ssr = {
+    nonce,
+  }
 
   // Hydrate the router state
   const matches = router.matchRoutes(router.state.location)
