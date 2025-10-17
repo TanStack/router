@@ -1,1 +1,1 @@
-export function getServerFnById() {}
+export async function getServerFnById(): Promise<any> {}
