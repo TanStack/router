@@ -57,7 +57,6 @@ export function tanstackStart(
                     '@tanstack/react-router-devtools',
                   ],
                   include: [
-                    'react',
                     'react/jsx-runtime',
                     'react/jsx-dev-runtime',
                     'react-dom',
