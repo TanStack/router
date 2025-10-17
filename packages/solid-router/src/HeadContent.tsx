@@ -98,7 +98,7 @@ export const useTags = () => {
           (asset) =>
             ({
               tag: 'link',
-              attrs: asset.attrs,
+              attrs: { ...asset.attrs, nonce },
             }) satisfies RouterManagedTag,
         )
 
@@ -121,6 +121,7 @@ export const useTags = () => {
                 attrs: {
                   rel: 'modulepreload',
                   href: preload,
+                  nonce,
                 },
               })
             }),
@@ -185,8 +186,6 @@ export const useTags = () => {
  */
 export function HeadContent() {
   const tags = useTags()
-  const router = useRouter()
-  const nonce = router.options.ssr?.nonce
 
   return (
     <MetaProvider>

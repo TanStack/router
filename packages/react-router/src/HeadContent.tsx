@@ -99,6 +99,7 @@ export const useTags = () => {
               attrs: {
                 ...asset.attrs,
                 suppressHydrationWarning: true,
+                nonce,
               },
             }) satisfies RouterManagedTag,
         )
@@ -123,6 +124,7 @@ export const useTags = () => {
                 attrs: {
                   rel: 'modulepreload',
                   href: preload,
+                  nonce,
                 },
               })
             }),

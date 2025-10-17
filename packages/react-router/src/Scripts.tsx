@@ -25,7 +25,6 @@ export const Scripts = () => {
                 tag: 'script',
                 attrs: { ...asset.attrs, nonce },
                 children: asset.children,
-                nonce,
               } as any)
             }),
         )
