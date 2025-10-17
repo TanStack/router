@@ -123,12 +123,12 @@
               "to": "framework/solid/installation/manual"
             },
             {
-              "label": "Installation with Vite",
-              "to": "framework/solid/routing/installation-with-vite"
+              "label": "Vite",
+              "to": "framework/solid/installation/with-vite"
             },
             {
-              "label": "Installation with the Router CLI",
-              "to": "framework/solid/routing/installation/with-router-cli"
+              "label": "Router CLI",
+              "to": "framework/solid/installation/with-router-cli"
             }
           ]
         }
