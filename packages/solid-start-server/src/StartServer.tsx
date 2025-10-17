@@ -5,13 +5,7 @@ import type { AnyRouter } from '@tanstack/router-core'
 export function StartServer<TRouter extends AnyRouter>(props: {
   router: TRouter
 }) {
-  const [resource] = createResource(() => new Promise(r => r(true)))
-
   return (
-    <Suspense>
-      <Show when={resource()}>
-        {(_) => <RouterProvider router={props.router} />}
-      </Show>
-    </Suspense >
+    <RouterProvider router={props.router} />
   )
 }

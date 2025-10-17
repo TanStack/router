@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -24,6 +25,8 @@ import type {
   RouterState,
   ToSubOptionsProps,
 } from '@tanstack/router-core'
+import { Scripts } from './Scripts'
+import { HydrationScript } from 'solid-js/web'
 
 declare module '@tanstack/router-core' {
   export interface RouteMatchExtensions {
@@ -71,8 +74,18 @@ function MatchesInner() {
   })
 
   const matchComponent = () => {
-    const id = matchId()
-    return id ? <Match matchId={id} /> : null
+    return (
+      <>
+        <HydrationScript />
+
+        <button onClick={() => {
+          console.log('click')
+        }}>
+          Click me
+        </button>
+        <Scripts />
+      </>
+    )
   }
 
   return (
