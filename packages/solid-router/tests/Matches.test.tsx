@@ -224,11 +224,11 @@ test('Matches provides InnerWrap context to defaultPendingComponent', async () =
 
 test('should show pendingComponent of root route', async () => {
   const root = createRootRoute({
-    pendingComponent: () => <div>root pending...</div>,
+    pendingComponent: () => <div data-testId="root-pending" />,
     loader: async () => {
       await new Promise((r) => setTimeout(r, 50))
     },
-    component: () => 'root content',
+    component: () => <div data-testId="root-content" />,
   })
 
   const router = createRouter({
@@ -239,6 +239,6 @@ test('should show pendingComponent of root route', async () => {
 
   const rendered = render(() => <RouterProvider router={router} />)
 
-  expect(await rendered.findByText('root pending...')).toBeInTheDocument()
-  expect(await rendered.findByText('root content')).toBeInTheDocument()
+  expect(await rendered.findByTestId('root-pending')).toBeInTheDocument()
+  expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
 })
