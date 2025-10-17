@@ -78,7 +78,7 @@ export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
 export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
   async () => {
     const session = await useAppSession()
-    const userId = session.userId
+    const userId = session.data.userId
 
     if (!userId) {
       return null
