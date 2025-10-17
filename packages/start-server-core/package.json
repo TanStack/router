@@ -55,6 +55,11 @@
     },
     "./package.json": "./package.json"
   },
+  "imports": {
+    "#tanstack-start-server-fn-manifest": {
+      "default": "./dist/esm/fake-start-server-fn-manifest.js"
+    }
+  },
   "sideEffects": false,
   "files": [
     "dist",
