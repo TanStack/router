@@ -969,7 +969,7 @@ export class RouterCore<
 
     this.origin = this.options.origin
     if (!this.origin) {
-      if (!this.isServer) {
+      if (!this.isServer && window?.origin && window.origin !== 'null') {
         this.origin = window.origin
       } else {
         // fallback for the server, can be overridden by calling router.update({origin}) on the server
