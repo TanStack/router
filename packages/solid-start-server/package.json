@@ -63,7 +63,8 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
-    "@tanstack/start-server-core": "workspace:*"
+    "@tanstack/start-server-core": "workspace:*",
+    "vite": "^7.1.7"
   },
   "devDependencies": {
     "solid-js": "^1.9.5",

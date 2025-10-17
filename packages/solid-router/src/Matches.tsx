@@ -38,12 +38,7 @@ declare module '@tanstack/router-core' {
 export function Matches() {
   const router = useRouter()
 
-  // Do not render a root Suspense during SSR or hydrating from SSR
-  const ResolvedSuspense =
-    router.isServer || (typeof document !== 'undefined' && router.ssr)
-      ? SafeFragment
-      : Solid.Suspense
-
+  const ResolvedSuspense = Solid.Suspense;
   const OptionalWrapper = router.options.InnerWrap || SafeFragment
 
   return (
@@ -55,7 +50,7 @@ export function Matches() {
           ) : null
         }
       >
-        {!router.isServer && <Transitioner />}
+        <Transitioner />
         <MatchesInner />
       </ResolvedSuspense>
     </OptionalWrapper>
@@ -69,6 +64,7 @@ function MatchesInner() {
       return s.matches[0]?.id
     },
   })
+
 
   const resetKey = useRouterState({
     select: (s) => s.loadedAt,
@@ -90,7 +86,8 @@ function MatchesInner() {
           onCatch={(error) => {
             warning(
               false,
-              `The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
+              `The following error wasn't caught by any route! At the very leas
+    t, consider setting an 'errorComponent' in your RootRoute!`,
             )
             warning(false, error.message || error.toString())
           }}
@@ -101,6 +98,7 @@ function MatchesInner() {
     </matchContext.Provider>
   )
 }
+
 
 export type UseMatchRouteOptions<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -156,13 +154,13 @@ export type MakeMatchRouteOptions<
 > = UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
-    | ((
-        params?: RouteByPath<
-          TRouter['routeTree'],
-          ResolveRelativePath<TFrom, NoInfer<TTo>>
-        >['types']['allParams'],
-      ) => Solid.JSX.Element)
-    | Solid.JSX.Element
+  | ((
+    params?: RouteByPath<
+      TRouter['routeTree'],
+      ResolveRelativePath<TFrom, NoInfer<TTo>>
+    >['types']['allParams'],
+  ) => Solid.JSX.Element)
+  | Solid.JSX.Element
 }
 
 export function MatchRoute<

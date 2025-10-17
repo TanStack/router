@@ -1,4 +1,7 @@
 import { hydrate } from 'solid-js/web'
 import { StartClient } from '@tanstack/solid-start/client'
+import { getRouter } from '#tanstack-router-entry'
 
-hydrate(() => <StartClient />, document.body)
+const router = await getRouter();
+
+hydrate(() => <StartClient router={router} />, document)
