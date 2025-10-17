@@ -34,6 +34,7 @@ import { Route as CookiesIndexRouteImport } from './routes/cookies/index'
 import { Route as AbortSignalIndexRouteImport } from './routes/abort-signal/index'
 import { Route as RedirectTestTargetRouteImport } from './routes/redirect-test/target'
 import { Route as RedirectTestSsrTargetRouteImport } from './routes/redirect-test-ssr/target'
+import { Route as MiddlewareUnhandledExceptionRouteImport } from './routes/middleware/unhandled-exception'
 import { Route as MiddlewareServerImportMiddlewareRouteImport } from './routes/middleware/server-import-middleware'
 import { Route as MiddlewareSendServerFnRouteImport } from './routes/middleware/send-serverFn'
 import { Route as MiddlewareRequestMiddlewareRouteImport } from './routes/middleware/request-middleware'
@@ -168,6 +169,12 @@ const RedirectTestSsrTargetRoute = RedirectTestSsrTargetRouteImport.update({
   path: '/redirect-test-ssr/target',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MiddlewareUnhandledExceptionRoute =
+  MiddlewareUnhandledExceptionRouteImport.update({
+    id: '/middleware/unhandled-exception',
+    path: '/middleware/unhandled-exception',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MiddlewareServerImportMiddlewareRoute =
   MiddlewareServerImportMiddlewareRouteImport.update({
     id: '/middleware/server-import-middleware',
@@ -237,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
+  '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/abort-signal': typeof AbortSignalIndexRoute
@@ -272,6 +280,7 @@ export interface FileRoutesByTo {
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
+  '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/abort-signal': typeof AbortSignalIndexRoute
@@ -308,6 +317,7 @@ export interface FileRoutesById {
   '/middleware/request-middleware': typeof MiddlewareRequestMiddlewareRoute
   '/middleware/send-serverFn': typeof MiddlewareSendServerFnRoute
   '/middleware/server-import-middleware': typeof MiddlewareServerImportMiddlewareRoute
+  '/middleware/unhandled-exception': typeof MiddlewareUnhandledExceptionRoute
   '/redirect-test-ssr/target': typeof RedirectTestSsrTargetRoute
   '/redirect-test/target': typeof RedirectTestTargetRoute
   '/abort-signal/': typeof AbortSignalIndexRoute
@@ -345,6 +355,7 @@ export interface FileRouteTypes {
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/middleware/server-import-middleware'
+    | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/abort-signal'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/middleware/server-import-middleware'
+    | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/abort-signal'
@@ -415,6 +427,7 @@ export interface FileRouteTypes {
     | '/middleware/request-middleware'
     | '/middleware/send-serverFn'
     | '/middleware/server-import-middleware'
+    | '/middleware/unhandled-exception'
     | '/redirect-test-ssr/target'
     | '/redirect-test/target'
     | '/abort-signal/'
@@ -451,6 +464,7 @@ export interface RootRouteChildren {
   MiddlewareRequestMiddlewareRoute: typeof MiddlewareRequestMiddlewareRoute
   MiddlewareSendServerFnRoute: typeof MiddlewareSendServerFnRoute
   MiddlewareServerImportMiddlewareRoute: typeof MiddlewareServerImportMiddlewareRoute
+  MiddlewareUnhandledExceptionRoute: typeof MiddlewareUnhandledExceptionRoute
   RedirectTestSsrTargetRoute: typeof RedirectTestSsrTargetRoute
   RedirectTestTargetRoute: typeof RedirectTestTargetRoute
   AbortSignalIndexRoute: typeof AbortSignalIndexRoute
@@ -641,6 +655,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTestSsrTargetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/middleware/unhandled-exception': {
+      id: '/middleware/unhandled-exception'
+      path: '/middleware/unhandled-exception'
+      fullPath: '/middleware/unhandled-exception'
+      preLoaderRoute: typeof MiddlewareUnhandledExceptionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/middleware/server-import-middleware': {
       id: '/middleware/server-import-middleware'
       path: '/middleware/server-import-middleware'
@@ -723,6 +744,7 @@ const rootRouteChildren: RootRouteChildren = {
   MiddlewareRequestMiddlewareRoute: MiddlewareRequestMiddlewareRoute,
   MiddlewareSendServerFnRoute: MiddlewareSendServerFnRoute,
   MiddlewareServerImportMiddlewareRoute: MiddlewareServerImportMiddlewareRoute,
+  MiddlewareUnhandledExceptionRoute: MiddlewareUnhandledExceptionRoute,
   RedirectTestSsrTargetRoute: RedirectTestSsrTargetRoute,
   RedirectTestTargetRoute: RedirectTestTargetRoute,
   AbortSignalIndexRoute: AbortSignalIndexRoute,

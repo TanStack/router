@@ -91,7 +91,11 @@ function Home() {
         <li>
           <Link to="/server-only-fn">
             Server Function only called by Server Environment is kept in the
-            server build
+            server build</Link>
+        </li>
+        <li>
+          <Link to="/middleware/unhandled-exception">
+            Server Functions Middleware Unhandled Exception E2E tests
           </Link>
         </li>
       </ul>
