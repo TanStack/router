@@ -55,19 +55,19 @@ export const useTags = () => {
       resultMeta.push(title)
     }
 
-    if (router.options.ssr?.nonce) {
+    if (nonce) {
       resultMeta.push({
         tag: 'meta',
         attrs: {
           property: 'csp-nonce',
-          content: router.options.ssr.nonce,
+          content: nonce,
         },
       })
     }
     resultMeta.reverse()
 
     return resultMeta
-  }, [routeMeta])
+  }, [routeMeta, nonce])
 
   const links = useRouterState({
     select: (state) => {
