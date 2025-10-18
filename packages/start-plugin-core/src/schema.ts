@@ -187,7 +187,7 @@ const tanstackStartOptionsSchema = z
         filter: z.function().args(pageSchema).returns(z.any()).optional(),
         failOnError: z.boolean().optional(),
         autoStaticPathsDiscovery: z.boolean().optional(),
-        maxRedirect: z.number().optional(),
+        maxRedirects: z.number().optional(),
       })
       .and(pagePrerenderOptionsSchema.optional())
       .optional(),

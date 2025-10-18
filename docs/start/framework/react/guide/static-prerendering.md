@@ -44,7 +44,7 @@ export default defineConfig({
         retryDelay: 1000,
 
         // Maximum number of redirects to follow during prerendering
-        maxRedirect: 5,
+        maxRedirects: 5,
 
         // Fail if an error occurs during prerendering
         failOnError: true,
