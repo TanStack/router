@@ -53,6 +53,7 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
 
 export function createStartHandler<TRegister = Register>(
   cb: HandlerCallback<AnyRouter>,
+  opts: {basePath?: string} = {}
 ): RequestHandler<TRegister> {
   const ROUTER_BASEPATH = process.env.TSS_ROUTER_BASEPATH || '/'
   let startRoutesManifest: Manifest | null = null
@@ -212,7 +213,10 @@ export function createStartHandler<TRegister = Register>(
 
                 // if the startRoutesManifest is not loaded yet, load it once
                 if (startRoutesManifest === null) {
-                  startRoutesManifest = await getStartManifest()
+                  startRoutesManifest = await getStartManifest({
+                    ...opts,
+                    routerBasePath: ROUTER_BASEPATH
+                  })
                 }
                 const router = await getRouter()
                 attachRouterServerSsrUtils({

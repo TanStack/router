@@ -1,7 +1,17 @@
-import handler from '@tanstack/react-start/server-entry'
+// src/server.ts
+import {
+  createStartHandler,
+  defaultStreamHandler,
+  defineHandlerCallback,
+} from '@tanstack/react-start/server'
+
+const customHandler = defineHandlerCallback((ctx) => {
+  // add custom logic here
+  return defaultStreamHandler(ctx)
+})
+
+const fetch = createStartHandler(customHandler, {basePath: 'http://localhost:3001'})
 
 export default {
-  fetch(request: Request) {
-    return handler.fetch(request)
-  },
+  fetch
 }

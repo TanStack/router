@@ -13,6 +13,7 @@
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-router-devtools": "workspace:^",
     "@tanstack/react-start": "workspace:^",
+    "cors": "^2.8.5",
     "express": "^4.21.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@playwright/test": "^1.50.1",
     "@tanstack/router-e2e-utils": "workspace:^",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
