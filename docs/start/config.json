@@ -101,6 +101,10 @@
               "label": "Server Routes",
               "to": "framework/react/guide/server-routes"
             },
+        {
+          "label": "Hydration Errors",
+          "to": "framework/react/guide/hydration-errors"
+        },
             {
               "label": "Selective SSR",
               "to": "framework/react/guide/selective-ssr"
@@ -190,6 +194,10 @@
               "label": "Server Routes",
               "to": "framework/solid/guide/server-routes"
             },
+        {
+          "label": "Hydration Errors",
+          "to": "framework/solid/guide/hydration-errors"
+        },
             {
               "label": "Selective SSR",
               "to": "framework/solid/guide/selective-ssr"
