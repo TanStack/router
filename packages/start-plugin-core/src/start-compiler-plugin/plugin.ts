@@ -6,7 +6,7 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
 import { normalizePath } from 'vite'
 import path from 'pathe'
 import { makeIdFiltersToMatchWithQuery } from '@rolldown/pluginutils'
-import { VITE_ENVIRONMENT_NAMES } from '../constants'
+import { TRANSFORM_ID_REGEX, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { compileStartOutputFactory } from './compilers'
 import { transformFuncs } from './constants'
 import type { ViteEnvironmentNames } from '../constants'
@@ -54,6 +54,7 @@ export function startCompilerPlugin(
       filter: {
         code: tokenRegex,
         id: {
+          include: TRANSFORM_ID_REGEX,
           exclude: [
             VIRTUAL_MODULES.serverFnManifest,
             // N.B. the following files either just re-export or provide the runtime implementation of those functions
