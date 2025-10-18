@@ -1162,7 +1162,6 @@ export class RouterCore<
         maskedLocation: location,
       }
     }
-
     return location
   }
 
@@ -1966,7 +1965,12 @@ export class RouterCore<
         trimPath(normalizeUrl(this.latestLocation.href)) !==
         trimPath(normalizeUrl(nextLocation.href))
       ) {
-        throw redirect({ href: nextLocation.href })
+        let href = nextLocation.url
+        if (this.origin && href.startsWith(this.origin)) {
+          href = href.replace(this.origin, '') || '/'
+        }
+
+        throw redirect({ href })
       }
     }
 
