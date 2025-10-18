@@ -27,6 +27,7 @@ export {
   format,
   removeExt,
   checkRouteFullPathUniqueness,
+  inferFullPath,
 } from './utils'
 
 export type {
