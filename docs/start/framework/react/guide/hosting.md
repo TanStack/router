@@ -86,16 +86,16 @@ export default defineConfig({
     "start": "node .output/server/index.mjs",
     // ============ 👇 add these lines ============
     "preview": "vite preview",
-    "deploy": "wrangler deploy",
+    "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types"
   }
 }
 ```
 
-5. Build and deploy
+5. Deploy
 
 ```bash
-pnpm run build && pnpm run deploy
+pnpm run deploy
 ```
 
 Deploy your application to Cloudflare Workers using their one-click deployment process, and you're ready to go!
