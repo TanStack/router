@@ -197,7 +197,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(7)
+    expect(updates).toBe(6)
   })
 
   test('hover preload, then navigate, w/ async loaders', async () => {
