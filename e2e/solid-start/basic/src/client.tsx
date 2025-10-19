@@ -7,4 +7,4 @@ console.log("[client-entry]: using custom client entry in 'src/client.tsx'")
 
 const router = await hydrateStart()
 
-hydrate(() => <StartClient router={router} />, document.body)
+hydrate(() => <StartClient router={router} />, document)

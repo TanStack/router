@@ -1,9 +1,8 @@
 import * as Solid from 'solid-js'
-import { isServer } from 'solid-js/web'
 
 export interface ClientOnlyProps {
   /**
-   * The children to render if the JS is loaded.
+   * The children to render when the JS is loaded.
    */
   children: Solid.JSX.Element
   /**
@@ -30,9 +29,37 @@ export interface ClientOnlyProps {
  * ```
  */
 export function ClientOnly(props: ClientOnlyProps) {
+  const hydrated = useHydrated()
   return (
-    <Solid.Show when={!isServer} fallback={props.fallback}>
+    <Solid.Show when={hydrated()} fallback={props.fallback ?? null}>
       <>{props.children}</>
     </Solid.Show>
   )
+}
+
+/**
+ * Return a boolean indicating if the JS has been hydrated already.
+ * When doing Server-Side Rendering, the result will always be false.
+ * When doing Client-Side Rendering, the result will always be false on the
+ * first render and true from then on. Even if a new component renders it will
+ * always start with true.
+ *
+ * @example
+ * ```tsx
+ * // Disable a button that needs JS to work.
+ * const hydrated = useHydrated()
+ * return (
+ *   <button type="button" disabled={!hydrated()} onClick={doSomethingCustom}>
+ *     Click me
+ *   </button>
+ * )
+ * ```
+ * @returns True if the JS has been hydrated already, false otherwise.
+ */
+function useHydrated(): Solid.Accessor<boolean> {
+  const [hydrated, setHydrated] = Solid.createSignal(false)
+  Solid.onMount(() => {
+    setHydrated(true)
+  })
+  return hydrated
 }
