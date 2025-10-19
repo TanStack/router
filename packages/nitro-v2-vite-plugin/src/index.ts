@@ -107,6 +107,12 @@ export function nitroV2Plugin(nitroConfig?: NitroConfig): Array<PluginOption> {
                   },
                 ],
                 ...nitroConfig,
+                esbuild: {
+                  options: {
+                    target: server.config.build.target || undefined,
+                    ...nitroConfig?.esbuild?.options,
+                  },
+                },
                 renderer: virtualEntry,
                 rollupConfig: {
                   ...nitroConfig?.rollupConfig,
