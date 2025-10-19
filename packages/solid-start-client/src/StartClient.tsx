@@ -1,15 +1,13 @@
-import { createResource, Suspense } from 'solid-js';
-import { Await, RouterProvider } from '@tanstack/solid-router'
-import { hydrateStart } from '@tanstack/start-client-core/client';
+import { Show, Suspense } from 'solid-js'
+import { RouterProvider } from '@tanstack/solid-router'
 import type { AnyRouter } from '@tanstack/router-core'
 
-export function StartClient({ router }: { router: AnyRouter }) {
-  const [resource] = createResource(() => new Promise(r => r(hydrateStart())))
-
+export function StartClient(props: { router: AnyRouter }) {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <RouterProvider router={router} />
-      {resource() ? '' : ''}
+    <Suspense>
+      <Show when={props.router}>
+        <RouterProvider router={props.router} />
+      </Show>
     </Suspense>
   )
 }
