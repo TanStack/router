@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { getRouterContext } from './routerContext'
 import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'

@@ -1,6 +1,12 @@
 /// <reference types="vite/client" />
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/solid-router'
+import {
+  HeadContent,
+  Link,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/solid-router'
 import { HydrationScript } from 'solid-js/web'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import type * as Solid from 'solid-js'
 import appCss from '~/styles/app.css?url'
 
@@ -19,7 +25,12 @@ function RootDocument(props: { children: Solid.JSX.Element }) {
         <HydrationScript />
       </head>
       <body>
+        <div>
+          <Link to="/">Index</Link>
+          <Link to="/about">About</Link>
+        </div>
         {props.children}
+        <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
       </body>
     </html>

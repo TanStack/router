@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as Solid from 'solid-js'
 import warning from 'tiny-warning'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -39,7 +38,10 @@ declare module '@tanstack/router-core' {
 export function Matches() {
   const router = useRouter()
 
-  const ResolvedSuspense = Solid.Suspense
+  const ResolvedSuspense =
+    router.isServer || (typeof document !== 'undefined' && router.ssr)
+      ? SafeFragment
+      : Solid.Suspense
   const OptionalWrapper = router.options.InnerWrap || SafeFragment
 
   return (
@@ -73,7 +75,7 @@ function MatchesInner() {
   const matchComponent = () => {
     return (
       <Solid.Show when={matchId()}>
-        <Match matchId={matchId()} />
+        <Match matchId={matchId()!} />
       </Solid.Show>
     )
   }

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as Solid from 'solid-js'
 import invariant from 'tiny-invariant'
 import warning from 'tiny-warning'
