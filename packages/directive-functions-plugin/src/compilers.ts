@@ -26,6 +26,7 @@ export type SupportedFunctionPath =
 export type GenerateFunctionIdFn = (opts: {
   filename: string
   functionName: string
+  extractedFilename: string
 }) => string
 
 export type ReplacerFn = (opts: {
@@ -46,7 +47,6 @@ export type CompileDirectivesOpts = ParseAstOptions & {
   }) => string
   generateFunctionId: GenerateFunctionIdFn
   replacer: ReplacerFn
-  // devSplitImporter: string
   filename: string
   root: string
 }
@@ -493,7 +493,8 @@ export function findDirectives(
     const relativeFilename = path.relative(opts.root, baseFilename)
     const functionId = opts.generateFunctionId({
       filename: relativeFilename,
-      functionName: functionName,
+      functionName,
+      extractedFilename,
     })
     // If a replacer is provided, replace the function with the replacer
     if (opts.replacer) {

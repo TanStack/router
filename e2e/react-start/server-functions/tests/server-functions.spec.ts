@@ -443,3 +443,26 @@ test('factory', async ({ page }) => {
     )
   }
 })
+
+test('primitives', async ({ page }) => {
+  await page.goto('/primitives')
+
+  const testCases = await page
+    .locator('[data-testid^="expected-"]')
+    .elementHandles()
+  for (const testCase of testCases) {
+    const testId = await testCase.getAttribute('data-testid')
+
+    if (!testId) {
+      throw new Error('testcase is missing data-testid')
+    }
+
+    const suffix = testId.replace('expected-', '')
+
+    const expected =
+      (await page.getByTestId(`expected-${suffix}`).textContent()) || ''
+    expect(expected).not.toBe('')
+
+    await expect(page.getByTestId(`result-${suffix}`)).toContainText(expected)
+  }
+})

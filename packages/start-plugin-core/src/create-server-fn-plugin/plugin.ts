@@ -1,4 +1,4 @@
-import { VITE_ENVIRONMENT_NAMES } from '../constants'
+import { TRANSFORM_ID_REGEX, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { ServerFnCompiler } from './compiler'
 import type { LookupConfig, LookupKind } from './compiler'
 import type { CompileStartFrameworkOptions } from '../start-compiler-plugin/compilers'
@@ -81,6 +81,7 @@ export function createServerFnPlugin(
         filter: {
           id: {
             exclude: new RegExp(`${SERVER_FN_LOOKUP}$`),
+            include: TRANSFORM_ID_REGEX,
           },
           code: {
             // TODO apply this plugin with a different filter per environment so that .createMiddleware() calls are not scanned in server env

@@ -34,11 +34,7 @@ export function Asset({
         />
       )
     case 'script':
-      return (
-        <Script attrs={attrs} nonce={nonce}>
-          {children}
-        </Script>
-      )
+      return <Script attrs={attrs}>{children}</Script>
     default:
       return null
   }
@@ -47,11 +43,9 @@ export function Asset({
 function Script({
   attrs,
   children,
-  nonce,
 }: {
   attrs?: ScriptAttrs
   children?: string
-  nonce?: string
 }) {
   const router = useRouter()
 
@@ -154,7 +148,7 @@ function Script({
   }
 
   if (attrs?.src && typeof attrs.src === 'string') {
-    return <script {...attrs} suppressHydrationWarning nonce={nonce} />
+    return <script {...attrs} suppressHydrationWarning />
   }
 
   if (typeof children === 'string') {
@@ -163,7 +157,6 @@ function Script({
         {...attrs}
         dangerouslySetInnerHTML={{ __html: children }}
         suppressHydrationWarning
-        nonce={nonce}
       />
     )
   }

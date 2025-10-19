@@ -39,25 +39,6 @@ export type DirectiveFunctionsViteOptions = Pick<
 const createDirectiveRx = (directive: string) =>
   new RegExp(`"${directive}"|'${directive}'`, 'gm')
 
-export function TanStackDirectiveFunctionsPlugin(
-  opts: DirectiveFunctionsViteOptions,
-): Plugin {
-  let root: string = process.cwd()
-
-  const directiveRx = createDirectiveRx(opts.directive)
-
-  return {
-    name: 'tanstack-start-directive-vite-plugin',
-    enforce: 'pre',
-    configResolved: (config) => {
-      root = config.root
-    },
-    transform(code, id) {
-      return transformCode({ ...opts, code, id, directiveRx, root })
-    },
-  }
-}
-
 export type DirectiveFunctionsVitePluginEnvOptions = Pick<
   CompileDirectivesOpts,
   'directive' | 'directiveLabel'
@@ -122,7 +103,6 @@ export function TanStackDirectiveFunctionsPluginEnv(
           ...envOptions,
           code,
           id,
-          directiveRx,
           root,
         })
       },
@@ -133,7 +113,6 @@ export function TanStackDirectiveFunctionsPluginEnv(
 function transformCode({
   code,
   id,
-  directiveRx,
   envLabel,
   directive,
   directiveLabel,
@@ -145,16 +124,11 @@ function transformCode({
 }: DirectiveFunctionsViteOptions & {
   code: string
   id: string
-  directiveRx: RegExp
   root: string
 }) {
   const url = pathToFileURL(id)
   url.searchParams.delete('v')
   id = fileURLToPath(url).replace(/\\/g, '/')
-
-  if (!code.match(directiveRx)) {
-    return null
-  }
 
   if (debug) console.info(`${envLabel}: Compiling Directives: `, id)
 

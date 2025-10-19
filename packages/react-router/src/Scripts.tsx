@@ -5,7 +5,7 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 
 export const Scripts = () => {
   const router = useRouter()
-
+  const nonce = router.options.ssr?.nonce
   const assetScripts = useRouterState({
     select: (state) => {
       const assetScripts: Array<RouterManagedTag> = []
@@ -23,7 +23,7 @@ export const Scripts = () => {
             .forEach((asset) => {
               assetScripts.push({
                 tag: 'script',
-                attrs: asset.attrs,
+                attrs: { ...asset.attrs, nonce },
                 children: asset.children,
               } as any)
             }),
@@ -46,6 +46,7 @@ export const Scripts = () => {
         attrs: {
           ...script,
           suppressHydrationWarning: true,
+          nonce,
         },
         children,
       })),
@@ -58,11 +59,7 @@ export const Scripts = () => {
   return (
     <>
       {allScripts.map((asset, i) => (
-        <Asset
-          {...asset}
-          key={`tsr-scripts-${asset.tag}-${i}`}
-          nonce={router.options.ssr?.nonce}
-        />
+        <Asset {...asset} key={`tsr-scripts-${asset.tag}-${i}`} />
       ))}
     </>
   )

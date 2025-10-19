@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/server-functions-plugin",
-  "version": "1.133.3",
+  "version": "1.133.11",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -41,17 +41,12 @@
   },
   "type": "module",
   "types": "dist/esm/index.d.ts",
-  "main": "dist/cjs/index.cjs",
   "module": "dist/esm/index.js",
   "exports": {
     ".": {
       "import": {
         "types": "./dist/esm/index.d.ts",
         "default": "./dist/esm/index.js"
-      },
-      "require": {
-        "types": "./dist/cjs/index.d.cts",
-        "default": "./dist/cjs/index.cjs"
       }
     },
     "./package.json": "./package.json"

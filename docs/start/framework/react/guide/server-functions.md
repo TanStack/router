@@ -228,20 +228,18 @@ Cache server function results at build time for static generation. See [Static S
 
 Handle request cancellation with `AbortSignal` for long-running operations.
 
-### Function ID generation
+### Function ID generation for production build
 
 Server functions are addressed by a generated, stable function ID under the hood. These IDs are embedded into the client/SSR builds and used by the server to locate and import the correct module at runtime.
 
-Defaults:
-
-- In development, IDs are URL-safe strings derived from `${filename}--${functionName}` to aid debugging.
-- In production, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
-- If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
-- IDs are stable for a given file/function tuple for the lifetime of the process (hot updates keep the same mapping).
+By default, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
+If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
 
 Customization:
 
-You can customize function ID generation by providing a `generateFunctionId` function when configuring the TanStack Start Vite plugin.
+You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start Vite plugin.
+
+Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
 Please note that this customization is **experimental** und subject to change.
 
@@ -259,8 +257,10 @@ export default defineConfig({
       serverFns: {
         generateFunctionId: ({ filename, functionName }) => {
           // Return a custom ID string. If you return undefined, the default is used.
-          // For example, always hash (even in dev):
-          // return createHash('sha256').update(`${filename}--${functionName}`).digest('hex')
+          return crypto
+            .createHash('sha1')
+            .update(`${filename}--${functionName}`)
+            .digest('hex')
           return undefined
         },
       },
@@ -269,12 +269,6 @@ export default defineConfig({
   ],
 })
 ```
-
-Tips:
-
-- Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
-- If you don’t want file paths in dev IDs, return a hash in all environments.
-- Ensure the returned ID is **URL-safe**.
 
 ---
 

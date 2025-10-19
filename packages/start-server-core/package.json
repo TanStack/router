@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-server-core",
-  "version": "1.133.3",
+  "version": "1.133.13",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -54,6 +54,11 @@
       }
     },
     "./package.json": "./package.json"
+  },
+  "imports": {
+    "#tanstack-start-server-fn-manifest": {
+      "default": "./dist/esm/fake-start-server-fn-manifest.js"
+    }
   },
   "sideEffects": false,
   "files": [
