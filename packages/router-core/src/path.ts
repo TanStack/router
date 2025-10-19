@@ -348,12 +348,7 @@ function baseParsePathname(
       // Handle regular pathname segment
       return {
         type: SEGMENT_TYPE_PATHNAME,
-        value: partToMatch.includes('%25')
-          ? partToMatch
-              .split('%25')
-              .map((segment) => decodeURI(segment))
-              .join('%25')
-          : decodeURI(partToMatch),
+        value: partToMatch,
       }
     }),
   )

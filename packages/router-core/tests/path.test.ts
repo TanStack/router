@@ -816,6 +816,14 @@ describe('parsePathname', () => {
           { type: SEGMENT_TYPE_WILDCARD, value: '$' },
         ],
       },
+      {
+        name: 'should preserve backslashes in path parameters',
+        to: '/foo%5Cbar',
+        expected: [
+          { type: SEGMENT_TYPE_PATHNAME, value: '/' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo%5Cbar' },
+        ],
+      },
     ] satisfies ParsePathnameTestScheme)('$name', ({ to, expected }) => {
       const result = parsePathname(to)
       expect(result).toEqual(expected)
