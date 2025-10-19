@@ -1,12 +1,15 @@
 /// <reference types="vite/client" />
 import {
   ClientOnly,
+  HeadContent,
   Link,
   Outlet,
+  Scripts,
   createRootRoute,
   useRouterState,
 } from '@tanstack/solid-router'
 import { z } from 'zod'
+import { HydrationScript } from 'solid-js/web'
 import type * as Solid from 'solid-js'
 import { ssrSchema } from '~/search'
 import appCss from '~/styles/app.css?url'
@@ -120,33 +123,40 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
     select: (state) => ({ isLoading: state.isLoading, status: state.status }),
   })
   return (
-    <>
-      <div class="p-2 flex gap-2 text-lg">
-        <h1>Selective SSR E2E Test</h1>
-        <Link
-          to="/"
-          activeProps={{
-            class: 'font-bold',
-          }}
-        >
-          Home
-        </Link>
-      </div>
-      <hr />
-      <ClientOnly>
-        <div>
-          router isLoading:{' '}
-          <b data-testid="router-isLoading">
-            {routerState().isLoading ? 'true' : 'false'}
-          </b>
+    <html>
+      <head>
+        <HeadContent />
+        <HydrationScript />
+      </head>
+      <body>
+        <div class="p-2 flex gap-2 text-lg">
+          <h1>Selective SSR E2E Test</h1>
+          <Link
+            to="/"
+            activeProps={{
+              class: 'font-bold',
+            }}
+          >
+            Home
+          </Link>
         </div>
-        <div>
-          router status:{' '}
-          <b data-testid="router-status">{routerState().status}</b>
-        </div>
-      </ClientOnly>
-      <hr />
-      {children}
-    </>
+        <hr />
+        <ClientOnly>
+          <div>
+            router isLoading:{' '}
+            <b data-testid="router-isLoading">
+              {routerState().isLoading ? 'true' : 'false'}
+            </b>
+          </div>
+          <div>
+            router status:{' '}
+            <b data-testid="router-status">{routerState().status}</b>
+          </div>
+        </ClientOnly>
+        <hr />
+        {children}
+        <Scripts />
+      </body>
+    </html>
   )
 }

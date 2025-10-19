@@ -1,6 +1,11 @@
-import * as Solid from 'solid-js'
-import { Outlet, createRootRoute } from '@tanstack/solid-router'
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import { HydrationScript } from 'solid-js/web'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -22,9 +27,16 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <>
-      <Outlet />
-      <TanStackRouterDevtools position="bottom-right" />
-    </>
+    <html>
+      <head>
+        <HeadContent />
+        <HydrationScript />
+      </head>
+      <body>
+        <Outlet />
+        <TanStackRouterDevtools position="bottom-right" />
+        <Scripts />
+      </body>
+    </html>
   )
 }

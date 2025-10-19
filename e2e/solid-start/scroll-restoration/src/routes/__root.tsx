@@ -1,10 +1,12 @@
 import {
+  HeadContent,
   Link,
   Outlet,
+  Scripts,
   createRootRoute,
   linkOptions,
 } from '@tanstack/solid-router'
-import { Dynamic } from 'solid-js/web'
+import { Dynamic, HydrationScript } from 'solid-js/web'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
@@ -58,14 +60,21 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <>
-      <Nav type="header" />
-      <hr />
-      <Outlet />
-      <hr />
-      <Nav type="footer" />
-      <TanStackRouterDevtools position="bottom-right" />
-    </>
+    <html>
+      <head>
+        <HeadContent />
+        <HydrationScript />
+      </head>
+      <body>
+        <Nav type="header" />
+        <hr />
+        <Outlet />
+        <hr />
+        <Nav type="footer" />
+        <TanStackRouterDevtools position="bottom-right" />
+        <Scripts />
+      </body>
+    </html>
   )
 }
 
