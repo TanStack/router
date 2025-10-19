@@ -87,16 +87,17 @@ describe('setResponseHeaders', () => {
 
     const handler = requestHandler(() => {
       setResponseHeaders(headers)
-      const setCookieValue = getResponseHeader('Set-Cookie')
 
       // When multiple values are appended with the same header name,
-      // the Headers API returns them comma-separated when iterating with entries()
-      // The current implementation uses .set() in a loop, so it should contain
-      // the comma-separated value from headers.entries()
+      // headers.entries() returns separate entries for each value.
+      // The implementation uses .set() for the first occurrence and .append() for
+      // subsequent duplicates, preserving all values.
+      // Note: getResponseHeader() uses .get() which returns comma-separated values.
+      const setCookieValue = getResponseHeader('Set-Cookie')
+
       expect(setCookieValue).toBeDefined()
 
       // Both cookie values should be present in the result
-      // (either comma-separated from a single iteration, or from multiple iterations)
       expect(setCookieValue).toContain('session=abc123')
       expect(setCookieValue).toContain('user=john')
 
