@@ -102,7 +102,7 @@ or if using pnpm:
 pnpm dlx wrangler login
 ```
 
-7. Deploy
+6. Deploy
 
 ```bash
 pnpm run deploy
