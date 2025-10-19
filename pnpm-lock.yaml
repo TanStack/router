@@ -5286,7 +5286,7 @@ importers:
         version: 4.1.13(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-devtools':
         specifier: ^0.7.0
-        version: 0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.9)
+        version: 0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.5)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -5487,7 +5487,7 @@ importers:
     dependencies:
       '@tanstack/react-devtools':
         specifier: ^0.7.0
-        version: 0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.9)
+        version: 0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.5)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -7160,7 +7160,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.8
-        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       webpack:
         specifier: '>=5.92.0'
         version: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))
@@ -7283,13 +7283,13 @@ importers:
     dependencies:
       '@solid-devtools/logger':
         specifier: ^0.9.4
-        version: 0.9.7(solid-js@1.9.9)
+        version: 0.9.7(solid-js@1.9.5)
       '@solid-primitives/refs':
         specifier: ^1.0.8
-        version: 1.1.0(solid-js@1.9.9)
+        version: 1.1.0(solid-js@1.9.5)
       '@solidjs/meta':
         specifier: ^0.29.4
-        version: 0.29.4(solid-js@1.9.9)
+        version: 0.29.4(solid-js@1.9.5)
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
@@ -7298,7 +7298,7 @@ importers:
         version: link:../router-core
       '@tanstack/solid-store':
         specifier: 0.7.0
-        version: 0.7.0(solid-js@1.9.9)
+        version: 0.7.0(solid-js@1.9.5)
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
@@ -7308,13 +7308,10 @@ importers:
       tiny-warning:
         specifier: ^1.0.3
         version: 1.0.3
-      vite:
-        specifier: ^7.1.7
-        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.10
-        version: 0.8.10(solid-js@1.9.9)
+        version: 0.8.10(solid-js@1.9.5)
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -7326,10 +7323,10 @@ importers:
         version: 0.14.5(eslint@9.22.0(jiti@2.6.0))(typescript@5.9.2)
       solid-js:
         specifier: ^1.9.5
-        version: 1.9.9
+        version: 1.9.5
       vite-plugin-solid:
         specifier: ^2.11.8
-        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       zod:
         specifier: ^3.23.8
         version: 3.25.57
@@ -7438,9 +7435,6 @@ importers:
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
-      vite:
-        specifier: ^7.1.7
-        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     devDependencies:
       solid-js:
         specifier: ^1.9.5
@@ -15731,9 +15725,6 @@ packages:
   solid-js@1.9.5:
     resolution: {integrity: sha512-ogI3DaFcyn6UhYhrgcyRAMbu/buBJitYQASZz5WzfQVPP10RD2AbCoRZ517psnezrasyCbWzIxZ6kVqet768xw==}
 
-  solid-js@1.9.9:
-    resolution: {integrity: sha512-A0ZBPJQldAeGCTW0YRYJmt7RCeh5rbFfPZ2aOttgYnctHE7HgKeHCBB/PVc2P7eOfmNXqMFFFoYYdm3S4dcbkA==}
-
   solid-refresh@0.6.3:
     resolution: {integrity: sha512-F3aPsX6hVw9ttm5LYlth8Q15x6MlI/J3Dn+o3EQyRTtTxidepSTwAYdozt01/YA+7ObcciagGEyXIopGZzQtbA==}
     peerDependencies:
@@ -20208,138 +20199,129 @@ snapshots:
 
   '@sindresorhus/merge-streams@2.3.0': {}
 
-  '@solid-devtools/debugger@0.26.0(solid-js@1.9.9)':
+  '@solid-devtools/debugger@0.26.0(solid-js@1.9.5)':
     dependencies:
       '@nothing-but/utils': 0.17.0
-      '@solid-devtools/shared': 0.19.0(solid-js@1.9.9)
-      '@solid-primitives/bounds': 0.0.122(solid-js@1.9.9)
-      '@solid-primitives/cursor': 0.0.115(solid-js@1.9.9)
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
-      '@solid-primitives/keyboard': 1.3.0(solid-js@1.9.9)
-      '@solid-primitives/platform': 0.1.2(solid-js@1.9.9)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
-      '@solid-primitives/scheduled': 1.5.0(solid-js@1.9.9)
-      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.9)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-devtools/shared': 0.19.0(solid-js@1.9.5)
+      '@solid-primitives/bounds': 0.0.122(solid-js@1.9.5)
+      '@solid-primitives/cursor': 0.0.115(solid-js@1.9.5)
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
+      '@solid-primitives/keyboard': 1.3.0(solid-js@1.9.5)
+      '@solid-primitives/platform': 0.1.2(solid-js@1.9.5)
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
+      '@solid-primitives/scheduled': 1.5.0(solid-js@1.9.5)
+      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.5)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-devtools/logger@0.9.7(solid-js@1.9.9)':
+  '@solid-devtools/logger@0.9.7(solid-js@1.9.5)':
     dependencies:
       '@nothing-but/utils': 0.17.0
-      '@solid-devtools/debugger': 0.26.0(solid-js@1.9.9)
-      '@solid-devtools/shared': 0.19.0(solid-js@1.9.9)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-devtools/debugger': 0.26.0(solid-js@1.9.5)
+      '@solid-devtools/shared': 0.19.0(solid-js@1.9.5)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-devtools/shared@0.19.0(solid-js@1.9.9)':
+  '@solid-devtools/shared@0.19.0(solid-js@1.9.5)':
     dependencies:
       '@nothing-but/utils': 0.17.0
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
-      '@solid-primitives/media': 2.3.0(solid-js@1.9.9)
-      '@solid-primitives/refs': 1.1.0(solid-js@1.9.9)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
-      '@solid-primitives/scheduled': 1.5.0(solid-js@1.9.9)
-      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.9)
-      '@solid-primitives/styles': 0.0.114(solid-js@1.9.9)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
+      '@solid-primitives/media': 2.3.0(solid-js@1.9.5)
+      '@solid-primitives/refs': 1.1.0(solid-js@1.9.5)
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
+      '@solid-primitives/scheduled': 1.5.0(solid-js@1.9.5)
+      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.5)
+      '@solid-primitives/styles': 0.0.114(solid-js@1.9.5)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/bounds@0.0.122(solid-js@1.9.9)':
+  '@solid-primitives/bounds@0.0.122(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
-      '@solid-primitives/resize-observer': 2.1.0(solid-js@1.9.9)
-      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.9)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
+      '@solid-primitives/resize-observer': 2.1.0(solid-js@1.9.5)
+      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.5)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/cursor@0.0.115(solid-js@1.9.9)':
+  '@solid-primitives/cursor@0.0.115(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/event-listener@2.4.0(solid-js@1.9.9)':
+  '@solid-primitives/event-listener@2.4.0(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/keyboard@1.3.0(solid-js@1.9.9)':
+  '@solid-primitives/keyboard@1.3.0(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/media@2.3.0(solid-js@1.9.9)':
+  '@solid-primitives/media@2.3.0(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
-      '@solid-primitives/static-store': 0.1.0(solid-js@1.9.9)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
+      '@solid-primitives/static-store': 0.1.0(solid-js@1.9.5)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/platform@0.1.2(solid-js@1.9.9)':
+  '@solid-primitives/platform@0.1.2(solid-js@1.9.5)':
     dependencies:
-      solid-js: 1.9.9
+      solid-js: 1.9.5
 
-  '@solid-primitives/refs@1.1.0(solid-js@1.9.9)':
+  '@solid-primitives/refs@1.1.0(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/resize-observer@2.1.0(solid-js@1.9.9)':
+  '@solid-primitives/resize-observer@2.1.0(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
-      '@solid-primitives/static-store': 0.1.0(solid-js@1.9.9)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
+      '@solid-primitives/static-store': 0.1.0(solid-js@1.9.5)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/rootless@1.5.0(solid-js@1.9.9)':
+  '@solid-primitives/rootless@1.5.0(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/scheduled@1.5.0(solid-js@1.9.9)':
+  '@solid-primitives/scheduled@1.5.0(solid-js@1.9.5)':
     dependencies:
-      solid-js: 1.9.9
+      solid-js: 1.9.5
 
-  '@solid-primitives/static-store@0.0.8(solid-js@1.9.9)':
+  '@solid-primitives/static-store@0.0.8(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/static-store@0.1.0(solid-js@1.9.9)':
+  '@solid-primitives/static-store@0.1.0(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/styles@0.0.114(solid-js@1.9.9)':
+  '@solid-primitives/styles@0.0.114(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
-      solid-js: 1.9.9
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
+      solid-js: 1.9.5
 
-  '@solid-primitives/utils@6.3.0(solid-js@1.9.9)':
+  '@solid-primitives/utils@6.3.0(solid-js@1.9.5)':
     dependencies:
-      solid-js: 1.9.9
+      solid-js: 1.9.5
 
   '@solidjs/meta@0.29.4(solid-js@1.9.5)':
     dependencies:
       solid-js: 1.9.5
 
-  '@solidjs/meta@0.29.4(solid-js@1.9.9)':
-    dependencies:
-      solid-js: 1.9.9
-
   '@solidjs/testing-library@0.8.10(solid-js@1.9.5)':
     dependencies:
       '@testing-library/dom': 10.4.1
       solid-js: 1.9.5
-
-  '@solidjs/testing-library@0.8.10(solid-js@1.9.9)':
-    dependencies:
-      '@testing-library/dom': 10.4.1
-      solid-js: 1.9.9
 
   '@speed-highlight/core@1.2.7': {}
 
@@ -20627,22 +20609,22 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@tanstack/devtools-ui@0.3.5(csstype@3.1.3)(solid-js@1.9.9)':
+  '@tanstack/devtools-ui@0.3.5(csstype@3.1.3)(solid-js@1.9.5)':
     dependencies:
       clsx: 2.1.1
       goober: 2.1.16(csstype@3.1.3)
-      solid-js: 1.9.9
+      solid-js: 1.9.5
     transitivePeerDependencies:
       - csstype
 
-  '@tanstack/devtools@0.6.14(csstype@3.1.3)(solid-js@1.9.9)':
+  '@tanstack/devtools@0.6.14(csstype@3.1.3)(solid-js@1.9.5)':
     dependencies:
-      '@solid-primitives/keyboard': 1.3.0(solid-js@1.9.9)
+      '@solid-primitives/keyboard': 1.3.0(solid-js@1.9.5)
       '@tanstack/devtools-event-bus': 0.3.2
-      '@tanstack/devtools-ui': 0.3.5(csstype@3.1.3)(solid-js@1.9.9)
+      '@tanstack/devtools-ui': 0.3.5(csstype@3.1.3)(solid-js@1.9.5)
       clsx: 2.1.1
       goober: 2.1.16(csstype@3.1.3)
-      solid-js: 1.9.9
+      solid-js: 1.9.5
     transitivePeerDependencies:
       - bufferutil
       - csstype
@@ -20679,9 +20661,9 @@ snapshots:
 
   '@tanstack/query-devtools@5.72.2': {}
 
-  '@tanstack/react-devtools@0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.9)':
+  '@tanstack/react-devtools@0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.5)':
     dependencies:
-      '@tanstack/devtools': 0.6.14(csstype@3.1.3)(solid-js@1.9.9)
+      '@tanstack/devtools': 0.6.14(csstype@3.1.3)(solid-js@1.9.5)
       '@types/react': 19.0.8
       '@types/react-dom': 19.0.3(@types/react@19.0.8)
       react: 19.0.0
@@ -20727,10 +20709,10 @@ snapshots:
       '@tanstack/query-core': 5.66.0
       solid-js: 1.9.5
 
-  '@tanstack/solid-store@0.7.0(solid-js@1.9.9)':
+  '@tanstack/solid-store@0.7.0(solid-js@1.9.5)':
     dependencies:
       '@tanstack/store': 0.7.0
-      solid-js: 1.9.9
+      solid-js: 1.9.5
 
   '@tanstack/solid-virtual@3.13.12(solid-js@1.9.5)':
     dependencies:
@@ -25802,27 +25784,12 @@ snapshots:
       seroval: 1.2.0
       seroval-plugins: 1.2.0(seroval@1.2.0)
 
-  solid-js@1.9.9:
-    dependencies:
-      csstype: 3.1.3
-      seroval: 1.3.2
-      seroval-plugins: 1.3.2(seroval@1.3.2)
-
   solid-refresh@0.6.3(solid-js@1.9.5):
     dependencies:
       '@babel/generator': 7.27.5
       '@babel/helper-module-imports': 7.27.1
       '@babel/types': 7.27.7
       solid-js: 1.9.5
-    transitivePeerDependencies:
-      - supports-color
-
-  solid-refresh@0.6.3(solid-js@1.9.9):
-    dependencies:
-      '@babel/generator': 7.27.5
-      '@babel/helper-module-imports': 7.27.1
-      '@babel/types': 7.27.7
-      solid-js: 1.9.9
     transitivePeerDependencies:
       - supports-color
 
@@ -26604,21 +26571,6 @@ snapshots:
       merge-anything: 5.1.7
       solid-js: 1.9.5
       solid-refresh: 0.6.3(solid-js@1.9.5)
-      vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
-      vitefu: 1.1.1(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
-    optionalDependencies:
-      '@testing-library/jest-dom': 6.6.3
-    transitivePeerDependencies:
-      - supports-color
-
-  vite-plugin-solid@2.11.8(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
-    dependencies:
-      '@babel/core': 7.27.7
-      '@types/babel__core': 7.20.5
-      babel-preset-solid: 1.9.3(@babel/core@7.27.7)
-      merge-anything: 5.1.7
-      solid-js: 1.9.9
-      solid-refresh: 0.6.3(solid-js@1.9.9)
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vitefu: 1.1.1(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
     optionalDependencies:
