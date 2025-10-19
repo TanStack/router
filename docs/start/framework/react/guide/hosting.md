@@ -107,6 +107,7 @@ pnpm dlx wrangler login
 ```bash
 pnpm run deploy
 ```
+To check current user use `wrangler whoami`.
 
 Deploy your application to Cloudflare Workers using their one-click deployment process, and you're ready to go!
 
