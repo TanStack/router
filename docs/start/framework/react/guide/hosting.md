@@ -97,10 +97,13 @@ export default defineConfig({
 ```bash
 npx wrangler login
 ```
+
 or if using pnpm:
+
 ```bash
 pnpm dlx wrangler login
 ```
+
 To check current user use `wrangler whoami`.
 
 6. Deploy
