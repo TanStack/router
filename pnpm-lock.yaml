@@ -1305,9 +1305,6 @@ importers:
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../../packages/react-start
-      cors:
-        specifier: ^2.8.5
-        version: 2.8.5
       express:
         specifier: ^4.21.2
         version: 4.21.2
@@ -1327,9 +1324,6 @@ importers:
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
-      '@types/cors':
-        specifier: ^2.8.19
-        version: 2.8.19
       '@types/express':
         specifier: ^5.0.3
         version: 5.0.3
@@ -2462,7 +2456,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -20135,17 +20129,6 @@ snapshots:
       '@rsbuild/core': 1.2.4
       '@rspack/plugin-react-refresh': 1.0.1(react-refresh@0.16.0)
       react-refresh: 0.16.0
-
-  '@rsbuild/plugin-solid@1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)':
-    dependencies:
-      '@rsbuild/core': 1.2.4
-      '@rsbuild/plugin-babel': 1.0.3(@rsbuild/core@1.2.4)
-      babel-preset-solid: 1.9.3(@babel/core@7.27.4)
-      solid-refresh: 0.6.3(solid-js@1.9.5)
-    transitivePeerDependencies:
-      - '@babel/core'
-      - solid-js
-      - supports-color
 
   '@rsbuild/plugin-solid@1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)':
     dependencies:
