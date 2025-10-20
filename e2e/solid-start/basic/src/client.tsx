@@ -5,6 +5,6 @@ import { StartClient, hydrateStart } from '@tanstack/solid-start/client'
 
 console.log("[client-entry]: using custom client entry in 'src/client.tsx'")
 
-const router = await hydrateStart()
-
-hydrate(() => <StartClient router={router} />, document)
+hydrateStart().then((router) => {
+  hydrate(() => <StartClient router={router} />, document)
+})
