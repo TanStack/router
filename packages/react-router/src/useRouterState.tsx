@@ -32,7 +32,7 @@ export type UseRouterStateResult<
  * Subscribe to the router's state store with optional selection and
  * structural sharing for render optimization.
  *
- * Non-obvious options:
+ * Options:
  * - `select`: Project the full router state to a derived slice
  * - `structuralSharing`: Replace-equal semantics for stable references
  * - `router`: Read state from a specific router instance instead of context

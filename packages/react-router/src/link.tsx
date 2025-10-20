@@ -539,7 +539,7 @@ export function createLink<const TComp>(
  * Handles path, search, hash and state updates with optional route preloading
  * and active-state styling.
  *
- * Non-obvious props include:
+ * Props:
  * - `preload`: Controls route preloading (eg. 'intent', 'render', 'viewport', true/false)
  * - `preloadDelay`: Delay in ms before preloading on hover
  * - `activeProps`/`inactiveProps`: Additional props merged when link is active/inactive

@@ -64,7 +64,7 @@ export type UseParamsRoute<out TFrom> = <
 /**
  * Access the current route's path parameters with type-safety.
  *
- * Non-obvious options:
+ * Options:
  * - `from`/`strict`: Specify the matched route and whether to enforce strict typing
  * - `select`: Project the params object to a derived value for memoized renders
  * - `structuralSharing`: Enable structural sharing for stable references

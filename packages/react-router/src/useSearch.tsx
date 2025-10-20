@@ -64,7 +64,7 @@ export type UseSearchRoute<out TFrom> = <
 /**
  * Read and select the current route's search parameters with type-safety.
  *
- * Non-obvious options:
+ * Options:
  * - `from`/`strict`: Control which route's search is read and how strictly it's typed
  * - `select`: Map the search object to a derived value for render optimization
  * - `structuralSharing`: Enable structural sharing for stable references
