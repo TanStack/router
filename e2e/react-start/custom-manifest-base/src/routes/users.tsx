@@ -1,12 +1,11 @@
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 import axios from 'redaxios'
 import type { User } from '~/utils/users'
-import { basepath } from '~/utils/basepath'
 
 export const Route = createFileRoute('/users')({
   loader: async () => {
     return await axios
-      .get<Array<User>>(basepath + '/api/users')
+      .get<Array<User>>('/api/users')
       .then((r) => r.data)
       .catch(() => {
         throw new Error('Failed to fetch users')

@@ -204,7 +204,8 @@ export function TanStackServerFnPlugin(
               ([id, fn]: any) =>
                 `'${id}': {
                   functionName: '${fn.functionName}',
-                  importer: () => import(${JSON.stringify(fn.extractedFilename)})
+                  importer: () => import(${JSON.stringify(fn.extractedFilename)}),
+                  extractedFilename: ${JSON.stringify(fn.extractedFilename)}
                 }`,
             )
             .join(',')}}
@@ -213,11 +214,13 @@ export function TanStackServerFnPlugin(
               if (!serverFnInfo) {
                 throw new Error('Server function info not found for ' + id)
               }
+              console.info(serverFnInfo["extractedFilename"])
               const fnModule = await serverFnInfo.importer()
 
               if (!fnModule) {
                 console.info('serverFnInfo', serverFnInfo)
                 throw new Error('Server function module not resolved for ' + id)
+                return
               }
 
               const action = fnModule[serverFnInfo.functionName]
