@@ -37,7 +37,7 @@ export const Route = createFileRoute('/dashboard/users')({
 function UsersComponent() {
   const navigate = useNavigate({ from: Route.fullPath })
   const search = Route.useSearch()
-  const usersQuery = useQuery(() => usersQueryOptions(Route.useLoaderDeps()))
+  const usersQuery = useQuery(() => usersQueryOptions(Route.useLoaderDeps()()))
   const users = usersQuery.data
   const sortBy = search().usersView?.sortBy ?? 'name'
   const filterBy = search().usersView?.filterBy

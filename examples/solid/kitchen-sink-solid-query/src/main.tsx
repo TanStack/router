@@ -550,7 +550,7 @@ function UsersComponent() {
   const navigate = useNavigate({ from: usersLayoutRoute.fullPath })
   const search = usersLayoutRoute.useSearch()
   const usersQuery = useQuery(() =>
-    usersQueryOptions(usersLayoutRoute.useLoaderDeps()),
+    usersQueryOptions(usersLayoutRoute.useLoaderDeps()()),
   )
   const users = usersQuery.data
   const sortBy = Solid.createMemo(() => search().usersView?.sortBy ?? 'name')
