@@ -78,6 +78,15 @@ declare module '@tanstack/router-core' {
   }
 }
 
+/**
+ * Returns a route-specific API that exposes type-safe hooks pre-bound
+ * to a single route ID. Useful for consuming a route's APIs from files
+ * where the route object isn't directly imported (e.g. code-split files).
+ *
+ * @param id Route ID string literal for the target route.
+ * @returns A `RouteApi` instance bound to the given route ID.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/getRouteApiFunction
+ */
 export function getRouteApi<
   const TId,
   TRouter extends AnyRouter = RegisteredRouter,

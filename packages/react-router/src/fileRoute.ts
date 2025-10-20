@@ -264,6 +264,18 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 }
 
+/**
+ * Creates a lazily-configurable code-based route stub by ID.
+ *
+ * Use this for code-splitting with code-based routes. The returned function
+ * accepts only non-critical route options like `component`, `pendingComponent`,
+ * `errorComponent`, and `notFoundComponent` which are applied when the route
+ * is matched.
+ *
+ * @param id Route ID string literal to associate with the lazy route.
+ * @returns A function that accepts lazy route options and returns a `LazyRoute`.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyRouteFunction
+ */
 export function createLazyRoute<
   TRouter extends AnyRouter = RegisteredRouter,
   TId extends string = string,
@@ -277,6 +289,17 @@ export function createLazyRoute<
   }
 }
 
+/**
+ * Creates a lazily-configurable file-based route stub by file path.
+ *
+ * Use this for code-splitting with file-based routes (eg. `.lazy.tsx` files).
+ * The returned function accepts only non-critical route options like
+ * `component`, `pendingComponent`, `errorComponent`, and `notFoundComponent`.
+ *
+ * @param id File path literal for the route file.
+ * @returns A function that accepts lazy route options and returns a `LazyRoute`.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createLazyFileRouteFunction
+ */
 export function createLazyFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TRoute extends FileRoutesByPath[TFilePath]['preLoaderRoute'],
