@@ -71,10 +71,10 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
     <html>
       <head>
-        <HeadContent />
         <HydrationScript />
       </head>
       <body>
+        <HeadContent />
         <div class="p-2 flex gap-2 text-lg">
           <h1>SPA Mode E2E Test</h1>
           <Link

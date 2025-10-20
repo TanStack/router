@@ -69,10 +69,10 @@ function RootComponent() {
   return (
     <html>
       <head>
-        <HeadContent />
         <HydrationScript />
       </head>
       <body>
+        <HeadContent />
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"

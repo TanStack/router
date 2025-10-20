@@ -62,10 +62,10 @@ function RootComponent() {
   return (
     <html>
       <head>
-        <HeadContent />
         <HydrationScript />
       </head>
       <body>
+        <HeadContent />
         <Nav type="header" />
         <hr />
         <Outlet />

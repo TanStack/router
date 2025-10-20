@@ -60,10 +60,10 @@ function RootComponent() {
   return (
     <html>
       <head>
-        <HeadContent />
         <HydrationScript />
       </head>
       <body>
+        <HeadContent />
         <Outlet />
         <TanStackRouterDevtools position="bottom-right" />
         <Scripts />
