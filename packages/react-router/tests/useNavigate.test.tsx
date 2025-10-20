@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react'
 
 import { z } from 'zod'
+
 import {
   Navigate,
   Outlet,
@@ -23,7 +24,8 @@ import {
   useNavigate,
   useParams,
 } from '../src'
-import type { RouterHistory, TrailingSlashOption } from '../src'
+import { trailingSlashCases } from './utils'
+import type { RouterHistory } from '../src'
 
 let history: RouterHistory
 
@@ -2557,7 +2559,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 )
 
 describe('splat routes with empty splat', () => {
-  test.each([{ trailingSlash: "preserve" as TrailingSlashOption }, { trailingSlash: "always" as TrailingSlashOption }, { trailingSlash: "never" as TrailingSlashOption }])(
+  test.each(trailingSlashCases)(
     'should handle empty _splat parameter with trailingSlash: $trailingSlash',
     async ({ trailingSlash }) => {
       const tail = trailingSlash === "always" ? '/' : ''

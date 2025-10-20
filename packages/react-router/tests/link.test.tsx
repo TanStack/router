@@ -40,8 +40,9 @@ import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
   sleep,
+  trailingSlashCases,
 } from './utils'
-import type { RouterHistory, TrailingSlashOption } from '../src'
+import type { RouterHistory } from '../src'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
@@ -5550,7 +5551,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 )
 
 describe("splat routes with empty splat", () => {
-  test.each([{ trailingSlash: "preserve" as TrailingSlashOption }, { trailingSlash: "always" as TrailingSlashOption }, { trailingSlash: "never" as TrailingSlashOption }])(
+  test.each(trailingSlashCases)(
     'should handle empty _splat parameter with trailingSlash: $trailingSlash',
     async ({ trailingSlash }) => {
       const tail = trailingSlash === "always" ? '/' : ''

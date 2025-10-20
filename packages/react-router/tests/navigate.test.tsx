@@ -6,7 +6,8 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import type { RouterHistory, TrailingSlashOption } from '../src'
+import { trailingSlashCases } from './utils'
+import type { RouterHistory } from '../src'
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -1240,7 +1241,7 @@ describe('router.navigate navigation using optional path parameters - edge cases
 })
 
 describe('splat routes with empty splat', () => {
-  it.each([{ trailingSlash: "preserve" as TrailingSlashOption }, { trailingSlash: "always" as TrailingSlashOption }, { trailingSlash: "never" as TrailingSlashOption }])(
+  it.each(trailingSlashCases)(
     'should handle empty _splat parameter with trailingSlash: $trailingSlash',
     async ({ trailingSlash }) => {
       const tail = trailingSlash === "always" ? '/' : ''
