@@ -6,8 +6,8 @@ import { getAuth, getSignInUrl } from '@workos/authkit-tanstack-react-start';
 import { AuthKitProvider } from '@workos/authkit-tanstack-react-start/client';
 import Footer from '../components/footer';
 import SignInButton from '../components/sign-in-button';
-import type { ReactNode } from 'react';
 import appCssUrl from '../app.css?url';
+import type { ReactNode } from 'react';
 
 export const Route = createRootRoute({
   head: () => ({
