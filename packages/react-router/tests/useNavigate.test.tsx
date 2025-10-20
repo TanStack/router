@@ -2555,3 +2555,126 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
     })
   },
 )
+
+describe('splat routes with empty splat', () => {
+  test.each([{ trailingSlash: true }, { trailingSlash: false }])(
+    'should handle empty _splat parameter with trailingSlash: $trailingSlash',
+    async ({ trailingSlash }) => {
+      const tail = trailingSlash ? '/' : ''
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: function IndexComponent() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>Index Route</h1>
+              <button
+                data-testid="splat-btn-with-empty-splat"
+                onClick={() =>
+                  navigate({
+                    to: '/splat/$',
+                    params: { _splat: '' },
+                  })
+                }
+                type="button"
+              >
+                Navigate to splat with empty _splat
+              </button>
+              <button
+                data-testid="splat-btn-with-undefined-splat"
+                onClick={() =>
+                  navigate({
+                    to: '/splat/$',
+                    params: { _splat: undefined },
+                  })
+                }
+                type="button"
+              >
+                Navigate to splat with undefined _splat
+              </button>
+              <button
+                data-testid="splat-btn-with-no-splat"
+                onClick={() =>
+                  navigate({
+                    to: '/splat/$',
+                    params: {},
+                  })
+                }
+                type="button"
+              >
+                Navigate to splat with no _splat
+              </button>
+            </>
+          )
+        },
+      })
+
+      const splatRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'splat/$',
+        component: () => {
+          return <h1>Splat Route</h1>
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, splatRoute]),
+        history,
+        trailingSlash: trailingSlash ? 'always' : 'never',
+      })
+
+      render(<RouterProvider router={router} />)
+
+      // Navigate with empty _splat
+      const splatBtnWithEmptySplat = await screen.findByTestId(
+        'splat-btn-with-empty-splat',
+      )
+
+      await act(async () => {
+        fireEvent.click(splatBtnWithEmptySplat)
+      })
+
+      expect(window.location.pathname).toBe(`/splat${tail}`)
+      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+
+      // Navigate back to index
+      await act(async () => {
+        history.push('/')
+      })
+
+      // Navigate with undefined _splat
+      const splatBtnWithUndefinedSplat = await screen.findByTestId(
+        'splat-btn-with-undefined-splat',
+      )
+
+      await act(async () => {
+        fireEvent.click(splatBtnWithUndefinedSplat)
+      })
+
+      expect(window.location.pathname).toBe(`/splat${tail}`)
+      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+
+      // Navigate back to index
+      await act(async () => {
+        history.push('/')
+      })
+
+      // Navigate with no _splat
+      const splatBtnWithNoSplat = await screen.findByTestId(
+        'splat-btn-with-no-splat',
+      )
+
+      await act(async () => {
+        fireEvent.click(splatBtnWithNoSplat)
+      })
+
+      expect(window.location.pathname).toBe(`/splat${tail}`)
+      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+
+
+    },
+  )
+})
