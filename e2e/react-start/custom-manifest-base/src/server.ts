@@ -10,7 +10,7 @@ const customHandler = defineHandlerCallback((ctx) => {
   return defaultStreamHandler(ctx)
 })
 
-const fetch = createStartHandler(customHandler, {basePath: 'http://localhost:3001'})
+const fetch = createStartHandler(customHandler, {assetsUrl: 'http://localhost:3001'})
 
 export default {
   fetch

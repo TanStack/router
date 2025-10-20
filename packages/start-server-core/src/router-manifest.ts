@@ -1,7 +1,6 @@
 import { rootRouteId } from '@tanstack/router-core'
 import { VIRTUAL_MODULES } from './virtual-modules'
 import { loadVirtualModule } from './loadVirtualModule'
-import path from 'node:path'
 
 /**
  * @description Returns the router manifest that should be sent to the client.
@@ -9,7 +8,7 @@ import path from 'node:path'
  * special assets that are needed for the client. It does not include relationships
  * between routes or any other data that is not needed for the client.
  */
-export async function getStartManifest({basePath = '', routerBasePath}: { basePath?: string, routerBasePath?: string } = {}) {
+export async function getStartManifest({assetsUrl: maybeAssetsUrl, routerBasePath}: { assetsUrl?: string, routerBasePath?: string } = {}) {
   const { tsrStartManifest } = await loadVirtualModule(
     VIRTUAL_MODULES.startManifest,
   )
@@ -19,7 +18,9 @@ export async function getStartManifest({basePath = '', routerBasePath}: { basePa
     startManifest.routes[rootRouteId] || {})
 
   rootRoute.assets = rootRoute.assets || []
-  let script = `import('${basePath + "/" + startManifest.clientEntry.replace(routerBasePath ?? '', '')}')`
+  let script =
+    maybeAssetsUrl ?
+    `import('${maybeAssetsUrl + "/" + startManifest.clientEntry.replace(routerBasePath ?? '', '')}')` : `import('${startManifest.clientEntry}')`
   if (process.env.TSS_DEV_SERVER === 'true') {
     const { injectedHeadScripts } = await loadVirtualModule(
       VIRTUAL_MODULES.injectedHeadScripts,
@@ -43,20 +44,27 @@ export async function getStartManifest({basePath = '', routerBasePath}: { basePa
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).map(([k, v]) => {
         const { preloads, assets } = v
-        console.log({k, preloads, assets})
+        if (!maybeAssetsUrl) {
+          return [
+            k,
+            {
+              preloads,
+              assets,
+            },
+          ]
+        }
         return [
           k,
           {
-            preloads: preloads?.map((url) => basePath + '/' + url.replace(routerBasePath ?? '', '')) || [],
+            preloads: preloads?.map((url) => maybeAssetsUrl + '/' + url.replace(routerBasePath ?? '', '')) || [],
             assets:
               assets?.map((asset) => {
-                console.log(asset)
                 if (asset.tag === 'link' && asset.attrs?.href) {
                   return {
                     ...asset,
                     attrs: {
                       ...asset.attrs,
-                      href: basePath + '/' + asset.attrs.href,
+                      href: maybeAssetsUrl + '/' + asset.attrs.href,
                     },
                   }
                 }

@@ -53,7 +53,7 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
 
 export function createStartHandler<TRegister = Register>(
   cb: HandlerCallback<AnyRouter>,
-  opts: {basePath?: string} = {}
+  opts: {assetsUrl?: string} = {}
 ): RequestHandler<TRegister> {
   const ROUTER_BASEPATH = process.env.TSS_ROUTER_BASEPATH || '/'
   let startRoutesManifest: Manifest | null = null
