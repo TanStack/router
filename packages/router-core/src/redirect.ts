@@ -54,6 +54,20 @@ export type ResolvedRedirect<
   TMaskTo extends string = '',
 > = Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
+/**
+ * Create a redirect Response understood by TanStack Router.
+ *
+ * Use inside loaders/actions/server functions. If `throw: true` is provided,
+ * the redirect Response is thrown instead of returned. When an absolute `href`
+ * is passed and `reloadDocument` is not set, a full-document navigation is
+ * inferred.
+ *
+ * @param opts Options for the redirect, including `href`, `statusCode`,
+ * `headers`, and standard navigation options (e.g. `to`, `params`, `search`,
+ * `reloadDocument`).
+ * @returns A Response augmented with router navigation options.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
+ */
 export function redirect<
   TRouter extends AnyRouter = RegisteredRouter,
   const TTo extends string | undefined = '.',
