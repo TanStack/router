@@ -41,7 +41,7 @@ import {
   getSearchParamsFromURI,
   sleep,
 } from './utils'
-import type { RouterHistory } from '../src'
+import type { RouterHistory, TrailingSlashOption } from '../src'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
@@ -5550,10 +5550,10 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 )
 
 describe("splat routes with empty splat", () => {
-  test.each([{ trailingSlash: true }, { trailingSlash: false }])(
+  test.each([{ trailingSlash: "preserve" as TrailingSlashOption }, { trailingSlash: "always" as TrailingSlashOption }, { trailingSlash: "never" as TrailingSlashOption }])(
     'should handle empty _splat parameter with trailingSlash: $trailingSlash',
     async ({ trailingSlash }) => {
-      const tail = trailingSlash ? '/' : ''
+      const tail = trailingSlash === "always" ? '/' : ''
 
       const rootRoute = createRootRoute()
       const indexRoute = createRoute({
@@ -5605,7 +5605,7 @@ describe("splat routes with empty splat", () => {
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, splatRoute]),
         history,
-        trailingSlash: trailingSlash ? 'always' : 'never',
+        trailingSlash,
       })
 
       render(<RouterProvider router={router} />)

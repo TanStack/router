@@ -6,7 +6,7 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import type { RouterHistory } from '../src'
+import type { RouterHistory, TrailingSlashOption } from '../src'
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -1240,10 +1240,10 @@ describe('router.navigate navigation using optional path parameters - edge cases
 })
 
 describe('splat routes with empty splat', () => {
-  it.each([{ trailingSlash: true }, { trailingSlash: false }])(
+  it.each([{ trailingSlash: "preserve" as TrailingSlashOption }, { trailingSlash: "always" as TrailingSlashOption }, { trailingSlash: "never" as TrailingSlashOption }])(
     'should handle empty _splat parameter with trailingSlash: $trailingSlash',
     async ({ trailingSlash }) => {
-      const tail = trailingSlash ? '/' : ''
+      const tail = trailingSlash === "always" ? '/' : ''
 
       const history = createMemoryHistory({ initialEntries: ['/'] })
 
@@ -1261,7 +1261,7 @@ describe('splat routes with empty splat', () => {
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, splatRoute]),
         history,
-        trailingSlash: trailingSlash ? 'always' : 'never',
+        trailingSlash,
       })
 
       await router.load()
