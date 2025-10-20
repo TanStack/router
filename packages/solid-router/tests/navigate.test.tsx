@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -566,4 +567,58 @@ describe('relative navigation', () => {
 
     expect(router.state.location.pathname).toBe('/posts/tkdodo')
   })
+})
+
+describe('splat routes with empty splat', () => {
+  it.each(Object.values(trailingSlashOptions))(
+    'should handle empty _splat parameter with trailingSlash: $trailingSlash',
+    async (trailingSlash) => {
+      const tail = trailingSlash === 'always' ? '/' : ''
+
+      const history = createMemoryHistory({ initialEntries: ['/'] })
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+      })
+
+      const splatRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'splat/$',
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, splatRoute]),
+        history,
+        trailingSlash,
+      })
+
+      await router.load()
+
+      // All of these route params should navigate to the same location
+      const paramSets = [
+        {
+          _splat: '',
+        },
+        {
+          _splat: undefined,
+        },
+        {},
+      ]
+
+      for (const params of paramSets) {
+        await router.navigate({
+          to: '/splat/$',
+          params,
+        })
+        await router.invalidate()
+
+        expect(router.state.location.pathname).toBe(`/splat${tail}`)
+        // Navigate back to index
+        await router.navigate({ to: '/' })
+        await router.invalidate()
+      }
+    },
+  )
 })
