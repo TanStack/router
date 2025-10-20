@@ -52,13 +52,25 @@ TanStack Start is powered by [Vite](https://vite.dev/) and [TanStack Router](htt
 To install them, run:
 
 ```shell
-npm i @tanstack/react-start @tanstack/react-router vite
+npm i @tanstack/react-start @tanstack/react-router
+```
+
+We also need vite as a devDependency:
+
+```shell
+npm i -D vite
 ```
 
 You'll also need React:
 
 ```shell
-npm i react react-dom @vitejs/plugin-react
+npm i react react-dom
+```
+
+As well as React's Vite plugin:
+
+```shell
+npm i -D @vitejs/plugin-react
 ```
 
 Alternatively, you can also use `@vitejs/plugin-react-oxc` or `@vitejs/plugin-react-swc`.
