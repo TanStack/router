@@ -774,7 +774,7 @@ export interface ViewTransitionOptions {
         pathChanged: boolean
         hrefChanged: boolean
         hashChanged: boolean
-      }) => Array<string>)
+      }) => Array<string> | false)
 }
 
 // TODO where is this used? can we remove this?
@@ -969,7 +969,7 @@ export class RouterCore<
 
     this.origin = this.options.origin
     if (!this.origin) {
-      if (!this.isServer) {
+      if (!this.isServer && window?.origin && window.origin !== 'null') {
         this.origin = window.origin
       } else {
         // fallback for the server, can be overridden by calling router.update({origin}) on the server
@@ -1162,7 +1162,6 @@ export class RouterCore<
         maskedLocation: location,
       }
     }
-
     return location
   }
 
@@ -1966,7 +1965,12 @@ export class RouterCore<
         trimPath(normalizeUrl(this.latestLocation.href)) !==
         trimPath(normalizeUrl(nextLocation.href))
       ) {
-        throw redirect({ href: nextLocation.href })
+        let href = nextLocation.url
+        if (this.origin && href.startsWith(this.origin)) {
+          href = href.replace(this.origin, '') || '/'
+        }
+
+        throw redirect({ href })
       }
     }
 
@@ -2131,10 +2135,16 @@ export class RouterCore<
       await this.latestLoadPromise
     }
 
+    let newStatusCode: number | undefined = undefined
     if (this.hasNotFoundMatch()) {
+      newStatusCode = 404
+    } else if (this.__store.state.matches.some((d) => d.status === 'error')) {
+      newStatusCode = 500
+    }
+    if (newStatusCode !== undefined) {
       this.__store.setState((s) => ({
         ...s,
-        statusCode: 404,
+        statusCode: newStatusCode,
       }))
     }
   }
@@ -2174,6 +2184,11 @@ export class RouterCore<
                 }),
               )
             : shouldViewTransition.types
+
+        if (resolvedViewTransitionTypes === false) {
+          fn()
+          return
+        }
 
         startViewTransitionParams = {
           update: fn,

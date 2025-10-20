@@ -117,7 +117,7 @@ export const handleServerAction = async ({
         }
 
         let jsonPayload
-        if (contentType === 'application/json') {
+        if (contentType?.includes('application/json')) {
           jsonPayload = await request.json()
         }
 

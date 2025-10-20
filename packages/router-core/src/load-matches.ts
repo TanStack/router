@@ -673,6 +673,10 @@ const runLoader = async (
       const pendingPromise = match._nonReactive.minPendingPromise
       if (pendingPromise) await pendingPromise
 
+      if (isNotFound(e)) {
+        await (route.options.notFoundComponent as any)?.preload?.()
+      }
+
       handleRedirectAndNotFound(inner, inner.router.getMatch(matchId), e)
 
       try {

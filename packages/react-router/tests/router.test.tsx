@@ -8,7 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { z } from 'zod'
-import { composeRewrites } from '@tanstack/router-core'
+import { composeRewrites, notFound } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
@@ -1929,13 +1929,11 @@ describe('does not strip search params if search validation fails', () => {
   })
 })
 
-describe('statusCode reset on navigation', () => {
+describe('statusCode', () => {
   it('should reset statusCode to 200 when navigating from 404 to valid route', async () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
 
-    const rootRoute = createRootRoute({
-      component: () => <Outlet />,
-    })
+    const rootRoute = createRootRoute()
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -1968,6 +1966,174 @@ describe('statusCode reset on navigation', () => {
     await act(() => router.navigate({ to: '/another-non-existing' }))
     expect(router.state.statusCode).toBe(404)
   })
+
+  describe.each([true, false])(
+    'status code is set when loader/beforeLoad throws (isAsync=%s)',
+    async (isAsync) => {
+      const throwingFun = isAsync
+        ? (toThrow: () => void) => async () => {
+            await new Promise((resolve) => setTimeout(resolve, 10))
+            toThrow()
+          }
+        : (toThrow: () => void) => toThrow
+
+      const throwNotFound = throwingFun(() => {
+        throw notFound()
+      })
+      const throwError = throwingFun(() => {
+        throw new Error('test-error')
+      })
+      it('should set statusCode to 404 when a route loader throws a notFound()', async () => {
+        const history = createMemoryHistory({ initialEntries: ['/'] })
+
+        const rootRoute = createRootRoute()
+
+        const indexRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/',
+          component: () => <div>Home</div>,
+        })
+
+        const loaderThrowsRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/loader-throws-not-found',
+          loader: throwNotFound,
+          component: () => (
+            <div data-testid="route-component">loader will throw</div>
+          ),
+          notFoundComponent: () => (
+            <div data-testid="not-found-component">Not Found</div>
+          ),
+        })
+
+        const routeTree = rootRoute.addChildren([indexRoute, loaderThrowsRoute])
+        const router = createRouter({ routeTree, history })
+
+        render(<RouterProvider router={router} />)
+
+        expect(router.state.statusCode).toBe(200)
+
+        await act(() => router.navigate({ to: '/loader-throws-not-found' }))
+        expect(router.state.statusCode).toBe(404)
+        expect(
+          await screen.findByTestId('not-found-component'),
+        ).toBeInTheDocument()
+        expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
+      })
+
+      it('should set statusCode to 404 when a route beforeLoad throws a notFound()', async () => {
+        const history = createMemoryHistory({ initialEntries: ['/'] })
+
+        const rootRoute = createRootRoute()
+
+        const indexRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/',
+          component: () => <div>Home</div>,
+        })
+
+        const beforeLoadThrowsRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/beforeload-throws-not-found',
+          beforeLoad: throwNotFound,
+          component: () => (
+            <div data-testid="route-component">beforeLoad will throw</div>
+          ),
+          notFoundComponent: () => (
+            <div data-testid="not-found-component">Not Found</div>
+          ),
+        })
+
+        const routeTree = rootRoute.addChildren([
+          indexRoute,
+          beforeLoadThrowsRoute,
+        ])
+        const router = createRouter({ routeTree, history })
+
+        render(<RouterProvider router={router} />)
+
+        expect(router.state.statusCode).toBe(200)
+
+        await act(() => router.navigate({ to: '/beforeload-throws-not-found' }))
+        expect(router.state.statusCode).toBe(404)
+        expect(
+          await screen.findByTestId('not-found-component'),
+        ).toBeInTheDocument()
+        expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
+      })
+
+      it('should set statusCode to 500 when a route loader throws an Error', async () => {
+        const history = createMemoryHistory({ initialEntries: ['/'] })
+
+        const rootRoute = createRootRoute()
+
+        const indexRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/',
+          component: () => <div>Home</div>,
+        })
+
+        const loaderThrowsRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/loader-throws-error',
+          loader: throwError,
+          component: () => (
+            <div data-testid="route-component">loader will throw</div>
+          ),
+          errorComponent: () => <div data-testid="error-component">Error</div>,
+        })
+
+        const routeTree = rootRoute.addChildren([indexRoute, loaderThrowsRoute])
+        const router = createRouter({ routeTree, history })
+
+        render(<RouterProvider router={router} />)
+
+        expect(router.state.statusCode).toBe(200)
+
+        await act(() => router.navigate({ to: '/loader-throws-error' }))
+        expect(router.state.statusCode).toBe(500)
+        expect(await screen.findByTestId('error-component')).toBeInTheDocument()
+        expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
+      })
+
+      it('should set statusCode to 500 when a route beforeLoad throws an Error', async () => {
+        const history = createMemoryHistory({ initialEntries: ['/'] })
+
+        const rootRoute = createRootRoute()
+
+        const indexRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/',
+          component: () => <div>Home</div>,
+        })
+
+        const beforeLoadThrowsRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/beforeload-throws-error',
+          beforeLoad: throwError,
+          component: () => (
+            <div data-testid="route-component">beforeLoad will throw</div>
+          ),
+          errorComponent: () => <div data-testid="error-component">Error</div>,
+        })
+
+        const routeTree = rootRoute.addChildren([
+          indexRoute,
+          beforeLoadThrowsRoute,
+        ])
+        const router = createRouter({ routeTree, history })
+
+        render(<RouterProvider router={router} />)
+
+        expect(router.state.statusCode).toBe(200)
+
+        await act(() => router.navigate({ to: '/beforeload-throws-error' }))
+        expect(router.state.statusCode).toBe(500)
+        expect(await screen.findByTestId('error-component')).toBeInTheDocument()
+        expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
+      })
+    },
+  )
 })
 
 describe('Router rewrite functionality', () => {

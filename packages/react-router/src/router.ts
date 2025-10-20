@@ -77,6 +77,17 @@ declare module '@tanstack/router-core' {
   }
 }
 
+/**
+ * Creates a new Router instance for React.
+ *
+ * Pass the returned router to `RouterProvider` to enable routing.
+ * Notable options: `routeTree` (your route definitions) and `context`
+ * (required if the root route was created with `createRootRouteWithContext`).
+ *
+ * @param options Router options used to configure the router.
+ * @returns A Router instance to be provided to `RouterProvider`.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createRouterFunction
+ */
 export const createRouter: CreateRouterFn = (options) => {
   return new Router(options)
 }

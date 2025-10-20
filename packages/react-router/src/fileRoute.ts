@@ -35,6 +35,17 @@ import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseLoaderDataRoute } from './useLoaderData'
 import type { UseRouteContextRoute } from './useRouteContext'
 
+/**
+ * Creates a file-based Route factory for a given path.
+ *
+ * Used by TanStack Router's file-based routing to associate a file with a
+ * route. The returned function accepts standard route options. In normal usage
+ * the `path` string is inserted and maintained by the `tsr` generator.
+ *
+ * @param path File path literal for the route (usually auto-generated).
+ * @returns A function that accepts Route options and returns a Route instance.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createFileRouteFunction
+ */
 export function createFileRoute<
   TFilePath extends keyof FileRoutesByPath,
   TParentRoute extends AnyRoute = FileRoutesByPath[TFilePath]['parentRoute'],

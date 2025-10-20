@@ -1,6 +1,12 @@
 /// <reference types="vite/client" />
-import { Outlet, createRootRoute } from '@tanstack/solid-router'
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import { HydrationScript } from 'solid-js/web'
 import { NotFound } from '~/components/NotFound'
 import appCss from '~/styles/app.css?url'
 import { seo } from '~/utils/seo'
@@ -52,9 +58,16 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <>
-      <Outlet />
-      <TanStackRouterDevtools position="bottom-right" />
-    </>
+    <html>
+      <head>
+        <HydrationScript />
+      </head>
+      <body>
+        <HeadContent />
+        <Outlet />
+        <TanStackRouterDevtools position="bottom-right" />
+        <Scripts />
+      </body>
+    </html>
   )
 }

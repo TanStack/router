@@ -1,5 +1,5 @@
 ---
-ref: docs/router/framework/react/routing/installation/with-router-cli.md
+ref: docs/router/framework/react/installation/with-router-cli.md
 ---
 
 [//]: # 'AfterScripts'
