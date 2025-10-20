@@ -2560,7 +2560,7 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
 describe('splat routes with empty splat', () => {
   test.each(Object.values(trailingSlashOptions))(
-    'should handle empty _splat parameter with trailingSlash: $trailingSlash',
+    'should handle empty _splat parameter with trailingSlash: %s',
     async (trailingSlash) => {
       const tail = trailingSlash === 'always' ? '/' : ''
 

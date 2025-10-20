@@ -1242,7 +1242,7 @@ describe('router.navigate navigation using optional path parameters - edge cases
 
 describe('splat routes with empty splat', () => {
   it.each(Object.values(trailingSlashOptions))(
-    'should handle empty _splat parameter with trailingSlash: $trailingSlash',
+    'should handle empty _splat parameter with trailingSlash: %s',
     async (trailingSlash) => {
       const tail = trailingSlash === 'always' ? '/' : ''
 
