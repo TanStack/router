@@ -4,10 +4,12 @@ title: Hydration Errors
 ---
 
 ### Why it happens
+
 - **Mismatch**: Server HTML differs from client render during hydration
 - **Common causes**: `Intl` (locale/time zone), `Date.now()`, random IDs, responsive-only logic, feature flags, user prefs
 
 ### Strategy 1 — Make server and client match
+
 - **Pick a deterministic locale/time zone on the server** and use the same on the client
 - **Source of truth**: cookie (preferred) or `Accept-Language` header
 - **Compute once on the server** and hydrate as initial state
@@ -15,7 +17,11 @@ title: Hydration Errors
 ```tsx
 // src/start.ts
 import { createStart, createMiddleware } from '@tanstack/solid-start'
-import { getRequestHeader, getCookie, setCookie } from '@tanstack/solid-start/server'
+import {
+  getRequestHeader,
+  getCookie,
+  setCookie,
+} from '@tanstack/solid-start/server'
 
 const localeTzMiddleware = createMiddleware().server(async ({ next }) => {
   const header = getRequestHeader('accept-language')
@@ -45,7 +51,11 @@ import { getCookie } from '@tanstack/solid-start/server'
 export const getServerNow = createServerFn().handler(async () => {
   const locale = getCookie('locale') || 'en-US'
   const timeZone = getCookie('tz') || 'UTC'
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone }).format(new Date())
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone,
+  }).format(new Date())
 })
 
 export const Route = createFileRoute('/')({
@@ -58,6 +68,7 @@ export const Route = createFileRoute('/')({
 ```
 
 ### Strategy 2 — Let the client tell you its environment
+
 - On first visit, set a cookie with the client time zone; SSR uses `UTC` until then
 
 ```tsx
@@ -71,12 +82,13 @@ function SetTimeZoneCookie() {
   return null
 }
 
-<ClientOnly fallback={null}>
+;<ClientOnly fallback={null}>
   <SetTimeZoneCookie />
 </ClientOnly>
 ```
 
 ### Strategy 3 — Make it client-only
+
 - Use `<ClientOnly>` or Solid’s `<NoHydration>` to avoid SSR/hydration
 
 ```tsx
@@ -93,6 +105,7 @@ import { NoHydration } from 'solid-js/web'
 ```
 
 ### Strategy 4 — Disable or limit SSR for the route
+
 - Use Selective SSR to avoid rendering the component on the server
 
 ```tsx
@@ -103,9 +116,11 @@ export const Route = createFileRoute('/unstable')({
 ```
 
 ### Strategy 5 — Last resort suppression
+
 - Prefer the tools above; avoid mismatches instead of hiding them
 
 ### Checklist
+
 - **Deterministic inputs**: locale, time zone, feature flags
 - **Prefer cookies** for client context; fallback to `Accept-Language`
 - **Use `<ClientOnly>`/`<NoHydration>`** for inherently dynamic UI
