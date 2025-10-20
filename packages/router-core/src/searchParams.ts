@@ -15,7 +15,7 @@ export const defaultStringifySearch = stringifySearchWith(
  *
  * @param parser Function to parse a string value (e.g. `JSON.parse`).
  * @returns A `parseSearch` function compatible with `Router` options.
- * @link https://tanstack.com/router/latest/docs/router/framework/react/guide/custom-search-param-serialization
+ * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization
  */
 export function parseSearchWith(parser: (str: string) => any) {
   return (searchStr: string): AnySchema => {
@@ -51,7 +51,7 @@ export function parseSearchWith(parser: (str: string) => any) {
  * @param stringify Function to serialize a value (e.g. `JSON.stringify`).
  * @param parser Optional parser to detect parseable strings.
  * @returns A `stringifySearch` function compatible with `Router` options.
- * @link https://tanstack.com/router/latest/docs/router/framework/react/guide/custom-search-param-serialization
+ * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization
  */
 export function stringifySearchWith(
   stringify: (search: any) => string,
