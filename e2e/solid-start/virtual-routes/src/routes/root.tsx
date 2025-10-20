@@ -7,7 +7,7 @@ import {
   createRootRoute,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
-import type {JSX} from 'solid-js';
+import type { JSX } from 'solid-js'
 import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRoute({
