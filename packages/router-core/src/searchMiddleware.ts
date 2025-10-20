@@ -3,6 +3,13 @@ import type { NoInfer, PickOptional } from './utils'
 import type { SearchMiddleware } from './route'
 import type { IsRequiredParams } from './link'
 
+/**
+ * Search middleware to retain specified search params across links.
+ *
+ * If `keys` is `true`, all existing params are retained. Otherwise, missing
+ * keys from the current search are merged into the next value produced by
+ * subsequent middlewares.
+ */
 export function retainSearchParams<TSearchSchema extends object>(
   keys: Array<keyof TSearchSchema> | true,
 ): SearchMiddleware<TSearchSchema> {
@@ -21,6 +28,13 @@ export function retainSearchParams<TSearchSchema extends object>(
   }
 }
 
+/**
+ * Search middleware to remove optional search params from links.
+ *
+ * Accepts either a list of keys or an object map of default values. Keys with
+ * values matching the provided defaults are removed from the final search.
+ * Passing `true` removes all params.
+ */
 export function stripSearchParams<
   TSearchSchema,
   TOptionalProps = PickOptional<NoInfer<TSearchSchema>>,
