@@ -7,6 +7,7 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/solid-router'
 import { TanStackRouterDevtoolsInProd } from '@tanstack/solid-router-devtools'
+import { HydrationScript } from 'solid-js/web'
 import type { QueryClient } from '@tanstack/solid-query'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
@@ -77,9 +78,10 @@ function RootDocument(props: { children?: any }) {
   return (
     <html>
       <head>
-        <HeadContent />
+        <HydrationScript />
       </head>
       <body>
+        <HeadContent />
         <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
