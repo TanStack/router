@@ -21,10 +21,10 @@ function RootDocument(props: { children: Solid.JSX.Element }) {
   return (
     <html>
       <head>
-        <HeadContent />
         <HydrationScript />
       </head>
       <body>
+        <HeadContent />
         <div>
           <Link to="/">Index</Link>
           <Link to="/about">About</Link>
