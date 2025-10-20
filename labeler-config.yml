@@ -67,6 +67,9 @@
 'package: solid-router-devtools':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-router-devtools/**/*'
+'package: solid-router-ssr-query':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/solid-router-ssr-query/**/*'
 'package: solid-start':
   - changed-files:
       - any-glob-to-any-file: 'packages/solid-start/**/*'
