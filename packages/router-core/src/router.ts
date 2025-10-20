@@ -797,7 +797,14 @@ export function defaultSerializeError(err: unknown) {
   }
 }
 
-export type TrailingSlashOption = 'always' | 'never' | 'preserve'
+export const trailingSlashOptions = {
+  always: 'always',
+  never: 'never',
+  preserve: 'preserve',
+} as const
+
+export type TrailingSlashOption =
+  (typeof trailingSlashOptions)[keyof typeof trailingSlashOptions]
 
 export function getLocationChangeInfo(routerState: {
   resolvedLocation?: ParsedLocation

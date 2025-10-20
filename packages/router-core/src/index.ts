@@ -204,7 +204,9 @@ export {
   PathParamError,
   getInitialRouterState,
   getMatchedRoutes,
+  trailingSlashOptions,
 } from './router'
+
 export type {
   ViewTransitionOptions,
   TrailingSlashOption,
