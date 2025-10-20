@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
-import { trailingSlashCases } from './utils'
 import type { RouterHistory } from '../src'
 
 afterEach(() => {
@@ -1241,10 +1241,10 @@ describe('router.navigate navigation using optional path parameters - edge cases
 })
 
 describe('splat routes with empty splat', () => {
-  it.each(trailingSlashCases)(
+  it.each(Object.values(trailingSlashOptions))(
     'should handle empty _splat parameter with trailingSlash: $trailingSlash',
-    async ({ trailingSlash }) => {
-      const tail = trailingSlash === "always" ? '/' : ''
+    async (trailingSlash) => {
+      const tail = trailingSlash === 'always' ? '/' : ''
 
       const history = createMemoryHistory({ initialEntries: ['/'] })
 
@@ -1268,11 +1268,15 @@ describe('splat routes with empty splat', () => {
       await router.load()
 
       // All of these route params should navigate to the same location
-      const paramSets = [{
-        _splat: ''
-      }, {
-        _splat: undefined
-      }, {}]
+      const paramSets = [
+        {
+          _splat: '',
+        },
+        {
+          _splat: undefined,
+        },
+        {},
+      ]
 
       for (const params of paramSets) {
         await router.navigate({

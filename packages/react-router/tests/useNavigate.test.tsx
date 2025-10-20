@@ -11,6 +11,7 @@ import {
 
 import { z } from 'zod'
 
+import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   Navigate,
   Outlet,
@@ -24,7 +25,6 @@ import {
   useNavigate,
   useParams,
 } from '../src'
-import { trailingSlashCases } from './utils'
 import type { RouterHistory } from '../src'
 
 let history: RouterHistory
@@ -2559,10 +2559,10 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 )
 
 describe('splat routes with empty splat', () => {
-  test.each(trailingSlashCases)(
+  test.each(Object.values(trailingSlashOptions))(
     'should handle empty _splat parameter with trailingSlash: $trailingSlash',
-    async ({ trailingSlash }) => {
-      const tail = trailingSlash === "always" ? '/' : ''
+    async (trailingSlash) => {
+      const tail = trailingSlash === 'always' ? '/' : ''
 
       const rootRoute = createRootRoute()
       const indexRoute = createRoute({
@@ -2675,8 +2675,6 @@ describe('splat routes with empty splat', () => {
 
       expect(window.location.pathname).toBe(`/splat${tail}`)
       expect(await screen.findByText('Splat Route')).toBeInTheDocument()
-
-
     },
   )
 })

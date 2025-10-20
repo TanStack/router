@@ -54,5 +54,3 @@ export function getSearchParamsFromURI(uri: string) {
   const [, paramString] = uri.split('?')
   return new URLSearchParams(paramString)
 }
-
-export const trailingSlashCases = (['preserve','always','never'] as const).map((t) => ({ trailingSlash: t }))

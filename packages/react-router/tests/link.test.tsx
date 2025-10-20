@@ -12,6 +12,7 @@ import {
 } from '@testing-library/react'
 
 import { z } from 'zod'
+import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
@@ -40,7 +41,6 @@ import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
   sleep,
-  trailingSlashCases,
 } from './utils'
 import type { RouterHistory } from '../src'
 
@@ -5550,11 +5550,11 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
   },
 )
 
-describe("splat routes with empty splat", () => {
-  test.each(trailingSlashCases)(
+describe('splat routes with empty splat', () => {
+  test.each(Object.values(trailingSlashOptions))(
     'should handle empty _splat parameter with trailingSlash: $trailingSlash',
-    async ({ trailingSlash }) => {
-      const tail = trailingSlash === "always" ? '/' : ''
+    async (trailingSlash) => {
+      const tail = trailingSlash === 'always' ? '/' : ''
 
       const rootRoute = createRootRoute()
       const indexRoute = createRoute({
@@ -5567,8 +5567,8 @@ describe("splat routes with empty splat", () => {
               <Link
                 data-testid="splat-link-with-empty-splat"
                 to="/splat/$"
-                params={{ _splat: "" }}
-                activeProps={{ className: "active" }}
+                params={{ _splat: '' }}
+                activeProps={{ className: 'active' }}
               >
                 Link to splat with _splat value
               </Link>
@@ -5576,18 +5576,16 @@ describe("splat routes with empty splat", () => {
                 data-testid="splat-link-with-undefined-splat"
                 to="/splat/$"
                 params={{ _splat: undefined }}
-                activeProps={{ className: "active" }}
+                activeProps={{ className: 'active' }}
               >
-
                 Link to splat with undefined _splat
               </Link>
               <Link
                 data-testid="splat-link-with-no-splat"
                 to="/splat/$"
-                params={{ }}
-                activeProps={{ className: "active" }}
+                params={{}}
+                activeProps={{ className: 'active' }}
               >
-
                 Link to splat with no _splat at all
               </Link>
             </>
@@ -5622,11 +5620,10 @@ describe("splat routes with empty splat", () => {
       )
 
       // When _splat has a value, it should follow the trailingSlash setting
-      expect(splatLinkWithEmptySplat.getAttribute('href')).toBe(
+      expect(splatLinkWithEmptySplat.getAttribute('href')).toBe(`/splat${tail}`)
+      expect(splatLinkWithUndefinedSplat.getAttribute('href')).toBe(
         `/splat${tail}`,
       )
-
-      expect(splatLinkWithUndefinedSplat.getAttribute('href')).toBe(`/splat${tail}`)
       expect(splatLinkWithNoSplat.getAttribute('href')).toBe(`/splat${tail}`)
 
       // Click the link with empty _splat and ensure the route matches
