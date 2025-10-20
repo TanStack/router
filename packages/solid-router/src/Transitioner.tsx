@@ -15,6 +15,10 @@ export function Transitioner() {
     select: ({ isLoading }) => isLoading,
   })
 
+  if (router.isServer) {
+    return null
+  }
+
   const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
   // Track pending state changes
   const hasPendingMatches = useRouterState({
