@@ -5156,22 +5156,26 @@ describe('splat routes with empty splat', () => {
       )
 
       // When _splat has a value, it should follow the trailingSlash setting
-      expect(splatLinkWithEmptySplat.getAttribute('href')).toBe(`/splat${tail}`)
-      expect(splatLinkWithUndefinedSplat.getAttribute('href')).toBe(
-        `/splat${tail}`,
-      )
-      expect(splatLinkWithNoSplat.getAttribute('href')).toBe(`/splat${tail}`)
-
-      // Click the link with empty _splat and ensure the route matches
       await waitFor(() => {
-        fireEvent.click(splatLinkWithEmptySplat)
+        expect(splatLinkWithEmptySplat.getAttribute('href')).toBe(
+          `/splat${tail}`,
+        )
+        expect(splatLinkWithUndefinedSplat.getAttribute('href')).toBe(
+          `/splat${tail}`,
+        )
+        expect(splatLinkWithNoSplat.getAttribute('href')).toBe(`/splat${tail}`)
       })
 
-      expect(splatLinkWithEmptySplat).toHaveClass('active')
-      expect(splatLinkWithUndefinedSplat).toHaveClass('active')
-      expect(splatLinkWithNoSplat).toHaveClass('active')
-      expect(window.location.pathname).toBe(`/splat${tail}`)
-      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      // Click the link with empty _splat and ensure the route matches
+      fireEvent.click(splatLinkWithEmptySplat)
+
+      await waitFor(async () => {
+        expect(splatLinkWithEmptySplat).toHaveClass('active')
+        expect(splatLinkWithUndefinedSplat).toHaveClass('active')
+        expect(splatLinkWithNoSplat).toHaveClass('active')
+        expect(window.location.pathname).toBe(`/splat${tail}`)
+        expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      })
     },
   )
 })

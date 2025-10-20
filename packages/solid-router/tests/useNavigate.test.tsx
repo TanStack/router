@@ -2602,46 +2602,42 @@ describe('splat routes with empty splat', () => {
         'splat-btn-with-empty-splat',
       )
 
-      await waitFor(() => {
-        fireEvent.click(splatBtnWithEmptySplat)
-      })
+      fireEvent.click(splatBtnWithEmptySplat)
 
-      expect(window.location.pathname).toBe(`/splat${tail}`)
-      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      await waitFor(async () => {
+        expect(window.location.pathname).toBe(`/splat${tail}`)
+        expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      })
 
       // Navigate back to index
-      await waitFor(() => {
-        history.push('/')
-      })
+      history.push('/')
 
       // Navigate with undefined _splat
       const splatBtnWithUndefinedSplat = await screen.findByTestId(
         'splat-btn-with-undefined-splat',
       )
 
-      await waitFor(() => {
-        fireEvent.click(splatBtnWithUndefinedSplat)
-      })
+      fireEvent.click(splatBtnWithUndefinedSplat)
 
-      expect(window.location.pathname).toBe(`/splat${tail}`)
-      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      await waitFor(async () => {
+        expect(window.location.pathname).toBe(`/splat${tail}`)
+        expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      })
 
       // Navigate back to index
-      await waitFor(() => {
-        history.push('/')
-      })
+      history.push('/')
 
       // Navigate with no _splat
       const splatBtnWithNoSplat = await screen.findByTestId(
         'splat-btn-with-no-splat',
       )
 
-      await waitFor(() => {
-        fireEvent.click(splatBtnWithNoSplat)
-      })
+      fireEvent.click(splatBtnWithNoSplat)
 
-      expect(window.location.pathname).toBe(`/splat${tail}`)
-      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      await waitFor(async () => {
+        expect(window.location.pathname).toBe(`/splat${tail}`)
+        expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      })
     },
   )
 })

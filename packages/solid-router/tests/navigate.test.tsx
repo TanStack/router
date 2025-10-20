@@ -8,6 +8,7 @@ import {
   createRouter,
 } from '../src'
 import type { RouterHistory } from '../src'
+import { waitFor } from '@solidjs/testing-library'
 
 afterEach(() => {
   vi.clearAllMocks()
@@ -614,7 +615,10 @@ describe('splat routes with empty splat', () => {
         })
         await router.invalidate()
 
-        expect(router.state.location.pathname).toBe(`/splat${tail}`)
+        await waitFor(() => {
+          expect(router.state.location.pathname).toBe(`/splat${tail}`)
+        })
+
         // Navigate back to index
         await router.navigate({ to: '/' })
         await router.invalidate()
