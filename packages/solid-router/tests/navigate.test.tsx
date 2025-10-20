@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { trailingSlashOptions } from '@tanstack/router-core'
+import { waitFor } from '@solidjs/testing-library'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -8,7 +9,6 @@ import {
   createRouter,
 } from '../src'
 import type { RouterHistory } from '../src'
-import { waitFor } from '@solidjs/testing-library'
 
 afterEach(() => {
   vi.clearAllMocks()
