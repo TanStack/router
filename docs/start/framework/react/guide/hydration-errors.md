@@ -101,7 +101,6 @@ export function AppBoot() {
 
 ```tsx
 import { ClientOnly } from '@tanstack/react-router'
-
 ;<ClientOnly fallback={<span>—</span>}>
   <RelativeTime ts={someTs} />
 </ClientOnly>
