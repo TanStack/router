@@ -1,6 +1,5 @@
 import { ErrorComponent, createFileRoute } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
-
 import { NotFound } from '~/components/NotFound.js'
 import { fetchPost } from '~/utils/posts.js'
 

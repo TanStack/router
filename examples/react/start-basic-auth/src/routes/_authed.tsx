@@ -1,14 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { Login } from '~/components/Login'
 import { useAppSession } from '~/utils/session'
 
-export const loginFn = createServerFn({
-  method: 'POST',
-})
-  .inputValidator((payload: { email: string; password: string }) => payload)
+export const loginFn = createServerFn({ method: 'POST' })
+  .inputValidator((d: { email: string; password: string }) => d)
   .handler(async ({ data }) => {
     // Find the user
     const user = await prismaClient.user.findUnique({

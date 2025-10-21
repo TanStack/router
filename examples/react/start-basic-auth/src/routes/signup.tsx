@@ -1,27 +1,24 @@
 import { redirect, createFileRoute } from '@tanstack/react-router'
 import { createServerFn, useServerFn } from '@tanstack/react-start'
-
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { useMutation } from '~/hooks/useMutation'
 import { Auth } from '~/components/Auth'
 import { useAppSession } from '~/utils/session'
 
-export const signupFn = createServerFn({
-  method: 'POST',
-})
+export const signupFn = createServerFn({ method: 'POST' })
   .inputValidator(
-    (data: { email: string; password: string; redirectUrl?: string }) => data,
+    (d: { email: string; password: string; redirectUrl?: string }) => d,
   )
-  .handler(async ({ data: payload }) => {
+  .handler(async ({ data }) => {
     // Check if the user already exists
     const found = await prismaClient.user.findUnique({
       where: {
-        email: payload.email,
+        email: data.email,
       },
     })
 
     // Encrypt the password using Sha256 into plaintext
-    const password = await hashPassword(payload.password)
+    const password = await hashPassword(data.password)
 
     // Create a session
     const session = await useAppSession()
@@ -42,14 +39,14 @@ export const signupFn = createServerFn({
 
       // Redirect to the prev page stored in the "redirect" search param
       throw redirect({
-        href: payload.redirectUrl || '/',
+        href: data.redirectUrl || '/',
       })
     }
 
     // Create the user
     const user = await prismaClient.user.create({
       data: {
-        email: payload.email,
+        email: data.email,
         password,
       },
     })
@@ -61,7 +58,7 @@ export const signupFn = createServerFn({
 
     // Redirect to the prev page stored in the "redirect" search param
     throw redirect({
-      href: payload.redirectUrl || '/',
+      href: data.redirectUrl || '/',
     })
   })
 
