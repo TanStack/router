@@ -7,6 +7,7 @@ import type {
   RegisteredRouter,
   UseNavigateResult,
 } from '@tanstack/router-core'
+
 /**
  * Imperative navigation hook.
  *

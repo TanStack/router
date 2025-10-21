@@ -23,7 +23,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^2.11.6",
+    "vite-plugin-solid": "^2.11.10",
     "typescript": "^5.7.2",
     "vite": "^6.1.0"
   }
