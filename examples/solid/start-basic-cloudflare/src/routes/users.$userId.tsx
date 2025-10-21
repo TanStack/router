@@ -30,11 +30,11 @@ function UserComponent() {
 
   return (
     <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{user.name}</h4>
-      <div class="text-sm">{user.email}</div>
+      <h4 class="text-xl font-bold underline">{user().name}</h4>
+      <div class="text-sm">{user().email}</div>
       <div>
         <a
-          href={`/api/users/${user.id}`}
+          href={`/api/users/${user().id}`}
           class="text-blue-800 hover:text-blue-600 underline"
         >
           View as JSON

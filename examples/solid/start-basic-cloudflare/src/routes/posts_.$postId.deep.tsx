@@ -19,8 +19,8 @@ function PostDeepComponent() {
       <Link to="/posts" class="block py-1 text-blue-800 hover:text-blue-600">
         ← All Posts
       </Link>
-      <h4 class="text-xl font-bold underline">{post.title}</h4>
-      <div class="text-sm">{post.body}</div>
+      <h4 class="text-xl font-bold underline">{post().title}</h4>
+      <div class="text-sm">{post().body}</div>
     </div>
   )
 }
