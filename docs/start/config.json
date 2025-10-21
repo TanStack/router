@@ -292,6 +292,10 @@
             {
               "label": "Material UI",
               "to": "framework/react/examples/start-material-ui"
+            },
+            {
+              "label": "Basic + Static rendering",
+              "to": "framework/react/examples/start-basic-static"
             }
           ]
         },
@@ -305,6 +309,18 @@
             {
               "label": "Basic",
               "to": "framework/solid/examples/start-basic"
+            },
+            {
+              "label": "Basic + Solid Query",
+              "to": "framework/solid/examples/start-basic-solid-query"
+            },
+            {
+              "label": "Basic + DIY Auth",
+              "to": "framework/solid/examples/start-basic-auth"
+            },
+            {
+              "label": "Basic + Static rendering",
+              "to": "framework/solid/examples/start-basic-static"
             }
           ]
         }
