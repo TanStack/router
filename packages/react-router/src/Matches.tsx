@@ -123,6 +123,18 @@ export type UseMatchRouteOptions<
   MaskOptions<TRouter, TMaskFrom, TMaskTo> &
   MatchRouteOptions
 
+/**
+ * Create a matcher function for testing locations against route definitions.
+ *
+ * The returned function accepts standard navigation options (`to`, `params`,
+ * `search`, etc.) and returns either `false` (no match) or the matched params
+ * object when the route matches the current or pending location.
+ *
+ * Useful for conditional rendering and active UI states.
+ *
+ * @returns A `matchRoute(options)` function that returns `false` or params.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchRouteHook
+ */
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
@@ -230,6 +242,15 @@ export function useMatches<
     structuralSharing: opts?.structuralSharing,
   } as any) as UseMatchesResult<TRouter, TSelected>
 }
+
+/**
+ * Read the full array of active route matches or select a derived subset.
+ *
+ * Useful for debugging, breadcrumbs, or aggregating metadata across matches.
+ *
+ * @returns The array of matches (or the selected value).
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchesHook
+ */
 
 /**
  * Read the full array of active route matches or select a derived subset.
