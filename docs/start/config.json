@@ -296,6 +296,10 @@
             {
               "label": "Basic + Static rendering",
               "to": "framework/react/examples/start-basic-static"
+            },
+            {
+              "label": "Cloudflare Vite Plugin",
+              "to": "framework/react/examples/start-basic-cloudflare"
             }
           ]
         },
@@ -321,6 +325,10 @@
             {
               "label": "Basic + Static rendering",
               "to": "framework/solid/examples/start-basic-static"
+            },
+            {
+              "label": "Cloudflare Vite Plugin",
+              "to": "framework/solid/examples/start-basic-cloudflare"
             }
           ]
         }
