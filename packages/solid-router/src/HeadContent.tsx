@@ -192,10 +192,7 @@ export function HeadContent() {
 
   return (
     <MetaProvider>
-      <For each={tags()}>
-        {(tag) => (
-          <Asset {...tag} />
-        )}</For>
+      <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
     </MetaProvider>
   )
 }
