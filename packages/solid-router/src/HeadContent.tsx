@@ -4,6 +4,7 @@ import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
+import { For } from 'solid-js'
 
 export const useTags = () => {
   const router = useRouter()
@@ -191,9 +192,10 @@ export function HeadContent() {
 
   return (
     <MetaProvider>
-      {tags().map((tag) => (
-        <Asset {...tag} />
-      ))}
+      <For each={tags()}>
+        {(tag) => (
+          <Asset {...tag} />
+        )}</For>
     </MetaProvider>
   )
 }
