@@ -574,7 +574,16 @@ export interface MakeRequiredPathParams<
   in out TFrom,
   in out TTo,
 > {
-  params: MakeRequiredParamsReducer<TRouter, 'PATH', TFrom, TTo> & {}
+  params: MakeRequiredParamsReducer<
+    TRouter,
+    'PATH',
+    TFrom,
+    TTo
+  > extends infer Params
+    ? {
+        [K in keyof Params]: Params[K] | number
+      } & {}
+    : never
 }
 
 export interface MakeRequiredSearchParams<
