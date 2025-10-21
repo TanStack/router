@@ -41,6 +41,10 @@ declare module '@tanstack/router-core' {
   }
 }
 
+/**
+ * Internal component that renders the router's active match tree with
+ * suspense, error, and not-found boundaries. Rendered by `RouterProvider`.
+ */
 export function Matches() {
   const router = useRouter()
   const rootRoute: AnyRoute = router.routesById[rootRouteId]
@@ -169,6 +173,20 @@ export type MakeMatchRouteOptions<
     | React.ReactNode
 }
 
+/**
+ * Component that conditionally renders its children based on whether a route
+ * matches the provided `from`/`to` options. If `children` is a function, it
+ * receives the matched params object.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/matchRouteComponent
+ */
+/**
+ * Component that conditionally renders its children based on whether a route
+ * matches the provided `from`/`to` options. If `children` is a function, it
+ * receives the matched params object.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/matchRouteComponent
+ */
 export function MatchRoute<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,
@@ -220,6 +238,13 @@ export function useMatches<
   } as any) as UseMatchesResult<TRouter, TSelected>
 }
 
+/**
+ * Read the full array of active route matches or select a derived subset.
+ *
+ * Useful for debugging, breadcrumbs, or aggregating metadata across matches.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchesHook
+ */
 export function useParentMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
@@ -242,6 +267,10 @@ export function useParentMatches<
   } as any)
 }
 
+/**
+ * Read the array of active route matches that are children of the current
+ * match (or selected parent) in the match tree.
+ */
 export function useChildMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
