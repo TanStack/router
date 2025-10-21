@@ -180,13 +180,6 @@ export type MakeMatchRouteOptions<
  *
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/matchRouteComponent
  */
-/**
- * Component that conditionally renders its children based on whether a route
- * matches the provided `from`/`to` options. If `children` is a function, it
- * receives the matched params object.
- *
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/matchRouteComponent
- */
 export function MatchRoute<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,
