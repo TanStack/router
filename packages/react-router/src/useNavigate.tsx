@@ -7,6 +7,7 @@ import type {
   RegisteredRouter,
   UseNavigateResult,
 } from '@tanstack/router-core'
+
 export function useNavigate<
   TRouter extends AnyRouter = RegisteredRouter,
   TDefaultFrom extends string = string,
