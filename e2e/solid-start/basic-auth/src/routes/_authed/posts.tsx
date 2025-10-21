@@ -37,5 +37,3 @@ export const Route = createFileRoute('/_authed/posts')({
   loader: () => fetchPosts(),
   component: PostsComponent,
 })
-
-

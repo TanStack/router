@@ -41,7 +41,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        "charset": 'utf-8',
+        charset: 'utf-8',
       },
       {
         name: 'viewport',

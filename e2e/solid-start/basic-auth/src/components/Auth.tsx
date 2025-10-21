@@ -1,4 +1,4 @@
-import type {JSX} from 'solid-js';
+import type { JSX } from 'solid-js'
 
 export function Auth({
   actionText,
