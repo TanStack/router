@@ -138,7 +138,7 @@ describe.each([true, false])(
               if (isUsingLazyError) {
                 indexRoute.lazy(() =>
                   Promise.resolve(
-                    createLazyRoute('/about')({
+                    createLazyRoute('/')({
                       errorComponent: MyErrorComponent,
                     }),
                   ),

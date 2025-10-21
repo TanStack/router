@@ -465,10 +465,12 @@ const executeBeforeLoad = (
     beforeLoadContext = route.options.beforeLoad(beforeLoadFnContext)
     if (isPromise(beforeLoadContext)) {
       pending()
-      return beforeLoadContext.then(updateContext).catch(async (err) => {
-        await loadRouteChunk(route)
-        handleSerialError(inner, index, err, 'BEFORE_LOAD')
-      })
+      return beforeLoadContext
+        .catch(async (err) => {
+          await loadRouteChunk(route)
+          handleSerialError(inner, index, err, 'BEFORE_LOAD')
+        })
+        .then(updateContext)
     }
   } catch (err) {
     pending()
