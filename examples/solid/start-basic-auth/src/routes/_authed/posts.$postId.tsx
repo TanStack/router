@@ -17,8 +17,6 @@ export const Route = createFileRoute('/_authed/posts/$postId')({
   },
 })
 
-
-
 function PostComponent() {
   const post = Route.useLoaderData()
 

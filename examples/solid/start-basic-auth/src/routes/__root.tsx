@@ -9,8 +9,8 @@ import {
 import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
 import { createServerFn } from '@tanstack/solid-start'
 
-import { HydrationScript } from 'solid-js/web';
-import type {JSX} from 'solid-js';
+import { HydrationScript } from 'solid-js/web'
+import type { JSX } from 'solid-js'
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
@@ -42,7 +42,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        "charset": 'utf-8',
+        charset: 'utf-8',
       },
       {
         name: 'viewport',

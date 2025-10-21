@@ -1,4 +1,4 @@
-import type { JSX } from "solid-js"
+import type { JSX } from 'solid-js'
 
 export function Auth({
   actionText,
@@ -16,7 +16,7 @@ export function Auth({
       <div class="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
         <h1 class="text-2xl font-bold mb-4">{actionText}</h1>
         <form
-          onSubmit={(e:any) => {
+          onSubmit={(e: any) => {
             e.preventDefault()
             onSubmit(e)
           }}
