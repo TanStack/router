@@ -16,7 +16,7 @@ function UsersComponent() {
     <div class="p-2 flex gap-2">
       <ul class="list-disc pl-4">
         {[
-          ...usersQuery.data || [],
+          ...(usersQuery.data || []),
           { id: 'i-do-not-exist', name: 'Non-existent User', email: '' },
         ].map((user) => {
           return (

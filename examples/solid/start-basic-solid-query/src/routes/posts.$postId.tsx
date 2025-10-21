@@ -4,7 +4,6 @@ import { postQueryOptions } from '../utils/posts'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 import { NotFound } from '~/components/NotFound'
 
-
 export function PostErrorComponent({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />
 }
@@ -29,11 +28,10 @@ export const Route = createFileRoute('/posts/$postId')({
   component: PostComponent,
 })
 
-
 function PostComponent() {
   const params = Route.useParams()
   const postQuery = useQuery(() => postQueryOptions(params().postId))
-  
+
   return (
     <div class="space-y-2">
       <h4 class="text-xl font-bold underline">{postQuery.data?.title}</h4>

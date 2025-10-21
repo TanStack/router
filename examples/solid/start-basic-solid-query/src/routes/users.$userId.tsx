@@ -8,7 +8,6 @@ export function UserErrorComponent({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />
 }
 
-
 export const Route = createFileRoute('/users/$userId')({
   loader: async ({ context, params: { userId } }) => {
     await context.queryClient.ensureQueryData(userQueryOptions(userId))
@@ -19,7 +18,6 @@ export const Route = createFileRoute('/users/$userId')({
     return <NotFound>User not found</NotFound>
   },
 })
-
 
 function UserComponent() {
   const params = Route.useParams()
