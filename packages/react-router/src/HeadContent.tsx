@@ -4,6 +4,10 @@ import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+/**
+ * Compute the deduped, ordered set of head tags derived from active matches
+ * and SSR manifest, including title/meta/links/styles/head scripts.
+ */
 export const useTags = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
@@ -186,6 +190,10 @@ export const useTags = () => {
 /**
  * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
  * It should be rendered in the `<head>` of your document.
+ */
+/**
+ * Render head tags for the current route tree. Place this in your document
+ * `<head>` (or as high as possible) to manage title/meta/links/styles.
  */
 export function HeadContent() {
   const tags = useTags()

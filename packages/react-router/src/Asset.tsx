@@ -8,6 +8,10 @@ interface ScriptAttrs {
   suppressHydrationWarning?: boolean
 }
 
+/**
+ * Render a managed head/body tag from a router-managed descriptor.
+ * Used internally by `HeadContent` and `Scripts` to materialize tags.
+ */
 export function Asset({
   tag,
   attrs,
