@@ -8,7 +8,7 @@ import { loadVirtualModule } from './loadVirtualModule'
  * special assets that are needed for the client. It does not include relationships
  * between routes or any other data that is not needed for the client.
  */
-export async function getStartManifest() {
+export async function getStartManifest({assetsUrl: maybeAssetsUrl, routerBasePath}: { assetsUrl?: string, routerBasePath?: string } = {}) {
   const { tsrStartManifest } = await loadVirtualModule(
     VIRTUAL_MODULES.startManifest,
   )
@@ -18,8 +18,9 @@ export async function getStartManifest() {
     startManifest.routes[rootRouteId] || {})
 
   rootRoute.assets = rootRoute.assets || []
-
-  let script = `import('${startManifest.clientEntry}')`
+  let script =
+    maybeAssetsUrl ?
+    `import('${maybeAssetsUrl + "/" + startManifest.clientEntry.replace(routerBasePath ?? '', '')}')` : `import('${startManifest.clientEntry}')`
   if (process.env.TSS_DEV_SERVER === 'true') {
     const { injectedHeadScripts } = await loadVirtualModule(
       VIRTUAL_MODULES.injectedHeadScripts,
@@ -43,11 +44,32 @@ export async function getStartManifest() {
     routes: Object.fromEntries(
       Object.entries(startManifest.routes).map(([k, v]) => {
         const { preloads, assets } = v
+        if (!maybeAssetsUrl) {
+          return [
+            k,
+            {
+              preloads,
+              assets,
+            },
+          ]
+        }
         return [
           k,
           {
-            preloads,
-            assets,
+            preloads: preloads?.map((url) => maybeAssetsUrl + '/' + url.replace(routerBasePath ?? '', '')) || [],
+            assets:
+              assets?.map((asset) => {
+                if (asset.tag === 'link' && asset.attrs?.href) {
+                  return {
+                    ...asset,
+                    attrs: {
+                      ...asset.attrs,
+                      href: maybeAssetsUrl + '/' + asset.attrs.href,
+                    },
+                  }
+                }
+                return asset
+              }) || [],
           },
         ]
       }),

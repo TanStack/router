@@ -129,6 +129,7 @@ const pageSchema = pageBaseSchema.extend({
 const tanstackStartOptionsSchema = z
   .object({
     srcDirectory: z.string().optional().default('src'),
+    assetsUrl: z.string().optional(),
     start: z
       .object({
         entry: z.string().optional(),
