@@ -2378,7 +2378,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -2424,7 +2424,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -5321,16 +5321,7 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vite:
-        specifier: ^7.1.7
-        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.52.0
-        version: 1.52.0
-      '@tanstack/router-e2e-utils':
-        specifier: workspace:^
-        version: link:../../../e2e/e2e-utils
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
@@ -5355,6 +5346,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -7056,7 +7050,7 @@ importers:
         specifier: 5.22.0
         version: 5.22.0(prisma@5.22.0)
       '@tanstack/solid-router':
-        specifier: workspace:^
+        specifier: ^1.133.20
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7076,16 +7070,7 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
-      vite:
-        specifier: ^7.1.7
-        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.52.0
-        version: 1.52.0
-      '@tanstack/router-e2e-utils':
-        specifier: workspace:^
-        version: link:../../../e2e/e2e-utils
       '@types/node':
         specifier: 22.10.2
         version: 22.10.2
@@ -7101,6 +7086,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.2
+      vite:
+        specifier: ^7.1.7
+        version: 7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.9
         version: 2.11.9(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.0)(lightningcss@1.30.1)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))

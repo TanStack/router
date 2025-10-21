@@ -1,3 +1,5 @@
+import type { JSX } from 'solid-js'
+
 export function Auth({
   actionText,
   onSubmit,
@@ -5,46 +7,46 @@ export function Auth({
   afterSubmit,
 }: {
   actionText: string
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void
+  onSubmit: (e: HTMLFormElement) => void
   status: 'pending' | 'idle' | 'success' | 'error'
-  afterSubmit?: React.ReactNode
+  afterSubmit?: JSX.Element
 }) {
   return (
-    <div className="fixed inset-0 bg-white dark:bg-black flex items-start justify-center p-8">
-      <div className="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
-        <h1 className="text-2xl font-bold mb-4">{actionText}</h1>
+    <div class="fixed inset-0 bg-white dark:bg-black flex items-start justify-center p-8">
+      <div class="bg-white dark:bg-gray-900 p-8 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold mb-4">{actionText}</h1>
         <form
-          onSubmit={(e) => {
+          onSubmit={(e: any) => {
             e.preventDefault()
             onSubmit(e)
           }}
-          className="space-y-4"
+          class="space-y-4"
         >
           <div>
-            <label htmlFor="email" className="block text-xs">
+            <label for="email" class="block text-xs">
               Email
             </label>
             <input
               type="email"
               name="email"
               id="email"
-              className="px-2 py-1 w-full rounded border border-gray-500/20 bg-white dark:bg-gray-800"
+              class="px-2 py-1 w-full rounded border border-gray-500/20 bg-white dark:bg-gray-800"
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-xs">
+            <label for="password" class="block text-xs">
               Password
             </label>
             <input
               type="password"
               name="password"
               id="password"
-              className="px-2 py-1 w-full rounded border border-gray-500/20 bg-white dark:bg-gray-800"
+              class="px-2 py-1 w-full rounded border border-gray-500/20 bg-white dark:bg-gray-800"
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-cyan-600 text-white rounded py-2 font-black uppercase"
+            class="w-full bg-cyan-600 text-white rounded py-2 font-black uppercase"
             disabled={status === 'pending'}
           >
             {status === 'pending' ? '...' : actionText}
