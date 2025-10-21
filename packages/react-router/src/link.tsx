@@ -25,6 +25,18 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
+/**
+ * Build anchor-like props for declarative navigation and preloading.
+ *
+ * Returns stable `href`, event handlers and accessibility props derived from
+ * router options and active state. Used internally by `Link` and custom links.
+ *
+ * Options cover `to`, `params`, `search`, `hash`, `state`, `preload`,
+ * `activeProps`, `inactiveProps`, and more.
+ *
+ * @returns React anchor props suitable for `<a>` or custom components.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useLinkPropsHook
+ */
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,
