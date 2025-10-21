@@ -1,5 +1,5 @@
 {
-  "name": "tanstack-solid-start-example-basic-netlify",
+  "name": "tanstack-solid-start-example-basic-nitro",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -15,7 +15,7 @@
     "solid-js": "^1.9.5"
   },
   "devDependencies": {
-    "@netlify/vite-plugin-tanstack-start": "^1.1.4",
+    "nitro": "^3.0.1-alpha.0",
     "@types/node": "^22.5.4",
     "vite-plugin-solid": "^2.11.10",
     "autoprefixer": "^10.4.20",

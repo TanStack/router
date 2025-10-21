@@ -333,6 +333,10 @@
             {
               "label": "Netlify Vite Plugin",
               "to": "framework/solid/examples/start-basic-netlify"
+            },
+            {
+              "label": "Nitro Vite Plugin",
+              "to": "framework/solid/examples/start-basic-nitro"
             }
           ]
         }
