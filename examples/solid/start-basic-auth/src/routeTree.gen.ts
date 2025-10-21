@@ -14,7 +14,7 @@ import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthedPostsRouteImport } from './routes/_authed/posts'
+import { Route as AuthedPostsRouteRouteImport } from './routes/_authed/posts.route'
 import { Route as AuthedPostsIndexRouteImport } from './routes/_authed/posts.index'
 import { Route as AuthedPostsPostIdRouteImport } from './routes/_authed/posts.$postId'
 
@@ -42,7 +42,7 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthedPostsRoute = AuthedPostsRouteImport.update({
+const AuthedPostsRouteRoute = AuthedPostsRouteRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => AuthedRoute,
@@ -50,12 +50,12 @@ const AuthedPostsRoute = AuthedPostsRouteImport.update({
 const AuthedPostsIndexRoute = AuthedPostsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthedPostsRoute,
+  getParentRoute: () => AuthedPostsRouteRoute,
 } as any)
 const AuthedPostsPostIdRoute = AuthedPostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
-  getParentRoute: () => AuthedPostsRoute,
+  getParentRoute: () => AuthedPostsRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -63,7 +63,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/signup': typeof SignupRoute
-  '/posts': typeof AuthedPostsRouteWithChildren
+  '/posts': typeof AuthedPostsRouteRouteWithChildren
   '/posts/$postId': typeof AuthedPostsPostIdRoute
   '/posts/': typeof AuthedPostsIndexRoute
 }
@@ -82,7 +82,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/signup': typeof SignupRoute
-  '/_authed/posts': typeof AuthedPostsRouteWithChildren
+  '/_authed/posts': typeof AuthedPostsRouteRouteWithChildren
   '/_authed/posts/$postId': typeof AuthedPostsPostIdRoute
   '/_authed/posts/': typeof AuthedPostsIndexRoute
 }
@@ -118,7 +118,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
 }
 
-declare module '@tanstack/solid-router' {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/signup': {
       id: '/signup'
@@ -159,7 +159,7 @@ declare module '@tanstack/solid-router' {
       id: '/_authed/posts'
       path: '/posts'
       fullPath: '/posts'
-      preLoaderRoute: typeof AuthedPostsRouteImport
+      preLoaderRoute: typeof AuthedPostsRouteRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/posts/': {
@@ -167,38 +167,37 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/posts/'
       preLoaderRoute: typeof AuthedPostsIndexRouteImport
-      parentRoute: typeof AuthedPostsRoute
+      parentRoute: typeof AuthedPostsRouteRoute
     }
     '/_authed/posts/$postId': {
       id: '/_authed/posts/$postId'
       path: '/$postId'
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof AuthedPostsPostIdRouteImport
-      parentRoute: typeof AuthedPostsRoute
+      parentRoute: typeof AuthedPostsRouteRoute
     }
   }
 }
 
-interface AuthedPostsRouteChildren {
+interface AuthedPostsRouteRouteChildren {
   AuthedPostsPostIdRoute: typeof AuthedPostsPostIdRoute
   AuthedPostsIndexRoute: typeof AuthedPostsIndexRoute
 }
 
-const AuthedPostsRouteChildren: AuthedPostsRouteChildren = {
+const AuthedPostsRouteRouteChildren: AuthedPostsRouteRouteChildren = {
   AuthedPostsPostIdRoute: AuthedPostsPostIdRoute,
   AuthedPostsIndexRoute: AuthedPostsIndexRoute,
 }
 
-const AuthedPostsRouteWithChildren = AuthedPostsRoute._addFileChildren(
-  AuthedPostsRouteChildren,
-)
+const AuthedPostsRouteRouteWithChildren =
+  AuthedPostsRouteRoute._addFileChildren(AuthedPostsRouteRouteChildren)
 
 interface AuthedRouteChildren {
-  AuthedPostsRoute: typeof AuthedPostsRouteWithChildren
+  AuthedPostsRouteRoute: typeof AuthedPostsRouteRouteWithChildren
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedPostsRoute: AuthedPostsRouteWithChildren,
+  AuthedPostsRouteRoute: AuthedPostsRouteRouteWithChildren,
 }
 
 const AuthedRouteWithChildren =
@@ -216,8 +215,8 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/solid-start'
-declare module '@tanstack/solid-start' {
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
