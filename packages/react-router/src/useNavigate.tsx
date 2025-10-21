@@ -7,6 +7,18 @@ import type {
   RegisteredRouter,
   UseNavigateResult,
 } from '@tanstack/router-core'
+/**
+ * Programmatic navigation hook.
+ *
+ * Returns a stable `navigate` function that updates the current location
+ * (pathname, search, hash, state) using TanStack Router semantics.
+ *
+ * Options:
+ * - `from`: Base path to resolve relative navigations from (defaults to current route).
+ *
+ * @returns A `navigate` function.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useNavigateHook
+ */
 export function useNavigate<
   TRouter extends AnyRouter = RegisteredRouter,
   TDefaultFrom extends string = string,

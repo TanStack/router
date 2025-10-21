@@ -105,6 +105,12 @@ export class Router<
   TRouterHistory,
   TDehydrated
 > {
+  /**
+   * React-specific Router implementation extending the framework-agnostic core.
+   *
+   * Use {@link createRouter} to construct instances.
+   * Pass this instance to {@link RouterProvider} to enable routing.
+   */
   constructor(
     options: RouterConstructorOptions<
       TRouteTree,

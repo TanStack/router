@@ -1,7 +1,9 @@
 import { decode, encode } from './qss'
 import type { AnySchema } from './validators'
 
+/** Default `parseSearch` implementation using JSON.parse for values. */
 export const defaultParseSearch = parseSearchWith(JSON.parse)
+/** Default `stringifySearch` implementation using JSON.stringify for objects. */
 export const defaultStringifySearch = stringifySearchWith(
   JSON.stringify,
   JSON.parse,

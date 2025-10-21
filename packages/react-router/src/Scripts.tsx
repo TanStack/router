@@ -3,6 +3,10 @@ import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+/**
+ * Render body scripts derived from route `scripts` and SSR manifest assets.
+ * Place this near the end of your document body.
+ */
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
