@@ -5,10 +5,12 @@ import {
   Outlet,
   Scripts,
   createRootRoute,
-} from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { createServerFn } from '@tanstack/react-start'
-import * as React from 'react'
+} from '@tanstack/solid-router'
+import { TanStackRouterDevtools } from '@tanstack/solid-router-devtools'
+import { createServerFn } from '@tanstack/solid-start'
+
+import { HydrationScript } from 'solid-js/web';
+import type {JSX} from 'solid-js';
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
@@ -40,7 +42,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        charSet: 'utf-8',
+        "charset": 'utf-8',
       },
       {
         name: 'viewport',
@@ -94,20 +96,21 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: { children: React.ReactNode }) {
-  const { user } = Route.useRouteContext()
+function RootDocument({ children }: { children: JSX.Element }) {
+  const routeContext = Route.useRouteContext()
 
   return (
     <html>
       <head>
-        <HeadContent />
+        <HydrationScript />
       </head>
       <body>
-        <div className="p-2 flex gap-2 text-lg">
+        <HeadContent />
+        <div class="p-2 flex gap-2 text-lg">
           <Link
             to="/"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
             activeOptions={{ exact: true }}
           >
@@ -116,15 +119,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link
             to="/posts"
             activeProps={{
-              className: 'font-bold',
+              class: 'font-bold',
             }}
           >
             Posts
           </Link>
-          <div className="ml-auto">
-            {user ? (
+          <div class="ml-auto">
+            {routeContext().user ? (
               <>
-                <span className="mr-2">{user.email}</span>
+                <span class="mr-2">{routeContext().user?.email}</span>
                 <Link to="/logout">Logout</Link>
               </>
             ) : (

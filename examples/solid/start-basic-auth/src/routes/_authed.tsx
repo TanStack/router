@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { createServerFn } from '@tanstack/react-start'
+import { createFileRoute } from '@tanstack/solid-router'
+import { createServerFn } from '@tanstack/solid-start'
 
 import { hashPassword, prismaClient } from '~/utils/prisma'
 import { Login } from '~/components/Login'
