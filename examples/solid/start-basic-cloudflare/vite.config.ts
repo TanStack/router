@@ -14,6 +14,6 @@ export default defineConfig({
     }),
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tanstackStart(),
-    viteSolid({ssr: true}),
+    viteSolid({ ssr: true }),
   ],
 })
