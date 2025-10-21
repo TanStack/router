@@ -629,7 +629,7 @@
             {
               "label": "Kitchen Sink + Solid Query (code-based)",
               "to": "framework/solid/examples/kitchen-sink-solid-query"
-            },
+            }
           ]
         }
       ]
