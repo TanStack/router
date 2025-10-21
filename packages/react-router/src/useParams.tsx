@@ -61,6 +61,18 @@ export type UseParamsRoute<out TFrom> = <
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ) => UseParamsResult<TRouter, TFrom, true, TSelected>
 
+/**
+ * Access the current route's path parameters with type-safety.
+ *
+ * Options:
+ * - `from`/`strict`: Specify the matched route and whether to enforce strict typing
+ * - `select`: Project the params object to a derived value for memoized renders
+ * - `structuralSharing`: Enable structural sharing for stable references
+ * - `shouldThrow`: Throw if the route is not found in strict contexts
+ *
+ * @returns The params object (or selected value) for the matched route.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useParamsHook
+ */
 export function useParams<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string | undefined = undefined,
