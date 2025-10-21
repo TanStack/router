@@ -2,11 +2,6 @@ import { Link, Outlet, createFileRoute } from '@tanstack/solid-router'
 
 import { fetchPosts } from '~/utils/posts.js'
 
-export const Route = createFileRoute('/_authed/posts')({
-  loader: () => fetchPosts(),
-  component: PostsComponent,
-})
-
 function PostsComponent() {
   const posts = Route.useLoaderData()
 
@@ -37,3 +32,10 @@ function PostsComponent() {
     </div>
   )
 }
+
+export const Route = createFileRoute('/_authed/posts')({
+  loader: () => fetchPosts(),
+  component: PostsComponent,
+})
+
+
