@@ -96,6 +96,7 @@
       "@tanstack/router-vite-plugin": "workspace:*",
       "@tanstack/router-ssr-query-core": "workspace:*",
       "@tanstack/react-router-ssr-query": "workspace:*",
+      "@tanstack/solid-router-ssr-query": "workspace:*",
       "@tanstack/zod-adapter": "workspace:*",
       "@tanstack/valibot-adapter": "workspace:*",
       "@tanstack/arktype-adapter": "workspace:*",

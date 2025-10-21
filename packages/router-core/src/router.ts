@@ -797,7 +797,14 @@ export function defaultSerializeError(err: unknown) {
   }
 }
 
-export type TrailingSlashOption = 'always' | 'never' | 'preserve'
+export const trailingSlashOptions = {
+  always: 'always',
+  never: 'never',
+  preserve: 'preserve',
+} as const
+
+export type TrailingSlashOption =
+  (typeof trailingSlashOptions)[keyof typeof trailingSlashOptions]
 
 export function getLocationChangeInfo(routerState: {
   resolvedLocation?: ParsedLocation
@@ -2135,10 +2142,16 @@ export class RouterCore<
       await this.latestLoadPromise
     }
 
+    let newStatusCode: number | undefined = undefined
     if (this.hasNotFoundMatch()) {
+      newStatusCode = 404
+    } else if (this.__store.state.matches.some((d) => d.status === 'error')) {
+      newStatusCode = 500
+    }
+    if (newStatusCode !== undefined) {
       this.__store.setState((s) => ({
         ...s,
-        statusCode: 404,
+        statusCode: newStatusCode,
       }))
     }
   }

@@ -12,6 +12,7 @@ import {
 } from '@testing-library/react'
 
 import { z } from 'zod'
+import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
@@ -5548,6 +5549,96 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
     })
   },
 )
+
+describe('splat routes with empty splat', () => {
+  test.each(Object.values(trailingSlashOptions))(
+    'should handle empty _splat parameter with trailingSlash: %s',
+    async (trailingSlash) => {
+      const tail = trailingSlash === 'always' ? '/' : ''
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => {
+          return (
+            <>
+              <h1>Index Route</h1>
+              <Link
+                data-testid="splat-link-with-empty-splat"
+                to="/splat/$"
+                params={{ _splat: '' }}
+                activeProps={{ className: 'active' }}
+              >
+                Link to splat with _splat value
+              </Link>
+              <Link
+                data-testid="splat-link-with-undefined-splat"
+                to="/splat/$"
+                params={{ _splat: undefined }}
+                activeProps={{ className: 'active' }}
+              >
+                Link to splat with undefined _splat
+              </Link>
+              <Link
+                data-testid="splat-link-with-no-splat"
+                to="/splat/$"
+                params={{}}
+                activeProps={{ className: 'active' }}
+              >
+                Link to splat with no _splat at all
+              </Link>
+            </>
+          )
+        },
+      })
+
+      const splatRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'splat/$',
+        component: () => {
+          return <h1>Splat Route</h1>
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, splatRoute]),
+        history,
+        trailingSlash,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      const splatLinkWithEmptySplat = await screen.findByTestId(
+        'splat-link-with-empty-splat',
+      )
+      const splatLinkWithUndefinedSplat = await screen.findByTestId(
+        'splat-link-with-undefined-splat',
+      )
+      const splatLinkWithNoSplat = await screen.findByTestId(
+        'splat-link-with-no-splat',
+      )
+
+      // When _splat has a value, it should follow the trailingSlash setting
+      expect(splatLinkWithEmptySplat.getAttribute('href')).toBe(`/splat${tail}`)
+      expect(splatLinkWithUndefinedSplat.getAttribute('href')).toBe(
+        `/splat${tail}`,
+      )
+      expect(splatLinkWithNoSplat.getAttribute('href')).toBe(`/splat${tail}`)
+
+      // Click the link with empty _splat and ensure the route matches
+      await act(async () => {
+        fireEvent.click(splatLinkWithEmptySplat)
+      })
+
+      expect(splatLinkWithEmptySplat).toHaveClass('active')
+      expect(splatLinkWithUndefinedSplat).toHaveClass('active')
+      expect(splatLinkWithNoSplat).toHaveClass('active')
+      expect(window.location.pathname).toBe(`/splat${tail}`)
+      expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+    },
+  )
+})
 
 describe('relative links to current route', () => {
   test.each([true, false])(

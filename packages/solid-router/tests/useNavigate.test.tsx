@@ -10,6 +10,7 @@ import {
 } from '@solidjs/testing-library'
 
 import { z } from 'zod'
+import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   Outlet,
   RouterProvider,
@@ -2519,6 +2520,123 @@ describe('relative navigate to from route', () => {
           screen.queryByTestId('post-detail-index-heading'),
         ).toBeInTheDocument()
         expect(window.location.pathname).toEqual(`/posts/2${tail}`)
+      })
+    },
+  )
+})
+
+describe('splat routes with empty splat', () => {
+  test.each(Object.values(trailingSlashOptions))(
+    'should handle empty _splat parameter with trailingSlash: %s',
+    async (trailingSlash) => {
+      const tail = trailingSlash === 'always' ? '/' : ''
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: function IndexComponent() {
+          const navigate = useNavigate()
+          return (
+            <>
+              <h1>Index Route</h1>
+              <button
+                data-testid="splat-btn-with-empty-splat"
+                onClick={() =>
+                  navigate({
+                    to: '/splat/$',
+                    params: { _splat: '' },
+                  })
+                }
+                type="button"
+              >
+                Navigate to splat with empty _splat
+              </button>
+              <button
+                data-testid="splat-btn-with-undefined-splat"
+                onClick={() =>
+                  navigate({
+                    to: '/splat/$',
+                    params: { _splat: undefined },
+                  })
+                }
+                type="button"
+              >
+                Navigate to splat with undefined _splat
+              </button>
+              <button
+                data-testid="splat-btn-with-no-splat"
+                onClick={() =>
+                  navigate({
+                    to: '/splat/$',
+                    params: {},
+                  })
+                }
+                type="button"
+              >
+                Navigate to splat with no _splat
+              </button>
+            </>
+          )
+        },
+      })
+
+      const splatRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: 'splat/$',
+        component: () => {
+          return <h1>Splat Route</h1>
+        },
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, splatRoute]),
+        history,
+        trailingSlash,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      // Navigate with empty _splat
+      const splatBtnWithEmptySplat = await screen.findByTestId(
+        'splat-btn-with-empty-splat',
+      )
+
+      fireEvent.click(splatBtnWithEmptySplat)
+
+      await waitFor(async () => {
+        expect(window.location.pathname).toBe(`/splat${tail}`)
+        expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      })
+
+      // Navigate back to index
+      history.push('/')
+
+      // Navigate with undefined _splat
+      const splatBtnWithUndefinedSplat = await screen.findByTestId(
+        'splat-btn-with-undefined-splat',
+      )
+
+      fireEvent.click(splatBtnWithUndefinedSplat)
+
+      await waitFor(async () => {
+        expect(window.location.pathname).toBe(`/splat${tail}`)
+        expect(await screen.findByText('Splat Route')).toBeInTheDocument()
+      })
+
+      // Navigate back to index
+      history.push('/')
+
+      // Navigate with no _splat
+      const splatBtnWithNoSplat = await screen.findByTestId(
+        'splat-btn-with-no-splat',
+      )
+
+      fireEvent.click(splatBtnWithNoSplat)
+
+      await waitFor(async () => {
+        expect(window.location.pathname).toBe(`/splat${tail}`)
+        expect(await screen.findByText('Splat Route')).toBeInTheDocument()
       })
     },
   )

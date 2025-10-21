@@ -7,7 +7,6 @@ import type {
   RegisteredRouter,
   UseNavigateResult,
 } from '@tanstack/router-core'
-
 export function useNavigate<
   TRouter extends AnyRouter = RegisteredRouter,
   TDefaultFrom extends string = string,
@@ -27,6 +26,15 @@ export function useNavigate<
   ) as UseNavigateResult<TDefaultFrom>
 }
 
+/**
+ * Component that triggers a navigation when rendered. Navigation executes
+ * in an effect after mount/update.
+ *
+ * Props are the same as `NavigateOptions` used by `navigate()`.
+ *
+ * @returns null
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/navigateComponent
+ */
 export function Navigate<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,

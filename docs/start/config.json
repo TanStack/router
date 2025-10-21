@@ -102,6 +102,10 @@
               "to": "framework/react/guide/server-routes"
             },
             {
+              "label": "Hydration Errors",
+              "to": "framework/react/guide/hydration-errors"
+            },
+            {
               "label": "Selective SSR",
               "to": "framework/react/guide/selective-ssr"
             },
@@ -189,6 +193,10 @@
             {
               "label": "Server Routes",
               "to": "framework/solid/guide/server-routes"
+            },
+            {
+              "label": "Hydration Errors",
+              "to": "framework/solid/guide/hydration-errors"
             },
             {
               "label": "Selective SSR",
@@ -284,6 +292,14 @@
             {
               "label": "Material UI",
               "to": "framework/react/examples/start-material-ui"
+            },
+            {
+              "label": "Basic + Static rendering",
+              "to": "framework/react/examples/start-basic-static"
+            },
+            {
+              "label": "Cloudflare Vite Plugin",
+              "to": "framework/react/examples/start-basic-cloudflare"
             }
           ]
         },
@@ -297,6 +313,22 @@
             {
               "label": "Basic",
               "to": "framework/solid/examples/start-basic"
+            },
+            {
+              "label": "Basic + Solid Query",
+              "to": "framework/solid/examples/start-basic-solid-query"
+            },
+            {
+              "label": "Basic + DIY Auth",
+              "to": "framework/solid/examples/start-basic-auth"
+            },
+            {
+              "label": "Basic + Static rendering",
+              "to": "framework/solid/examples/start-basic-static"
+            },
+            {
+              "label": "Cloudflare Vite Plugin",
+              "to": "framework/solid/examples/start-basic-cloudflare"
             }
           ]
         }

@@ -621,6 +621,14 @@
             {
               "label": "Kitchen Sink (file-based)",
               "to": "framework/solid/examples/kitchen-sink-file-based"
+            },
+            {
+              "label": "Kitchen Sink + Solid Query (file-based)",
+              "to": "framework/solid/examples/kitchen-sink-solid-query-file-based"
+            },
+            {
+              "label": "Kitchen Sink + Solid Query (code-based)",
+              "to": "framework/solid/examples/kitchen-sink-solid-query"
             }
           ]
         }

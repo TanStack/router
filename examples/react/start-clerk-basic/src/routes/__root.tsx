@@ -1,12 +1,5 @@
 /// <reference types="vite/client" />
 import {
-  HeadContent,
-  Link,
-  Outlet,
-  Scripts,
-  createRootRoute,
-} from '@tanstack/react-router'
-import {
   ClerkProvider,
   SignInButton,
   SignedIn,
@@ -15,15 +8,21 @@ import {
 } from '@clerk/tanstack-react-start'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
+import { auth } from '@clerk/tanstack-react-start/server'
 import * as React from 'react'
-import { getAuth } from '@clerk/tanstack-react-start/server'
-import { getRequest } from '@tanstack/react-start/server'
+import {
+  HeadContent,
+  Link,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from '@tanstack/react-router'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary.js'
 import { NotFound } from '~/components/NotFound.js'
 import appCss from '~/styles/app.css?url'
 
 const fetchClerkAuth = createServerFn({ method: 'GET' }).handler(async () => {
-  const { userId } = await getAuth(getRequest())
+  const { userId } = await auth()
 
   return {
     userId,
