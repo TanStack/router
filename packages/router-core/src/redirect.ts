@@ -114,12 +114,14 @@ export function isRedirect(obj: any): obj is AnyRedirect {
   return obj instanceof Response && !!(obj as any).options
 }
 
+/** True if value is a redirect with a resolved `href` location. */
 export function isResolvedRedirect(
   obj: any,
 ): obj is AnyRedirect & { options: { href: string } } {
   return isRedirect(obj) && !!obj.options.href
 }
 
+/** Parse a serialized redirect object back into a redirect Response. */
 export function parseRedirect(obj: any) {
   if (obj !== null && typeof obj === 'object' && obj.isSerializedRedirect) {
     return redirect(obj)
