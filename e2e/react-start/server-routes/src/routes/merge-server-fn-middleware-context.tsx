@@ -51,7 +51,10 @@ function MergeServerFnMiddlewareContext() {
                 {JSON.stringify(apiResponse.context, null, 2)}
               </div>
 
-              <div data-testid="has-test-parent" className="p-2 border rounded-sm">
+              <div
+                data-testid="has-test-parent"
+                className="p-2 border rounded-sm"
+              >
                 Has testParent:{' '}
                 {apiResponse.context?.testParent ? 'true' : 'false'}
               </div>
