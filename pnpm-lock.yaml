@@ -6500,7 +6500,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6540,7 +6540,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6574,7 +6574,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6614,7 +6614,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6660,7 +6660,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6703,7 +6703,7 @@ importers:
         specifier: ^5.71.9
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6743,7 +6743,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6798,7 +6798,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6847,7 +6847,7 @@ importers:
         specifier: ^5.72.0
         version: 5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6896,7 +6896,7 @@ importers:
         specifier: ^5.72.0
         version: 5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6936,7 +6936,7 @@ importers:
         specifier: ^4.1.15
         version: 4.1.15
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -6973,7 +6973,7 @@ importers:
   examples/solid/start-bare:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7016,7 +7016,7 @@ importers:
   examples/solid/start-basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7065,7 +7065,7 @@ importers:
         specifier: 5.22.0
         version: 5.22.0(prisma@5.22.0)
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7114,7 +7114,7 @@ importers:
   examples/solid/start-basic-cloudflare:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7160,7 +7160,7 @@ importers:
   examples/solid/start-basic-netlify:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7203,7 +7203,7 @@ importers:
   examples/solid/start-basic-nitro:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7252,7 +7252,7 @@ importers:
         specifier: ^5.66.0
         version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -7301,7 +7301,7 @@ importers:
   examples/solid/start-basic-static:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.133.23
+        specifier: ^1.133.24
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
