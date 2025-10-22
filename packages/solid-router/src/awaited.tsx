@@ -30,10 +30,17 @@ export function Await<T>(
     children: (result: T) => SolidNode
   },
 ) {
-  // Use ssrLoadFrom: 'initial' only on the client during hydration
-  // This ensures serialized data is used, but server promises still work
+  // Check if this is a deferred promise from TanStack Router
+  const isDeferred = TSR_DEFERRED_PROMISE in (props.promise as any)
+
+  // Use ssrLoadFrom: 'initial' only for deferred promises that have already resolved
+  // This ensures serialized data is used during hydration, but streaming promises still work
+  const ssrLoadFrom = isDeferred && (props.promise as any)[TSR_DEFERRED_PROMISE].status !== 'pending'
+    ? 'initial'
+    : 'server'
+
   const [resource] = Solid.createResource(() => props.promise, {
-    ssrLoadFrom: typeof document !== 'undefined' ? 'initial' : 'server',
+    ssrLoadFrom: typeof document !== 'undefined' ? ssrLoadFrom : 'server',
   })
 
   return (
