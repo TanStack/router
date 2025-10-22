@@ -30,21 +30,7 @@ export function Await<T>(
     children: (result: T) => SolidNode
   },
 ) {
-  // On the client, check if this is a deferred promise that has already resolved
-  // Use ssrLoadFrom: 'initial' only for resolved deferred promises
-  // This ensures serialized data is used during hydration, but streaming promises still work
-  let ssrLoadFrom: 'initial' | 'server' = 'server'
-
-  if (typeof document !== 'undefined') {
-    const isDeferred = TSR_DEFERRED_PROMISE in (props.promise as any)
-    if (isDeferred && (props.promise as any)[TSR_DEFERRED_PROMISE].status !== 'pending') {
-      ssrLoadFrom = 'initial'
-    }
-  }
-
-  const [resource] = Solid.createResource(() => props.promise, {
-    ssrLoadFrom,
-  })
+  const [resource] = Solid.createResource(() => props.promise)
 
   return (
     <Solid.Show fallback={props.fallback} when={resource()}>
