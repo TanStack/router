@@ -278,7 +278,7 @@ Use Zod for runtime validation of environment variables:
 
 ```typescript
 // src/config/env.ts
-import { createIsomorphicFn } from '@tanstack/react-start'
+import { createIsomorphicFn } from '@tanstack/solid-start'
 import { z } from 'zod'
 
 const clientEnvSchema = z.object({
