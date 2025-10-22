@@ -56,7 +56,7 @@ function LoginComponent() {
   return (
     <div className="flex justify-center items-center min-h-screen">
       <div className="w-full max-w-md px-4 animate-fade-up relative z-10">
-        <div className="w-full backdrop-blur-sm bg-card/80 p-8 space-y-8 shadow-md border border-border">
+        <div className="w-full backdrop-blur-xs bg-card/80 p-8 space-y-8 shadow-md border border-border">
           <div className="space-y-4">
             {/* biome-ignore lint/a11y/useButtonType: <explanation> */}
             <button

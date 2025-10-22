@@ -148,6 +148,9 @@ Add a `netlify.toml` file to your project root:
 [build]
   command = "vite build"
   publish = "dist/client"
+[dev]
+  command = "vite dev"
+  port = 3000
 ```
 
 Deploy your application using their one-click deployment process, and you're ready to go!

@@ -56,7 +56,7 @@ function ResponseHeaders({
         <button
           type="submit"
           data-testid="test-headers-btn"
-          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          class="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         >
           Get Headers
         </button>
