@@ -1,10 +1,10 @@
 import * as Solid from 'solid-js'
 import { MetaProvider } from '@solidjs/meta'
+import { For } from 'solid-js'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
 import type { RouterManagedTag } from '@tanstack/router-core'
-import { For } from 'solid-js'
 
 export const useTags = () => {
   const router = useRouter()
