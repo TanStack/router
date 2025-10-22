@@ -30,13 +30,11 @@ export function Await<T>(
     children: (result: T) => SolidNode
   },
 ) {
-  // Ensure the promise is wrapped with defer() to track its state
+  // Wrap the promise with defer() to ensure it's tracked properly
   // This is idempotent - if already deferred, it returns the same promise
   const deferredPromise = Solid.createMemo(() => defer(props.promise))
 
-  const [resource] = Solid.createResource(deferredPromise, {
-    deferStream: true,
-  })
+  const [resource] = Solid.createResource(deferredPromise)
 
   return (
     <Solid.Show fallback={props.fallback} when={resource()}>
