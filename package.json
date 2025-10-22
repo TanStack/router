@@ -69,6 +69,12 @@
     "vite": "^7.1.7",
     "vitest": "^3.2.4"
   },
+  "resolutions": {
+    "solid-js": "1.9.9"
+  },
+  "overrides": {
+    "solid-js": "1.9.9"
+  },
   "pnpm": {
     "overrides": {
       "vite-plugin-dts": "4.0.3",
