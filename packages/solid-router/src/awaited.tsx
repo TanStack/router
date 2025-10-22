@@ -30,7 +30,9 @@ export function Await<T>(
     children: (result: T) => SolidNode
   },
 ) {
-  const [resource] = Solid.createResource(() => props.promise)
+  const [resource] = Solid.createResource(() => props.promise, {
+    ssrLoadFrom: 'initial',
+  })
 
   return (
     <Solid.Show fallback={props.fallback} when={resource()}>
