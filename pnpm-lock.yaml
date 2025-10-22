@@ -2001,8 +2001,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -2018,7 +2018,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-esbuild-file-based:
     dependencies:
@@ -2038,8 +2038,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -2055,7 +2055,7 @@ importers:
         version: 0.25.4
       esbuild-plugin-solid:
         specifier: ^0.6.0
-        version: 0.6.0(esbuild@0.25.4)(solid-js@1.9.5)
+        version: 0.6.0(esbuild@0.25.4)(solid-js@1.9.9)
 
   e2e/solid-router/basic-file-based:
     dependencies:
@@ -2081,8 +2081,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -2104,7 +2104,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-file-based-code-splitting:
     dependencies:
@@ -2124,8 +2124,8 @@ importers:
         specifier: ^8.5.1
         version: 8.5.3
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -2144,7 +2144,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-scroll-restoration:
     dependencies:
@@ -2159,7 +2159,7 @@ importers:
         version: link:../../../packages/solid-router-devtools
       '@tanstack/solid-virtual':
         specifier: ^3.13.0
-        version: 3.13.12(solid-js@1.9.5)
+        version: 3.13.12(solid-js@1.9.9)
       postcss:
         specifier: ^8.5.1
         version: 8.5.6
@@ -2167,8 +2167,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -2184,7 +2184,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-solid-query:
     dependencies:
@@ -2193,10 +2193,10 @@ importers:
         version: 4.1.15
       '@tanstack/solid-query':
         specifier: ^5.71.9
-        version: 5.72.2(solid-js@1.9.5)
+        version: 5.72.2(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
+        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -2210,8 +2210,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -2227,7 +2227,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-solid-query-file-based:
     dependencies:
@@ -2239,10 +2239,10 @@ importers:
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
         specifier: ^5.71.9
-        version: 5.72.2(solid-js@1.9.5)
+        version: 5.72.2(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
+        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -2256,8 +2256,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -2276,7 +2276,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-virtual-file-based:
     dependencies:
@@ -2302,8 +2302,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -2322,7 +2322,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/basic-virtual-named-export-config-file-based:
     dependencies:
@@ -2348,8 +2348,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -2368,7 +2368,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-router/rspack-basic-file-based:
     dependencies:
@@ -2382,8 +2382,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
     devDependencies:
       '@playwright/test':
         specifier: ^1.52.0
@@ -2396,7 +2396,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -2428,8 +2428,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
     devDependencies:
       '@playwright/test':
         specifier: ^1.52.0
@@ -2442,7 +2442,7 @@ importers:
         version: 1.0.3(@rsbuild/core@1.2.4)
       '@rsbuild/plugin-solid':
         specifier: ^1.0.4
-        version: 1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)
+        version: 1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)
       '@tailwindcss/postcss':
         specifier: ^4.1.15
         version: 4.1.15
@@ -2489,8 +2489,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -2509,7 +2509,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   e2e/solid-start/basic:
     dependencies:
@@ -2532,8 +2532,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -2573,7 +2573,7 @@ importers:
         version: 5.8.2
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -2599,8 +2599,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -2631,7 +2631,7 @@ importers:
         version: 5.9.2
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -2640,10 +2640,10 @@ importers:
     dependencies:
       '@tanstack/solid-query':
         specifier: ^5.66.0
-        version: 5.72.2(solid-js@1.9.5)
+        version: 5.72.2(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.66.0
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
+        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -2660,8 +2660,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -2695,7 +2695,7 @@ importers:
         version: 5.9.2
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -2712,8 +2712,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       vite:
         specifier: ^7.1.7
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
@@ -2732,7 +2732,7 @@ importers:
         version: 5.8.2
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -2755,8 +2755,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
     devDependencies:
       '@playwright/test':
         specifier: ^1.52.0
@@ -2796,7 +2796,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -2805,10 +2805,10 @@ importers:
     dependencies:
       '@tanstack/solid-query':
         specifier: ^5.66.0
-        version: 5.72.2(solid-js@1.9.5)
+        version: 5.72.2(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.66.0
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
+        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:^
         version: link:../../../packages/solid-router
@@ -2822,8 +2822,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -2857,7 +2857,7 @@ importers:
         version: 5.9.2
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -2880,8 +2880,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -2921,7 +2921,7 @@ importers:
         version: 5.8.2
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -2935,8 +2935,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -2964,7 +2964,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.3)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -2987,8 +2987,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -3031,7 +3031,7 @@ importers:
         version: 5.8.2
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3054,8 +3054,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -3098,7 +3098,7 @@ importers:
         version: 5.8.3
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.3)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3115,8 +3115,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -3141,7 +3141,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.3)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3164,8 +3164,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -3205,7 +3205,7 @@ importers:
         version: 5.9.2
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -3225,8 +3225,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -3263,7 +3263,7 @@ importers:
         version: 5.8.2
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -5558,7 +5558,7 @@ importers:
         version: 4.1.13(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       '@tanstack/react-devtools':
         specifier: ^0.7.0
-        version: 0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.5)
+        version: 0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.9)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -5820,7 +5820,7 @@ importers:
     dependencies:
       '@tanstack/react-devtools':
         specifier: ^0.7.0
-        version: 0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.5)
+        version: 0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.9)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../../packages/react-router
@@ -6512,8 +6512,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6532,7 +6532,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-devtools-panel:
     dependencies:
@@ -6552,8 +6552,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6566,7 +6566,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-file-based:
     dependencies:
@@ -6586,8 +6586,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6606,7 +6606,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-non-nested-devtools:
     dependencies:
@@ -6626,8 +6626,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6646,7 +6646,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-solid-query:
     dependencies:
@@ -6655,10 +6655,10 @@ importers:
         version: 4.1.15
       '@tanstack/solid-query':
         specifier: ^5.71.9
-        version: 5.72.2(solid-js@1.9.5)
+        version: 5.72.2(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
+        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: ^1.133.24
         version: link:../../../packages/solid-router
@@ -6672,8 +6672,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6689,7 +6689,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-solid-query-file-based:
     dependencies:
@@ -6698,10 +6698,10 @@ importers:
         version: 4.1.15
       '@tanstack/solid-query':
         specifier: ^5.71.9
-        version: 5.72.2(solid-js@1.9.5)
+        version: 5.72.2(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.71.9
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
+        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: ^1.133.24
         version: link:../../../packages/solid-router
@@ -6715,8 +6715,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6735,7 +6735,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/basic-ssr-streaming-file-based:
     dependencies:
@@ -6767,8 +6767,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6790,7 +6790,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/kitchen-sink-file-based:
     dependencies:
@@ -6813,8 +6813,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6833,7 +6833,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/kitchen-sink-solid-query:
     dependencies:
@@ -6842,10 +6842,10 @@ importers:
         version: 4.1.15
       '@tanstack/solid-query':
         specifier: ^5.72.0
-        version: 5.72.0(solid-js@1.9.5)
+        version: 5.72.0(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.72.0
-        version: 5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.5))(solid-js@1.9.5)
+        version: 5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: ^1.133.24
         version: link:../../../packages/solid-router
@@ -6862,8 +6862,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6879,7 +6879,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/kitchen-sink-solid-query-file-based:
     dependencies:
@@ -6891,10 +6891,10 @@ importers:
         version: link:../../../packages/router-plugin
       '@tanstack/solid-query':
         specifier: ^5.72.0
-        version: 5.72.0(solid-js@1.9.5)
+        version: 5.72.0(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.72.0
-        version: 5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.5))(solid-js@1.9.5)
+        version: 5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: ^1.133.24
         version: link:../../../packages/solid-router
@@ -6911,8 +6911,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6928,7 +6928,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/quickstart-file-based:
     dependencies:
@@ -6948,8 +6948,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwindcss:
         specifier: ^4.1.15
         version: 4.1.15
@@ -6968,7 +6968,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   examples/solid/start-bare:
     dependencies:
@@ -6985,8 +6985,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -7008,7 +7008,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -7028,8 +7028,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -7054,7 +7054,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -7080,8 +7080,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -7106,7 +7106,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -7123,8 +7123,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: ^1.13.7
@@ -7149,7 +7149,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -7169,8 +7169,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
     devDependencies:
       '@netlify/vite-plugin-tanstack-start':
         specifier: ^1.1.4
@@ -7195,7 +7195,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -7212,8 +7212,8 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.15
@@ -7238,7 +7238,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -7247,10 +7247,10 @@ importers:
     dependencies:
       '@tanstack/solid-query':
         specifier: ^5.66.0
-        version: 5.72.2(solid-js@1.9.5)
+        version: 5.72.2(solid-js@1.9.9)
       '@tanstack/solid-query-devtools':
         specifier: ^5.66.0
-        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)
+        version: 5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: ^1.133.24
         version: link:../../../packages/solid-router
@@ -7267,8 +7267,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -7293,7 +7293,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -7316,8 +7316,8 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       tailwind-merge:
         specifier: ^2.5.5
         version: 2.6.0
@@ -7342,7 +7342,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       vite-tsconfig-paths:
         specifier: ^5.1.3
         version: 5.1.4(typescript@5.8.2)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
@@ -7729,11 +7729,11 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     devDependencies:
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   packages/router-generator:
     dependencies:
@@ -7818,7 +7818,7 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       webpack:
         specifier: '>=5.92.0'
         version: 5.97.1(@swc/core@1.10.15(@swc/helpers@0.5.15))
@@ -7941,13 +7941,13 @@ importers:
     dependencies:
       '@solid-devtools/logger':
         specifier: ^0.9.4
-        version: 0.9.7(solid-js@1.9.5)
+        version: 0.9.7(solid-js@1.9.9)
       '@solid-primitives/refs':
         specifier: ^1.0.8
-        version: 1.1.0(solid-js@1.9.5)
+        version: 1.1.0(solid-js@1.9.9)
       '@solidjs/meta':
         specifier: ^0.29.4
-        version: 0.29.4(solid-js@1.9.5)
+        version: 0.29.4(solid-js@1.9.9)
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
@@ -7956,7 +7956,7 @@ importers:
         version: link:../router-core
       '@tanstack/solid-store':
         specifier: 0.7.0
-        version: 0.7.0(solid-js@1.9.5)
+        version: 0.7.0(solid-js@1.9.9)
       isbot:
         specifier: ^5.1.22
         version: 5.1.28
@@ -7969,7 +7969,7 @@ importers:
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.10
-        version: 0.8.10(solid-js@1.9.5)
+        version: 0.8.10(solid-js@1.9.9)
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -7980,11 +7980,11 @@ importers:
         specifier: ^0.14.5
         version: 0.14.5(eslint@9.22.0(jiti@2.6.1))(typescript@5.9.2)
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
       zod:
         specifier: ^3.23.8
         version: 3.25.57
@@ -8002,11 +8002,11 @@ importers:
         version: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
     devDependencies:
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   packages/solid-router-ssr-query:
     dependencies:
@@ -8022,16 +8022,16 @@ importers:
     devDependencies:
       '@tanstack/solid-query':
         specifier: '>=5.66.0'
-        version: 5.72.2(solid-js@1.9.5)
+        version: 5.72.2(solid-js@1.9.9)
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../solid-router
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   packages/solid-start:
     dependencies:
@@ -8102,7 +8102,7 @@ importers:
     dependencies:
       '@solidjs/meta':
         specifier: ^0.29.4
-        version: 0.29.4(solid-js@1.9.5)
+        version: 0.29.4(solid-js@1.9.9)
       '@tanstack/history':
         specifier: workspace:*
         version: link:../history
@@ -8120,14 +8120,14 @@ importers:
         version: link:../start-server-core
     devDependencies:
       solid-js:
-        specifier: ^1.9.5
-        version: 1.9.5
+        specifier: ^1.9.9
+        version: 1.9.9
       typescript:
         specifier: ^5.7.2
         version: 5.8.2
       vite-plugin-solid:
         specifier: ^2.11.10
-        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.5)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+        version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
 
   packages/start-client-core:
     dependencies:
@@ -17459,6 +17459,9 @@ packages:
   solid-js@1.9.5:
     resolution: {integrity: sha512-ogI3DaFcyn6UhYhrgcyRAMbu/buBJitYQASZz5WzfQVPP10RD2AbCoRZ517psnezrasyCbWzIxZ6kVqet768xw==}
 
+  solid-js@1.9.9:
+    resolution: {integrity: sha512-A0ZBPJQldAeGCTW0YRYJmt7RCeh5rbFfPZ2aOttgYnctHE7HgKeHCBB/PVc2P7eOfmNXqMFFFoYYdm3S4dcbkA==}
+
   solid-refresh@0.6.3:
     resolution: {integrity: sha512-F3aPsX6hVw9ttm5LYlth8Q15x6MlI/J3Dn+o3EQyRTtTxidepSTwAYdozt01/YA+7ObcciagGEyXIopGZzQtbA==}
     peerDependencies:
@@ -22336,23 +22339,23 @@ snapshots:
       '@rspack/plugin-react-refresh': 1.0.1(react-refresh@0.16.0)
       react-refresh: 0.16.0
 
-  '@rsbuild/plugin-solid@1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)':
+  '@rsbuild/plugin-solid@1.0.4(@babel/core@7.27.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)':
     dependencies:
       '@rsbuild/core': 1.2.4
       '@rsbuild/plugin-babel': 1.0.3(@rsbuild/core@1.2.4)
       babel-preset-solid: 1.9.3(@babel/core@7.27.4)
-      solid-refresh: 0.6.3(solid-js@1.9.5)
+      solid-refresh: 0.6.3(solid-js@1.9.9)
     transitivePeerDependencies:
       - '@babel/core'
       - solid-js
       - supports-color
 
-  '@rsbuild/plugin-solid@1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.5)':
+  '@rsbuild/plugin-solid@1.0.4(@babel/core@7.28.4)(@rsbuild/core@1.2.4)(solid-js@1.9.9)':
     dependencies:
       '@rsbuild/core': 1.2.4
       '@rsbuild/plugin-babel': 1.0.3(@rsbuild/core@1.2.4)
       babel-preset-solid: 1.9.3(@babel/core@7.28.4)
-      solid-refresh: 0.6.3(solid-js@1.9.5)
+      solid-refresh: 0.6.3(solid-js@1.9.9)
     transitivePeerDependencies:
       - '@babel/core'
       - solid-js
@@ -22604,129 +22607,134 @@ snapshots:
       color: 5.0.2
       text-hex: 1.0.0
 
-  '@solid-devtools/debugger@0.26.0(solid-js@1.9.5)':
+  '@solid-devtools/debugger@0.26.0(solid-js@1.9.9)':
     dependencies:
       '@nothing-but/utils': 0.17.0
-      '@solid-devtools/shared': 0.19.0(solid-js@1.9.5)
-      '@solid-primitives/bounds': 0.0.122(solid-js@1.9.5)
-      '@solid-primitives/cursor': 0.0.115(solid-js@1.9.5)
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
-      '@solid-primitives/keyboard': 1.3.0(solid-js@1.9.5)
-      '@solid-primitives/platform': 0.1.2(solid-js@1.9.5)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
-      '@solid-primitives/scheduled': 1.5.0(solid-js@1.9.5)
-      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.5)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-devtools/shared': 0.19.0(solid-js@1.9.9)
+      '@solid-primitives/bounds': 0.0.122(solid-js@1.9.9)
+      '@solid-primitives/cursor': 0.0.115(solid-js@1.9.9)
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
+      '@solid-primitives/keyboard': 1.3.0(solid-js@1.9.9)
+      '@solid-primitives/platform': 0.1.2(solid-js@1.9.9)
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
+      '@solid-primitives/scheduled': 1.5.0(solid-js@1.9.9)
+      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.9)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-devtools/logger@0.9.7(solid-js@1.9.5)':
+  '@solid-devtools/logger@0.9.7(solid-js@1.9.9)':
     dependencies:
       '@nothing-but/utils': 0.17.0
-      '@solid-devtools/debugger': 0.26.0(solid-js@1.9.5)
-      '@solid-devtools/shared': 0.19.0(solid-js@1.9.5)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-devtools/debugger': 0.26.0(solid-js@1.9.9)
+      '@solid-devtools/shared': 0.19.0(solid-js@1.9.9)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-devtools/shared@0.19.0(solid-js@1.9.5)':
+  '@solid-devtools/shared@0.19.0(solid-js@1.9.9)':
     dependencies:
       '@nothing-but/utils': 0.17.0
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
-      '@solid-primitives/media': 2.3.0(solid-js@1.9.5)
-      '@solid-primitives/refs': 1.1.0(solid-js@1.9.5)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
-      '@solid-primitives/scheduled': 1.5.0(solid-js@1.9.5)
-      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.5)
-      '@solid-primitives/styles': 0.0.114(solid-js@1.9.5)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
+      '@solid-primitives/media': 2.3.0(solid-js@1.9.9)
+      '@solid-primitives/refs': 1.1.0(solid-js@1.9.9)
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
+      '@solid-primitives/scheduled': 1.5.0(solid-js@1.9.9)
+      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.9)
+      '@solid-primitives/styles': 0.0.114(solid-js@1.9.9)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/bounds@0.0.122(solid-js@1.9.5)':
+  '@solid-primitives/bounds@0.0.122(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
-      '@solid-primitives/resize-observer': 2.1.0(solid-js@1.9.5)
-      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.5)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
+      '@solid-primitives/resize-observer': 2.1.0(solid-js@1.9.9)
+      '@solid-primitives/static-store': 0.0.8(solid-js@1.9.9)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/cursor@0.0.115(solid-js@1.9.5)':
+  '@solid-primitives/cursor@0.0.115(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/event-listener@2.4.0(solid-js@1.9.5)':
+  '@solid-primitives/event-listener@2.4.0(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/keyboard@1.3.0(solid-js@1.9.5)':
+  '@solid-primitives/keyboard@1.3.0(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/media@2.3.0(solid-js@1.9.5)':
+  '@solid-primitives/media@2.3.0(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
-      '@solid-primitives/static-store': 0.1.0(solid-js@1.9.5)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
+      '@solid-primitives/static-store': 0.1.0(solid-js@1.9.9)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/platform@0.1.2(solid-js@1.9.5)':
+  '@solid-primitives/platform@0.1.2(solid-js@1.9.9)':
     dependencies:
-      solid-js: 1.9.5
+      solid-js: 1.9.9
 
-  '@solid-primitives/refs@1.1.0(solid-js@1.9.5)':
+  '@solid-primitives/refs@1.1.0(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/resize-observer@2.1.0(solid-js@1.9.5)':
+  '@solid-primitives/resize-observer@2.1.0(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.5)
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
-      '@solid-primitives/static-store': 0.1.0(solid-js@1.9.5)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/event-listener': 2.4.0(solid-js@1.9.9)
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
+      '@solid-primitives/static-store': 0.1.0(solid-js@1.9.9)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/rootless@1.5.0(solid-js@1.9.5)':
+  '@solid-primitives/rootless@1.5.0(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/scheduled@1.5.0(solid-js@1.9.5)':
+  '@solid-primitives/scheduled@1.5.0(solid-js@1.9.9)':
     dependencies:
-      solid-js: 1.9.5
+      solid-js: 1.9.9
 
-  '@solid-primitives/static-store@0.0.8(solid-js@1.9.5)':
+  '@solid-primitives/static-store@0.0.8(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/static-store@0.1.0(solid-js@1.9.5)':
+  '@solid-primitives/static-store@0.1.0(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/styles@0.0.114(solid-js@1.9.5)':
+  '@solid-primitives/styles@0.0.114(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.5)
-      '@solid-primitives/utils': 6.3.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@solid-primitives/rootless': 1.5.0(solid-js@1.9.9)
+      '@solid-primitives/utils': 6.3.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@solid-primitives/utils@6.3.0(solid-js@1.9.5)':
+  '@solid-primitives/utils@6.3.0(solid-js@1.9.9)':
     dependencies:
-      solid-js: 1.9.5
+      solid-js: 1.9.9
 
-  '@solidjs/meta@0.29.4(solid-js@1.9.5)':
+  '@solidjs/meta@0.29.4(solid-js@1.9.9)':
     dependencies:
-      solid-js: 1.9.5
+      solid-js: 1.9.9
 
   '@solidjs/testing-library@0.8.10(solid-js@1.9.5)':
     dependencies:
       '@testing-library/dom': 10.4.1
       solid-js: 1.9.5
+
+  '@solidjs/testing-library@0.8.10(solid-js@1.9.9)':
+    dependencies:
+      '@testing-library/dom': 10.4.1
+      solid-js: 1.9.9
 
   '@speed-highlight/core@1.2.7': {}
 
@@ -23085,22 +23093,22 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  '@tanstack/devtools-ui@0.3.5(csstype@3.1.3)(solid-js@1.9.5)':
+  '@tanstack/devtools-ui@0.3.5(csstype@3.1.3)(solid-js@1.9.9)':
     dependencies:
       clsx: 2.1.1
       goober: 2.1.16(csstype@3.1.3)
-      solid-js: 1.9.5
+      solid-js: 1.9.9
     transitivePeerDependencies:
       - csstype
 
-  '@tanstack/devtools@0.6.14(csstype@3.1.3)(solid-js@1.9.5)':
+  '@tanstack/devtools@0.6.14(csstype@3.1.3)(solid-js@1.9.9)':
     dependencies:
-      '@solid-primitives/keyboard': 1.3.0(solid-js@1.9.5)
+      '@solid-primitives/keyboard': 1.3.0(solid-js@1.9.9)
       '@tanstack/devtools-event-bus': 0.3.2
-      '@tanstack/devtools-ui': 0.3.5(csstype@3.1.3)(solid-js@1.9.5)
+      '@tanstack/devtools-ui': 0.3.5(csstype@3.1.3)(solid-js@1.9.9)
       clsx: 2.1.1
       goober: 2.1.16(csstype@3.1.3)
-      solid-js: 1.9.5
+      solid-js: 1.9.9
     transitivePeerDependencies:
       - bufferutil
       - csstype
@@ -23137,9 +23145,9 @@ snapshots:
 
   '@tanstack/query-devtools@5.72.2': {}
 
-  '@tanstack/react-devtools@0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.5)':
+  '@tanstack/react-devtools@0.7.0(@types/react-dom@19.0.3(@types/react@19.0.8))(@types/react@19.0.8)(csstype@3.1.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(solid-js@1.9.9)':
     dependencies:
-      '@tanstack/devtools': 0.6.14(csstype@3.1.3)(solid-js@1.9.5)
+      '@tanstack/devtools': 0.6.14(csstype@3.1.3)(solid-js@1.9.9)
       '@types/react': 19.0.8
       '@types/react-dom': 19.0.3(@types/react@19.0.8)
       react: 19.0.0
@@ -23174,37 +23182,37 @@ snapshots:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
 
-  '@tanstack/solid-query-devtools@5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.5))(solid-js@1.9.5)':
+  '@tanstack/solid-query-devtools@5.72.2(@tanstack/solid-query@5.72.0(solid-js@1.9.9))(solid-js@1.9.9)':
     dependencies:
       '@tanstack/query-devtools': 5.72.2
-      '@tanstack/solid-query': 5.72.0(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@tanstack/solid-query': 5.72.0(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@tanstack/solid-query-devtools@5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.5))(solid-js@1.9.5)':
+  '@tanstack/solid-query-devtools@5.72.2(@tanstack/solid-query@5.72.2(solid-js@1.9.9))(solid-js@1.9.9)':
     dependencies:
       '@tanstack/query-devtools': 5.72.2
-      '@tanstack/solid-query': 5.72.2(solid-js@1.9.5)
-      solid-js: 1.9.5
+      '@tanstack/solid-query': 5.72.2(solid-js@1.9.9)
+      solid-js: 1.9.9
 
-  '@tanstack/solid-query@5.72.0(solid-js@1.9.5)':
+  '@tanstack/solid-query@5.72.0(solid-js@1.9.9)':
     dependencies:
       '@tanstack/query-core': 5.66.0
-      solid-js: 1.9.5
+      solid-js: 1.9.9
 
-  '@tanstack/solid-query@5.72.2(solid-js@1.9.5)':
+  '@tanstack/solid-query@5.72.2(solid-js@1.9.9)':
     dependencies:
       '@tanstack/query-core': 5.66.0
-      solid-js: 1.9.5
+      solid-js: 1.9.9
 
-  '@tanstack/solid-store@0.7.0(solid-js@1.9.5)':
+  '@tanstack/solid-store@0.7.0(solid-js@1.9.9)':
     dependencies:
       '@tanstack/store': 0.7.0
-      solid-js: 1.9.5
+      solid-js: 1.9.9
 
-  '@tanstack/solid-virtual@3.13.12(solid-js@1.9.5)':
+  '@tanstack/solid-virtual@3.13.12(solid-js@1.9.9)':
     dependencies:
       '@tanstack/virtual-core': 3.13.12
-      solid-js: 1.9.5
+      solid-js: 1.9.9
 
   '@tanstack/store@0.7.0': {}
 
@@ -25362,13 +25370,13 @@ snapshots:
     dependencies:
       es-errors: 1.3.0
 
-  esbuild-plugin-solid@0.6.0(esbuild@0.25.4)(solid-js@1.9.5):
+  esbuild-plugin-solid@0.6.0(esbuild@0.25.4)(solid-js@1.9.9):
     dependencies:
       '@babel/core': 7.27.4
       '@babel/preset-typescript': 7.27.1(@babel/core@7.27.4)
       babel-preset-solid: 1.9.3(@babel/core@7.27.4)
       esbuild: 0.25.4
-      solid-js: 1.9.5
+      solid-js: 1.9.9
     transitivePeerDependencies:
       - supports-color
 
@@ -28908,12 +28916,27 @@ snapshots:
       seroval: 1.2.0
       seroval-plugins: 1.2.0(seroval@1.2.0)
 
+  solid-js@1.9.9:
+    dependencies:
+      csstype: 3.1.3
+      seroval: 1.3.2
+      seroval-plugins: 1.3.2(seroval@1.3.2)
+
   solid-refresh@0.6.3(solid-js@1.9.5):
     dependencies:
       '@babel/generator': 7.27.5
       '@babel/helper-module-imports': 7.27.1
       '@babel/types': 7.27.7
       solid-js: 1.9.5
+    transitivePeerDependencies:
+      - supports-color
+
+  solid-refresh@0.6.3(solid-js@1.9.9):
+    dependencies:
+      '@babel/generator': 7.27.5
+      '@babel/helper-module-imports': 7.27.1
+      '@babel/types': 7.27.7
+      solid-js: 1.9.9
     transitivePeerDependencies:
       - supports-color
 
@@ -29801,6 +29824,21 @@ snapshots:
       merge-anything: 5.1.7
       solid-js: 1.9.5
       solid-refresh: 0.6.3(solid-js@1.9.5)
+      vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
+      vitefu: 1.1.1(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
+    optionalDependencies:
+      '@testing-library/jest-dom': 6.6.3
+    transitivePeerDependencies:
+      - supports-color
+
+  vite-plugin-solid@2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.9)(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)):
+    dependencies:
+      '@babel/core': 7.28.4
+      '@types/babel__core': 7.20.5
+      babel-preset-solid: 1.9.3(@babel/core@7.28.4)
+      merge-anything: 5.1.7
+      solid-js: 1.9.9
+      solid-refresh: 0.6.3(solid-js@1.9.9)
       vite: 7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1)
       vitefu: 1.1.1(vite@7.1.7(@types/node@22.10.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.8.1))
     optionalDependencies:
