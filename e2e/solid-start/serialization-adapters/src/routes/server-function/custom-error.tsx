@@ -37,7 +37,7 @@ function RouteComponent() {
         trigger valid input
       </button>
       <div data-testid="server-function-valid-response">
-        {JSON.stringify(validResponse)}
+        {JSON.stringify(validResponse())}
       </div>
 
       <br />
@@ -62,7 +62,7 @@ function RouteComponent() {
               foo: invalidResponse()?.foo,
               bar: invalidResponse()?.bar.toString(),
             })
-          : JSON.stringify(validResponse)}
+          : JSON.stringify(invalidResponse())}
       </div>
     </div>
   )
