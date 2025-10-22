@@ -278,7 +278,7 @@ Use Zod for runtime validation of environment variables:
 
 ```typescript
 // src/config/env.ts
-import { createIsomorphicFn } from "@tanstack/react-start";
+import { createIsomorphicFn } from '@tanstack/react-start'
 import { z } from 'zod'
 
 const clientEnvSchema = z.object({
@@ -292,17 +292,17 @@ const serverEnvSchema = z
   .object({
     DATABASE_URL: z.string().url(),
     JWT_SECRET: z.string().min(32),
-    NODE_ENV: z.enum(["development", "production", "test"]),
+    NODE_ENV: z.enum(['development', 'production', 'test']),
   })
-  .and(clientEnvSchema);
+  .and(clientEnvSchema)
 
 const getEnv = createIsomorphicFn()
   .server(() => serverEnvSchema.parse(process.env))
-  .client(() => clientEnvSchema.parse(import.meta.env));
+  .client(() => clientEnvSchema.parse(import.meta.env))
 
-type Env = z.infer<typeof serverEnvSchema>;
+type Env = z.infer<typeof serverEnvSchema>
 
-export const env = getEnv() as Env;
+export const env = getEnv() as Env
 ```
 
 ## Security Best Practices
