@@ -30,8 +30,10 @@ export function Await<T>(
     children: (result: T) => SolidNode
   },
 ) {
+  // Use ssrLoadFrom: 'initial' only on the client during hydration
+  // This ensures serialized data is used, but server promises still work
   const [resource] = Solid.createResource(() => props.promise, {
-    ssrLoadFrom: 'initial',
+    ssrLoadFrom: typeof document !== 'undefined' ? 'initial' : 'server',
   })
 
   return (
