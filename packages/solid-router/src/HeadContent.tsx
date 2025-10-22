@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { MetaProvider } from '@solidjs/meta'
+import { For } from 'solid-js'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useRouterState } from './useRouterState'
@@ -191,9 +192,7 @@ export function HeadContent() {
 
   return (
     <MetaProvider>
-      {tags().map((tag) => (
-        <Asset {...tag} />
-      ))}
+      <For each={tags()}>{(tag) => <Asset {...tag} />}</For>
     </MetaProvider>
   )
 }

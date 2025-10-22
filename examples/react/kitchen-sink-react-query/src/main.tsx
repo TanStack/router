@@ -377,7 +377,7 @@ function InvoicesIndexComponent() {
           <InvoiceFields invoice={{} as Invoice} />
           <div>
             <button
-              className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
+              className="bg-blue-500 rounded-sm p-2 uppercase text-white font-black disabled:opacity-50"
               disabled={createInvoiceMutation.status === 'pending'}
             >
               {createInvoiceMutation.status === 'pending' ? (
@@ -390,11 +390,11 @@ function InvoicesIndexComponent() {
             </button>
           </div>
           {createInvoiceMutation.status === 'success' ? (
-            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+            <div className="inline-block px-2 py-1 rounded-sm bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Created!
             </div>
           ) : createInvoiceMutation.status === 'error' ? (
-            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+            <div className="inline-block px-2 py-1 rounded-sm bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to create.
             </div>
           ) : null}
@@ -488,7 +488,7 @@ function InvoiceComponent() {
                   setNotes(e.target.value)
                 }}
                 rows={5}
-                className="shadow w-full p-2 rounded"
+                className="shadow-sm w-full p-2 rounded-sm"
                 placeholder="Write some notes here..."
               />
               <div className="italic text-xs">
@@ -500,7 +500,7 @@ function InvoiceComponent() {
       </div>
       <div>
         <button
-          className="bg-blue-500 rounded p-2 uppercase text-white font-black disabled:opacity-50"
+          className="bg-blue-500 rounded-sm p-2 uppercase text-white font-black disabled:opacity-50"
           disabled={updateInvoiceMutation.status === 'pending'}
         >
           Save
@@ -509,11 +509,11 @@ function InvoiceComponent() {
       {updateInvoiceMutation.variables?.id === invoice.id ? (
         <div key={updateInvoiceMutation.submittedAt}>
           {updateInvoiceMutation.status === 'success' ? (
-            <div className="inline-block px-2 py-1 rounded bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+            <div className="inline-block px-2 py-1 rounded-sm bg-green-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Saved!
             </div>
           ) : updateInvoiceMutation.status === 'error' ? (
-            <div className="inline-block px-2 py-1 rounded bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
+            <div className="inline-block px-2 py-1 rounded-sm bg-red-500 text-white animate-bounce [animation-iteration-count:2.5] [animation-duration:.3s]">
               Failed to save.
             </div>
           ) : null}
@@ -619,7 +619,7 @@ function UsersComponent() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as UsersViewSortBy)}
-            className="flex-1 border p-1 px-2 rounded"
+            className="flex-1 border p-1 px-2 rounded-sm"
           >
             {['name', 'id', 'email'].map((d) => {
               return <option key={d} value={d} children={d} />
@@ -632,7 +632,7 @@ function UsersComponent() {
             value={filterDraft}
             onChange={(e) => setFilterDraft(e.target.value)}
             placeholder="Search Names..."
-            className="min-w-0 flex-1 border p-1 px-2 rounded"
+            className="min-w-0 flex-1 border p-1 px-2 rounded-sm"
           />
         </div>
         {filteredUsers.map((user) => {
@@ -819,7 +819,7 @@ function LoginComponent() {
       <div className="h-2" />
       <button
         onClick={() => auth.logout()}
-        className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
+        className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded-sm"
       >
         Log out
       </button>
@@ -834,11 +834,11 @@ function LoginComponent() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
-          className="border p-1 px-2 rounded"
+          className="border p-1 px-2 rounded-sm"
         />
         <button
           onClick={() => auth.logout()}
-          className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
+          className="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded-sm"
         >
           Login
         </button>
@@ -952,11 +952,11 @@ function App() {
 
   return (
     <>
-      <div className="text-xs fixed w-52 shadow-md shadow-black/20 rounded bottom-2 left-2 bg-white dark:bg-gray-800 bg-opacity-75 border-b flex flex-col gap-1 flex-wrap items-left divide-y">
+      <div className="text-xs fixed w-52 shadow-md shadow-black/20 rounded-sm bottom-2 left-2 bg-white dark:bg-gray-800 bg-opacity-75 border-b flex flex-col gap-1 flex-wrap items-left divide-y">
         <div className="p-2 space-y-2">
           <div className="flex gap-2">
             <button
-              className="bg-blue-500 text-white rounded p-1 px-2"
+              className="bg-blue-500 text-white rounded-sm p-1 px-2"
               onClick={() => {
                 setLoaderDelay(150)
               }}
@@ -964,7 +964,7 @@ function App() {
               Fast
             </button>
             <button
-              className="bg-blue-500 text-white rounded p-1 px-2"
+              className="bg-blue-500 text-white rounded-sm p-1 px-2"
               onClick={() => {
                 setLoaderDelay(500)
               }}
@@ -972,7 +972,7 @@ function App() {
               Fast 3G
             </button>
             <button
-              className="bg-blue-500 text-white rounded p-1 px-2"
+              className="bg-blue-500 text-white rounded-sm p-1 px-2"
               onClick={() => {
                 setLoaderDelay(2000)
               }}
@@ -996,7 +996,7 @@ function App() {
         <div className="p-2 space-y-2">
           <div className="flex gap-2">
             <button
-              className="bg-blue-500 text-white rounded p-1 px-2"
+              className="bg-blue-500 text-white rounded-sm p-1 px-2"
               onClick={() => {
                 setPendingMs(1000)
                 setPendingMinMs(500)
@@ -1060,7 +1060,7 @@ function InvoiceFields({
           name="title"
           defaultValue={invoice.title}
           placeholder="Invoice Title"
-          className="border border-opacity-50 rounded p-2 w-full"
+          className="border border-opacity-50 rounded-sm p-2 w-full"
           disabled={disabled}
         />
       </h2>
@@ -1070,7 +1070,7 @@ function InvoiceFields({
           defaultValue={invoice.body}
           rows={6}
           placeholder="Invoice Body..."
-          className="border border-opacity-50 p-2 rounded w-full"
+          className="border border-opacity-50 p-2 rounded-sm w-full"
           disabled={disabled}
         />
       </div>
