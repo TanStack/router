@@ -2,7 +2,6 @@
 
 @source '../../post-feature/src/**/*.{js,jsx,ts,tsx}';
 
-
 @layer base {
   *,
   ::after,
