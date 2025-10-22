@@ -27,7 +27,7 @@ function MergeServerFnMiddlewareContext() {
           type="button"
           onClick={fetchMiddlewareContext}
           data-testid="test-middleware-context-btn"
-          className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+          className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 shadow-xs ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
         >
           Test Middleware Context
         </button>
@@ -37,7 +37,7 @@ function MergeServerFnMiddlewareContext() {
             <h4>API Response:</h4>
             <pre
               data-testid="api-response"
-              className="bg-gray-100 p-2 rounded text-black"
+              className="bg-gray-100 p-2 rounded-sm text-black"
             >
               {JSON.stringify(apiResponse, null, 2)}
             </pre>
@@ -46,17 +46,17 @@ function MergeServerFnMiddlewareContext() {
               <h4>Context Verification:</h4>
               <div
                 data-testid="context-result"
-                className="bg-gray-100 p-2 rounded text-black"
+                className="bg-gray-100 p-2 rounded-sm text-black"
               >
                 {JSON.stringify(apiResponse.context, null, 2)}
               </div>
 
-              <div data-testid="has-test-parent" className="p-2 border rounded">
+              <div data-testid="has-test-parent" className="p-2 border rounded-sm">
                 Has testParent:{' '}
                 {apiResponse.context?.testParent ? 'true' : 'false'}
               </div>
 
-              <div data-testid="has-test" className="p-2 border rounded">
+              <div data-testid="has-test" className="p-2 border rounded-sm">
                 Has test: {apiResponse.context?.test ? 'true' : 'false'}
               </div>
             </div>
