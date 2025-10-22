@@ -842,6 +842,15 @@ export type CreateRouterFn = <
   TDehydrated
 >
 
+/**
+ * Core, framework-agnostic router engine that powers TanStack Router.
+ *
+ * Provides navigation, matching, loading, preloading, caching and event APIs
+ * used by framework adapters (React/Solid). Prefer framework helpers like
+ * `createRouter` in app code.
+ *
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType
+ */
 export class RouterCore<
   in out TRouteTree extends AnyRoute,
   in out TTrailingSlashOption extends TrailingSlashOption,
@@ -1096,6 +1105,12 @@ export class RouterCore<
     }
   }
 
+  /**
+   * Subscribe to router lifecycle events like `onBeforeNavigate`, `onLoad`,
+   * `onResolved`, etc. Returns an unsubscribe function.
+   *
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterEventsType
+   */
   subscribe: SubscribeFn = (eventType, fn) => {
     const listener: RouterListener<any> = {
       eventType,
@@ -1117,6 +1132,10 @@ export class RouterCore<
     })
   }
 
+  /**
+   * Parse a HistoryLocation into a strongly-typed ParsedLocation using the
+   * current router options, rewrite rules and search parser/stringifier.
+   */
   parseLocation: ParseLocationFn<TRouteTree> = (
     locationToParse,
     previousLocation,
@@ -1172,6 +1191,7 @@ export class RouterCore<
     return location
   }
 
+  /** Resolve a path against the router basepath and trailing-slash policy. */
   resolvePathWithBase = (from: string, path: string) => {
     const resolvedPath = resolvePath({
       base: from,
@@ -1538,6 +1558,13 @@ export class RouterCore<
     })
   }
 
+  /**
+   * Build the next ParsedLocation from navigation options without committing.
+   * Resolves `to`/`from`, params/search/hash/state, applies search validation
+   * and middlewares, and returns a stable, stringified location object.
+   *
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
+   */
   buildLocation: BuildLocationFn = (opts) => {
     const build = (
       dest: BuildNextOptions & {
@@ -1785,6 +1812,10 @@ export class RouterCore<
 
   commitLocationPromise: undefined | ControlledPromise<void>
 
+  /**
+   * Commit a previously built location to history (push/replace), optionally
+   * using view transitions and scroll restoration options.
+   */
   commitLocation: CommitLocationFn = ({
     viewTransition,
     ignoreBlocker,
@@ -1875,6 +1906,7 @@ export class RouterCore<
     return this.commitLocationPromise
   }
 
+  /** Convenience helper: build a location from options, then commit it. */
   buildAndCommitLocation = ({
     replace,
     resetScroll,
@@ -1911,6 +1943,13 @@ export class RouterCore<
     })
   }
 
+  /**
+   * Imperatively navigate using standard `NavigateOptions`. When `reloadDocument`
+   * or an absolute `href` is provided, performs a full document navigation.
+   * Otherwise, builds and commits a client-side location.
+   *
+   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType
+   */
   navigate: NavigateFn = ({ to, reloadDocument, href, ...rest }) => {
     if (!reloadDocument && href) {
       try {
