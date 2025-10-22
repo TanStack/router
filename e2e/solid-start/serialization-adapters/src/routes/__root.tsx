@@ -15,8 +15,8 @@ import appCss from '~/styles/app.css?url'
 export const Route = createRootRoute({
   head: () => ({
     meta: [
-      {
-        charSet: 'utf-8',
+    {
+        charset: 'utf-8',
       },
       {
         name: 'viewport',
