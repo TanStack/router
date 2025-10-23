@@ -12,6 +12,8 @@ export const Route = createFileRoute('/ssr/stream')({
       dataPromise,
     }
   },
+
+    errorComponent: (e)=><div>{e.error.message} </div>,
   component: RouteComponent,
 })
 
