@@ -244,6 +244,16 @@ export function startManifestPlugin(opts: {
 
           recurseRoute(routeTreeRoutes[rootRouteId]!)
 
+          // Filter out routes that have neither assets nor preloads
+          Object.keys(routeTreeRoutes).forEach((routeId) => {
+            const route = routeTreeRoutes[routeId]!
+            const hasAssets = route.assets && route.assets.length > 0
+            const hasPreloads = route.preloads && route.preloads.length > 0
+            if (!hasAssets && !hasPreloads) {
+              delete routeTreeRoutes[routeId]
+            }
+          })
+
           const startManifest = {
             routes: routeTreeRoutes,
             clientEntry: joinURL(
