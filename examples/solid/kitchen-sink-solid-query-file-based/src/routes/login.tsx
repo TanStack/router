@@ -40,7 +40,7 @@ function LoginComponent() {
           routeContext().auth.logout()
           router.invalidate()
         }}
-        class="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
+        class="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded-sm"
       >
         Log out
       </button>
@@ -55,11 +55,11 @@ function LoginComponent() {
           value={username()}
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
-          class="border p-1 px-2 rounded"
+          class="border p-1 px-2 rounded-sm"
         />
         <button
           type="submit"
-          class="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded"
+          class="text-sm bg-blue-500 text-white border inline-block py-1 px-2 rounded-sm"
         >
           Login
         </button>

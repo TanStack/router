@@ -1,0 +1,28 @@
+{
+  "name": "tanstack-solid-start-example-basic-netlify",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/solid-router": "^1.133.24",
+    "@tanstack/solid-router-devtools": "^1.133.24",
+    "@tanstack/solid-start": "^1.133.24",
+    "solid-js": "^1.9.5"
+  },
+  "devDependencies": {
+    "@netlify/vite-plugin-tanstack-start": "^1.1.4",
+    "@tailwindcss/postcss": "^4.1.15",
+    "@types/node": "^22.5.4",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^4.1.15",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.7",
+    "vite-plugin-solid": "^2.11.10",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}

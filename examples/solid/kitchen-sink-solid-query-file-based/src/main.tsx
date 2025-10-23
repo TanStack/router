@@ -48,11 +48,11 @@ function App() {
 
   return (
     <>
-      <div class="text-xs fixed w-52 shadow-md shadow-black/20 rounded bottom-2 left-2 bg-white dark:bg-gray-800 bg-opacity-75 border-b flex flex-col gap-1 flex-wrap items-left divide-y">
+      <div class="text-xs fixed w-52 shadow-md shadow-black/20 rounded-sm bottom-2 left-2 bg-white dark:bg-gray-800 bg-opacity-75 border-b flex flex-col gap-1 flex-wrap items-left divide-y">
         <div class="p-2 space-y-2">
           <div class="flex gap-2">
             <button
-              class="bg-blue-500 text-white rounded p-1 px-2"
+              class="bg-blue-500 text-white rounded-sm p-1 px-2"
               onClick={() => {
                 setLoaderDelay(150)
               }}
@@ -60,7 +60,7 @@ function App() {
               Fast
             </button>
             <button
-              class="bg-blue-500 text-white rounded p-1 px-2"
+              class="bg-blue-500 text-white rounded-sm p-1 px-2"
               onClick={() => {
                 setLoaderDelay(500)
               }}
@@ -68,7 +68,7 @@ function App() {
               Fast 3G
             </button>
             <button
-              class="bg-blue-500 text-white rounded p-1 px-2"
+              class="bg-blue-500 text-white rounded-sm p-1 px-2"
               onClick={() => {
                 setLoaderDelay(2000)
               }}
@@ -92,7 +92,7 @@ function App() {
         <div class="p-2 space-y-2">
           <div class="flex gap-2">
             <button
-              class="bg-blue-500 text-white rounded p-1 px-2"
+              class="bg-blue-500 text-white rounded-sm p-1 px-2"
               onClick={() => {
                 setPendingMs(1000)
                 setPendingMinMs(500)

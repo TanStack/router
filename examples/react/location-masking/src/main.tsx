@@ -144,7 +144,7 @@ function PhotosRoute() {
 
   return (
     <div className="p-2 space-y-2">
-      <ul className="grid [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))] gap-2">
+      <ul className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
         {[
           ...photos,
           { id: 'i-do-not-exist', title: 'Missing Photo Test', url: '' },
@@ -164,7 +164,7 @@ function PhotosRoute() {
                 //     photoId: photo.id,
                 //   },
                 // }}
-                className="whitespace-nowrap border rounded-lg shadow-sm flex items-center hover:shadow-lg text-blue-600 hover:scale-[1.1] overflow-hidden transition-all"
+                className="whitespace-nowrap border rounded-lg shadow-xs flex items-center hover:shadow-lg text-blue-600 hover:scale-[1.1] overflow-hidden transition-all"
               >
                 <img src={photo.url} alt={photo.title} className="max-w-full" />
               </Link>
