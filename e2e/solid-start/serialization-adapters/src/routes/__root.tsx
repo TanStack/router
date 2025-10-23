@@ -29,6 +29,7 @@ export const Route = createRootRoute({
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
   shellComponent: RootDocument,
+  notFoundComponent: (e) => <div>404 - Not Found {JSON.stringify(e.data)}</div>,
 })
 
 function RootDocument({ children }: { children: JSX.Element }) {
