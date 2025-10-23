@@ -615,6 +615,21 @@ export type LinkOptionsFn<TComp> = <
   options: LinkOptionsFnOptions<TOptions, TComp, TRouter>,
 ) => TOptions
 
+/**
+ * Validate and reuse navigation options for `Link`, `navigate` or `redirect`.
+ * Accepts a literal options object and returns it typed for later spreading.
+ * @example
+ * const opts = linkOptions({ to: '/dashboard', search: { tab: 'home' } })
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/linkOptions
+ */
 export const linkOptions: LinkOptionsFn<'a'> = (options) => {
   return options as any
 }
+
+/**
+ * Type-check a literal object for use with `Link`, `navigate` or `redirect`.
+ * Use to validate and reuse navigation options across your app.
+ * @example
+ * const opts = linkOptions({ to: '/dashboard', search: { tab: 'home' } })
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/linkOptions
+ */

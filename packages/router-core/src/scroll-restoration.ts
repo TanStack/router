@@ -35,6 +35,7 @@ function getSafeSessionStorage() {
 
 /** SessionStorage key used to persist scroll restoration state. */
 /** SessionStorage key used to store scroll positions across navigations. */
+/** SessionStorage key used to store scroll positions across navigations. */
 export const storageKey = 'tsr-scroll-restoration-v1_3'
 
 const throttle = (fn: (...args: Array<any>) => void, wait: number) => {
@@ -74,6 +75,7 @@ function createScrollRestorationCache(): ScrollRestorationCache | null {
 
 /** In-memory handle to the persisted scroll restoration cache. */
 /** In-memory handle to the persisted scroll restoration cache. */
+/** In-memory handle to the persisted scroll restoration cache. */
 export const scrollRestorationCache = createScrollRestorationCache()
 
 /**
@@ -83,6 +85,9 @@ export const scrollRestorationCache = createScrollRestorationCache()
  * The `location.href` is used as a fallback to support the use case where the location state is not available like the initial render.
  */
 
+/**
+ * Default scroll restoration cache key: location state key or full href.
+ */
 /**
  * Default scroll restoration cache key: location state key or full href.
  */
@@ -112,6 +117,9 @@ let ignoreScroll = false
 // unless they are passed in as arguments. Why? Because we need to be able to
 // toString() it into a script tag to execute as early as possible in the browser
 // during SSR. Additionally, we also call it from within the router lifecycle
+/**
+ * Restore scroll positions for window/elements based on cached entries.
+ */
 /**
  * Restore scroll positions for window/elements based on cached entries.
  */
@@ -214,6 +222,7 @@ export function restoreScroll({
   ignoreScroll = false
 }
 
+/** Setup global listeners and hooks to support scroll restoration. */
 /** Setup global listeners and hooks to support scroll restoration. */
 export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   if (!scrollRestorationCache && !router.isServer) {
@@ -387,6 +396,11 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
  *
  * Provides hash scrolling for programmatic navigation when default browser handling is prevented.
  * @param router The router instance containing current location and state
+ */
+/**
+ * @private
+ * Handles hash-based scrolling after navigation completes.
+ * To be used in framework-specific Transitioners.
  */
 export function handleHashScroll(router: AnyRouter) {
   if (typeof document !== 'undefined' && (document as any).querySelector) {

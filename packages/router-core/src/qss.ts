@@ -47,6 +47,7 @@ export function encode(
  * // Example input: toValue("123")
  * // Expected output: 123
  */
+/** Convert a string into a primitive boolean/number when possible. */
 function toValue(str: unknown) {
   if (!str) return ''
 

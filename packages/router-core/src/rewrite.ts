@@ -2,6 +2,7 @@ import { joinPaths, trimPath } from './path'
 import type { LocationRewrite } from './router'
 
 /** Compose multiple rewrite pairs into a single in/out rewrite. */
+/** Compose multiple rewrite pairs into a single in/out rewrite. */
 export function composeRewrites(rewrites: Array<LocationRewrite>) {
   return {
     input: ({ url }) => {
@@ -19,6 +20,7 @@ export function composeRewrites(rewrites: Array<LocationRewrite>) {
   } satisfies LocationRewrite
 }
 
+/** Create a rewrite pair that strips/adds a basepath on input/output. */
 /** Create a rewrite pair that strips/adds a basepath on input/output. */
 export function rewriteBasepath(opts: {
   basepath: string
@@ -57,6 +59,7 @@ export function rewriteBasepath(opts: {
 }
 
 /** Execute a location input rewrite if provided. */
+/** Execute a location input rewrite if provided. */
 export function executeRewriteInput(
   rewrite: LocationRewrite | undefined,
   url: URL,
@@ -72,6 +75,7 @@ export function executeRewriteInput(
   return url
 }
 
+/** Execute a location output rewrite if provided. */
 /** Execute a location output rewrite if provided. */
 export function executeRewriteOutput(
   rewrite: LocationRewrite | undefined,

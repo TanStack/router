@@ -3,7 +3,9 @@ import type { AnySchema } from './validators'
 
 /** Default `parseSearch` that strips leading '?' and JSON-parses values. */
 /** Default `parseSearch` that strips leading '?' and JSON-parses values. */
+/** Default `parseSearch` that strips leading '?' and JSON-parses values. */
 export const defaultParseSearch = parseSearchWith(JSON.parse)
+/** Default `stringifySearch` using JSON.stringify for complex values. */
 export const defaultStringifySearch = stringifySearchWith(
   JSON.stringify,
   JSON.parse,
