@@ -71,6 +71,10 @@ export type ResolvedRedirect<
  * @returns A Response augmented with router navigation options.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/redirectFunction
  */
+/**
+ * Create a redirect Response understood by TanStack Router.
+ * Use inside loaders/beforeLoad or server handlers to trigger navigation.
+ */
 export function redirect<
   TRouter extends AnyRouter = RegisteredRouter,
   const TTo extends string | undefined = '.',
@@ -110,10 +114,12 @@ export function redirect<
 }
 
 /** Check whether a value is a TanStack Router redirect Response. */
+/** Check whether a value is a TanStack Router redirect Response. */
 export function isRedirect(obj: any): obj is AnyRedirect {
   return obj instanceof Response && !!(obj as any).options
 }
 
+/** True if value is a redirect with a resolved `href` location. */
 /** True if value is a redirect with a resolved `href` location. */
 export function isResolvedRedirect(
   obj: any,
@@ -121,6 +127,7 @@ export function isResolvedRedirect(
   return isRedirect(obj) && !!obj.options.href
 }
 
+/** Parse a serialized redirect object back into a redirect Response. */
 /** Parse a serialized redirect object back into a redirect Response. */
 export function parseRedirect(obj: any) {
   if (obj !== null && typeof obj === 'object' && obj.isSerializedRedirect) {

@@ -66,6 +66,10 @@ export function removeTrailingSlash(value: string, basepath: string): string {
 // see the usage in the isActive under useLinkProps
 // /sample/path1 = /sample/path1/
 // /sample/path1/some <> /sample/path1
+/**
+ * Compare two pathnames for exact equality after normalizing trailing slashes
+ * relative to the provided `basepath`.
+ */
 export function exactPathTest(
   pathName1: string,
   pathName2: string,
@@ -222,6 +226,10 @@ export const parseRoutePathSegments = (
   cache?: ParsePathnameCache,
 ): ReadonlyArray<Segment> => parsePathname(pathname, cache, false)
 
+/**
+ * Parse a pathname into an array of typed segments used by the router's
+ * matcher. Results are optionally cached via an LRU cache.
+ */
 export const parsePathname = (
   pathname?: string,
   cache?: ParsePathnameCache,

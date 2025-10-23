@@ -2,6 +2,7 @@ import { decode, encode } from './qss'
 import type { AnySchema } from './validators'
 
 /** Default `parseSearch` that strips leading '?' and JSON-parses values. */
+/** Default `parseSearch` that strips leading '?' and JSON-parses values. */
 export const defaultParseSearch = parseSearchWith(JSON.parse)
 export const defaultStringifySearch = stringifySearchWith(
   JSON.stringify,

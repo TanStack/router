@@ -184,6 +184,14 @@ export type ProcessRouteTreeResult<TRouteLike extends RouteLike> = {
   flatRoutes: Array<TRouteLike>
 }
 
+/**
+ * Build lookup maps and a specificity-sorted flat list from a route tree.
+ * Returns `routesById`, `routesByPath`, and `flatRoutes`.
+ */
+/**
+ * Build lookup maps and a specificity-sorted flat list from a route tree.
+ * Returns `routesById`, `routesByPath`, and `flatRoutes`.
+ */
 export function processRouteTree<TRouteLike extends RouteLike>({
   routeTree,
   initRoute,

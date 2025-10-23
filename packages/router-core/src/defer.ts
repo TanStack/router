@@ -1,5 +1,10 @@
 import { defaultSerializeError } from './router'
 
+/**
+ * Well-known symbol used by {@link defer} to tag a promise with
+ * its deferred state. Consumers can read `promise[TSR_DEFERRED_PROMISE]`
+ * to access `status`, `data`, or `error`.
+ */
 export const TSR_DEFERRED_PROMISE = Symbol.for('TSR_DEFERRED_PROMISE')
 
 export type DeferredPromiseState<T> =
