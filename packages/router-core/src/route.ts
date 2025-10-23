@@ -441,7 +441,7 @@ export type ResolveAllSSR<
 > = unknown extends TParentRoute
   ? ResolveSSR<TSSR>
   : unknown extends TSSR
-    ? TParentRoute['types']['ssr']
+    ? TParentRoute['types']['allSsr']
     : ResolveSSR<TSSR>
 
 export type ResolveFullPath<
