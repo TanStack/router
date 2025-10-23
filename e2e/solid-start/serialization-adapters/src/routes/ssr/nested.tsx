@@ -1,14 +1,9 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { RenderNestedData, makeNested } from '~/data'
 
 export const Route = createFileRoute('/ssr/nested')({
-  beforeLoad: () => {
-    return { nested: makeNested() }
-  },
-  loader: ({ context }) => {
-    return context
-  },
-  component: () => {
-    return <RenderNestedData nested={Route.useLoaderData()().nested} />
-  },
+  component: RouteComponent,
 })
+
+function RouteComponent() {
+  return <div>Hello "/ssr/nested"!</div>
+}
