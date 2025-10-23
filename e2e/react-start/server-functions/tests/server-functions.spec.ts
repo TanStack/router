@@ -450,6 +450,8 @@ test('primitives', async ({ page }) => {
   const testCases = await page
     .locator('[data-testid^="expected-"]')
     .elementHandles()
+  expect(testCases.length).not.toBe(0)
+
   for (const testCase of testCases) {
     const testId = await testCase.getAttribute('data-testid')
 

@@ -161,7 +161,7 @@ export type ResolveRequiredParams<TPath extends string, T> = {
 }
 
 export type ResolveOptionalParams<TPath extends string, T> = {
-  [K in ParsePathParams<TPath>['optional']]?: T
+  [K in ParsePathParams<TPath>['optional']]?: T | undefined
 }
 
 export type ResolveParams<
@@ -441,7 +441,7 @@ export type ResolveAllSSR<
 > = unknown extends TParentRoute
   ? ResolveSSR<TSSR>
   : unknown extends TSSR
-    ? TParentRoute['types']['ssr']
+    ? TParentRoute['types']['allSsr']
     : ResolveSSR<TSSR>
 
 export type ResolveFullPath<

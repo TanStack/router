@@ -82,12 +82,12 @@ export function TanStackServerFnPlugin(
   }) => {
     if (serverDevEnv) {
       const root = serverDevEnv.config.root
-
+      const rootWithTrailingSlash = withTrailingSlash(root)
       let file = extractedFilename
-      if (extractedFilename.startsWith(withTrailingSlash(root))) {
-        file = extractedFilename.slice(root.length)
+      if (extractedFilename.startsWith(rootWithTrailingSlash)) {
+        file = extractedFilename.slice(rootWithTrailingSlash.length)
       }
-      file = `/@id${file[0] === '/' ? '' : '/'}${file}`
+      file = `/@id/${file}`
 
       const serverFn: {
         file: string

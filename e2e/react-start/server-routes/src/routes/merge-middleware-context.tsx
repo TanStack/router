@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 
-export const Route = createFileRoute('/merge-server-fn-middleware-context')({
-  component: () => <MergeServerFnMiddlewareContext />,
+export const Route = createFileRoute('/merge-middleware-context')({
+  component: MergeMiddlewareContext,
 })
 
-function MergeServerFnMiddlewareContext() {
+function MergeMiddlewareContext() {
   const [apiResponse, setApiResponse] = React.useState<any>(null)
 
   const fetchMiddlewareContext = async () => {
@@ -21,7 +21,7 @@ function MergeServerFnMiddlewareContext() {
 
   return (
     <div className="p-2 m-2 grid gap-2">
-      <h3>Merge Server Function Middleware Context Test</h3>
+      <h3>Merge Server Route Middleware Context Test</h3>
       <div className="flex flex-col gap-2">
         <button
           type="button"

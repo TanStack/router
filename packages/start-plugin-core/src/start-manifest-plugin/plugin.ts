@@ -8,11 +8,21 @@ import type { GetConfigFn } from '../plugin'
 import type { PluginOption, Rollup } from 'vite'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
-export const getCSSRecursively = (
+const getCSSRecursively = (
   chunk: Rollup.OutputChunk,
   chunksByFileName: Map<string, Rollup.OutputChunk>,
   basePath: string,
+  cache: Map<Rollup.OutputChunk, Array<RouterManagedTag>>,
+  visited = new Set<Rollup.OutputChunk>(),
 ) => {
+  if (visited.has(chunk)) {
+    return []
+  }
+  visited.add(chunk)
+  const cachedResult = cache.get(chunk)
+  if (cachedResult) {
+    return cachedResult
+  }
   const result: Array<RouterManagedTag> = []
 
   // Get all css imports from the file
@@ -32,11 +42,18 @@ export const getCSSRecursively = (
     const importedChunk = chunksByFileName.get(importedFileName)
     if (importedChunk) {
       result.push(
-        ...getCSSRecursively(importedChunk, chunksByFileName, basePath),
+        ...getCSSRecursively(
+          importedChunk,
+          chunksByFileName,
+          basePath,
+          cache,
+          visited,
+        ),
       )
     }
   }
 
+  cache.set(chunk, result)
   return result
 }
 
@@ -81,6 +98,11 @@ export function startManifestPlugin(opts: {
           // This the manifest pulled from the generated route tree and later used by the Router.
           // i.e what's located in `src/routeTree.gen.ts`
           const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST.routes
+
+          const cssPerChunkCache = new Map<
+            Rollup.OutputChunk,
+            Array<RouterManagedTag>
+          >()
 
           // This is where hydration will start, from when the SSR'd page reaches the browser.
           let entryFile: Rollup.OutputChunk | undefined
@@ -161,6 +183,7 @@ export function startManifestPlugin(opts: {
                   chunk,
                   chunksByFileName,
                   resolvedStartConfig.viteAppBase,
+                  cssPerChunkCache,
                 )
 
                 routeTreeRoutes[routeId] = {
@@ -188,6 +211,7 @@ export function startManifestPlugin(opts: {
             entryFile,
             chunksByFileName,
             resolvedStartConfig.viteAppBase,
+            cssPerChunkCache,
           )
 
           routeTreeRoutes[rootRouteId]!.assets = [
