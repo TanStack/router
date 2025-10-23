@@ -174,7 +174,8 @@ export async function prerender({
             : cleanPagePath
 
           const htmlPath =
-            cleanPagePath.endsWith('/') || prerenderOptions.autoSubfolderIndex
+            cleanPagePath.endsWith('/') ||
+            (prerenderOptions.autoSubfolderIndex ?? true)
               ? joinURL(cleanPagePath, 'index.html')
               : cleanPagePath + '.html'
 
